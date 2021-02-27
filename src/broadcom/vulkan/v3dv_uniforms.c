@@ -97,14 +97,15 @@ write_tmu_p0(struct v3dv_cmd_buffer *cmd_buffer,
 
    /* We need to ensure that the texture bo is added to the job */
    struct v3dv_bo *texture_bo =
-      v3dv_descriptor_map_get_texture_bo(descriptor_state, &pipeline->texture_map,
+      v3dv_descriptor_map_get_texture_bo(descriptor_state,
+                                         &pipeline->shared_data->texture_map,
                                          pipeline->layout, texture_idx);
    assert(texture_bo);
    v3dv_job_add_bo(job, texture_bo);
 
    struct v3dv_cl_reloc state_reloc =
       v3dv_descriptor_map_get_texture_shader_state(descriptor_state,
-                                                   &pipeline->texture_map,
+                                                   &pipeline->shared_data->texture_map,
                                                    pipeline->layout,
                                                    texture_idx);
 
@@ -130,12 +131,14 @@ write_tmu_p1(struct v3dv_cmd_buffer *cmd_buffer,
           sampler_idx != V3DV_NO_SAMPLER_32BIT_IDX);
 
    struct v3dv_cl_reloc sampler_state_reloc =
-      v3dv_descriptor_map_get_sampler_state(descriptor_state, &pipeline->sampler_map,
+      v3dv_descriptor_map_get_sampler_state(descriptor_state,
+                                            &pipeline->shared_data->sampler_map,
                                             pipeline->layout, sampler_idx);
 
    const struct v3dv_sampler *sampler =
-      v3dv_descriptor_map_get_sampler(descriptor_state, &pipeline->sampler_map,
-                                         pipeline->layout, sampler_idx);
+      v3dv_descriptor_map_get_sampler(descriptor_state,
+                                      &pipeline->shared_data->sampler_map,
+                                      pipeline->layout, sampler_idx);
    assert(sampler);
 
    /* Set unnormalized coordinates flag from sampler object */
@@ -167,7 +170,7 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_descriptor_map *map =
       content == QUNIFORM_UBO_ADDR || content == QUNIFORM_GET_UBO_SIZE ?
-      &pipeline->ubo_map : &pipeline->ssbo_map;
+      &pipeline->shared_data->ubo_map : &pipeline->shared_data->ssbo_map;
 
    uint32_t offset =
       content == QUNIFORM_UBO_ADDR ?
@@ -285,7 +288,7 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct v3dv_descriptor *descriptor =
       v3dv_descriptor_map_get_descriptor(descriptor_state,
-                                         &pipeline->texture_map,
+                                         &pipeline->shared_data->texture_map,
                                          pipeline->layout,
                                          texture_idx, NULL);
 
@@ -309,13 +312,13 @@ get_texture_size(struct v3dv_cmd_buffer *cmd_buffer,
 
 struct v3dv_cl_reloc
 v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
-                               struct v3dv_pipeline_stage *p_stage,
+                               struct v3dv_pipeline *pipeline,
+                               struct v3dv_shader_variant *variant,
                                uint32_t **wg_count_offsets)
 {
    struct v3d_uniform_list *uinfo =
-      &p_stage->current_variant->prog_data.base->uniforms;
+      &variant->prog_data.base->uniforms;
    struct v3dv_dynamic_state *dynamic = &cmd_buffer->state.dynamic;
-   struct v3dv_pipeline *pipeline = p_stage->pipeline;
 
    struct v3dv_job *job = cmd_buffer->state.job;
    assert(job);
@@ -432,7 +435,8 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
 
 struct v3dv_cl_reloc
 v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
-                    struct v3dv_pipeline_stage *p_stage)
+                    struct v3dv_pipeline *pipeline,
+                    struct v3dv_shader_variant *variant)
 {
-   return v3dv_write_uniforms_wg_offsets(cmd_buffer, p_stage, NULL);
+   return v3dv_write_uniforms_wg_offsets(cmd_buffer, pipeline, variant, NULL);
 }

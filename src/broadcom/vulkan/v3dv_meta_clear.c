@@ -235,7 +235,8 @@ create_pipeline(struct v3dv_device *device,
    struct vk_shader_module fs_m;
 
    v3dv_shader_module_internal_init(device, &vs_m, vs_nir);
-   v3dv_shader_module_internal_init(device, &fs_m, fs_nir);
+   if (fs_nir)
+      v3dv_shader_module_internal_init(device, &fs_m, fs_nir);
 
    VkPipelineShaderStageCreateInfo stages[2] = {
       {
@@ -247,7 +248,7 @@ create_pipeline(struct v3dv_device *device,
       {
          .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
          .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-         .module = vk_shader_module_to_handle(&fs_m),
+         .module = fs_nir ? vk_shader_module_to_handle(&fs_m) : VK_NULL_HANDLE,
          .pName = "main",
       },
    };

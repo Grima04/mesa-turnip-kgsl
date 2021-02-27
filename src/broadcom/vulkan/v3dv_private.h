@@ -254,6 +254,23 @@ struct v3dv_meta_texel_buffer_copy_pipeline {
    uint8_t key[V3DV_META_TEXEL_BUFFER_COPY_CACHE_KEY_SIZE];
 };
 
+struct v3dv_pipeline_key {
+   bool robust_buffer_access;
+   uint8_t topology;
+   uint8_t logicop_func;
+   bool msaa;
+   bool sample_coverage;
+   bool sample_alpha_to_coverage;
+   bool sample_alpha_to_one;
+   uint8_t cbufs;
+   struct {
+      enum pipe_format format;
+      const uint8_t *swizzle;
+   } color_fmt[V3D_MAX_DRAW_BUFFERS];
+   uint8_t f32_color_rb;
+   uint32_t va_swap_rb_mask;
+};
+
 struct v3dv_pipeline_cache_stats {
    uint32_t miss;
    uint32_t hit;
@@ -314,8 +331,8 @@ struct v3dv_pipeline_cache {
    struct hash_table *nir_cache;
    struct v3dv_pipeline_cache_stats nir_stats;
 
-   struct hash_table *variant_cache;
-   struct v3dv_pipeline_cache_stats variant_stats;
+   struct hash_table *cache;
+   struct v3dv_pipeline_cache_stats stats;
 };
 
 struct v3dv_device {
@@ -1340,14 +1357,7 @@ vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
 }
 
 struct v3dv_shader_variant {
-   uint32_t ref_cnt;
-
    broadcom_shader_stage stage;
-
-   /* key for the pipeline cache, it is p_stage shader_sha1 + v3d compiler
-    * sha1
-    */
-   unsigned char variant_sha1[20];
 
    union {
       struct v3d_prog_data *base;
@@ -1360,11 +1370,17 @@ struct v3dv_shader_variant {
     * serialize
     */
    uint32_t prog_data_size;
-   /* FIXME: using one bo per shader. Eventually we would be interested on
-    * reusing the same bo for all the shaders, like a bo per v3dv_pipeline for
-    * shaders.
+
+   /* The assembly for this variant will be uploaded to a BO shared with all
+    * other shader stages in that pipeline. This is the offset in that BO.
     */
-   struct v3dv_bo *assembly_bo;
+   uint32_t assembly_offset;
+
+   /* Note: it is really likely that qpu_insts would be NULL, as it will be
+    * used only temporarily, to upload it to the shared bo, as we compile the
+    * different stages individually.
+    */
+   uint64_t *qpu_insts;
    uint32_t qpu_insts_size;
 };
 
@@ -1393,8 +1409,6 @@ struct v3dv_pipeline_stage {
 
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
-
-   struct v3dv_shader_variant*current_variant;
 };
 
 /* FIXME: although the full vpm_config is not required at this point, as we
@@ -1606,6 +1620,25 @@ v3dv_pipeline_combined_index_key_unpack(uint32_t combined_index_key,
       *sampler_index = sampler;
 }
 
+/* The structure represents data shared between different objects, like the
+ * pipeline and the pipeline cache, so we ref count it to know when it should
+ * be freed.
+ */
+struct v3dv_pipeline_shared_data {
+   uint32_t ref_cnt;
+
+   unsigned char sha1_key[20];
+
+   struct v3dv_descriptor_map ubo_map;
+   struct v3dv_descriptor_map ssbo_map;
+   struct v3dv_descriptor_map sampler_map;
+   struct v3dv_descriptor_map texture_map;
+
+   struct v3dv_shader_variant *variants[BROADCOM_SHADER_STAGES];
+
+   struct v3dv_bo *assembly_bo;
+};
+
 struct v3dv_pipeline {
    struct vk_object_base base;
 
@@ -1668,11 +1701,7 @@ struct v3dv_pipeline {
 
    enum pipe_prim_type topology;
 
-   struct v3dv_descriptor_map ubo_map;
-   struct v3dv_descriptor_map ssbo_map;
-
-   struct v3dv_descriptor_map sampler_map;
-   struct v3dv_descriptor_map texture_map;
+   struct v3dv_pipeline_shared_data *shared_data;
 
    /* FIXME: this bo is another candidate to data to be uploaded using a
     * resource manager, instead of a individual bo
@@ -1848,9 +1877,12 @@ void v3d_store_tiled_image(void *dst, uint32_t dst_stride,
                            const struct pipe_box *box);
 
 struct v3dv_cl_reloc v3dv_write_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
-                                         struct v3dv_pipeline_stage *p_stage);
+                                         struct v3dv_pipeline *pipeline,
+                                         struct v3dv_shader_variant *variant);
+
 struct v3dv_cl_reloc v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
-                                                    struct v3dv_pipeline_stage *p_stage,
+                                                    struct v3dv_pipeline *pipeline,
+                                                    struct v3dv_shader_variant *variant,
                                                     uint32_t **wg_count_offsets);
 
 struct v3dv_shader_variant *
@@ -1864,10 +1896,10 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 struct v3dv_shader_variant *
 v3dv_shader_variant_create(struct v3dv_device *device,
                            broadcom_shader_stage stage,
-                           const unsigned char *variant_sha1,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
-                           const uint64_t *qpu_insts,
+                           uint32_t assembly_offset,
+                           uint64_t *qpu_insts,
                            uint32_t qpu_insts_size,
                            VkResult *out_vk_result);
 
@@ -1876,19 +1908,23 @@ v3dv_shader_variant_destroy(struct v3dv_device *device,
                             struct v3dv_shader_variant *variant);
 
 static inline void
-v3dv_shader_variant_ref(struct v3dv_shader_variant *variant)
+v3dv_pipeline_shared_data_ref(struct v3dv_pipeline_shared_data *shared_data)
 {
-   assert(variant && variant->ref_cnt >= 1);
-   p_atomic_inc(&variant->ref_cnt);
+   assert(shared_data && shared_data->ref_cnt >= 1);
+   p_atomic_inc(&shared_data->ref_cnt);
 }
 
+void
+v3dv_pipeline_shared_data_destroy(struct v3dv_device *device,
+                                  struct v3dv_pipeline_shared_data *shared_data);
+
 static inline void
-v3dv_shader_variant_unref(struct v3dv_device *device,
-                          struct v3dv_shader_variant *variant)
+v3dv_pipeline_shared_data_unref(struct v3dv_device *device,
+                                struct v3dv_pipeline_shared_data *shared_data)
 {
-   assert(variant && variant->ref_cnt >= 1);
-   if (p_atomic_dec_zero(&variant->ref_cnt))
-      v3dv_shader_variant_destroy(device, variant);
+   assert(shared_data && shared_data->ref_cnt >= 1);
+   if (p_atomic_dec_zero(&shared_data->ref_cnt))
+      v3dv_pipeline_shared_data_destroy(device, shared_data);
 }
 
 struct v3dv_descriptor *
@@ -1953,15 +1989,13 @@ nir_shader* v3dv_pipeline_cache_search_for_nir(struct v3dv_pipeline *pipeline,
                                                const nir_shader_compiler_options *nir_options,
                                                unsigned char sha1_key[20]);
 
-struct v3dv_shader_variant*
-v3dv_pipeline_cache_search_for_variant(struct v3dv_pipeline *pipeline,
-                                       struct v3dv_pipeline_cache *cache,
-                                       unsigned char sha1_key[20]);
+struct v3dv_pipeline_shared_data *
+v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
+                                        unsigned char sha1_key[20]);
 
 void
-v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
-                                   struct v3dv_pipeline_cache *cache,
-                                   struct v3dv_shader_variant  *variant);
+v3dv_pipeline_cache_upload_pipeline(struct v3dv_pipeline *pipeline,
+                                    struct v3dv_pipeline_cache *cache);
 
 void v3dv_shader_module_internal_init(struct v3dv_device *device,
                                       struct vk_shader_module *module,
