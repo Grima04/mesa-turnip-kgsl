@@ -61,10 +61,12 @@ struct brw_image_param;
  * `gcc -DISL_DEV_GEN(dev)=9 ...`.
  */
 #define ISL_DEV_GEN(__dev) ((__dev)->info->gen)
+#define ISL_DEV_GENX10(__dev) ((__dev)->info->genx10)
 #define ISL_DEV_GEN_SANITIZE(__dev)
 #else
 #define ISL_DEV_GEN_SANITIZE(__dev) \
-   (assert(ISL_DEV_GEN(__dev) == (__dev)->info->gen))
+   (assert(ISL_DEV_GEN(__dev) == (__dev)->info->gen) && \
+           ISL_DEV_GENX10(__dev) == (__dev)->info->genx10))
 #endif
 
 #ifndef ISL_DEV_IS_G4X
@@ -83,10 +85,6 @@ struct brw_image_param;
 
 #ifndef ISL_DEV_IS_BAYTRAIL
 #define ISL_DEV_IS_BAYTRAIL(__dev) ((__dev)->info->is_baytrail)
-#endif
-
-#ifndef ISL_DEV_IS_GEN12HP
-#define ISL_DEV_IS_GEN12HP(__dev) (gen_device_info_is_12hp((__dev)->info))
 #endif
 
 #ifndef ISL_DEV_USE_SEPARATE_STENCIL

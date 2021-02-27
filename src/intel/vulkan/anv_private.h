@@ -4536,29 +4536,27 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 
 #define anv_genX(devinfo, thing) ({             \
    __typeof(&gen9_##thing) genX_thing;          \
-   switch ((devinfo)->gen) {                    \
-   case 7:                                      \
-      if ((devinfo)->is_haswell) {              \
-         genX_thing = &gen75_##thing;           \
-      } else {                                  \
-         genX_thing = &gen7_##thing;            \
-      }                                         \
+   switch ((devinfo)->genx10) {                 \
+   case 70:                                     \
+      genX_thing = &gen7_##thing;               \
       break;                                    \
-   case 8:                                      \
+   case 75:                                     \
+      genX_thing = &gen75_##thing;              \
+      break;                                    \
+   case 80:                                     \
       genX_thing = &gen8_##thing;               \
       break;                                    \
-   case 9:                                      \
+   case 90:                                     \
       genX_thing = &gen9_##thing;               \
       break;                                    \
-   case 11:                                     \
+   case 110:                                    \
       genX_thing = &gen11_##thing;              \
       break;                                    \
-   case 12:                                     \
-      if (gen_device_info_is_12hp(devinfo)) {   \
-         genX_thing = &gen125_##thing;          \
-      } else {                                  \
-         genX_thing = &gen12_##thing;           \
-      }                                         \
+   case 120:                                    \
+      genX_thing = &gen12_##thing;              \
+      break;                                    \
+   case 125:                                    \
+      genX_thing = &gen125_##thing;             \
       break;                                    \
    default:                                     \
       assert(!"Unknown hardware generation");   \

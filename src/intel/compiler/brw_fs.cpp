@@ -1621,8 +1621,7 @@ fs_visitor::assign_curb_setup()
 
    uint64_t used = 0;
 
-   if (stage == MESA_SHADER_COMPUTE &&
-       (devinfo->gen > 12 || gen_device_info_is_12hp(devinfo))) {
+   if (stage == MESA_SHADER_COMPUTE && devinfo->genx10 >= 125) {
       fs_builder ubld = bld.exec_all().group(8, 0).at(
          cfg->first_block(), cfg->first_block()->start());
 
@@ -2269,7 +2268,7 @@ get_subgroup_id_param_index(const gen_device_info *devinfo,
    if (prog_data->nr_params == 0)
       return -1;
 
-   if (devinfo->gen > 12 || gen_device_info_is_12hp(devinfo))
+   if (devinfo->genx10 >= 125)
       return -1;
 
    /* The local thread id is always the last parameter in the list */

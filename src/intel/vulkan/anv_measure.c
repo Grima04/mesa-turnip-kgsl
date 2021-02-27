@@ -38,27 +38,27 @@ struct anv_measure_batch {
 void
 anv_measure_device_init(struct anv_physical_device *device)
 {
-   switch (device->info.gen) {
-   case 12:
-      if (gen_device_info_is_12hp(&device->info))
-         device->cmd_emit_timestamp = &gen125_cmd_emit_timestamp;
-      else
-         device->cmd_emit_timestamp = &gen12_cmd_emit_timestamp;
+   switch (device->info.genx10) {
+   case 125:
+      device->cmd_emit_timestamp = &gen125_cmd_emit_timestamp;
       break;
-   case 11:
+   case 120:
+      device->cmd_emit_timestamp = &gen12_cmd_emit_timestamp;
+      break;
+   case 110:
       device->cmd_emit_timestamp = &gen11_cmd_emit_timestamp;
       break;
-   case 9:
+   case 90:
       device->cmd_emit_timestamp = &gen9_cmd_emit_timestamp;
       break;
-   case 8:
+   case 80:
       device->cmd_emit_timestamp = &gen8_cmd_emit_timestamp;
       break;
-   case 7:
-      if (device->info.is_haswell)
-         device->cmd_emit_timestamp = &gen75_cmd_emit_timestamp;
-      else
-         device->cmd_emit_timestamp = &gen7_cmd_emit_timestamp;
+   case 75:
+      device->cmd_emit_timestamp = &gen75_cmd_emit_timestamp;
+      break;
+   case 70:
+      device->cmd_emit_timestamp = &gen7_cmd_emit_timestamp;
       break;
    default:
       assert(false);

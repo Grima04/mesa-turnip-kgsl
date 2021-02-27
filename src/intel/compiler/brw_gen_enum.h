@@ -47,15 +47,18 @@ enum gen {
 static enum gen
 gen_from_devinfo(const struct gen_device_info *devinfo)
 {
-   switch (devinfo->gen) {
-   case 4: return devinfo->is_g4x ? GEN45 : GEN4;
-   case 5: return GEN5;
-   case 6: return GEN6;
-   case 7: return devinfo->is_haswell ? GEN75 : GEN7;
-   case 8: return GEN8;
-   case 9: return GEN9;
-   case 11: return GEN11;
-   case 12: return gen_device_info_is_12hp(devinfo) ? GEN125 : GEN12;
+   switch (devinfo->genx10) {
+   case 40: return GEN4;
+   case 45: return GEN45;
+   case 50: return GEN5;
+   case 60: return GEN6;
+   case 70: return GEN7;
+   case 75: return GEN75;
+   case 80: return GEN8;
+   case 90: return GEN9;
+   case 110: return GEN11;
+   case 120: return GEN12;
+   case 125: return GEN125;
    default:
       unreachable("not reached");
    }

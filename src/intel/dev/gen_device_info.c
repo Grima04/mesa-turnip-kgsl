@@ -1267,6 +1267,9 @@ gen_get_device_info_from_pci_id(int pci_id,
 
    assert(devinfo->num_slices <= ARRAY_SIZE(devinfo->num_subslices));
 
+   if (devinfo->genx10 == 0)
+      devinfo->genx10 = devinfo->gen * 10;
+
    devinfo->chipset_id = pci_id;
    return true;
 }
@@ -1425,9 +1428,6 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
       fprintf(stderr, "Gen10 support is redacted.\n");
       return false;
    }
-
-   if (devinfo->genx10 == 0)
-      devinfo->genx10 = devinfo->gen * 10;
 
    /* remaining initializion queries the kernel for device info */
    if (devinfo->no_hw)

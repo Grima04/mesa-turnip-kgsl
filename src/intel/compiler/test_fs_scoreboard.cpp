@@ -55,6 +55,7 @@ void scoreboard_test::SetUp()
    v = new fs_visitor(compiler, NULL, ctx, NULL, &prog_data->base, shader, 8, -1);
 
    devinfo->gen = 12;
+   devinfo->genx10 = devinfo->gen * 10;
 }
 
 void scoreboard_test::TearDown()

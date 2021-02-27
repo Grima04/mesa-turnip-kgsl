@@ -257,21 +257,20 @@ iris_destroy_context(struct pipe_context *ctx)
 }
 
 #define genX_call(devinfo, func, ...)             \
-   switch ((devinfo)->gen) {                      \
-   case 12:                                       \
-      if (gen_device_info_is_12hp(devinfo)) {     \
-         gen125_##func(__VA_ARGS__);              \
-      } else {                                    \
-         gen12_##func(__VA_ARGS__);               \
-      }                                           \
+   switch ((devinfo)->genx10) {                   \
+   case 125:                                      \
+      gen125_##func(__VA_ARGS__);                 \
       break;                                      \
-   case 11:                                       \
+   case 120:                                      \
+      gen12_##func(__VA_ARGS__);                  \
+      break;                                      \
+   case 110:                                      \
       gen11_##func(__VA_ARGS__);                  \
       break;                                      \
-   case 9:                                        \
+   case 90:                                       \
       gen9_##func(__VA_ARGS__);                   \
       break;                                      \
-   case 8:                                        \
+   case 80:                                       \
       gen8_##func(__VA_ARGS__);                   \
       break;                                      \
    default:                                       \
