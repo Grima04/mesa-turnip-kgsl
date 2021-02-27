@@ -2347,7 +2347,7 @@ genX(graphics_pipeline_create)(
    return pipeline->base.batch.status;
 }
 
-#if GEN_GEN > 12 || GEN_IS_GEN12HP
+#if GEN_VERSIONx10 >= 125
 
 static void
 emit_compute_state(struct anv_compute_pipeline *pipeline,
@@ -2372,7 +2372,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    }
 }
 
-#else /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+#else /* #if GEN_VERSIONx10 >= 125 */
 
 static void
 emit_compute_state(struct anv_compute_pipeline *pipeline,
@@ -2481,7 +2481,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
                                         &desc);
 }
 
-#endif /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+#endif /* #if GEN_VERSIONx10 >= 125 */
 
 static VkResult
 compute_pipeline_create(

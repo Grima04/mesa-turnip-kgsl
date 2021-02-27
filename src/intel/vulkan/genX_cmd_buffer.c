@@ -4477,7 +4477,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
                             &pipeline->cs, 1);
       cmd_buffer->state.descriptors_dirty &= ~VK_SHADER_STAGE_COMPUTE_BIT;
 
-#if GEN_GEN <= 12 && !GEN_IS_GEN12HP
+#if GEN_VERSIONx10 < 125
       uint32_t iface_desc_data_dw[GENX(INTERFACE_DESCRIPTOR_DATA_length)];
       struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
          .BindingTablePointer =
@@ -4506,7 +4506,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
       comp_state->push_data =
          anv_cmd_buffer_cs_push_constants(cmd_buffer);
 
-#if GEN_GEN <= 12 && !GEN_IS_GEN12HP
+#if GEN_VERSIONx10 < 125
       if (comp_state->push_data.alloc_size) {
          anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_CURBE_LOAD), curbe) {
             curbe.CURBETotalDataLength    = comp_state->push_data.alloc_size;
@@ -4573,7 +4573,7 @@ void genX(CmdDispatch)(
    genX(CmdDispatchBase)(commandBuffer, 0, 0, 0, x, y, z);
 }
 
-#if GEN_GEN > 12 || GEN_IS_GEN12HP
+#if GEN_VERSIONx10 >= 125
 
 static inline void
 emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
@@ -4615,7 +4615,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-#else /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+#else /* #if GEN_VERSIONx10 >= 125 */
 
 static inline void
 emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
@@ -4645,7 +4645,7 @@ emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
    anv_batch_emit(&cmd_buffer->batch, GENX(MEDIA_STATE_FLUSH), msf);
 }
 
-#endif /* #if GEN_GEN > 12 || GEN_IS_GEN12HP */
+#endif /* #if GEN_VERSIONx10 >= 125 */
 
 static inline void
 emit_cs_walker(struct anv_cmd_buffer *cmd_buffer,
@@ -4654,7 +4654,7 @@ emit_cs_walker(struct anv_cmd_buffer *cmd_buffer,
                uint32_t groupCountX, uint32_t groupCountY,
                uint32_t groupCountZ)
 {
-#if GEN_GEN > 12 || GEN_IS_GEN12HP
+#if GEN_VERSIONx10 >= 125
    emit_compute_walker(cmd_buffer, pipeline, indirect, prog_data, groupCountX,
                        groupCountY, groupCountZ);
 #else
