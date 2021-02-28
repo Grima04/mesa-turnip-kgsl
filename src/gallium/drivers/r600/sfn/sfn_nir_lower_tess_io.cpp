@@ -233,7 +233,13 @@ r600_lower_tess_io_impl(nir_builder *b, nir_instr *instr, enum pipe_prim_type pr
 
    switch (op->intrinsic) {
    case nir_intrinsic_load_patch_vertices_in: {
-      auto vertices_in = nir_channel(b, load_in_param_base, 2);
+      nir_ssa_def *vertices_in;
+      if (b->shader->info.stage == MESA_SHADER_TESS_CTRL)
+         vertices_in = nir_channel(b, load_in_param_base, 2);
+      else {
+         auto base = emit_load_param_base(b, nir_intrinsic_load_tcs_in_param_base_r600);
+         vertices_in = nir_channel(b, base, 2);
+      }
       nir_ssa_def_rewrite_uses(&op->dest.ssa, nir_src_for_ssa(vertices_in));
       nir_instr_remove(&op->instr);
       return true;
