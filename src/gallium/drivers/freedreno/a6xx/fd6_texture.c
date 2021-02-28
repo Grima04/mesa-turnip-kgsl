@@ -400,8 +400,7 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
 	state->stateobj = fd_ringbuffer_new_object(ctx->pipe, 0x1000);
 	state->needs_border = needs_border;
 
-	fd6_emit_textures(ctx->pipe, state->stateobj, type, tex, key.bcolor_offset,
-			NULL, NULL);
+	fd6_emit_textures(ctx, state->stateobj, type, tex, key.bcolor_offset, NULL);
 
 	/* NOTE: uses copy of key in state obj, because pointer passed by caller
 	 * is probably on the stack

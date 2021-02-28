@@ -270,10 +270,10 @@ fd6_gl2spacing(enum gl_tess_spacing spacing)
 	}
 }
 
-bool fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
+bool fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		enum pipe_shader_type type, struct fd_texture_stateobj *tex,
 		unsigned bcolor_offset,
-		const struct ir3_shader_variant *v, struct fd_context *ctx) assert_dt;
+		const struct ir3_shader_variant *v) assert_dt;
 
 void fd6_emit_state(struct fd_ringbuffer *ring, struct fd6_emit *emit) assert_dt;
 

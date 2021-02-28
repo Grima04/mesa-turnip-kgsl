@@ -282,11 +282,11 @@ fd6_emit_fb_tex(struct fd_ringbuffer *state, struct fd_context *ctx)
 }
 
 bool
-fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
+fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		enum pipe_shader_type type, struct fd_texture_stateobj *tex,
 		unsigned bcolor_offset,
 		/* can be NULL if no image/SSBO/fb state to merge in: */
-		const struct ir3_shader_variant *v, struct fd_context *ctx)
+		const struct ir3_shader_variant *v)
 {
 	bool needs_border = false;
 	unsigned opcode, tex_samp_reg, tex_const_reg, tex_count_reg;
@@ -341,7 +341,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 
 	if (tex->num_samplers > 0) {
 		struct fd_ringbuffer *state =
-			fd_ringbuffer_new_object(pipe, tex->num_samplers * 4 * 4);
+			fd_ringbuffer_new_object(ctx->pipe, tex->num_samplers * 4 * 4);
 		for (unsigned i = 0; i < tex->num_samplers; i++) {
 			static const struct fd6_sampler_stateobj dummy_sampler = {};
 			const struct fd6_sampler_stateobj *sampler = tex->samplers[i] ?
@@ -388,7 +388,7 @@ fd6_emit_textures(struct fd_pipe *pipe, struct fd_ringbuffer *ring,
 
 	if (num_merged_textures > 0) {
 		struct fd_ringbuffer *state =
-			fd_ringbuffer_new_object(pipe, num_merged_textures * 16 * 4);
+			fd_ringbuffer_new_object(ctx->pipe, num_merged_textures * 16 * 4);
 		for (unsigned i = 0; i < num_textures; i++) {
 			static const struct fd6_pipe_sampler_view dummy_view = {};
 			const struct fd6_pipe_sampler_view *view = tex->textures[i] ?
@@ -540,8 +540,8 @@ fd6_emit_combined_textures(struct fd_ringbuffer *ring, struct fd6_emit *emit,
 			unsigned bcolor_offset =
 				fd6_border_color_offset(ctx, type, tex);
 
-			needs_border |= fd6_emit_textures(ctx->pipe, stateobj, type, tex,
-					bcolor_offset, v, ctx);
+			needs_border |= fd6_emit_textures(ctx, stateobj, type, tex,
+					bcolor_offset, v);
 
 			fd6_emit_take_group(emit, stateobj, s[type].state_id,
 					s[type].enable_mask);
@@ -1142,8 +1142,8 @@ fd6_emit_cs_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		struct fd_texture_stateobj *tex = &ctx->tex[PIPE_SHADER_COMPUTE];
 		unsigned bcolor_offset = fd6_border_color_offset(ctx, PIPE_SHADER_COMPUTE, tex);
 
-		bool needs_border = fd6_emit_textures(ctx->pipe, ring, PIPE_SHADER_COMPUTE, tex,
-				bcolor_offset, cp, ctx);
+		bool needs_border = fd6_emit_textures(ctx, ring, PIPE_SHADER_COMPUTE, tex,
+				bcolor_offset, cp);
 
 		if (needs_border)
 			emit_border_color(ctx, ring);
