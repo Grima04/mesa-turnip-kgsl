@@ -336,6 +336,15 @@ bool EmitTexInstruction::emit_tex_txs(nir_tex_instr* instr, TexInputs& tex_src,
                                    sampler.id + R600_MAX_CONST_BUFFERS, tex_src.sampler_offset);
       ir->set_dest_swizzle(dest_swz);
       emit_instruction(ir);
+
+      if (instr->is_array && instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
+         PValue src(new UniformValue(512 + R600_BUFFER_INFO_OFFSET / 16 + (sampler.id >> 2),
+                                     sampler.id & 3, R600_BUFFER_INFO_CONST_BUFFER));
+
+         auto alu = new AluInstruction(op1_mov, dst[2], src, {last_write});
+         emit_instruction(alu);
+         set_has_txs_cube_array_comp();
+      }
    }
 
    return true;
