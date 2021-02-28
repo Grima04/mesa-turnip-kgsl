@@ -1120,7 +1120,7 @@ system_value("tcs_rel_patch_id_r600", 1)
 system_value("tcs_tess_factor_base_r600", 1)
 
 # load as many components as needed giving per-component addresses
-intrinsic("load_local_shared_r600", src_comp=[0], dest_comp=0, indices = [COMPONENT], flags = [CAN_ELIMINATE, CAN_REORDER])
+intrinsic("load_local_shared_r600", src_comp=[0], dest_comp=0, indices = [], flags = [CAN_ELIMINATE])
 
 store("local_shared_r600", [1], [WRITE_MASK])
 store("tf_r600", [])
