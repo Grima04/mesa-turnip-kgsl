@@ -579,6 +579,8 @@ RADV driver environment variables
       disable compute queue
    ``nodcc``
       disable Delta Color Compression (DCC) on images
+   ``nodisplaydcc``
+      disable Delta Color Compression (DCC) on displayable images
    ``nodynamicbounds``
       do not check OOB access for dynamic descriptors
    ``nofastclears``

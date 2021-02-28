@@ -1152,7 +1152,7 @@ radv_get_modifier_flags(struct radv_physical_device *dev,
 	if (ac_modifier_has_dcc(modifier)) {
 		features &= ~VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
 
-		if (dev->instance->debug_flags & RADV_DEBUG_NO_DCC)
+		if (dev->instance->debug_flags & (RADV_DEBUG_NO_DCC | RADV_DEBUG_NO_DISPLAY_DCC))
 			return 0;
 	}
 
