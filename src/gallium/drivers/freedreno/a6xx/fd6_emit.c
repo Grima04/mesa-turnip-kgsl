@@ -390,9 +390,18 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		struct fd_ringbuffer *state =
 			fd_ringbuffer_new_object(ctx->pipe, num_merged_textures * 16 * 4);
 		for (unsigned i = 0; i < num_textures; i++) {
-			static const struct fd6_pipe_sampler_view dummy_view = {};
-			const struct fd6_pipe_sampler_view *view = tex->textures[i] ?
-				fd6_pipe_sampler_view(tex->textures[i]) : &dummy_view;
+			const struct fd6_pipe_sampler_view *view;
+
+			if (tex->textures[i]) {
+				view = fd6_pipe_sampler_view(tex->textures[i]);
+				if (unlikely(view->rsc_seqno != view->ptr1->seqno)) {
+					fd6_sampler_view_update(ctx,
+							fd6_pipe_sampler_view(tex->textures[i]));
+				}
+			} else {
+				static const struct fd6_pipe_sampler_view dummy_view = {};
+				view = &dummy_view;
+			}
 
 			OUT_RING(state, view->texconst0);
 			OUT_RING(state, view->texconst1);

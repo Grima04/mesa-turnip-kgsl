@@ -161,27 +161,41 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 {
 	struct fd6_pipe_sampler_view *so = CALLOC_STRUCT(fd6_pipe_sampler_view);
 	struct fd_resource *rsc = fd_resource(prsc);
-	enum pipe_format format = cso->format;
-	bool ubwc_enabled = false;
-	unsigned lvl, layers = 0;
 
 	if (!so)
 		return NULL;
 
-	fd6_validate_format(fd_context(pctx), rsc, format);
-
-	if (format == PIPE_FORMAT_X32_S8X24_UINT) {
-		rsc = rsc->stencil;
-		format = rsc->base.format;
-	}
+	fd6_validate_format(fd_context(pctx), rsc, cso->format);
 
 	so->base = *cso;
 	pipe_reference(NULL, &prsc->reference);
 	so->base.texture = prsc;
 	so->base.reference.count = 1;
 	so->base.context = pctx;
-	so->seqno = ++fd6_context(fd_context(pctx))->tex_seqno;
+
+	fd6_sampler_view_update(fd_context(pctx), so);
+
+	return &so->base;
+}
+
+void
+fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so)
+{
+	const struct pipe_sampler_view *cso = &so->base;
+	struct pipe_resource *prsc = cso->texture;
+	struct fd_resource *rsc = fd_resource(prsc);
+	enum pipe_format format = cso->format;
+	bool ubwc_enabled = false;
+	unsigned lvl, layers = 0;
+
+	if (format == PIPE_FORMAT_X32_S8X24_UINT) {
+		rsc = rsc->stencil;
+		format = rsc->base.format;
+	}
+
+	so->seqno = ++fd6_context(ctx)->tex_seqno;
 	so->ptr1 = rsc;
+	so->rsc_seqno = so->ptr1->seqno;
 
 	if (cso->target == PIPE_BUFFER) {
 		unsigned elements = cso->u.buf.size / util_format_get_blocksize(format);
@@ -297,8 +311,6 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 			A6XX_TEX_CONST_10_FLAG_BUFFER_LOGW(util_logbase2_ceil(DIV_ROUND_UP(u_minify(prsc->width0, lvl), block_width))) |
 			A6XX_TEX_CONST_10_FLAG_BUFFER_LOGH(util_logbase2_ceil(DIV_ROUND_UP(u_minify(prsc->height0, lvl), block_height)));
 	}
-
-	return &so->base;
 }
 
 static void
@@ -363,6 +375,11 @@ fd6_texture_state(struct fd_context *ctx, enum pipe_shader_type type,
 		struct fd6_pipe_sampler_view *view =
 			fd6_pipe_sampler_view(tex->textures[i]);
 
+		/* NOTE that if the backing rsc was uncompressed between the
+		 * time that the CSO was originally created and now, the rsc
+		 * seqno would have changed, so we don't have to worry about
+		 * getting a bogus cache hit.
+		 */
 		key.view[i].rsc_seqno = fd_resource(view->base.texture)->seqno;
 		key.view[i].seqno = view->seqno;
 	}
