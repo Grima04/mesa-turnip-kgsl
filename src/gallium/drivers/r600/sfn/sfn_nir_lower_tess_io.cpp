@@ -139,8 +139,10 @@ static void replace_load_instr(nir_builder *b, nir_intrinsic_instr *op, nir_ssa_
                      load_tcs_in->num_components, 32, NULL);
 
    nir_ssa_def *addr_outer = nir_iadd(b, addr, load_offset_group(b, load_tcs_in->num_components));
+   if (nir_intrinsic_component(op))
+      addr_outer = nir_iadd(b, addr_outer, nir_imm_int(b, 4 * nir_intrinsic_component(op)));
+
    load_tcs_in->src[0] = nir_src_for_ssa(addr_outer);
-   nir_intrinsic_set_component(load_tcs_in, nir_intrinsic_component(op));
    nir_builder_instr_insert(b, &load_tcs_in->instr);
    nir_ssa_def_rewrite_uses(&op->dest.ssa, nir_src_for_ssa(&load_tcs_in->dest.ssa));
    nir_instr_remove(&op->instr);
@@ -160,17 +162,20 @@ r600_load_rel_patch_id(nir_builder *b)
 static void
 emit_store_lds(nir_builder *b, nir_intrinsic_instr *op, nir_ssa_def *addr)
 {
+   uint32_t orig_writemask = nir_intrinsic_write_mask(op) << nir_intrinsic_component(op);
+
    for (int i = 0; i < 2; ++i) {
       unsigned test_mask = (0x3 << 2 * i);
-      if (!(nir_intrinsic_write_mask(op) & test_mask))
+      if (!(orig_writemask & test_mask))
          continue;
 
+      uint32_t writemask =  test_mask >> nir_intrinsic_component(op);
+
       auto store_tcs_out = nir_intrinsic_instr_create(b->shader, nir_intrinsic_store_local_shared_r600);
-      unsigned writemask = nir_intrinsic_write_mask(op) & test_mask;
       nir_intrinsic_set_write_mask(store_tcs_out, writemask);
       store_tcs_out->src[0] = nir_src_for_ssa(op->src[0].ssa);
       store_tcs_out->num_components = store_tcs_out->src[0].ssa->num_components;
-      bool start_even = (writemask & (1u << (2 * i)));
+      bool start_even = (orig_writemask & (1u << (2 * i)));
 
       auto addr2 = nir_iadd(b, addr, nir_imm_int(b, 8 * i + (start_even ? 0 : 4)));
       store_tcs_out->src[1] = nir_src_for_ssa(addr2);
@@ -294,7 +299,6 @@ r600_lower_tess_io_impl(nir_builder *b, nir_instr *instr, enum pipe_prim_type pr
       tf->src[0] = nir_src_for_ssa(addr_outer);
       nir_ssa_dest_init(&tf->instr, &tf->dest,
                         tf->num_components, 32, NULL);
-      nir_intrinsic_set_component(tf, 0);
       nir_builder_instr_insert(b, &tf->instr);
 
       nir_ssa_def_rewrite_uses(&op->dest.ssa, nir_src_for_ssa(&tf->dest.ssa));
@@ -388,7 +392,6 @@ bool r600_append_tcs_TF_emission(nir_shader *shader, enum pipe_prim_type prim_ty
    tf_outer->src[0] = nir_src_for_ssa(addr_outer);
    nir_ssa_dest_init(&tf_outer->instr, &tf_outer->dest,
                      tf_outer->num_components, 32, NULL);
-   nir_intrinsic_set_component(tf_outer, 15);
    nir_builder_instr_insert(b, &tf_outer->instr);
 
    std::vector<nir_ssa_def *> tf_out;
@@ -433,7 +436,6 @@ bool r600_append_tcs_TF_emission(nir_shader *shader, enum pipe_prim_type prim_ty
       tf_inner->src[0] = nir_src_for_ssa(addr1);
       nir_ssa_dest_init(&tf_inner->instr, &tf_inner->dest,
                         tf_inner->num_components, 32, NULL);
-      nir_intrinsic_set_component(tf_inner, 3);
       nir_builder_instr_insert(b, &tf_inner->instr);
 
       auto v2 = (inner_comps > 1) ? nir_vec4(b, nir_iadd(b, out_addr0, nir_imm_int(b, 16)),
