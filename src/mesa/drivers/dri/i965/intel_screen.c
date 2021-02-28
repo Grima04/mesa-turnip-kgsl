@@ -45,6 +45,7 @@
 #include "utils.h"
 #include "util/disk_cache.h"
 #include "util/driconf.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
 
 #include "common/gen_defines.h"
@@ -2565,6 +2566,8 @@ static const
 __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 {
    struct brw_screen *screen;
+
+   util_cpu_detect();
 
    if (dri_screen->image.loader) {
    } else if (dri_screen->dri2.loader->base.version <= 2 ||
