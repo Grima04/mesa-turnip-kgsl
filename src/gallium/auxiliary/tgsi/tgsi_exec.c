@@ -5494,7 +5494,9 @@ exec_instruction(
             mach->CondMask &= ~(1 << i);
       }
       UPDATE_EXEC_MASK(mach);
-      /* Todo: If CondMask==0, jump to ELSE */
+      /* If no channels are taking the then branch, jump to ELSE. */
+      if (!mach->CondMask)
+         *pc = inst->Label.Label;
       break;
 
    case TGSI_OPCODE_UIF:
@@ -5507,7 +5509,9 @@ exec_instruction(
             mach->CondMask &= ~(1 << i);
       }
       UPDATE_EXEC_MASK(mach);
-      /* Todo: If CondMask==0, jump to ELSE */
+      /* If no channels are taking the then branch, jump to ELSE. */
+      if (!mach->CondMask)
+         *pc = inst->Label.Label;
       break;
 
    case TGSI_OPCODE_ELSE:
@@ -5518,7 +5522,10 @@ exec_instruction(
          prevMask = mach->CondStack[mach->CondStackTop - 1];
          mach->CondMask = ~mach->CondMask & prevMask;
          UPDATE_EXEC_MASK(mach);
-         /* Todo: If CondMask==0, jump to ENDIF */
+
+         /* If no channels are taking ELSE, jump to ENDIF */
+         if (!mach->CondMask)
+            *pc = inst->Label.Label;
       }
       break;
 
