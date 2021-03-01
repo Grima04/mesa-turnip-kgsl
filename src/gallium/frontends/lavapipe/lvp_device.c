@@ -115,6 +115,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
 #endif
    .EXT_calibrated_timestamps             = true,
    .EXT_conditional_rendering             = true,
+   .EXT_extended_dynamic_state            = true,
    .EXT_index_type_uint8                  = true,
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
@@ -482,6 +483,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)ext;
          features->conditionalRendering = true;
          features->inheritedConditionalRendering = false;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_FEATURES_EXT: {
+         VkPhysicalDeviceExtendedDynamicStateFeaturesEXT *features =
+            (VkPhysicalDeviceExtendedDynamicStateFeaturesEXT*)ext;
+         features->extendedDynamicState = true;
          break;
       }
       default:

@@ -395,6 +395,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindVertexBuffers(
    }
    cmd->u.vertex_buffers.buffers = buffers;
    cmd->u.vertex_buffers.offsets = offsets;
+   cmd->u.vertex_buffers.strides = NULL;
 
    cmd_buf_queue(cmd_buffer, cmd);
 }
@@ -1827,5 +1828,236 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdEndConditionalRenderingEXT(
    cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_END_CONDITIONAL_RENDERING);
    if (!cmd)
       return;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetCullModeEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkCullModeFlags                             cullMode)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_CULL_MODE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_cull_mode.cull_mode = cullMode;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetFrontFaceEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkFrontFace                                 frontFace)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_FRONT_FACE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_front_face.front_face = frontFace;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetPrimitiveTopologyEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkPrimitiveTopology                         primitiveTopology)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_PRIMITIVE_TOPOLOGY);
+   if (!cmd)
+      return;
+
+   cmd->u.set_primitive_topology.prim = primitiveTopology;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetViewportWithCountEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    viewportCount,
+    const VkViewport*                           pViewports)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+   int i;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_VIEWPORT);
+   if (!cmd)
+      return;
+
+   cmd->u.set_viewport.first_viewport = UINT32_MAX;
+   cmd->u.set_viewport.viewport_count = viewportCount;
+   for (i = 0; i < viewportCount; i++)
+      cmd->u.set_viewport.viewports[i] = pViewports[i];
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetScissorWithCountEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    scissorCount,
+    const VkRect2D*                             pScissors)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+   int i;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_SCISSOR);
+   if (!cmd)
+      return;
+
+   cmd->u.set_scissor.first_scissor = UINT32_MAX;
+   cmd->u.set_scissor.scissor_count = scissorCount;
+   for (i = 0; i < scissorCount; i++)
+      cmd->u.set_scissor.scissors[i] = pScissors[i];
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdBindVertexBuffers2EXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    firstBinding,
+    uint32_t                                    bindingCount,
+    const VkBuffer*                             pBuffers,
+    const VkDeviceSize*                         pOffsets,
+    const VkDeviceSize*                         pSizes,
+    const VkDeviceSize*                         pStrides)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+   struct lvp_buffer **buffers;
+   VkDeviceSize *offsets;
+   VkDeviceSize *sizes;
+   VkDeviceSize *strides;
+   int i;
+   uint32_t cmd_size = bindingCount * sizeof(struct lvp_buffer *) + bindingCount * 3 * sizeof(VkDeviceSize);
+
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_BIND_VERTEX_BUFFERS);
+   if (!cmd)
+      return;
+
+   cmd->u.vertex_buffers.first = firstBinding;
+   cmd->u.vertex_buffers.binding_count = bindingCount;
+
+   buffers = (struct lvp_buffer **)(cmd + 1);
+   offsets = (VkDeviceSize *)(buffers + bindingCount);
+   sizes = (VkDeviceSize *)(offsets + bindingCount);
+   strides = (VkDeviceSize *)(sizes + bindingCount);
+   for (i = 0; i < bindingCount; i++) {
+      buffers[i] = lvp_buffer_from_handle(pBuffers[i]);
+      offsets[i] = pOffsets[i];
+      if (pSizes)
+         sizes[i] = pSizes[i];
+      else
+         sizes[i] = 0;
+      strides[i] = pStrides[i];
+   }
+   cmd->u.vertex_buffers.buffers = buffers;
+   cmd->u.vertex_buffers.offsets = offsets;
+   cmd->u.vertex_buffers.sizes = sizes;
+   cmd->u.vertex_buffers.strides = strides;
+
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetDepthTestEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthTestEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_DEPTH_TEST_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_depth_test_enable.depth_test_enable = depthTestEnable;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetDepthWriteEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthWriteEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_DEPTH_WRITE_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_depth_write_enable.depth_write_enable = depthWriteEnable;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetDepthCompareOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkCompareOp                                 depthCompareOp)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_DEPTH_COMPARE_OP);
+   if (!cmd)
+      return;
+
+   cmd->u.set_depth_compare_op.depth_op = depthCompareOp;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetDepthBoundsTestEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBoundsTestEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_DEPTH_BOUNDS_TEST_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_depth_bounds_test_enable.depth_bounds_test_enable = depthBoundsTestEnable;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetStencilTestEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    stencilTestEnable)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_STENCIL_TEST_ENABLE);
+   if (!cmd)
+      return;
+
+   cmd->u.set_stencil_test_enable.stencil_test_enable = stencilTestEnable;
+   cmd_buf_queue(cmd_buffer, cmd);
+}
+
+VKAPI_ATTR void VKAPI_CALL lvp_CmdSetStencilOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkStencilFaceFlags                          faceMask,
+    VkStencilOp                                 failOp,
+    VkStencilOp                                 passOp,
+    VkStencilOp                                 depthFailOp,
+    VkCompareOp                                 compareOp)
+{
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_SET_STENCIL_OP);
+   if (!cmd)
+      return;
+
+   cmd->u.set_stencil_op.face_mask = faceMask;
+   cmd->u.set_stencil_op.fail_op = failOp;
+   cmd->u.set_stencil_op.pass_op = passOp;
+   cmd->u.set_stencil_op.depth_fail_op = depthFailOp;
+   cmd->u.set_stencil_op.compare_op = compareOp;
    cmd_buf_queue(cmd_buffer, cmd);
 }

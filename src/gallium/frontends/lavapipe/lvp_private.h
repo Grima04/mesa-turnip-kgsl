@@ -678,6 +678,15 @@ enum lvp_cmds {
    LVP_CMD_DRAW_INDIRECT_BYTE_COUNT,
    LVP_CMD_BEGIN_CONDITIONAL_RENDERING,
    LVP_CMD_END_CONDITIONAL_RENDERING,
+   LVP_CMD_SET_CULL_MODE,
+   LVP_CMD_SET_FRONT_FACE,
+   LVP_CMD_SET_PRIMITIVE_TOPOLOGY,
+   LVP_CMD_SET_DEPTH_TEST_ENABLE,
+   LVP_CMD_SET_DEPTH_WRITE_ENABLE,
+   LVP_CMD_SET_DEPTH_COMPARE_OP,
+   LVP_CMD_SET_DEPTH_BOUNDS_TEST_ENABLE,
+   LVP_CMD_SET_STENCIL_TEST_ENABLE,
+   LVP_CMD_SET_STENCIL_OP,
 };
 
 struct lvp_cmd_bind_pipeline {
@@ -742,6 +751,8 @@ struct lvp_cmd_bind_vertex_buffers {
    uint32_t binding_count;
    struct lvp_buffer **buffers;
    const VkDeviceSize *offsets;
+   const VkDeviceSize *sizes;
+   const VkDeviceSize *strides;
 };
 
 struct lvp_cmd_draw {
@@ -1007,6 +1018,46 @@ struct lvp_cmd_begin_conditional_rendering {
    bool inverted;
 };
 
+struct lvp_cmd_set_cull_mode {
+   VkCullModeFlags cull_mode;
+};
+
+struct lvp_cmd_set_front_face {
+   VkFrontFace front_face;
+};
+
+struct lvp_cmd_set_primitive_topology {
+   VkPrimitiveTopology prim;
+};
+
+struct lvp_cmd_set_depth_test_enable {
+   VkBool32 depth_test_enable;
+};
+
+struct lvp_cmd_set_depth_write_enable {
+   VkBool32 depth_write_enable;
+};
+
+struct lvp_cmd_set_depth_bounds_test_enable {
+   VkBool32 depth_bounds_test_enable;
+};
+
+struct lvp_cmd_set_depth_compare_op {
+   VkCompareOp depth_op;
+};
+
+struct lvp_cmd_set_stencil_test_enable {
+   VkBool32 stencil_test_enable;
+};
+
+struct lvp_cmd_set_stencil_op {
+   VkStencilFaceFlags face_mask;
+   VkStencilOp fail_op;
+   VkStencilOp pass_op;
+   VkStencilOp depth_fail_op;
+   VkCompareOp compare_op;
+};
+
 struct lvp_cmd_buffer_entry {
    struct list_head cmd_link;
    uint32_t cmd_type;
@@ -1054,6 +1105,15 @@ struct lvp_cmd_buffer_entry {
       struct lvp_cmd_end_transform_feedback end_transform_feedback;
       struct lvp_cmd_draw_indirect_byte_count draw_indirect_byte_count;
       struct lvp_cmd_begin_conditional_rendering begin_conditional_rendering;
+      struct lvp_cmd_set_cull_mode set_cull_mode;
+      struct lvp_cmd_set_front_face set_front_face;
+      struct lvp_cmd_set_primitive_topology set_primitive_topology;
+      struct lvp_cmd_set_depth_test_enable set_depth_test_enable;
+      struct lvp_cmd_set_depth_write_enable set_depth_write_enable;
+      struct lvp_cmd_set_depth_compare_op set_depth_compare_op;
+      struct lvp_cmd_set_depth_bounds_test_enable set_depth_bounds_test_enable;
+      struct lvp_cmd_set_stencil_test_enable set_stencil_test_enable;
+      struct lvp_cmd_set_stencil_op set_stencil_op;
    } u;
 };
 

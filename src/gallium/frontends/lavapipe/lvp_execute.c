@@ -352,11 +352,23 @@ get_viewport_xform(const VkViewport *viewport,
    translate[2] = n;
 }
 
+static int conv_dynamic_state_idx(VkDynamicState dyn_state)
+{
+   if (dyn_state <= VK_DYNAMIC_STATE_STENCIL_REFERENCE)
+      return dyn_state;
+
+   if (dyn_state >= VK_DYNAMIC_STATE_CULL_MODE_EXT &&
+       dyn_state <= VK_DYNAMIC_STATE_STENCIL_OP_EXT)
+      return dyn_state - VK_DYNAMIC_STATE_CULL_MODE_EXT + VK_DYNAMIC_STATE_STENCIL_REFERENCE + 1;
+   assert(0);
+   return -1;
+}
+
 static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
                                      struct rendering_state *state)
 {
    struct lvp_pipeline *pipeline = cmd->u.pipeline.pipeline;
-   bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+1];
+   bool dynamic_states[VK_DYNAMIC_STATE_STENCIL_REFERENCE+13];
    unsigned fb_samples = 0;
 
    memset(dynamic_states, 0, sizeof(dynamic_states));
@@ -365,9 +377,10 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       const VkPipelineDynamicStateCreateInfo *dyn = pipeline->graphics_create_info.pDynamicState;
       int i;
       for (i = 0; i < dyn->dynamicStateCount; i++) {
-         if (dyn->pDynamicStates[i] > VK_DYNAMIC_STATE_STENCIL_REFERENCE)
+         int idx = conv_dynamic_state_idx(dyn->pDynamicStates[i]);
+         if (idx == -1)
             continue;
-         dynamic_states[dyn->pDynamicStates[i]] = true;
+         dynamic_states[idx] = true;
       }
    }
 
@@ -425,8 +438,8 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       const VkPipelineRasterizationStateCreateInfo *rsc = pipeline->graphics_create_info.pRasterizationState;
       state->rs_state.depth_clip_near = state->rs_state.depth_clip_far = !rsc->depthClampEnable;
       state->rs_state.rasterizer_discard = rsc->rasterizerDiscardEnable;
-      state->rs_state.front_ccw = (rsc->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE);
-      state->rs_state.cull_face = vk_cull_to_pipe(rsc->cullMode);
+
+
       state->rs_state.fill_front = vk_polygon_mode_to_pipe(rsc->polygonMode);
       state->rs_state.fill_back = vk_polygon_mode_to_pipe(rsc->polygonMode);
       state->rs_state.point_size_per_vertex = true;
@@ -445,6 +458,12 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          state->rs_state.offset_scale = rsc->depthBiasSlopeFactor;
          state->rs_state.offset_clamp = rsc->depthBiasClamp;
       }
+
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_CULL_MODE_EXT)])
+         state->rs_state.cull_face = vk_cull_to_pipe(rsc->cullMode);
+
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_FRONT_FACE_EXT)])
+         state->rs_state.front_ccw = (rsc->frontFace == VK_FRONT_FACE_COUNTER_CLOCKWISE);
       state->rs_dirty = true;
    }
 
@@ -479,27 +498,36 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    if (pipeline->graphics_create_info.pDepthStencilState) {
       const VkPipelineDepthStencilStateCreateInfo *dsa = pipeline->graphics_create_info.pDepthStencilState;
 
-      state->dsa_state.depth_enabled = dsa->depthTestEnable;
-      state->dsa_state.depth_writemask = dsa->depthWriteEnable;
-      state->dsa_state.depth_func = dsa->depthCompareOp;
-      state->dsa_state.depth_bounds_test = dsa->depthBoundsTestEnable;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE_EXT)])
+         state->dsa_state.depth_enabled = dsa->depthTestEnable;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE_EXT)])
+         state->dsa_state.depth_writemask = dsa->depthWriteEnable;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_COMPARE_OP_EXT)])
+         state->dsa_state.depth_func = dsa->depthCompareOp;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_DEPTH_BOUNDS_TEST_ENABLE_EXT)])
+         state->dsa_state.depth_bounds_test = dsa->depthBoundsTestEnable;
 
       if (!dynamic_states[VK_DYNAMIC_STATE_DEPTH_BOUNDS]) {
          state->dsa_state.depth_bounds_min = dsa->minDepthBounds;
          state->dsa_state.depth_bounds_max = dsa->maxDepthBounds;
       }
 
-      state->dsa_state.stencil[0].enabled = dsa->stencilTestEnable;
-      state->dsa_state.stencil[0].func = dsa->front.compareOp;
-      state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(dsa->front.failOp);
-      state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(dsa->front.passOp);
-      state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(dsa->front.depthFailOp);
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT)]) {
+         state->dsa_state.stencil[0].enabled = dsa->stencilTestEnable;
+         state->dsa_state.stencil[1].enabled = dsa->stencilTestEnable;
+      }
 
-      state->dsa_state.stencil[1].enabled = dsa->stencilTestEnable;
-      state->dsa_state.stencil[1].func = dsa->back.compareOp;
-      state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(dsa->back.failOp);
-      state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(dsa->back.passOp);
-      state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(dsa->back.depthFailOp);
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_STENCIL_OP_EXT)]) {
+         state->dsa_state.stencil[0].func = dsa->front.compareOp;
+         state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(dsa->front.failOp);
+         state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(dsa->front.passOp);
+         state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(dsa->front.depthFailOp);
+
+         state->dsa_state.stencil[1].func = dsa->back.compareOp;
+         state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(dsa->back.failOp);
+         state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(dsa->back.passOp);
+         state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(dsa->back.depthFailOp);
+      }
 
       if (!dynamic_states[VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK]) {
          state->dsa_state.stencil[0].valuemask = dsa->front.compareMask;
@@ -573,8 +601,10 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          vk_find_struct_const(vi->pNext,
                               PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT);
 
-      for (i = 0; i < vi->vertexBindingDescriptionCount; i++) {
-         state->vb[i].stride = vi->pVertexBindingDescriptions[i].stride;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT)]) {
+         for (i = 0; i < vi->vertexBindingDescriptionCount; i++) {
+            state->vb[i].stride = vi->pVertexBindingDescriptions[i].stride;
+         }
       }
 
       int max_location = -1;
@@ -617,7 +647,8 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
    {
       const VkPipelineInputAssemblyStateCreateInfo *ia = pipeline->graphics_create_info.pInputAssemblyState;
 
-      state->info.mode = vk_conv_topology(ia->topology);
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_PRIMITIVE_TOPOLOGY_EXT)])
+         state->info.mode = vk_conv_topology(ia->topology);
       state->info.primitive_restart = ia->primitiveRestartEnable;
    }
 
@@ -631,9 +662,15 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       const VkPipelineViewportStateCreateInfo *vpi= pipeline->graphics_create_info.pViewportState;
       int i;
 
-      state->num_viewports = vpi->viewportCount;
-      state->num_scissors = vpi->scissorCount;
-      state->vp_dirty = true;
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)]) {
+         state->num_viewports = vpi->viewportCount;
+         state->vp_dirty = true;
+      }
+      if (!dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT)]) {
+         state->num_scissors = vpi->scissorCount;
+         state->scissor_dirty = true;
+      }
+
       if (!dynamic_states[VK_DYNAMIC_STATE_VIEWPORT]) {
          for (i = 0; i < vpi->viewportCount; i++)
             get_viewport_xform(&vpi->pViewports[i], state->viewports[i].scale, state->viewports[i].translate);
@@ -678,6 +715,10 @@ static void handle_vertex_buffers(struct lvp_cmd_buffer_entry *cmd,
 
       state->vb[idx].buffer_offset = vcb->offsets[i];
       state->vb[idx].buffer.resource = vcb->buffers[i]->bo;
+
+      if (vcb->strides) {
+         state->vb[idx].stride = vcb->strides[i];
+      }
    }
    if (vcb->first < state->start_vb)
       state->start_vb = vcb->first;
@@ -1461,9 +1502,14 @@ static void handle_set_viewport(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
    int i;
+   unsigned base = 0;
+   if (cmd->u.set_viewport.first_viewport == UINT32_MAX)
+      state->num_viewports = cmd->u.set_viewport.viewport_count;
+   else
+      base = cmd->u.set_viewport.first_viewport;
 
    for (i = 0; i < cmd->u.set_viewport.viewport_count; i++) {
-      int idx = i + cmd->u.set_viewport.first_viewport;
+      int idx = i + base;
       const VkViewport *vp = &cmd->u.set_viewport.viewports[i];
       get_viewport_xform(vp, state->viewports[idx].scale, state->viewports[idx].translate);
    }
@@ -1474,9 +1520,14 @@ static void handle_set_scissor(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
    int i;
+   unsigned base = 0;
+   if (cmd->u.set_scissor.first_scissor == UINT32_MAX)
+      state->num_scissors = cmd->u.set_scissor.scissor_count;
+   else
+      base = cmd->u.set_scissor.first_scissor;
 
    for (i = 0; i < cmd->u.set_scissor.scissor_count; i++) {
-      int idx = i + cmd->u.set_scissor.first_scissor;
+      int idx = i + base;
       const VkRect2D *ss = &cmd->u.set_scissor.scissors[i];
       state->scissors[idx].minx = ss->offset.x;
       state->scissors[idx].miny = ss->offset.y;
@@ -2660,6 +2711,82 @@ static void handle_end_conditional_rendering(struct rendering_state *state)
    state->pctx->render_condition_mem(state->pctx, NULL, 0, false);
 }
 
+static void handle_set_cull_mode(struct lvp_cmd_buffer_entry *cmd,
+                                 struct rendering_state *state)
+{
+   state->rs_state.cull_face = vk_cull_to_pipe(cmd->u.set_cull_mode.cull_mode);
+   state->rs_dirty = true;
+}
+
+static void handle_set_front_face(struct lvp_cmd_buffer_entry *cmd,
+                                  struct rendering_state *state)
+{
+   state->rs_state.front_ccw = (cmd->u.set_front_face.front_face == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+   state->rs_dirty = true;
+}
+
+static void handle_set_primitive_topology(struct lvp_cmd_buffer_entry *cmd,
+                                          struct rendering_state *state)
+{
+   state->info.mode = vk_conv_topology(cmd->u.set_primitive_topology.prim);
+}
+
+
+static void handle_set_depth_test_enable(struct lvp_cmd_buffer_entry *cmd,
+                                         struct rendering_state *state)
+{
+   state->dsa_state.depth_enabled = cmd->u.set_depth_test_enable.depth_test_enable;
+   state->dsa_dirty = true;
+}
+
+static void handle_set_depth_write_enable(struct lvp_cmd_buffer_entry *cmd,
+                                          struct rendering_state *state)
+{
+   state->dsa_state.depth_writemask = cmd->u.set_depth_write_enable.depth_write_enable;
+   state->dsa_dirty = true;
+}
+
+static void handle_set_depth_compare_op(struct lvp_cmd_buffer_entry *cmd,
+                                        struct rendering_state *state)
+{
+   state->dsa_state.depth_func = cmd->u.set_depth_compare_op.depth_op;
+   state->dsa_dirty = true;
+}
+
+static void handle_set_depth_bounds_test_enable(struct lvp_cmd_buffer_entry *cmd,
+                                                struct rendering_state *state)
+{
+   state->dsa_state.depth_bounds_test = cmd->u.set_depth_bounds_test_enable.depth_bounds_test_enable;
+   state->dsa_dirty = true;
+}
+
+static void handle_set_stencil_test_enable(struct lvp_cmd_buffer_entry *cmd,
+                                           struct rendering_state *state)
+{
+   state->dsa_state.stencil[0].enabled = cmd->u.set_stencil_test_enable.stencil_test_enable;
+   state->dsa_state.stencil[1].enabled = cmd->u.set_stencil_test_enable.stencil_test_enable;
+   state->dsa_dirty = true;
+}
+
+static void handle_set_stencil_op(struct lvp_cmd_buffer_entry *cmd,
+                                  struct rendering_state *state)
+{
+   if (cmd->u.set_stencil_op.face_mask & VK_STENCIL_FACE_FRONT_BIT) {
+      state->dsa_state.stencil[0].func = cmd->u.set_stencil_op.compare_op;
+      state->dsa_state.stencil[0].fail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.fail_op);
+      state->dsa_state.stencil[0].zpass_op = vk_conv_stencil_op(cmd->u.set_stencil_op.pass_op);
+      state->dsa_state.stencil[0].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.depth_fail_op);
+   }
+
+   if (cmd->u.set_stencil_op.face_mask & VK_STENCIL_FACE_BACK_BIT) {
+      state->dsa_state.stencil[1].func = cmd->u.set_stencil_op.compare_op;
+      state->dsa_state.stencil[1].fail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.fail_op);
+      state->dsa_state.stencil[1].zpass_op = vk_conv_stencil_op(cmd->u.set_stencil_op.pass_op);
+      state->dsa_state.stencil[1].zfail_op = vk_conv_stencil_op(cmd->u.set_stencil_op.depth_fail_op);
+   }
+   state->dsa_dirty = true;
+}
+
 static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
                                    struct rendering_state *state)
 {
@@ -2832,6 +2959,33 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          break;
       case LVP_CMD_END_CONDITIONAL_RENDERING:
          handle_end_conditional_rendering(state);
+         break;
+      case LVP_CMD_SET_CULL_MODE:
+         handle_set_cull_mode(cmd, state);
+         break;
+      case LVP_CMD_SET_FRONT_FACE:
+         handle_set_front_face(cmd, state);
+         break;
+      case LVP_CMD_SET_PRIMITIVE_TOPOLOGY:
+         handle_set_primitive_topology(cmd, state);
+         break;
+      case LVP_CMD_SET_DEPTH_TEST_ENABLE:
+         handle_set_depth_test_enable(cmd, state);
+         break;
+      case LVP_CMD_SET_DEPTH_WRITE_ENABLE:
+         handle_set_depth_write_enable(cmd, state);
+         break;
+      case LVP_CMD_SET_DEPTH_COMPARE_OP:
+         handle_set_depth_compare_op(cmd, state);
+         break;
+      case LVP_CMD_SET_DEPTH_BOUNDS_TEST_ENABLE:
+         handle_set_depth_bounds_test_enable(cmd, state);
+         break;
+      case LVP_CMD_SET_STENCIL_TEST_ENABLE:
+         handle_set_stencil_test_enable(cmd, state);
+         break;
+      case LVP_CMD_SET_STENCIL_OP:
+         handle_set_stencil_op(cmd, state);
          break;
       }
    }
