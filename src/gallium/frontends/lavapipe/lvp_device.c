@@ -119,14 +119,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateInstance(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO);
 
-   uint32_t client_version;
-   if (pCreateInfo->pApplicationInfo &&
-       pCreateInfo->pApplicationInfo->apiVersion != 0) {
-      client_version = pCreateInfo->pApplicationInfo->apiVersion;
-   } else {
-      client_version = VK_API_VERSION_1_0;
-   }
-
    if (pAllocator == NULL)
       pAllocator = &default_alloc;
 
@@ -149,7 +141,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateInstance(
       return vk_error(instance, result);
    }
 
-   instance->apiVersion = client_version;
+   instance->apiVersion = LVP_API_VERSION;
    instance->physicalDeviceCount = -1;
 
    //   _mesa_locale_init();
