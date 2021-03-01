@@ -1083,17 +1083,18 @@ CodeEmitterNV50::emitUADD(const Instruction *i)
    const int neg0 = i->src(0).mod.neg();
    const int neg1 = i->src(1).mod.neg() ^ ((i->op == OP_SUB) ? 1 : 0);
 
-   code[0] = 0x20008000;
+   code[0] = 0x20000000;
 
    if (i->src(1).getFile() == FILE_IMMEDIATE) {
+      code[0] |= (typeSizeof(i->dType) == 2) ? 0 : 0x00008000;
       code[1] = 0;
       emitForm_IMM(i);
    } else
    if (i->encSize == 8) {
-      code[0] = 0x20000000;
       code[1] = (typeSizeof(i->dType) == 2) ? 0 : 0x04000000;
       emitForm_ADD(i);
    } else {
+      code[0] |= (typeSizeof(i->dType) == 2) ? 0 : 0x00008000;
       emitForm_MUL(i);
    }
    assert(!(neg0 && neg1));
