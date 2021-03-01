@@ -2768,13 +2768,17 @@ cmd_buffer_execute_inside_pass(struct v3dv_cmd_buffer *primary,
                v3dv_job_add_bo(primary_job, bo);
             }
 
-            /* Emit the branch instruction */
-            v3dv_cl_ensure_space_with_branch(&primary_job->bcl,
-                                             cl_packet_length(BRANCH_TO_SUB_LIST));
-            v3dv_return_if_oom(primary, NULL);
-
-            cl_emit(&primary_job->bcl, BRANCH_TO_SUB_LIST, branch) {
-               branch.address = v3dv_cl_address(secondary_job->bcl.bo, 0);
+            /* Emit required branch instructions. We expect each of these
+             * to end with a corresponding 'return from sub list' item.
+             */
+            list_for_each_entry(struct v3dv_bo, bcl_bo,
+                                &secondary_job->bcl.bo_list, list_link) {
+               v3dv_cl_ensure_space_with_branch(&primary_job->bcl,
+                                                cl_packet_length(BRANCH_TO_SUB_LIST));
+               v3dv_return_if_oom(primary, NULL);
+               cl_emit(&primary_job->bcl, BRANCH_TO_SUB_LIST, branch) {
+                  branch.address = v3dv_cl_address(bcl_bo, 0);
+               }
             }
 
             primary_job->tmu_dirty_rcl |= secondary_job->tmu_dirty_rcl;
