@@ -15,7 +15,6 @@ dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail,Fail
 dEQP-VK.api.info.format_properties.g8b8g8r8_422_unorm,Fail
 dEQP-VK.api.info.get_physical_device_properties2.memory_properties,Fail
 dEQP-VK.compute.basic.max_local_size_x,Crash
-dEQP-VK.compute.device_group.dispatch_base,Fail
 dEQP-VK.draw.shader_viewport_index.fragment_shader_12,Fail
 dEQP-VK.draw.shader_viewport_index.fragment_shader_13,Fail
 dEQP-VK.draw.shader_viewport_index.fragment_shader_16,Fail

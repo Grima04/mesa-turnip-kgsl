@@ -75,6 +75,11 @@ tu_spirv_to_nir(struct tu_device *dev,
          .runtime_descriptor_array = true,
       },
    };
+
+   const struct nir_lower_compute_system_values_options compute_sysval_options = {
+      .has_base_work_group_id = true,
+   };
+
    const nir_shader_compiler_options *nir_options =
       ir3_get_compiler_options(dev->compiler);
 
@@ -178,7 +183,7 @@ tu_spirv_to_nir(struct tu_device *dev,
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
    NIR_PASS_V(nir, nir_lower_system_values);
-   NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
+   NIR_PASS_V(nir, nir_lower_compute_system_values, &compute_sysval_options);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
 
