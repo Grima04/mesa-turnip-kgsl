@@ -644,6 +644,9 @@ CodeEmitterNV50::emitLOAD(const Instruction *i)
             code[1] |= 0x04000000;
 
          emitLoadStoreSizeCS(i->sType);
+
+         if (i->subOp == NV50_IR_SUBOP_LOAD_LOCKED)
+            code[1] |= 0x00800000;
       } else {
          assert(offset <= (int32_t)(0x1f * typeSizeof(i->sType)));
          code[0] = 0x10000001;
@@ -714,6 +717,8 @@ CodeEmitterNV50::emitSTORE(const Instruction *i)
    case FILE_MEMORY_SHARED:
       code[0] = 0x00000001;
       code[1] = 0xe0000000;
+      if (i->subOp == NV50_IR_SUBOP_STORE_UNLOCKED)
+         code[1] |= 0x00800000;
       switch (typeSizeof(i->dType)) {
       case 1:
          code[0] |= offset << 9;
