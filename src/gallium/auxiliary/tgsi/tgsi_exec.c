@@ -5489,18 +5489,9 @@ exec_instruction(
       assert(mach->CondStackTop < TGSI_EXEC_MAX_COND_NESTING);
       mach->CondStack[mach->CondStackTop++] = mach->CondMask;
       FETCH( &r[0], 0, TGSI_CHAN_X );
-      /* update CondMask */
-      if( ! r[0].f[0] ) {
-         mach->CondMask &= ~0x1;
-      }
-      if( ! r[0].f[1] ) {
-         mach->CondMask &= ~0x2;
-      }
-      if( ! r[0].f[2] ) {
-         mach->CondMask &= ~0x4;
-      }
-      if( ! r[0].f[3] ) {
-         mach->CondMask &= ~0x8;
+      for (int i = 0; i < TGSI_QUAD_SIZE; i++) {
+         if (!r[0].f[i])
+            mach->CondMask &= ~(1 << i);
       }
       UPDATE_EXEC_MASK(mach);
       /* Todo: If CondMask==0, jump to ELSE */
@@ -5511,18 +5502,9 @@ exec_instruction(
       assert(mach->CondStackTop < TGSI_EXEC_MAX_COND_NESTING);
       mach->CondStack[mach->CondStackTop++] = mach->CondMask;
       IFETCH( &r[0], 0, TGSI_CHAN_X );
-      /* update CondMask */
-      if( ! r[0].u[0] ) {
-         mach->CondMask &= ~0x1;
-      }
-      if( ! r[0].u[1] ) {
-         mach->CondMask &= ~0x2;
-      }
-      if( ! r[0].u[2] ) {
-         mach->CondMask &= ~0x4;
-      }
-      if( ! r[0].u[3] ) {
-         mach->CondMask &= ~0x8;
+      for (int i = 0; i < TGSI_QUAD_SIZE; i++) {
+         if (!r[0].u[i])
+            mach->CondMask &= ~(1 << i);
       }
       UPDATE_EXEC_MASK(mach);
       /* Todo: If CondMask==0, jump to ELSE */
