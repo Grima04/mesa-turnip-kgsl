@@ -276,6 +276,8 @@ LoadPropagation::visit(BasicBlock *bb)
 
          if (!ld || ld->fixed || (ld->op != OP_LOAD && ld->op != OP_MOV))
             continue;
+         if (ld->op == OP_LOAD && ld->subOp == NV50_IR_SUBOP_LOAD_LOCKED)
+            continue;
          if (!targ->insnCanLoad(i, s, ld))
             continue;
 
