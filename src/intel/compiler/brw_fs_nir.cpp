@@ -1918,7 +1918,7 @@ fs_visitor::get_nir_src(const nir_src &src)
 {
    fs_reg reg;
    if (src.is_ssa) {
-      if (src.ssa->parent_instr->type == nir_instr_type_ssa_undef) {
+      if (nir_src_is_undef(src)) {
          const brw_reg_type reg_type =
             brw_reg_type_from_bit_size(src.ssa->bit_size, BRW_REGISTER_TYPE_D);
          reg = bld.vgrf(reg_type, src.ssa->num_components);

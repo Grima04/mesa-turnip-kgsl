@@ -971,6 +971,13 @@ nir_src_is_const(nir_src src)
 }
 
 static inline bool
+nir_src_is_undef(nir_src src)
+{
+   return src.is_ssa &&
+          src.ssa->parent_instr->type == nir_instr_type_ssa_undef;
+}
+
+static inline bool
 nir_src_is_divergent(nir_src src)
 {
    return src.is_ssa ? src.ssa->divergent : src.reg.reg->divergent;

@@ -746,7 +746,7 @@ visit_loop_header_phi(nir_phi_instr *phi, nir_block *preheader, bool divergent_c
       if (src->pred == preheader)
          continue;
       /* skip undef values */
-      if (src->src.ssa->parent_instr->type == nir_instr_type_ssa_undef)
+      if (nir_src_is_undef(src->src))
          continue;
 
       /* check if all loop-carried values are from the same ssa-def */
