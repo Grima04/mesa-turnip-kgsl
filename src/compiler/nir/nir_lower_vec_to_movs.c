@@ -63,6 +63,10 @@ insert_mov(nir_alu_instr *vec, unsigned start_idx, nir_shader *shader)
 {
    assert(start_idx < nir_op_infos[vec->op].num_inputs);
 
+   /* No sense generating a MOV from undef, we can just leave the dst channel undef. */
+   if (nir_src_is_undef(vec->src[start_idx].src))
+      return 1 << start_idx;
+
    nir_alu_instr *mov = nir_alu_instr_create(shader, nir_op_mov);
    nir_alu_src_copy(&mov->src[0], &vec->src[start_idx], mov);
    nir_alu_dest_copy(&mov->dest, &vec->dest, mov);
