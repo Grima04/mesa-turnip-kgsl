@@ -162,7 +162,6 @@
       - src/gallium/drivers/panfrost/**/*
       - src/gallium/winsys/panfrost/**/*
       - src/panfrost/**/*
-      - ci-expects/panfrost/*
       when: on_success
     - when: never
 
@@ -228,7 +227,6 @@
       - src/gallium/drivers/lima/**/*
       - src/gallium/winsys/lima/**/*
       - src/lima/**/*
-      - ci-expects/lima/*
       when: on_success
     - when: never
 
@@ -281,7 +279,6 @@
       - src/amd/common/**/*
       - src/amd/llvm/**/*
       - src/amd/registers/**/*
-      - ci-expects/radeonsi/*
       when: on_success
     - when: never
 
