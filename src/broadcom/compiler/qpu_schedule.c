@@ -1050,10 +1050,27 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
          * them, however, if we failed to find anything to schedule then we
          * can't possibly continue the sequence and we need to stop the
          * pipelining process and try again.
+         *
+         * There is one exception to the above: noperspective or flat
+         * varyings can cause us to not be able to pick an instruction
+         * because they need a nop between the ldvary and the next instruction
+         * to account for the ldvary r5 write latency. We can try to detect this
+         * by checking if we are also unable to schedule an instruction after
+         * disabling pipelining.
+         *
+         * FIXME: dropping pipelining and picking up another instruction could
+         * break the sequence for flat/noperspective varyings we could've been
+         * able to continue if we returned NULL here and scheduled a NOP as a
+         * result, but detecting this case would require us to know in advance
+         * that emitting the next NOP will guarantee that we will be able to
+         * continue the sequence.
          */
         if (scoreboard->ldvary_pipelining && !prev_inst && !chosen) {
+                bool prev_ldvary_pipelining = scoreboard->ldvary_pipelining;
                 scoreboard->ldvary_pipelining = false;
                 chosen = choose_instruction_to_schedule(devinfo, scoreboard, prev_inst);
+                if (!chosen)
+                        scoreboard->ldvary_pipelining = prev_ldvary_pipelining;
         } else if (chosen) {
                 if (scoreboard->ldvary_pipelining) {
                         assert(chosen->inst->ldvary_pipelining);

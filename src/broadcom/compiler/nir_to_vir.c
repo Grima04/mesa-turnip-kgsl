@@ -932,10 +932,8 @@ ldvary_sequence_inst(struct v3d_compile *c, struct qreg result)
         return result;
 }
 
-static struct qreg
-emit_smooth_varying(struct v3d_compile *c,
-                    struct qinst *ldvary,
-                    struct qreg vary, struct qreg w, struct qreg r5)
+static void
+track_ldvary_pipelining(struct v3d_compile *c, struct qinst *ldvary)
 {
         if (ldvary) {
                 c->ldvary_sequence_length++;
@@ -945,8 +943,36 @@ emit_smooth_varying(struct v3d_compile *c,
                         c->ldvary_sequence_start_inst = ldvary;
                 }
         }
+}
+
+static struct qreg
+emit_smooth_varying(struct v3d_compile *c,
+                    struct qinst *ldvary,
+                    struct qreg vary, struct qreg w, struct qreg r5)
+{
+        track_ldvary_pipelining(c, ldvary);
         return ldvary_sequence_inst(c, vir_FADD(c,
                ldvary_sequence_inst(c, vir_FMUL(c, vary, w)), r5));
+}
+
+static struct qreg
+emit_noperspective_varying(struct v3d_compile *c,
+                           struct qinst *ldvary,
+                           struct qreg vary, struct qreg r5)
+{
+        track_ldvary_pipelining(c, ldvary);
+        return ldvary_sequence_inst(c, vir_FADD(c,
+               ldvary_sequence_inst(c, vir_MOV(c, vary)), r5));
+}
+
+static struct qreg
+emit_flat_varying(struct v3d_compile *c,
+                  struct qinst *ldvary,
+                  struct qreg vary, struct qreg r5)
+{
+        track_ldvary_pipelining(c, ldvary);
+        vir_MOV_dest(c, c->undef, vary);
+        return ldvary_sequence_inst(c, vir_MOV(c, r5));
 }
 
 static void
@@ -1032,16 +1058,13 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 break;
 
         case INTERP_MODE_NOPERSPECTIVE:
-                break_smooth_varying_sequence(c);
                 BITSET_SET(c->noperspective_flags, i);
-                result = vir_FADD(c, vir_MOV(c, vary), r5);
+                result = emit_noperspective_varying(c, ldvary, vary, r5);
                 break;
 
         case INTERP_MODE_FLAT:
-                break_smooth_varying_sequence(c);
                 BITSET_SET(c->flat_shade_flags, i);
-                vir_MOV_dest(c, c->undef, vary);
-                result = vir_MOV(c, r5);
+                result = emit_flat_varying(c, ldvary, vary, r5);
                 break;
 
         default:
