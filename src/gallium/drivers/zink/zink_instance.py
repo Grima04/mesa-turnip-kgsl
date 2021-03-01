@@ -213,7 +213,7 @@ zink_create_instance(struct zink_instance_info *instance_info)
       ai.pApplicationName = "unknown";
 
    ai.pEngineName = "mesa zink";
-   ai.apiVersion = instance_info->loader_version;
+   ai.apiVersion = VK_MAKE_VERSION(1, 0, 0);
 
    VkInstanceCreateInfo ici = {};
    ici.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
@@ -317,9 +317,6 @@ if __name__ == "__main__":
                 if func not in entry.commands:
                     error_count += 1
                     print("The instance function {} is not added by the extension {}.".format(func, ext.name))
-
-        if entry.promoted_in:
-            ext.core_since = Version((*entry.promoted_in, 0))
 
     if error_count > 0:
         print("zink_instance.py: Found {} error(s) in total. Quitting.".format(error_count))
