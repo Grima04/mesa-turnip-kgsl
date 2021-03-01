@@ -381,6 +381,7 @@ if with_tests
     env: ['BUILD_FULL_PATH='+process_test_exe_full_path]
   )
 
+  subdir('tests/cache')
   subdir('tests/fast_idiv_by_const')
   subdir('tests/fast_urem_by_const')
   subdir('tests/hash_table')
