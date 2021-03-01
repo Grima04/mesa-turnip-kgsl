@@ -60,10 +60,7 @@ fill_cbv_descriptors(struct d3d12_context *ctx,
       struct pipe_constant_buffer *buffer = &ctx->cbufs[stage][binding];
 
       D3D12_CONSTANT_BUFFER_VIEW_DESC cbv_desc = {};
-      if (buffer) {
-         assert(buffer->buffer_size > 0);
-         assert(buffer->buffer);
-
+      if (buffer && buffer->buffer) {
          struct d3d12_resource *res = d3d12_resource(buffer->buffer);
          d3d12_transition_resource_state(ctx, res, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
          cbv_desc.BufferLocation = d3d12_resource_gpu_virtual_address(res) + buffer->buffer_offset;
