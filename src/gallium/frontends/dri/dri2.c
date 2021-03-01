@@ -732,8 +732,8 @@ static const struct dri2_format_mapping r8_g8b8_mapping = {
    __DRI_IMAGE_COMPONENTS_Y_UV,
    PIPE_FORMAT_R8_G8B8_420_UNORM,
    2,
-   { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-     { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88, 2 } }
+   { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8 },
+     { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88 } }
 };
 
 static __DRIimage *
