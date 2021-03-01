@@ -75,7 +75,7 @@ class PoERun:
                     return 1
 
         self.print_error("Reached the end of the CPU serial log without finding a result")
-        return 1
+        return 2
 
 def main():
     parser = argparse.ArgumentParser()
