@@ -205,6 +205,9 @@ expandIntegerMUL(BuildUtil *bld, Instruction *mul)
 
 class NV50LegalizePostRA : public Pass
 {
+public:
+   NV50LegalizePostRA() : r63(NULL) { }
+
 private:
    virtual bool visit(Function *);
    virtual bool visit(BasicBlock *);
