@@ -1645,9 +1645,7 @@ zink_flush(struct pipe_context *pctx,
        * unknown at this time why this is the case
        */
       if (!ctx->first_frame_done)
-         pctx->screen->fence_finish(pctx->screen, pctx,
-                                    (struct pipe_fence_handle *)batch->fence,
-                                    PIPE_TIMEOUT_INFINITE);
+         zink_fence_finish(zink_screen(pctx->screen), pctx, batch->fence, PIPE_TIMEOUT_INFINITE);
       ctx->first_frame_done = true;
    }
 }
