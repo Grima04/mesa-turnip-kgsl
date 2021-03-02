@@ -1526,6 +1526,32 @@ nir_load_param(nir_builder *build, uint32_t param_idx)
    return nir_build_load_param(build, param->num_components, param->bit_size, param_idx);
 }
 
+/**
+ * This function takes an I/O intrinsic like load/store_input,
+ * and emits a sequence that calculates the full offset of that instruction,
+ * including a stride to the base and component offsets.
+ */
+static inline nir_ssa_def *
+nir_build_calc_io_offset(nir_builder *b,
+                         nir_intrinsic_instr *intrin,
+                         nir_ssa_def *base_stride,
+                         unsigned component_stride)
+{
+   /* base is the driver_location, which is in slots (1 slot = 4x4 bytes) */
+   nir_ssa_def *base_op = nir_imul_imm(b, base_stride, nir_intrinsic_base(intrin));
+
+   /* offset should be interpreted in relation to the base,
+    * so the instruction effectively reads/writes another input/output
+    * when it has an offset
+    */
+   nir_ssa_def *offset_op = nir_imul(b, base_stride, nir_ssa_for_src(b, *nir_get_io_offset_src(intrin), 1));
+
+   /* component is in bytes */
+   unsigned const_op = nir_intrinsic_component(intrin) * component_stride;
+
+   return nir_iadd_imm_nuw(b, nir_iadd_nuw(b, base_op, offset_op), const_op);
+}
+
 static inline nir_ssa_def *
 nir_f2b(nir_builder *build, nir_ssa_def *f)
 {
