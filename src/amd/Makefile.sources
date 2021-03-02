@@ -45,6 +45,7 @@ AMD_COMMON_FILES = \
 	common/ac_msgpack.c \
 	common/ac_msgpack.h \
 	common/ac_nir.h \
+	common/ac_nir_lower_esgs_io_to_mem.c \
 	common/ac_nir_lower_tess_io_to_mem.c \
 	common/ac_surface.c \
 	common/ac_surface.h \

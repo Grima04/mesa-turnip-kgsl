@@ -88,6 +88,7 @@ amd_common_files = files(
   'ac_msgpack.h',
   'ac_rgp_elf_object_pack.c',
   'ac_nir.h',
+  'ac_nir_lower_esgs_io_to_mem.c',
   'ac_nir_lower_tess_io_to_mem.c',
 )
 

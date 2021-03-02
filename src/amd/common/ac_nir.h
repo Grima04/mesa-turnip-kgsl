@@ -72,6 +72,16 @@ ac_nir_lower_tess_to_const(nir_shader *shader,
                            unsigned tcs_num_patches,
                            unsigned options);
 
+void
+ac_nir_lower_es_outputs_to_mem(nir_shader *shader,
+                               enum chip_class chip_class,
+                               unsigned num_reserved_es_outputs);
+
+void
+ac_nir_lower_gs_inputs_to_mem(nir_shader *shader,
+                              enum chip_class chip_class,
+                              unsigned num_reserved_es_outputs);
+
 #ifdef __cplusplus
 }
 #endif
