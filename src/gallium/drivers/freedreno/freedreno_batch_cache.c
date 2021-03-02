@@ -280,7 +280,7 @@ fd_bc_invalidate_batch(struct fd_batch *batch, bool remove)
 	DBG("%p: key=%p", batch, batch->key);
 	for (unsigned idx = 0; idx < key->num_surfs; idx++) {
 		struct fd_resource *rsc = fd_resource(key->surf[idx].texture);
-		rsc->bc_batch_mask &= ~(1 << batch->idx);
+		rsc->track->bc_batch_mask &= ~(1 << batch->idx);
 	}
 
 	struct hash_entry *entry =
@@ -300,19 +300,19 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
 	fd_screen_lock(screen);
 
 	if (destroy) {
-		foreach_batch(batch, &screen->batch_cache, rsc->batch_mask) {
+		foreach_batch (batch, &screen->batch_cache, rsc->track->batch_mask) {
 			struct set_entry *entry = _mesa_set_search(batch->resources, rsc);
 			_mesa_set_remove(batch->resources, entry);
 		}
-		rsc->batch_mask = 0;
+		rsc->track->batch_mask = 0;
 
-		fd_batch_reference_locked(&rsc->write_batch, NULL);
+		fd_batch_reference_locked(&rsc->track->write_batch, NULL);
 	}
 
-	foreach_batch(batch, &screen->batch_cache, rsc->bc_batch_mask)
+	foreach_batch (batch, &screen->batch_cache, rsc->track->bc_batch_mask)
 		fd_bc_invalidate_batch(batch, false);
 
-	rsc->bc_batch_mask = 0;
+	rsc->track->bc_batch_mask = 0;
 
 	fd_screen_unlock(screen);
 }
@@ -459,7 +459,7 @@ batch_from_key(struct fd_batch_cache *cache, struct fd_batch_key *key,
 
 	for (unsigned idx = 0; idx < key->num_surfs; idx++) {
 		struct fd_resource *rsc = fd_resource(key->surf[idx].texture);
-		rsc->bc_batch_mask = (1 << batch->idx);
+		rsc->track->bc_batch_mask = (1 << batch->idx);
 	}
 
 	return batch;

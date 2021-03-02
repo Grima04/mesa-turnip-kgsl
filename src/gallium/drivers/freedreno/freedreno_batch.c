@@ -260,10 +260,10 @@ batch_reset_resources_locked(struct fd_batch *batch)
 	set_foreach(batch->resources, entry) {
 		struct fd_resource *rsc = (struct fd_resource *)entry->key;
 		_mesa_set_remove(batch->resources, entry);
-		debug_assert(rsc->batch_mask & (1 << batch->idx));
-		rsc->batch_mask &= ~(1 << batch->idx);
-		if (rsc->write_batch == batch)
-			fd_batch_reference_locked(&rsc->write_batch, NULL);
+		debug_assert(rsc->track->batch_mask & (1 << batch->idx));
+		rsc->track->batch_mask &= ~(1 << batch->idx);
+		if (rsc->track->write_batch == batch)
+			fd_batch_reference_locked(&rsc->track->write_batch, NULL);
 	}
 }
 
@@ -437,7 +437,7 @@ flush_write_batch(struct fd_resource *rsc)
 	assert_dt
 {
 	struct fd_batch *b = NULL;
-	fd_batch_reference_locked(&b, rsc->write_batch);
+	fd_batch_reference_locked(&b, rsc->track->write_batch);
 
 	fd_screen_unlock(b->ctx->screen);
 	fd_batch_flush(b);
@@ -458,7 +458,7 @@ fd_batch_add_resource(struct fd_batch *batch, struct fd_resource *rsc)
 	debug_assert(!_mesa_set_search(batch->resources, rsc));
 
 	_mesa_set_add(batch->resources, rsc);
-	rsc->batch_mask |= (1 << batch->idx);
+	rsc->track->batch_mask |= (1 << batch->idx);
 }
 
 void
@@ -473,7 +473,7 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 	 */
 	rsc->valid = true;
 
-	if (rsc->write_batch == batch)
+	if (rsc->track->write_batch == batch)
 		return;
 
 	fd_batch_write_prep(batch, rsc);
@@ -485,14 +485,14 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 	 * resulting in a write-after-read hazard.
 	 */
 	/* if we are pending read or write by any other batch: */
-	if (unlikely(rsc->batch_mask & ~(1 << batch->idx))) {
+	if (unlikely(rsc->track->batch_mask & ~(1 << batch->idx))) {
 		struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
 		struct fd_batch *dep;
 
-		if (rsc->write_batch)
+		if (rsc->track->write_batch)
 			flush_write_batch(rsc);
 
-		foreach_batch(dep, cache, rsc->batch_mask) {
+		foreach_batch (dep, cache, rsc->track->batch_mask) {
 			struct fd_batch *b = NULL;
 			if (dep == batch)
 				continue;
@@ -506,7 +506,7 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
 			fd_batch_reference_locked(&b, NULL);
 		}
 	}
-	fd_batch_reference_locked(&rsc->write_batch, batch);
+	fd_batch_reference_locked(&rsc->track->write_batch, batch);
 
 	fd_batch_add_resource(batch, rsc);
 }
@@ -525,7 +525,7 @@ fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc)
 	 * writer.  This avoids situations where we end up having to
 	 * flush the current batch in _resource_used()
 	 */
-	if (unlikely(rsc->write_batch && rsc->write_batch != batch))
+	if (unlikely(rsc->track->write_batch && rsc->track->write_batch != batch))
 		flush_write_batch(rsc);
 
 	fd_batch_add_resource(batch, rsc);

@@ -165,7 +165,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 			 */
 			if (aq->no_wait_cnt++ > 5) {
 				fd_context_access_begin(ctx);
-				fd_batch_flush(rsc->write_batch);
+				fd_batch_flush(rsc->track->write_batch);
 				fd_context_access_end(ctx);
 			}
 			return false;
@@ -179,9 +179,9 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q,
 		fd_bo_cpu_fini(rsc->bo);
 	}
 
-	if (rsc->write_batch) {
+	if (rsc->track->write_batch) {
 		fd_context_access_begin(ctx);
-		fd_batch_flush(rsc->write_batch);
+		fd_batch_flush(rsc->track->write_batch);
 		fd_context_access_end(ctx);
 	}
 

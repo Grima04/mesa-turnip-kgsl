@@ -56,22 +56,26 @@ enum fd_lrz_direction {
 	FD_LRZ_GREATER,
 };
 
-struct fd_resource {
-	struct pipe_resource base;
-	struct fd_bo *bo;  /* use fd_resource_set_bo() to write */
-	enum pipe_format internal_format;
-	struct fdl_layout layout;
-
-	/* buffer range that has been initialized */
-	struct util_range valid_buffer_range;
-	bool valid;
-	struct renderonly_scanout *scanout;
-
-	/* reference to the resource holding stencil data for a z32_s8 texture */
-	/* TODO rename to secondary or auxiliary? */
-	struct fd_resource *stencil;
-
-	simple_mtx_t lock;
+/**
+ * State related to batch/resource tracking.
+ *
+ * With threaded_context we need to support replace_buffer_storage, in
+ * which case we can end up in transfer_map with tres->latest, but other
+ * pipe_context APIs using the original prsc pointer.  This allows TC to
+ * not have to synchronize the front-end thread with the buffer storage
+ * replacement called on driver thread.  But it complicates the batch/
+ * resource tracking.
+ *
+ * To handle this, we need to split the tracking out into it's own ref-
+ * counted structure, so as needed both "versions" of the resource can
+ * point to the same tracking.
+ *
+ * We could *almost* just push this down to fd_bo, except for a3xx/a4xx
+ * hw queries, where we don't know up-front the size to allocate for
+ * per-tile query results.
+ */
+struct fd_resource_tracking {
+	struct pipe_reference reference;
 
 	/* bitmask of in-flight batches which reference this resource.  Note
 	 * that the batch doesn't hold reference to resources (but instead
@@ -90,14 +94,53 @@ struct fd_resource {
 	 * shadowed.
 	 */
 	uint32_t bc_batch_mask;
+};
 
-	/* Sequence # incremented each time bo changes: */
-	uint16_t seqno;
+void __fd_resource_tracking_destroy(struct fd_resource_tracking *track);
+
+static inline void
+fd_resource_tracking_reference(struct fd_resource_tracking **ptr,
+		struct fd_resource_tracking *track)
+{
+	struct fd_resource_tracking *old_track = *ptr;
+
+	if (pipe_reference(&(*ptr)->reference, &track->reference)) {
+		assert(!old_track->write_batch);
+		free(old_track);
+	}
+
+	*ptr = track;
+}
+
+/**
+ * A resource (any buffer/texture/image/etc)
+ */
+struct fd_resource {
+	struct pipe_resource base;
+	struct fd_bo *bo;  /* use fd_resource_set_bo() to write */
+	enum pipe_format internal_format;
+	struct fdl_layout layout;
+
+	/* buffer range that has been initialized */
+	struct util_range valid_buffer_range;
+	bool valid;
+	struct renderonly_scanout *scanout;
+
+	/* reference to the resource holding stencil data for a z32_s8 texture */
+	/* TODO rename to secondary or auxiliary? */
+	struct fd_resource *stencil;
+
+	struct fd_resource_tracking *track;
+
+	simple_mtx_t lock;
 
 	/* bitmask of state this resource could potentially dirty when rebound,
 	 * see rebind_resource()
 	 */
 	enum fd_dirty_3d_state dirty;
+
+	/* Sequence # incremented each time bo changes: */
+	uint16_t seqno;
 
 	/* Uninitialized resources with UBWC format need their UBWC flag data
 	 * cleared before writes, as the UBWC state is read and used during
@@ -146,11 +189,11 @@ static inline bool
 pending(struct fd_resource *rsc, bool write)
 {
 	/* if we have a pending GPU write, we are busy in any case: */
-	if (rsc->write_batch)
+	if (rsc->track->write_batch)
 		return true;
 
 	/* if CPU wants to write, but we are pending a GPU read, we are busy: */
-	if (write && rsc->batch_mask)
+	if (write && rsc->track->batch_mask)
 		return true;
 
 	if (rsc->stencil && pending(rsc->stencil, write))
@@ -300,7 +343,7 @@ bool fd_render_condition_check(struct pipe_context *pctx) assert_dt;
 static inline bool
 fd_batch_references_resource(struct fd_batch *batch, struct fd_resource *rsc)
 {
-	return rsc->batch_mask & (1 << batch->idx);
+	return rsc->track->batch_mask & (1 << batch->idx);
 }
 
 static inline void

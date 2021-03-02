@@ -279,7 +279,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	 * since that defeats the purpose of shadowing, but this is a
 	 * case where we'd have to flush anyways.
 	 */
-	if (rsc->write_batch == ctx->batch)
+	if (rsc->track->write_batch == ctx->batch)
 		flush_resource(ctx, rsc, 0);
 
 	/* TODO: somehow munge dimensions and format to copy unsupported
@@ -330,12 +330,11 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	 */
 	struct fd_resource *shadow = fd_resource(pshadow);
 
-	DBG("shadow: %p (%d) -> %p (%d)\n", rsc, rsc->base.reference.count,
-			shadow, shadow->base.reference.count);
+	DBG("shadow: %p (%d, %p) -> %p (%d, %p)", rsc, rsc->base.reference.count, rsc->track,
+			shadow, shadow->base.reference.count, shadow->track);
 
 	/* TODO valid_buffer_range?? */
-	swap(rsc->bo,        shadow->bo);
-	swap(rsc->write_batch,   shadow->write_batch);
+	swap(rsc->bo,     shadow->bo);
 	swap(rsc->layout, shadow->layout);
 	rsc->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
 
@@ -343,14 +342,14 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 	 * by any batches, but the existing rsc (probably) is.  We need to
 	 * transfer those references over:
 	 */
-	debug_assert(shadow->batch_mask == 0);
+	debug_assert(shadow->track->batch_mask == 0);
 	struct fd_batch *batch;
-	foreach_batch(batch, &ctx->screen->batch_cache, rsc->batch_mask) {
+	foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask) {
 		struct set_entry *entry = _mesa_set_search(batch->resources, rsc);
 		_mesa_set_remove(batch->resources, entry);
 		_mesa_set_add(batch->resources, shadow);
 	}
-	swap(rsc->batch_mask, shadow->batch_mask);
+	swap(rsc->track, shadow->track);
 
 	fd_screen_unlock(ctx->screen);
 
@@ -552,7 +551,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 	struct fd_batch *write_batch = NULL;
 
 	fd_screen_lock(ctx->screen);
-	fd_batch_reference_locked(&write_batch, rsc->write_batch);
+	fd_batch_reference_locked(&write_batch, rsc->track->write_batch);
 	fd_screen_unlock(ctx->screen);
 
 	if (usage & PIPE_MAP_WRITE) {
@@ -565,7 +564,7 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 		 * we must first grab references under a lock, then flush.
 		 */
 		fd_screen_lock(ctx->screen);
-		batch_mask = rsc->batch_mask;
+		batch_mask = rsc->track->batch_mask;
 		foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
 			fd_batch_reference_locked(&batches[batch->idx], batch);
 		fd_screen_unlock(ctx->screen);
@@ -576,14 +575,14 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage)
 		foreach_batch(batch, &ctx->screen->batch_cache, batch_mask) {
 			fd_batch_reference(&batches[batch->idx], NULL);
 		}
-		assert(rsc->batch_mask == 0);
+		assert(rsc->track->batch_mask == 0);
 	} else if (write_batch) {
 		fd_batch_flush(write_batch);
 	}
 
 	fd_batch_reference(&write_batch, NULL);
 
-	assert(!rsc->write_batch);
+	assert(!rsc->track->write_batch);
 }
 
 static void
@@ -744,7 +743,7 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 
 		/* hold a reference, so it doesn't disappear under us: */
 		fd_screen_lock(ctx->screen);
-		fd_batch_reference_locked(&write_batch, rsc->write_batch);
+		fd_batch_reference_locked(&write_batch, rsc->track->write_batch);
 		fd_screen_unlock(ctx->screen);
 
 		if ((usage & PIPE_MAP_WRITE) && write_batch &&
@@ -865,6 +864,8 @@ fd_resource_destroy(struct pipe_screen *pscreen,
 
 	util_range_destroy(&rsc->valid_buffer_range);
 	simple_mtx_destroy(&rsc->lock);
+	fd_resource_tracking_reference(&rsc->track, NULL);
+
 	FREE(rsc);
 }
 
@@ -945,6 +946,14 @@ alloc_resource_struct(struct pipe_screen *pscreen, const struct pipe_resource *t
 
 	util_range_init(&rsc->valid_buffer_range);
 	simple_mtx_init(&rsc->lock, mtx_plain);
+
+	rsc->track = CALLOC_STRUCT(fd_resource_tracking);
+	if (!rsc->track) {
+		free(rsc);
+		return NULL;
+	}
+
+	pipe_reference_init(&rsc->track->reference, 1);
 
 	return rsc;
 }
@@ -1236,12 +1245,12 @@ fd_invalidate_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
 		/* Handle the glInvalidateBufferData() case:
 		 */
 		invalidate_resource(rsc, PIPE_MAP_READ | PIPE_MAP_WRITE);
-	} else if (rsc->write_batch) {
+	} else if (rsc->track->write_batch) {
 		/* Handle the glInvalidateFramebuffer() case, telling us that
 		 * we can skip resolve.
 		 */
 
-		struct fd_batch *batch = rsc->write_batch;
+		struct fd_batch *batch = rsc->track->write_batch;
 		struct pipe_framebuffer_state *pfb = &batch->framebuffer;
 
 		if (pfb->zsbuf && pfb->zsbuf->texture == prsc) {
