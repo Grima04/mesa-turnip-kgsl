@@ -225,6 +225,8 @@ struct nv50_context {
    uint16_t images_valid;
 
    struct util_dynarray global_residents;
+
+   uint64_t compute_invocations;
 };
 
 static inline struct nv50_context *

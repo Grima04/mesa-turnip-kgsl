@@ -628,4 +628,7 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
 
    /* bind a compute shader clobbers fragment shader state */
    nv50->dirty_3d |= NV50_NEW_3D_FRAGPROG;
+
+   nv50->compute_invocations += info->block[0] * info->block[1] * info->block[2] *
+      info->grid[0] * info->grid[1] * info->grid[2];
 }
