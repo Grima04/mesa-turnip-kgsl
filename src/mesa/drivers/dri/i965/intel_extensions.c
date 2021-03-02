@@ -96,6 +96,7 @@ brw_init_extensions(struct gl_context *ctx)
    ctx->Extensions.EXT_blend_equation_separate = true;
    ctx->Extensions.EXT_blend_func_separate = true;
    ctx->Extensions.EXT_blend_minmax = true;
+   ctx->Extensions.EXT_color_buffer_half_float = true;
    ctx->Extensions.EXT_draw_buffers2 = true;
    ctx->Extensions.EXT_EGL_image_storage = true;
    ctx->Extensions.EXT_float_blend = true;
