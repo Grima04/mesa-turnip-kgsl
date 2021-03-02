@@ -17,4 +17,4 @@ VK_KHR_workgroup_memory_explicit_layout on Intel, RADV
 DRM format modifiers for AMD.
 VK_KHR_zero_initialize_workgroup_memory on Intel, RADV
 Zink exposes GL 4.6 and ES 3.1
-GL_EXT_depth_bounds_test on softpipe
+GL_EXT_depth_bounds_test on softpipe, zink

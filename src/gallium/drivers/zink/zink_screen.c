@@ -484,6 +484,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DMABUF:
       return screen->info.have_KHR_external_memory_fd;
 
+   case PIPE_CAP_DEPTH_BOUNDS_TEST:
+      return screen->info.feats.features.depthBounds;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
