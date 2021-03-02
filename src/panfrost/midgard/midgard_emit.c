@@ -178,11 +178,11 @@ mir_pack_mask_alu(midgard_instruction *ins, midgard_vector_alu *alu)
 
         if (upper_shift >= 0) {
                 effective >>= upper_shift;
-                alu->dest_override = upper_shift ?
-                        midgard_dest_override_upper :
-                        midgard_dest_override_lower;
+                alu->shrink_mode = upper_shift ?
+                        midgard_shrink_mode_upper :
+                        midgard_shrink_mode_lower;
         } else {
-                alu->dest_override = midgard_dest_override_none;
+                alu->shrink_mode = midgard_shrink_mode_none;
         }
 
         if (inst_size == 32)

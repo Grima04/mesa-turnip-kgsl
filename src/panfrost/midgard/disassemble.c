@@ -221,11 +221,11 @@ print_swizzle_helper_8(FILE *fp, unsigned swizzle, bool upper)
 
 static void
 print_swizzle_vec16(FILE *fp, unsigned swizzle, bool rep_high, bool rep_low,
-                    midgard_dest_override override)
+                    midgard_shrink_mode shrink_mode)
 {
         fprintf(fp, ".");
 
-        if (override == midgard_dest_override_upper) {
+        if (shrink_mode == midgard_shrink_mode_upper) {
                 if (rep_high)
                         fprintf(fp, " /* rep_high */ ");
                 if (rep_low)
@@ -445,7 +445,7 @@ print_srcmod_end(FILE *fp, bool is_int, unsigned mod, unsigned bits)
 static void
 print_vector_src(FILE *fp, unsigned src_binary,
                  midgard_reg_mode mode, unsigned reg,
-                 midgard_dest_override override, bool is_int)
+                 midgard_shrink_mode shrink_mode, bool is_int)
 {
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
         print_srcmod(fp, is_int, src->mod, false);
@@ -460,7 +460,7 @@ print_vector_src(FILE *fp, unsigned src_binary,
 
         if (mode == midgard_reg_mode_8) {
                 assert(!src->half);
-                print_swizzle_vec16(fp, src->swizzle, src->rep_high, src->rep_low, override);
+                print_swizzle_vec16(fp, src->swizzle, src->rep_high, src->rep_low, shrink_mode);
         } else if (mode == midgard_reg_mode_16) {
                 print_swizzle_vec8(fp, src->swizzle, src->rep_high, src->rep_low, src->half);
         } else if (mode == midgard_reg_mode_32) {
@@ -504,15 +504,15 @@ update_dest(unsigned reg)
 }
 
 static void
-print_dest(FILE *fp, unsigned reg, midgard_reg_mode mode, midgard_dest_override override)
+print_dest(FILE *fp, unsigned reg, midgard_reg_mode mode, midgard_shrink_mode shrink_mode)
 {
-        /* Depending on the mode and override, we determine the type of
-         * destination addressed. Absent an override, we address just the
+        /* Depending on the lane width and shrink mode, we determine the type of
+         * destination addressed. Absent a shrink mode, we address just the
          * type of the operation itself */
 
         unsigned bits = bits_for_mode(mode);
 
-        if (override != midgard_dest_override_none)
+        if (shrink_mode != midgard_shrink_mode_none)
                 bits /= 2;
 
         update_dest(reg);
@@ -520,7 +520,7 @@ print_dest(FILE *fp, unsigned reg, midgard_reg_mode mode, midgard_dest_override 
 }
 
 static void
-print_mask_vec16(FILE *fp, uint8_t mask, midgard_dest_override override)
+print_mask_vec16(FILE *fp, uint8_t mask, midgard_shrink_mode shrink_mode)
 {
         fprintf(fp, ".");
 
@@ -540,16 +540,16 @@ print_mask_vec16(FILE *fp, uint8_t mask, midgard_dest_override override)
  * the mask to make it obvious what happened */
 
 static void
-print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_dest_override override)
+print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_shrink_mode shrink_mode)
 {
         if (bits == 8) {
-                print_mask_vec16(fp, mask, override);
+                print_mask_vec16(fp, mask, shrink_mode);
                 return;
         }
 
         /* Skip 'complete' masks */
 
-        if (override == midgard_dest_override_none)
+        if (shrink_mode == midgard_shrink_mode_none)
                 if (bits >= 32 && mask == 0xFF) return;
 
         fprintf(fp, ".");
@@ -558,13 +558,13 @@ print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_dest_override override
         bool uppercase = bits > 32;
         bool tripped = false;
 
-        /* To apply an upper destination override, we "shift" the alphabet.
-         * E.g. with an upper override on 32-bit, instead of xyzw, print efgh.
+        /* To apply an upper destination shrink_mode, we "shift" the alphabet.
+         * E.g. with an upper shrink_mode on 32-bit, instead of xyzw, print efgh.
          * For upper 16-bit, instead of xyzwefgh, print ijklmnop */
 
         const char *alphabet = components;
 
-        if (override == midgard_dest_override_upper)
+        if (shrink_mode == midgard_shrink_mode_upper)
                 alphabet += (128 / bits);
 
         for (unsigned i = 0; i < 8; i += skip) {
@@ -621,7 +621,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
         midgard_reg_mode mode = alu_field->reg_mode;
-        unsigned override = alu_field->dest_override;
+        unsigned shrink_mode = alu_field->shrink_mode;
 
         /* For now, prefix instruction names with their unit, until we
          * understand how this works on a deeper level */
@@ -631,7 +631,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         /* Postfix with the size to disambiguate if necessary */
         char postfix = prefix_for_bits(bits_for_mode(mode));
-        bool size_ambiguous = override != midgard_dest_override_none;
+        bool size_ambiguous = shrink_mode != midgard_shrink_mode_none;
 
         if (size_ambiguous)
                 fprintf(fp, "%c", postfix ? postfix : 'r');
@@ -646,14 +646,14 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         uint8_t mask = alu_field->mask;
 
         /* First, print the destination */
-        print_dest(fp, reg_info->out_reg, mode, alu_field->dest_override);
+        print_dest(fp, reg_info->out_reg, mode, shrink_mode);
 
-        if (override != midgard_dest_override_none) {
-                bool modeable = (mode != midgard_reg_mode_8);
-                bool known = override != 0x3; /* Unused value */
+        if (shrink_mode != midgard_shrink_mode_none) {
+                bool shrinkable = (mode != midgard_reg_mode_8);
+                bool known = shrink_mode != 0x3; /* Unused value */
 
-                if (!(modeable && known))
-                        fprintf(fp, "/* do%u */ ", override);
+                if (!(shrinkable && known))
+                        fprintf(fp, "/* do%u */ ", shrink_mode);
         }
 
         /* Instructions like fdot4 do *not* replicate, ensure the
@@ -667,7 +667,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                 if (num_comp != 1)
                         fprintf(fp, "/* err too many components */");
         }
-        print_mask(fp, mask, bits_for_mode(mode), override);
+        print_mask(fp, mask, bits_for_mode(mode), shrink_mode);
 
         fprintf(fp, ", ");
 
@@ -676,7 +676,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         if (reg_info->src1_reg == 26)
                 print_vector_constants(fp, alu_field->src1, consts, alu_field);
         else
-                print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg, override, is_int);
+                print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg, shrink_mode, is_int);
 
         fprintf(fp, ", ");
 
@@ -687,7 +687,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                 print_vector_constants(fp, alu_field->src2, consts, alu_field);
         } else {
                 print_vector_src(fp, alu_field->src2, mode,
-                                 reg_info->src2_reg, override, is_int);
+                                 reg_info->src2_reg, shrink_mode, is_int);
         }
 
         midg_stats.instruction_count++;

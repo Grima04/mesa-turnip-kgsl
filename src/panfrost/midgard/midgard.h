@@ -228,10 +228,10 @@ typedef enum {
 } midgard_reg_mode;
 
 typedef enum {
-        midgard_dest_override_lower = 0,
-        midgard_dest_override_upper = 1,
-        midgard_dest_override_none = 2
-} midgard_dest_override;
+        midgard_shrink_mode_lower = 0,
+        midgard_shrink_mode_upper = 1,
+        midgard_shrink_mode_none  = 2
+} midgard_shrink_mode;
 
 typedef enum {
         midgard_int_sign_extend = 0,
@@ -267,7 +267,7 @@ __attribute__((__packed__))
         midgard_reg_mode reg_mode   :  2;
         unsigned src1 : 13;
         unsigned src2 : 13;
-        midgard_dest_override dest_override : 2;
+        midgard_shrink_mode shrink_mode : 2;
         unsigned outmod               : 2;
         unsigned mask                           : 8;
 }
