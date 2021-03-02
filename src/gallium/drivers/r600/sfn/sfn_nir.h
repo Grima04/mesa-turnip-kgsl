@@ -136,6 +136,7 @@ r600_imm_ivec3(nir_builder *build, int x, int y, int z)
 
 bool r600_lower_tess_io(nir_shader *shader, enum pipe_prim_type prim_type);
 bool r600_append_tcs_TF_emission(nir_shader *shader, enum pipe_prim_type prim_type);
+bool r600_lower_tess_coord(nir_shader *sh, enum pipe_prim_type prim_type);
 
 #ifdef __cplusplus
 extern "C" {

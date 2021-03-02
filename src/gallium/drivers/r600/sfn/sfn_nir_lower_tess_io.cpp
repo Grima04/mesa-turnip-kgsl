@@ -462,3 +462,36 @@ bool r600_append_tcs_TF_emission(nir_shader *shader, enum pipe_prim_type prim_ty
 
    return true;
 }
+
+static bool
+r600_lower_tess_coord_filter(const nir_instr *instr, UNUSED const void *_options)
+{
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   auto intr = nir_instr_as_intrinsic(instr);
+   return intr->intrinsic == nir_intrinsic_load_tess_coord;
+}
+
+static nir_ssa_def *
+r600_lower_tess_coord_impl(nir_builder *b, nir_instr *instr, void *_options)
+{
+   pipe_prim_type prim_type = *(pipe_prim_type *)_options;
+
+   auto tc_xy = nir_load_tess_coord_r600(b);
+
+   auto tc_x = nir_channel(b, tc_xy, 0);
+   auto tc_y = nir_channel(b, tc_xy, 1);
+
+   if (prim_type == PIPE_PRIM_TRIANGLES)
+      return nir_vec3(b, tc_x, tc_y, nir_fsub(b, nir_imm_float(b, 1.0),
+                                              nir_fadd(b, tc_x, tc_y)));
+   else
+      return nir_vec3(b, tc_x, tc_y, nir_imm_float(b, 0.0));
+}
+
+
+bool r600_lower_tess_coord(nir_shader *sh, enum pipe_prim_type prim_type)
+{
+   return nir_shader_lower_instructions(sh, r600_lower_tess_coord_filter,
+                                        r600_lower_tess_coord_impl, &prim_type);
+}

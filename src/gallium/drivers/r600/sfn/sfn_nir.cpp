@@ -962,6 +962,10 @@ int r600_shader_from_nir(struct r600_context *rctx,
       NIR_PASS_V(sh, r600_append_tcs_TF_emission,
                  (pipe_prim_type)key->tcs.prim_mode);
 
+   if (sh->info.stage == MESA_SHADER_TESS_EVAL)
+      NIR_PASS_V(sh, r600_lower_tess_coord,
+                 static_cast<pipe_prim_type>(sh->info.tess.primitive_mode));
+
    NIR_PASS_V(sh, nir_lower_ubo_vec4);
    if (lower_64bit)
       NIR_PASS_V(sh, r600::r600_nir_64_to_vec2);
