@@ -468,6 +468,42 @@ zink_draw_vbo(struct pipe_context *pctx,
                                   ctx->stencil_ref.ref_value[0]);
    }
 
+   if (screen->info.have_EXT_extended_dynamic_state) {
+      screen->vk_CmdSetDepthBoundsTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_bounds_test);
+      if (dsa_state->hw_state.depth_bounds_test)
+         vkCmdSetDepthBounds(batch->state->cmdbuf,
+                             dsa_state->hw_state.min_depth_bounds,
+                             dsa_state->hw_state.max_depth_bounds);
+      screen->vk_CmdSetDepthTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_test);
+      if (dsa_state->hw_state.depth_test)
+         screen->vk_CmdSetDepthCompareOpEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_compare_op);
+      screen->vk_CmdSetDepthWriteEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.depth_write);
+      screen->vk_CmdSetStencilTestEnableEXT(batch->state->cmdbuf, dsa_state->hw_state.stencil_test);
+      if (dsa_state->hw_state.stencil_test) {
+         screen->vk_CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT,
+                                       dsa_state->hw_state.stencil_front.failOp,
+                                       dsa_state->hw_state.stencil_front.passOp,
+                                       dsa_state->hw_state.stencil_front.depthFailOp,
+                                       dsa_state->hw_state.stencil_front.compareOp);
+         screen->vk_CmdSetStencilOpEXT(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT,
+                                       dsa_state->hw_state.stencil_back.failOp,
+                                       dsa_state->hw_state.stencil_back.passOp,
+                                       dsa_state->hw_state.stencil_back.depthFailOp,
+                                       dsa_state->hw_state.stencil_back.compareOp);
+      }
+      if (dsa_state->base.stencil[0].enabled) {
+         if (dsa_state->base.stencil[1].enabled) {
+            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.writeMask);
+            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.writeMask);
+            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_BIT, dsa_state->hw_state.stencil_front.compareMask);
+            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_BACK_BIT, dsa_state->hw_state.stencil_back.compareMask);
+         } else {
+            vkCmdSetStencilWriteMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.writeMask);
+            vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.compareMask);
+         }
+      }
+   }
+
    if (depth_bias)
       vkCmdSetDepthBias(batch->state->cmdbuf, rast_state->offset_units, rast_state->offset_clamp, rast_state->offset_scale);
    else

@@ -371,7 +371,11 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
 static uint32_t
 hash_gfx_pipeline_state(const void *key)
 {
-   return _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
+   const struct zink_gfx_pipeline_state *state = key;
+   uint32_t hash = _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
+   if (state->have_EXT_extended_dynamic_state)
+      return hash;
+   return XXH32(&state->depth_stencil_alpha_state, sizeof(void*), hash);
 }
 
 static bool
@@ -391,6 +395,9 @@ equals_gfx_pipeline_state(const void *a, const void *b)
          if (sa->vertex_strides[idx_a] != sb->vertex_strides[idx_b])
             return false;
       }
+      if (!!sa->depth_stencil_alpha_state != !!sb->depth_stencil_alpha_state ||
+          (sa && sb && memcmp(sa->depth_stencil_alpha_state, sb->depth_stencil_alpha_state, sizeof(struct zink_depth_stencil_alpha_hw_state))))
+         return false;
    }
    return !memcmp(sa->modules, sb->modules, sizeof(sa->modules)) &&
           !memcmp(a, b, offsetof(struct zink_gfx_pipeline_state, hash));

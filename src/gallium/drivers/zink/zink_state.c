@@ -391,7 +391,7 @@ zink_bind_depth_stencil_alpha_state(struct pipe_context *pctx, void *cso)
       struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
       if (state->depth_stencil_alpha_state != &ctx->dsa_state->hw_state) {
          state->depth_stencil_alpha_state = &ctx->dsa_state->hw_state;
-         state->dirty = true;
+         state->dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
       }
    }
 }

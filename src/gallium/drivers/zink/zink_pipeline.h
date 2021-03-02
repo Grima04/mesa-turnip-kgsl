@@ -45,8 +45,6 @@ struct zink_gfx_pipeline_state {
 
    struct zink_rasterizer_hw_state *rast_state;
 
-   struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state;
-
    VkSampleMask sample_mask;
    uint8_t rast_samples;
    uint8_t vertices_per_patch;
@@ -59,6 +57,8 @@ struct zink_gfx_pipeline_state {
     * Members after this point are not included in pipeline state hash key */
    uint32_t hash;
    bool dirty;
+
+   struct zink_depth_stencil_alpha_hw_state *depth_stencil_alpha_state; //non-dynamic state
 
    VkShaderModule modules[PIPE_SHADER_TYPES - 1];
    uint32_t module_hash;

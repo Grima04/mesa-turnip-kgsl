@@ -134,6 +134,12 @@ struct zink_screen {
 
    PFN_vkCmdSetViewportWithCountEXT vk_CmdSetViewportWithCountEXT;
    PFN_vkCmdSetScissorWithCountEXT vk_CmdSetScissorWithCountEXT;
+   PFN_vkCmdSetDepthBoundsTestEnableEXT vk_CmdSetDepthBoundsTestEnableEXT;
+   PFN_vkCmdSetDepthCompareOpEXT vk_CmdSetDepthCompareOpEXT;
+   PFN_vkCmdSetDepthTestEnableEXT vk_CmdSetDepthTestEnableEXT;
+   PFN_vkCmdSetDepthWriteEnableEXT vk_CmdSetDepthWriteEnableEXT;
+   PFN_vkCmdSetStencilTestEnableEXT vk_CmdSetStencilTestEnableEXT;
+   PFN_vkCmdSetStencilOpEXT vk_CmdSetStencilOpEXT;
    PFN_vkCmdBindVertexBuffers2EXT vk_CmdBindVertexBuffers2EXT;
 
    PFN_vkCreateDebugUtilsMessengerEXT vk_CreateDebugUtilsMessengerEXT;

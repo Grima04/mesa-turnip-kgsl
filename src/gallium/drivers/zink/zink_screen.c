@@ -1206,6 +1206,12 @@ load_device_extensions(struct zink_screen *screen)
    if (screen->info.have_EXT_extended_dynamic_state) {
       GET_PROC_ADDR(CmdSetViewportWithCountEXT);
       GET_PROC_ADDR(CmdSetScissorWithCountEXT);
+      GET_PROC_ADDR(CmdSetDepthBoundsTestEnableEXT);
+      GET_PROC_ADDR(CmdSetDepthCompareOpEXT);
+      GET_PROC_ADDR(CmdSetDepthTestEnableEXT);
+      GET_PROC_ADDR(CmdSetDepthWriteEnableEXT);
+      GET_PROC_ADDR(CmdSetStencilOpEXT);
+      GET_PROC_ADDR(CmdSetStencilTestEnableEXT);
       GET_PROC_ADDR(CmdBindVertexBuffers2EXT);
    }
 
