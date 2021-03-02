@@ -708,6 +708,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
         midgard_reg_mode mode = alu_field->reg_mode;
         unsigned shrink_mode = alu_field->shrink_mode;
+        bool is_int = midgard_is_integer_op(alu_field->op);
 
         /* For now, prefix instruction names with their unit, until we
          * understand how this works on a deeper level */
@@ -721,6 +722,9 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         if (size_ambiguous)
                 fprintf(fp, "%c", postfix ? postfix : 'r');
+
+        /* Print lane width */
+        fprintf(fp, ".%c%d", is_int ? 'i' : 'f', bits_for_mode(mode));
 
         fprintf(fp, " ");
 
@@ -753,7 +757,6 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         /* Print output modifiers */
 
-        bool is_int = midgard_is_integer_op(alu_field->op);
         print_alu_outmod(fp, alu_field->outmod, is_int, shrink_mode != midgard_shrink_mode_none);
 
         /* Mask out unused components based on the writemask, but don't mask out
@@ -823,19 +826,24 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 {
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_scalar_alu *alu_field = (midgard_scalar_alu *) words;
+        bool is_int = midgard_is_integer_op(alu_field->op);
+        bool full = alu_field->output_full;
 
         if (alu_field->unknown)
                 fprintf(fp, "scalar ALU unknown bit set\n");
 
         fprintf(fp, "%s.", name);
         print_alu_opcode(fp, alu_field->op);
+
+        /* Print lane width, in this case the lane width is always 32-bit, but
+         * we print it anyway to make it consistent with the other instructions. */
+        fprintf(fp, ".%c32", is_int ? 'i' : 'f');
+
         fprintf(fp, " ");
 
-        bool full = alu_field->output_full;
         update_dest(reg_info->out_reg);
         print_reg(fp, reg_info->out_reg, full ? 32 : 16);
         unsigned c = alu_field->output_component;
-        bool is_int = midgard_is_integer_op(alu_field->op);
 
         if (full) {
                 assert((c & 1) == 0);
