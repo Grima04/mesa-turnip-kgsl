@@ -504,7 +504,7 @@ si_get_thread_trace(struct si_context *sctx,
 
       struct ac_thread_trace_se thread_trace_se = {0};
 
-      if (!ac_is_thread_trace_complete(&sctx->screen->info, info)) {
+      if (!ac_is_thread_trace_complete(&sctx->screen->info, sctx->thread_trace, info)) {
          uint32_t expected_size =
             ac_get_expected_buffer_size(&sctx->screen->info, info);
          uint32_t available_size = (info->cur_offset * 32) / 1024;

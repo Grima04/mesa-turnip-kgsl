@@ -63,14 +63,20 @@ ac_thread_trace_get_data_va(const struct radeon_info *rad_info,
 
 bool
 ac_is_thread_trace_complete(struct radeon_info *rad_info,
+                            const struct ac_thread_trace_data *data,
                             const struct ac_thread_trace_info *info)
 {
    if (rad_info->chip_class >= GFX10) {
-      /* GFX10 doesn't have THREAD_TRACE_CNTR but it reports the
-       * number of dropped bytes for all SEs via
-       * THREAD_TRACE_DROPPED_CNTR.
+      /* GFX10 doesn't have THREAD_TRACE_CNTR but it reports the number of
+       * dropped bytes per SE via THREAD_TRACE_DROPPED_CNTR. Though, this
+       * doesn't seem reliable because it might still report non-zero even if
+       * the SQTT buffer isn't full.
+       *
+       * The solution here is to compare the number of bytes written by the hw
+       * (in units of 32 bytes) to the SQTT buffer size. If it's equal, that
+       * means that the buffer is full and should be resized.
        */
-      return info->gfx10_dropped_cntr == 0;
+      return !(info->cur_offset * 32 == data->buffer_size - 32);
    }
 
    /* Otherwise, compare the current thread trace offset with the number
