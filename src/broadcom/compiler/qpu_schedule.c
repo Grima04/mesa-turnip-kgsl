@@ -892,11 +892,11 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
 
         list_for_each_entry(struct schedule_node, n, &scoreboard->dag->heads,
                             dag.link) {
-                /* If we are scheduling a pipelined smooth varying sequence then
+                /* If we are scheduling a pipelined varying sequence then
                  * we want to pick up the next instruction in the sequence.
                  */
                 if (scoreboard->ldvary_pipelining &&
-                    !n->inst->ldvary_pipelining) {
+                    !n->inst->is_ldvary_sequence) {
                         continue;
                 }
 
@@ -1001,7 +1001,7 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                          * pipelining the new sequence into the previous one.
                          */
                         if (scoreboard->ldvary_pipelining && inst->sig.ldvary) {
-                                assert(n->inst->ldvary_pipelining);
+                                assert(n->inst->is_ldvary_sequence);
                                 scoreboard->fixup_ldvary = true;
                                 return n;
                         }
@@ -1066,16 +1066,15 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
          * continue the sequence.
          */
         if (scoreboard->ldvary_pipelining && !prev_inst && !chosen) {
-                bool prev_ldvary_pipelining = scoreboard->ldvary_pipelining;
                 scoreboard->ldvary_pipelining = false;
-                chosen = choose_instruction_to_schedule(devinfo, scoreboard, prev_inst);
-                if (!chosen)
-                        scoreboard->ldvary_pipelining = prev_ldvary_pipelining;
+                chosen = choose_instruction_to_schedule(devinfo, scoreboard,
+                                                        prev_inst);
+                scoreboard->ldvary_pipelining = !chosen;
         } else if (chosen) {
                 if (scoreboard->ldvary_pipelining) {
-                        assert(chosen->inst->ldvary_pipelining);
-                        if (chosen->inst->ldvary_pipelining_end)
-                                scoreboard->ldvary_pipelining = false;
+                        assert(chosen->inst->is_ldvary_sequence);
+                        scoreboard->ldvary_pipelining =
+                                !chosen->inst->ldvary_pipelining_end;
                 } else if (chosen->inst->ldvary_pipelining_start) {
                         assert(chosen->inst->qpu.sig.ldvary);
                         scoreboard->ldvary_pipelining = true;
@@ -1732,8 +1731,9 @@ schedule_instructions(struct v3d_compile *c,
                                         if (fixup_pipelined_ldvary(c, scoreboard, block, inst)) {
                                                 /* Flag the ldvary as scheduled
                                                  * now so we can try to merge the
-                                                 * follow-up fmul into the current
-                                                 * instruction.
+                                                 * follow-up instruction in the
+                                                 * the ldvary sequence into the
+                                                 * current instruction.
                                                  */
                                                 mark_instruction_scheduled(
                                                         devinfo, scoreboard->dag,

@@ -927,7 +927,7 @@ ldvary_sequence_inst(struct v3d_compile *c, struct qreg result)
         struct qinst *producer =
                    (struct qinst *) c->cur_block->instructions.prev;
         assert(producer);
-        producer->ldvary_pipelining = true;
+        producer->is_ldvary_sequence = true;
         c->ldvary_sequence_end_inst = producer;
         return result;
 }
@@ -936,8 +936,8 @@ static void
 track_ldvary_pipelining(struct v3d_compile *c, struct qinst *ldvary)
 {
         if (ldvary) {
+                ldvary->is_ldvary_sequence = true;
                 c->ldvary_sequence_length++;
-                ldvary->ldvary_pipelining = true;
                 if (c->ldvary_sequence_length == 1) {
                         ldvary->ldvary_pipelining_start = true;
                         c->ldvary_sequence_start_inst = ldvary;
@@ -976,7 +976,7 @@ emit_flat_varying(struct v3d_compile *c,
 }
 
 static void
-break_smooth_varying_sequence(struct v3d_compile *c)
+varying_sequence_end(struct v3d_compile *c)
 {
         if (!c->ldvary_sequence_start_inst) {
                 assert(!c->ldvary_sequence_end_inst);
@@ -988,7 +988,7 @@ break_smooth_varying_sequence(struct v3d_compile *c)
         assert(c->ldvary_sequence_end_inst);
         assert(c->ldvary_sequence_start_inst != c->ldvary_sequence_end_inst);
 
-        /* We need at least two smooth ldvary sequences to do some pipelining */
+        /* We need at least two ldvary sequences to do some pipelining */
         if (c->ldvary_sequence_length == 1)
                 c->ldvary_sequence_start_inst->ldvary_pipelining_start = false;
 
@@ -2100,7 +2100,7 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                 }
         }
 
-        break_smooth_varying_sequence(c);
+        varying_sequence_end(c);
 }
 
 static void

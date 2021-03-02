@@ -163,16 +163,14 @@ struct qinst {
          */
         int uniform;
 
-        /* Set if this instruction participates in a pipelinable sequence of
-         * smooth varyings.
-         */
-        bool ldvary_pipelining;
-        /* Set if this is the ldvary instruction starting a pipelinable
-         * sequence of smooth varyings.
+        /* Set if this instruction participates in a varying setup. */
+        bool is_ldvary_sequence;
+        /* Set if this is the ldvary instruction starting a sequence of
+         * varyings we want to pipeline.
          */
         bool ldvary_pipelining_start;
-        /* Set if this is the fadd instruction ending a pipelinable
-         * sequence of smooth varyings.
+        /* Set if this is the last instruction involved with a pipelineable
+         * varying sequence.
          */
         bool ldvary_pipelining_end;
 };
@@ -782,7 +780,7 @@ struct v3d_compile {
         uint32_t program_id;
         uint32_t variant_id;
 
-        /* Used to track pipelinable sequences of smooth varyings */
+        /* Used to track pipelinable sequences of varyings */
         struct qinst *ldvary_sequence_start_inst;
         struct qinst *ldvary_sequence_end_inst;
         uint32_t ldvary_sequence_length;
