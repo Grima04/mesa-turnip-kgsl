@@ -411,13 +411,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-03-02-lock-deqp-runner"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-03-04-vkglcts-1.2.5.2"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-03-02-lock-deqp-runner"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-03-04-vkglcts-1.2.5.2"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -459,7 +459,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2021-03-02-lock-deqp-runner"
+    MESA_IMAGE_TAG: &arm64_test "2021-03-04-vkglcts-1.2.5.2"
 
 .use-arm64_test:
   extends:
@@ -476,7 +476,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2021-03-02-lock-deqp-runner"
+    MESA_IMAGE_TAG: &armhf_test "2021-03-04-vkglcts-1.2.5.2"
 
 .use-armhf_test:
   extends:
