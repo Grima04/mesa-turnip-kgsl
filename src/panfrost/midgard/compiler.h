@@ -537,7 +537,7 @@ v_mov(unsigned src, unsigned dest)
                 .dest = dest,
                 .dest_type = nir_type_uint32,
                 .op = midgard_alu_op_imov,
-                .outmod = midgard_outmod_int_wrap
+                .outmod = midgard_outmod_keeplo
         };
 
         return ins;

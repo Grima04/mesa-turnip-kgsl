@@ -566,31 +566,31 @@ mir_accept_dest_mod(compiler_context *ctx, nir_dest **dest, nir_op op)
         return false;
 }
 
-/* Look for floating point mods. We have the mods fsat, fsat_signed,
- * and fpos. We also have the relations (note 3 * 2 = 6 cases):
+/* Look for floating point mods. We have the mods clamp_m1_1, clamp_0_1,
+ * and clamp_0_inf. We also have the relations (note 3 * 2 = 6 cases):
  *
- * fsat_signed(fpos(x)) = fsat(x)
- * fsat_signed(fsat(x)) = fsat(x)
- * fpos(fsat_signed(x)) = fsat(x)
- * fpos(fsat(x)) = fsat(x)
- * fsat(fsat_signed(x)) = fsat(x)
- * fsat(fpos(x)) = fsat(x)
+ * clamp_0_1(clamp_0_inf(x))  = clamp_m1_1(x)
+ * clamp_0_1(clamp_m1_1(x))   = clamp_m1_1(x)
+ * clamp_0_inf(clamp_0_1(x))  = clamp_m1_1(x)
+ * clamp_0_inf(clamp_m1_1(x)) = clamp_m1_1(x)
+ * clamp_m1_1(clamp_0_1(x))   = clamp_m1_1(x)
+ * clamp_m1_1(clamp_0_inf(x)) = clamp_m1_1(x)
  *
  * So by cases any composition of output modifiers is equivalent to
- * fsat alone.
+ * clamp_m1_1 alone.
  */
 static unsigned
 mir_determine_float_outmod(compiler_context *ctx, nir_dest **dest, unsigned prior_outmod)
 {
-        bool fpos = mir_accept_dest_mod(ctx, dest, nir_op_fclamp_pos);
-        bool fsat = mir_accept_dest_mod(ctx, dest, nir_op_fsat);
-        bool ssat = mir_accept_dest_mod(ctx, dest, nir_op_fsat_signed);
+        bool clamp_0_inf = mir_accept_dest_mod(ctx, dest, nir_op_fclamp_pos);
+        bool clamp_0_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat);
+        bool clamp_m1_1 = mir_accept_dest_mod(ctx, dest, nir_op_fsat_signed);
         bool prior = (prior_outmod != midgard_outmod_none);
-        int count = (int) prior + (int) fpos + (int) ssat + (int) fsat;
+        int count = (int) prior + (int) clamp_0_inf + (int) clamp_0_1 + (int) clamp_m1_1;
 
-        return ((count > 1) || fsat) ? midgard_outmod_sat :
-                                fpos ? midgard_outmod_pos :
-                                ssat ? midgard_outmod_sat_signed :
+        return ((count > 1) || clamp_0_1) ?  midgard_outmod_clamp_0_1 :
+                                clamp_0_inf ? midgard_outmod_clamp_0_inf :
+                                clamp_m1_1 ?   midgard_outmod_clamp_m1_1 :
                                 prior_outmod;
 }
 
@@ -927,15 +927,15 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
         bool is_int = midgard_is_integer_op(op);
 
         if (instr->op == nir_op_umul_high || instr->op == nir_op_imul_high) {
-                outmod = midgard_outmod_int_high;
+                outmod = midgard_outmod_keephi;
         } else if (midgard_is_integer_out_op(op)) {
-                outmod = midgard_outmod_int_wrap;
+                outmod = midgard_outmod_keeplo;
         } else if (instr->op == nir_op_fsat) {
-                outmod = midgard_outmod_sat;
+                outmod = midgard_outmod_clamp_0_1;
         } else if (instr->op == nir_op_fsat_signed) {
-                outmod = midgard_outmod_sat_signed;
+                outmod = midgard_outmod_clamp_m1_1;
         } else if (instr->op == nir_op_fclamp_pos) {
-                outmod = midgard_outmod_pos;
+                outmod = midgard_outmod_clamp_0_inf;
         }
 
         /* Fetch unit, quirks, etc information */
@@ -2558,7 +2558,7 @@ max_bitsize_for_alu(midgard_instruction *ins)
 
         /* High implies computing at a higher bitsize, e.g umul_high of 32-bit
          * requires computing at 64-bit */
-        if (midgard_is_integer_out_op(ins->op) && ins->outmod == midgard_outmod_int_high) {
+        if (midgard_is_integer_out_op(ins->op) && ins->outmod == midgard_outmod_keephi) {
                 max_bitsize *= 2;
                 assert(max_bitsize <= 64);
         }

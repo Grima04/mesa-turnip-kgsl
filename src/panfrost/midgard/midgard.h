@@ -207,17 +207,19 @@ typedef enum {
 } midgard_alu_op;
 
 typedef enum {
-        midgard_outmod_none = 0,
-        midgard_outmod_pos  = 1, /* max(x, 0.0) */
-        midgard_outmod_sat_signed  = 2, /* clamp(x, -1.0, 1.0) */
-        midgard_outmod_sat  = 3 /* clamp(x, 0.0, 1.0) */
+        midgard_outmod_none        = 0,
+        midgard_outmod_clamp_0_inf = 1, /* max(x, 0.0), NaNs become +0.0 */
+        midgard_outmod_clamp_m1_1  = 2, /* clamp(x, -1.0, 1.0), NaNs become -1.0 */
+        midgard_outmod_clamp_0_1   = 3  /* clamp(x, 0.0, 1.0), NaNs become +0.0 */
 } midgard_outmod_float;
 
+/* These are applied to the resulting value that's going to be stored in the dest reg.
+ * This should be set to midgard_outmod_keeplo when shrink_mode is midgard_shrink_mode_none. */
 typedef enum {
-        midgard_outmod_int_saturate = 0,
-        midgard_outmod_uint_saturate = 1,
-        midgard_outmod_int_wrap = 2,
-        midgard_outmod_int_high = 3, /* Overflowed portion */
+        midgard_outmod_ssat   = 0,
+        midgard_outmod_usat   = 1,
+        midgard_outmod_keeplo = 2, /* Keep low half */
+        midgard_outmod_keephi = 3, /* Keep high half */
 } midgard_outmod_int;
 
 typedef enum {

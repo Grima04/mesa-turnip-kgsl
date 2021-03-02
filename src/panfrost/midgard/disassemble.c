@@ -157,16 +157,16 @@ print_reg(FILE *fp, unsigned reg, unsigned bits)
 
 static char *outmod_names_float[4] = {
         "",
-        ".pos",
-        ".sat_signed",
-        ".sat"
+        ".clamp_0_inf",
+        ".clamp_m1_1",
+        ".clamp_0_1"
 };
 
 static char *outmod_names_int[4] = {
-        ".isat",
+        ".ssat",
         ".usat",
-        "",
-        ".hi"
+        ".keeplo",
+        ".keephi"
 };
 
 static char *srcmod_names_int[4] = {
@@ -180,7 +180,21 @@ static void
 print_outmod(FILE *fp, unsigned outmod, bool is_int)
 {
         fprintf(fp, "%s", is_int ? outmod_names_int[outmod] :
-               outmod_names_float[outmod]);
+                outmod_names_float[outmod]);
+}
+
+static void
+print_alu_outmod(FILE *fp, unsigned outmod, bool is_int, bool half)
+{
+        if (is_int && !half) {
+                assert(outmod == midgard_outmod_keeplo);
+                return;
+        }
+
+        if (!is_int && half)
+                fprintf(fp, ".shrink");
+
+        print_outmod(fp, outmod, is_int);
 }
 
 static void
@@ -636,10 +650,6 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         if (size_ambiguous)
                 fprintf(fp, "%c", postfix ? postfix : 'r');
 
-        /* Print the outmod, if there is one */
-        print_outmod(fp, alu_field->outmod,
-                     midgard_is_integer_out_op(alu_field->op));
-
         fprintf(fp, " ");
 
         /* Mask denoting status of 8-lanes */
@@ -669,9 +679,12 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         }
         print_mask(fp, mask, bits_for_mode(mode), shrink_mode);
 
-        fprintf(fp, ", ");
+        /* Print output modifiers */
 
         bool is_int = midgard_is_integer_op(alu_field->op);
+        print_alu_outmod(fp, alu_field->outmod, is_int, shrink_mode != midgard_shrink_mode_none);
+
+        fprintf(fp, ", ");
 
         if (reg_info->src1_reg == 26)
                 print_vector_constants(fp, alu_field->src1, consts, alu_field);
@@ -738,8 +751,6 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         fprintf(fp, "%s.", name);
         print_alu_opcode(fp, alu_field->op);
-        print_outmod(fp, alu_field->outmod,
-                     midgard_is_integer_out_op(alu_field->op));
         fprintf(fp, " ");
 
         bool full = alu_field->output_full;
@@ -753,7 +764,11 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                 c >>= 1;
         }
 
-        fprintf(fp, ".%c, ", components[c]);
+        fprintf(fp, ".%c", components[c]);
+
+        print_alu_outmod(fp, alu_field->outmod, is_int, !full);
+
+        fprintf(fp, ", ");
 
         if (reg_info->src1_reg == 26)
                 print_scalar_constant(fp, alu_field->src1, consts, alu_field);
@@ -1430,13 +1445,15 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->out_of_order)
                 fprintf(fp, ".ooo%u", texture->out_of_order);
 
-        /* Output modifiers are always interpreted floatly */
-        print_outmod(fp, texture->outmod, false);
-
         fprintf(fp, " %sr%u", texture->out_full ? "" : "h",
                         out_reg_base + texture->out_reg_select);
         print_mask_4(fp, texture->mask, texture->out_upper);
         assert(!(texture->out_full && texture->out_upper));
+
+        /* Output modifiers are only valid for float texture operations */
+        if (texture->sampler_type == MALI_SAMPLER_FLOAT)
+                print_outmod(fp, texture->outmod, false);
+
         fprintf(fp, ", ");
 
         /* Depending on whether we read from textures directly or indirectly,
