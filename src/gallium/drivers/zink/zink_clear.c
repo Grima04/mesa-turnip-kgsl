@@ -310,9 +310,13 @@ out:
             for (int j = !zink_fb_clear_first_needs_explicit(color_clear); j < num_clears; j++) {
                struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(color_clear, j);
                struct zink_framebuffer_clear_data *zsclear = NULL;
-               if (zs_clear)
+               /* zs bits are both set here if those aspects should be cleared at some point */
+               unsigned clear_bits = to_clear & ~PIPE_CLEAR_DEPTHSTENCIL;
+               if (zs_clear) {
                   zsclear = zink_fb_clear_element(zs_clear, j);
-               zink_clear(&ctx->base, to_clear,
+                  clear_bits |= zsclear->zs.bits;
+               }
+               zink_clear(&ctx->base, clear_bits,
                           clear->has_scissor ? &clear->scissor : NULL,
                           &clear->color.color,
                           zsclear ? zsclear->zs.depth : 0,
@@ -321,7 +325,7 @@ out:
          } else {
             for (int j = !zink_fb_clear_first_needs_explicit(zs_clear); j < zink_fb_clear_count(zs_clear); j++) {
                struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(zs_clear, j);
-               zink_clear(&ctx->base, to_clear,
+               zink_clear(&ctx->base, clear->zs.bits,
                           clear->has_scissor ? &clear->scissor : NULL,
                           NULL,
                           clear->zs.depth,
