@@ -255,112 +255,6 @@ print_quad_word(FILE *fp, uint32_t *words, unsigned tabs)
 
 static const char components[16] = "xyzwefghijklmnop";
 
-/* Helper to print 4 chars of a swizzle */
-static void
-print_swizzle_helper(FILE *fp, unsigned swizzle, unsigned offset)
-{
-        for (unsigned i = 0; i < 4; ++i) {
-                unsigned c = (swizzle >> (i * 2)) & 3;
-                c += offset;
-                fprintf(fp, "%c", components[c]);
-        }
-}
-
-/* Helper to print 8 chars of a swizzle, duplicating over */
-static void
-print_swizzle_helper_8(FILE *fp, unsigned swizzle, bool upper)
-{
-        for (unsigned i = 0; i < 4; ++i) {
-                unsigned c = (swizzle >> (i * 2)) & 3;
-                c *= 2;
-                c += upper*8;
-                fprintf(fp, "%c%c", components[c], components[c+1]);
-        }
-}
-
-static void
-print_swizzle_vec16(FILE *fp, unsigned swizzle, bool rep_high, bool rep_low,
-                    midgard_shrink_mode shrink_mode)
-{
-        fprintf(fp, ".");
-
-        if (shrink_mode == midgard_shrink_mode_upper) {
-                if (rep_high)
-                        fprintf(fp, " /* rep_high */ ");
-                if (rep_low)
-                        fprintf(fp, " /* rep_low */ ");
-
-                if (!rep_high && rep_low)
-                        print_swizzle_helper_8(fp, swizzle, true);
-                else
-                        print_swizzle_helper_8(fp, swizzle, false);
-        } else {
-                print_swizzle_helper_8(fp, swizzle, rep_high & 1);
-                print_swizzle_helper_8(fp, swizzle, !(rep_low & 1));
-        }
-}
-
-static void
-print_swizzle_vec8(FILE *fp, unsigned swizzle, bool rep_high, bool rep_low, bool half)
-{
-        fprintf(fp, ".");
-
-        /* TODO: Is it possible to unify half/full? */
-
-        if (half) {
-                print_swizzle_helper(fp, swizzle, (rep_low * 8));
-                print_swizzle_helper(fp, swizzle, (rep_low * 8) + !rep_high * 4);
-        } else {
-                print_swizzle_helper(fp, swizzle, rep_high * 4);
-                print_swizzle_helper(fp, swizzle, !rep_low * 4);
-        }
-}
-
-static void
-print_swizzle_vec4(FILE *fp, unsigned swizzle, bool rep_high, bool rep_low, bool half)
-{
-        if (rep_high)
-                fprintf(fp, " /* rep_high */ ");
-
-        if (!half && rep_low)
-                fprintf(fp, " /* rep_low */ ");
-
-        if (swizzle == 0xE4 && !half) return; /* xyzw */
-
-        fprintf(fp, ".");
-        print_swizzle_helper(fp, swizzle, rep_low * 4);
-}
-static void
-print_swizzle_vec2(FILE *fp, unsigned swizzle, bool rep_high, bool rep_low, bool half)
-{
-        char *alphabet = "XY";
-
-        if (half) {
-                alphabet = rep_low ? "zw" : "xy";
-        } else if (rep_low)
-                fprintf(fp, " /* rep_low */ ");
-
-        if (rep_high)
-                fprintf(fp, " /* rep_high */ ");
-
-        if (swizzle == 0xE4 && !half) return; /* XY */
-
-        fprintf(fp, ".");
-
-        for (unsigned i = 0; i < 4; i += 2) {
-                unsigned a = (swizzle >> (i * 2)) & 3;
-                unsigned b = (swizzle >> ((i+1) * 2)) & 3;
-
-                /* Normally we're adjacent, but if there's an issue, don't make
-                 * it ambiguous */
-
-                if (b == (a + 1))
-                        fprintf(fp, "%c", alphabet[a >> 1]);
-                else
-                        fprintf(fp, "[%c%c]", components[a], components[b]);
-        }
-}
-
 static int
 bits_for_mode(midgard_reg_mode mode)
 {
@@ -388,6 +282,138 @@ bits_for_mode_halved(midgard_reg_mode mode, bool half)
                 bits >>= 1;
 
         return bits;
+}
+
+static void
+print_vec_selectors_64(FILE *fp, unsigned swizzle,
+                       midgard_reg_mode reg_mode,
+                       midgard_src_expand_mode expand_mode,
+                       unsigned selector_offset, uint8_t mask)
+{
+        bool expands = INPUT_EXPANDS(expand_mode);
+
+        unsigned comp_skip = expands ? 1 : 2;
+        unsigned mask_bit = 0;
+        for (unsigned i = selector_offset; i < 4; i += comp_skip, mask_bit += 4) {
+                if (!(mask & (1 << mask_bit))) continue;
+
+                unsigned a = (swizzle >> (i * 2)) & 3;
+
+                if (INPUT_EXPANDS(expand_mode)) {
+                        fprintf(fp, "%c", components[a]);
+                        continue;
+                }
+
+                unsigned b = (swizzle >> ((i+1) * 2)) & 3;
+
+                /* Normally we're adjacent, but if there's an issue,
+                 * don't make it ambiguous */
+
+                if (b == a + 1)
+                        fprintf(fp, "%c", a >> 1 ? 'Y' : 'X');
+                else
+                        fprintf(fp, "[%c%c]", components[a], components[b]);
+        }
+}
+
+static void
+print_vec_selectors(FILE *fp, unsigned swizzle,
+                    midgard_reg_mode reg_mode,
+                    unsigned selector_offset, uint8_t mask,
+                    unsigned *mask_offset)
+{
+        assert(reg_mode != midgard_reg_mode_64);
+
+        unsigned mask_skip = MAX2(bits_for_mode(reg_mode) / 16, 1);
+
+        bool is_vec16 = reg_mode == midgard_reg_mode_8;
+
+        for (unsigned i = 0; i < 4; i++, *mask_offset += mask_skip) {
+                if (!(mask & (1 << *mask_offset))) continue;
+
+                unsigned c = (swizzle >> (i * 2)) & 3;
+
+                /* Vec16 has two components per swizzle selector. */
+                if (is_vec16)
+                        c *= 2;
+
+                c += selector_offset;
+
+                fprintf(fp, "%c", components[c]);
+                if (is_vec16)
+                        fprintf(fp, "%c", components[c+1]);
+        }
+}
+
+static void
+print_vec_swizzle(FILE *fp, unsigned swizzle,
+                  midgard_src_expand_mode expand,
+                  midgard_reg_mode mode,
+                  uint8_t mask)
+{
+        unsigned bits = bits_for_mode_halved(mode, INPUT_EXPANDS(expand));
+
+        /* Swizzle selectors are divided in two halves that are always
+         * mirrored, the only difference is the starting component offset.
+         * The number represents an offset into the components[] array. */
+        unsigned first_half = 0;
+        unsigned second_half = (128 / bits) / 2; /* only used for 8 and 16-bit */
+
+        switch (expand) {
+        case midgard_src_passthrough:
+                if (swizzle == 0xE4) return; /* identity swizzle */
+                break;
+
+        case midgard_src_expand_low:
+                second_half /= 2;
+                break;
+
+        case midgard_src_expand_high:
+                first_half = second_half;
+                second_half += second_half / 2;
+                break;
+
+        /* The rest of the cases are only used for 8 and 16-bit */
+
+        case midgard_src_rep_low:
+                second_half = 0;
+                break;
+
+        case midgard_src_rep_high:
+                first_half = second_half;
+                break;
+
+        case midgard_src_swap:
+                first_half = second_half;
+                second_half = 0;
+                break;
+
+        case midgard_src_expand_low_swap:
+                first_half = second_half / 2;
+                second_half = 0;
+                break;
+
+        case midgard_src_expand_high_swap:
+                first_half = second_half + second_half / 2;
+                break;
+
+        default:
+                unreachable("Invalid expand mode");
+                break;
+        }
+
+        fprintf(fp, ".");
+
+        /* Vec2 are weird so we use a separate function to simplify things. */
+        if (mode == midgard_reg_mode_64) {
+                print_vec_selectors_64(fp, swizzle, mode, expand, first_half, mask);
+                return;
+        }
+
+        unsigned mask_offs = 0;
+        print_vec_selectors(fp, swizzle, mode, first_half, mask, &mask_offs);
+        if (mode == midgard_reg_mode_8 || mode == midgard_reg_mode_16)
+                print_vec_selectors(fp, swizzle, mode, second_half, mask, &mask_offs);
 }
 
 static void
@@ -518,34 +544,16 @@ print_srcmod(FILE *fp, bool is_int, bool expands, unsigned mod, bool scalar)
 static void
 print_vector_src(FILE *fp, unsigned src_binary,
                  midgard_reg_mode mode, unsigned reg,
-                 midgard_shrink_mode shrink_mode, bool is_int)
+                 midgard_shrink_mode shrink_mode,
+                 uint8_t src_mask, bool is_int)
 {
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
 
         validate_expand_mode(src->expand_mode, mode);
 
-        bool half = INPUT_EXPANDS(src->expand_mode);
+        print_reg(fp, reg, bits_for_mode_halved(mode, INPUT_EXPANDS(src->expand_mode)));
 
-        //register
-        unsigned bits = bits_for_mode_halved(mode, half);
-        print_reg(fp, reg, bits);
-
-        /* When the source was stepped down via `half`, rep_low means "higher
-         * half" and rep_high is never seen. When it's not native,
-         * rep_low/rep_high are for, well, replication */
-
-        bool rep_lo = src->expand_mode & 1;
-        bool rep_hi = src->expand_mode & (1 << 1);
-        if (mode == midgard_reg_mode_8) {
-                assert(!half);
-                print_swizzle_vec16(fp, src->swizzle, rep_hi, rep_lo, shrink_mode);
-        } else if (mode == midgard_reg_mode_16) {
-                print_swizzle_vec8(fp, src->swizzle, rep_hi, rep_lo, half);
-        } else if (mode == midgard_reg_mode_32) {
-                print_swizzle_vec4(fp, src->swizzle, rep_hi, rep_lo, half);
-        } else if (mode == midgard_reg_mode_64) {
-                print_swizzle_vec2(fp, src->swizzle, rep_hi, rep_lo, half);
-        }
+        print_vec_swizzle(fp, src->swizzle, src->expand_mode, mode, src_mask);
 
         print_srcmod(fp, is_int, INPUT_EXPANDS(src->expand_mode), src->mod, false);
 }
@@ -748,12 +756,19 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         bool is_int = midgard_is_integer_op(alu_field->op);
         print_alu_outmod(fp, alu_field->outmod, is_int, shrink_mode != midgard_shrink_mode_none);
 
+        /* Mask out unused components based on the writemask, but don't mask out
+         * components that are used for interlane instructions like fdot3. */
+        uint8_t src_mask =
+                rep ? expand_writemask(mask_of(rep), log2(128 / bits_for_mode(mode))) : mask;
+
         fprintf(fp, ", ");
 
         if (reg_info->src1_reg == 26)
                 print_vector_constants(fp, alu_field->src1, consts, alu_field);
-        else
-                print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg, shrink_mode, is_int);
+        else {
+                print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg,
+                                 shrink_mode, src_mask, is_int);
+        }
 
         fprintf(fp, ", ");
 
@@ -763,8 +778,8 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         } else if (reg_info->src2_reg == 26) {
                 print_vector_constants(fp, alu_field->src2, consts, alu_field);
         } else {
-                print_vector_src(fp, alu_field->src2, mode,
-                                 reg_info->src2_reg, shrink_mode, is_int);
+                print_vector_src(fp, alu_field->src2, mode, reg_info->src2_reg,
+                                 shrink_mode, src_mask, is_int);
         }
 
         midg_stats.instruction_count++;
@@ -1287,7 +1302,7 @@ print_load_store_instr(FILE *fp, uint64_t data,
 
         fprintf(fp, ", %u", address);
 
-        print_swizzle_vec4(fp, word->swizzle, false, false, false);
+        print_vec_swizzle(fp, word->swizzle, midgard_src_passthrough, midgard_reg_mode_32, 0xFF);
 
         fprintf(fp, ", ");
 
@@ -1548,15 +1563,13 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
                 update_stats(&midg_stats.sampler_count, texture->sampler_handle);
         }
 
-        print_swizzle_vec4(fp, texture->swizzle, false, false, false);
+        print_vec_swizzle(fp, texture->swizzle, midgard_src_passthrough, midgard_reg_mode_32, 0xFF);
         fprintf(fp, ", %sr%u", texture->in_reg_full ? "" : "h", in_reg_base + texture->in_reg_select);
         assert(!(texture->in_reg_full && texture->in_reg_upper));
 
-        /* TODO: integrate with swizzle */
-        if (texture->in_reg_upper)
-                fprintf(fp, "'");
-
-        print_swizzle_vec4(fp, texture->in_reg_swizzle, false, false, false);
+        midgard_src_expand_mode exp =
+                texture->in_reg_upper ? midgard_src_expand_high : midgard_src_passthrough;
+        print_vec_swizzle(fp, texture->in_reg_swizzle, exp, midgard_reg_mode_32, 0xFF);
 
         /* There is *always* an offset attached. Of
          * course, that offset is just immediate #0 for a
@@ -1574,15 +1587,13 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
                 bool full = texture->offset & 1;
                 bool select = texture->offset & 2;
                 bool upper = texture->offset & 4;
+                unsigned swizzle = texture->offset >> 3;
+                midgard_src_expand_mode exp =
+                        upper ? midgard_src_expand_high : midgard_src_passthrough;
 
                 fprintf(fp, "%sr%u", full ? "" : "h", in_reg_base + select);
+                print_vec_swizzle(fp, swizzle, exp, midgard_reg_mode_32, 0xFF);
                 assert(!(texture->out_full && texture->out_upper));
-
-                /* TODO: integrate with swizzle */
-                if (upper)
-                        fprintf(fp, "'");
-
-                print_swizzle_vec4(fp, texture->offset >> 3, false, false, false);
 
                 fprintf(fp, ", ");
         } else if (texture->offset) {
