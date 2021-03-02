@@ -308,7 +308,7 @@ fd3_program_emit(struct fd_ringbuffer *ring, struct fd3_emit *emit,
 				COND(fp->need_pixlod, A3XX_SP_FS_CTRL_REG0_PIXLODENABLE) |
 				A3XX_SP_FS_CTRL_REG0_LENGTH(fpbuffersz));
 		OUT_RING(ring, A3XX_SP_FS_CTRL_REG1_CONSTLENGTH(fp->constlen) |
-				A3XX_SP_FS_CTRL_REG1_INITIALOUTSTANDING(fp->total_in) |
+				A3XX_SP_FS_CTRL_REG1_INITIALOUTSTANDING(fp->sysval_in) |
 				A3XX_SP_FS_CTRL_REG1_CONSTFOOTPRINT(MAX2(fp->constlen - 1, 0)) |
 				A3XX_SP_FS_CTRL_REG1_HALFPRECVAROFFSET(63));
 

@@ -1390,6 +1390,8 @@ static void add_sysval_input_compmask(struct ir3_context *ctx,
 	so->inputs[n].slot = slot;
 	so->inputs[n].compmask = compmask;
 	so->total_in++;
+
+	so->sysval_in += util_last_bit(compmask);
 }
 
 static struct ir3_instruction *

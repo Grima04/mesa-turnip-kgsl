@@ -607,6 +607,9 @@ struct ir3_shader_variant {
 	 */
 	unsigned total_in;
 
+	/* sum of sysval input components (scalar). */
+	unsigned sysval_in;
+
 	/* For frag shaders, the total number of inputs (not scalar,
 	 * ie. SP_VS_PARAM_REG.TOTALVSOUTVAR)
 	 */
