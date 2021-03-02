@@ -1298,7 +1298,8 @@ NV50LoweringPreSSA::handleLOAD(Instruction *i)
    Symbol *sym = i->getSrc(0)->asSym();
 
    if (prog->getType() == Program::TYPE_COMPUTE) {
-      if (sym->inFile(FILE_MEMORY_SHARED)) {
+      if (sym->inFile(FILE_MEMORY_SHARED) ||
+               sym->inFile(FILE_MEMORY_GLOBAL)) {
          return handleLDST(i);
       }
    }
@@ -1344,21 +1345,38 @@ NV50LoweringPreSSA::handleLDST(Instruction *i)
    ValueRef src = i->src(0);
    Symbol *sym = i->getSrc(0)->asSym();
 
-   if (prog->getType() != Program::TYPE_COMPUTE ||
-         !sym->inFile(FILE_MEMORY_SHARED)) {
+   if (prog->getType() != Program::TYPE_COMPUTE) {
       return true;
    }
 
-   if (src.isIndirect(0)) {
+   if (sym->inFile(FILE_MEMORY_SHARED)) {
+
+      if (src.isIndirect(0)) {
+         Value *addr = i->getIndirect(0, 0);
+
+         if (!addr->inFile(FILE_ADDRESS)) {
+            // Move address from GPR into an address register
+            Value *new_addr = bld.getSSA(2, FILE_ADDRESS);
+            bld.mkMov(new_addr, addr);
+
+            i->setIndirect(0, 0, new_addr);
+         }
+      }
+   } else if (sym->inFile(FILE_MEMORY_GLOBAL)) {
+      // All global access must be indirect. There are no instruction forms
+      // with direct access.
       Value *addr = i->getIndirect(0, 0);
 
-      if (!addr->inFile(FILE_ADDRESS)) {
-         // Move address from GPR into an address register
-         Value *new_addr = bld.getSSA(2, FILE_ADDRESS);
-         bld.mkMov(new_addr, addr);
+      Value *offset = bld.loadImm(bld.getSSA(), sym->reg.data.offset);
+      Value *sum;
+      if (addr != NULL)
+         sum = bld.mkOp2v(OP_ADD, TYPE_U32, bld.getSSA(), addr,
+                          offset);
+      else
+         sum = offset;
 
-         i->setIndirect(0, 0, new_addr);
-      }
+      i->setIndirect(0, 0, sum);
+      sym->reg.data.offset = 0;
    }
 
    return true;
@@ -1461,6 +1479,7 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleEXPORT(i);
    case OP_LOAD:
       return handleLOAD(i);
+   case OP_ATOM:
    case OP_STORE:
       return handleLDST(i);
    case OP_RDSV:
