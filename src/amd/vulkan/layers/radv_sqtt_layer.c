@@ -360,6 +360,7 @@ radv_handle_thread_trace(VkQueue _queue)
 	RADV_FROM_HANDLE(radv_queue, queue, _queue);
 	static bool thread_trace_enabled = false;
 	static uint64_t num_frames = 0;
+	bool resize_trigger = false;
 
 	if (thread_trace_enabled) {
 		struct ac_thread_trace thread_trace = {0};
@@ -370,11 +371,19 @@ radv_handle_thread_trace(VkQueue _queue)
 		/* TODO: Do something better than this whole sync. */
 		radv_QueueWaitIdle(_queue);
 
-		if (radv_get_thread_trace(queue, &thread_trace))
+		if (radv_get_thread_trace(queue, &thread_trace)) {
 			ac_dump_thread_trace(&queue->device->physical_device->rad_info,
 					     &thread_trace,
 					     &queue->device->thread_trace);
-	} else {
+		} else {
+			/* Trigger a new capture if the driver failed to get
+			 * the trace because the buffer was too small.
+			 */
+			resize_trigger = true;
+		}
+	}
+
+	if (!thread_trace_enabled) {
 		bool frame_trigger = num_frames == queue->device->thread_trace.start_frame;
 		bool file_trigger = false;
 #ifndef _WIN32
@@ -390,7 +399,7 @@ radv_handle_thread_trace(VkQueue _queue)
 		}
 #endif
 
-		if (frame_trigger || file_trigger) {
+		if (frame_trigger || file_trigger || resize_trigger) {
 			/* FIXME: SQTT on compute hangs. */
 			if (queue->queue_family_index == RADV_QUEUE_COMPUTE) {
 				fprintf(stderr, "RADV: Capturing a SQTT trace on the compute "
