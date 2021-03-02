@@ -647,6 +647,7 @@ private:
    bool handleEXPORT(Instruction *);
    bool handleLOAD(Instruction *);
    bool handleLDST(Instruction *);
+   bool handleSharedATOM(Instruction *);
    bool handleSULDP(TexInstruction *);
    bool handleSUREDP(TexInstruction *);
    bool handleSUSTP(TexInstruction *);
@@ -1456,6 +1457,118 @@ NV50LoweringPreSSA::handleLOAD(Instruction *i)
 }
 
 bool
+NV50LoweringPreSSA::handleSharedATOM(Instruction *atom)
+{
+   assert(atom->src(0).getFile() == FILE_MEMORY_SHARED);
+
+   BasicBlock *currBB = atom->bb;
+   BasicBlock *tryLockBB = atom->bb->splitBefore(atom, false);
+   BasicBlock *joinBB = atom->bb->splitAfter(atom);
+   BasicBlock *setAndUnlockBB = new BasicBlock(func);
+   BasicBlock *failLockBB = new BasicBlock(func);
+
+   bld.setPosition(currBB, true);
+   assert(!currBB->joinAt);
+   currBB->joinAt = bld.mkFlow(OP_JOINAT, joinBB, CC_ALWAYS, NULL);
+
+   bld.mkFlow(OP_BRA, tryLockBB, CC_ALWAYS, NULL);
+   currBB->cfg.attach(&tryLockBB->cfg, Graph::Edge::TREE);
+
+   bld.setPosition(tryLockBB, true);
+
+   Instruction *ld =
+      bld.mkLoad(TYPE_U32, atom->getDef(0), atom->getSrc(0)->asSym(),
+                 atom->getIndirect(0, 0));
+   Value *locked = bld.getSSA(1, FILE_FLAGS);
+   if (prog->getTarget()->getChipset() >= 0xa0) {
+      ld->setFlagsDef(1, locked);
+      ld->subOp = NV50_IR_SUBOP_LOAD_LOCKED;
+   } else {
+      bld.mkMov(locked, bld.loadImm(NULL, 2))
+         ->flagsDef = 0;
+   }
+
+   bld.mkFlow(OP_BRA, setAndUnlockBB, CC_LT, locked);
+   bld.mkFlow(OP_BRA, failLockBB, CC_ALWAYS, NULL);
+   tryLockBB->cfg.attach(&failLockBB->cfg, Graph::Edge::CROSS);
+   tryLockBB->cfg.attach(&setAndUnlockBB->cfg, Graph::Edge::TREE);
+
+   tryLockBB->cfg.detach(&joinBB->cfg);
+   bld.remove(atom);
+
+   bld.setPosition(setAndUnlockBB, true);
+   Value *stVal;
+   if (atom->subOp == NV50_IR_SUBOP_ATOM_EXCH) {
+      // Read the old value, and write the new one.
+      stVal = atom->getSrc(1);
+   } else if (atom->subOp == NV50_IR_SUBOP_ATOM_CAS) {
+      CmpInstruction *set =
+         bld.mkCmp(OP_SET, CC_EQ, TYPE_U32, bld.getSSA(1, FILE_FLAGS),
+                   TYPE_U32, ld->getDef(0), atom->getSrc(1));
+
+      Instruction *selp =
+         bld.mkOp3(OP_SELP, TYPE_U32, bld.getSSA(), atom->getSrc(2),
+                   ld->getDef(0), set->getDef(0));
+      stVal = selp->getDef(0);
+
+      handleSELP(selp);
+   } else {
+      operation op;
+
+      switch (atom->subOp) {
+      case NV50_IR_SUBOP_ATOM_ADD:
+         op = OP_ADD;
+         break;
+      case NV50_IR_SUBOP_ATOM_AND:
+         op = OP_AND;
+         break;
+      case NV50_IR_SUBOP_ATOM_OR:
+         op = OP_OR;
+         break;
+      case NV50_IR_SUBOP_ATOM_XOR:
+         op = OP_XOR;
+         break;
+      case NV50_IR_SUBOP_ATOM_MIN:
+         op = OP_MIN;
+         break;
+      case NV50_IR_SUBOP_ATOM_MAX:
+         op = OP_MAX;
+         break;
+      default:
+         assert(0);
+         return false;
+      }
+
+      Instruction *i =
+         bld.mkOp2(op, atom->dType, bld.getSSA(), ld->getDef(0),
+                   atom->getSrc(1));
+
+      stVal = i->getDef(0);
+   }
+
+   Instruction *store = bld.mkStore(OP_STORE, TYPE_U32, atom->getSrc(0)->asSym(),
+               atom->getIndirect(0, 0), stVal);
+   if (prog->getTarget()->getChipset() >= 0xa0) {
+      store->subOp = NV50_IR_SUBOP_STORE_UNLOCKED;
+   }
+
+   bld.mkFlow(OP_BRA, failLockBB, CC_ALWAYS, NULL);
+   setAndUnlockBB->cfg.attach(&failLockBB->cfg, Graph::Edge::TREE);
+
+   // Loop until the lock is acquired.
+   bld.setPosition(failLockBB, true);
+   bld.mkFlow(OP_BRA, tryLockBB, CC_GEU, locked);
+   bld.mkFlow(OP_BRA, joinBB, CC_ALWAYS, NULL);
+   failLockBB->cfg.attach(&tryLockBB->cfg, Graph::Edge::BACK);
+   failLockBB->cfg.attach(&joinBB->cfg, Graph::Edge::TREE);
+
+   bld.setPosition(joinBB, false);
+   bld.mkFlow(OP_JOIN, NULL, CC_ALWAYS, NULL)->fixed = 1;
+
+   return true;
+}
+
+bool
 NV50LoweringPreSSA::handleLDST(Instruction *i)
 {
    ValueRef src = i->src(0);
@@ -1483,6 +1596,9 @@ NV50LoweringPreSSA::handleLDST(Instruction *i)
             i->setIndirect(0, 0, new_addr);
          }
       }
+
+      if (i->op == OP_ATOM)
+         handleSharedATOM(i);
    } else if (sym->inFile(FILE_MEMORY_GLOBAL)) {
       // All global access must be indirect. There are no instruction forms
       // with direct access.
