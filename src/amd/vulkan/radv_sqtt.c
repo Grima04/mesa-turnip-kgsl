@@ -29,6 +29,12 @@
 
 #define SQTT_BUFFER_ALIGN_SHIFT 12
 
+static bool
+radv_se_is_disabled(struct radv_device *device, unsigned se)
+{
+	/* No active CU on the SE means it is disabled. */
+	return device->physical_device->rad_info.cu_mask[se][0] == 0;
+}
 
 static void
 radv_emit_thread_trace_start(struct radv_device *device,
@@ -46,6 +52,9 @@ radv_emit_thread_trace_start(struct radv_device *device,
 		uint64_t data_va = ac_thread_trace_get_data_va(rad_info, &device->thread_trace, va, se);
 		uint64_t shifted_va = data_va >> SQTT_BUFFER_ALIGN_SHIFT;
 		int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
+
+		if (radv_se_is_disabled(device, se))
+			continue;
 
 		/* Target SEx and SH0. */
 		radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
@@ -267,6 +276,9 @@ radv_emit_thread_trace_stop(struct radv_device *device,
 	radeon_emit(cs, EVENT_TYPE(V_028A90_THREAD_TRACE_FINISH) | EVENT_INDEX(0));
 
 	for (unsigned se = 0; se < max_se; se++) {
+		if (radv_se_is_disabled(device, se))
+			continue;
+
 		/* Target SEi and SH0. */
 		radeon_set_uconfig_reg(cs, R_030800_GRBM_GFX_INDEX,
 				       S_030800_SE_INDEX(se) |
@@ -632,7 +644,6 @@ radv_get_thread_trace(struct radv_queue *queue,
 	void *thread_trace_ptr = device->thread_trace.ptr;
 
 	memset(thread_trace, 0, sizeof(*thread_trace));
-	thread_trace->num_traces = max_se;
 
 	for (unsigned se = 0; se < max_se; se++) {
 		uint64_t info_offset = ac_thread_trace_get_info_offset(se);
@@ -643,6 +654,9 @@ radv_get_thread_trace(struct radv_queue *queue,
 			(struct ac_thread_trace_info *)info_ptr;
 		struct ac_thread_trace_se thread_trace_se = {0};
 		int first_active_cu = ffs(device->physical_device->rad_info.cu_mask[se][0]);
+
+		if (radv_se_is_disabled(device, se))
+			continue;
 
 		if (!ac_is_thread_trace_complete(&device->physical_device->rad_info, info)) {
 			uint32_t expected_size =
@@ -673,7 +687,8 @@ radv_get_thread_trace(struct radv_queue *queue,
 
 		thread_trace_se.compute_unit = 0;
 
-		thread_trace->traces[se] = thread_trace_se;
+		thread_trace->traces[thread_trace->num_traces] = thread_trace_se;
+		thread_trace->num_traces++;
 	}
 
 	return true;
