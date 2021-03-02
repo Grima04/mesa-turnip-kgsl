@@ -106,7 +106,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
    rast_state.rasterizerDiscardEnable = state->rast_state->rasterizer_discard;
    rast_state.polygonMode = state->rast_state->polygon_mode;
    rast_state.cullMode = state->rast_state->cull_mode;
-   rast_state.frontFace = state->rast_state->front_face;
+   rast_state.frontFace = state->front_face;
 
    rast_state.depthBiasEnable = VK_TRUE;
    rast_state.depthBiasConstantFactor = 0.0;
@@ -155,6 +155,7 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_STENCIL_OP_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VERTEX_INPUT_BINDING_STRIDE_EXT;
+      dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_FRONT_FACE_EXT;
    } else {
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_VIEWPORT;
       dynamicStateEnables[state_count++] = VK_DYNAMIC_STATE_SCISSOR;

@@ -141,6 +141,7 @@ struct zink_screen {
    PFN_vkCmdSetStencilTestEnableEXT vk_CmdSetStencilTestEnableEXT;
    PFN_vkCmdSetStencilOpEXT vk_CmdSetStencilOpEXT;
    PFN_vkCmdBindVertexBuffers2EXT vk_CmdBindVertexBuffers2EXT;
+   PFN_vkCmdSetFrontFaceEXT vk_CmdSetFrontFaceEXT;
 
    PFN_vkCreateDebugUtilsMessengerEXT vk_CreateDebugUtilsMessengerEXT;
    PFN_vkDestroyDebugUtilsMessengerEXT vk_DestroyDebugUtilsMessengerEXT;

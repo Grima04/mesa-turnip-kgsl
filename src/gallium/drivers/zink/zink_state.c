@@ -445,9 +445,9 @@ zink_create_rasterizer_state(struct pipe_context *pctx,
    state->hw_state.polygon_mode = (VkPolygonMode)rs_state->fill_front; // same values
    state->hw_state.cull_mode = (VkCullModeFlags)rs_state->cull_face; // same bits
 
-   state->hw_state.front_face = rs_state->front_ccw ?
-                                VK_FRONT_FACE_COUNTER_CLOCKWISE :
-                                VK_FRONT_FACE_CLOCKWISE;
+   state->front_face = rs_state->front_ccw ?
+                       VK_FRONT_FACE_COUNTER_CLOCKWISE :
+                       VK_FRONT_FACE_CLOCKWISE;
 
    state->offset_point = rs_state->offset_point;
    state->offset_line = rs_state->offset_line;
@@ -487,6 +487,10 @@ zink_bind_rasterizer_state(struct pipe_context *pctx, void *cso)
       if (clip_halfz != ctx->rast_state->base.clip_halfz)
          ctx->last_vertex_stage_dirty = true;
 
+      if (ctx->gfx_pipeline_state.front_face != ctx->rast_state->front_face) {
+         ctx->gfx_pipeline_state.front_face = ctx->rast_state->front_face;
+         ctx->gfx_pipeline_state.dirty |= !zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state;
+      }
       if (ctx->line_width != ctx->rast_state->line_width) {
          ctx->line_width = ctx->rast_state->line_width;
          ctx->gfx_pipeline_state.dirty = true;

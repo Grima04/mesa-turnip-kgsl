@@ -502,6 +502,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             vkCmdSetStencilCompareMask(batch->state->cmdbuf, VK_STENCIL_FACE_FRONT_AND_BACK, dsa_state->hw_state.stencil_front.compareMask);
          }
       }
+      screen->vk_CmdSetFrontFaceEXT(batch->state->cmdbuf, ctx->gfx_pipeline_state.front_face);
    }
 
    if (depth_bias)
