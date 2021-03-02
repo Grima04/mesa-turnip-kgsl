@@ -25,6 +25,28 @@
 #include "vk_util.h"
 #include "u_math.h"
 
+static int binding_compare(const void* av, const void *bv)
+{
+   const VkDescriptorSetLayoutBinding *a = (const VkDescriptorSetLayoutBinding*)av;
+   const VkDescriptorSetLayoutBinding *b = (const VkDescriptorSetLayoutBinding*)bv;
+
+   return (a->binding < b->binding) ? -1 : (a->binding > b->binding) ? 1 : 0;
+}
+
+static VkDescriptorSetLayoutBinding *
+create_sorted_bindings(const VkDescriptorSetLayoutBinding *bindings, unsigned count) {
+   VkDescriptorSetLayoutBinding *sorted_bindings = malloc(MAX2(count * sizeof(VkDescriptorSetLayoutBinding), 1));
+   if (!sorted_bindings)
+      return NULL;
+
+   if (count) {
+      memcpy(sorted_bindings, bindings, count * sizeof(VkDescriptorSetLayoutBinding));
+      qsort(sorted_bindings, count, sizeof(VkDescriptorSetLayoutBinding), binding_compare);
+   }
+
+   return sorted_bindings;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
     VkDevice                                    _device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
@@ -64,10 +86,17 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    set_layout->shader_stages = 0;
    set_layout->size = 0;
 
-   uint32_t dynamic_offset_count = 0;
+   VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(pCreateInfo->pBindings,
+								   pCreateInfo->bindingCount);
+   if (!bindings) {
+      vk_object_base_finish(&set_layout->base);
+      vk_free2(&device->vk.alloc, pAllocator, set_layout);
+      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   }
 
+   uint32_t dynamic_offset_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
-      const VkDescriptorSetLayoutBinding *binding = &pCreateInfo->pBindings[j];
+      const VkDescriptorSetLayoutBinding *binding = bindings + j;
       uint32_t b = binding->binding;
 
       set_layout->binding[b].array_size = binding->descriptorCount;
