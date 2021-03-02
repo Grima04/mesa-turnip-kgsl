@@ -850,7 +850,7 @@ static bool si_check_needs_implicit_sync(struct si_context *sctx)
    }
 
    struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
-   mask = u_bit_consecutive(0, info->base.num_images);
+   mask = u_bit_consecutive(0, info->base.num_images) & images->enabled_mask;
 
    while (mask) {
       int i = u_bit_scan(&mask);
