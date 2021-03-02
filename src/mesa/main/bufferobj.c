@@ -514,6 +514,8 @@ _mesa_reference_buffer_object_(struct gl_context *ctx,
       /* Unreference the old buffer */
       struct gl_buffer_object *oldObj = *ptr;
 
+      assert(oldObj->RefCount >= 1);
+
       /* Count references only if the context doesn't own the buffer or if
        * ptr is a binding point shared by multiple contexts (such as a texture
        * buffer object being a buffer bound within a texture object).
@@ -1699,6 +1701,11 @@ delete_buffers(struct gl_context *ctx, GLsizei n, const GLuint *ids)
           * which would introduce more runtime overhead than this.
           */
          bufObj->DeletePending = GL_TRUE;
+
+         /* The GLuint ID holds one reference and the context that created
+          * the buffer holds the other one.
+          */
+         assert(p_atomic_read(&bufObj->RefCount) >= (bufObj->Ctx ? 2 : 1));
 
          if (bufObj->Ctx == ctx) {
             detach_ctx_from_buffer(ctx, bufObj);
