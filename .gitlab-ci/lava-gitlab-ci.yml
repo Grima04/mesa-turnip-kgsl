@@ -1,5 +1,5 @@
 variables:
-  MESA_LAVA_TAG: "2021-02-17-asan"
+  MESA_LAVA_TAG: "2021-03-02-lock-deqp-runner"
 
 .kernel+rootfs:
   stage: container-2
