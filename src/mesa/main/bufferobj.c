@@ -518,10 +518,15 @@ _mesa_reference_buffer_object_(struct gl_context *ctx,
        * ptr is a binding point shared by multiple contexts (such as a texture
        * buffer object being a buffer bound within a texture object).
        */
-      if ((shared_binding || ctx != oldObj->Ctx) &&
-          p_atomic_dec_zero(&oldObj->RefCount)) {
-	 assert(ctx->Driver.DeleteBuffer);
-         ctx->Driver.DeleteBuffer(ctx, oldObj);
+      if (shared_binding || ctx != oldObj->Ctx) {
+         if (p_atomic_dec_zero(&oldObj->RefCount)) {
+            assert(ctx->Driver.DeleteBuffer);
+            ctx->Driver.DeleteBuffer(ctx, oldObj);
+         }
+      } else if (ctx == oldObj->Ctx) {
+         /* Update the private ref count. */
+         assert(oldObj->CtxRefCount >= 1);
+         oldObj->CtxRefCount--;
       }
 
       *ptr = NULL;
@@ -532,6 +537,9 @@ _mesa_reference_buffer_object_(struct gl_context *ctx,
       /* reference new buffer */
       if (shared_binding || ctx != bufObj->Ctx)
          p_atomic_inc(&bufObj->RefCount);
+      else if (ctx == bufObj->Ctx)
+         bufObj->CtxRefCount++;
+
       *ptr = bufObj;
    }
 }
@@ -912,6 +920,27 @@ _mesa_init_buffer_objects( struct gl_context *ctx )
 }
 
 /**
+ * Detach the context from the buffer to re-enable buffer reference counting
+ * for this context.
+ */
+static void
+detach_ctx_from_buffer(struct gl_context *ctx, struct gl_buffer_object *buf)
+{
+   assert(buf->Ctx == ctx);
+
+   /* Move private non-atomic context references to the global ref count. */
+   p_atomic_add(&buf->RefCount, buf->CtxRefCount);
+   buf->CtxRefCount = 0;
+   buf->Ctx = NULL;
+
+   /* Remove the context reference where the context holds one
+    * reference for the lifetime of the buffer ID to skip refcount
+    * atomics instead of each binding point holding the reference.
+    */
+   _mesa_reference_buffer_object(ctx, &buf, NULL);
+}
+
+/**
  * Zombie buffers are buffers that were created by one context and deleted
  * by another context. The creating context holds a global reference for each
  * buffer it created that can't be unreferenced when another context deletes
@@ -932,8 +961,7 @@ unreference_zombie_buffers_for_ctx(struct gl_context *ctx)
 
       if (buf->Ctx == ctx) {
          _mesa_set_remove(ctx->Shared->ZombieBufferObjects, entry);
-         buf->Ctx = NULL;
-         _mesa_reference_buffer_object(ctx, &buf, NULL);
+         detach_ctx_from_buffer(ctx, buf);
       }
    }
 }
@@ -960,6 +988,7 @@ detach_unrefcounted_buffer_from_ctx(void *data, void *userData)
        * unreference the global reference. Other contexts and texture objects
        * might still be using the buffer.
        */
+      assert(buf->CtxRefCount == 0);
       buf->Ctx = NULL;
       _mesa_reference_buffer_object(ctx, &buf, NULL);
    }
@@ -1530,82 +1559,6 @@ bind_buffer_base_atomic_buffer(struct gl_context *ctx,
       bind_atomic_buffer(ctx, index, bufObj, 0, 0, GL_TRUE);
 }
 
-struct hash_walk_input {
-   struct gl_context *ctx;
-   struct gl_buffer_object *buf;
-};
-
-/**
- * When a buffer ID is deleted, the buffer is unbound from the current VAO
- * but stays bound in other VAOs until they are deleted too.
- * When the context owns the buffer reference globally, it doesn't count
- * buffer references for the context. When the buffer is deleted, the context
- * gives up its ownership, and thus it has to increase the buffer reference
- * count for each binding point where the buffer is bound.
- */
-static void
-detach_ctx_from_vao_buffers(void *data, void *user)
-{
-   struct gl_context *ctx = ((struct hash_walk_input *)user)->ctx;
-   struct gl_buffer_object *buf = ((struct hash_walk_input *)user)->buf;
-   struct gl_vertex_array_object *vao = (struct gl_vertex_array_object *)data;
-
-   /* The buffer should already be unbound in the currently-bound VAO. */
-   if (vao == ctx->Array.VAO)
-      return;
-
-   /* Increase the reference count for each binding point where the buffer is
-    * bound.
-    */
-   unsigned add_count = 0;
-
-   if (vao->IndexBufferObj == buf)
-      add_count++;
-
-   for (unsigned i = 0; i < ARRAY_SIZE(vao->BufferBinding); i++) {
-      if (vao->BufferBinding[i].BufferObj == buf)
-         add_count++;
-   }
-
-   if (add_count)
-      p_atomic_add(&buf->RefCount, add_count);
-}
-
-/**
- * When a buffer ID is deleted, the buffer is unbound from the current
- * transform feedback object but stays bound in other TFBs until they are
- * deleted too.
- *
- * When the context owns the buffer reference globally, it doesn't count
- * buffer references for the context. When the buffer is deleted, the context
- * gives up its ownership, and thus it has to increase the buffer reference
- * count for each binding point where the buffer is bound.
- */
-static void
-detach_ctx_from_tfb_buffers(void *data, void *user)
-{
-   struct gl_context *ctx = ((struct hash_walk_input *)user)->ctx;
-   struct gl_buffer_object *buf = ((struct hash_walk_input *)user)->buf;
-   struct gl_transform_feedback_object *tfb =
-      (struct gl_transform_feedback_object *)data;
-
-   /* The buffer should already be unbound in the currently-bound TFB. */
-   if (tfb == ctx->TransformFeedback.CurrentObject)
-      return;
-
-   /* Increase the reference count for each binding point where the buffer is
-    * bound.
-    */
-   unsigned add_count = 0;
-   for (unsigned i = 0; i < ARRAY_SIZE(tfb->Buffers); i++) {
-      if (tfb->Buffers[i] == buf)
-         add_count++;
-   }
-
-   if (add_count)
-      p_atomic_add(&buf->RefCount, add_count);
-}
-
 /**
  * Delete a set of buffer objects.
  *
@@ -1748,29 +1701,7 @@ delete_buffers(struct gl_context *ctx, GLsizei n, const GLuint *ids)
          bufObj->DeletePending = GL_TRUE;
 
          if (bufObj->Ctx == ctx) {
-            struct hash_walk_input input = {ctx, bufObj};
-
-            /* Increase reference counts for all binding points where
-             * the buffer remains bound after deleting. This is needed to
-             * enable reference counting for the buffer for this context
-             * because the context only holds the global buffer reference
-             * while the GL buffer ID exists.
-             */
-            _mesa_HashWalk(ctx->Array.Objects,
-                           detach_ctx_from_vao_buffers, &input);
-            detach_ctx_from_vao_buffers(ctx->Array.DefaultVAO, &input);
-
-            _mesa_HashWalk(ctx->TransformFeedback.Objects,
-                           detach_ctx_from_tfb_buffers, &input);
-            detach_ctx_from_tfb_buffers(ctx->TransformFeedback.DefaultObject,
-                                        &input);
-
-            /* Remove the context reference where the context holds one
-             * reference for the lifetime of the buffer ID to skip refcount
-             * atomics instead of each binding point holding the reference.
-             */
-            p_atomic_dec(&bufObj->RefCount);
-            bufObj->Ctx = NULL;
+            detach_ctx_from_buffer(ctx, bufObj);
          } else if (bufObj->Ctx) {
             /* Only the context holding it can release it. */
             _mesa_set_add(ctx->Shared->ZombieBufferObjects, bufObj);

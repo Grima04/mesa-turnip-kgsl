@@ -1427,6 +1427,7 @@ struct gl_buffer_object
     *   reference from those buffers that it created.
     */
    struct gl_context *Ctx;
+   GLint CtxRefCount;   /**< Non-atomic references held by Ctx. */
 
    GLenum16 Usage;      /**< GL_STREAM_DRAW_ARB, GL_STREAM_READ_ARB, etc. */
    GLbitfield StorageFlags; /**< GL_MAP_PERSISTENT_BIT, etc. */
