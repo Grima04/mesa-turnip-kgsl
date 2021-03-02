@@ -1141,9 +1141,6 @@ static void handle_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
       if (set->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_VERTEX, PIPE_SHADER_VERTEX);
 
-      if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
-         handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT);
-
       if (set->layout->shader_stages & VK_SHADER_STAGE_GEOMETRY_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_GEOMETRY, PIPE_SHADER_GEOMETRY);
 
@@ -1152,6 +1149,9 @@ static void handle_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
 
       if (set->layout->shader_stages & VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)
          handle_set_stage(state, &dyn_info, set, MESA_SHADER_TESS_EVAL, PIPE_SHADER_TESS_EVAL);
+
+      if (set->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT)
+	 handle_set_stage(state, &dyn_info, set, MESA_SHADER_FRAGMENT, PIPE_SHADER_FRAGMENT);
       increment_dyn_info(&dyn_info, bds->set_layout[bds->first + i], true);
    }
 }
