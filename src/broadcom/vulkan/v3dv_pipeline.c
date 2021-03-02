@@ -2815,18 +2815,23 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    }
 
    pipeline->va_count = 0;
-   nir_shader *shader = pipeline->vs->nir;
+   struct v3d_vs_prog_data *prog_data_vs =
+      pipeline->vs->current_variant->prog_data.vs;
 
    for (uint32_t i = 0; i < vi_info->vertexAttributeDescriptionCount; i++) {
       const VkVertexInputAttributeDescription *desc =
          &vi_info->pVertexAttributeDescriptions[i];
       uint32_t location = desc->location + VERT_ATTRIB_GENERIC0;
 
-      nir_variable *var = nir_find_variable_with_location(shader, nir_var_shader_in, location);
+      /* We use a custom driver_location_map instead of
+       * nir_find_variable_with_location because if we were able to get the
+       * shader variant from the cache, we would not have the nir shader
+       * available.
+       */
+      uint32_t driver_location =
+         prog_data_vs->driver_location_map[location];
 
-      if (var != NULL) {
-         unsigned driver_location = var->data.driver_location;
-
+      if (driver_location != -1) {
          assert(driver_location < MAX_VERTEX_ATTRIBS);
          pipeline->va[driver_location].offset = desc->offset;
          pipeline->va[driver_location].binding = desc->binding;
