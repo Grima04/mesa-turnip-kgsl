@@ -449,9 +449,9 @@ radv_thread_trace_init(struct radv_device *device)
 {
 	struct ac_thread_trace_data *thread_trace_data = &device->thread_trace;
 
-	/* Default buffer size set to 1MB per SE. */
+	/* Default buffer size set to 32MB per SE. */
 	device->thread_trace.buffer_size =
-		radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 1024 * 1024);
+		radv_get_int_debug_option("RADV_THREAD_TRACE_BUFFER_SIZE", 32 * 1024 * 1024);
 	device->thread_trace.start_frame = radv_get_int_debug_option("RADV_THREAD_TRACE", -1);
 
 	const char *trigger_file = getenv("RADV_THREAD_TRACE_TRIGGER");
