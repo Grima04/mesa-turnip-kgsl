@@ -18,6 +18,7 @@ zink-piglit-quick_gl:
     PIGLIT_TESTS: >
       -x arb_map_buffer_alignment@arb_map_buffer_alignment-map-invalidate-range
       -x glx-make-current -x arb_timer_query -x arb_sample_shading@builtin-gl-sample-mask
+      -x execution@tex-miplevel-selection
     PIGLIT_PROFILES: quick_gl
     PIGLIT_RESULTS: "zink-quick_gl"
 

@@ -1246,7 +1246,7 @@ spec/arb_tessellation_shader/arb_tessellation_shader-immediate-mode-draw-patches
 spec/arb_tessellation_shader/arb_tessellation_shader-tes-gs-max-output -small -scan 1 50: crash
 spec/arb_texture_buffer_object/formats (fs, arb): skip
 spec/arb_texture_buffer_object/formats (vs, arb): skip
-spec/arb_texture_buffer_object/indexed: crash
+spec/arb_texture_buffer_object/indexed: fail
 spec/arb_texture_buffer_object/negative-unsupported: skip
 spec/arb_texture_buffer_object/render-no-bo: crash
 spec/arb_texture_buffer_range/ranges-2 compat: fail
@@ -2639,19 +2639,6 @@ spec/ext_window_rectangles/errors: skip
 spec/ext_window_rectangles/errors_gles3: skip
 spec/ext_window_rectangles/render: skip
 spec/ext_window_rectangles/render_gles3: skip
-spec/glsl-1.30/execution/tex-miplevel-selection texturegradoffset 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturegradoffset 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelodoffset 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection texturelodoffset 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureoffset 2darrayshadow: skip
-spec/glsl-1.30/execution/tex-miplevel-selection textureoffset(bias) 1darrayshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureoffset(bias) 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojgradoffset 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojlodoffset 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojoffset 1dshadow: fail
-spec/glsl-1.30/execution/tex-miplevel-selection textureprojoffset(bias) 1dshadow: fail
 spec/glsl-1.50/built-in constants compatibility: skip
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop other: fail
