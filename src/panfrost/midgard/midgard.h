@@ -245,6 +245,28 @@ typedef enum {
 #define MIDGARD_FLOAT_MOD_ABS (1 << 0)
 #define MIDGARD_FLOAT_MOD_NEG (1 << 1)
 
+/* The expand options depend on both midgard_int_mod and midgard_reg_mode.  For
+ * example, a vec4 with midgard_int_sign_extend and midgard_src_expand_low is
+ * treated as a vec8 and each 16-bit element from the low 64-bits is then sign
+ * extended, resulting in a vec4 where each 32-bit element corresponds to a
+ * 16-bit element from the low 64-bits of the input vector. */
+typedef enum {
+        midgard_src_passthrough = 0,
+        midgard_src_rep_low = 1, /* replicate lower 64 bits to higher 64 bits */
+        midgard_src_rep_high = 2, /* replicate higher 64 bits to lower 64 bits */
+        midgard_src_swap = 3, /* swap lower 64 bits with higher 64 bits */
+        midgard_src_expand_low = 4, /* expand low 64 bits */
+        midgard_src_expand_high = 5, /* expand high 64 bits */
+        midgard_src_expand_low_swap = 6, /* expand low 64 bits, then swap */
+        midgard_src_expand_high_swap = 7, /* expand high 64 bits, then swap */
+} midgard_src_expand_mode;
+
+#define INPUT_EXPANDS(a) \
+        (a >= midgard_src_expand_low && a <= midgard_src_expand_high_swap)
+
+#define INPUT_SWAPS(a) \
+        (a == midgard_src_swap || a >= midgard_src_expand_low_swap)
+
 typedef struct
 __attribute__((__packed__))
 {
