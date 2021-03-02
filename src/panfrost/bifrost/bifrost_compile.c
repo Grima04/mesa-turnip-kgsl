@@ -1670,7 +1670,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 if (sz == 8)
                         bi_mux_v4i8_to(b, dst, s2, s1, s0, BI_MUX_INT_ZERO);
                 else
-                        bi_csel_to(b, sz, dst, s0, bi_zero(), s1, s2, BI_CMPF_NE);
+                        bi_csel_to(b, nir_type_float, sz, dst, s0, bi_zero(), s1, s2, BI_CMPF_NE);
                 break;
 
         case nir_op_ishl:
@@ -1890,27 +1890,27 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_iadd:
-                bi_iadd_to(b, sz, dst, s0, s1, false);
+                bi_iadd_to(b, nir_type_int, sz, dst, s0, s1, false);
                 break;
 
         case nir_op_iadd_sat:
-                bi_iadd_to(b, sz, dst, s0, s1, true);
+                bi_iadd_to(b, nir_type_int, sz, dst, s0, s1, true);
                 break;
 
         case nir_op_ihadd:
-                bi_hadd_to(b, sz, dst, s0, s1, BI_ROUND_RTN);
+                bi_hadd_to(b, nir_type_int, sz, dst, s0, s1, BI_ROUND_RTN);
                 break;
 
         case nir_op_irhadd:
-                bi_hadd_to(b, sz, dst, s0, s1, BI_ROUND_RTP);
+                bi_hadd_to(b, nir_type_int, sz, dst, s0, s1, BI_ROUND_RTP);
                 break;
 
         case nir_op_isub:
-                bi_isub_to(b, sz, dst, s0, s1, false);
+                bi_isub_to(b, nir_type_int, sz, dst, s0, s1, false);
                 break;
 
         case nir_op_isub_sat:
-                bi_isub_to(b, sz, dst, s0, s1, true);
+                bi_isub_to(b, nir_type_int, sz, dst, s0, s1, true);
                 break;
 
         case nir_op_imul:
