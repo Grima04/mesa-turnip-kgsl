@@ -3001,6 +3001,8 @@ tu_compute_pipeline_create(VkDevice device,
 
    tu6_emit_load_state(pipeline, true);
 
+   tu_shader_destroy(dev, shader, pAllocator);
+
    *pPipeline = tu_pipeline_to_handle(pipeline);
    return VK_SUCCESS;
 
