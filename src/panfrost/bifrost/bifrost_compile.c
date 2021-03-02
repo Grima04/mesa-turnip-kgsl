@@ -3036,14 +3036,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         /* Runs before copy prop */
         bi_opt_push_ubo(ctx);
         bi_opt_copy_prop(ctx);
-
-        bool progress = false;
-
-        do {
-                progress = false;
-
-                progress |= bi_opt_dead_code_eliminate(ctx, false);
-        } while(progress);
+        bi_opt_dead_code_eliminate(ctx, false);
 
         bi_foreach_block(ctx, _block) {
                 bi_block *block = (bi_block *) _block;
