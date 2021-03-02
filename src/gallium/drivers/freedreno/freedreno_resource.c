@@ -929,6 +929,26 @@ fd_resource_layout_init(struct pipe_resource *prsc)
 	layout->cpp_shift = ffs(layout->cpp) - 1;
 }
 
+static struct fd_resource *
+alloc_resource_struct(struct pipe_screen *pscreen, const struct pipe_resource *tmpl)
+{
+	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
+
+	if (!rsc)
+		return NULL;
+
+	struct pipe_resource *prsc = &rsc->base;
+	*prsc = *tmpl;
+
+	pipe_reference_init(&prsc->reference, 1);
+	prsc->screen = pscreen;
+
+	util_range_init(&rsc->valid_buffer_range);
+	simple_mtx_init(&rsc->lock, mtx_plain);
+
+	return rsc;
+}
+
 /**
  * Helper that allocates a resource and resolves its layout (but doesn't
  * allocate its bo).
@@ -947,13 +967,11 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 	enum pipe_format format = tmpl->format;
 	uint32_t size;
 
-	rsc = CALLOC_STRUCT(fd_resource);
-	prsc = &rsc->base;
-
+	rsc = alloc_resource_struct(pscreen, tmpl);
 	if (!rsc)
 		return NULL;
 
-	*prsc = *tmpl;
+	prsc = &rsc->base;
 
 	DBG("%"PRSC_FMT, PRSC_ARGS(prsc));
 
@@ -1003,19 +1021,11 @@ fd_resource_allocate_and_resolve(struct pipe_screen *pscreen,
 
 	allow_ubwc &= !FD_DBG(NOUBWC);
 
-	pipe_reference_init(&prsc->reference, 1);
-
-	prsc->screen = pscreen;
-
 	if (screen->tile_mode &&
 			(tmpl->target != PIPE_BUFFER) &&
 			!linear) {
 		rsc->layout.tile_mode = screen->tile_mode(prsc);
 	}
-
-	util_range_init(&rsc->valid_buffer_range);
-
-	simple_mtx_init(&rsc->lock, mtx_plain);
 
 	rsc->internal_format = format;
 
@@ -1134,7 +1144,7 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 		struct winsys_handle *handle, unsigned usage)
 {
 	struct fd_screen *screen = fd_screen(pscreen);
-	struct fd_resource *rsc = CALLOC_STRUCT(fd_resource);
+	struct fd_resource *rsc = alloc_resource_struct(pscreen, tmpl);
 
 	if (!rsc)
 		return NULL;
@@ -1142,19 +1152,9 @@ fd_resource_from_handle(struct pipe_screen *pscreen,
 	struct fdl_slice *slice = fd_resource_slice(rsc, 0);
 	struct pipe_resource *prsc = &rsc->base;
 
-	*prsc = *tmpl;
-
 	DBG("%"PRSC_FMT", modifier=%"PRIx64, PRSC_ARGS(prsc), handle->modifier);
 
 	fd_resource_layout_init(prsc);
-
-	pipe_reference_init(&prsc->reference, 1);
-
-	prsc->screen = pscreen;
-
-	util_range_init(&rsc->valid_buffer_range);
-
-	simple_mtx_init(&rsc->lock, mtx_plain);
 
 	struct fd_bo *bo = fd_screen_bo_from_handle(pscreen, handle);
 	if (!bo)
