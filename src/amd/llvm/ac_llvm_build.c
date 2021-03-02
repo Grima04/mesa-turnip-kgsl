@@ -4499,8 +4499,15 @@ LLVMValueRef ac_build_ddxy_interp(struct ac_llvm_context *ctx, LLVMValueRef inte
 
 LLVMValueRef ac_build_load_helper_invocation(struct ac_llvm_context *ctx)
 {
-   LLVMValueRef result =
-      ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live", ctx->i1, NULL, 0, AC_FUNC_ATTR_READNONE);
+   LLVMValueRef result;
+
+   if (LLVM_VERSION_MAJOR >= 13) {
+      result = ac_build_intrinsic(ctx, "llvm.amdgcn.live.mask", ctx->i1, NULL, 0,
+                                  AC_FUNC_ATTR_READONLY | AC_FUNC_ATTR_INACCESSIBLE_MEM_ONLY);
+   } else {
+      result = ac_build_intrinsic(ctx, "llvm.amdgcn.ps.live", ctx->i1, NULL, 0,
+                                  AC_FUNC_ATTR_READNONE);
+   }
    return LLVMBuildNot(ctx->builder, result, "");
 }
 
@@ -4508,6 +4515,9 @@ LLVMValueRef ac_build_is_helper_invocation(struct ac_llvm_context *ctx)
 {
    if (!ctx->postponed_kill)
       return ac_build_load_helper_invocation(ctx);
+
+   /* postponed_kill should be NULL on LLVM 13+ */
+   assert(LLVM_VERSION_MAJOR < 13);
 
    /* !(exact && postponed) */
    LLVMValueRef exact =
