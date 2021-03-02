@@ -32,11 +32,11 @@ mir_get_imod(bool shift, nir_alu_type T, bool half, bool scalar)
         if (!half) {
                 assert(!shift);
                 /* Sign-extension, really... */
-                return scalar ? 0 : midgard_int_normal;
+                return scalar ? 0 : midgard_int_replicate;
         }
 
         if (shift)
-                return midgard_int_shift;
+                return midgard_int_left_shift;
 
         if (nir_alu_type_get_base_type(T) == nir_type_int)
                 return midgard_int_sign_extend;

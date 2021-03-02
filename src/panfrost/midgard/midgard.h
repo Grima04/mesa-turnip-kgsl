@@ -235,13 +235,16 @@ typedef enum {
         midgard_shrink_mode_none  = 2
 } midgard_shrink_mode;
 
+/* Only used if midgard_src_expand_mode is set to one of midgard_src_expand_*. */
 typedef enum {
         midgard_int_sign_extend = 0,
         midgard_int_zero_extend = 1,
-        midgard_int_normal = 2,
-        midgard_int_shift = 3
+        midgard_int_replicate   = 2,
+        midgard_int_left_shift  = 3
 } midgard_int_mod;
 
+/* Unlike midgard_int_mod, fload modifiers are applied after the expansion happens, so
+ * they don't depend on midgard_src_expand_mode. */
 #define MIDGARD_FLOAT_MOD_ABS (1 << 0)
 #define MIDGARD_FLOAT_MOD_NEG (1 << 1)
 

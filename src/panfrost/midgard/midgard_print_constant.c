@@ -86,7 +86,7 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
 
                         if (half && mod == midgard_int_zero_extend)
                                 v = consts->u32[c];
-                        else if (half && mod == midgard_int_shift)
+                        else if (half && mod == midgard_int_left_shift)
                                 v = (uint64_t)consts->u32[c] << 32;
                         else
                                 v = consts->i32[c];
@@ -95,7 +95,7 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
                 } else if (is_uint || is_hex) {
                         uint64_t v;
 
-                        if (half && mod == midgard_int_shift)
+                        if (half && mod == midgard_int_left_shift)
                                 v = (uint64_t)consts->u32[c] << 32;
                         else
                                 v = consts->u32[c];
@@ -117,7 +117,7 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
 
                         if (half && mod == midgard_int_zero_extend)
                                 v = consts->u16[c];
-                        else if (half && mod == midgard_int_shift)
+                        else if (half && mod == midgard_int_left_shift)
                                 v = (uint32_t)consts->u16[c] << 16;
                         else
                                 v = consts->i16[c];
@@ -126,7 +126,7 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
                 } else if (is_uint || is_hex) {
                         uint32_t v;
 
-                        if (half && mod == midgard_int_shift)
+                        if (half && mod == midgard_int_left_shift)
                                 v = (uint32_t)consts->u16[c] << 16;
                         else
                                 v = consts->u16[c];

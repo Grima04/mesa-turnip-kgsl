@@ -215,10 +215,10 @@ static char *outmod_names_int[4] = {
 };
 
 static char *srcmod_names_int[4] = {
-        "sext(",
-        "zext(",
-        "",
-        "("
+        ".sext",
+        ".zext",
+        ".replicate",
+        ".lshift",
 };
 
 static void
@@ -498,37 +498,21 @@ print_vector_constants(FILE *fp, unsigned src_binary,
 }
 
 static void
-print_srcmod(FILE *fp, bool is_int, unsigned mod, bool scalar)
+print_srcmod(FILE *fp, bool is_int, bool expands, unsigned mod, bool scalar)
 {
         /* Modifiers change meaning depending on the op's context */
 
-        midgard_int_mod int_mod = mod;
-
         if (is_int) {
-                if (scalar && mod == 2) {
-                        fprintf(fp, "unk2");
-                }
-
-                fprintf(fp, "%s", srcmod_names_int[int_mod]);
+                if (expands)
+                        fprintf(fp, "%s", srcmod_names_int[mod]);
         } else {
-                if (mod & MIDGARD_FLOAT_MOD_NEG)
-                        fprintf(fp, "-");
-
                 if (mod & MIDGARD_FLOAT_MOD_ABS)
-                        fprintf(fp, "abs(");
+                        fprintf(fp, ".abs");
+                if (mod & MIDGARD_FLOAT_MOD_NEG)
+                        fprintf(fp, ".neg");
+                if (expands)
+                        fprintf(fp, ".widen");
         }
-}
-
-static void
-print_srcmod_end(FILE *fp, bool is_int, unsigned mod, unsigned bits)
-{
-        /* Since we wrapped with a function-looking thing */
-
-        if (is_int && mod == midgard_int_shift)
-                fprintf(fp, ") << %u", bits);
-        else if ((is_int && (mod != midgard_int_normal))
-                 || (!is_int && mod & MIDGARD_FLOAT_MOD_ABS))
-                fprintf(fp, ")");
 }
 
 static void
@@ -539,8 +523,6 @@ print_vector_src(FILE *fp, unsigned src_binary,
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
 
         validate_expand_mode(src->expand_mode, mode);
-
-        print_srcmod(fp, is_int, src->mod, false);
 
         bool half = INPUT_EXPANDS(src->expand_mode);
 
@@ -565,7 +547,7 @@ print_vector_src(FILE *fp, unsigned src_binary,
                 print_swizzle_vec2(fp, src->swizzle, rep_hi, rep_lo, half);
         }
 
-        print_srcmod_end(fp, is_int, src->mod, bits);
+        print_srcmod(fp, is_int, INPUT_EXPANDS(src->expand_mode), src->mod, false);
 }
 
 static uint16_t
@@ -794,7 +776,6 @@ print_scalar_src(FILE *fp, bool is_int, unsigned src_binary, unsigned reg)
 {
         midgard_scalar_alu_src *src = (midgard_scalar_alu_src *)&src_binary;
 
-        print_srcmod(fp, is_int, src->mod, true);
         print_reg(fp, reg, src->full ? 32 : 16);
 
         unsigned c = src->component;
@@ -806,7 +787,7 @@ print_scalar_src(FILE *fp, bool is_int, unsigned src_binary, unsigned reg)
 
         fprintf(fp, ".%c", components[c]);
 
-        print_srcmod_end(fp, is_int, src->mod, src->full ? 32 : 16);
+        print_srcmod(fp, is_int, !src->full, src->mod, true);
 }
 
 static uint16_t
