@@ -359,6 +359,7 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset,
       info->io.alphaRefBase = NV50_CB_AUX_ALPHATEST_OFFSET;
 
    info->io.suInfoBase = NV50_CB_AUX_TEX_MS_OFFSET;
+   info->io.bufInfoBase = NV50_CB_AUX_BUF_INFO(0);
    info->io.sampleInfoBase = NV50_CB_AUX_SAMPLE_OFFSET;
    info->io.msInfoCBSlot = 15;
    info->io.msInfoBase = NV50_CB_AUX_MS_OFFSET;

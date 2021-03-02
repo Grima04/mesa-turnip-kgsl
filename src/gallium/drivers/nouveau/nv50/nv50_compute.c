@@ -283,6 +283,7 @@ nv50_compute_validate_buffers(struct nv50_context *nv50)
 
    for (i = 0; i < 7; i++) {
       BEGIN_NV04(push, NV50_CP(GLOBAL(i)), 5);
+      unsigned width;
       if (nv50->buffers[i].buffer) {
          struct nv04_resource *res =
             nv04_resource(nv50->buffers[i].buffer);
@@ -296,13 +297,21 @@ nv50_compute_validate_buffers(struct nv50_context *nv50)
                         nv50->buffers[i].buffer_offset,
                         nv50->buffers[i].buffer_offset +
                         nv50->buffers[i].buffer_size);
+         width = nv50->buffers[i].buffer_size;
       } else {
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
+         width = 0;
       }
+
+      PUSH_SPACE(push, 1 + 3);
+      BEGIN_NV04(push, NV50_CP(CB_ADDR), 1);
+      PUSH_DATA (push, NV50_CB_AUX_BUF_INFO(i) << (8 - 2) | NV50_CB_AUX);
+      BEGIN_NI04(push, NV50_CP(CB_DATA(0)), 1);
+      PUSH_DATA (push, width);
    }
 }
 
@@ -354,6 +363,53 @@ nv50_mark_image_range_valid(const struct pipe_image_view *view)
                   view->u.buf.offset + view->u.buf.size);
 }
 
+static inline void
+nv50_set_surface_info(struct nouveau_pushbuf *push,
+                      const struct pipe_image_view *view,
+                      int width, int height, int depth)
+{
+   struct nv04_resource *res;
+   uint32_t *const info = push->cur;
+
+   push->cur += 12;
+
+   /* Make sure to always initialize the surface information area because it's
+    * used to check if the given image is bound or not. */
+   memset(info, 0, 12 * sizeof(*info));
+
+   if (!view || !view->resource)
+      return;
+   res = nv04_resource(view->resource);
+
+   /* Stick the image dimensions for the imageSize() builtin. */
+   info[0] = width;
+   info[1] = height;
+   info[2] = depth;
+
+   /* Stick the blockwidth (ie. number of bytes per pixel) to calculate pixel
+    * offset and to check if the format doesn't mismatch. */
+   info[3] = util_format_get_blocksize(view->format);
+
+   if (res->base.target != PIPE_BUFFER) {
+      struct nv50_miptree *mt = nv50_miptree(&res->base);
+      struct nv50_miptree_level *lvl = &mt->level[view->u.tex.level];
+      unsigned nby = align(util_format_get_nblocksy(view->format, height),
+                           NV50_TILE_SIZE_Y(lvl->tile_mode));
+
+      if (mt->layout_3d) {
+         info[4] = nby;
+         info[11] = view->u.tex.first_layer;
+      } else {
+         info[4] = mt->layer_stride / lvl->pitch;
+      }
+      info[6] = mt->ms_x;
+      info[7] = mt->ms_y;
+      info[8] = NV50_TILE_SHIFT_X(lvl->tile_mode);
+      info[9] = NV50_TILE_SHIFT_Y(lvl->tile_mode);
+      info[10] = NV50_TILE_SHIFT_Z(lvl->tile_mode);
+   }
+}
+
 static void
 nv50_compute_validate_surfaces(struct nv50_context *nv50)
 {
@@ -389,29 +445,36 @@ nv50_compute_validate_surfaces(struct nv50_context *nv50)
             struct nv50_miptree *mt = nv50_miptree(view->resource);
             struct nv50_miptree_level *lvl = &mt->level[view->u.tex.level];
             const unsigned z = view->u.tex.first_layer;
+            unsigned max_size;
 
             if (mt->layout_3d) {
-               address += nv50_mt_zslice_offset(mt, view->u.tex.level, z);
-               if (depth >= 1) {
-                  pipe_debug_message(&nv50->base.debug, CONFORMANCE,
-                                     "3D images are not supported!");
-                  debug_printf("3D images are not supported!\n");
-               }
+               address += nv50_mt_zslice_offset(mt, view->u.tex.level, 0);
+               max_size = mt->total_size;
             } else {
                address += mt->layer_stride * z;
+               max_size = mt->layer_stride * (view->u.tex.last_layer - view->u.tex.first_layer + 1);
             }
             address += lvl->offset;
 
             PUSH_DATAh(push, address);
             PUSH_DATA (push, address);
-            if (nouveau_bo_memtype(res->bo)) {
-               unsigned h = height << mt->ms_y;
-               unsigned nby = util_format_get_nblocksy(view->format, h);
-               unsigned tsy = NV50_TILE_SIZE_Y(lvl->tile_mode) * depth;
-
-               PUSH_DATA (push, lvl->pitch * tsy);
-               PUSH_DATA (push, (align(nby, tsy) - 1) << 16 | (lvl->pitch - 1));
-               PUSH_DATA (push, (lvl->tile_mode & 0xff) << 4); /* mask out z-tiling */
+            if (mt->layout_3d) {
+               // We have to adjust the size of the 3d surface to be
+               // accessible within 2d limits. The size of each z tile goes
+               // into the x direction, while the number of z tiles goes into
+               // the y direction.
+               const unsigned nby = util_format_get_nblocksy(view->format, height);
+               const unsigned tsy = NV50_TILE_SIZE_Y(lvl->tile_mode);
+               const unsigned tsz = NV50_TILE_SIZE_Z(lvl->tile_mode);
+               const unsigned pitch = lvl->pitch * tsz;
+               const unsigned maxy = align(nby, tsy) * align(depth, tsz) >> NV50_TILE_SHIFT_Z(lvl->tile_mode);
+               PUSH_DATA (push, pitch * tsy);
+               PUSH_DATA (push, (maxy - 1) << 16 | (pitch - 1));
+               PUSH_DATA (push, (lvl->tile_mode & 0xff) << 4);
+            } else if (nouveau_bo_memtype(res->bo)) {
+               PUSH_DATA (push, lvl->pitch * NV50_TILE_SIZE_Y(lvl->tile_mode));
+               PUSH_DATA (push, (max_size / lvl->pitch - 1) << 16 | (lvl->pitch - 1));
+               PUSH_DATA (push, (lvl->tile_mode & 0xff) << 4);
             } else {
                PUSH_DATA (push, lvl->pitch);
                PUSH_DATA (push, align(lvl->pitch * height, 0x100) - 1);
@@ -427,6 +490,12 @@ nv50_compute_validate_surfaces(struct nv50_context *nv50)
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
       }
+
+      PUSH_SPACE(push, 12 + 3);
+      BEGIN_NV04(push, NV50_CP(CB_ADDR), 1);
+      PUSH_DATA (push, NV50_CB_AUX_BUF_INFO(7 + i) << (8 - 2) | NV50_CB_AUX);
+      BEGIN_NI04(push, NV50_CP(CB_DATA(0)), 12);
+      nv50_set_surface_info(push, view, width, height, depth);
    }
 }
 
