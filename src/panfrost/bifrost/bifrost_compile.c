@@ -2864,8 +2864,12 @@ bi_optimize_nir(nir_shader *nir)
 
         /* Backend scheduler is purely local, so do some global optimizations
          * to reduce register pressure */
-        NIR_PASS_V(nir, nir_opt_sink, nir_move_const_undef);
-        NIR_PASS_V(nir, nir_opt_move, nir_move_const_undef);
+        nir_move_options move_all =
+                nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
+                nir_move_comparisons | nir_move_copies | nir_move_load_ssbo;
+
+        NIR_PASS_V(nir, nir_opt_sink, move_all);
+        NIR_PASS_V(nir, nir_opt_move, move_all);
 
         NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
