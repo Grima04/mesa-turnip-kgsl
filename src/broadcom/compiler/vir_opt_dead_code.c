@@ -209,16 +209,21 @@ vir_opt_dead_code(struct v3d_compile *c)
                                 continue;
                         }
 
-                        const bool is_last_ldunifa =
-                                check_last_ldunifa(c, inst, block);
+                        const bool is_ldunifa = inst->qpu.sig.ldunifa ||
+                                                inst->qpu.sig.ldunifarf;
 
-                        struct qinst *unifa = NULL;
-                        const bool is_first_ldunifa =
-                                check_first_ldunifa(c, inst, block, &unifa);
-
-                        if (vir_has_side_effects(c, inst) &&
-                            !is_last_ldunifa && !is_first_ldunifa) {
+                        if (vir_has_side_effects(c, inst) && !is_ldunifa)
                                 continue;
+
+                        bool is_first_ldunifa = false;
+                        bool is_last_ldunifa = false;
+                        struct qinst *unifa = NULL;
+                        if (is_ldunifa) {
+                                is_last_ldunifa =
+                                        check_last_ldunifa(c, inst, block);
+
+                                is_first_ldunifa =
+                                        check_first_ldunifa(c, inst, block, &unifa);
                         }
 
                         if (v3d_qpu_writes_flags(&inst->qpu)) {
@@ -236,7 +241,8 @@ vir_opt_dead_code(struct v3d_compile *c)
                         }
 
                         if (v3d_qpu_writes_flags(&inst->qpu) ||
-                            has_nonremovable_reads(c, inst)) {
+                            has_nonremovable_reads(c, inst) ||
+                            (is_ldunifa && !is_first_ldunifa && !is_last_ldunifa)) {
                                 /* If we can't remove the instruction, but we
                                  * don't need its destination value, just
                                  * remove the destination.  The register
