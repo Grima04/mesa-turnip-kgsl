@@ -699,9 +699,9 @@ ntt_emit_alu(struct ntt_compile *c, nir_alu_instr *instr)
       dst.Saturate = true;
 
    if (dst_64)
-      dst.WriteMask = ntt_64bit_write_mask(instr->dest.write_mask);
+      dst = ureg_writemask(dst, ntt_64bit_write_mask(instr->dest.write_mask));
    else
-      dst.WriteMask = instr->dest.write_mask;
+      dst = ureg_writemask(dst, instr->dest.write_mask);
 
    static enum tgsi_opcode op_map[][2] = {
       [nir_op_mov] = { TGSI_OPCODE_MOV, TGSI_OPCODE_MOV },
