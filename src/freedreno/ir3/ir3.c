@@ -294,6 +294,11 @@ struct ir3_instruction * ir3_instr_clone(struct ir3_instruction *instr)
 /* Add a false dependency to instruction, to ensure it is scheduled first: */
 void ir3_instr_add_dep(struct ir3_instruction *instr, struct ir3_instruction *dep)
 {
+	for (unsigned i = 0; i < instr->deps_count; i++) {
+		if (instr->deps[i] == dep)
+			return;
+	}
+
 	array_insert(instr, instr->deps, dep);
 }
 
