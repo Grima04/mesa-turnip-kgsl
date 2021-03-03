@@ -11053,7 +11053,7 @@ static void write_tcs_tess_factors(isel_context *ctx)
    store_vmem_mubuf(ctx, tf_vec, hs_ring_tess_factor, byte_offset, tf_base, tf_const_offset, 4, (1 << stride) - 1, true, memory_sync_info());
 
    /* Store to offchip for TES to read - only if TES reads them */
-   if (ctx->args->options->key.tcs.tes_reads_tess_factors) {
+   if (ctx->args->shader_info->tcs.tes_reads_tess_factors) {
       Temp hs_ring_tess_offchip = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), ctx->program->private_segment_buffer, Operand(RING_HS_TESS_OFFCHIP * 16u));
       Temp oc_lds = get_arg(ctx, ctx->args->ac.tess_offchip_offset);
 

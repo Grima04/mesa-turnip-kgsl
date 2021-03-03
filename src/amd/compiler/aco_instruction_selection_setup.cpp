@@ -448,14 +448,14 @@ setup_tcs_info(isel_context *ctx, nir_shader *nir, nir_shader *vs)
    ctx->tcs_num_inputs = ctx->program->info->tcs.num_linked_inputs;
    ctx->tcs_num_outputs = ctx->program->info->tcs.num_linked_outputs;
    ctx->tcs_num_patch_outputs = ctx->program->info->tcs.num_linked_patch_outputs;
-   ctx->tcs_num_patches = ctx->args->shader_info->tcs.num_patches;
+   ctx->tcs_num_patches = ctx->args->shader_info->num_tess_patches;
    ctx->program->config->lds_size = ctx->args->shader_info->tcs.num_lds_blocks;
 }
 
 void
 setup_tes_variables(isel_context *ctx, nir_shader *nir)
 {
-   ctx->tcs_num_patches = ctx->args->options->key.tes.num_patches;
+   ctx->tcs_num_patches = ctx->args->shader_info->num_tess_patches;
    ctx->tcs_num_outputs = ctx->program->info->tes.num_linked_inputs;
 
    if (ctx->stage == tess_eval_vs || ctx->stage == tess_eval_ngg) {

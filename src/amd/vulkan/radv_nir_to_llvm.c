@@ -3465,7 +3465,7 @@ write_tess_factors(struct radv_shader_context *ctx)
 					    16 + tf_offset, ac_glc);
 
 	//store to offchip for TES to read - only if TES reads them
-	if (ctx->args->options->key.tcs.tes_reads_tess_factors) {
+	if (ctx->args->shader_info->tcs.tes_reads_tess_factors) {
 		LLVMValueRef inner_vec, outer_vec, tf_outer_offset;
 		LLVMValueRef tf_inner_offset;
 
@@ -3986,12 +3986,12 @@ LLVMModuleRef ac_translate_nir_to_llvm(struct ac_llvm_compiler *ac_llvm,
 			ctx.abi.load_patch_vertices_in = load_patch_vertices_in;
 			ctx.abi.store_tcs_outputs = store_tcs_output;
 			ctx.tcs_num_inputs = ctx.args->shader_info->tcs.num_linked_inputs;
-			ctx.tcs_num_patches = args->shader_info->tcs.num_patches;
+			ctx.tcs_num_patches = args->shader_info->num_tess_patches;
 		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_TESS_EVAL) {
 			ctx.abi.load_tess_varyings = load_tes_input;
 			ctx.abi.load_tess_coord = load_tess_coord;
 			ctx.abi.load_patch_vertices_in = load_patch_vertices_in;
-			ctx.tcs_num_patches = args->options->key.tes.num_patches;
+			ctx.tcs_num_patches = args->shader_info->num_tess_patches;
 		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_VERTEX) {
 			ctx.abi.load_base_vertex = radv_load_base_vertex;
 		} else if (shaders[shader_idx]->info.stage == MESA_SHADER_FRAGMENT) {

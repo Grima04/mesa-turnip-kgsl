@@ -79,15 +79,12 @@ struct radv_vs_variant_key {
 
 struct radv_tes_variant_key {
 	struct radv_vs_out_key out;
-
-	uint8_t num_patches;
 };
 
 struct radv_tcs_variant_key {
 	struct radv_vs_variant_key vs_key;
 	unsigned primitive_mode;
 	unsigned input_vertices;
-	uint32_t tes_reads_tess_factors:1;
 };
 
 struct radv_fs_variant_key {
@@ -259,6 +256,7 @@ struct radv_shader_info {
 	bool need_indirect_descriptor_sets;
 	bool is_ngg;
 	bool is_ngg_passthrough;
+	uint32_t num_tess_patches;
 	struct {
 		uint8_t input_usage_mask[RADV_VERT_ATTRIB_MAX];
 		uint8_t output_usage_mask[VARYING_SLOT_VAR31 + 1];
@@ -337,11 +335,11 @@ struct radv_shader_info {
 		uint64_t tes_inputs_read;
 		uint64_t tes_patch_inputs_read;
 		unsigned tcs_vertices_out;
-		uint32_t num_patches;
 		uint32_t num_lds_blocks;
 		uint8_t num_linked_inputs;
 		uint8_t num_linked_outputs;
 		uint8_t num_linked_patch_outputs;
+		bool tes_reads_tess_factors:1;
 	} tcs;
 
 	struct radv_streamout_info so;
