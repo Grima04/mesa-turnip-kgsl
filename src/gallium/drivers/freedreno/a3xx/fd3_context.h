@@ -47,10 +47,7 @@ struct fd3_context {
 	struct u_upload_mgr *border_color_uploader;
 	struct pipe_resource *border_color_buf;
 
-	/* some state changes require a different shader variant.  Keep
-	 * track of this so we know when we need to re-emit shader state
-	 * due to variant change.  See fixup_shader_state()
-	 */
+	/* storage for ctx->last.key: */
 	struct ir3_shader_key last_key;
 };
 

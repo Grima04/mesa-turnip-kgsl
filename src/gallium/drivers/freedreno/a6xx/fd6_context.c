@@ -142,6 +142,7 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
 	fd6_ctx->base.dev = fd_device_ref(screen->dev);
 	fd6_ctx->base.screen = fd_screen(pscreen);
+	fd6_ctx->base.last.key = &fd6_ctx->last_key;
 
 	pctx->destroy = fd6_context_destroy;
 	pctx->create_blend_state = fd6_blend_state_create;

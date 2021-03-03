@@ -176,6 +176,8 @@ enum fd_dirty_shader_state {
 struct fd_hw_sample_provider;
 struct fd_hw_sample;
 
+struct ir3_shader_key;
+
 struct fd_context {
 	struct pipe_context base;
 
@@ -466,6 +468,15 @@ struct fd_context {
 		uint32_t instance_start;
 		uint32_t restart_index;
 		uint32_t streamout_mask;
+
+		/* some state changes require a different shader variant.  Keep
+		 * track of this so we know when we need to re-emit shader state
+		 * due to variant change.  See ir3_fixup_shader_state()
+		 *
+		 * (used for a3xx+, NULL otherwise)
+		 */
+		struct ir3_shader_key *key;
+
 	} last dt;
 };
 

@@ -54,10 +54,7 @@ struct fd5_context {
 	/* bitmask of samplers which need astc srgb workaround: */
 	uint16_t vastc_srgb, fastc_srgb;
 
-	/* some state changes require a different shader variant.  Keep
-	 * track of this so we know when we need to re-emit shader state
-	 * due to variant change.  See fixup_shader_state()
-	 */
+	/* storage for ctx->last.key: */
 	struct ir3_shader_key last_key;
 
 	/* number of active samples-passed queries: */

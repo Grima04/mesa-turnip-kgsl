@@ -31,6 +31,8 @@
 #include "pipe/p_screen.h"
 #include "ir3/ir3_shader.h"
 
+#include "freedreno_util.h"
+
 /**
  * The ir3 hwcso type, use ir3_get_shader() to dereference the
  * underlying ir3_shader
@@ -48,6 +50,8 @@ void ir3_shader_state_delete(struct pipe_context *pctx, void *hwcso);
 
 struct ir3_shader * ir3_get_shader(struct ir3_shader_state *hwcso);
 struct shader_info * ir3_get_shader_info(struct ir3_shader_state *hwcso);
+
+void ir3_fixup_shader_state(struct pipe_context *pctx, struct ir3_shader_key *key) assert_dt;
 
 void ir3_prog_init(struct pipe_context *pctx);
 void ir3_screen_init(struct pipe_screen *pscreen);

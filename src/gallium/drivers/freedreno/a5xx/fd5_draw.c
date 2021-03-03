@@ -67,32 +67,6 @@ draw_impl(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			info, emit->indirect, emit->draw, index_offset);
 }
 
-/* fixup dirty shader state in case some "unrelated" (from the state-
- * tracker's perspective) state change causes us to switch to a
- * different variant.
- */
-static void
-fixup_shader_state(struct fd_context *ctx, struct ir3_shader_key *key)
-	assert_dt
-{
-	struct fd5_context *fd5_ctx = fd5_context(ctx);
-	struct ir3_shader_key *last_key = &fd5_ctx->last_key;
-
-	if (!ir3_shader_key_equal(last_key, key)) {
-		if (ir3_shader_key_changes_fs(last_key, key)) {
-			ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= FD_DIRTY_SHADER_PROG;
-			ctx->dirty |= FD_DIRTY_PROG;
-		}
-
-		if (ir3_shader_key_changes_vs(last_key, key)) {
-			ctx->dirty_shader[PIPE_SHADER_VERTEX] |= FD_DIRTY_SHADER_PROG;
-			ctx->dirty |= FD_DIRTY_PROG;
-		}
-
-		fd5_ctx->last_key = *key;
-	}
-}
-
 static bool
 fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
@@ -120,7 +94,7 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
 	};
 
-	fixup_shader_state(ctx, &emit.key);
+	ir3_fixup_shader_state(&ctx->base, &emit.key);
 
 	unsigned dirty = ctx->dirty;
 	const struct ir3_shader_variant *vp = fd5_emit_get_vp(&emit);
