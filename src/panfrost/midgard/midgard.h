@@ -249,7 +249,7 @@ typedef enum {
 } midgard_outmod_int;
 
 typedef enum {
-        midgard_reg_mode_8 = 0,
+        midgard_reg_mode_8  = 0,
         midgard_reg_mode_16 = 1,
         midgard_reg_mode_32 = 2,
         midgard_reg_mode_64 = 3
@@ -311,12 +311,12 @@ typedef struct
 __attribute__((__packed__))
 {
         midgard_alu_op op               :  8;
-        midgard_reg_mode reg_mode   :  2;
-        unsigned src1 : 13;
-        unsigned src2 : 13;
-        midgard_shrink_mode shrink_mode : 2;
-        unsigned outmod               : 2;
-        unsigned mask                           : 8;
+        midgard_reg_mode reg_mode       :  2;
+        unsigned src1                   : 13;
+        unsigned src2                   : 13;
+        midgard_shrink_mode shrink_mode :  2;
+        unsigned outmod                 :  2;
+        unsigned mask                   :  8;
 }
 midgard_vector_alu;
 
@@ -324,7 +324,7 @@ typedef struct
 __attribute__((__packed__))
 {
         unsigned mod       : 2;
-        bool full          : 1; /* 0 = half, 1 = full */
+        bool full          : 1; /* 0 = 16-bit, 1 = 32-bit */
         unsigned component : 3;
 }
 midgard_scalar_alu_src;
@@ -336,7 +336,7 @@ __attribute__((__packed__))
         unsigned src1             :  6;
         unsigned src2             : 11;
         unsigned unknown          :  1;
-        unsigned outmod :  2;
+        unsigned outmod           :  2;
         bool output_full          :  1;
         unsigned output_component :  3;
 }
