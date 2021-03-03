@@ -2751,13 +2751,13 @@ vk_priority_to_gen(int priority)
 {
    switch (priority) {
    case VK_QUEUE_GLOBAL_PRIORITY_LOW_EXT:
-      return GEN_CONTEXT_LOW_PRIORITY;
+      return INTEL_CONTEXT_LOW_PRIORITY;
    case VK_QUEUE_GLOBAL_PRIORITY_MEDIUM_EXT:
-      return GEN_CONTEXT_MEDIUM_PRIORITY;
+      return INTEL_CONTEXT_MEDIUM_PRIORITY;
    case VK_QUEUE_GLOBAL_PRIORITY_HIGH_EXT:
-      return GEN_CONTEXT_HIGH_PRIORITY;
+      return INTEL_CONTEXT_HIGH_PRIORITY;
    case VK_QUEUE_GLOBAL_PRIORITY_REALTIME_EXT:
-      return GEN_CONTEXT_REALTIME_PRIORITY;
+      return INTEL_CONTEXT_REALTIME_PRIORITY;
    default:
       unreachable("Invalid priority");
    }
@@ -2983,10 +2983,10 @@ VkResult anv_CreateDevice(
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
       const unsigned decode_flags =
-         GEN_BATCH_DECODE_FULL |
-         ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
-         GEN_BATCH_DECODE_OFFSETS |
-         GEN_BATCH_DECODE_FLOATS;
+         INTEL_BATCH_DECODE_FULL |
+         ((INTEL_DEBUG & DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
+         INTEL_BATCH_DECODE_OFFSETS |
+         INTEL_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&device->decoder_ctx,
                                   &physical_device->info,

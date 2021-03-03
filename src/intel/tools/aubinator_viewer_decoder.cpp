@@ -74,7 +74,7 @@ aub_viewer_print_group(struct aub_viewer_decode_ctx *ctx,
       }
       if (!intel_field_is_header(iter.field)) {
          if (ctx->decode_cfg->field_filter.PassFilter(iter.name)) {
-            if (iter.field->type.kind == intel_type::GEN_TYPE_BOOL && iter.raw_value) {
+            if (iter.field->type.kind == intel_type::INTEL_TYPE_BOOL && iter.raw_value) {
                ImGui::Text("%s: ", iter.name); ImGui::SameLine();
                ImGui::TextColored(ctx->cfg->boolean_color, "true");
             } else {

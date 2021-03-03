@@ -538,10 +538,10 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
          const uint64_t old_aux_entry = READ_ONCE(*aux_entry_map);
          uint64_t new_aux_entry =
-            (old_aux_entry & GEN_AUX_MAP_ADDRESS_MASK) | format_bits;
+            (old_aux_entry & INTEL_AUX_MAP_ADDRESS_MASK) | format_bits;
 
          if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage))
-            new_aux_entry |= GEN_AUX_MAP_ENTRY_VALID_BIT;
+            new_aux_entry |= INTEL_AUX_MAP_ENTRY_VALID_BIT;
 
          mi_store(&b, mi_mem64(aux_entry_address), mi_imm(new_aux_entry));
       }
@@ -1905,7 +1905,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       intel_dump_l3_config(cfg, stderr);
    }
 
-   UNUSED const bool has_slm = cfg->n[GEN_L3P_SLM];
+   UNUSED const bool has_slm = cfg->n[INTEL_L3P_SLM];
 
    /* According to the hardware docs, the L3 partitioning can only be changed
     * while the pipeline is completely drained and the caches are flushed,
@@ -1950,7 +1950,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 
 #if GEN_GEN >= 8
 
-   assert(!cfg->n[GEN_L3P_IS] && !cfg->n[GEN_L3P_C] && !cfg->n[GEN_L3P_T]);
+   assert(!cfg->n[INTEL_L3P_IS] && !cfg->n[INTEL_L3P_C] && !cfg->n[INTEL_L3P_T]);
 
 #if GEN_GEN >= 12
 #define L3_ALLOCATION_REG GENX(L3ALLOC)
@@ -1973,25 +1973,25 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                    .ErrorDetectionBehaviorControl = true,
                    .UseFullWays = true,
 #endif
-                   .URBAllocation = cfg->n[GEN_L3P_URB],
-                   .ROAllocation = cfg->n[GEN_L3P_RO],
-                   .DCAllocation = cfg->n[GEN_L3P_DC],
-                   .AllAllocation = cfg->n[GEN_L3P_ALL]);
+                   .URBAllocation = cfg->n[INTEL_L3P_URB],
+                   .ROAllocation = cfg->n[INTEL_L3P_RO],
+                   .DCAllocation = cfg->n[INTEL_L3P_DC],
+                   .AllAllocation = cfg->n[INTEL_L3P_ALL]);
 
    /* Set up the L3 partitioning. */
    emit_lri(&cmd_buffer->batch, L3_ALLOCATION_REG_num, l3cr);
 
 #else
 
-   const bool has_dc = cfg->n[GEN_L3P_DC] || cfg->n[GEN_L3P_ALL];
-   const bool has_is = cfg->n[GEN_L3P_IS] || cfg->n[GEN_L3P_RO] ||
-                       cfg->n[GEN_L3P_ALL];
-   const bool has_c = cfg->n[GEN_L3P_C] || cfg->n[GEN_L3P_RO] ||
-                      cfg->n[GEN_L3P_ALL];
-   const bool has_t = cfg->n[GEN_L3P_T] || cfg->n[GEN_L3P_RO] ||
-                      cfg->n[GEN_L3P_ALL];
+   const bool has_dc = cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_ALL];
+   const bool has_is = cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_RO] ||
+                       cfg->n[INTEL_L3P_ALL];
+   const bool has_c = cfg->n[INTEL_L3P_C] || cfg->n[INTEL_L3P_RO] ||
+                      cfg->n[INTEL_L3P_ALL];
+   const bool has_t = cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_RO] ||
+                      cfg->n[INTEL_L3P_ALL];
 
-   assert(!cfg->n[GEN_L3P_ALL]);
+   assert(!cfg->n[INTEL_L3P_ALL]);
 
    /* When enabled SLM only uses a portion of the L3 on half of the banks,
     * the matching space on the remaining banks has to be allocated to a
@@ -2000,11 +2000,11 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
     */
    const struct gen_device_info *devinfo = &cmd_buffer->device->info;
    const bool urb_low_bw = has_slm && !devinfo->is_baytrail;
-   assert(!urb_low_bw || cfg->n[GEN_L3P_URB] == cfg->n[GEN_L3P_SLM]);
+   assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
 
    /* Minimum number of ways that can be allocated to the URB. */
    const unsigned n0_urb = devinfo->is_baytrail ? 32 : 0;
-   assert(cfg->n[GEN_L3P_URB] >= n0_urb);
+   assert(cfg->n[INTEL_L3P_URB] >= n0_urb);
 
    uint32_t l3sqcr1, l3cr2, l3cr3;
    anv_pack_struct(&l3sqcr1, GENX(L3SQCREG1),
@@ -2020,19 +2020,19 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    anv_pack_struct(&l3cr2, GENX(L3CNTLREG2),
                    .SLMEnable = has_slm,
                    .URBLowBandwidth = urb_low_bw,
-                   .URBAllocation = cfg->n[GEN_L3P_URB] - n0_urb,
+                   .URBAllocation = cfg->n[INTEL_L3P_URB] - n0_urb,
 #if !GEN_IS_HASWELL
-                   .ALLAllocation = cfg->n[GEN_L3P_ALL],
+                   .ALLAllocation = cfg->n[INTEL_L3P_ALL],
 #endif
-                   .ROAllocation = cfg->n[GEN_L3P_RO],
-                   .DCAllocation = cfg->n[GEN_L3P_DC]);
+                   .ROAllocation = cfg->n[INTEL_L3P_RO],
+                   .DCAllocation = cfg->n[INTEL_L3P_DC]);
 
    anv_pack_struct(&l3cr3, GENX(L3CNTLREG3),
-                   .ISAllocation = cfg->n[GEN_L3P_IS],
+                   .ISAllocation = cfg->n[INTEL_L3P_IS],
                    .ISLowBandwidth = 0,
-                   .CAllocation = cfg->n[GEN_L3P_C],
+                   .CAllocation = cfg->n[INTEL_L3P_C],
                    .CLowBandwidth = 0,
-                   .TAllocation = cfg->n[GEN_L3P_T],
+                   .TAllocation = cfg->n[INTEL_L3P_T],
                    .TLowBandwidth = 0);
 
    /* Set up the L3 partitioning. */

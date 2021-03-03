@@ -654,12 +654,12 @@ read_data_file(FILE *file)
 
    enum intel_batch_decode_flags batch_flags = 0;
    if (option_color == COLOR_ALWAYS)
-      batch_flags |= GEN_BATCH_DECODE_IN_COLOR;
+      batch_flags |= INTEL_BATCH_DECODE_IN_COLOR;
    if (option_full_decode)
-      batch_flags |= GEN_BATCH_DECODE_FULL;
+      batch_flags |= INTEL_BATCH_DECODE_FULL;
    if (option_print_offsets)
-      batch_flags |= GEN_BATCH_DECODE_OFFSETS;
-   batch_flags |= GEN_BATCH_DECODE_FLOATS;
+      batch_flags |= INTEL_BATCH_DECODE_OFFSETS;
+   batch_flags |= INTEL_BATCH_DECODE_FLOATS;
 
    struct intel_batch_decode_ctx batch_ctx;
    intel_batch_decode_ctx_init(&batch_ctx, &devinfo, stdout, batch_flags,
@@ -680,7 +680,7 @@ read_data_file(FILE *file)
           strcmp(sections[s].buffer_name, "batch buffer") == 0 ||
           strcmp(sections[s].buffer_name, "HW Context") == 0) {
          if (is_ring_buffer && ring_wraps)
-            batch_ctx.flags &= ~GEN_BATCH_DECODE_OFFSETS;
+            batch_ctx.flags &= ~INTEL_BATCH_DECODE_OFFSETS;
          batch_ctx.engine = class;
          uint8_t *data = (uint8_t *)sections[s].data + sections[s].data_offset;
          uint64_t batch_addr = sections[s].gtt_offset + sections[s].data_offset;

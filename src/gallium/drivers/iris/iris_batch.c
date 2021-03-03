@@ -215,10 +215,10 @@ iris_init_batch(struct iris_context *ice,
 
    if (INTEL_DEBUG) {
       const unsigned decode_flags =
-         GEN_BATCH_DECODE_FULL |
-         ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
-         GEN_BATCH_DECODE_OFFSETS |
-         GEN_BATCH_DECODE_FLOATS;
+         INTEL_BATCH_DECODE_FULL |
+         ((INTEL_DEBUG & DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
+         INTEL_BATCH_DECODE_OFFSETS |
+         INTEL_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
                                   stderr, decode_flags, NULL,

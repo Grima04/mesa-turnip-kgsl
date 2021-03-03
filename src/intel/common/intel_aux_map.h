@@ -43,13 +43,13 @@ extern "C" {
 struct intel_aux_map_context;
 struct gen_device_info;
 
-#define GEN_AUX_MAP_ADDRESS_MASK       0x0000ffffffffff00ull
-#define GEN_AUX_MAP_FORMAT_BITS_MASK   0xfff0000000000000ull
-#define GEN_AUX_MAP_ENTRY_VALID_BIT    0x1ull
-#define GEN_AUX_MAP_GEN12_CCS_SCALE    256
-#define GEN_AUX_MAP_MAIN_PAGE_SIZE     (64 * 1024)
-#define GEN_AUX_MAP_AUX_PAGE_SIZE \
-   (GEN_AUX_MAP_MAIN_PAGE_SIZE / GEN_AUX_MAP_GEN12_CCS_SCALE)
+#define INTEL_AUX_MAP_ADDRESS_MASK       0x0000ffffffffff00ull
+#define INTEL_AUX_MAP_FORMAT_BITS_MASK   0xfff0000000000000ull
+#define INTEL_AUX_MAP_ENTRY_VALID_BIT    0x1ull
+#define INTEL_AUX_MAP_GEN12_CCS_SCALE    256
+#define INTEL_AUX_MAP_MAIN_PAGE_SIZE     (64 * 1024)
+#define INTEL_AUX_MAP_AUX_PAGE_SIZE \
+   (INTEL_AUX_MAP_MAIN_PAGE_SIZE / INTEL_AUX_MAP_GEN12_CCS_SCALE)
 
 struct intel_aux_map_context *
 intel_aux_map_init(void *driver_ctx,

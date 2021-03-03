@@ -3306,20 +3306,20 @@ genX(emit_3dstate_multisample2)(struct brw_context *brw,
       multi.PixelLocation = CENTER;
       multi.NumberofMultisamples = log2_samples;
 #if GEN_GEN == 6
-      GEN_SAMPLE_POS_4X(multi.Sample);
+      INTEL_SAMPLE_POS_4X(multi.Sample);
 #elif GEN_GEN == 7
       switch (num_samples) {
       case 1:
-         GEN_SAMPLE_POS_1X(multi.Sample);
+         INTEL_SAMPLE_POS_1X(multi.Sample);
          break;
       case 2:
-         GEN_SAMPLE_POS_2X(multi.Sample);
+         INTEL_SAMPLE_POS_2X(multi.Sample);
          break;
       case 4:
-         GEN_SAMPLE_POS_4X(multi.Sample);
+         INTEL_SAMPLE_POS_4X(multi.Sample);
          break;
       case 8:
-         GEN_SAMPLE_POS_8X(multi.Sample);
+         INTEL_SAMPLE_POS_8X(multi.Sample);
          break;
       default:
          break;

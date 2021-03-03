@@ -36,16 +36,16 @@ extern "C" {
  * Common defines we want to share between GL And Vulkan.
  */
 
-#define GEN_CONTEXT_LOW_PRIORITY ((I915_CONTEXT_MIN_USER_PRIORITY-1)/2)
-#define GEN_CONTEXT_MEDIUM_PRIORITY (I915_CONTEXT_DEFAULT_PRIORITY)
-#define GEN_CONTEXT_HIGH_PRIORITY ((I915_CONTEXT_MAX_USER_PRIORITY+1)/2)
+#define INTEL_CONTEXT_LOW_PRIORITY ((I915_CONTEXT_MIN_USER_PRIORITY-1)/2)
+#define INTEL_CONTEXT_MEDIUM_PRIORITY (I915_CONTEXT_DEFAULT_PRIORITY)
+#define INTEL_CONTEXT_HIGH_PRIORITY ((I915_CONTEXT_MAX_USER_PRIORITY+1)/2)
 /* We don't have a strict notion of RT (yet, and when we do it is likely
  * to be more complicated than a mere priority value!), but we can give
  * it the absolute most priority available to us. By convention, this
  * is higher than any other client, except for blocked interactive
  * clients.
  */
-#define GEN_CONTEXT_REALTIME_PRIORITY I915_CONTEXT_MAX_USER_PRIORITY
+#define INTEL_CONTEXT_REALTIME_PRIORITY I915_CONTEXT_MAX_USER_PRIORITY
 
 #ifdef __cplusplus
 }

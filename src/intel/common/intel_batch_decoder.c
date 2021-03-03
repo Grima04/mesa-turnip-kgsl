@@ -75,7 +75,7 @@ ctx_print_group(struct intel_batch_decode_ctx *ctx,
                 uint64_t address, const void *map)
 {
    intel_print_group(ctx->fp, group, address, map, 0,
-                   (ctx->flags & GEN_BATCH_DECODE_IN_COLOR) != 0);
+                   (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) != 0);
 }
 
 static struct intel_batch_decode_bo
@@ -189,7 +189,7 @@ ctx_print_buffer(struct intel_batch_decode_ctx *ctx,
       }
       fprintf(ctx->fp, column_count == 0 ? "  " : " ");
 
-      if ((ctx->flags & GEN_BATCH_DECODE_FLOATS) && probably_float(*dw))
+      if ((ctx->flags & INTEL_BATCH_DECODE_FLOATS) && probably_float(*dw))
          fprintf(ctx->fp, "  %8.2f", *(float *) dw);
       else
          fprintf(ctx->fp, "  0x%08x", *dw);
@@ -1084,12 +1084,12 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
    const uint32_t *p, *end = batch + batch_size / sizeof(uint32_t);
    int length;
    struct intel_group *inst;
-   const char *reset_color = ctx->flags & GEN_BATCH_DECODE_IN_COLOR ? NORMAL : "";
+   const char *reset_color = ctx->flags & INTEL_BATCH_DECODE_IN_COLOR ? NORMAL : "";
 
    if (ctx->n_batch_buffer_start >= 100) {
       fprintf(ctx->fp, "%s0x%08"PRIx64": Max batch buffer jumps exceeded%s\n",
-              (ctx->flags & GEN_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
-              (ctx->flags & GEN_BATCH_DECODE_OFFSETS) ? batch_addr : 0,
+              (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
+              (ctx->flags & INTEL_BATCH_DECODE_OFFSETS) ? batch_addr : 0,
               reset_color);
       return;
    }
@@ -1103,19 +1103,19 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
       length = MAX2(1, length);
 
       uint64_t offset;
-      if (ctx->flags & GEN_BATCH_DECODE_OFFSETS)
+      if (ctx->flags & INTEL_BATCH_DECODE_OFFSETS)
          offset = batch_addr + ((char *)p - (char *)batch);
       else
          offset = 0;
 
       if (inst == NULL) {
          fprintf(ctx->fp, "%s0x%08"PRIx64": unknown instruction %08x%s\n",
-                 (ctx->flags & GEN_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
+                 (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
                  offset, p[0], reset_color);
 
          for (int i=1; i < length; i++) {
             fprintf(ctx->fp, "%s0x%08"PRIx64": -- %08x%s\n",
-                 (ctx->flags & GEN_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
+                 (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) ? RED_COLOR : "",
                  offset + i * 4, p[i], reset_color);
          }
 
@@ -1124,9 +1124,9 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
 
       const char *color;
       const char *inst_name = intel_group_get_name(inst);
-      if (ctx->flags & GEN_BATCH_DECODE_IN_COLOR) {
+      if (ctx->flags & INTEL_BATCH_DECODE_IN_COLOR) {
          reset_color = NORMAL;
-         if (ctx->flags & GEN_BATCH_DECODE_FULL) {
+         if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
             if (strcmp(inst_name, "MI_BATCH_BUFFER_START") == 0 ||
                 strcmp(inst_name, "MI_BATCH_BUFFER_END") == 0)
                color = GREEN_HEADER;
@@ -1143,7 +1143,7 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
       fprintf(ctx->fp, "%s0x%08"PRIx64":  0x%08x:  %-80s%s\n",
               color, offset, p[0], inst_name, reset_color);
 
-      if (ctx->flags & GEN_BATCH_DECODE_FULL) {
+      if (ctx->flags & INTEL_BATCH_DECODE_FULL) {
          ctx_print_group(ctx, inst, offset, p);
 
          for (int i = 0; i < ARRAY_SIZE(custom_decoders); i++) {

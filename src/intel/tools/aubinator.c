@@ -85,12 +85,12 @@ aubinator_init(void *user_data, int aub_pci_id, const char *app_name)
 
    enum intel_batch_decode_flags batch_flags = 0;
    if (option_color == COLOR_ALWAYS)
-      batch_flags |= GEN_BATCH_DECODE_IN_COLOR;
+      batch_flags |= INTEL_BATCH_DECODE_IN_COLOR;
    if (option_full_decode)
-      batch_flags |= GEN_BATCH_DECODE_FULL;
+      batch_flags |= INTEL_BATCH_DECODE_FULL;
    if (option_print_offsets)
-      batch_flags |= GEN_BATCH_DECODE_OFFSETS;
-   batch_flags |= GEN_BATCH_DECODE_FLOATS;
+      batch_flags |= INTEL_BATCH_DECODE_OFFSETS;
+   batch_flags |= INTEL_BATCH_DECODE_FLOATS;
 
    intel_batch_decode_ctx_init(&batch_ctx, &devinfo, outfile, batch_flags,
                                xml_path, NULL, NULL, NULL);

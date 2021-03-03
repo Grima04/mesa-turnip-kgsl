@@ -758,7 +758,7 @@ iris_emit_l3_config(struct iris_batch *batch,
 
    iris_pack_state(L3_ALLOCATION_REG, &reg_val, reg) {
 #if GEN_GEN < 11
-      reg.SLMEnable = cfg->n[GEN_L3P_SLM] > 0;
+      reg.SLMEnable = cfg->n[INTEL_L3P_SLM] > 0;
 #endif
 #if GEN_GEN == 11
       /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
@@ -769,10 +769,10 @@ iris_emit_l3_config(struct iris_batch *batch,
       reg.UseFullWays = true;
 #endif
       if (GEN_GEN < 12 || cfg) {
-         reg.URBAllocation = cfg->n[GEN_L3P_URB];
-         reg.ROAllocation = cfg->n[GEN_L3P_RO];
-         reg.DCAllocation = cfg->n[GEN_L3P_DC];
-         reg.AllAllocation = cfg->n[GEN_L3P_ALL];
+         reg.URBAllocation = cfg->n[INTEL_L3P_URB];
+         reg.ROAllocation = cfg->n[INTEL_L3P_RO];
+         reg.DCAllocation = cfg->n[INTEL_L3P_DC];
+         reg.AllAllocation = cfg->n[INTEL_L3P_ALL];
       } else {
 #if GEN_GEN >= 12
          reg.L3FullWayAllocationEnable = true;
@@ -1068,12 +1068,12 @@ iris_init_render_context(struct iris_batch *batch)
 
    /* Set the initial MSAA sample positions. */
    iris_emit_cmd(batch, GENX(3DSTATE_SAMPLE_PATTERN), pat) {
-      GEN_SAMPLE_POS_1X(pat._1xSample);
-      GEN_SAMPLE_POS_2X(pat._2xSample);
-      GEN_SAMPLE_POS_4X(pat._4xSample);
-      GEN_SAMPLE_POS_8X(pat._8xSample);
+      INTEL_SAMPLE_POS_1X(pat._1xSample);
+      INTEL_SAMPLE_POS_2X(pat._2xSample);
+      INTEL_SAMPLE_POS_4X(pat._4xSample);
+      INTEL_SAMPLE_POS_8X(pat._8xSample);
 #if GEN_GEN >= 9
-      GEN_SAMPLE_POS_16X(pat._16xSample);
+      INTEL_SAMPLE_POS_16X(pat._16xSample);
 #endif
    }
 

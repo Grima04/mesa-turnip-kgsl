@@ -256,17 +256,17 @@ intel_get_urb_config(const struct gen_device_info *devinfo,
           * not in one of the explicit cases listed above.
           */
          if (gs_present) {
-            *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_PER_POLY;
+            *deref_block_size = INTEL_URB_DEREF_BLOCK_SIZE_PER_POLY;
          } else if (tess_present) {
             if (entries[MESA_SHADER_TESS_EVAL] < 324)
-               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_PER_POLY;
+               *deref_block_size = INTEL_URB_DEREF_BLOCK_SIZE_PER_POLY;
             else
-               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_32;
+               *deref_block_size = INTEL_URB_DEREF_BLOCK_SIZE_32;
          } else {
             if (entries[MESA_SHADER_VERTEX] < 192)
-               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_PER_POLY;
+               *deref_block_size = INTEL_URB_DEREF_BLOCK_SIZE_PER_POLY;
             else
-               *deref_block_size = GEN_URB_DEREF_BLOCK_SIZE_32;
+               *deref_block_size = INTEL_URB_DEREF_BLOCK_SIZE_32;
          }
       } else {
          *deref_block_size = 0;

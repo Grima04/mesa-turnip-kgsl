@@ -1239,22 +1239,22 @@ blorp_emit_3dstate_multisample(struct blorp_batch *batch,
 
       switch (params->num_samples) {
       case 1:
-         GEN_SAMPLE_POS_1X(ms.Sample);
+         INTEL_SAMPLE_POS_1X(ms.Sample);
          break;
       case 2:
-         GEN_SAMPLE_POS_2X(ms.Sample);
+         INTEL_SAMPLE_POS_2X(ms.Sample);
          break;
       case 4:
-         GEN_SAMPLE_POS_4X(ms.Sample);
+         INTEL_SAMPLE_POS_4X(ms.Sample);
          break;
       case 8:
-         GEN_SAMPLE_POS_8X(ms.Sample);
+         INTEL_SAMPLE_POS_8X(ms.Sample);
          break;
       default:
          break;
       }
 #else
-      GEN_SAMPLE_POS_4X(ms.Sample);
+      INTEL_SAMPLE_POS_4X(ms.Sample);
 #endif
       ms.PixelLocation              = CENTER;
    }

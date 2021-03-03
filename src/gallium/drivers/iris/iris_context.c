@@ -169,11 +169,11 @@ iris_get_sample_position(struct pipe_context *ctx,
       } v;
    } u;
    switch (sample_count) {
-   case 1:  GEN_SAMPLE_POS_1X(u.v._);  break;
-   case 2:  GEN_SAMPLE_POS_2X(u.v._);  break;
-   case 4:  GEN_SAMPLE_POS_4X(u.v._);  break;
-   case 8:  GEN_SAMPLE_POS_8X(u.v._);  break;
-   case 16: GEN_SAMPLE_POS_16X(u.v._); break;
+   case 1:  INTEL_SAMPLE_POS_1X(u.v._);  break;
+   case 2:  INTEL_SAMPLE_POS_2X(u.v._);  break;
+   case 4:  INTEL_SAMPLE_POS_4X(u.v._);  break;
+   case 8:  INTEL_SAMPLE_POS_8X(u.v._);  break;
+   case 16: INTEL_SAMPLE_POS_16X(u.v._); break;
    default: unreachable("invalid sample count");
    }
 
@@ -349,9 +349,9 @@ iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    int priority = 0;
    if (flags & PIPE_CONTEXT_HIGH_PRIORITY)
-      priority = GEN_CONTEXT_HIGH_PRIORITY;
+      priority = INTEL_CONTEXT_HIGH_PRIORITY;
    if (flags & PIPE_CONTEXT_LOW_PRIORITY)
-      priority = GEN_CONTEXT_LOW_PRIORITY;
+      priority = INTEL_CONTEXT_LOW_PRIORITY;
 
    if (INTEL_DEBUG & DEBUG_BATCH)
       ice->state.sizes = _mesa_hash_table_u64_create(ice);

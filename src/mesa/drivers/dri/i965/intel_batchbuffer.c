@@ -153,10 +153,10 @@ brw_batch_init(struct brw_context *brw)
          _mesa_hash_table_u64_create(NULL);
 
       const unsigned decode_flags =
-         GEN_BATCH_DECODE_FULL |
-         ((INTEL_DEBUG & DEBUG_COLOR) ? GEN_BATCH_DECODE_IN_COLOR : 0) |
-         GEN_BATCH_DECODE_OFFSETS |
-         GEN_BATCH_DECODE_FLOATS;
+         INTEL_BATCH_DECODE_FULL |
+         ((INTEL_DEBUG & DEBUG_COLOR) ? INTEL_BATCH_DECODE_IN_COLOR : 0) |
+         INTEL_BATCH_DECODE_OFFSETS |
+         INTEL_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&batch->decoder, devinfo, stderr,
                                   decode_flags, NULL, decode_get_bo,

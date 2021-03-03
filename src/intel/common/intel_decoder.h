@@ -147,26 +147,26 @@ struct intel_enum {
 
 struct intel_type {
    enum {
-      GEN_TYPE_UNKNOWN,
-      GEN_TYPE_INT,
-      GEN_TYPE_UINT,
-      GEN_TYPE_BOOL,
-      GEN_TYPE_FLOAT,
-      GEN_TYPE_ADDRESS,
-      GEN_TYPE_OFFSET,
-      GEN_TYPE_STRUCT,
-      GEN_TYPE_UFIXED,
-      GEN_TYPE_SFIXED,
-      GEN_TYPE_MBO,
-      GEN_TYPE_ENUM
+      INTEL_TYPE_UNKNOWN,
+      INTEL_TYPE_INT,
+      INTEL_TYPE_UINT,
+      INTEL_TYPE_BOOL,
+      INTEL_TYPE_FLOAT,
+      INTEL_TYPE_ADDRESS,
+      INTEL_TYPE_OFFSET,
+      INTEL_TYPE_STRUCT,
+      INTEL_TYPE_UFIXED,
+      INTEL_TYPE_SFIXED,
+      INTEL_TYPE_MBO,
+      INTEL_TYPE_ENUM
    } kind;
 
-   /* Struct definition for  GEN_TYPE_STRUCT */
+   /* Struct definition for  INTEL_TYPE_STRUCT */
    union {
       struct intel_group *intel_struct;
       struct intel_enum *intel_enum;
       struct {
-         /* Integer and fractional sizes for GEN_TYPE_UFIXED and GEN_TYPE_SFIXED */
+         /* Integer and fractional sizes for INTEL_TYPE_UFIXED and INTEL_TYPE_SFIXED */
          int i, f;
       };
    };
@@ -207,13 +207,13 @@ void intel_print_group(FILE *out,
 
 enum intel_batch_decode_flags {
    /** Print in color! */
-   GEN_BATCH_DECODE_IN_COLOR  = (1 << 0),
+   INTEL_BATCH_DECODE_IN_COLOR  = (1 << 0),
    /** Print everything, not just headers */
-   GEN_BATCH_DECODE_FULL      = (1 << 1),
+   INTEL_BATCH_DECODE_FULL      = (1 << 1),
    /** Print offsets along with the batch */
-   GEN_BATCH_DECODE_OFFSETS   = (1 << 2),
+   INTEL_BATCH_DECODE_OFFSETS   = (1 << 2),
    /** Guess when a value is a float and print it as such */
-   GEN_BATCH_DECODE_FLOATS    = (1 << 3),
+   INTEL_BATCH_DECODE_FLOATS    = (1 << 3),
 };
 
 struct intel_batch_decode_bo {

@@ -71,14 +71,14 @@ static void
 setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   const bool has_dc = cfg->n[GEN_L3P_DC] || cfg->n[GEN_L3P_ALL];
-   const bool has_is = cfg->n[GEN_L3P_IS] || cfg->n[GEN_L3P_RO] ||
-                       cfg->n[GEN_L3P_ALL];
-   const bool has_c = cfg->n[GEN_L3P_C] || cfg->n[GEN_L3P_RO] ||
-                      cfg->n[GEN_L3P_ALL];
-   const bool has_t = cfg->n[GEN_L3P_T] || cfg->n[GEN_L3P_RO] ||
-                      cfg->n[GEN_L3P_ALL];
-   const bool has_slm = cfg->n[GEN_L3P_SLM];
+   const bool has_dc = cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_ALL];
+   const bool has_is = cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_RO] ||
+                       cfg->n[INTEL_L3P_ALL];
+   const bool has_c = cfg->n[INTEL_L3P_C] || cfg->n[INTEL_L3P_RO] ||
+                      cfg->n[INTEL_L3P_ALL];
+   const bool has_t = cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_RO] ||
+                      cfg->n[INTEL_L3P_ALL];
+   const bool has_slm = cfg->n[INTEL_L3P_SLM];
 
    /* According to the hardware docs, the L3 partitioning can only be changed
     * while the pipeline is completely drained and the caches are flushed,
@@ -116,20 +116,20 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
                                PIPE_CONTROL_CS_STALL);
 
    if (devinfo->gen >= 8) {
-      assert(!cfg->n[GEN_L3P_IS] && !cfg->n[GEN_L3P_C] && !cfg->n[GEN_L3P_T]);
+      assert(!cfg->n[INTEL_L3P_IS] && !cfg->n[INTEL_L3P_C] && !cfg->n[INTEL_L3P_T]);
 
       const unsigned imm_data = (
          (devinfo->gen < 11 && has_slm ? GEN8_L3CNTLREG_SLM_ENABLE : 0) |
          (devinfo->gen == 11 ? GEN11_L3CNTLREG_USE_FULL_WAYS : 0) |
-         SET_FIELD(cfg->n[GEN_L3P_URB], GEN8_L3CNTLREG_URB_ALLOC) |
-         SET_FIELD(cfg->n[GEN_L3P_RO], GEN8_L3CNTLREG_RO_ALLOC) |
-         SET_FIELD(cfg->n[GEN_L3P_DC], GEN8_L3CNTLREG_DC_ALLOC) |
-         SET_FIELD(cfg->n[GEN_L3P_ALL], GEN8_L3CNTLREG_ALL_ALLOC));
+         SET_FIELD(cfg->n[INTEL_L3P_URB], GEN8_L3CNTLREG_URB_ALLOC) |
+         SET_FIELD(cfg->n[INTEL_L3P_RO], GEN8_L3CNTLREG_RO_ALLOC) |
+         SET_FIELD(cfg->n[INTEL_L3P_DC], GEN8_L3CNTLREG_DC_ALLOC) |
+         SET_FIELD(cfg->n[INTEL_L3P_ALL], GEN8_L3CNTLREG_ALL_ALLOC));
 
       /* Set up the L3 partitioning. */
       brw_load_register_imm32(brw, GEN8_L3CNTLREG, imm_data);
    } else {
-      assert(!cfg->n[GEN_L3P_ALL]);
+      assert(!cfg->n[INTEL_L3P_ALL]);
 
       /* When enabled SLM only uses a portion of the L3 on half of the banks,
        * the matching space on the remaining banks has to be allocated to a
@@ -137,11 +137,11 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
        * lower-bandwidth 2-bank address hashing mode.
        */
       const bool urb_low_bw = has_slm && !devinfo->is_baytrail;
-      assert(!urb_low_bw || cfg->n[GEN_L3P_URB] == cfg->n[GEN_L3P_SLM]);
+      assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
 
       /* Minimum number of ways that can be allocated to the URB. */
       const unsigned n0_urb = (devinfo->is_baytrail ? 32 : 0);
-      assert(cfg->n[GEN_L3P_URB] >= n0_urb);
+      assert(cfg->n[INTEL_L3P_URB] >= n0_urb);
 
       BEGIN_BATCH(7);
       OUT_BATCH(MI_LOAD_REGISTER_IMM | (7 - 2));
@@ -159,15 +159,15 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
       /* Set up the L3 partitioning. */
       OUT_BATCH(GEN7_L3CNTLREG2);
       OUT_BATCH((has_slm ? GEN7_L3CNTLREG2_SLM_ENABLE : 0) |
-                SET_FIELD(cfg->n[GEN_L3P_URB] - n0_urb, GEN7_L3CNTLREG2_URB_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_URB] - n0_urb, GEN7_L3CNTLREG2_URB_ALLOC) |
                 (urb_low_bw ? GEN7_L3CNTLREG2_URB_LOW_BW : 0) |
-                SET_FIELD(cfg->n[GEN_L3P_ALL], GEN7_L3CNTLREG2_ALL_ALLOC) |
-                SET_FIELD(cfg->n[GEN_L3P_RO], GEN7_L3CNTLREG2_RO_ALLOC) |
-                SET_FIELD(cfg->n[GEN_L3P_DC], GEN7_L3CNTLREG2_DC_ALLOC));
+                SET_FIELD(cfg->n[INTEL_L3P_ALL], GEN7_L3CNTLREG2_ALL_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_RO], GEN7_L3CNTLREG2_RO_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_DC], GEN7_L3CNTLREG2_DC_ALLOC));
       OUT_BATCH(GEN7_L3CNTLREG3);
-      OUT_BATCH(SET_FIELD(cfg->n[GEN_L3P_IS], GEN7_L3CNTLREG3_IS_ALLOC) |
-                SET_FIELD(cfg->n[GEN_L3P_C], GEN7_L3CNTLREG3_C_ALLOC) |
-                SET_FIELD(cfg->n[GEN_L3P_T], GEN7_L3CNTLREG3_T_ALLOC));
+      OUT_BATCH(SET_FIELD(cfg->n[INTEL_L3P_IS], GEN7_L3CNTLREG3_IS_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_C], GEN7_L3CNTLREG3_C_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_T], GEN7_L3CNTLREG3_T_ALLOC));
 
       ADVANCE_BATCH();
 

@@ -400,16 +400,16 @@ genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
       if (locations) {
          switch (samples) {
          case 1:
-            GEN_SAMPLE_POS_1X_ARRAY(ms.Sample, locations);
+            INTEL_SAMPLE_POS_1X_ARRAY(ms.Sample, locations);
             break;
          case 2:
-            GEN_SAMPLE_POS_2X_ARRAY(ms.Sample, locations);
+            INTEL_SAMPLE_POS_2X_ARRAY(ms.Sample, locations);
             break;
          case 4:
-            GEN_SAMPLE_POS_4X_ARRAY(ms.Sample, locations);
+            INTEL_SAMPLE_POS_4X_ARRAY(ms.Sample, locations);
             break;
          case 8:
-            GEN_SAMPLE_POS_8X_ARRAY(ms.Sample, locations);
+            INTEL_SAMPLE_POS_8X_ARRAY(ms.Sample, locations);
             break;
          default:
             break;
@@ -417,16 +417,16 @@ genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
       } else {
          switch (samples) {
          case 1:
-            GEN_SAMPLE_POS_1X(ms.Sample);
+            INTEL_SAMPLE_POS_1X(ms.Sample);
             break;
          case 2:
-            GEN_SAMPLE_POS_2X(ms.Sample);
+            INTEL_SAMPLE_POS_2X(ms.Sample);
             break;
          case 4:
-            GEN_SAMPLE_POS_4X(ms.Sample);
+            INTEL_SAMPLE_POS_4X(ms.Sample);
             break;
          case 8:
-            GEN_SAMPLE_POS_8X(ms.Sample);
+            INTEL_SAMPLE_POS_8X(ms.Sample);
             break;
          default:
             break;
@@ -466,32 +466,32 @@ genX(emit_sample_pattern)(struct anv_batch *batch, uint32_t samples,
           */
          switch (samples) {
          case 1:
-            GEN_SAMPLE_POS_1X_ARRAY(sp._1xSample, locations);
+            INTEL_SAMPLE_POS_1X_ARRAY(sp._1xSample, locations);
             break;
          case 2:
-            GEN_SAMPLE_POS_2X_ARRAY(sp._2xSample, locations);
+            INTEL_SAMPLE_POS_2X_ARRAY(sp._2xSample, locations);
             break;
          case 4:
-            GEN_SAMPLE_POS_4X_ARRAY(sp._4xSample, locations);
+            INTEL_SAMPLE_POS_4X_ARRAY(sp._4xSample, locations);
             break;
          case 8:
-            GEN_SAMPLE_POS_8X_ARRAY(sp._8xSample, locations);
+            INTEL_SAMPLE_POS_8X_ARRAY(sp._8xSample, locations);
             break;
 #if GEN_GEN >= 9
          case 16:
-            GEN_SAMPLE_POS_16X_ARRAY(sp._16xSample, locations);
+            INTEL_SAMPLE_POS_16X_ARRAY(sp._16xSample, locations);
             break;
 #endif
          default:
             break;
          }
       } else {
-         GEN_SAMPLE_POS_1X(sp._1xSample);
-         GEN_SAMPLE_POS_2X(sp._2xSample);
-         GEN_SAMPLE_POS_4X(sp._4xSample);
-         GEN_SAMPLE_POS_8X(sp._8xSample);
+         INTEL_SAMPLE_POS_1X(sp._1xSample);
+         INTEL_SAMPLE_POS_2X(sp._2xSample);
+         INTEL_SAMPLE_POS_4X(sp._4xSample);
+         INTEL_SAMPLE_POS_8X(sp._8xSample);
 #if GEN_GEN >= 9
-         GEN_SAMPLE_POS_16X(sp._16xSample);
+         INTEL_SAMPLE_POS_16X(sp._16xSample);
 #endif
       }
    }

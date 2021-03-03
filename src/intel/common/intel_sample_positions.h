@@ -56,74 +56,74 @@ intel_get_sample_positions(int samples)
 
 /* Examples:
  * in case of GEN_GEN < 8:
- * GEN_SAMPLE_POS_ELEM(ms.Sample, info->pSampleLocations, 0); expands to:
+ * INTEL_SAMPLE_POS_ELEM(ms.Sample, info->pSampleLocations, 0); expands to:
  *    ms.Sample0XOffset = info->pSampleLocations[0].x;
  *    ms.Sample0YOffset = info->pSampleLocations[0].y;
  *
  * in case of GEN_GEN >= 8:
- * GEN_SAMPLE_POS_ELEM(sp._16xSample, info->pSampleLocations, 0); expands to:
+ * INTEL_SAMPLE_POS_ELEM(sp._16xSample, info->pSampleLocations, 0); expands to:
  *    sp._16xSample0XOffset = info->pSampleLocations[0].x;
  *    sp._16xSample0YOffset = info->pSampleLocations[0].y;
  */
 
-#define GEN_SAMPLE_POS_ELEM(prefix, arr, sample_idx) \
+#define INTEL_SAMPLE_POS_ELEM(prefix, arr, sample_idx) \
 prefix##sample_idx##XOffset = arr[sample_idx].x; \
 prefix##sample_idx##YOffset = arr[sample_idx].y;
 
-#define GEN_SAMPLE_POS_1X_ARRAY(prefix, arr)\
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 0);
+#define INTEL_SAMPLE_POS_1X_ARRAY(prefix, arr)\
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 0);
 
-#define GEN_SAMPLE_POS_2X_ARRAY(prefix, arr) \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 1);
+#define INTEL_SAMPLE_POS_2X_ARRAY(prefix, arr) \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 1);
 
-#define GEN_SAMPLE_POS_4X_ARRAY(prefix, arr) \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 1); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 2); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 3);
+#define INTEL_SAMPLE_POS_4X_ARRAY(prefix, arr) \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 1); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 2); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 3);
 
-#define GEN_SAMPLE_POS_8X_ARRAY(prefix, arr) \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 1); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 2); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 3); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 4); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 5); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 6); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 7);
+#define INTEL_SAMPLE_POS_8X_ARRAY(prefix, arr) \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 1); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 2); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 3); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 4); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 5); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 6); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 7);
 
-#define GEN_SAMPLE_POS_16X_ARRAY(prefix, arr) \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 0); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 1); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 2); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 3); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 4); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 5); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 6); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 7); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 8); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 9); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 10); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 11); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 12); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 13); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 14); \
-   GEN_SAMPLE_POS_ELEM(prefix, arr, 15);
+#define INTEL_SAMPLE_POS_16X_ARRAY(prefix, arr) \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 0); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 1); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 2); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 3); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 4); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 5); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 6); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 7); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 8); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 9); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 10); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 11); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 12); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 13); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 14); \
+   INTEL_SAMPLE_POS_ELEM(prefix, arr, 15);
 
-#define GEN_SAMPLE_POS_1X(prefix) \
-   GEN_SAMPLE_POS_1X_ARRAY(prefix, intel_sample_positions_1x)
+#define INTEL_SAMPLE_POS_1X(prefix) \
+   INTEL_SAMPLE_POS_1X_ARRAY(prefix, intel_sample_positions_1x)
 
-#define GEN_SAMPLE_POS_2X(prefix) \
-   GEN_SAMPLE_POS_2X_ARRAY(prefix, intel_sample_positions_2x)
+#define INTEL_SAMPLE_POS_2X(prefix) \
+   INTEL_SAMPLE_POS_2X_ARRAY(prefix, intel_sample_positions_2x)
 
-#define GEN_SAMPLE_POS_4X(prefix) \
-   GEN_SAMPLE_POS_4X_ARRAY(prefix, intel_sample_positions_4x)
+#define INTEL_SAMPLE_POS_4X(prefix) \
+   INTEL_SAMPLE_POS_4X_ARRAY(prefix, intel_sample_positions_4x)
 
-#define GEN_SAMPLE_POS_8X(prefix) \
-   GEN_SAMPLE_POS_8X_ARRAY(prefix, intel_sample_positions_8x)
+#define INTEL_SAMPLE_POS_8X(prefix) \
+   INTEL_SAMPLE_POS_8X_ARRAY(prefix, intel_sample_positions_8x)
 
-#define GEN_SAMPLE_POS_16X(prefix) \
-   GEN_SAMPLE_POS_16X_ARRAY(prefix, intel_sample_positions_16x)
+#define INTEL_SAMPLE_POS_16X(prefix) \
+   INTEL_SAMPLE_POS_16X_ARRAY(prefix, intel_sample_positions_16x)
 
 #endif /* INTEL_SAMPLE_POSITIONS_H */

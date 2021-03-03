@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_CONTEXT_H
-#define GEN_CONTEXT_H
+#ifndef INTEL_CONTEXT_H
+#define INTEL_CONTEXT_H
 
 #include <stdint.h>
 
@@ -101,4 +101,4 @@ typedef void (*gen_context_init_t)(const struct gen_context_parameters *, uint32
 #include "gen8_context.h"
 #include "gen10_context.h"
 
-#endif /* GEN_CONTEXT_H */
+#endif /* INTEL_CONTEXT_H */

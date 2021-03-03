@@ -197,10 +197,10 @@ norm_l3_weights(struct intel_l3_weights w)
 {
    float sz = 0;
 
-   for (unsigned i = 0; i < GEN_NUM_L3P; i++)
+   for (unsigned i = 0; i < INTEL_NUM_L3P; i++)
       sz += w.w[i];
 
-   for (unsigned i = 0; i < GEN_NUM_L3P; i++)
+   for (unsigned i = 0; i < INTEL_NUM_L3P; i++)
       w.w[i] /= sz;
 
    return w;
@@ -215,7 +215,7 @@ intel_get_l3_config_weights(const struct intel_l3_config *cfg)
    if (cfg) {
       struct intel_l3_weights w;
 
-      for (unsigned i = 0; i < GEN_NUM_L3P; i++)
+      for (unsigned i = 0; i < INTEL_NUM_L3P; i++)
          w.w[i] = cfg->n[i];
 
       return norm_l3_weights(w);
@@ -236,15 +236,15 @@ intel_get_l3_config_weights(const struct intel_l3_config *cfg)
 float
 intel_diff_l3_weights(struct intel_l3_weights w0, struct intel_l3_weights w1)
 {
-   if ((w0.w[GEN_L3P_SLM] && !w1.w[GEN_L3P_SLM]) ||
-       (w0.w[GEN_L3P_DC] && !w1.w[GEN_L3P_DC] && !w1.w[GEN_L3P_ALL]) ||
-       (w0.w[GEN_L3P_URB] && !w1.w[GEN_L3P_URB])) {
+   if ((w0.w[INTEL_L3P_SLM] && !w1.w[INTEL_L3P_SLM]) ||
+       (w0.w[INTEL_L3P_DC] && !w1.w[INTEL_L3P_DC] && !w1.w[INTEL_L3P_ALL]) ||
+       (w0.w[INTEL_L3P_URB] && !w1.w[INTEL_L3P_URB])) {
       return HUGE_VALF;
 
    } else {
       float dw = 0;
 
-      for (unsigned i = 0; i < GEN_NUM_L3P; i++)
+      for (unsigned i = 0; i < INTEL_NUM_L3P; i++)
          dw += fabsf(w0.w[i] - w1.w[i]);
 
       return dw;
@@ -262,14 +262,14 @@ intel_get_default_l3_weights(const struct gen_device_info *devinfo,
 {
    struct intel_l3_weights w = {{ 0 }};
 
-   w.w[GEN_L3P_SLM] = devinfo->gen < 11 && needs_slm;
-   w.w[GEN_L3P_URB] = 1.0;
+   w.w[INTEL_L3P_SLM] = devinfo->gen < 11 && needs_slm;
+   w.w[INTEL_L3P_URB] = 1.0;
 
    if (devinfo->gen >= 8) {
-      w.w[GEN_L3P_ALL] = 1.0;
+      w.w[INTEL_L3P_ALL] = 1.0;
    } else {
-      w.w[GEN_L3P_DC] = needs_dc ? 0.1 : 0;
-      w.w[GEN_L3P_RO] = devinfo->is_baytrail ? 0.5 : 1.0;
+      w.w[INTEL_L3P_DC] = needs_dc ? 0.1 : 0;
+      w.w[INTEL_L3P_RO] = devinfo->is_baytrail ? 0.5 : 1.0;
    }
 
    return norm_l3_weights(w);
@@ -364,7 +364,7 @@ intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
     * only 1008KB of this will be used."
     */
    const unsigned max = (devinfo->gen == 9 ? 1008 : ~0);
-   return MIN2(max, cfg->n[GEN_L3P_URB] * get_l3_way_size(devinfo)) /
+   return MIN2(max, cfg->n[INTEL_L3P_URB] * get_l3_way_size(devinfo)) /
           get_urb_size_scale(devinfo);
 }
 
@@ -375,7 +375,7 @@ void
 intel_dump_l3_config(const struct intel_l3_config *cfg, FILE *fp)
 {
    fprintf(stderr, "SLM=%d URB=%d ALL=%d DC=%d RO=%d IS=%d C=%d T=%d\n",
-           cfg->n[GEN_L3P_SLM], cfg->n[GEN_L3P_URB], cfg->n[GEN_L3P_ALL],
-           cfg->n[GEN_L3P_DC], cfg->n[GEN_L3P_RO],
-           cfg->n[GEN_L3P_IS], cfg->n[GEN_L3P_C], cfg->n[GEN_L3P_T]);
+           cfg->n[INTEL_L3P_SLM], cfg->n[INTEL_L3P_URB], cfg->n[INTEL_L3P_ALL],
+           cfg->n[INTEL_L3P_DC], cfg->n[INTEL_L3P_RO],
+           cfg->n[INTEL_L3P_IS], cfg->n[INTEL_L3P_C], cfg->n[INTEL_L3P_T]);
 }

@@ -33,23 +33,23 @@
  */
 enum intel_l3_partition {
    /** Shared local memory. */
-   GEN_L3P_SLM = 0,
+   INTEL_L3P_SLM = 0,
    /** Unified return buffer. */
-   GEN_L3P_URB,
+   INTEL_L3P_URB,
    /** Union of DC and RO. */
-   GEN_L3P_ALL,
+   INTEL_L3P_ALL,
    /** Data cluster RW partition. */
-   GEN_L3P_DC,
+   INTEL_L3P_DC,
    /** Union of IS, C and T. */
-   GEN_L3P_RO,
+   INTEL_L3P_RO,
    /** Instruction and state cache. */
-   GEN_L3P_IS,
+   INTEL_L3P_IS,
    /** Constant cache. */
-   GEN_L3P_C,
+   INTEL_L3P_C,
    /** Texture cache. */
-   GEN_L3P_T,
+   INTEL_L3P_T,
    /** Number of supported L3 partitions. */
-   GEN_NUM_L3P
+   INTEL_NUM_L3P
 };
 
 /**
@@ -57,7 +57,7 @@ enum intel_l3_partition {
  * partition.  \sa get_l3_way_size().
  */
 struct intel_l3_config {
-   unsigned n[GEN_NUM_L3P];
+   unsigned n[INTEL_NUM_L3P];
 };
 
 /**
@@ -67,7 +67,7 @@ struct intel_l3_config {
  * configuration.
  */
 struct intel_l3_weights {
-   float w[GEN_NUM_L3P];
+   float w[INTEL_NUM_L3P];
 };
 
 float intel_diff_l3_weights(struct intel_l3_weights w0, struct intel_l3_weights w1);
@@ -93,9 +93,9 @@ intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
 void intel_dump_l3_config(const struct intel_l3_config *cfg, FILE *fp);
 
 enum intel_urb_deref_block_size {
-   GEN_URB_DEREF_BLOCK_SIZE_32         = 0,
-   GEN_URB_DEREF_BLOCK_SIZE_PER_POLY   = 1,
-   GEN_URB_DEREF_BLOCK_SIZE_8          = 2,
+   INTEL_URB_DEREF_BLOCK_SIZE_32         = 0,
+   INTEL_URB_DEREF_BLOCK_SIZE_PER_POLY   = 1,
+   INTEL_URB_DEREF_BLOCK_SIZE_8          = 2,
 };
 
 void intel_get_urb_config(const struct gen_device_info *devinfo,

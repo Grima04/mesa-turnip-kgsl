@@ -1072,14 +1072,14 @@ brw_create_context(gl_api api,
    }
 
    if (brw->hw_ctx) {
-      int hw_priority = GEN_CONTEXT_MEDIUM_PRIORITY;
+      int hw_priority = INTEL_CONTEXT_MEDIUM_PRIORITY;
       if (ctx_config->attribute_mask & __DRIVER_CONTEXT_ATTRIB_PRIORITY) {
          switch (ctx_config->priority) {
          case __DRI_CTX_PRIORITY_LOW:
-            hw_priority = GEN_CONTEXT_LOW_PRIORITY;
+            hw_priority = INTEL_CONTEXT_LOW_PRIORITY;
             break;
          case __DRI_CTX_PRIORITY_HIGH:
-            hw_priority = GEN_CONTEXT_HIGH_PRIORITY;
+            hw_priority = INTEL_CONTEXT_HIGH_PRIORITY;
             break;
          }
       }

@@ -282,27 +282,27 @@ string_to_type(struct parser_context *ctx, const char *s)
    struct intel_enum *e;
 
    if (strcmp(s, "int") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_INT };
+      return (struct intel_type) { .kind = INTEL_TYPE_INT };
    else if (strcmp(s, "uint") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_UINT };
+      return (struct intel_type) { .kind = INTEL_TYPE_UINT };
    else if (strcmp(s, "bool") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_BOOL };
+      return (struct intel_type) { .kind = INTEL_TYPE_BOOL };
    else if (strcmp(s, "float") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_FLOAT };
+      return (struct intel_type) { .kind = INTEL_TYPE_FLOAT };
    else if (strcmp(s, "address") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_ADDRESS };
+      return (struct intel_type) { .kind = INTEL_TYPE_ADDRESS };
    else if (strcmp(s, "offset") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_OFFSET };
+      return (struct intel_type) { .kind = INTEL_TYPE_OFFSET };
    else if (sscanf(s, "u%d.%d", &i, &f) == 2)
-      return (struct intel_type) { .kind = GEN_TYPE_UFIXED, .i = i, .f = f };
+      return (struct intel_type) { .kind = INTEL_TYPE_UFIXED, .i = i, .f = f };
    else if (sscanf(s, "s%d.%d", &i, &f) == 2)
-      return (struct intel_type) { .kind = GEN_TYPE_SFIXED, .i = i, .f = f };
+      return (struct intel_type) { .kind = INTEL_TYPE_SFIXED, .i = i, .f = f };
    else if (g = intel_spec_find_struct(ctx->spec, s), g != NULL)
-      return (struct intel_type) { .kind = GEN_TYPE_STRUCT, .intel_struct = g };
+      return (struct intel_type) { .kind = INTEL_TYPE_STRUCT, .intel_struct = g };
    else if (e = intel_spec_find_enum(ctx->spec, s), e != NULL)
-      return (struct intel_type) { .kind = GEN_TYPE_ENUM, .intel_enum = e };
+      return (struct intel_type) { .kind = INTEL_TYPE_ENUM, .intel_enum = e };
    else if (strcmp(s, "mbo") == 0)
-      return (struct intel_type) { .kind = GEN_TYPE_MBO };
+      return (struct intel_type) { .kind = INTEL_TYPE_MBO };
    else
       fail(&ctx->loc, "invalid type: %s", s);
 }
@@ -1033,8 +1033,8 @@ iter_decode_field_raw(struct intel_field_iterator *iter, uint64_t *qw)
    /* Address & offset types have to be aligned to dwords, their start bit is
     * a reminder of the alignment requirement.
     */
-   if (iter->field->type.kind == GEN_TYPE_ADDRESS ||
-       iter->field->type.kind == GEN_TYPE_OFFSET)
+   if (iter->field->type.kind == INTEL_TYPE_ADDRESS ||
+       iter->field->type.kind == INTEL_TYPE_OFFSET)
       *qw <<= field_start % 32;
 
    return true;
@@ -1062,43 +1062,43 @@ iter_decode_field(struct intel_field_iterator *iter)
 
    v.qw = iter->raw_value;
    switch (iter->field->type.kind) {
-   case GEN_TYPE_UNKNOWN:
-   case GEN_TYPE_INT: {
+   case INTEL_TYPE_UNKNOWN:
+   case INTEL_TYPE_INT: {
       snprintf(iter->value, sizeof(iter->value), "%"PRId64, v.qw);
       enum_name = intel_get_enum_name(&iter->field->inline_enum, v.qw);
       break;
    }
-   case GEN_TYPE_UINT: {
+   case INTEL_TYPE_UINT: {
       snprintf(iter->value, sizeof(iter->value), "%"PRIu64, v.qw);
       enum_name = intel_get_enum_name(&iter->field->inline_enum, v.qw);
       break;
    }
-   case GEN_TYPE_BOOL: {
+   case INTEL_TYPE_BOOL: {
       const char *true_string =
          iter->print_colors ? "\e[0;35mtrue\e[0m" : "true";
       snprintf(iter->value, sizeof(iter->value), "%s",
                v.qw ? true_string : "false");
       break;
    }
-   case GEN_TYPE_FLOAT:
+   case INTEL_TYPE_FLOAT:
       snprintf(iter->value, sizeof(iter->value), "%f", v.f);
       break;
-   case GEN_TYPE_ADDRESS:
-   case GEN_TYPE_OFFSET:
+   case INTEL_TYPE_ADDRESS:
+   case INTEL_TYPE_OFFSET:
       snprintf(iter->value, sizeof(iter->value), "0x%08"PRIx64, v.qw);
       break;
-   case GEN_TYPE_STRUCT:
+   case INTEL_TYPE_STRUCT:
       snprintf(iter->value, sizeof(iter->value), "<struct %s>",
                iter->field->type.intel_struct->name);
       iter->struct_desc =
          intel_spec_find_struct(iter->group->spec,
                                 iter->field->type.intel_struct->name);
       break;
-   case GEN_TYPE_UFIXED:
+   case INTEL_TYPE_UFIXED:
       snprintf(iter->value, sizeof(iter->value), "%f",
                (float) v.qw / (1 << iter->field->type.f));
       break;
-   case GEN_TYPE_SFIXED: {
+   case INTEL_TYPE_SFIXED: {
       /* Sign extend before converting */
       int bits = iter->field->type.i + iter->field->type.f + 1;
       int64_t v_sign_extend = ((int64_t)(v.qw << (64 - bits))) >> (64 - bits);
@@ -1106,9 +1106,9 @@ iter_decode_field(struct intel_field_iterator *iter)
                (float) v_sign_extend / (1 << iter->field->type.f));
       break;
    }
-   case GEN_TYPE_MBO:
+   case INTEL_TYPE_MBO:
        break;
-   case GEN_TYPE_ENUM: {
+   case INTEL_TYPE_ENUM: {
       snprintf(iter->value, sizeof(iter->value), "%"PRId64, v.qw);
       enum_name = intel_get_enum_name(iter->field->type.intel_enum, v.qw);
       break;
