@@ -68,7 +68,7 @@ __gen_address_offset(address addr, uint64_t offset)
 #define __genxml_cmd_pack(cmd) cmd ## _pack
 
 #include "genxml/genX_pack.h"
-#include "gen_mi_builder.h"
+#include "mi_builder.h"
 
 #define emit_cmd(cmd, name)                                           \
    for (struct cmd name = { __genxml_cmd_header(cmd) },               \
@@ -334,7 +334,7 @@ __gen_get_batch_dwords(gen_mi_builder_test *test, unsigned num_dwords)
 }
 
 #include "genxml/genX_pack.h"
-#include "gen_mi_builder.h"
+#include "mi_builder.h"
 
 TEST_F(gen_mi_builder_test, imm_mem)
 {

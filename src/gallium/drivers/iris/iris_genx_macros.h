@@ -77,7 +77,7 @@ __gen_combine_address(struct iris_batch *batch, void *location,
  * with GL_ARB_indirect_parameters draw number predicates.
  */
 #define GEN_MI_BUILDER_NUM_ALLOC_GPRS 15
-#include "common/gen_mi_builder.h"
+#include "common/mi_builder.h"
 
 #define _iris_pack_command(batch, cmd, dst, name)                 \
    for (struct cmd name = { __genxml_cmd_header(cmd) },           \

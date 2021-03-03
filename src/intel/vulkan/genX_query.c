@@ -41,7 +41,7 @@
 #define __gen_get_batch_dwords anv_batch_emit_dwords
 #define __gen_address_offset anv_address_add
 #define __gen_get_batch_address(b, a) anv_address_physical(anv_batch_address(b, a))
-#include "common/gen_mi_builder.h"
+#include "common/mi_builder.h"
 #include "perf/gen_perf.h"
 #include "perf/gen_perf_mdapi.h"
 #include "perf/gen_perf_regs.h"

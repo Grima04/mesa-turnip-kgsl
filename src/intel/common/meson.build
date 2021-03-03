@@ -72,7 +72,7 @@ if install_intel_gpu_tests
                ['125', 'gen125']]
     executable(
       'intel_@0@_mi_builder_test'.format(g[1]),
-      files('tests/gen_mi_builder_test.cpp'),
+      files('tests/mi_builder_test.cpp'),
       cpp_args : [
         cpp_msvc_compat_args,
         '-DGEN_VERSIONx10=@0@'.format(g[0])
