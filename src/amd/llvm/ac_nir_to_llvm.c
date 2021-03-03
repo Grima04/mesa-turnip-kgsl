@@ -3453,7 +3453,19 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    }
    case nir_intrinsic_load_local_invocation_id: {
-      result = ac_get_arg(&ctx->ac, ctx->args->local_invocation_ids);
+      LLVMValueRef ids = ac_get_arg(&ctx->ac, ctx->args->local_invocation_ids);
+
+      if (LLVMGetTypeKind(LLVMTypeOf(ids)) == LLVMIntegerTypeKind) {
+         /* Thread IDs are packed in VGPR0, 10 bits per component. */
+         LLVMValueRef id[3];
+
+         for (unsigned i = 0; i < 3; i++)
+            id[i] = ac_unpack_param(&ctx->ac, ids, i * 10, 10);
+
+         result = ac_build_gather_values(&ctx->ac, id, 3);
+      } else {
+         result = ids;
+      }
       break;
    }
    case nir_intrinsic_load_base_instance:
