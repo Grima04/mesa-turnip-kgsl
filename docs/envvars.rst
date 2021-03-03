@@ -595,6 +595,8 @@ RADV driver environment variables
       disable NGG for GFX10+
    ``nooutoforder``
       disable out-of-order rasterization
+   ``notccompatcmask``
+      disable TC-compat CMASK for MSAA surfaces
    ``nothreadllvm``
       disable LLVM threaded compilation
    ``noumr``
