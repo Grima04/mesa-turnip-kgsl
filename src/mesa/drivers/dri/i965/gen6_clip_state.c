@@ -30,7 +30,7 @@
 #include "brw_defines.h"
 #include "compiler/brw_eu_defines.h"
 #include "brw_util.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 #include "main/fbobject.h"
 #include "main/framebuffer.h"
 

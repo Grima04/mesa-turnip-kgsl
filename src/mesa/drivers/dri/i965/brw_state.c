@@ -28,7 +28,7 @@
 #include "main/enums.h"
 #include "main/dd.h"
 
-#include "intel_screen.h"
+#include "brw_screen.h"
 #include "brw_context.h"
 #include "brw_defines.h"
 

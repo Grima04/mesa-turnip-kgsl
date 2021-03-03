@@ -46,9 +46,9 @@
 #include "brw_wm.h"
 #include "brw_util.h"
 
-#include "intel_batchbuffer.h"
-#include "intel_buffer_objects.h"
-#include "intel_fbo.h"
+#include "brw_batch.h"
+#include "brw_buffer_objects.h"
+#include "brw_fbo.h"
 
 #include "main/enums.h"
 #include "main/fbobject.h"

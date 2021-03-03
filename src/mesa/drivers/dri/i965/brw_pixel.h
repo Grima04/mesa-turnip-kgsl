@@ -23,8 +23,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef INTEL_PIXEL_H
-#define INTEL_PIXEL_H
+#ifndef BRW_PIXEL_H
+#define BRW_PIXEL_H
 
 #include "main/mtypes.h"
 

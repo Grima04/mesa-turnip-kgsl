@@ -28,8 +28,8 @@
 #include "main/texobj.h"
 
 #include "brw_context.h"
-#include "intel_mipmap_tree.h"
-#include "intel_tex.h"
+#include "brw_mipmap_tree.h"
+#include "brw_tex.h"
 
 #define FILE_DEBUG_FLAG DEBUG_TEXTURE
 

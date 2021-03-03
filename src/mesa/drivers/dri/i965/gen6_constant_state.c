@@ -26,8 +26,8 @@
 #include "brw_state.h"
 #include "brw_defines.h"
 #include "brw_program.h"
-#include "intel_batchbuffer.h"
-#include "intel_buffer_objects.h"
+#include "brw_batch.h"
+#include "brw_buffer_objects.h"
 #include "program/prog_parameter.h"
 #include "main/shaderapi.h"
 

@@ -23,7 +23,7 @@
 
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "intel_fbo.h"
+#include "brw_fbo.h"
 #include "brw_meta_util.h"
 #include "brw_state.h"
 #include "main/blend.h"

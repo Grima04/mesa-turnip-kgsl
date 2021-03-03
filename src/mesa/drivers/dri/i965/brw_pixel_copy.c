@@ -32,12 +32,12 @@
 #include "drivers/common/meta.h"
 
 #include "brw_context.h"
-#include "intel_buffers.h"
-#include "intel_mipmap_tree.h"
-#include "intel_pixel.h"
-#include "intel_fbo.h"
-#include "intel_blit.h"
-#include "intel_batchbuffer.h"
+#include "brw_buffers.h"
+#include "brw_mipmap_tree.h"
+#include "brw_pixel.h"
+#include "brw_fbo.h"
+#include "brw_blit.h"
+#include "brw_batch.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PIXEL
 

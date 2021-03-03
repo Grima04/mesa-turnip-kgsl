@@ -47,7 +47,7 @@
 #include "brw_context.h"
 #include "compiler/brw_nir.h"
 #include "brw_defines.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 #include "brw_cs.h"
 #include "brw_gs.h"

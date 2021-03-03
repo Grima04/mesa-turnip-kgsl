@@ -21,9 +21,9 @@
  * IN THE SOFTWARE.
  */
 
-#include "intel_batchbuffer.h"
-#include "intel_mipmap_tree.h"
-#include "intel_fbo.h"
+#include "brw_batch.h"
+#include "brw_mipmap_tree.h"
+#include "brw_fbo.h"
 #include "brw_context.h"
 #include "brw_state.h"
 #include "brw_defines.h"

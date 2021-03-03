@@ -26,10 +26,10 @@
  */
 
 #include "brw_blorp.h"
-#include "intel_fbo.h"
-#include "intel_tex.h"
-#include "intel_blit.h"
-#include "intel_mipmap_tree.h"
+#include "brw_fbo.h"
+#include "brw_tex.h"
+#include "brw_blit.h"
+#include "brw_mipmap_tree.h"
 #include "main/formats.h"
 #include "main/teximage.h"
 #include "drivers/common/meta.h"

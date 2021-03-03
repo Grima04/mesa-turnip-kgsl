@@ -32,7 +32,7 @@
 #include "swrast/swrast.h"
 
 #include "brw_context.h"
-#include "intel_pixel.h"
+#include "brw_pixel.h"
 
 #define FILE_DEBUG_FLAG DEBUG_PIXEL
 

@@ -34,7 +34,7 @@
 #include "main/enums.h"
 
 #include "program/program.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 #include "brw_defines.h"
 #include "brw_context.h"

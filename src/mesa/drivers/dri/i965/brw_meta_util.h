@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 #include "main/mtypes.h"
-#include "intel_mipmap_tree.h"
+#include "brw_mipmap_tree.h"
 
 #ifdef __cplusplus
 extern "C" {

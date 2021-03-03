@@ -35,8 +35,8 @@
 #include "brw_defines.h"
 #include "brw_state.h"
 #include "perf/gen_perf_regs.h"
-#include "intel_batchbuffer.h"
-#include "intel_buffer_objects.h"
+#include "brw_batch.h"
+#include "brw_buffer_objects.h"
 
 static inline void
 set_query_availability(struct brw_context *brw, struct brw_query_object *query,

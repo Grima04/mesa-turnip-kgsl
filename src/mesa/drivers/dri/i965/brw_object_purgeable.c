@@ -32,9 +32,9 @@
 #include "main/bufferobj.h"
 
 #include "brw_context.h"
-#include "intel_buffer_objects.h"
-#include "intel_fbo.h"
-#include "intel_mipmap_tree.h"
+#include "brw_buffer_objects.h"
+#include "brw_fbo.h"
+#include "brw_mipmap_tree.h"
 
 static GLenum
 brw_buffer_purgeable(struct brw_bo *buffer)

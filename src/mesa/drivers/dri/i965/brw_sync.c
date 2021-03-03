@@ -43,7 +43,7 @@
 #include "util/os_file.h"
 
 #include "brw_context.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 struct brw_fence {
    struct brw_context *brw;

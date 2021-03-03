@@ -31,11 +31,11 @@
 
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "intel_blit.h"
-#include "intel_buffers.h"
-#include "intel_fbo.h"
-#include "intel_batchbuffer.h"
-#include "intel_mipmap_tree.h"
+#include "brw_blit.h"
+#include "brw_buffers.h"
+#include "brw_fbo.h"
+#include "brw_batch.h"
+#include "brw_mipmap_tree.h"
 
 #define FILE_DEBUG_FLAG DEBUG_BLIT
 

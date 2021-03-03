@@ -36,7 +36,7 @@
 #include "main/fbobject.h"
 #include "main/state.h"
 
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 #include "brw_defines.h"
 #include "brw_context.h"

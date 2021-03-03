@@ -46,7 +46,7 @@
 
 #include "main/streaming-load-memcpy.h"
 #include "x86/common_x86_asm.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 #include "brw_state.h"
 #include "brw_wm.h"
 #include "brw_gs.h"

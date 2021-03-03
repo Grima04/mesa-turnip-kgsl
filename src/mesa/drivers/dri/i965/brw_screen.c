@@ -113,14 +113,14 @@ static const __DRIconfigOptionsExtension brw_config_options = {
    .getXml = brw_driconf_get_xml,
 };
 
-#include "intel_batchbuffer.h"
-#include "intel_buffers.h"
+#include "brw_batch.h"
+#include "brw_buffers.h"
 #include "brw_bufmgr.h"
-#include "intel_fbo.h"
-#include "intel_mipmap_tree.h"
-#include "intel_screen.h"
-#include "intel_tex.h"
-#include "intel_image.h"
+#include "brw_fbo.h"
+#include "brw_mipmap_tree.h"
+#include "brw_screen.h"
+#include "brw_tex.h"
+#include "brw_image.h"
 
 #include "brw_context.h"
 

@@ -41,8 +41,8 @@
  * that there's a single miptree for the complete texture.
  */
 
-#ifndef INTEL_MIPMAP_TREE_H
-#define INTEL_MIPMAP_TREE_H
+#ifndef BRW_MIPMAP_TREE_H
+#define BRW_MIPMAP_TREE_H
 
 #include <assert.h>
 

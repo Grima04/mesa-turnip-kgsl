@@ -28,8 +28,8 @@
  */
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "intel_batchbuffer.h"
-#include "intel_buffer_objects.h"
+#include "brw_batch.h"
+#include "brw_buffer_objects.h"
 
 /*
  * GPR0 = 80 * GPR0;

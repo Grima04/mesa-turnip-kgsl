@@ -24,9 +24,9 @@
  */
 
 #include "brw_context.h"
-#include "intel_buffers.h"
-#include "intel_fbo.h"
-#include "intel_mipmap_tree.h"
+#include "brw_buffers.h"
+#include "brw_fbo.h"
+#include "brw_mipmap_tree.h"
 
 #include "main/fbobject.h"
 #include "main/framebuffer.h"

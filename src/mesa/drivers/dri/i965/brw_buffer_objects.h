@@ -23,8 +23,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef INTEL_BUFFEROBJ_H
-#define INTEL_BUFFEROBJ_H
+#ifndef BRW_BUFFEROBJ_H
+#define BRW_BUFFEROBJ_H
 
 #include "main/mtypes.h"
 

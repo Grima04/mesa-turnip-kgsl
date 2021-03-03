@@ -6,10 +6,10 @@
 #include "drivers/common/meta.h"
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "intel_buffer_objects.h"
-#include "intel_mipmap_tree.h"
-#include "intel_tex.h"
-#include "intel_fbo.h"
+#include "brw_buffer_objects.h"
+#include "brw_mipmap_tree.h"
+#include "brw_tex.h"
+#include "brw_fbo.h"
 #include "util/u_memory.h"
 
 #define FILE_DEBUG_FLAG DEBUG_TEXTURE

@@ -40,13 +40,13 @@
 #include "drivers/common/meta.h"
 
 #include "brw_context.h"
-#include "intel_screen.h"
-#include "intel_batchbuffer.h"
-#include "intel_blit.h"
-#include "intel_fbo.h"
-#include "intel_image.h"
-#include "intel_buffers.h"
-#include "intel_pixel.h"
+#include "brw_screen.h"
+#include "brw_batch.h"
+#include "brw_blit.h"
+#include "brw_fbo.h"
+#include "brw_image.h"
+#include "brw_buffers.h"
+#include "brw_pixel.h"
 
 
 #define FILE_DEBUG_FLAG DEBUG_PIXEL

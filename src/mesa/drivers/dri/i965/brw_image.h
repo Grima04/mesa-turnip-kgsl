@@ -23,8 +23,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef INTEL_IMAGE_H
-#define INTEL_IMAGE_H
+#ifndef BRW_IMAGE_H
+#define BRW_IMAGE_H
 
 /** @file intel_image.h
  *

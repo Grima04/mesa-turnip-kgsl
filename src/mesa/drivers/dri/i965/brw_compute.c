@@ -29,8 +29,8 @@
 #include "brw_context.h"
 #include "brw_draw.h"
 #include "brw_state.h"
-#include "intel_batchbuffer.h"
-#include "intel_buffer_objects.h"
+#include "brw_batch.h"
+#include "brw_buffer_objects.h"
 #include "brw_defines.h"
 
 

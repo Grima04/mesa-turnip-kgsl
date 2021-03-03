@@ -38,8 +38,8 @@
 
 #include "brw_context.h"
 #include "brw_blorp.h"
-#include "intel_buffer_objects.h"
-#include "intel_batchbuffer.h"
+#include "brw_buffer_objects.h"
+#include "brw_batch.h"
 
 static void
 mark_buffer_gpu_usage(struct brw_buffer_object *intel_obj,

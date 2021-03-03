@@ -27,7 +27,7 @@
 
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 /**
  * Initializes potential list of extensions if ctx == NULL, or actually enables

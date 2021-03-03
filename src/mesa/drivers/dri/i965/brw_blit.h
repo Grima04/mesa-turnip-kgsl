@@ -23,8 +23,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef INTEL_BLIT_H
-#define INTEL_BLIT_H
+#ifndef BRW_BLIT_H
+#define BRW_BLIT_H
 
 #include "brw_context.h"
 

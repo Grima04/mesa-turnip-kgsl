@@ -29,7 +29,7 @@
 #include "main/mtypes.h"
 #include "main/formats.h"
 #include "brw_context.h"
-#include "intel_mipmap_tree.h"
+#include "brw_mipmap_tree.h"
 
 void brw_init_texture_functions(struct dd_function_table *functions);
 

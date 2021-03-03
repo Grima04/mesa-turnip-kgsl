@@ -23,8 +23,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef _INTEL_TEX_OBJ_H
-#define _INTEL_TEX_OBJ_H
+#ifndef _BRW_TEX_OBJ_H
+#define _BRW_TEX_OBJ_H
 
 #include "swrast/s_context.h"
 
@@ -98,4 +98,4 @@ brw_texture_image(struct gl_texture_image *img)
 }
 #endif
 
-#endif /* _INTEL_TEX_OBJ_H */
+#endif /* _BRW_TEX_OBJ_H */

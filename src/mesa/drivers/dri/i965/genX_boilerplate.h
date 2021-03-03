@@ -28,7 +28,7 @@
 #include "genxml/gen_macros.h"
 
 #include "brw_context.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 UNUSED static void *
 emit_dwords(struct brw_context *brw, unsigned n)

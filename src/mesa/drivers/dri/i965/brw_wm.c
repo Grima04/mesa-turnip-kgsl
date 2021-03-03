@@ -33,9 +33,9 @@
 #include "main/framebuffer.h"
 #include "program/prog_parameter.h"
 #include "program/program.h"
-#include "intel_mipmap_tree.h"
-#include "intel_image.h"
-#include "intel_fbo.h"
+#include "brw_mipmap_tree.h"
+#include "brw_image.h"
+#include "brw_fbo.h"
 #include "compiler/brw_nir.h"
 #include "brw_program.h"
 

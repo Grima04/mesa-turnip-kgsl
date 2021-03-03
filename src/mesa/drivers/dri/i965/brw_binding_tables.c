@@ -42,7 +42,7 @@
 #include "brw_context.h"
 #include "brw_defines.h"
 #include "brw_state.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 /**
  * Upload a shader stage's binding table as indirect state.

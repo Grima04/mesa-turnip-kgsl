@@ -29,7 +29,7 @@
 #include "main/bufferobj.h"
 #include "main/macros.h"
 #include "brw_context.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 #include "brw_defines.h"
 #include "brw_state.h"
 #include "main/transformfeedback.h"

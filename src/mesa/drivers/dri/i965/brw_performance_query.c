@@ -70,7 +70,7 @@
 
 #include "brw_context.h"
 #include "brw_defines.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 #include "perf/gen_perf.h"
 #include "perf/gen_perf_regs.h"

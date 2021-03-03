@@ -33,10 +33,10 @@
 
 #include "drivers/common/meta.h"
 
-#include "intel_screen.h"
-#include "intel_mipmap_tree.h"
-#include "intel_fbo.h"
-#include "intel_tex.h"
+#include "brw_screen.h"
+#include "brw_mipmap_tree.h"
+#include "brw_fbo.h"
+#include "brw_tex.h"
 #include "brw_context.h"
 
 #define FILE_DEBUG_FLAG DEBUG_TEXTURE

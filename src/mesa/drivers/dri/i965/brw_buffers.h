@@ -23,8 +23,8 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef INTEL_BUFFERS_H
-#define INTEL_BUFFERS_H
+#ifndef BRW_BUFFERS_H
+#define BRW_BUFFERS_H
 
 #include "dri_util.h"
 #include "drm-uapi/drm.h"
@@ -32,4 +32,4 @@
 
 extern void brw_init_buffer_functions(struct dd_function_table *functions);
 
-#endif /* INTEL_BUFFERS_H */
+#endif /* BRW_BUFFERS_H */

@@ -23,16 +23,16 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef INTEL_FBO_H
-#define INTEL_FBO_H
+#ifndef BRW_FBO_H
+#define BRW_FBO_H
 
 #include <stdbool.h>
 #include <assert.h>
 #include "main/formats.h"
 #include "main/macros.h"
 #include "brw_context.h"
-#include "intel_mipmap_tree.h"
-#include "intel_screen.h"
+#include "brw_mipmap_tree.h"
+#include "brw_screen.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -252,4 +252,4 @@ brw_quantize_num_samples(struct brw_screen *intel, unsigned num_samples);
 }
 #endif
 
-#endif /* INTEL_FBO_H */
+#endif /* BRW_FBO_H */

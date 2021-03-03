@@ -31,7 +31,7 @@
 #include "main/macros.h"
 #include "brw_bufmgr.h"
 #include "brw_context.h"
-#include "intel_buffer_objects.h"
+#include "brw_buffer_objects.h"
 
 void
 brw_upload_finish(struct brw_uploader *upload)

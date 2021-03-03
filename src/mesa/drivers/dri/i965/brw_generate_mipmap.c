@@ -25,7 +25,7 @@
 #include "main/teximage.h"
 #include "brw_blorp.h"
 #include "brw_context.h"
-#include "intel_tex.h"
+#include "brw_tex.h"
 #include "drivers/common/meta.h"
 
 #define FILE_DEBUG_FLAG DEBUG_BLORP

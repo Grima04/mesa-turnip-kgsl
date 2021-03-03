@@ -1,5 +1,5 @@
-#ifndef INTEL_BATCHBUFFER_H
-#define INTEL_BATCHBUFFER_H
+#ifndef BRW_BATCH_H
+#define BRW_BATCH_H
 
 #include "main/mtypes.h"
 

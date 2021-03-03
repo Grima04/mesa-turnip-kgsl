@@ -27,12 +27,12 @@
 #include <GL/internal/dri_interface.h>
 #include "drm-uapi/drm_fourcc.h"
 
-#include "intel_batchbuffer.h"
-#include "intel_image.h"
-#include "intel_mipmap_tree.h"
-#include "intel_tex.h"
-#include "intel_blit.h"
-#include "intel_fbo.h"
+#include "brw_batch.h"
+#include "brw_image.h"
+#include "brw_mipmap_tree.h"
+#include "brw_tex.h"
+#include "brw_blit.h"
+#include "brw_fbo.h"
 
 #include "brw_blorp.h"
 #include "brw_context.h"

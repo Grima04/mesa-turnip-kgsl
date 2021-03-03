@@ -40,7 +40,7 @@
 #include "brw_context.h"
 #include "brw_defines.h"
 #include "brw_state.h"
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 /* As best we know currently, the Gen HW timestamps are 36bits across
  * all platforms, which we need to account for when calculating a

@@ -33,7 +33,7 @@
 #include "brw_defines.h"
 #include "brw_draw.h"
 
-#include "intel_batchbuffer.h"
+#include "brw_batch.h"
 
 /**
  * Check if the hardware's cut index support can handle the primitive
