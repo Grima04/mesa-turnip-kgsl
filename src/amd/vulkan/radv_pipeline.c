@@ -3305,16 +3305,21 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 	bool optimize_conservatively = flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
 
 	radv_link_shaders(pipeline, nir, optimize_conservatively);
+	radv_set_driver_locations(pipeline, nir, infos);
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
 			radv_start_feedback(stage_feedbacks[i]);
 			radv_optimize_nir(device, nir[i], optimize_conservatively, false);
+
+			/* Gather info again, information such as outputs_read can be out-of-date. */
+			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
+			radv_lower_io(device, nir[i]);
+
 			radv_stop_feedback(stage_feedbacks[i], false);
 		}
 	}
 
-	radv_set_driver_locations(pipeline, nir, infos);
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (nir[i]) {
@@ -3348,12 +3353,10 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 			if (nir_opt_load_store_vectorize(nir[i], &vectorize_opts)) {
 				lower_to_scalar = true;
+
+				/* Gather info again, to update whether 8/16-bit are used. */
+				nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
 			}
-
-			/* do this again since information such as outputs_read can be out-of-date */
-			nir_shader_gather_info(nir[i], nir_shader_get_entrypoint(nir[i]));
-
-			radv_lower_io(device, nir[i]);
 
 			lower_to_scalar |= nir_opt_shrink_vectors(nir[i],
 								  !device->instance->disable_shrink_image_store);
