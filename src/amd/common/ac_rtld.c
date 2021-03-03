@@ -436,24 +436,30 @@ bool ac_rtld_open(struct ac_rtld_binary *binary, struct ac_rtld_open_info i)
    binary->rx_size += rx_size;
    binary->exec_size = exec_size;
 
-   if (i.info->chip_class >= GFX10) {
-      /* In gfx10, the SQ fetches up to 3 cache lines of 16 dwords
-       * ahead of the PC, configurable by SH_MEM_CONFIG and
-       * S_INST_PREFETCH. This can cause two issues:
-       *
-       * (1) Crossing a page boundary to an unmapped page. The logic
-       *     does not distinguish between a required fetch and a "mere"
-       *     prefetch and will fault.
-       *
-       * (2) Prefetching instructions that will be changed for a
-       *     different shader.
-       *
-       * (2) is not currently an issue because we flush the I$ at IB
-       * boundaries, but (1) needs to be addressed. Due to buffer
-       * suballocation, we just play it safe.
-       */
-      binary->rx_size = align(binary->rx_size + 3 * 64, 64);
-   }
+   /* The SQ fetches up to N cache lines of 16 dwords
+    * ahead of the PC, configurable by SH_MEM_CONFIG and
+    * S_INST_PREFETCH. This can cause two issues:
+    *
+    * (1) Crossing a page boundary to an unmapped page. The logic
+    *     does not distinguish between a required fetch and a "mere"
+    *     prefetch and will fault.
+    *
+    * (2) Prefetching instructions that will be changed for a
+    *     different shader.
+    *
+    * (2) is not currently an issue because we flush the I$ at IB
+    * boundaries, but (1) needs to be addressed. Due to buffer
+    * suballocation, we just play it safe.
+    */
+   unsigned prefetch_distance = 0;
+
+   if (!i.info->has_graphics && i.info->family >= CHIP_ALDEBARAN)
+      prefetch_distance = 16;
+   else if (i.info->chip_class >= GFX10)
+      prefetch_distance = 3;
+
+   if (prefetch_distance)
+      binary->rx_size = align(binary->rx_size + prefetch_distance * 64, 64);
 
    return true;
 
