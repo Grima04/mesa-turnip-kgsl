@@ -3947,7 +3947,7 @@ nir_ssa_dest_init_for_type(nir_instr *instr, nir_dest *dest,
 }
 void nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_ssa_def *new_ssa);
 void nir_ssa_def_rewrite_uses_src(nir_ssa_def *def, nir_src new_src);
-void nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_src new_src,
+void nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_ssa_def *new_ssa,
                                     nir_instr *after_me);
 
 nir_component_mask_t nir_ssa_def_components_read(const nir_ssa_def *def);

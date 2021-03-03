@@ -247,7 +247,7 @@ lower_buffer_interface_derefs_impl(nir_function_impl *impl,
                   intrin->dest.ssa.bit_size = 32;
                   nir_ssa_def *bval = nir_i2b(&b, &intrin->dest.ssa);
                   nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                                 nir_src_for_ssa(bval),
+                                                 bval,
                                                  bval->parent_instr);
                   progress = true;
                }

@@ -731,7 +731,7 @@ lower_tess_eval_block(nir_block *block, nir_builder *b, struct state *state)
 			nir_ssa_def *coord = nir_vec3(b, x, y, z);
 
 			nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
-					nir_src_for_ssa(coord),
+					coord,
 					b->cursor.instr);
 			break;
 		}

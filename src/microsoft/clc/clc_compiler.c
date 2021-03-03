@@ -369,7 +369,7 @@ clc_lower_64bit_semantics(nir_shader *nir)
                nir_ssa_def *i64 = nir_u2u64(&b, &intrinsic->dest.ssa);
                nir_ssa_def_rewrite_uses_after(
                   &intrinsic->dest.ssa,
-                  nir_src_for_ssa(i64),
+                  i64,
                   i64->parent_instr);
             }
          }

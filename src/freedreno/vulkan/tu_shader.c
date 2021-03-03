@@ -505,7 +505,7 @@ lower_tex_ycbcr(const struct tu_pipeline_layout *layout,
                                                   ycbcr_sampler->ycbcr_range,
                                                   &tex->dest.ssa,
                                                   bpcs);
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(result),
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, result,
                                   result->parent_instr);
 
    builder->cursor = nir_before_instr(&tex->instr);

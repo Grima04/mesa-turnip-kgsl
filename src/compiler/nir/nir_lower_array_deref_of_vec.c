@@ -155,7 +155,7 @@ nir_lower_array_deref_of_vec_impl(nir_function_impl *impl,
                nir_instr_remove(&intrin->instr);
             } else {
                nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                              nir_src_for_ssa(scalar),
+                                              scalar,
                                               scalar->parent_instr);
             }
             progress = true;

@@ -1031,7 +1031,7 @@ lower_gen7_tex_swizzle(nir_tex_instr *tex, unsigned plane,
 
    /* Rewrite uses before we insert so we don't rewrite this use */
    nir_ssa_def_rewrite_uses_after(&tex->dest.ssa,
-                                  nir_src_for_ssa(swiz_tex_res),
+                                  swiz_tex_res,
                                   swiz_tex_res->parent_instr);
 }
 

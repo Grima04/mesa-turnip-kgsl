@@ -964,7 +964,7 @@ copy_prop_vars_block(struct copy_prop_var_state *state,
                    * rewrite the vecN itself.
                    */
                   nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                                 nir_src_for_ssa(value.ssa.def[0]),
+                                                 value.ssa.def[0],
                                                  value.ssa.def[0]->parent_instr);
                } else {
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,

@@ -843,7 +843,7 @@ swizzle_tg4_broadcom(nir_builder *b, nir_tex_instr *tex)
    unsigned swiz[4] = { 2, 3, 1, 0 };
    nir_ssa_def *swizzled = nir_swizzle(b, &tex->dest.ssa, swiz, 4);
 
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(swizzled),
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, swizzled,
                                   swizzled->parent_instr);
 }
 
@@ -883,7 +883,7 @@ swizzle_result(nir_builder *b, nir_tex_instr *tex, const uint8_t swizzle[4])
       }
    }
 
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(swizzled),
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, swizzled,
                                   swizzled->parent_instr);
 }
 
@@ -906,7 +906,7 @@ linearize_srgb_result(nir_builder *b, nir_tex_instr *tex)
                                   nir_channel(b, rgb, 2),
                                   nir_channel(b, &tex->dest.ssa, 3));
 
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(result),
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, result,
                                   result->parent_instr);
 }
 
@@ -983,7 +983,7 @@ lower_tex_packing(nir_builder *b, nir_tex_instr *tex,
       break;
    }
 
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(color),
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, color,
                                   color->parent_instr);
 }
 
@@ -1095,7 +1095,7 @@ nir_lower_txs_lod(nir_builder *b, nir_tex_instr *tex)
       minified = nir_vec(b, comp, dest_size);
    }
 
-   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, nir_src_for_ssa(minified),
+   nir_ssa_def_rewrite_uses_after(&tex->dest.ssa, minified,
                                   minified->parent_instr);
    return true;
 }

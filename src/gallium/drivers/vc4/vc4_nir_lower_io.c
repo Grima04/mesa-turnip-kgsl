@@ -267,7 +267,7 @@ vc4_nir_lower_fs_input(struct vc4_compile *c, nir_builder *b,
 
                 if (result != &intr->dest.ssa) {
                         nir_ssa_def_rewrite_uses_after(&intr->dest.ssa,
-                                                       nir_src_for_ssa(result),
+                                                       result,
                                                        result->parent_instr);
                 }
         }

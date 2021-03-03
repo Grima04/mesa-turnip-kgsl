@@ -129,7 +129,8 @@ lower_dynamic_bo_access_instr(nir_intrinsic_instr *instr, nir_builder *b)
       /* now use the composite dest in all cases where the original dest (from the dynamic index)
        * was used and remove the dynamically-indexed load_*bo instruction
        */
-      nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, nir_src_for_ssa(new_dest), &instr->instr);
+      nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, new_dest,
+                                     &instr->instr);
    } else
       generate_store_ssbo_ssa_def(b, instr, instr->src[block_idx].ssa, first_idx, last_idx);
    nir_instr_remove(&instr->instr);

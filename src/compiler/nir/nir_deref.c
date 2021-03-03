@@ -1251,7 +1251,7 @@ opt_load_vec_deref(nir_builder *b, nir_intrinsic_instr *load)
          data = nir_bitcast_vector(b, &load->dest.ssa, old_bit_size);
       data = resize_vector(b, data, old_num_comps);
 
-      nir_ssa_def_rewrite_uses_after(&load->dest.ssa, nir_src_for_ssa(data),
+      nir_ssa_def_rewrite_uses_after(&load->dest.ssa, data,
                                      data->parent_instr);
       return true;
    }

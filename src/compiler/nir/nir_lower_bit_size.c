@@ -205,7 +205,7 @@ lower_phi_instr(nir_builder *b, nir_phi_instr *phi, unsigned bit_size,
    b->cursor = nir_after_instr(&last_phi->instr);
 
    nir_ssa_def *new_dest = nir_u2u(b, &phi->dest.ssa, old_bit_size);
-   nir_ssa_def_rewrite_uses_after(&phi->dest.ssa, nir_src_for_ssa(new_dest),
+   nir_ssa_def_rewrite_uses_after(&phi->dest.ssa, new_dest,
                                   new_dest->parent_instr);
 }
 

@@ -127,7 +127,7 @@ nir_lower_texcoord_replace_impl(nir_function_impl *impl,
                                          &intrin->dest.ssa);
 
          nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                        nir_src_for_ssa(result),
+                                        result,
                                         result->parent_instr);
       }
    }

@@ -194,7 +194,7 @@ lower_pos_read(nir_builder *b, struct nir_instr *instr,
    pos = nir_vector_insert_imm(b, pos, depth, 2);
 
    assert(intr->dest.is_ssa);
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, nir_src_for_ssa(pos),
+   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, pos,
                                   pos->parent_instr);
 }
 

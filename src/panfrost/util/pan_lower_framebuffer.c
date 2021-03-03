@@ -707,8 +707,7 @@ pan_lower_fb_load(nir_shader *shader,
         unpacked = nir_convert_to_bit_size(b, unpacked, src_type, bits);
         unpacked = pan_extend(b, unpacked, nir_dest_num_components(intr->dest));
 
-        nir_src rewritten = nir_src_for_ssa(unpacked);
-        nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, rewritten, &intr->instr);
+        nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, unpacked, &intr->instr);
 }
 
 bool

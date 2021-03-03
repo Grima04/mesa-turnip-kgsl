@@ -1578,7 +1578,7 @@ shrink_vec_var_access_impl(nir_function_impl *impl,
                nir_ssa_def *vec = nir_vec(&b, vec_srcs, intrin->num_components);
 
                nir_ssa_def_rewrite_uses_after(&intrin->dest.ssa,
-                                              nir_src_for_ssa(vec),
+                                              vec,
                                               vec->parent_instr);
 
                /* The SSA def is now only used by the swizzle.  It's safe to

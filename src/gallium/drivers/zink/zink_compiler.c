@@ -196,7 +196,8 @@ lower_64bit_vertex_attribs_instr(nir_builder *b, nir_instr *instr, void *data)
          def[3] = nir_vector_extract(b, &intr2->dest.ssa, nir_imm_int(b, 1));
       nir_ssa_def *new_vec = nir_vec(b, def, total_num_components);
       /* use the assembled dvec3/4 for all other uses of the load */
-      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, nir_src_for_ssa(new_vec), new_vec->parent_instr);
+      nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, new_vec,
+                                     new_vec->parent_instr);
    }
 
    return true;
@@ -241,7 +242,8 @@ lower_basevertex_instr(nir_builder *b, nir_instr *in, void *data)
                                           nir_imm_int(b, 0),
                                           NULL);
 
-   nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, nir_src_for_ssa(composite), composite->parent_instr);
+   nir_ssa_def_rewrite_uses_after(&instr->dest.ssa, composite,
+                                  composite->parent_instr);
    return true;
 }
 
@@ -513,7 +515,7 @@ lower_baseinstance_instr(nir_builder *b, nir_instr *instr, void *data)
       return false;
    b->cursor = nir_after_instr(instr);
    nir_ssa_def *def = nir_isub(b, &intr->dest.ssa, nir_load_base_instance(b));
-   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, nir_src_for_ssa(def), def->parent_instr);
+   nir_ssa_def_rewrite_uses_after(&intr->dest.ssa, def, def->parent_instr);
    return true;
 }
 

@@ -138,7 +138,7 @@ brw_nir_clamp_image_1d_2d_array_sizes(nir_shader *shader)
             b.cursor = nir_after_instr(instr);
 
             nir_ssa_def_rewrite_uses_after(image_size,
-                                           nir_src_for_ssa(image_size_replacement),
+                                           image_size_replacement,
                                            image_size_replacement->parent_instr);
 
             function_progress = true;
