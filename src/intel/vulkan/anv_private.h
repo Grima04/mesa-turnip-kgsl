@@ -3021,7 +3021,7 @@ struct anv_cmd_buffer {
     * instructions storing performance counters. The array length is
     * anv_physical_device::n_perf_query_commands.
     */
-   struct gen_mi_address_token                  *self_mod_locations;
+   struct mi_address_token                  *self_mod_locations;
 
    /**
     * Index tracking which of the self_mod_locations items have already been

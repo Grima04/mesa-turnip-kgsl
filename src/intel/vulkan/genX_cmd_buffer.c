@@ -39,7 +39,7 @@
  *    - GPR 14 for secondary command buffer returns
  *    - GPR 15 for conditional rendering
  */
-#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 14
+#define MI_BUILDER_NUM_ALLOC_GPRS 14
 #define __gen_get_batch_dwords anv_batch_emit_dwords
 #define __gen_address_offset anv_address_add
 #include "common/mi_builder.h"
@@ -479,8 +479,8 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_END_OF_PIPE_SYNC_BIT;
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
    for (uint32_t a = 0; a < layer_count; a++) {
       const uint32_t layer = base_layer + a;
@@ -543,8 +543,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          if (isl_aux_usage_has_ccs(image->planes[plane].aux_usage))
             new_aux_entry |= GEN_AUX_MAP_ENTRY_VALID_BIT;
 
-         gen_mi_store(&b, gen_mi_mem64(aux_entry_address),
-                          gen_mi_imm(new_aux_entry));
+         mi_store(&b, mi_mem64(aux_entry_address), mi_imm(new_aux_entry));
       }
    }
 
@@ -778,12 +777,12 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                   enum isl_aux_op resolve_op,
                                   enum anv_fast_clear_type fast_clear_supported)
 {
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
-   const struct gen_mi_value fast_clear_type =
-      gen_mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
-                                                      image, aspect));
+   const struct mi_value fast_clear_type =
+      mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
+                                                  image, aspect));
 
    if (resolve_op == ISL_AUX_OP_FULL_RESOLVE) {
       /* In this case, we're doing a full resolve which means we want the
@@ -794,13 +793,12 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
        * if the first slice has been fast-cleared, it is also marked as
        * compressed.  See also set_image_fast_clear_state.
        */
-      const struct gen_mi_value compression_state =
-         gen_mi_mem32(anv_image_get_compression_state_addr(cmd_buffer->device,
-                                                           image, aspect,
-                                                           level, array_layer));
-      gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
-                       compression_state);
-      gen_mi_store(&b, compression_state, gen_mi_imm(0));
+      const struct mi_value compression_state =
+         mi_mem32(anv_image_get_compression_state_addr(cmd_buffer->device,
+                                                       image, aspect,
+                                                       level, array_layer));
+      mi_store(&b, mi_reg64(MI_PREDICATE_SRC0), compression_state);
+      mi_store(&b, compression_state, mi_imm(0));
 
       if (level == 0 && array_layer == 0) {
          /* If the predicate is true, we want to write 0 to the fast clear type
@@ -808,10 +806,10 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
           *
           * clear_type = clear_type & ~predicate;
           */
-         struct gen_mi_value new_fast_clear_type =
-            gen_mi_iand(&b, fast_clear_type,
-                            gen_mi_inot(&b, gen_mi_reg64(MI_PREDICATE_SRC0)));
-         gen_mi_store(&b, fast_clear_type, new_fast_clear_type);
+         struct mi_value new_fast_clear_type =
+            mi_iand(&b, fast_clear_type,
+                        mi_inot(&b, mi_reg64(MI_PREDICATE_SRC0)));
+         mi_store(&b, fast_clear_type, new_fast_clear_type);
       }
    } else if (level == 0 && array_layer == 0) {
       /* In this case, we are doing a partial resolve to get rid of fast-clear
@@ -822,19 +820,18 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
       assert(fast_clear_supported < ANV_FAST_CLEAR_ANY);
 
       /* We need to compute (fast_clear_supported < image->fast_clear) */
-      struct gen_mi_value pred =
-         gen_mi_ult(&b, gen_mi_imm(fast_clear_supported), fast_clear_type);
-      gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
-                       gen_mi_value_ref(&b, pred));
+      struct mi_value pred =
+         mi_ult(&b, mi_imm(fast_clear_supported), fast_clear_type);
+      mi_store(&b, mi_reg64(MI_PREDICATE_SRC0), mi_value_ref(&b, pred));
 
       /* If the predicate is true, we want to write 0 to the fast clear type
        * and, if it's false, leave it alone.  We can do this by writing
        *
        * clear_type = clear_type & ~predicate;
        */
-      struct gen_mi_value new_fast_clear_type =
-         gen_mi_iand(&b, fast_clear_type, gen_mi_inot(&b, pred));
-      gen_mi_store(&b, fast_clear_type, new_fast_clear_type);
+      struct mi_value new_fast_clear_type =
+         mi_iand(&b, fast_clear_type, mi_inot(&b, pred));
+      mi_store(&b, fast_clear_type, new_fast_clear_type);
    } else {
       /* In this case, we're trying to do a partial resolve on a slice that
        * doesn't have clear color.  There's nothing to do.
@@ -844,7 +841,7 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
    }
 
    /* Set src1 to 0 and use a != condition */
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -863,11 +860,11 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                  enum isl_aux_op resolve_op,
                                  enum anv_fast_clear_type fast_clear_supported)
 {
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
-   struct gen_mi_value fast_clear_type_mem =
-      gen_mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
+   struct mi_value fast_clear_type_mem =
+      mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
                                                       image, aspect));
 
    /* This only works for partial resolves and only when the clear color is
@@ -885,9 +882,9 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
     * can't sample from CCS surfaces.  It's enough to just load the fast clear
     * state into the predicate register.
     */
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0), fast_clear_type_mem);
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
-   gen_mi_store(&b, fast_clear_type_mem, gen_mi_imm(0));
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC0), fast_clear_type_mem);
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(0));
+   mi_store(&b, fast_clear_type_mem, mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -1075,13 +1072,13 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 #endif
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
    if (copy_from_surface_state) {
-      gen_mi_memcpy(&b, entry_addr, ss_clear_addr, copy_size);
+      mi_memcpy(&b, entry_addr, ss_clear_addr, copy_size);
    } else {
-      gen_mi_memcpy(&b, ss_clear_addr, entry_addr, copy_size);
+      mi_memcpy(&b, ss_clear_addr, entry_addr, copy_size);
 
       /* Updating a surface state object may require that the state cache be
        * invalidated. From the SKL PRM, Shared Functions -> State -> State
@@ -1820,10 +1817,10 @@ genX(CmdExecuteCommands)(
              * with conditional rendering, we should satisfy this dependency
              * regardless of conditional rendering being enabled in primary.
              */
-            struct gen_mi_builder b;
-            gen_mi_builder_init(&b, &primary->batch);
-            gen_mi_store(&b, gen_mi_reg64(ANV_PREDICATE_RESULT_REG),
-                             gen_mi_imm(UINT64_MAX));
+            struct mi_builder b;
+            mi_builder_init(&b, &primary->batch);
+            mi_store(&b, mi_reg64(ANV_PREDICATE_RESULT_REG),
+                         mi_imm(UINT64_MAX));
          }
       }
 #endif
@@ -3936,23 +3933,20 @@ void genX(CmdDrawIndirectByteCountEXT)(
    if (!pipeline->use_primitive_replication)
       instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
-   struct gen_mi_value count =
-      gen_mi_mem32(anv_address_add(counter_buffer->address,
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_value count =
+      mi_mem32(anv_address_add(counter_buffer->address,
                                    counterBufferOffset));
    if (counterOffset)
-      count = gen_mi_isub(&b, count, gen_mi_imm(counterOffset));
-   count = gen_mi_udiv32_imm(&b, count, vertexStride);
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_VERTEX_COUNT), count);
+      count = mi_isub(&b, count, mi_imm(counterOffset));
+   count = mi_udiv32_imm(&b, count, vertexStride);
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_VERTEX_COUNT), count);
 
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_VERTEX),
-                    gen_mi_imm(firstVertex));
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT),
-                    gen_mi_imm(instanceCount));
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_INSTANCE),
-                    gen_mi_imm(firstInstance));
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_BASE_VERTEX), gen_mi_imm(0));
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_START_VERTEX), mi_imm(firstVertex));
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT), mi_imm(instanceCount));
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_START_INSTANCE), mi_imm(firstInstance));
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_BASE_VERTEX), mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.IndirectParameterEnable  = true;
@@ -3969,36 +3963,36 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
                          struct anv_address addr,
                          bool indexed)
 {
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_VERTEX_COUNT),
-                    gen_mi_mem32(anv_address_add(addr, 0)));
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_VERTEX_COUNT),
+                mi_mem32(anv_address_add(addr, 0)));
 
-   struct gen_mi_value instance_count = gen_mi_mem32(anv_address_add(addr, 4));
+   struct mi_value instance_count = mi_mem32(anv_address_add(addr, 4));
    unsigned view_count = anv_subpass_view_count(cmd_buffer->state.subpass);
    if (view_count > 1) {
 #if GEN_IS_HASWELL || GEN_GEN >= 8
-      instance_count = gen_mi_imul_imm(&b, instance_count, view_count);
+      instance_count = mi_imul_imm(&b, instance_count, view_count);
 #else
       anv_finishme("Multiview + indirect draw requires MI_MATH; "
                    "MI_MATH is not supported on Ivy Bridge");
 #endif
    }
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT), instance_count);
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT), instance_count);
 
-   gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_VERTEX),
-                    gen_mi_mem32(anv_address_add(addr, 8)));
+   mi_store(&b, mi_reg32(GEN7_3DPRIM_START_VERTEX),
+                mi_mem32(anv_address_add(addr, 8)));
 
    if (indexed) {
-      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_BASE_VERTEX),
-                       gen_mi_mem32(anv_address_add(addr, 12)));
-      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_INSTANCE),
-                       gen_mi_mem32(anv_address_add(addr, 16)));
+      mi_store(&b, mi_reg32(GEN7_3DPRIM_BASE_VERTEX),
+                   mi_mem32(anv_address_add(addr, 12)));
+      mi_store(&b, mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+                   mi_mem32(anv_address_add(addr, 16)));
    } else {
-      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_START_INSTANCE),
-                       gen_mi_mem32(anv_address_add(addr, 12)));
-      gen_mi_store(&b, gen_mi_reg32(GEN7_3DPRIM_BASE_VERTEX), gen_mi_imm(0));
+      mi_store(&b, mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+                   mi_mem32(anv_address_add(addr, 12)));
+      mi_store(&b, mi_reg32(GEN7_3DPRIM_BASE_VERTEX), mi_imm(0));
    }
 }
 
@@ -4101,27 +4095,25 @@ void genX(CmdDrawIndexedIndirect)(
    }
 }
 
-static struct gen_mi_value
+static struct mi_value
 prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
-                                 struct gen_mi_builder *b,
+                                 struct mi_builder *b,
                                  struct anv_address count_address,
                                  const bool conditional_render_enabled)
 {
-   struct gen_mi_value ret = gen_mi_imm(0);
+   struct mi_value ret = mi_imm(0);
 
    if (conditional_render_enabled) {
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-      ret = gen_mi_new_gpr(b);
-      gen_mi_store(b, gen_mi_value_ref(b, ret), gen_mi_mem32(count_address));
+      ret = mi_new_gpr(b);
+      mi_store(b, mi_value_ref(b, ret), mi_mem32(count_address));
 #endif
    } else {
       /* Upload the current draw count from the draw parameters buffer to
        * MI_PREDICATE_SRC0.
        */
-      gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC0),
-                      gen_mi_mem32(count_address));
-
-      gen_mi_store(b, gen_mi_reg32(MI_PREDICATE_SRC1 + 4), gen_mi_imm(0));
+      mi_store(b, mi_reg64(MI_PREDICATE_SRC0), mi_mem32(count_address));
+      mi_store(b, mi_reg32(MI_PREDICATE_SRC1 + 4), mi_imm(0));
    }
 
    return ret;
@@ -4129,11 +4121,11 @@ prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
 
 static void
 emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
-                          struct gen_mi_builder *b,
+                          struct mi_builder *b,
                           uint32_t draw_index)
 {
    /* Upload the index of the current primitive to MI_PREDICATE_SRC1. */
-   gen_mi_store(b, gen_mi_reg32(MI_PREDICATE_SRC1), gen_mi_imm(draw_index));
+   mi_store(b, mi_reg32(MI_PREDICATE_SRC1), mi_imm(draw_index));
 
    if (draw_index == 0) {
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
@@ -4161,22 +4153,22 @@ emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
 static void
 emit_draw_count_predicate_with_conditional_render(
                           struct anv_cmd_buffer *cmd_buffer,
-                          struct gen_mi_builder *b,
+                          struct mi_builder *b,
                           uint32_t draw_index,
-                          struct gen_mi_value max)
+                          struct mi_value max)
 {
-   struct gen_mi_value pred = gen_mi_ult(b, gen_mi_imm(draw_index), max);
-   pred = gen_mi_iand(b, pred, gen_mi_reg64(ANV_PREDICATE_RESULT_REG));
+   struct mi_value pred = mi_ult(b, mi_imm(draw_index), max);
+   pred = mi_iand(b, pred, mi_reg64(ANV_PREDICATE_RESULT_REG));
 
 #if GEN_GEN >= 8
-   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_RESULT), pred);
+   mi_store(b, mi_reg64(MI_PREDICATE_RESULT), pred);
 #else
    /* MI_PREDICATE_RESULT is not whitelisted in i915 command parser
     * so we emit MI_PREDICATE to set it.
     */
 
-   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC0), pred);
-   gen_mi_store(b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
+   mi_store(b, mi_reg64(MI_PREDICATE_SRC0), pred);
+   mi_store(b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -4208,11 +4200,11 @@ void genX(CmdDrawIndirectCount)(
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
    struct anv_address count_address =
       anv_address_add(count_buffer->address, countBufferOffset);
-   struct gen_mi_value max =
+   struct mi_value max =
       prepare_for_draw_count_predicate(cmd_buffer, &b, count_address,
                                        cmd_state->conditional_render_enabled);
 
@@ -4222,7 +4214,7 @@ void genX(CmdDrawIndirectCount)(
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
       if (cmd_state->conditional_render_enabled) {
          emit_draw_count_predicate_with_conditional_render(
-            cmd_buffer, &b, i, gen_mi_value_ref(&b, max));
+            cmd_buffer, &b, i, mi_value_ref(&b, max));
       } else {
          emit_draw_count_predicate(cmd_buffer, &b, i);
       }
@@ -4255,7 +4247,7 @@ void genX(CmdDrawIndirectCount)(
       offset += stride;
    }
 
-   gen_mi_value_unref(&b, max);
+   mi_value_unref(&b, max);
 }
 
 void genX(CmdDrawIndexedIndirectCount)(
@@ -4279,11 +4271,11 @@ void genX(CmdDrawIndexedIndirectCount)(
 
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
    struct anv_address count_address =
       anv_address_add(count_buffer->address, countBufferOffset);
-   struct gen_mi_value max =
+   struct mi_value max =
       prepare_for_draw_count_predicate(cmd_buffer, &b, count_address,
                                        cmd_state->conditional_render_enabled);
 
@@ -4293,7 +4285,7 @@ void genX(CmdDrawIndexedIndirectCount)(
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
       if (cmd_state->conditional_render_enabled) {
          emit_draw_count_predicate_with_conditional_render(
-            cmd_buffer, &b, i, gen_mi_value_ref(&b, max));
+            cmd_buffer, &b, i, mi_value_ref(&b, max));
       } else {
          emit_draw_count_predicate(cmd_buffer, &b, i);
       }
@@ -4327,7 +4319,7 @@ void genX(CmdDrawIndexedIndirectCount)(
       offset += stride;
    }
 
-   gen_mi_value_unref(&b, max);
+   mi_value_unref(&b, max);
 }
 
 void genX(CmdBeginTransformFeedbackEXT)(
@@ -4755,21 +4747,21 @@ void genX(CmdDispatchIndirect)(
 
    genX(cmd_buffer_flush_compute_state)(cmd_buffer);
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
-   struct gen_mi_value size_x = gen_mi_mem32(anv_address_add(addr, 0));
-   struct gen_mi_value size_y = gen_mi_mem32(anv_address_add(addr, 4));
-   struct gen_mi_value size_z = gen_mi_mem32(anv_address_add(addr, 8));
+   struct mi_value size_x = mi_mem32(anv_address_add(addr, 0));
+   struct mi_value size_y = mi_mem32(anv_address_add(addr, 4));
+   struct mi_value size_z = mi_mem32(anv_address_add(addr, 8));
 
-   gen_mi_store(&b, gen_mi_reg32(GPGPU_DISPATCHDIMX), size_x);
-   gen_mi_store(&b, gen_mi_reg32(GPGPU_DISPATCHDIMY), size_y);
-   gen_mi_store(&b, gen_mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
+   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMX), size_x);
+   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMY), size_y);
+   mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
 
 #if GEN_GEN <= 7
    /* predicate = (compute_dispatch_indirect_x_size == 0); */
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0), size_x);
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC0), size_x);
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(0));
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOAD;
       mip.CombineOperation = COMBINE_SET;
@@ -4777,7 +4769,7 @@ void genX(CmdDispatchIndirect)(
    }
 
    /* predicate |= (compute_dispatch_indirect_y_size == 0); */
-   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC0), size_y);
+   mi_store(&b, mi_reg32(MI_PREDICATE_SRC0), size_y);
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOAD;
       mip.CombineOperation = COMBINE_OR;
@@ -4785,7 +4777,7 @@ void genX(CmdDispatchIndirect)(
    }
 
    /* predicate |= (compute_dispatch_indirect_z_size == 0); */
-   gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC0), size_z);
+   mi_store(&b, mi_reg32(MI_PREDICATE_SRC0), size_z);
    anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOAD;
       mip.CombineOperation = COMBINE_OR;
@@ -4802,8 +4794,8 @@ void genX(CmdDispatchIndirect)(
 #if GEN_IS_HASWELL
    if (cmd_buffer->state.conditional_render_enabled) {
       /* predicate &= !(conditional_rendering_predicate == 0); */
-      gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_SRC0),
-                       gen_mi_reg32(ANV_PREDICATE_RESULT_REG));
+      mi_store(&b, mi_reg32(MI_PREDICATE_SRC0),
+                   mi_reg32(ANV_PREDICATE_RESULT_REG));
       anv_batch_emit(batch, GENX(MI_PREDICATE), mip) {
          mip.LoadOperation    = LOAD_LOADINV;
          mip.CombineOperation = COMBINE_AND;
@@ -6198,12 +6190,12 @@ void
 genX(cmd_emit_conditional_render_predicate)(struct anv_cmd_buffer *cmd_buffer)
 {
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC0),
-                    gen_mi_reg32(ANV_PREDICATE_RESULT_REG));
-   gen_mi_store(&b, gen_mi_reg64(MI_PREDICATE_SRC1), gen_mi_imm(0));
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC0),
+                mi_reg32(ANV_PREDICATE_RESULT_REG));
+   mi_store(&b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(MI_PREDICATE), mip) {
       mip.LoadOperation    = LOAD_LOADINV;
@@ -6231,8 +6223,8 @@ void genX(CmdBeginConditionalRenderingEXT)(
 
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-   struct gen_mi_builder b;
-   gen_mi_builder_init(&b, &cmd_buffer->batch);
+   struct mi_builder b;
+   mi_builder_init(&b, &cmd_buffer->batch);
 
    /* Section 19.4 of the Vulkan 1.1.85 spec says:
     *
@@ -6245,15 +6237,15 @@ void genX(CmdBeginConditionalRenderingEXT)(
     *
     * So it's perfectly fine to read a value from the buffer once.
     */
-   struct gen_mi_value value =  gen_mi_mem32(value_address);
+   struct mi_value value =  mi_mem32(value_address);
 
    /* Precompute predicate result, it is necessary to support secondary
     * command buffers since it is unknown if conditional rendering is
     * inverted when populating them.
     */
-   gen_mi_store(&b, gen_mi_reg64(ANV_PREDICATE_RESULT_REG),
-                    isInverted ? gen_mi_uge(&b, gen_mi_imm(0), value) :
-                                 gen_mi_ult(&b, gen_mi_imm(0), value));
+   mi_store(&b, mi_reg64(ANV_PREDICATE_RESULT_REG),
+                isInverted ? mi_uge(&b, mi_imm(0), value) :
+                             mi_ult(&b, mi_imm(0), value));
 }
 
 void genX(CmdEndConditionalRenderingEXT)(

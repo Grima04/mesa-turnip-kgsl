@@ -6643,19 +6643,17 @@ iris_upload_render_state(struct iris_context *ice,
                                       PIPE_CONTROL_FLUSH_ENABLE);
 
          if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
-            struct gen_mi_builder b;
-            gen_mi_builder_init(&b, batch);
+            struct mi_builder b;
+            mi_builder_init(&b, batch);
 
             /* comparison = draw id < draw count */
-            struct gen_mi_value comparison =
-               gen_mi_ult(&b, gen_mi_imm(draw->drawid),
-                              gen_mi_mem32(ro_bo(draw_count_bo,
-                                                 draw_count_offset)));
+            struct mi_value comparison =
+               mi_ult(&b, mi_imm(draw->drawid),
+                          mi_mem32(ro_bo(draw_count_bo, draw_count_offset)));
 
             /* predicate = comparison & conditional rendering predicate */
-            gen_mi_store(&b, gen_mi_reg32(MI_PREDICATE_RESULT),
-                             gen_mi_iand(&b, comparison,
-                                             gen_mi_reg32(CS_GPR(15))));
+            mi_store(&b, mi_reg32(MI_PREDICATE_RESULT),
+                         mi_iand(&b, comparison, mi_reg32(CS_GPR(15))));
          } else {
             uint32_t mi_predicate;
 
@@ -6731,16 +6729,16 @@ iris_upload_render_state(struct iris_context *ice,
                                    "draw count from stream output stall",
                                    PIPE_CONTROL_CS_STALL);
 
-      struct gen_mi_builder b;
-      gen_mi_builder_init(&b, batch);
+      struct mi_builder b;
+      mi_builder_init(&b, batch);
 
       struct iris_address addr =
          ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);
-      struct gen_mi_value offset =
-         gen_mi_iadd_imm(&b, gen_mi_mem32(addr), -so->base.buffer_offset);
+      struct mi_value offset =
+         mi_iadd_imm(&b, mi_mem32(addr), -so->base.buffer_offset);
 
-      gen_mi_store(&b, gen_mi_reg32(_3DPRIM_VERTEX_COUNT),
-                       gen_mi_udiv32_imm(&b, offset, so->stride));
+      mi_store(&b, mi_reg32(_3DPRIM_VERTEX_COUNT),
+                   mi_udiv32_imm(&b, offset, so->stride));
 
       _iris_emit_lri(batch, _3DPRIM_START_VERTEX, 0);
       _iris_emit_lri(batch, _3DPRIM_BASE_VERTEX, 0);

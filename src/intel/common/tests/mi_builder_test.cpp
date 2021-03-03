@@ -32,7 +32,7 @@
 #include "genxml/gen_macros.h"
 #include "util/macros.h"
 
-class gen_mi_builder_test;
+class mi_builder_test;
 
 struct address {
    uint32_t gem_handle;
@@ -40,11 +40,11 @@ struct address {
 };
 
 #define __gen_address_type struct address
-#define __gen_user_data ::gen_mi_builder_test
+#define __gen_user_data ::mi_builder_test
 
-uint64_t __gen_combine_address(gen_mi_builder_test *test, void *location,
+uint64_t __gen_combine_address(mi_builder_test *test, void *location,
                                struct address addr, uint32_t delta);
-void * __gen_get_batch_dwords(gen_mi_builder_test *test, unsigned num_dwords);
+void * __gen_get_batch_dwords(mi_builder_test *test, unsigned num_dwords);
 
 struct address
 __gen_address_offset(address addr, uint64_t offset)
@@ -58,7 +58,7 @@ __gen_address_offset(address addr, uint64_t offset)
 #else
 #define RSVD_TEMP_REG 0x2430 /* GEN7_3DPRIM_START_VERTEX */
 #endif
-#define GEN_MI_BUILDER_NUM_ALLOC_GPRS 15
+#define MI_BUILDER_NUM_ALLOC_GPRS 15
 #define INPUT_DATA_OFFSET 0
 #define OUTPUT_DATA_OFFSET 2048
 
@@ -78,10 +78,10 @@ __gen_address_offset(address addr, uint64_t offset)
 
 #include <vector>
 
-class gen_mi_builder_test : public ::testing::Test {
+class mi_builder_test : public ::testing::Test {
 public:
-   gen_mi_builder_test();
-   ~gen_mi_builder_test();
+   mi_builder_test();
+   ~mi_builder_test();
 
    void SetUp();
 
@@ -104,24 +104,24 @@ public:
       return addr;
    }
 
-   inline gen_mi_value in_mem64(uint32_t offset)
+   inline mi_value in_mem64(uint32_t offset)
    {
-      return gen_mi_mem64(in_addr(offset));
+      return mi_mem64(in_addr(offset));
    }
 
-   inline gen_mi_value in_mem32(uint32_t offset)
+   inline mi_value in_mem32(uint32_t offset)
    {
-      return gen_mi_mem32(in_addr(offset));
+      return mi_mem32(in_addr(offset));
    }
 
-   inline gen_mi_value out_mem64(uint32_t offset)
+   inline mi_value out_mem64(uint32_t offset)
    {
-      return gen_mi_mem64(out_addr(offset));
+      return mi_mem64(out_addr(offset));
    }
 
-   inline gen_mi_value out_mem32(uint32_t offset)
+   inline mi_value out_mem32(uint32_t offset)
    {
-      return gen_mi_mem32(out_addr(offset));
+      return mi_mem32(out_addr(offset));
    }
 
    int fd;
@@ -140,14 +140,14 @@ public:
    char *output;
    uint64_t canary;
 
-   gen_mi_builder b;
+   mi_builder b;
 };
 
-gen_mi_builder_test::gen_mi_builder_test() :
+mi_builder_test::mi_builder_test() :
   fd(-1)
 { }
 
-gen_mi_builder_test::~gen_mi_builder_test()
+mi_builder_test::~mi_builder_test()
 {
    close(fd);
 }
@@ -157,7 +157,7 @@ gen_mi_builder_test::~gen_mi_builder_test()
 #define DATA_BO_SIZE 4096
 
 void
-gen_mi_builder_test::SetUp()
+mi_builder_test::SetUp()
 {
    drmDevicePtr devices[8];
    int max_devices = drmGetDevices2(0, devices, 8);
@@ -255,11 +255,11 @@ gen_mi_builder_test::SetUp()
    memset(data_map, 139, DATA_BO_SIZE);
    memset(&canary, 139, sizeof(canary));
 
-   gen_mi_builder_init(&b, this);
+   mi_builder_init(&b, this);
 }
 
 void *
-gen_mi_builder_test::emit_dwords(int num_dwords)
+mi_builder_test::emit_dwords(int num_dwords)
 {
    void *ptr = (void *)((char *)batch_map + batch_offset);
    batch_offset += num_dwords * 4;
@@ -268,13 +268,13 @@ gen_mi_builder_test::emit_dwords(int num_dwords)
 }
 
 void
-gen_mi_builder_test::submit_batch()
+mi_builder_test::submit_batch()
 {
-   gen_mi_builder_emit(&b, GENX(MI_BATCH_BUFFER_END), bbe);
+   mi_builder_emit(&b, GENX(MI_BATCH_BUFFER_END), bbe);
 
    // Round batch up to an even number of dwords.
    if (batch_offset & 4)
-      gen_mi_builder_emit(&b, GENX(MI_NOOP), noop);
+      mi_builder_emit(&b, GENX(MI_NOOP), noop);
 
    drm_i915_gem_exec_object2 objects[2];
    memset(objects, 0, sizeof(objects));
@@ -314,7 +314,7 @@ gen_mi_builder_test::submit_batch()
 }
 
 uint64_t
-__gen_combine_address(gen_mi_builder_test *test, void *location,
+__gen_combine_address(mi_builder_test *test, void *location,
                       address addr, uint32_t delta)
 {
    drm_i915_gem_relocation_entry reloc = drm_i915_gem_relocation_entry();
@@ -328,7 +328,7 @@ __gen_combine_address(gen_mi_builder_test *test, void *location,
 }
 
 void *
-__gen_get_batch_dwords(gen_mi_builder_test *test, unsigned num_dwords)
+__gen_get_batch_dwords(mi_builder_test *test, unsigned num_dwords)
 {
    return test->emit_dwords(num_dwords);
 }
@@ -336,12 +336,12 @@ __gen_get_batch_dwords(gen_mi_builder_test *test, unsigned num_dwords)
 #include "genxml/genX_pack.h"
 #include "mi_builder.h"
 
-TEST_F(gen_mi_builder_test, imm_mem)
+TEST_F(mi_builder_test, imm_mem)
 {
    const uint64_t value = 0x0123456789abcdef;
 
-   gen_mi_store(&b, out_mem64(0), gen_mi_imm(value));
-   gen_mi_store(&b, out_mem32(8), gen_mi_imm(value));
+   mi_store(&b, out_mem64(0), mi_imm(value));
+   mi_store(&b, out_mem32(8), mi_imm(value));
 
    submit_batch();
 
@@ -355,15 +355,15 @@ TEST_F(gen_mi_builder_test, imm_mem)
 
 /* mem -> mem copies are only supported on HSW+ */
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
-TEST_F(gen_mi_builder_test, mem_mem)
+TEST_F(mi_builder_test, mem_mem)
 {
    const uint64_t value = 0x0123456789abcdef;
    *(uint64_t *)input = value;
 
-   gen_mi_store(&b, out_mem64(0),   in_mem64(0));
-   gen_mi_store(&b, out_mem32(8),   in_mem64(0));
-   gen_mi_store(&b, out_mem32(16),  in_mem32(0));
-   gen_mi_store(&b, out_mem64(24),  in_mem32(0));
+   mi_store(&b, out_mem64(0),   in_mem64(0));
+   mi_store(&b, out_mem32(8),   in_mem64(0));
+   mi_store(&b, out_mem32(16),  in_mem32(0));
+   mi_store(&b, out_mem64(24),  in_mem32(0));
 
    submit_batch();
 
@@ -383,17 +383,17 @@ TEST_F(gen_mi_builder_test, mem_mem)
 }
 #endif
 
-TEST_F(gen_mi_builder_test, imm_reg)
+TEST_F(mi_builder_test, imm_reg)
 {
    const uint64_t value = 0x0123456789abcdef;
 
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(canary));
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(value));
-   gen_mi_store(&b, out_mem64(0), gen_mi_reg64(RSVD_TEMP_REG));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(canary));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(value));
+   mi_store(&b, out_mem64(0), mi_reg64(RSVD_TEMP_REG));
 
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(canary));
-   gen_mi_store(&b, gen_mi_reg32(RSVD_TEMP_REG), gen_mi_imm(value));
-   gen_mi_store(&b, out_mem64(8), gen_mi_reg64(RSVD_TEMP_REG));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(canary));
+   mi_store(&b, mi_reg32(RSVD_TEMP_REG), mi_imm(value));
+   mi_store(&b, out_mem64(8), mi_reg64(RSVD_TEMP_REG));
 
    submit_batch();
 
@@ -405,26 +405,26 @@ TEST_F(gen_mi_builder_test, imm_reg)
    EXPECT_EQ(*(uint32_t *)(output + 12), (uint32_t)canary);
 }
 
-TEST_F(gen_mi_builder_test, mem_reg)
+TEST_F(mi_builder_test, mem_reg)
 {
    const uint64_t value = 0x0123456789abcdef;
    *(uint64_t *)input = value;
 
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(canary));
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), in_mem64(0));
-   gen_mi_store(&b, out_mem64(0), gen_mi_reg64(RSVD_TEMP_REG));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(canary));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), in_mem64(0));
+   mi_store(&b, out_mem64(0), mi_reg64(RSVD_TEMP_REG));
 
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(canary));
-   gen_mi_store(&b, gen_mi_reg32(RSVD_TEMP_REG), in_mem64(0));
-   gen_mi_store(&b, out_mem64(8), gen_mi_reg64(RSVD_TEMP_REG));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(canary));
+   mi_store(&b, mi_reg32(RSVD_TEMP_REG), in_mem64(0));
+   mi_store(&b, out_mem64(8), mi_reg64(RSVD_TEMP_REG));
 
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(canary));
-   gen_mi_store(&b, gen_mi_reg32(RSVD_TEMP_REG), in_mem32(0));
-   gen_mi_store(&b, out_mem64(16), gen_mi_reg64(RSVD_TEMP_REG));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(canary));
+   mi_store(&b, mi_reg32(RSVD_TEMP_REG), in_mem32(0));
+   mi_store(&b, out_mem64(16), mi_reg64(RSVD_TEMP_REG));
 
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), gen_mi_imm(canary));
-   gen_mi_store(&b, gen_mi_reg64(RSVD_TEMP_REG), in_mem32(0));
-   gen_mi_store(&b, out_mem64(24), gen_mi_reg64(RSVD_TEMP_REG));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), mi_imm(canary));
+   mi_store(&b, mi_reg64(RSVD_TEMP_REG), in_mem32(0));
+   mi_store(&b, out_mem64(24), mi_reg64(RSVD_TEMP_REG));
 
    submit_batch();
 
@@ -443,11 +443,11 @@ TEST_F(gen_mi_builder_test, mem_reg)
    EXPECT_EQ(*(uint64_t *)(output + 24), (uint64_t)(uint32_t)value);
 }
 
-TEST_F(gen_mi_builder_test, memset)
+TEST_F(mi_builder_test, memset)
 {
    const unsigned memset_size = 256;
 
-   gen_mi_memset(&b, out_addr(0), 0xdeadbeef, memset_size);
+   mi_memset(&b, out_addr(0), 0xdeadbeef, memset_size);
 
    submit_batch();
 
@@ -456,7 +456,7 @@ TEST_F(gen_mi_builder_test, memset)
       EXPECT_EQ(out_u32[i], 0xdeadbeef);
 }
 
-TEST_F(gen_mi_builder_test, memcpy)
+TEST_F(mi_builder_test, memcpy)
 {
    const unsigned memcpy_size = 256;
 
@@ -464,7 +464,7 @@ TEST_F(gen_mi_builder_test, memcpy)
    for (unsigned i = 0; i < memcpy_size; i++)
       in_u8[i] = i;
 
-   gen_mi_memcpy(&b, out_addr(0), in_addr(0), 256);
+   mi_memcpy(&b, out_addr(0), in_addr(0), 256);
 
    submit_batch();
 
@@ -476,7 +476,7 @@ TEST_F(gen_mi_builder_test, memcpy)
 /* Start of MI_MATH section */
 #if GEN_GEN >= 8 || GEN_IS_HASWELL
 
-#define EXPECT_EQ_IMM(x, imm) EXPECT_EQ(x, gen_mi_value_to_u64(imm))
+#define EXPECT_EQ_IMM(x, imm) EXPECT_EQ(x, mi_value_to_u64(imm))
 
 /* Test adding of immediates of all kinds including
  *
@@ -484,40 +484,40 @@ TEST_F(gen_mi_builder_test, memcpy)
  *  - All ones
  *  - inverted constants
  */
-TEST_F(gen_mi_builder_test, add_imm)
+TEST_F(mi_builder_test, add_imm)
 {
    const uint64_t value = 0x0123456789abcdef;
    const uint64_t add = 0xdeadbeefac0ffee2;
    memcpy(input, &value, sizeof(value));
 
-   gen_mi_store(&b, out_mem64(0),
-                gen_mi_iadd(&b, in_mem64(0), gen_mi_imm(0)));
-   gen_mi_store(&b, out_mem64(8),
-                gen_mi_iadd(&b, in_mem64(0), gen_mi_imm(-1)));
-   gen_mi_store(&b, out_mem64(16),
-                gen_mi_iadd(&b, in_mem64(0), gen_mi_inot(&b, gen_mi_imm(0))));
-   gen_mi_store(&b, out_mem64(24),
-                gen_mi_iadd(&b, in_mem64(0), gen_mi_inot(&b, gen_mi_imm(-1))));
-   gen_mi_store(&b, out_mem64(32),
-                gen_mi_iadd(&b, in_mem64(0), gen_mi_imm(add)));
-   gen_mi_store(&b, out_mem64(40),
-                gen_mi_iadd(&b, in_mem64(0), gen_mi_inot(&b, gen_mi_imm(add))));
-   gen_mi_store(&b, out_mem64(48),
-                gen_mi_iadd(&b, gen_mi_imm(0), in_mem64(0)));
-   gen_mi_store(&b, out_mem64(56),
-                gen_mi_iadd(&b, gen_mi_imm(-1), in_mem64(0)));
-   gen_mi_store(&b, out_mem64(64),
-                gen_mi_iadd(&b, gen_mi_inot(&b, gen_mi_imm(0)), in_mem64(0)));
-   gen_mi_store(&b, out_mem64(72),
-                gen_mi_iadd(&b, gen_mi_inot(&b, gen_mi_imm(-1)), in_mem64(0)));
-   gen_mi_store(&b, out_mem64(80),
-                gen_mi_iadd(&b, gen_mi_imm(add), in_mem64(0)));
-   gen_mi_store(&b, out_mem64(88),
-                gen_mi_iadd(&b, gen_mi_inot(&b, gen_mi_imm(add)), in_mem64(0)));
+   mi_store(&b, out_mem64(0),
+                mi_iadd(&b, in_mem64(0), mi_imm(0)));
+   mi_store(&b, out_mem64(8),
+                mi_iadd(&b, in_mem64(0), mi_imm(-1)));
+   mi_store(&b, out_mem64(16),
+                mi_iadd(&b, in_mem64(0), mi_inot(&b, mi_imm(0))));
+   mi_store(&b, out_mem64(24),
+                mi_iadd(&b, in_mem64(0), mi_inot(&b, mi_imm(-1))));
+   mi_store(&b, out_mem64(32),
+                mi_iadd(&b, in_mem64(0), mi_imm(add)));
+   mi_store(&b, out_mem64(40),
+                mi_iadd(&b, in_mem64(0), mi_inot(&b, mi_imm(add))));
+   mi_store(&b, out_mem64(48),
+                mi_iadd(&b, mi_imm(0), in_mem64(0)));
+   mi_store(&b, out_mem64(56),
+                mi_iadd(&b, mi_imm(-1), in_mem64(0)));
+   mi_store(&b, out_mem64(64),
+                mi_iadd(&b, mi_inot(&b, mi_imm(0)), in_mem64(0)));
+   mi_store(&b, out_mem64(72),
+                mi_iadd(&b, mi_inot(&b, mi_imm(-1)), in_mem64(0)));
+   mi_store(&b, out_mem64(80),
+                mi_iadd(&b, mi_imm(add), in_mem64(0)));
+   mi_store(&b, out_mem64(88),
+                mi_iadd(&b, mi_inot(&b, mi_imm(add)), in_mem64(0)));
 
    // And som add_imm just for good measure
-   gen_mi_store(&b, out_mem64(96), gen_mi_iadd_imm(&b, in_mem64(0), 0));
-   gen_mi_store(&b, out_mem64(104), gen_mi_iadd_imm(&b, in_mem64(0), add));
+   mi_store(&b, out_mem64(96), mi_iadd_imm(&b, in_mem64(0), 0));
+   mi_store(&b, out_mem64(104), mi_iadd_imm(&b, in_mem64(0), add));
 
    submit_batch();
 
@@ -537,7 +537,7 @@ TEST_F(gen_mi_builder_test, add_imm)
    EXPECT_EQ(*(uint64_t *)(output + 104), value + add);
 }
 
-TEST_F(gen_mi_builder_test, ilt_uge)
+TEST_F(mi_builder_test, ilt_uge)
 {
    uint64_t values[8] = {
       0x0123456789abcdef,
@@ -553,10 +553,10 @@ TEST_F(gen_mi_builder_test, ilt_uge)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         gen_mi_store(&b, out_mem64(i * 128 + j * 16 + 0),
-                      gen_mi_ult(&b, in_mem64(i * 8), in_mem64(j * 8)));
-         gen_mi_store(&b, out_mem64(i * 128 + j * 16 + 8),
-                      gen_mi_uge(&b, in_mem64(i * 8), in_mem64(j * 8)));
+         mi_store(&b, out_mem64(i * 128 + j * 16 + 0),
+                      mi_ult(&b, in_mem64(i * 8), in_mem64(j * 8)));
+         mi_store(&b, out_mem64(i * 128 + j * 16 + 8),
+                      mi_uge(&b, in_mem64(i * 8), in_mem64(j * 8)));
       }
    }
 
@@ -565,15 +565,15 @@ TEST_F(gen_mi_builder_test, ilt_uge)
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
          uint64_t *out_u64 = (uint64_t *)(output + i * 128 + j * 16);
-         EXPECT_EQ_IMM(out_u64[0], gen_mi_ult(&b, gen_mi_imm(values[i]),
-                                                  gen_mi_imm(values[j])));
-         EXPECT_EQ_IMM(out_u64[1], gen_mi_uge(&b, gen_mi_imm(values[i]),
-                                                  gen_mi_imm(values[j])));
+         EXPECT_EQ_IMM(out_u64[0], mi_ult(&b, mi_imm(values[i]),
+                                              mi_imm(values[j])));
+         EXPECT_EQ_IMM(out_u64[1], mi_uge(&b, mi_imm(values[i]),
+                                              mi_imm(values[j])));
       }
    }
 }
 
-TEST_F(gen_mi_builder_test, z_nz)
+TEST_F(mi_builder_test, z_nz)
 {
    uint64_t values[8] = {
       0,
@@ -585,20 +585,20 @@ TEST_F(gen_mi_builder_test, z_nz)
    memcpy(input, values, sizeof(values));
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
-      gen_mi_store(&b, out_mem64(i * 16 + 0), gen_mi_nz(&b, in_mem64(i * 8)));
-      gen_mi_store(&b, out_mem64(i * 16 + 8), gen_mi_z(&b, in_mem64(i * 8)));
+      mi_store(&b, out_mem64(i * 16 + 0), mi_nz(&b, in_mem64(i * 8)));
+      mi_store(&b, out_mem64(i * 16 + 8), mi_z(&b, in_mem64(i * 8)));
    }
 
    submit_batch();
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       uint64_t *out_u64 = (uint64_t *)(output + i * 16);
-      EXPECT_EQ_IMM(out_u64[0], gen_mi_nz(&b, gen_mi_imm(values[i])));
-      EXPECT_EQ_IMM(out_u64[1], gen_mi_z(&b, gen_mi_imm(values[i])));
+      EXPECT_EQ_IMM(out_u64[0], mi_nz(&b, mi_imm(values[i])));
+      EXPECT_EQ_IMM(out_u64[1], mi_z(&b, mi_imm(values[i])));
    }
 }
 
-TEST_F(gen_mi_builder_test, iand)
+TEST_F(mi_builder_test, iand)
 {
    const uint64_t values[2] = {
       0x0123456789abcdef,
@@ -606,15 +606,15 @@ TEST_F(gen_mi_builder_test, iand)
    };
    memcpy(input, values, sizeof(values));
 
-   gen_mi_store(&b, out_mem64(0), gen_mi_iand(&b, in_mem64(0), in_mem64(8)));
+   mi_store(&b, out_mem64(0), mi_iand(&b, in_mem64(0), in_mem64(8)));
 
    submit_batch();
 
-   EXPECT_EQ_IMM(*(uint64_t *)output, gen_mi_iand(&b, gen_mi_imm(values[0]),
-                                                      gen_mi_imm(values[1])));
+   EXPECT_EQ_IMM(*(uint64_t *)output, mi_iand(&b, mi_imm(values[0]),
+                                                  mi_imm(values[1])));
 }
 
-TEST_F(gen_mi_builder_test, imul_imm)
+TEST_F(mi_builder_test, imul_imm)
 {
    uint64_t lhs[2] = {
       0x0123456789abcdef,
@@ -636,8 +636,8 @@ TEST_F(gen_mi_builder_test, imul_imm)
 
    for (unsigned i = 0; i < ARRAY_SIZE(lhs); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(rhs); j++) {
-         gen_mi_store(&b, out_mem64(i * 160 + j * 8),
-                      gen_mi_imul_imm(&b, in_mem64(i * 8), rhs[j]));
+         mi_store(&b, out_mem64(i * 160 + j * 8),
+                      mi_imul_imm(&b, in_mem64(i * 8), rhs[j]));
       }
    }
 
@@ -646,12 +646,12 @@ TEST_F(gen_mi_builder_test, imul_imm)
    for (unsigned i = 0; i < ARRAY_SIZE(lhs); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(rhs); j++) {
          EXPECT_EQ_IMM(*(uint64_t *)(output + i * 160 + j * 8),
-                       gen_mi_imul_imm(&b, gen_mi_imm(lhs[i]), rhs[j]));
+                       mi_imul_imm(&b, mi_imm(lhs[i]), rhs[j]));
       }
    }
 }
 
-TEST_F(gen_mi_builder_test, ishl_imm)
+TEST_F(mi_builder_test, ishl_imm)
 {
    const uint64_t value = 0x0123456789abcdef;
    memcpy(input, &value, sizeof(value));
@@ -659,17 +659,17 @@ TEST_F(gen_mi_builder_test, ishl_imm)
    const unsigned max_shift = 64;
 
    for (unsigned i = 0; i <= max_shift; i++)
-      gen_mi_store(&b, out_mem64(i * 8), gen_mi_ishl_imm(&b, in_mem64(0), i));
+      mi_store(&b, out_mem64(i * 8), mi_ishl_imm(&b, in_mem64(0), i));
 
    submit_batch();
 
    for (unsigned i = 0; i <= max_shift; i++) {
       EXPECT_EQ_IMM(*(uint64_t *)(output + i * 8),
-                    gen_mi_ishl_imm(&b, gen_mi_imm(value), i));
+                    mi_ishl_imm(&b, mi_imm(value), i));
    }
 }
 
-TEST_F(gen_mi_builder_test, ushr32_imm)
+TEST_F(mi_builder_test, ushr32_imm)
 {
    const uint64_t value = 0x0123456789abcdef;
    memcpy(input, &value, sizeof(value));
@@ -677,17 +677,17 @@ TEST_F(gen_mi_builder_test, ushr32_imm)
    const unsigned max_shift = 64;
 
    for (unsigned i = 0; i <= max_shift; i++)
-      gen_mi_store(&b, out_mem64(i * 8), gen_mi_ushr32_imm(&b, in_mem64(0), i));
+      mi_store(&b, out_mem64(i * 8), mi_ushr32_imm(&b, in_mem64(0), i));
 
    submit_batch();
 
    for (unsigned i = 0; i <= max_shift; i++) {
       EXPECT_EQ_IMM(*(uint64_t *)(output + i * 8),
-                    gen_mi_ushr32_imm(&b, gen_mi_imm(value), i));
+                    mi_ushr32_imm(&b, mi_imm(value), i));
    }
 }
 
-TEST_F(gen_mi_builder_test, udiv32_imm)
+TEST_F(mi_builder_test, udiv32_imm)
 {
     /* Some random 32-bit unsigned integers.  The first four have been
      * hand-chosen just to ensure some good low integers; the rest were
@@ -704,8 +704,8 @@ TEST_F(gen_mi_builder_test, udiv32_imm)
 
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
-         gen_mi_store(&b, out_mem32(i * 80 + j * 4),
-                      gen_mi_udiv32_imm(&b, in_mem32(i * 4), values[j]));
+         mi_store(&b, out_mem32(i * 80 + j * 4),
+                      mi_udiv32_imm(&b, in_mem32(i * 4), values[j]));
       }
    }
 
@@ -714,12 +714,12 @@ TEST_F(gen_mi_builder_test, udiv32_imm)
    for (unsigned i = 0; i < ARRAY_SIZE(values); i++) {
       for (unsigned j = 0; j < ARRAY_SIZE(values); j++) {
          EXPECT_EQ_IMM(*(uint32_t *)(output + i * 80 + j * 4),
-                       gen_mi_udiv32_imm(&b, gen_mi_imm(values[i]), values[j]));
+                       mi_udiv32_imm(&b, mi_imm(values[i]), values[j]));
       }
    }
 }
 
-TEST_F(gen_mi_builder_test, store_if)
+TEST_F(mi_builder_test, store_if)
 {
    uint64_t u64 = 0xb453b411deadc0deull;
    uint32_t u32 = 0x1337d00d;
@@ -731,8 +731,8 @@ TEST_F(gen_mi_builder_test, store_if)
       mip.CompareOperation = COMPARE_TRUE;
    }
 
-   gen_mi_store_if(&b, out_mem64(0), gen_mi_imm(u64));
-   gen_mi_store_if(&b, out_mem32(8), gen_mi_imm(u32));
+   mi_store_if(&b, out_mem64(0), mi_imm(u64));
+   mi_store_if(&b, out_mem32(8), mi_imm(u32));
 
    /* Set predicate to false, write garbage that shouldn't land */
    emit_cmd(GENX(MI_PREDICATE), mip) {
@@ -741,8 +741,8 @@ TEST_F(gen_mi_builder_test, store_if)
       mip.CompareOperation = COMPARE_FALSE;
    }
 
-   gen_mi_store_if(&b, out_mem64(0), gen_mi_imm(0xd0d0d0d0d0d0d0d0ull));
-   gen_mi_store_if(&b, out_mem32(8), gen_mi_imm(0xc000c000));
+   mi_store_if(&b, out_mem64(0), mi_imm(0xd0d0d0d0d0d0d0d0ull));
+   mi_store_if(&b, out_mem32(8), mi_imm(0xc000c000));
 
    submit_batch();
 
