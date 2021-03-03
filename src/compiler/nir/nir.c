@@ -1365,6 +1365,12 @@ nir_ssa_def_rewrite_uses_ssa(nir_ssa_def *def, nir_ssa_def *new_ssa)
 void
 nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_src new_src)
 {
+   nir_ssa_def_rewrite_uses_src(def, new_src);
+}
+
+void
+nir_ssa_def_rewrite_uses_src(nir_ssa_def *def, nir_src new_src)
+{
    if (new_src.is_ssa) {
       nir_ssa_def_rewrite_uses_ssa(def, new_src.ssa);
    } else {

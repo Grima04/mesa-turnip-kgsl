@@ -257,7 +257,7 @@ nir_lower_vec_to_movs_instr(nir_builder *b, nir_instr *instr, void *data)
       reg->num_components = vec->dest.dest.ssa.num_components;
       reg->bit_size = vec->dest.dest.ssa.bit_size;
 
-      nir_ssa_def_rewrite_uses(&vec->dest.dest.ssa, nir_src_for_reg(reg));
+      nir_ssa_def_rewrite_uses_src(&vec->dest.dest.ssa, nir_src_for_reg(reg));
 
       nir_instr_rewrite_dest(&vec->instr, &vec->dest.dest,
                              nir_dest_for_reg(reg));

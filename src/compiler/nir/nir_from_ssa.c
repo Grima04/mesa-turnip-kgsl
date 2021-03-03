@@ -547,7 +547,7 @@ rewrite_ssa_def(nir_ssa_def *def, void *void_state)
       reg = create_reg_for_ssa_def(def, state->builder.impl);
    }
 
-   nir_ssa_def_rewrite_uses(def, nir_src_for_reg(reg));
+   nir_ssa_def_rewrite_uses_src(def, nir_src_for_reg(reg));
    assert(nir_ssa_def_is_unused(def));
 
    if (def->parent_instr->type == nir_instr_type_ssa_undef) {
@@ -1000,7 +1000,7 @@ dest_replace_ssa_with_reg(nir_dest *dest, void *void_state)
 
    nir_register *reg = create_reg_for_ssa_def(&dest->ssa, state->impl);
 
-   nir_ssa_def_rewrite_uses(&dest->ssa, nir_src_for_reg(reg));
+   nir_ssa_def_rewrite_uses_src(&dest->ssa, nir_src_for_reg(reg));
 
    nir_instr *instr = dest->ssa.parent_instr;
    *dest = nir_dest_for_reg(reg);
@@ -1052,12 +1052,12 @@ nir_lower_ssa_defs_to_regs_block(nir_block *block)
          /* Undefs are just a read of something never written. */
          nir_ssa_undef_instr *undef = nir_instr_as_ssa_undef(instr);
          nir_register *reg = create_reg_for_ssa_def(&undef->def, state.impl);
-         nir_ssa_def_rewrite_uses(&undef->def, nir_src_for_reg(reg));
+         nir_ssa_def_rewrite_uses_src(&undef->def, nir_src_for_reg(reg));
       } else if (instr->type == nir_instr_type_load_const) {
          /* Constant loads are SSA-only, we need to insert a move */
          nir_load_const_instr *load = nir_instr_as_load_const(instr);
          nir_register *reg = create_reg_for_ssa_def(&load->def, state.impl);
-         nir_ssa_def_rewrite_uses(&load->def, nir_src_for_reg(reg));
+         nir_ssa_def_rewrite_uses_src(&load->def, nir_src_for_reg(reg));
 
          nir_alu_instr *mov = nir_alu_instr_create(shader, nir_op_mov);
          mov->src[0].src = nir_src_for_ssa(&load->def);

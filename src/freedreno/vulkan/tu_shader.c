@@ -245,7 +245,7 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin)
    /* Loading the descriptor happens as part of the load/store instruction so
     * this is a no-op.
     */
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, intrin->src[0]);
+   nir_ssa_def_rewrite_uses_src(&intrin->dest.ssa, intrin->src[0]);
    nir_instr_remove(&intrin->instr);
 }
 
