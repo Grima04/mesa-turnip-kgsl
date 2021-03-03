@@ -31,7 +31,7 @@
 #include <sys/ioctl.h>
 
 static inline uint64_t
-gen_canonical_address(uint64_t v)
+intel_canonical_address(uint64_t v)
 {
    /* From the Broadwell PRM Vol. 2a, MI_LOAD_REGISTER_MEM::MemoryAddress:
     *
@@ -49,10 +49,10 @@ gen_canonical_address(uint64_t v)
 /**
  * This returns a 48-bit address with the high 16 bits zeroed.
  *
- * It's the opposite of gen_canonicalize_address.
+ * It's the opposite of intel_canonicalize_address.
  */
 static inline uint64_t
-gen_48b_address(uint64_t v)
+intel_48b_address(uint64_t v)
 {
    const int shift = 63 - 47;
    return (uint64_t)(v << shift) >> shift;
@@ -62,7 +62,7 @@ gen_48b_address(uint64_t v)
  * Call ioctl, restarting if it is interupted
  */
 static inline int
-gen_ioctl(int fd, unsigned long request, void *arg)
+intel_ioctl(int fd, unsigned long request, void *arg)
 {
     int ret;
 
@@ -72,6 +72,6 @@ gen_ioctl(int fd, unsigned long request, void *arg)
     return ret;
 }
 
-bool gen_gem_supports_syncobj_wait(int fd);
+bool intel_gem_supports_syncobj_wait(int fd);
 
 #endif /* INTEL_GEM_H */

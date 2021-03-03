@@ -60,15 +60,15 @@
  * \param[out] constrained - true if we wanted more space than we had
  */
 void
-gen_get_urb_config(const struct gen_device_info *devinfo,
-                   const struct gen_l3_config *l3_cfg,
+intel_get_urb_config(const struct gen_device_info *devinfo,
+                   const struct intel_l3_config *l3_cfg,
                    bool tess_present, bool gs_present,
                    const unsigned entry_size[4],
                    unsigned entries[4], unsigned start[4],
-                   enum gen_urb_deref_block_size *deref_block_size,
+                   enum intel_urb_deref_block_size *deref_block_size,
                    bool *constrained)
 {
-   unsigned urb_size_kB = gen_get_l3_config_urb_size(devinfo, l3_cfg);
+   unsigned urb_size_kB = intel_get_l3_config_urb_size(devinfo, l3_cfg);
 
    /* RCU_MODE register for Gen12+ in BSpec says:
     *

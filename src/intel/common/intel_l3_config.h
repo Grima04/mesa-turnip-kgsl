@@ -31,7 +31,7 @@
 /**
  * Chunk of L3 cache reserved for some specific purpose.
  */
-enum gen_l3_partition {
+enum intel_l3_partition {
    /** Shared local memory. */
    GEN_L3P_SLM = 0,
    /** Unified return buffer. */
@@ -56,7 +56,7 @@ enum gen_l3_partition {
  * L3 configuration represented as the number of ways allocated for each
  * partition.  \sa get_l3_way_size().
  */
-struct gen_l3_config {
+struct intel_l3_config {
    unsigned n[GEN_NUM_L3P];
 };
 
@@ -66,44 +66,44 @@ struct gen_l3_config {
  * between weights will have an influence on the selection of the closest L3
  * configuration.
  */
-struct gen_l3_weights {
+struct intel_l3_weights {
    float w[GEN_NUM_L3P];
 };
 
-float gen_diff_l3_weights(struct gen_l3_weights w0, struct gen_l3_weights w1);
+float intel_diff_l3_weights(struct intel_l3_weights w0, struct intel_l3_weights w1);
 
-struct gen_l3_weights
-gen_get_default_l3_weights(const struct gen_device_info *devinfo,
+struct intel_l3_weights
+intel_get_default_l3_weights(const struct gen_device_info *devinfo,
                            bool needs_dc, bool needs_slm);
 
-struct gen_l3_weights
-gen_get_l3_config_weights(const struct gen_l3_config *cfg);
+struct intel_l3_weights
+intel_get_l3_config_weights(const struct intel_l3_config *cfg);
 
-const struct gen_l3_config *
-gen_get_default_l3_config(const struct gen_device_info *devinfo);
+const struct intel_l3_config *
+intel_get_default_l3_config(const struct gen_device_info *devinfo);
 
-const struct gen_l3_config *
-gen_get_l3_config(const struct gen_device_info *devinfo,
-                  struct gen_l3_weights w0);
+const struct intel_l3_config *
+intel_get_l3_config(const struct gen_device_info *devinfo,
+                  struct intel_l3_weights w0);
 
 unsigned
-gen_get_l3_config_urb_size(const struct gen_device_info *devinfo,
-                           const struct gen_l3_config *cfg);
+intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
+                           const struct intel_l3_config *cfg);
 
-void gen_dump_l3_config(const struct gen_l3_config *cfg, FILE *fp);
+void intel_dump_l3_config(const struct intel_l3_config *cfg, FILE *fp);
 
-enum gen_urb_deref_block_size {
+enum intel_urb_deref_block_size {
    GEN_URB_DEREF_BLOCK_SIZE_32         = 0,
    GEN_URB_DEREF_BLOCK_SIZE_PER_POLY   = 1,
    GEN_URB_DEREF_BLOCK_SIZE_8          = 2,
 };
 
-void gen_get_urb_config(const struct gen_device_info *devinfo,
-                        const struct gen_l3_config *l3_cfg,
+void intel_get_urb_config(const struct gen_device_info *devinfo,
+                        const struct intel_l3_config *l3_cfg,
                         bool tess_present, bool gs_present,
                         const unsigned entry_size[4],
                         unsigned entries[4], unsigned start[4],
-                        enum gen_urb_deref_block_size *deref_block_size,
+                        enum intel_urb_deref_block_size *deref_block_size,
                         bool *constrained);
 
 #endif /* INTEL_L3_CONFIG_H */

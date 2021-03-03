@@ -292,7 +292,7 @@ init_render_queue_state(struct anv_queue *queue)
 
 #if GEN_GEN == 12
    if (device->info.has_aux_map) {
-      uint64_t aux_base_addr = gen_aux_map_get_base(device->aux_map_ctx);
+      uint64_t aux_base_addr = intel_aux_map_get_base(device->aux_map_ctx);
       assert(aux_base_addr % (32 * 1024) == 0);
       anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
          lri.RegisterOffset = GENX(GFX_AUX_TABLE_BASE_ADDR_num);
@@ -332,7 +332,7 @@ init_render_queue_state(struct anv_queue *queue)
    }
 
 #if GEN_GEN >= 12
-   const struct gen_l3_config *cfg = gen_get_default_l3_config(&device->info);
+   const struct intel_l3_config *cfg = intel_get_default_l3_config(&device->info);
    if (!cfg) {
       /* Platforms with no configs just setup full-way allocation. */
       uint32_t l3cr;

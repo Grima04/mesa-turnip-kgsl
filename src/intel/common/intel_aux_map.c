@@ -95,10 +95,10 @@ static const bool aux_map_debug = false;
 
 struct aux_map_buffer {
    struct list_head link;
-   struct gen_buffer *buffer;
+   struct intel_buffer *buffer;
 };
 
-struct gen_aux_map_context {
+struct intel_aux_map_context {
    void *driver_ctx;
    pthread_mutex_t mutex;
    struct gen_mapped_pinned_buffer_alloc *buffer_alloc;
@@ -111,7 +111,7 @@ struct gen_aux_map_context {
 };
 
 static bool
-add_buffer(struct gen_aux_map_context *ctx)
+add_buffer(struct intel_aux_map_context *ctx)
 {
    struct aux_map_buffer *buf = ralloc(ctx, struct aux_map_buffer);
    if (!buf)
@@ -135,7 +135,7 @@ add_buffer(struct gen_aux_map_context *ctx)
 }
 
 static void
-advance_current_pos(struct gen_aux_map_context *ctx, uint32_t size)
+advance_current_pos(struct intel_aux_map_context *ctx, uint32_t size)
 {
    assert(ctx->tail_remaining >= size);
    ctx->tail_remaining -= size;
@@ -143,7 +143,7 @@ advance_current_pos(struct gen_aux_map_context *ctx, uint32_t size)
 }
 
 static bool
-align_and_verify_space(struct gen_aux_map_context *ctx, uint32_t size,
+align_and_verify_space(struct intel_aux_map_context *ctx, uint32_t size,
                        uint32_t align)
 {
    if (ctx->tail_remaining < size)
@@ -164,7 +164,7 @@ align_and_verify_space(struct gen_aux_map_context *ctx, uint32_t size,
 }
 
 static void
-get_current_pos(struct gen_aux_map_context *ctx, uint64_t *gpu, uint64_t **map)
+get_current_pos(struct intel_aux_map_context *ctx, uint64_t *gpu, uint64_t **map)
 {
    assert(!list_is_empty(&ctx->buffers));
    struct aux_map_buffer *tail =
@@ -176,7 +176,7 @@ get_current_pos(struct gen_aux_map_context *ctx, uint64_t *gpu, uint64_t **map)
 }
 
 static bool
-add_sub_table(struct gen_aux_map_context *ctx, uint32_t size,
+add_sub_table(struct intel_aux_map_context *ctx, uint32_t size,
               uint32_t align, uint64_t *gpu, uint64_t **map)
 {
    if (!align_and_verify_space(ctx, size, align)) {
@@ -192,21 +192,21 @@ add_sub_table(struct gen_aux_map_context *ctx, uint32_t size,
 }
 
 uint32_t
-gen_aux_map_get_state_num(struct gen_aux_map_context *ctx)
+intel_aux_map_get_state_num(struct intel_aux_map_context *ctx)
 {
    return p_atomic_read(&ctx->state_num);
 }
 
-struct gen_aux_map_context *
-gen_aux_map_init(void *driver_ctx,
+struct intel_aux_map_context *
+intel_aux_map_init(void *driver_ctx,
                  struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
                  const struct gen_device_info *devinfo)
 {
-   struct gen_aux_map_context *ctx;
+   struct intel_aux_map_context *ctx;
    if (devinfo->gen < 12)
       return NULL;
 
-   ctx = ralloc(NULL, struct gen_aux_map_context);
+   ctx = ralloc(NULL, struct intel_aux_map_context);
    if (!ctx)
       return NULL;
 
@@ -235,7 +235,7 @@ gen_aux_map_init(void *driver_ctx,
 }
 
 void
-gen_aux_map_finish(struct gen_aux_map_context *ctx)
+intel_aux_map_finish(struct intel_aux_map_context *ctx)
 {
    if (!ctx)
       return;
@@ -252,17 +252,17 @@ gen_aux_map_finish(struct gen_aux_map_context *ctx)
 }
 
 uint64_t
-gen_aux_map_get_base(struct gen_aux_map_context *ctx)
+intel_aux_map_get_base(struct intel_aux_map_context *ctx)
 {
    /**
-    * This get initialized in gen_aux_map_init, and never changes, so there is
+    * This get initialized in intel_aux_map_init, and never changes, so there is
     * no need to lock the mutex.
     */
    return ctx->level3_base_addr;
 }
 
 static struct aux_map_buffer *
-find_buffer(struct gen_aux_map_context *ctx, uint64_t addr)
+find_buffer(struct intel_aux_map_context *ctx, uint64_t addr)
 {
    list_for_each_entry(struct aux_map_buffer, buf, &ctx->buffers, link) {
       if (buf->buffer->gpu <= addr && buf->buffer->gpu_end > addr) {
@@ -273,7 +273,7 @@ find_buffer(struct gen_aux_map_context *ctx, uint64_t addr)
 }
 
 static uint64_t *
-get_u64_entry_ptr(struct gen_aux_map_context *ctx, uint64_t addr)
+get_u64_entry_ptr(struct intel_aux_map_context *ctx, uint64_t addr)
 {
    struct aux_map_buffer *buf = find_buffer(ctx, addr);
    assert(buf);
@@ -313,7 +313,7 @@ get_bpp_encoding(enum isl_format format)
 #define GEN_AUX_MAP_ENTRY_Y_TILED_BIT  (0x1ull << 52)
 
 uint64_t
-gen_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
+intel_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
                         uint8_t plane)
 {
    if (aux_map_debug)
@@ -335,14 +335,14 @@ gen_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
 }
 
 uint64_t
-gen_aux_map_format_bits_for_isl_surf(const struct isl_surf *isl_surf)
+intel_aux_map_format_bits_for_isl_surf(const struct isl_surf *isl_surf)
 {
    assert(!isl_format_is_planar(isl_surf->format));
-   return gen_aux_map_format_bits(isl_surf->tiling, isl_surf->format, 0);
+   return intel_aux_map_format_bits(isl_surf->tiling, isl_surf->format, 0);
 }
 
 static void
-get_aux_entry(struct gen_aux_map_context *ctx, uint64_t address,
+get_aux_entry(struct intel_aux_map_context *ctx, uint64_t address,
               uint32_t *l1_index_out, uint64_t *l1_entry_addr_out,
               uint64_t **l1_entry_map_out)
 {
@@ -361,7 +361,7 @@ get_aux_entry(struct gen_aux_map_context *ctx, uint64_t address,
       }
       *l3_entry = (l2_gpu & 0xffffffff8000ULL) | 1;
    } else {
-      uint64_t l2_addr = gen_canonical_address(*l3_entry & ~0x7fffULL);
+      uint64_t l2_addr = intel_canonical_address(*l3_entry & ~0x7fffULL);
       l2_map = get_u64_entry_ptr(ctx, l2_addr);
    }
    uint32_t l2_index = (address >> 24) & 0xfff;
@@ -378,7 +378,7 @@ get_aux_entry(struct gen_aux_map_context *ctx, uint64_t address,
       }
       *l2_entry = (l1_addr & 0xffffffffe000ULL) | 1;
    } else {
-      l1_addr = gen_canonical_address(*l2_entry & ~0x1fffULL);
+      l1_addr = intel_canonical_address(*l2_entry & ~0x1fffULL);
       l1_map = get_u64_entry_ptr(ctx, l1_addr);
    }
    uint32_t l1_index = (address >> 16) & 0xff;
@@ -391,7 +391,7 @@ get_aux_entry(struct gen_aux_map_context *ctx, uint64_t address,
 }
 
 static void
-add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
+add_mapping(struct intel_aux_map_context *ctx, uint64_t address,
             uint64_t aux_address, uint64_t format_bits,
             bool *state_changed)
 {
@@ -433,7 +433,7 @@ add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
 }
 
 uint64_t *
-gen_aux_map_get_entry(struct gen_aux_map_context *ctx,
+intel_aux_map_get_entry(struct intel_aux_map_context *ctx,
                       uint64_t address,
                       uint64_t *entry_address)
 {
@@ -446,7 +446,7 @@ gen_aux_map_get_entry(struct gen_aux_map_context *ctx,
 }
 
 void
-gen_aux_map_add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
+intel_aux_map_add_mapping(struct intel_aux_map_context *ctx, uint64_t address,
                         uint64_t aux_address, uint64_t main_size_B,
                         uint64_t format_bits)
 {
@@ -473,7 +473,7 @@ gen_aux_map_add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
  * tables.
  */
 static void
-remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
+remove_mapping(struct intel_aux_map_context *ctx, uint64_t address,
                bool *state_changed)
 {
    uint32_t l3_index = (address >> 36) & 0xfff;
@@ -483,7 +483,7 @@ remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    if ((*l3_entry & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
    } else {
-      uint64_t l2_addr = gen_canonical_address(*l3_entry & ~0x7fffULL);
+      uint64_t l2_addr = intel_canonical_address(*l3_entry & ~0x7fffULL);
       l2_map = get_u64_entry_ptr(ctx, l2_addr);
    }
    uint32_t l2_index = (address >> 24) & 0xfff;
@@ -493,7 +493,7 @@ remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
    if ((*l2_entry & GEN_AUX_MAP_ENTRY_VALID_BIT) == 0) {
       return;
    } else {
-      uint64_t l1_addr = gen_canonical_address(*l2_entry & ~0x1fffULL);
+      uint64_t l1_addr = intel_canonical_address(*l2_entry & ~0x1fffULL);
       l1_map = get_u64_entry_ptr(ctx, l1_addr);
    }
    uint32_t l1_index = (address >> 16) & 0xff;
@@ -520,7 +520,7 @@ remove_mapping(struct gen_aux_map_context *ctx, uint64_t address,
 }
 
 void
-gen_aux_map_unmap_range(struct gen_aux_map_context *ctx, uint64_t address,
+intel_aux_map_unmap_range(struct intel_aux_map_context *ctx, uint64_t address,
                         uint64_t size)
 {
    bool state_changed = false;
@@ -541,13 +541,13 @@ gen_aux_map_unmap_range(struct gen_aux_map_context *ctx, uint64_t address,
 }
 
 uint32_t
-gen_aux_map_get_num_buffers(struct gen_aux_map_context *ctx)
+intel_aux_map_get_num_buffers(struct intel_aux_map_context *ctx)
 {
    return p_atomic_read(&ctx->num_buffers);
 }
 
 void
-gen_aux_map_fill_bos(struct gen_aux_map_context *ctx, void **driver_bos,
+intel_aux_map_fill_bos(struct intel_aux_map_context *ctx, void **driver_bos,
                      uint32_t max_bos)
 {
    assert(p_atomic_read(&ctx->num_buffers) >= max_bos);

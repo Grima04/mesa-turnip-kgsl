@@ -29,13 +29,13 @@
 
 #include "intel_l3_config.h"
 
-struct gen_l3_list {
-   const struct gen_l3_config *configs;
+struct intel_l3_list {
+   const struct intel_l3_config *configs;
    int length;
 };
 
 #define DECLARE_L3_LIST(hw) \
-   struct gen_l3_list hw##_l3_list = \
+   struct intel_l3_list hw##_l3_list = \
    { .configs = hw##_l3_configs, .length = ARRAY_SIZE(hw##_l3_configs) }
 
 /**
@@ -43,7 +43,7 @@ struct gen_l3_list {
  * default by gen7_restore_default_l3_config(), otherwise the ordering is
  * unimportant.
  */
-static const struct gen_l3_config ivb_l3_configs[] = {
+static const struct intel_l3_config ivb_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    {{  0, 32,  0,  0, 32,  0,  0,  0 }},
    {{  0, 32,  0, 16, 16,  0,  0,  0 }},
@@ -65,7 +65,7 @@ DECLARE_L3_LIST(ivb);
 /**
  * VLV validated L3 configurations.  \sa ivb_l3_configs.
  */
-static const struct gen_l3_config vlv_l3_configs[] = {
+static const struct intel_l3_config vlv_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    {{  0, 64,  0,  0, 32,  0,  0,  0 }},
    {{  0, 80,  0,  0, 16,  0,  0,  0 }},
@@ -81,7 +81,7 @@ DECLARE_L3_LIST(vlv);
 /**
  * BDW validated L3 configurations.  \sa ivb_l3_configs.
  */
-static const struct gen_l3_config bdw_l3_configs[] = {
+static const struct intel_l3_config bdw_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    {{  0, 48, 48,  0,  0,  0,  0,  0 }},
    {{  0, 48,  0, 16, 32,  0,  0,  0 }},
@@ -97,7 +97,7 @@ DECLARE_L3_LIST(bdw);
 /**
  * CHV/SKL validated L3 configurations.  \sa ivb_l3_configs.
  */
-static const struct gen_l3_config chv_l3_configs[] = {
+static const struct intel_l3_config chv_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    {{  0, 48, 48,  0,  0,  0,  0,  0 }},
    {{  0, 48,  0, 16, 32,  0,  0,  0 }},
@@ -113,7 +113,7 @@ DECLARE_L3_LIST(chv);
 /**
  * BXT 2x6 validated L3 configurations.  \sa ivb_l3_configs.
  */
-static const struct gen_l3_config bxt_2x6_l3_configs[] = {
+static const struct intel_l3_config bxt_2x6_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    {{  0, 32, 48,  0,  0,  0,  0,  0 }},
    {{  0, 32,  0,  8, 40,  0,  0,  0 }},
@@ -131,7 +131,7 @@ DECLARE_L3_LIST(bxt_2x6);
  * suggested by h/w specification aren't added here because they
  * do under allocation of L3 cache with below partitioning.
  */
-static const struct gen_l3_config icl_l3_configs[] = {
+static const struct intel_l3_config icl_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    /*{{  0, 16, 80,  0,  0,  0,  0,  0 }},*/
    {{  0, 32, 64,  0,  0,  0,  0,  0 }},
@@ -141,7 +141,7 @@ DECLARE_L3_LIST(icl);
 /**
  * TGL validated L3 configurations.  \sa tgl_l3_configs.
  */
-static const struct gen_l3_config tgl_l3_configs[] = {
+static const struct intel_l3_config tgl_l3_configs[] = {
    /* SLM URB ALL DC  RO  IS   C   T */
    {{  0, 32,  88,  0,  0,  0,  0,  0 }},
    {{  0, 16, 104,  0,  0,  0,  0,  0 }},
@@ -151,7 +151,7 @@ DECLARE_L3_LIST(tgl);
 /**
  * DG1 validated L3 configurations.  \sa dg1_l3_configs.
  */
-static const struct gen_l3_config dg1_l3_configs[] = {
+static const struct intel_l3_config dg1_l3_configs[] = {
    /* No configurations. L3FullWayAllocationEnable is always set. */
 };
 DECLARE_L3_LIST(dg1);
@@ -160,7 +160,7 @@ DECLARE_L3_LIST(dg1);
  * Return a zero-terminated array of validated L3 configurations for the
  * specified device.
  */
-static const struct gen_l3_list *
+static const struct intel_l3_list *
 get_l3_list(const struct gen_device_info *devinfo)
 {
    switch (devinfo->gen) {
@@ -192,8 +192,8 @@ get_l3_list(const struct gen_device_info *devinfo)
 /**
  * L1-normalize a vector of L3 partition weights.
  */
-static struct gen_l3_weights
-norm_l3_weights(struct gen_l3_weights w)
+static struct intel_l3_weights
+norm_l3_weights(struct intel_l3_weights w)
 {
    float sz = 0;
 
@@ -209,18 +209,18 @@ norm_l3_weights(struct gen_l3_weights w)
 /**
  * Get the relative partition weights of the specified L3 configuration.
  */
-struct gen_l3_weights
-gen_get_l3_config_weights(const struct gen_l3_config *cfg)
+struct intel_l3_weights
+intel_get_l3_config_weights(const struct intel_l3_config *cfg)
 {
    if (cfg) {
-      struct gen_l3_weights w;
+      struct intel_l3_weights w;
 
       for (unsigned i = 0; i < GEN_NUM_L3P; i++)
          w.w[i] = cfg->n[i];
 
       return norm_l3_weights(w);
    } else {
-      const struct gen_l3_weights w = { { 0 } };
+      const struct intel_l3_weights w = { { 0 } };
       return w;
    }
 }
@@ -234,7 +234,7 @@ gen_get_l3_config_weights(const struct gen_l3_config *cfg)
  * or URB but \p w1 doesn't provide it.
  */
 float
-gen_diff_l3_weights(struct gen_l3_weights w0, struct gen_l3_weights w1)
+intel_diff_l3_weights(struct intel_l3_weights w0, struct intel_l3_weights w1)
 {
    if ((w0.w[GEN_L3P_SLM] && !w1.w[GEN_L3P_SLM]) ||
        (w0.w[GEN_L3P_DC] && !w1.w[GEN_L3P_DC] && !w1.w[GEN_L3P_ALL]) ||
@@ -256,11 +256,11 @@ gen_diff_l3_weights(struct gen_l3_weights w0, struct gen_l3_weights w1)
  * on whether SLM and DC are required.  In the non-SLM non-DC case the result
  * is intended to approximately resemble the hardware defaults.
  */
-struct gen_l3_weights
-gen_get_default_l3_weights(const struct gen_device_info *devinfo,
+struct intel_l3_weights
+intel_get_default_l3_weights(const struct gen_device_info *devinfo,
                            bool needs_dc, bool needs_slm)
 {
-   struct gen_l3_weights w = {{ 0 }};
+   struct intel_l3_weights w = {{ 0 }};
 
    w.w[GEN_L3P_SLM] = devinfo->gen < 11 && needs_slm;
    w.w[GEN_L3P_URB] = 1.0;
@@ -278,18 +278,18 @@ gen_get_default_l3_weights(const struct gen_device_info *devinfo,
 /**
  * Get the default L3 configuration
  */
-const struct gen_l3_config *
-gen_get_default_l3_config(const struct gen_device_info *devinfo)
+const struct intel_l3_config *
+intel_get_default_l3_config(const struct gen_device_info *devinfo)
 {
    /* For efficiency assume that the first entry of the array matches the
     * default configuration.
     */
-   const struct gen_l3_list *const list = get_l3_list(devinfo);
+   const struct intel_l3_list *const list = get_l3_list(devinfo);
    assert(list->length > 0 || devinfo->gen >= 12);
    if (list->length > 0) {
-      const struct gen_l3_config *const cfg = &list->configs[0];
-      assert(cfg == gen_get_l3_config(devinfo,
-                       gen_get_default_l3_weights(devinfo, false, false)));
+      const struct intel_l3_config *const cfg = &list->configs[0];
+      assert(cfg == intel_get_l3_config(devinfo,
+                       intel_get_default_l3_weights(devinfo, false, false)));
       return cfg;
    } else {
       return NULL;
@@ -300,18 +300,18 @@ gen_get_default_l3_config(const struct gen_device_info *devinfo)
  * Return the closest validated L3 configuration for the specified device and
  * weight vector.
  */
-const struct gen_l3_config *
-gen_get_l3_config(const struct gen_device_info *devinfo,
-                  struct gen_l3_weights w0)
+const struct intel_l3_config *
+intel_get_l3_config(const struct gen_device_info *devinfo,
+                  struct intel_l3_weights w0)
 {
-   const struct gen_l3_list *const list = get_l3_list(devinfo);
-   const struct gen_l3_config *const cfgs = list->configs;
-   const struct gen_l3_config *cfg_best = NULL;
+   const struct intel_l3_list *const list = get_l3_list(devinfo);
+   const struct intel_l3_config *const cfgs = list->configs;
+   const struct intel_l3_config *cfg_best = NULL;
    float dw_best = HUGE_VALF;
 
    for (int i = 0; i < list->length; i++) {
-      const struct gen_l3_config *cfg = &cfgs[i];
-      const float dw = gen_diff_l3_weights(w0, gen_get_l3_config_weights(cfg));
+      const struct intel_l3_config *cfg = &cfgs[i];
+      const float dw = intel_diff_l3_weights(w0, intel_get_l3_config_weights(cfg));
 
       if (dw < dw_best) {
          cfg_best = cfg;
@@ -348,8 +348,8 @@ get_urb_size_scale(const struct gen_device_info *devinfo)
 }
 
 unsigned
-gen_get_l3_config_urb_size(const struct gen_device_info *devinfo,
-                           const struct gen_l3_config *cfg)
+intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
+                           const struct intel_l3_config *cfg)
 {
    /* We don't have to program the URB size in DG1, it's a fixed value. */
    if (devinfo->is_dg1)
@@ -372,7 +372,7 @@ gen_get_l3_config_urb_size(const struct gen_device_info *devinfo,
  * Print out the specified L3 configuration.
  */
 void
-gen_dump_l3_config(const struct gen_l3_config *cfg, FILE *fp)
+intel_dump_l3_config(const struct intel_l3_config *cfg, FILE *fp)
 {
    fprintf(stderr, "SLM=%d URB=%d ALL=%d DC=%d RO=%d IS=%d C=%d T=%d\n",
            cfg->n[GEN_L3P_SLM], cfg->n[GEN_L3P_URB], cfg->n[GEN_L3P_ALL],

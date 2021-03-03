@@ -319,7 +319,7 @@ static bool
 inc_n_users(struct gen_perf_context *perf_ctx)
 {
    if (perf_ctx->n_oa_users == 0 &&
-       gen_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_ENABLE, 0) < 0)
+       intel_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_ENABLE, 0) < 0)
    {
       return false;
    }
@@ -338,7 +338,7 @@ dec_n_users(struct gen_perf_context *perf_ctx)
     */
    --perf_ctx->n_oa_users;
    if (perf_ctx->n_oa_users == 0 &&
-       gen_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_DISABLE, 0) < 0)
+       intel_ioctl(perf_ctx->oa_stream_fd, I915_PERF_IOCTL_DISABLE, 0) < 0)
    {
       DBG("WARNING: Error disabling gen perf stream: %m\n");
    }
@@ -403,7 +403,7 @@ gen_perf_open(struct gen_perf_context *perf_ctx,
       .num_properties = p / 2,
       .properties_ptr = (uintptr_t) properties,
    };
-   int fd = gen_ioctl(drm_fd, DRM_IOCTL_I915_PERF_OPEN, &param);
+   int fd = intel_ioctl(drm_fd, DRM_IOCTL_I915_PERF_OPEN, &param);
    if (fd == -1) {
       DBG("Error opening gen perf OA stream: %m\n");
       return false;

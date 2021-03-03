@@ -24,7 +24,7 @@
 #define INTEL_GUARDBAND_H
 
 static inline void
-gen_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
+intel_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
                              float m00, float m11, float m30, float m31,
                              float *xmin, float *xmax,
                              float *ymin, float *ymax)

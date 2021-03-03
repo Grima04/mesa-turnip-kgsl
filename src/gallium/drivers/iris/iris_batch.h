@@ -135,7 +135,7 @@ struct iris_batch {
       struct hash_table *render;
    } cache;
 
-   struct gen_batch_decode_ctx decoder;
+   struct intel_batch_decode_ctx decoder;
    struct hash_table_u64 *state_sizes;
 
    /**

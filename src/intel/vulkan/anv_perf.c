@@ -151,7 +151,7 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
    param.properties_ptr = (uintptr_t)properties;
    param.num_properties = p / 2;
 
-   stream_fd = gen_ioctl(device->fd, DRM_IOCTL_I915_PERF_OPEN, &param);
+   stream_fd = intel_ioctl(device->fd, DRM_IOCTL_I915_PERF_OPEN, &param);
    return stream_fd;
 }
 
@@ -260,7 +260,7 @@ VkResult anv_ReleasePerformanceConfigurationINTEL(
    ANV_FROM_HANDLE(anv_performance_configuration_intel, config, _configuration);
 
    if (!(INTEL_DEBUG & DEBUG_NO_OACONFIG))
-      gen_ioctl(device->fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG, &config->config_id);
+      intel_ioctl(device->fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG, &config->config_id);
 
    ralloc_free(config->register_config);
    vk_object_base_finish(&config->base);
@@ -283,7 +283,7 @@ VkResult anv_QueueSetPerformanceConfigurationINTEL(
          if (device->perf_fd < 0)
             return VK_ERROR_INITIALIZATION_FAILED;
       } else {
-         int ret = gen_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
+         int ret = intel_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
                           (void *)(uintptr_t) config->config_id);
          if (ret < 0)
             return anv_device_set_lost(device, "i915-perf config failed: %m");

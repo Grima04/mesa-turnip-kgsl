@@ -35,7 +35,7 @@
 #include "iris_measure.h"
 #include "iris_resource.h"
 
-struct gen_l3_config;
+struct intel_l3_config;
 struct brw_vue_map;
 struct iris_vs_prog_key;
 struct iris_tcs_prog_key;
@@ -204,8 +204,8 @@ struct iris_screen {
    struct brw_compiler *compiler;
    struct gen_perf_config *perf_cfg;
 
-   const struct gen_l3_config *l3_config_3d;
-   const struct gen_l3_config *l3_config_cs;
+   const struct intel_l3_config *l3_config_3d;
+   const struct intel_l3_config *l3_config_cs;
 
    /**
     * A buffer containing a marker + description of the driver. This buffer is

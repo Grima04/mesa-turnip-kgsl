@@ -40,7 +40,7 @@ gen_clflush_range(void *start, size_t size)
 }
 
 static inline void
-gen_flush_range(void *start, size_t size)
+intel_flush_range(void *start, size_t size)
 {
    __builtin_ia32_mfence();
    gen_clflush_range(start, size);

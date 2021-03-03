@@ -139,7 +139,7 @@ handle_trace_block(struct aub_read *read, const uint32_t *p)
    int header_length = p[0] & 0xffff;
    enum drm_i915_gem_engine_class engine = I915_ENGINE_CLASS_RENDER;
    const void *data = p + header_length + 2;
-   uint64_t address = gen_48b_address((read->devinfo.gen >= 8 ? ((uint64_t) p[5] << 32) : 0) |
+   uint64_t address = intel_48b_address((read->devinfo.gen >= 8 ? ((uint64_t) p[5] << 32) : 0) |
                                       ((uint64_t) p[3]));
    uint32_t size = p[4];
 
@@ -262,7 +262,7 @@ static void
 handle_memtrace_mem_write(struct aub_read *read, const uint32_t *p)
 {
    const void *data = p + 5;
-   uint64_t addr = gen_48b_address(*(uint64_t*)&p[1]);
+   uint64_t addr = intel_48b_address(*(uint64_t*)&p[1]);
    uint32_t size = p[4];
    uint32_t address_space = p[3] >> 28;
 

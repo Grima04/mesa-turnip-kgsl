@@ -958,7 +958,7 @@ void genX(CmdBeginQueryIndexedEXT)(
             struct mi_value reg_addr =
                mi_iadd(
                   &b,
-                  mi_imm(gen_canonical_address(pool->bo->offset +
+                  mi_imm(intel_canonical_address(pool->bo->offset +
                                                khr_perf_query_data_offset(pool, query, 0, end) +
                                                field->location)),
                   mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
@@ -969,7 +969,7 @@ void genX(CmdBeginQueryIndexedEXT)(
                reg_addr =
                   mi_iadd(
                      &b,
-                     mi_imm(gen_canonical_address(pool->bo->offset +
+                     mi_imm(intel_canonical_address(pool->bo->offset +
                                                   khr_perf_query_data_offset(pool, query, 0, end) +
                                                   field->location + 4)),
                      mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
@@ -982,7 +982,7 @@ void genX(CmdBeginQueryIndexedEXT)(
          mi_iadd(
             &b,
             mi_imm(
-               gen_canonical_address(
+               intel_canonical_address(
                   pool->bo->offset +
                   khr_perf_query_availability_offset(pool, query, 0 /* pass */))),
             mi_reg64(ANV_PERF_QUERY_OFFSET_REG));

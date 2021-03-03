@@ -528,7 +528,7 @@ struct brw_batch {
    /** Map from batch offset to brw_state_batch data (with DEBUG_BATCH) */
    struct hash_table_u64 *state_batch_sizes;
 
-   struct gen_batch_decode_ctx decoder;
+   struct intel_batch_decode_ctx decoder;
 };
 
 #define BRW_MAX_XFB_STREAMS 4
@@ -682,7 +682,7 @@ enum brw_predicate_state {
 
 struct shader_times;
 
-struct gen_l3_config;
+struct intel_l3_config;
 struct gen_perf;
 
 struct brw_uploader {
@@ -1221,7 +1221,7 @@ struct brw_context
    int baseinstance;
 
    struct {
-      const struct gen_l3_config *config;
+      const struct intel_l3_config *config;
    } l3;
 
    struct {

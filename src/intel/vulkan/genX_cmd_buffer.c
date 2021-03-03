@@ -469,7 +469,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
       anv_address_physical(anv_image_address(image, &surface->memory_range));
 
    const struct isl_surf *isl_surf = &image->planes[plane].primary_surface.isl;
-   uint64_t format_bits = gen_aux_map_format_bits_for_isl_surf(isl_surf);
+   uint64_t format_bits = intel_aux_map_format_bits_for_isl_surf(isl_surf);
 
    /* We're about to live-update the AUX-TT.  We really don't want anyone else
     * trying to read it while we're doing this.  We could probably get away
@@ -527,7 +527,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
          uint64_t address = base_address + offset;
 
          uint64_t aux_entry_addr64, *aux_entry_map;
-         aux_entry_map = gen_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
+         aux_entry_map = intel_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
                                                address, &aux_entry_addr64);
 
          assert(cmd_buffer->device->physical->use_softpin);
@@ -1894,7 +1894,7 @@ genX(CmdExecuteCommands)(
  */
 void
 genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
-                           const struct gen_l3_config *cfg)
+                           const struct intel_l3_config *cfg)
 {
    assert(cfg || GEN_GEN >= 12);
    if (cfg == cmd_buffer->state.current_l3_config)
@@ -1902,7 +1902,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 
    if (INTEL_DEBUG & DEBUG_L3) {
       mesa_logd("L3 config transition: ");
-      gen_dump_l3_config(cfg, stderr);
+      intel_dump_l3_config(cfg, stderr);
    }
 
    UNUSED const bool has_slm = cfg->n[GEN_L3P_SLM];
@@ -5028,7 +5028,7 @@ genX(cmd_buffer_set_binding_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
    }
 
    assert(vb_address.bo && (vb_address.bo->flags & EXEC_OBJECT_PINNED));
-   bound->start = gen_48b_address(anv_address_physical(vb_address));
+   bound->start = intel_48b_address(anv_address_physical(vb_address));
    bound->end = bound->start + vb_size;
    assert(bound->end > bound->start); /* No overflow */
 

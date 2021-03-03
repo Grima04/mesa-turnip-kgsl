@@ -32,11 +32,11 @@
 extern "C" {
 #endif
 
-void gen_uuid_compute_device_id(uint8_t *uuid,
+void intel_uuid_compute_device_id(uint8_t *uuid,
                                 const struct isl_device *isldev,
                                 size_t size);
 
-void gen_uuid_compute_driver_id(uint8_t *uuid,
+void intel_uuid_compute_driver_id(uint8_t *uuid,
                                 const struct gen_device_info *devinfo,
                                 size_t size);
 

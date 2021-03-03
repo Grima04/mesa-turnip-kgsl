@@ -376,7 +376,7 @@ anv_block_pool_init(struct anv_block_pool *pool,
    pool->nbos = 0;
    pool->size = 0;
    pool->center_bo_offset = 0;
-   pool->start_address = gen_canonical_address(start_address);
+   pool->start_address = intel_canonical_address(start_address);
    pool->map = NULL;
 
    if (pool->use_softpin) {
@@ -1713,9 +1713,9 @@ anv_device_alloc_bo(struct anv_device *device,
 
    if (new_bo._ccs_size > 0) {
       assert(device->info.has_aux_map);
-      gen_aux_map_add_mapping(device->aux_map_ctx,
-                              gen_canonical_address(new_bo.offset),
-                              gen_canonical_address(new_bo.offset + new_bo.size),
+      intel_aux_map_add_mapping(device->aux_map_ctx,
+                              intel_canonical_address(new_bo.offset),
+                              intel_canonical_address(new_bo.offset + new_bo.size),
                               new_bo.size, 0 /* format_bits */);
    }
 
@@ -1779,7 +1779,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
                           "device address");
       }
 
-      if (client_address && client_address != gen_48b_address(bo->offset)) {
+      if (client_address && client_address != intel_48b_address(bo->offset)) {
          pthread_mutex_unlock(&cache->mutex);
          return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported at two different "
@@ -1802,7 +1802,7 @@ anv_device_import_bo_from_host_ptr(struct anv_device *device,
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
-      assert(client_address == gen_48b_address(client_address));
+      assert(client_address == intel_48b_address(client_address));
       if (new_bo.flags & EXEC_OBJECT_PINNED) {
          assert(new_bo._ccs_size == 0);
          new_bo.offset = anv_vma_alloc(device, new_bo.size,
@@ -1905,7 +1905,7 @@ anv_device_import_bo(struct anv_device *device,
                           "device address");
       }
 
-      if (client_address && client_address != gen_48b_address(bo->offset)) {
+      if (client_address && client_address != intel_48b_address(bo->offset)) {
          pthread_mutex_unlock(&cache->mutex);
          return vk_errorf(device, NULL, VK_ERROR_INVALID_EXTERNAL_HANDLE,
                           "The same BO was imported at two different "
@@ -1935,7 +1935,7 @@ anv_device_import_bo(struct anv_device *device,
             (alloc_flags & ANV_BO_ALLOC_CLIENT_VISIBLE_ADDRESS) != 0,
       };
 
-      assert(client_address == gen_48b_address(client_address));
+      assert(client_address == intel_48b_address(client_address));
       if (new_bo.flags & EXEC_OBJECT_PINNED) {
          assert(new_bo._ccs_size == 0);
          new_bo.offset = anv_vma_alloc(device, new_bo.size,
@@ -2035,8 +2035,8 @@ anv_device_release_bo(struct anv_device *device,
       assert(device->physical->has_implicit_ccs);
       assert(device->info.has_aux_map);
       assert(bo->has_implicit_ccs);
-      gen_aux_map_unmap_range(device->aux_map_ctx,
-                              gen_canonical_address(bo->offset),
+      intel_aux_map_unmap_range(device->aux_map_ctx,
+                              intel_canonical_address(bo->offset),
                               bo->size);
    }
 

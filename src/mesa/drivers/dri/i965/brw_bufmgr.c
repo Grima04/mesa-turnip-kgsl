@@ -317,7 +317,7 @@ bucket_vma_alloc(struct brw_bufmgr *bufmgr,
          return 0ull;
 
       uint64_t addr = vma_alloc(bufmgr, memzone, node_size, node_size);
-      node->start_address = gen_48b_address(addr);
+      node->start_address = intel_48b_address(addr);
       node->bitmap = ~1ull;
       return node->start_address;
    }
@@ -434,7 +434,7 @@ vma_alloc(struct brw_bufmgr *bufmgr,
    assert((addr >> 48ull) == 0);
    assert((addr % alignment) == 0);
 
-   return gen_canonical_address(addr);
+   return intel_canonical_address(addr);
 }
 
 /**
@@ -448,7 +448,7 @@ vma_free(struct brw_bufmgr *bufmgr,
    assert(brw_using_softpin(bufmgr));
 
    /* Un-canonicalize the address. */
-   address = gen_48b_address(address);
+   address = intel_48b_address(address);
 
    if (address == 0ull)
       return;
@@ -922,7 +922,7 @@ bo_unreference_final(struct brw_bo *bo, time_t time)
 
    list_for_each_entry_safe(struct bo_export, export, &bo->exports, link) {
       struct drm_gem_close close = { .handle = export->gem_handle };
-      gen_ioctl(export->drm_fd, DRM_IOCTL_GEM_CLOSE, &close);
+      intel_ioctl(export->drm_fd, DRM_IOCTL_GEM_CLOSE, &close);
 
       list_del(&export->link);
       free(export);

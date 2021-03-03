@@ -32,7 +32,7 @@
 
 struct bo_map {
    struct list_head link;
-   struct gen_batch_decode_bo bo;
+   struct intel_batch_decode_bo bo;
    bool unmap_after_use;
    bool ppgtt;
 };
@@ -52,7 +52,7 @@ struct phys_mem {
 };
 
 static void
-add_gtt_bo_map(struct aub_mem *mem, struct gen_batch_decode_bo bo, bool ppgtt, bool unmap_after_use)
+add_gtt_bo_map(struct aub_mem *mem, struct intel_batch_decode_bo bo, bool ppgtt, bool unmap_after_use)
 {
    struct bo_map *m = calloc(1, sizeof(*m));
 
@@ -196,7 +196,7 @@ aub_mem_local_write(void *_mem, uint64_t address,
                     const void *data, uint32_t size)
 {
    struct aub_mem *mem = _mem;
-   struct gen_batch_decode_bo bo = {
+   struct intel_batch_decode_bo bo = {
       .map = data,
       .addr = address,
       .size = size,
@@ -257,11 +257,11 @@ aub_mem_ggtt_write(void *_mem, uint64_t virt_address,
    }
 }
 
-struct gen_batch_decode_bo
+struct intel_batch_decode_bo
 aub_mem_get_ggtt_bo(void *_mem, uint64_t address)
 {
    struct aub_mem *mem = _mem;
-   struct gen_batch_decode_bo bo = {0};
+   struct intel_batch_decode_bo bo = {0};
 
    list_for_each_entry(struct bo_map, i, &mem->maps, link)
       if (!i->ppgtt && i->bo.addr <= address && i->bo.addr + i->bo.size > address)
@@ -333,11 +333,11 @@ ppgtt_mapped(struct aub_mem *mem, uint64_t pml4, uint64_t address)
    return ppgtt_walk(mem, pml4, address) != NULL;
 }
 
-struct gen_batch_decode_bo
+struct intel_batch_decode_bo
 aub_mem_get_ppgtt_bo(void *_mem, uint64_t address)
 {
    struct aub_mem *mem = _mem;
-   struct gen_batch_decode_bo bo = {0};
+   struct intel_batch_decode_bo bo = {0};
 
    list_for_each_entry(struct bo_map, i, &mem->maps, link)
       if (i->ppgtt && i->bo.addr <= address && i->bo.addr + i->bo.size > address)
@@ -407,29 +407,29 @@ aub_mem_fini(struct aub_mem *mem)
    mem->mem_fd = -1;
 }
 
-struct gen_batch_decode_bo
+struct intel_batch_decode_bo
 aub_mem_get_phys_addr_data(struct aub_mem *mem, uint64_t phys_addr)
 {
    struct phys_mem *page = search_phys_mem(mem, phys_addr);
    return page ?
-      (struct gen_batch_decode_bo) { .map = page->data, .addr = page->phys_addr, .size = 4096 } :
-      (struct gen_batch_decode_bo) {};
+      (struct intel_batch_decode_bo) { .map = page->data, .addr = page->phys_addr, .size = 4096 } :
+      (struct intel_batch_decode_bo) {};
 }
 
-struct gen_batch_decode_bo
+struct intel_batch_decode_bo
 aub_mem_get_ppgtt_addr_data(struct aub_mem *mem, uint64_t virt_addr)
 {
    struct phys_mem *page = ppgtt_walk(mem, mem->pml4, virt_addr);
    return page ?
-      (struct gen_batch_decode_bo) { .map = page->data, .addr = virt_addr & ~((1ULL << 12) - 1), .size = 4096 } :
-      (struct gen_batch_decode_bo) {};
+      (struct intel_batch_decode_bo) { .map = page->data, .addr = virt_addr & ~((1ULL << 12) - 1), .size = 4096 } :
+      (struct intel_batch_decode_bo) {};
 }
 
-struct gen_batch_decode_bo
+struct intel_batch_decode_bo
 aub_mem_get_ppgtt_addr_aub_data(struct aub_mem *mem, uint64_t virt_addr)
 {
    struct phys_mem *page = ppgtt_walk(mem, mem->pml4, virt_addr);
    return page ?
-      (struct gen_batch_decode_bo) { .map = page->aub_data, .addr = virt_addr & ~((1ULL << 12) - 1), .size = 4096 } :
-      (struct gen_batch_decode_bo) {};
+      (struct intel_batch_decode_bo) { .map = page->aub_data, .addr = virt_addr & ~((1ULL << 12) - 1), .size = 4096 } :
+      (struct intel_batch_decode_bo) {};
 }

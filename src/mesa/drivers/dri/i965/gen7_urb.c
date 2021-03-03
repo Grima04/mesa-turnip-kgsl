@@ -248,7 +248,7 @@ gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
    unsigned entries[4];
    unsigned start[4];
    bool constrained;
-   gen_get_urb_config(devinfo, brw->l3.config,
+   intel_get_urb_config(devinfo, brw->l3.config,
                       tess_present, gs_present, entry_size,
                       entries, start, NULL, &constrained);
 

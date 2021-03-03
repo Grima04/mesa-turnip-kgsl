@@ -743,7 +743,7 @@ init_state_base_address(struct iris_batch *batch)
 
 static void
 iris_emit_l3_config(struct iris_batch *batch,
-                    const struct gen_l3_config *cfg)
+                    const struct intel_l3_config *cfg)
 {
    uint32_t reg_val;
    assert(cfg || GEN_GEN >= 12);
@@ -5392,7 +5392,7 @@ genX(invalidate_aux_map_state)(struct iris_batch *batch)
    void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
    if (!aux_map_ctx)
       return;
-   uint32_t aux_map_state_num = gen_aux_map_get_state_num(aux_map_ctx);
+   uint32_t aux_map_state_num = intel_aux_map_get_state_num(aux_map_ctx);
    if (batch->last_aux_map_state != aux_map_state_num) {
       /* HSD 1209978178: docs say that before programming the aux table:
        *
@@ -5424,7 +5424,7 @@ init_aux_map_state(struct iris_batch *batch)
    if (!aux_map_ctx)
       return;
 
-   uint64_t base_addr = gen_aux_map_get_base(aux_map_ctx);
+   uint64_t base_addr = intel_aux_map_get_base(aux_map_ctx);
    assert(base_addr != 0 && align64(base_addr, 32 * 1024) == base_addr);
    iris_load_register_imm64(batch, GENX(GFX_AUX_TABLE_BASE_ADDR_num),
                             base_addr);
@@ -5640,7 +5640,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          float vp_ymin = viewport_extent(state, 1, -1.0f);
          float vp_ymax = viewport_extent(state, 1,  1.0f);
 
-         gen_calculate_guardband_size(cso_fb->width, cso_fb->height,
+         intel_calculate_guardband_size(cso_fb->width, cso_fb->height,
                                       state->scale[0], state->scale[1],
                                       state->translate[0], state->translate[1],
                                       &gb_xmin, &gb_xmax, &gb_ymin, &gb_ymax);
@@ -5682,7 +5682,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          assert(ice->shaders.urb.size[i] != 0);
       }
 
-      gen_get_urb_config(&batch->screen->devinfo,
+      intel_get_urb_config(&batch->screen->devinfo,
                          batch->screen->l3_config_3d,
                          ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
                          ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,

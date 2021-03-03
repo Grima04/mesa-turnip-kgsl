@@ -80,7 +80,7 @@ dump_validation_list(struct brw_batch *batch)
    }
 }
 
-static struct gen_batch_decode_bo
+static struct intel_batch_decode_bo
 decode_get_bo(void *v_brw, bool ppgtt, uint64_t address)
 {
    struct brw_context *brw = v_brw;
@@ -92,7 +92,7 @@ decode_get_bo(void *v_brw, bool ppgtt, uint64_t address)
       uint64_t bo_address = bo->gtt_offset & (~0ull >> 16);
 
       if (address >= bo_address && address < bo_address + bo->size) {
-         return (struct gen_batch_decode_bo) {
+         return (struct intel_batch_decode_bo) {
             .addr = address,
             .size = bo->size,
             .map = brw_bo_map(brw, bo, MAP_READ) + (address - bo_address),
@@ -100,7 +100,7 @@ decode_get_bo(void *v_brw, bool ppgtt, uint64_t address)
       }
    }
 
-   return (struct gen_batch_decode_bo) { };
+   return (struct intel_batch_decode_bo) { };
 }
 
 static unsigned
@@ -158,7 +158,7 @@ brw_batch_init(struct brw_context *brw)
          GEN_BATCH_DECODE_OFFSETS |
          GEN_BATCH_DECODE_FLOATS;
 
-      gen_batch_decode_ctx_init(&batch->decoder, devinfo, stderr,
+      intel_batch_decode_ctx_init(&batch->decoder, devinfo, stderr,
                                 decode_flags, NULL, decode_get_bo,
                                 decode_get_state_size, brw);
       batch->decoder.max_vbo_decoded_lines = 100;
@@ -346,7 +346,7 @@ brw_batch_free(struct brw_batch *batch)
    brw_bo_unreference(batch->state.bo);
    if (batch->state_batch_sizes) {
       _mesa_hash_table_u64_destroy(batch->state_batch_sizes, NULL);
-      gen_batch_decode_ctx_finish(&batch->decoder);
+      intel_batch_decode_ctx_finish(&batch->decoder);
    }
 }
 
@@ -831,7 +831,7 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
    }
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
-      gen_print_batch(&batch->decoder, batch->batch.map,
+      intel_print_batch(&batch->decoder, batch->batch.map,
                       4 * USED_BATCH(*batch),
                       batch->batch.bo->gtt_offset, false);
    }
@@ -945,7 +945,7 @@ emit_reloc(struct brw_batch *batch,
 
    if (target->kflags & EXEC_OBJECT_PINNED) {
       brw_use_pinned_bo(batch, target, reloc_flags & RELOC_WRITE);
-      return gen_canonical_address(target->gtt_offset + target_offset);
+      return intel_canonical_address(target->gtt_offset + target_offset);
    }
 
    unsigned int index = add_exec_bo(batch, target);

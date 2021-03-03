@@ -1196,7 +1196,7 @@ anv_pipeline_add_executable(struct anv_pipeline *pipeline,
       /* Creating this is far cheaper than it looks.  It's perfectly fine to
        * do it for every binary.
        */
-      gen_disassemble(&pipeline->device->info,
+      intel_disassemble(&pipeline->device->info,
                       stage->code, code_offset, stream);
 
       fclose(stream);
@@ -2083,8 +2083,8 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
       } else {
          dynamic->sample_locations.samples =
             ms_info ? ms_info->rasterizationSamples : 1;
-         const struct gen_sample_position *positions =
-            gen_get_sample_positions(dynamic->sample_locations.samples);
+         const struct intel_sample_position *positions =
+            intel_get_sample_positions(dynamic->sample_locations.samples);
          for (uint32_t i = 0; i < dynamic->sample_locations.samples; i++) {
             dynamic->sample_locations.locations[i].x = positions[i].x;
             dynamic->sample_locations.locations[i].y = positions[i].y;
@@ -2163,10 +2163,10 @@ anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm)
 {
    const struct gen_device_info *devinfo = &pipeline->device->info;
 
-   const struct gen_l3_weights w =
-      gen_get_default_l3_weights(devinfo, true, needs_slm);
+   const struct intel_l3_weights w =
+      intel_get_default_l3_weights(devinfo, true, needs_slm);
 
-   pipeline->l3_config = gen_get_l3_config(devinfo, w);
+   pipeline->l3_config = intel_get_l3_config(devinfo, w);
 }
 
 VkResult

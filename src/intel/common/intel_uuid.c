@@ -26,7 +26,7 @@
 #include "util/mesa-sha1.h"
 
 void
-gen_uuid_compute_device_id(uint8_t *uuid,
+intel_uuid_compute_device_id(uint8_t *uuid,
                            const struct isl_device *isldev,
                            size_t size)
 {
@@ -52,7 +52,7 @@ gen_uuid_compute_device_id(uint8_t *uuid,
 }
 
 void
-gen_uuid_compute_driver_id(uint8_t *uuid,
+intel_uuid_compute_driver_id(uint8_t *uuid,
                            const struct gen_device_info *devinfo,
                            size_t size)
 {

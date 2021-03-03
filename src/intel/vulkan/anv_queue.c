@@ -831,7 +831,7 @@ anv_queue_submit_simple_batch(struct anv_queue *queue,
 
       memcpy(batch_bo->map, batch->start, size);
       if (!device->info.has_llc)
-         gen_flush_range(batch_bo->map, size);
+         intel_flush_range(batch_bo->map, size);
 
       submit->simple_bo = batch_bo;
       submit->simple_bo_size = size;

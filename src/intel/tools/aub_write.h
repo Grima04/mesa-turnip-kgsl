@@ -118,7 +118,7 @@ static inline void
 aub_write_reloc(const struct gen_device_info *devinfo, void *p, uint64_t v)
 {
    if (devinfo->gen >= 8) {
-      *(uint64_t *)p = gen_canonical_address(v);
+      *(uint64_t *)p = intel_canonical_address(v);
    } else {
       *(uint32_t *)p = v;
    }

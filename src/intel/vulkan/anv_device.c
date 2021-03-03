@@ -488,8 +488,8 @@ anv_physical_device_init_uuids(struct anv_physical_device *device)
    _mesa_sha1_final(&sha1_ctx, sha1);
    memcpy(device->pipeline_cache_uuid, sha1, VK_UUID_SIZE);
 
-   gen_uuid_compute_driver_id(device->driver_uuid, &device->info, VK_UUID_SIZE);
-   gen_uuid_compute_device_id(device->device_uuid, &device->isl_dev, VK_UUID_SIZE);
+   intel_uuid_compute_driver_id(device->driver_uuid, &device->info, VK_UUID_SIZE);
+   intel_uuid_compute_device_id(device->device_uuid, &device->isl_dev, VK_UUID_SIZE);
 
    return VK_SUCCESS;
 }
@@ -2785,14 +2785,14 @@ anv_device_init_hiz_clear_value_bo(struct anv_device *device)
 }
 
 static bool
-get_bo_from_pool(struct gen_batch_decode_bo *ret,
+get_bo_from_pool(struct intel_batch_decode_bo *ret,
                  struct anv_block_pool *pool,
                  uint64_t address)
 {
    anv_block_pool_foreach_bo(bo, pool) {
-      uint64_t bo_address = gen_48b_address(bo->offset);
+      uint64_t bo_address = intel_48b_address(bo->offset);
       if (address >= bo_address && address < (bo_address + bo->size)) {
-         *ret = (struct gen_batch_decode_bo) {
+         *ret = (struct intel_batch_decode_bo) {
             .addr = bo_address,
             .size = bo->size,
             .map = bo->map,
@@ -2804,11 +2804,11 @@ get_bo_from_pool(struct gen_batch_decode_bo *ret,
 }
 
 /* Finding a buffer for batch decoding */
-static struct gen_batch_decode_bo
+static struct intel_batch_decode_bo
 decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
 {
    struct anv_device *device = v_batch;
-   struct gen_batch_decode_bo ret_bo = {};
+   struct intel_batch_decode_bo ret_bo = {};
 
    assert(ppgtt);
 
@@ -2822,7 +2822,7 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
       return ret_bo;
 
    if (!device->cmd_buffer_being_decoded)
-      return (struct gen_batch_decode_bo) { };
+      return (struct intel_batch_decode_bo) { };
 
    struct anv_batch_bo **bo;
 
@@ -2831,7 +2831,7 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
       uint64_t bo_address = (*bo)->bo->offset & (~0ull >> 16);
 
       if (address >= bo_address && address < bo_address + (*bo)->bo->size) {
-         return (struct gen_batch_decode_bo) {
+         return (struct intel_batch_decode_bo) {
             .addr = bo_address,
             .size = (*bo)->bo->size,
             .map = (*bo)->bo->map,
@@ -2839,18 +2839,18 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
       }
    }
 
-   return (struct gen_batch_decode_bo) { };
+   return (struct intel_batch_decode_bo) { };
 }
 
-struct gen_aux_map_buffer {
-   struct gen_buffer base;
+struct intel_aux_map_buffer {
+   struct intel_buffer base;
    struct anv_state state;
 };
 
-static struct gen_buffer *
-gen_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
+static struct intel_buffer *
+intel_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 {
-   struct gen_aux_map_buffer *buf = malloc(sizeof(struct gen_aux_map_buffer));
+   struct intel_aux_map_buffer *buf = malloc(sizeof(struct intel_aux_map_buffer));
    if (!buf)
       return NULL;
 
@@ -2869,9 +2869,9 @@ gen_aux_map_buffer_alloc(void *driver_ctx, uint32_t size)
 }
 
 static void
-gen_aux_map_buffer_free(void *driver_ctx, struct gen_buffer *buffer)
+intel_aux_map_buffer_free(void *driver_ctx, struct intel_buffer *buffer)
 {
-   struct gen_aux_map_buffer *buf = (struct gen_aux_map_buffer*)buffer;
+   struct intel_aux_map_buffer *buf = (struct intel_aux_map_buffer*)buffer;
    struct anv_device *device = (struct anv_device*)driver_ctx;
    struct anv_state_pool *pool = &device->dynamic_state_pool;
    anv_state_pool_free(pool, buf->state);
@@ -2879,8 +2879,8 @@ gen_aux_map_buffer_free(void *driver_ctx, struct gen_buffer *buffer)
 }
 
 static struct gen_mapped_pinned_buffer_alloc aux_map_allocator = {
-   .alloc = gen_aux_map_buffer_alloc,
-   .free = gen_aux_map_buffer_free,
+   .alloc = intel_aux_map_buffer_alloc,
+   .free = intel_aux_map_buffer_free,
 };
 
 static VkResult
@@ -2988,7 +2988,7 @@ VkResult anv_CreateDevice(
          GEN_BATCH_DECODE_OFFSETS |
          GEN_BATCH_DECODE_FLOATS;
 
-      gen_batch_decode_ctx_init(&device->decoder_ctx,
+      intel_batch_decode_ctx_init(&device->decoder_ctx,
                                 &physical_device->info,
                                 stderr, decode_flags, NULL,
                                 decode_get_bo, NULL, device);
@@ -3204,7 +3204,7 @@ VkResult anv_CreateDevice(
    }
 
    if (device->info.has_aux_map) {
-      device->aux_map_ctx = gen_aux_map_init(device, &aux_map_allocator,
+      device->aux_map_ctx = intel_aux_map_init(device, &aux_map_allocator,
                                              &physical_device->info);
       if (!device->aux_map_ctx)
          goto fail_binding_table_pool;
@@ -3281,7 +3281,7 @@ VkResult anv_CreateDevice(
    anv_device_release_bo(device, device->workaround_bo);
  fail_surface_aux_map_pool:
    if (device->info.has_aux_map) {
-      gen_aux_map_finish(device->aux_map_ctx);
+      intel_aux_map_finish(device->aux_map_ctx);
       device->aux_map_ctx = NULL;
    }
  fail_binding_table_pool:
@@ -3357,7 +3357,7 @@ void anv_DestroyDevice(
       anv_device_release_bo(device, device->hiz_clear_bo);
 
    if (device->info.has_aux_map) {
-      gen_aux_map_finish(device->aux_map_ctx);
+      intel_aux_map_finish(device->aux_map_ctx);
       device->aux_map_ctx = NULL;
    }
 
@@ -3388,7 +3388,7 @@ void anv_DestroyDevice(
    anv_gem_destroy_context(device, device->context_id);
 
    if (INTEL_DEBUG & DEBUG_BATCH)
-      gen_batch_decode_ctx_finish(&device->decoder_ctx);
+      intel_batch_decode_ctx_finish(&device->decoder_ctx);
 
    close(device->fd);
 
@@ -3634,15 +3634,15 @@ anv_vma_alloc(struct anv_device *device,
 done:
    pthread_mutex_unlock(&device->vma_mutex);
 
-   assert(addr == gen_48b_address(addr));
-   return gen_canonical_address(addr);
+   assert(addr == intel_48b_address(addr));
+   return intel_canonical_address(addr);
 }
 
 void
 anv_vma_free(struct anv_device *device,
              uint64_t address, uint64_t size)
 {
-   const uint64_t addr_48b = gen_48b_address(address);
+   const uint64_t addr_48b = intel_48b_address(address);
 
    pthread_mutex_lock(&device->vma_mutex);
 
@@ -4432,7 +4432,7 @@ uint64_t anv_GetDeviceMemoryOpaqueCaptureAddress(
    assert(memory->bo->flags & EXEC_OBJECT_PINNED);
    assert(memory->bo->has_client_visible_address);
 
-   return gen_48b_address(memory->bo->offset);
+   return intel_48b_address(memory->bo->offset);
 }
 
 void

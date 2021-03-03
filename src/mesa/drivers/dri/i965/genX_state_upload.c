@@ -2463,7 +2463,7 @@ genX(upload_sf_clip_viewport)(struct brw_context *brw)
       sfv.ViewportMatrixElementm30 = translate[0],
       sfv.ViewportMatrixElementm31 = translate[1] * y_scale + y_bias,
       sfv.ViewportMatrixElementm32 = translate[2],
-      gen_calculate_guardband_size(fb_width, fb_height,
+      intel_calculate_guardband_size(fb_width, fb_height,
                                    sfv.ViewportMatrixElementm00,
                                    sfv.ViewportMatrixElementm11,
                                    sfv.ViewportMatrixElementm30,

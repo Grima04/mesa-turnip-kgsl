@@ -30,7 +30,7 @@
 extern "C" {
 #endif
 
-struct gen_buffer {
+struct intel_buffer {
    uint64_t gpu;
    uint64_t gpu_end;
    void *map;
@@ -38,8 +38,8 @@ struct gen_buffer {
 };
 
 struct gen_mapped_pinned_buffer_alloc {
-   struct gen_buffer * (*alloc)(void *driver_ctx, uint32_t size);
-   void (*free)(void *driver_ctx, struct gen_buffer *buffer);
+   struct intel_buffer * (*alloc)(void *driver_ctx, uint32_t size);
+   void (*free)(void *driver_ctx, struct intel_buffer *buffer);
 };
 
 #ifdef __cplusplus

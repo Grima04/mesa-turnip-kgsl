@@ -495,8 +495,8 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
       const unsigned aux_offset = res->aux.extra_aux.surf.size_B > 0 ?
          res->aux.extra_aux.offset : res->aux.offset;
       const uint64_t format_bits =
-         gen_aux_map_format_bits(res->surf.tiling, format, plane);
-      gen_aux_map_add_mapping(aux_map_ctx, res->bo->gtt_offset + res->offset,
+         intel_aux_map_format_bits(res->surf.tiling, format, plane);
+      intel_aux_map_add_mapping(aux_map_ctx, res->bo->gtt_offset + res->offset,
                               res->aux.bo->gtt_offset + aux_offset,
                               res->surf.size_B, format_bits);
       res->bo->aux_map_address = res->aux.bo->gtt_offset;

@@ -71,7 +71,7 @@ gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
           * framebuffer at the time we emit the packet.  Otherwise, we have
           * fall back to a worst-case guardband of [-1, 1].
           */
-         gen_calculate_guardband_size(fb->width, fb->height,
+         intel_calculate_guardband_size(fb->width, fb->height,
                                       sfv.ViewportMatrixElementm00,
                                       sfv.ViewportMatrixElementm11,
                                       sfv.ViewportMatrixElementm30,

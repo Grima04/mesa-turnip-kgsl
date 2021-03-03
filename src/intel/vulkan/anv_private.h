@@ -81,7 +81,7 @@ struct anv_buffer_view;
 struct anv_image_view;
 struct anv_instance;
 
-struct gen_aux_map_context;
+struct intel_aux_map_context;
 struct gen_perf_config;
 struct gen_perf_counter_pass;
 struct gen_perf_query_result;
@@ -1242,7 +1242,7 @@ struct anv_device {
     int                                         _lost;
     int                                         lost_reported;
 
-    struct gen_batch_decode_ctx                 decoder_ctx;
+    struct intel_batch_decode_ctx                 decoder_ctx;
     /*
      * When decoding a anv_cmd_buffer, we might need to search for BOs through
      * the cmd_buffer's list.
@@ -1252,7 +1252,7 @@ struct anv_device {
     int                                         perf_fd; /* -1 if no opened */
     uint64_t                                    perf_metric; /* 0 if unset */
 
-    struct gen_aux_map_context                  *aux_map_ctx;
+    struct intel_aux_map_context                  *aux_map_ctx;
 
     struct gen_debug_block_frame                *debug_frame_desc;
 };
@@ -1590,9 +1590,9 @@ static inline uint64_t
 anv_address_physical(struct anv_address addr)
 {
    if (addr.bo && (addr.bo->flags & EXEC_OBJECT_PINNED))
-      return gen_canonical_address(addr.bo->offset + addr.offset);
+      return intel_canonical_address(addr.bo->offset + addr.offset);
    else
-      return gen_canonical_address(addr.offset);
+      return intel_canonical_address(addr.offset);
 }
 
 static inline struct anv_address
@@ -1608,14 +1608,14 @@ write_reloc(const struct anv_device *device, void *p, uint64_t v, bool flush)
    unsigned reloc_size = 0;
    if (device->info.gen >= 8) {
       reloc_size = sizeof(uint64_t);
-      *(uint64_t *)p = gen_canonical_address(v);
+      *(uint64_t *)p = intel_canonical_address(v);
    } else {
       reloc_size = sizeof(uint32_t);
       *(uint32_t *)p = v;
    }
 
    if (flush && !device->info.has_llc)
-      gen_flush_range(p, reloc_size);
+      intel_flush_range(p, reloc_size);
 }
 
 static inline uint64_t
@@ -2784,7 +2784,7 @@ struct anv_cmd_compute_state {
 struct anv_cmd_state {
    /* PIPELINE_SELECT.PipelineSelection */
    uint32_t                                     current_pipeline;
-   const struct gen_l3_config *                 current_l3_config;
+   const struct intel_l3_config *                 current_l3_config;
    uint32_t                                     last_aux_map_state;
 
    struct anv_cmd_graphics_state                gfx;
@@ -3331,7 +3331,7 @@ struct anv_pipeline {
 
    struct util_dynarray                         executables;
 
-   const struct gen_l3_config *                 l3_config;
+   const struct intel_l3_config *                 l3_config;
 };
 
 struct anv_graphics_pipeline {

@@ -250,7 +250,7 @@ kernel_has_dynamic_config_support(struct gen_perf_config *perf, int fd)
 {
    uint64_t invalid_config_id = UINT64_MAX;
 
-   return gen_ioctl(fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG,
+   return intel_ioctl(fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG,
                     &invalid_config_id) < 0 && errno == ENOENT;
 }
 
@@ -262,7 +262,7 @@ i915_query_items(struct gen_perf_config *perf, int fd,
       .num_items = n_items,
       .items_ptr = to_user_pointer(items),
    };
-   return gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &q);
+   return intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &q);
 }
 
 static bool
@@ -336,7 +336,7 @@ i915_add_config(struct gen_perf_config *perf, int fd,
    i915_config.n_flex_regs = config->n_flex_regs;
    i915_config.flex_regs_ptr = to_const_user_pointer(config->flex_regs);
 
-   int ret = gen_ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &i915_config);
+   int ret = intel_ioctl(fd, DRM_IOCTL_I915_PERF_ADD_CONFIG, &i915_config);
    return ret > 0 ? ret : 0;
 }
 
@@ -598,7 +598,7 @@ i915_perf_version(int drm_fd)
       .value = &tmp,
    };
 
-   int ret = gen_ioctl(drm_fd, DRM_IOCTL_I915_GETPARAM, &gp);
+   int ret = intel_ioctl(drm_fd, DRM_IOCTL_I915_GETPARAM, &gp);
 
    /* Return 0 if this getparam is not supported, the first version supported
     * is 1.
@@ -615,7 +615,7 @@ i915_get_sseu(int drm_fd, struct drm_i915_gem_context_param_sseu *sseu)
       .value = to_user_pointer(sseu)
    };
 
-   gen_ioctl(drm_fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &arg);
+   intel_ioctl(drm_fd, DRM_IOCTL_I915_GEM_CONTEXT_GETPARAM, &arg);
 }
 
 static inline int

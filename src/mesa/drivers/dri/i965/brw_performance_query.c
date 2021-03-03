@@ -157,7 +157,7 @@ brw_get_perf_query_info(struct gl_context *ctx,
 }
 
 static GLuint
-gen_counter_type_enum_to_gl_type(enum gen_perf_counter_type type)
+intel_counter_type_enum_to_gl_type(enum gen_perf_counter_type type)
 {
    switch (type) {
    case GEN_PERF_COUNTER_TYPE_EVENT: return GL_PERFQUERY_COUNTER_EVENT_INTEL;
@@ -211,7 +211,7 @@ brw_get_perf_counter_info(struct gl_context *ctx,
    *desc = counter->desc;
    *offset = counter->offset;
    *data_size = gen_perf_query_counter_get_size(counter);
-   *type_enum = gen_counter_type_enum_to_gl_type(counter->type);
+   *type_enum = intel_counter_type_enum_to_gl_type(counter->type);
    *data_type_enum = gen_counter_data_type_to_gl_type(counter->data_type);
    *raw_max = counter->raw_max;
 }

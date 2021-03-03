@@ -38,66 +38,66 @@
 extern "C" {
 #endif
 
-struct gen_spec;
-struct gen_group;
-struct gen_field;
-union gen_field_value;
+struct intel_spec;
+struct intel_group;
+struct intel_field;
+union intel_field_value;
 
 #define I915_ENGINE_CLASS_TO_MASK(x) BITSET_BIT(x)
 
-static inline uint32_t gen_make_gen(uint32_t major, uint32_t minor)
+static inline uint32_t intel_make_gen(uint32_t major, uint32_t minor)
 {
    return (major << 8) | minor;
 }
 
-struct gen_group *gen_spec_find_struct(struct gen_spec *spec, const char *name);
-struct gen_spec *gen_spec_load(const struct gen_device_info *devinfo);
-struct gen_spec *gen_spec_load_from_path(const struct gen_device_info *devinfo,
+struct intel_group *intel_spec_find_struct(struct intel_spec *spec, const char *name);
+struct intel_spec *intel_spec_load(const struct gen_device_info *devinfo);
+struct intel_spec *intel_spec_load_from_path(const struct gen_device_info *devinfo,
                                          const char *path);
-struct gen_spec *gen_spec_load_filename(const char *filename);
-void gen_spec_destroy(struct gen_spec *spec);
-uint32_t gen_spec_get_gen(struct gen_spec *spec);
-struct gen_group *gen_spec_find_instruction(struct gen_spec *spec,
+struct intel_spec *intel_spec_load_filename(const char *filename);
+void intel_spec_destroy(struct intel_spec *spec);
+uint32_t intel_spec_get_gen(struct intel_spec *spec);
+struct intel_group *intel_spec_find_instruction(struct intel_spec *spec,
                                             enum drm_i915_gem_engine_class engine,
                                             const uint32_t *p);
-struct gen_group *gen_spec_find_register(struct gen_spec *spec, uint32_t offset);
-struct gen_group *gen_spec_find_register_by_name(struct gen_spec *spec, const char *name);
-struct gen_enum *gen_spec_find_enum(struct gen_spec *spec, const char *name);
+struct intel_group *intel_spec_find_register(struct intel_spec *spec, uint32_t offset);
+struct intel_group *intel_spec_find_register_by_name(struct intel_spec *spec, const char *name);
+struct intel_enum *intel_spec_find_enum(struct intel_spec *spec, const char *name);
 
-int gen_group_get_length(struct gen_group *group, const uint32_t *p);
-const char *gen_group_get_name(struct gen_group *group);
-uint32_t gen_group_get_opcode(struct gen_group *group);
-struct gen_field *gen_group_find_field(struct gen_group *group, const char *name);
-struct gen_enum *gen_spec_find_enum(struct gen_spec *spec, const char *name);
+int intel_group_get_length(struct intel_group *group, const uint32_t *p);
+const char *intel_group_get_name(struct intel_group *group);
+uint32_t intel_group_get_opcode(struct intel_group *group);
+struct intel_field *intel_group_find_field(struct intel_group *group, const char *name);
+struct intel_enum *intel_spec_find_enum(struct intel_spec *spec, const char *name);
 
-bool gen_field_is_header(struct gen_field *field);
+bool intel_field_is_header(struct intel_field *field);
 
 /* Only allow 5 levels of subgroup'ing
  */
 #define DECODE_MAX_ARRAY_DEPTH 5
 
-struct gen_field_iterator {
-   struct gen_group *group;
+struct intel_field_iterator {
+   struct intel_group *group;
    char name[128];
    char value[128];
    uint64_t raw_value;
-   struct gen_group *struct_desc;
+   struct intel_group *struct_desc;
    const uint32_t *p;
    int p_bit; /**< bit offset into p */
    const uint32_t *p_end;
    int start_bit; /**< current field starts at this bit offset into p */
    int end_bit; /**< current field ends at this bit offset into p */
 
-   struct gen_field *fields[DECODE_MAX_ARRAY_DEPTH];
-   struct gen_group *groups[DECODE_MAX_ARRAY_DEPTH];
+   struct intel_field *fields[DECODE_MAX_ARRAY_DEPTH];
+   struct intel_group *groups[DECODE_MAX_ARRAY_DEPTH];
    int array_iter[DECODE_MAX_ARRAY_DEPTH];
    int level;
 
-   struct gen_field *field;
+   struct intel_field *field;
    bool print_colors;
 };
 
-struct gen_spec {
+struct intel_spec {
    uint32_t gen;
 
    struct hash_table *commands;
@@ -109,12 +109,12 @@ struct gen_spec {
    struct hash_table *access_cache;
 };
 
-struct gen_group {
-   struct gen_spec *spec;
+struct intel_group {
+   struct intel_spec *spec;
    char *name;
 
-   struct gen_field *fields; /* linked list of fields */
-   struct gen_field *dword_length_field; /* <instruction> specific */
+   struct intel_field *fields; /* linked list of fields */
+   struct intel_field *dword_length_field; /* <instruction> specific */
 
    uint32_t dw_length;
    uint32_t engine_mask; /* <instruction> specific */
@@ -125,8 +125,8 @@ struct gen_group {
    bool variable; /* <group> specific */
    bool fixed_length; /* True for <struct> & <register> */
 
-   struct gen_group *parent;
-   struct gen_group *next;
+   struct intel_group *parent;
+   struct intel_group *next;
 
    uint32_t opcode_mask;
    uint32_t opcode;
@@ -134,18 +134,18 @@ struct gen_group {
    uint32_t register_offset; /* <register> specific */
 };
 
-struct gen_value {
+struct intel_value {
    char *name;
    uint64_t value;
 };
 
-struct gen_enum {
+struct intel_enum {
    char *name;
    int nvalues;
-   struct gen_value **values;
+   struct intel_value **values;
 };
 
-struct gen_type {
+struct intel_type {
    enum {
       GEN_TYPE_UNKNOWN,
       GEN_TYPE_INT,
@@ -163,8 +163,8 @@ struct gen_type {
 
    /* Struct definition for  GEN_TYPE_STRUCT */
    union {
-      struct gen_group *gen_struct;
-      struct gen_enum *gen_enum;
+      struct intel_group *intel_struct;
+      struct intel_enum *intel_enum;
       struct {
          /* Integer and fractional sizes for GEN_TYPE_UFIXED and GEN_TYPE_SFIXED */
          int i, f;
@@ -172,40 +172,40 @@ struct gen_type {
    };
 };
 
-union gen_field_value {
+union intel_field_value {
    bool b32;
    float f32;
    uint64_t u64;
    int64_t i64;
 };
 
-struct gen_field {
-   struct gen_group *parent;
-   struct gen_field *next;
-   struct gen_group *array;
+struct intel_field {
+   struct intel_group *parent;
+   struct intel_field *next;
+   struct intel_group *array;
 
    char *name;
    int start, end;
-   struct gen_type type;
+   struct intel_type type;
    bool has_default;
    uint32_t default_value;
 
-   struct gen_enum inline_enum;
+   struct intel_enum inline_enum;
 };
 
-void gen_field_iterator_init(struct gen_field_iterator *iter,
-                             struct gen_group *group,
+void intel_field_iterator_init(struct intel_field_iterator *iter,
+                             struct intel_group *group,
                              const uint32_t *p, int p_bit,
                              bool print_colors);
 
-bool gen_field_iterator_next(struct gen_field_iterator *iter);
+bool intel_field_iterator_next(struct intel_field_iterator *iter);
 
-void gen_print_group(FILE *out,
-                     struct gen_group *group,
+void intel_print_group(FILE *out,
+                     struct intel_group *group,
                      uint64_t offset, const uint32_t *p, int p_bit,
                      bool color);
 
-enum gen_batch_decode_flags {
+enum intel_batch_decode_flags {
    /** Print in color! */
    GEN_BATCH_DECODE_IN_COLOR  = (1 << 0),
    /** Print everything, not just headers */
@@ -216,20 +216,20 @@ enum gen_batch_decode_flags {
    GEN_BATCH_DECODE_FLOATS    = (1 << 3),
 };
 
-struct gen_batch_decode_bo {
+struct intel_batch_decode_bo {
    uint64_t addr;
    uint32_t size;
    const void *map;
 };
 
-struct gen_batch_decode_ctx {
+struct intel_batch_decode_ctx {
    /**
     * Return information about the buffer containing the given address.
     *
     * If the given address is inside a buffer, the map pointer should be
     * offset accordingly so it points at the data corresponding to address.
     */
-   struct gen_batch_decode_bo (*get_bo)(void *user_data, bool ppgtt, uint64_t address);
+   struct intel_batch_decode_bo (*get_bo)(void *user_data, bool ppgtt, uint64_t address);
    unsigned (*get_state_size)(void *user_data,
                               uint64_t address,
                               uint64_t base_address);
@@ -237,8 +237,8 @@ struct gen_batch_decode_ctx {
 
    FILE *fp;
    struct gen_device_info devinfo;
-   struct gen_spec *spec;
-   enum gen_batch_decode_flags flags;
+   struct intel_spec *spec;
+   enum intel_batch_decode_flags flags;
 
    uint64_t surface_base;
    uint64_t dynamic_base;
@@ -251,21 +251,21 @@ struct gen_batch_decode_ctx {
    int n_batch_buffer_start;
 };
 
-void gen_batch_decode_ctx_init(struct gen_batch_decode_ctx *ctx,
+void intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
                                const struct gen_device_info *devinfo,
-                               FILE *fp, enum gen_batch_decode_flags flags,
+                               FILE *fp, enum intel_batch_decode_flags flags,
                                const char *xml_path,
-                               struct gen_batch_decode_bo (*get_bo)(void *,
+                               struct intel_batch_decode_bo (*get_bo)(void *,
                                                                     bool,
                                                                     uint64_t),
 
                                unsigned (*get_state_size)(void *, uint64_t,
                                                           uint64_t),
                                void *user_data);
-void gen_batch_decode_ctx_finish(struct gen_batch_decode_ctx *ctx);
+void intel_batch_decode_ctx_finish(struct intel_batch_decode_ctx *ctx);
 
 
-void gen_print_batch(struct gen_batch_decode_ctx *ctx,
+void intel_print_batch(struct intel_batch_decode_ctx *ctx,
                      const uint32_t *batch, uint32_t batch_size,
                      uint64_t batch_addr, bool from_ring);
 

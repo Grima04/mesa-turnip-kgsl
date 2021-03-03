@@ -72,7 +72,7 @@ void genX(flush_pipeline_select_3d)(struct anv_cmd_buffer *cmd_buffer);
 void genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer);
 
 void genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
-                                const struct gen_l3_config *cfg);
+                                const struct intel_l3_config *cfg);
 
 void genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer);
 void genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer);
@@ -94,10 +94,10 @@ void genX(cmd_emit_conditional_render_predicate)(struct anv_cmd_buffer *cmd_buff
 
 void
 genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
-                     const struct gen_l3_config *l3_config,
+                     const struct intel_l3_config *l3_config,
                      VkShaderStageFlags active_stages,
                      const unsigned entry_size[4],
-                     enum gen_urb_deref_block_size *deref_block_size);
+                     enum intel_urb_deref_block_size *deref_block_size);
 
 void genX(emit_multisample)(struct anv_batch *batch, uint32_t samples,
                             const VkSampleLocationEXT *locations);

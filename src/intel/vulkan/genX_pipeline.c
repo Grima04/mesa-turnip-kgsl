@@ -263,17 +263,17 @@ emit_vertex_input(struct anv_graphics_pipeline *pipeline,
 
 void
 genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
-                     const struct gen_l3_config *l3_config,
+                     const struct intel_l3_config *l3_config,
                      VkShaderStageFlags active_stages,
                      const unsigned entry_size[4],
-                     enum gen_urb_deref_block_size *deref_block_size)
+                     enum intel_urb_deref_block_size *deref_block_size)
 {
    const struct gen_device_info *devinfo = &device->info;
 
    unsigned entries[4];
    unsigned start[4];
    bool constrained;
-   gen_get_urb_config(devinfo, l3_config,
+   intel_get_urb_config(devinfo, l3_config,
                       active_stages &
                          VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
                       active_stages & VK_SHADER_STAGE_GEOMETRY_BIT,
@@ -308,7 +308,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
 
 static void
 emit_urb_setup(struct anv_graphics_pipeline *pipeline,
-               enum gen_urb_deref_block_size *deref_block_size)
+               enum intel_urb_deref_block_size *deref_block_size)
 {
    unsigned entry_size[4];
    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
@@ -585,7 +585,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const uint32_t dynamic_states,
               const struct anv_render_pass *pass,
               const struct anv_subpass *subpass,
-              enum gen_urb_deref_block_size urb_deref_block_size)
+              enum intel_urb_deref_block_size urb_deref_block_size)
 {
    struct GENX(3DSTATE_SF) sf = {
       GENX(3DSTATE_SF_header),
@@ -2280,7 +2280,7 @@ genX(graphics_pipeline_create)(
             anv_cmd_dirty_bit_for_vk_dynamic_state(dyn_info->pDynamicStates[i]);
    }
 
-   enum gen_urb_deref_block_size urb_deref_block_size;
+   enum intel_urb_deref_block_size urb_deref_block_size;
    emit_urb_setup(pipeline, &urb_deref_block_size);
 
    assert(pCreateInfo->pVertexInputState);

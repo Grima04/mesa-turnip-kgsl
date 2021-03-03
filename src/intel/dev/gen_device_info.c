@@ -1203,7 +1203,7 @@ getparam(int fd, uint32_t param, int *value)
       .value = &tmp,
    };
 
-   int ret = gen_ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gp);
+   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GETPARAM, &gp);
    if (ret != 0)
       return false;
 
@@ -1323,7 +1323,7 @@ query_topology(struct gen_device_info *devinfo, int fd)
       .items_ptr = (uintptr_t) &item,
    };
 
-   if (gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &query))
+   if (intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &query))
       return false;
 
    if (item.length < 0)
@@ -1333,7 +1333,7 @@ query_topology(struct gen_device_info *devinfo, int fd)
       (struct drm_i915_query_topology_info *) calloc(1, item.length);
    item.data_ptr = (uintptr_t) topo_info;
 
-   if (gen_ioctl(fd, DRM_IOCTL_I915_QUERY, &query) ||
+   if (intel_ioctl(fd, DRM_IOCTL_I915_QUERY, &query) ||
        item.length <= 0)
       return false;
 
@@ -1350,7 +1350,7 @@ gen_get_aperture_size(int fd, uint64_t *size)
 {
    struct drm_i915_gem_get_aperture aperture = { 0 };
 
-   int ret = gen_ioctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture);
+   int ret = intel_ioctl(fd, DRM_IOCTL_I915_GEM_GET_APERTURE, &aperture);
    if (ret == 0 && size)
       *size = aperture.aper_size;
 
@@ -1366,7 +1366,7 @@ gen_has_get_tiling(int fd)
       .size = 4096,
    };
 
-   if (gen_ioctl(fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create)) {
+   if (intel_ioctl(fd, DRM_IOCTL_I915_GEM_CREATE, &gem_create)) {
       unreachable("Failed to create GEM BO");
       return false;
    }
@@ -1374,12 +1374,12 @@ gen_has_get_tiling(int fd)
    struct drm_i915_gem_get_tiling get_tiling = {
       .handle = gem_create.handle,
    };
-   ret = gen_ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &get_tiling);
+   ret = intel_ioctl(fd, DRM_IOCTL_I915_GEM_SET_TILING, &get_tiling);
 
    struct drm_gem_close close = {
       .handle = gem_create.handle,
    };
-   gen_ioctl(fd, DRM_IOCTL_GEM_CLOSE, &close);
+   intel_ioctl(fd, DRM_IOCTL_GEM_CLOSE, &close);
 
    return ret == 0;
 }

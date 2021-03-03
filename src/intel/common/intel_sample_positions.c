@@ -26,7 +26,7 @@
 /**
  * 1x MSAA has a single sample at the center: (0.5, 0.5) -> (0x8, 0x8).
  */
-const struct gen_sample_position gen_sample_positions_1x[] = {
+const struct intel_sample_position intel_sample_positions_1x[] = {
    { 0.5, 0.5, },
 };
 
@@ -36,7 +36,7 @@ const struct gen_sample_position gen_sample_positions_1x[] = {
  * 4 0
  * c   1
  */
-const struct gen_sample_position gen_sample_positions_2x[] = {
+const struct intel_sample_position intel_sample_positions_2x[] = {
    { 0.75, 0.75 },
    { 0.25, 0.25 },
 };
@@ -49,7 +49,7 @@ const struct gen_sample_position gen_sample_positions_2x[] = {
  * a 2
  * e     3
  */
-const struct gen_sample_position gen_sample_positions_4x[] = {
+const struct intel_sample_position intel_sample_positions_4x[] = {
    { 0.375, 0.125 },
    { 0.875, 0.375 },
    { 0.125, 0.625 },
@@ -78,7 +78,7 @@ const struct gen_sample_position gen_sample_positions_4x[] = {
  * d   4
  * f           6
  */
-const struct gen_sample_position gen_sample_positions_8x[] = {
+const struct intel_sample_position intel_sample_positions_8x[] = {
    { 0.5625, 0.3125 },
    { 0.4375, 0.6875 },
    { 0.8125, 0.5625 },
@@ -110,7 +110,7 @@ const struct gen_sample_position gen_sample_positions_8x[] = {
  * e              8
  * f                             14
  */
-const struct gen_sample_position gen_sample_positions_16x[] = {
+const struct intel_sample_position intel_sample_positions_16x[] = {
    { 0.5625, 0.5625 },
    { 0.4375, 0.3125 },
    { 0.3125, 0.6250 },

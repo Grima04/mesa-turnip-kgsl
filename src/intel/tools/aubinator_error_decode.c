@@ -65,13 +65,13 @@ print_head(unsigned int reg)
 }
 
 static void
-print_register(struct gen_spec *spec, const char *name, uint32_t reg)
+print_register(struct intel_spec *spec, const char *name, uint32_t reg)
 {
-   struct gen_group *reg_spec =
-      name ? gen_spec_find_register_by_name(spec, name) : NULL;
+   struct intel_group *reg_spec =
+      name ? intel_spec_find_register_by_name(spec, name) : NULL;
 
    if (reg_spec) {
-      gen_print_group(stdout, reg_spec, 0, &reg, 0,
+      intel_print_group(stdout, reg_spec, 0, &reg, 0,
                       option_color == COLOR_ALWAYS);
    }
 }
@@ -393,13 +393,13 @@ static int qsort_hw_context_first(const void *a, const void *b)
       return 0;
 }
 
-static struct gen_batch_decode_bo
+static struct intel_batch_decode_bo
 get_gen_batch_bo(void *user_data, bool ppgtt, uint64_t address)
 {
    for (int s = 0; s < num_sections; s++) {
       if (sections[s].gtt_offset <= address &&
           address < sections[s].gtt_offset + sections[s].dword_count * 4) {
-         return (struct gen_batch_decode_bo) {
+         return (struct intel_batch_decode_bo) {
             .addr = sections[s].gtt_offset,
             .map = sections[s].data,
             .size = sections[s].dword_count * 4,
@@ -407,13 +407,13 @@ get_gen_batch_bo(void *user_data, bool ppgtt, uint64_t address)
       }
    }
 
-   return (struct gen_batch_decode_bo) { .map = NULL };
+   return (struct intel_batch_decode_bo) { .map = NULL };
 }
 
 static void
 read_data_file(FILE *file)
 {
-   struct gen_spec *spec = NULL;
+   struct intel_spec *spec = NULL;
    long long unsigned fence;
    int matched;
    char *line = NULL;
@@ -515,9 +515,9 @@ read_data_file(FILE *file)
             printf("Detected GEN%i chipset\n", devinfo.gen);
 
             if (xml_path == NULL)
-               spec = gen_spec_load(&devinfo);
+               spec = intel_spec_load(&devinfo);
             else
-               spec = gen_spec_load_from_path(&devinfo, xml_path);
+               spec = intel_spec_load_from_path(&devinfo, xml_path);
          }
 
          matched = sscanf(line, "  CTL: 0x%08x\n", &reg);
@@ -652,7 +652,7 @@ read_data_file(FILE *file)
       }
    }
 
-   enum gen_batch_decode_flags batch_flags = 0;
+   enum intel_batch_decode_flags batch_flags = 0;
    if (option_color == COLOR_ALWAYS)
       batch_flags |= GEN_BATCH_DECODE_IN_COLOR;
    if (option_full_decode)
@@ -661,8 +661,8 @@ read_data_file(FILE *file)
       batch_flags |= GEN_BATCH_DECODE_OFFSETS;
    batch_flags |= GEN_BATCH_DECODE_FLOATS;
 
-   struct gen_batch_decode_ctx batch_ctx;
-   gen_batch_decode_ctx_init(&batch_ctx, &devinfo, stdout, batch_flags,
+   struct intel_batch_decode_ctx batch_ctx;
+   intel_batch_decode_ctx_init(&batch_ctx, &devinfo, stdout, batch_flags,
                              xml_path, get_gen_batch_bo, NULL, NULL);
 
 
@@ -684,14 +684,14 @@ read_data_file(FILE *file)
          batch_ctx.engine = class;
          uint8_t *data = (uint8_t *)sections[s].data + sections[s].data_offset;
          uint64_t batch_addr = sections[s].gtt_offset + sections[s].data_offset;
-         gen_print_batch(&batch_ctx, (uint32_t *)data,
+         intel_print_batch(&batch_ctx, (uint32_t *)data,
                          sections[s].dword_count * 4, batch_addr,
                          is_ring_buffer);
          batch_ctx.flags = batch_flags;
       }
    }
 
-   gen_batch_decode_ctx_finish(&batch_ctx);
+   intel_batch_decode_ctx_finish(&batch_ctx);
 
    for (int s = 0; s < num_sections; s++) {
       free(sections[s].ring_name);

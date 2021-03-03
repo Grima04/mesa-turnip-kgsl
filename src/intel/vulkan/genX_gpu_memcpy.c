@@ -73,8 +73,8 @@ genX(cmd_buffer_so_memcpy)(struct anv_cmd_buffer *cmd_buffer,
    }
 
    if (!cmd_buffer->state.current_l3_config) {
-      const struct gen_l3_config *cfg =
-         gen_get_default_l3_config(&cmd_buffer->device->info);
+      const struct intel_l3_config *cfg =
+         intel_get_default_l3_config(&cmd_buffer->device->info);
       genX(cmd_buffer_config_l3)(cmd_buffer, cfg);
    }
 

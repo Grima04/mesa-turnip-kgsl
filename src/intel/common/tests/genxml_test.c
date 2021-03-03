@@ -48,7 +48,7 @@ _test_combine_address(void *data, void *location,
 #include "gentest_pack.h"
 
 static void
-test_struct(struct gen_spec *spec) {
+test_struct(struct intel_spec *spec) {
    /* Fill struct fields and <group> tag */
    struct GEN9_TEST_STRUCT test1 = {
       .number1 = 5,
@@ -64,20 +64,20 @@ test_struct(struct gen_spec *spec) {
    GEN9_TEST_STRUCT_pack(NULL, dw, &test1);
 
    /* Now decode the packed struct, and make sure it matches the original */
-   struct gen_group *group;
-   group = gen_spec_find_struct(spec, "TEST_STRUCT");
+   struct intel_group *group;
+   group = intel_spec_find_struct(spec, "TEST_STRUCT");
 
    assert(group != NULL);
 
    if (!quiet) {
       printf("\nTEST_STRUCT:\n");
-      gen_print_group(stdout, group, 0, dw, 0, false);
+      intel_print_group(stdout, group, 0, dw, 0, false);
    }
 
-   struct gen_field_iterator iter;
-   gen_field_iterator_init(&iter, group, dw, 0, false);
+   struct intel_field_iterator iter;
+   intel_field_iterator_init(&iter, group, dw, 0, false);
 
-   while (gen_field_iterator_next(&iter)) {
+   while (intel_field_iterator_next(&iter)) {
       int idx;
       if (strcmp(iter.name, "number1") == 0) {
          uint16_t number = iter.raw_value;
@@ -93,7 +93,7 @@ test_struct(struct gen_spec *spec) {
 }
 
 static void
-test_two_levels(struct gen_spec *spec) {
+test_two_levels(struct intel_spec *spec) {
    struct GEN9_STRUCT_TWO_LEVELS test;
 
    for (int i = 0; i < 4; i++) {
@@ -105,20 +105,20 @@ test_two_levels(struct gen_spec *spec) {
    uint32_t dw[GEN9_STRUCT_TWO_LEVELS_length];
    GEN9_STRUCT_TWO_LEVELS_pack(NULL, dw, &test);
 
-   struct gen_group *group;
-   group = gen_spec_find_struct(spec, "STRUCT_TWO_LEVELS");
+   struct intel_group *group;
+   group = intel_spec_find_struct(spec, "STRUCT_TWO_LEVELS");
 
    assert(group != NULL);
 
    if (!quiet) {
       printf("\nSTRUCT_TWO_LEVELS\n");
-      gen_print_group(stdout, group, 0, dw, 0, false);
+      intel_print_group(stdout, group, 0, dw, 0, false);
    }
 
-   struct gen_field_iterator iter;
-   gen_field_iterator_init(&iter, group, dw, 0, false);
+   struct intel_field_iterator iter;
+   intel_field_iterator_init(&iter, group, dw, 0, false);
 
-   while (gen_field_iterator_next(&iter)) {
+   while (intel_field_iterator_next(&iter)) {
       int i, j;
 
       assert(sscanf(iter.name, "byte[%d][%d]", &i, &j) == 2);
@@ -129,7 +129,7 @@ test_two_levels(struct gen_spec *spec) {
 
 int main(int argc, char **argv)
 {
-   struct gen_spec *spec = gen_spec_load_filename(GENXML_PATH);
+   struct intel_spec *spec = intel_spec_load_filename(GENXML_PATH);
 
    if (argc > 1 && strcmp(argv[1], "-quiet") == 0)
       quiet = true;
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
    test_struct(spec);
    test_two_levels(spec);
 
-   gen_spec_destroy(spec);
+   intel_spec_destroy(spec);
 
    return 0;
 }

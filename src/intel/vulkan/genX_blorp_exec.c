@@ -206,7 +206,7 @@ blorp_flush_range(struct blorp_batch *batch, void *start, size_t size)
     */
 }
 
-static const struct gen_l3_config *
+static const struct intel_l3_config *
 blorp_get_l3_config(struct blorp_batch *batch)
 {
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
@@ -220,8 +220,8 @@ genX(blorp_exec)(struct blorp_batch *batch,
    struct anv_cmd_buffer *cmd_buffer = batch->driver_batch;
 
    if (!cmd_buffer->state.current_l3_config) {
-      const struct gen_l3_config *cfg =
-         gen_get_default_l3_config(&cmd_buffer->device->info);
+      const struct intel_l3_config *cfg =
+         intel_get_default_l3_config(&cmd_buffer->device->info);
       genX(cmd_buffer_config_l3)(cmd_buffer, cfg);
    }
 

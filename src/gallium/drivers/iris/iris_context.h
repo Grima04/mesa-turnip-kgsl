@@ -718,7 +718,7 @@ struct iris_context {
       /** Aux usage of the fb's depth buffer (which may or may not exist). */
       enum isl_aux_usage hiz_usage;
 
-      enum gen_urb_deref_block_size urb_deref_block_size;
+      enum intel_urb_deref_block_size urb_deref_block_size;
 
       /** Are depth writes enabled?  (Depth buffer may or may not exist.) */
       bool depth_writes_enabled;

@@ -30,26 +30,26 @@
  * Vulkan.  These correspond to the Vulkan "standard sample locations".
  */
 
-struct gen_sample_position {
+struct intel_sample_position {
    float x;
    float y;
 };
 
-extern const struct gen_sample_position gen_sample_positions_1x[];
-extern const struct gen_sample_position gen_sample_positions_2x[];
-extern const struct gen_sample_position gen_sample_positions_4x[];
-extern const struct gen_sample_position gen_sample_positions_8x[];
-extern const struct gen_sample_position gen_sample_positions_16x[];
+extern const struct intel_sample_position intel_sample_positions_1x[];
+extern const struct intel_sample_position intel_sample_positions_2x[];
+extern const struct intel_sample_position intel_sample_positions_4x[];
+extern const struct intel_sample_position intel_sample_positions_8x[];
+extern const struct intel_sample_position intel_sample_positions_16x[];
 
-static inline const struct gen_sample_position *
-gen_get_sample_positions(int samples)
+static inline const struct intel_sample_position *
+intel_get_sample_positions(int samples)
 {
    switch (samples) {
-   case 1: return gen_sample_positions_1x;
-   case 2: return gen_sample_positions_2x;
-   case 4: return gen_sample_positions_4x;
-   case 8: return gen_sample_positions_8x;
-   case 16: return gen_sample_positions_16x;
+   case 1: return intel_sample_positions_1x;
+   case 2: return intel_sample_positions_2x;
+   case 4: return intel_sample_positions_4x;
+   case 8: return intel_sample_positions_8x;
+   case 16: return intel_sample_positions_16x;
    default: unreachable("Invalid sample count");
    }
 }
@@ -112,18 +112,18 @@ prefix##sample_idx##YOffset = arr[sample_idx].y;
    GEN_SAMPLE_POS_ELEM(prefix, arr, 15);
 
 #define GEN_SAMPLE_POS_1X(prefix) \
-   GEN_SAMPLE_POS_1X_ARRAY(prefix, gen_sample_positions_1x)
+   GEN_SAMPLE_POS_1X_ARRAY(prefix, intel_sample_positions_1x)
 
 #define GEN_SAMPLE_POS_2X(prefix) \
-   GEN_SAMPLE_POS_2X_ARRAY(prefix, gen_sample_positions_2x)
+   GEN_SAMPLE_POS_2X_ARRAY(prefix, intel_sample_positions_2x)
 
 #define GEN_SAMPLE_POS_4X(prefix) \
-   GEN_SAMPLE_POS_4X_ARRAY(prefix, gen_sample_positions_4x)
+   GEN_SAMPLE_POS_4X_ARRAY(prefix, intel_sample_positions_4x)
 
 #define GEN_SAMPLE_POS_8X(prefix) \
-   GEN_SAMPLE_POS_8X_ARRAY(prefix, gen_sample_positions_8x)
+   GEN_SAMPLE_POS_8X_ARRAY(prefix, intel_sample_positions_8x)
 
 #define GEN_SAMPLE_POS_16X(prefix) \
-   GEN_SAMPLE_POS_16X_ARRAY(prefix, gen_sample_positions_16x)
+   GEN_SAMPLE_POS_16X_ARRAY(prefix, intel_sample_positions_16x)
 
 #endif /* INTEL_SAMPLE_POSITIONS_H */

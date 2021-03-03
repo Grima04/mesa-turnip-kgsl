@@ -40,7 +40,7 @@ extern "C" {
  * These functions are implemented in common code shared by drivers.
  */
 
-struct gen_aux_map_context;
+struct intel_aux_map_context;
 struct gen_device_info;
 
 #define GEN_AUX_MAP_ADDRESS_MASK       0x0000ffffffffff00ull
@@ -51,16 +51,16 @@ struct gen_device_info;
 #define GEN_AUX_MAP_AUX_PAGE_SIZE \
    (GEN_AUX_MAP_MAIN_PAGE_SIZE / GEN_AUX_MAP_GEN12_CCS_SCALE)
 
-struct gen_aux_map_context *
-gen_aux_map_init(void *driver_ctx,
+struct intel_aux_map_context *
+intel_aux_map_init(void *driver_ctx,
                  struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
                  const struct gen_device_info *devinfo);
 
 void
-gen_aux_map_finish(struct gen_aux_map_context *ctx);
+intel_aux_map_finish(struct intel_aux_map_context *ctx);
 
 uint32_t
-gen_aux_map_get_state_num(struct gen_aux_map_context *ctx);
+intel_aux_map_get_state_num(struct intel_aux_map_context *ctx);
 
 /** Returns the current number of buffers used by the aux-map tables
  *
@@ -70,39 +70,39 @@ gen_aux_map_get_state_num(struct gen_aux_map_context *ctx);
  * they involve surfaces not used by this batch.
  */
 uint32_t
-gen_aux_map_get_num_buffers(struct gen_aux_map_context *ctx);
+intel_aux_map_get_num_buffers(struct intel_aux_map_context *ctx);
 
 /** Fill an array of exec_object2 with aux-map buffer handles
  *
- * The gen_aux_map_get_num_buffers call should be made, then the driver can
+ * The intel_aux_map_get_num_buffers call should be made, then the driver can
  * make sure the `obj` array is large enough before calling this function.
  */
 void
-gen_aux_map_fill_bos(struct gen_aux_map_context *ctx, void **driver_bos,
+intel_aux_map_fill_bos(struct intel_aux_map_context *ctx, void **driver_bos,
                      uint32_t max_bos);
 
 uint64_t
-gen_aux_map_get_base(struct gen_aux_map_context *ctx);
+intel_aux_map_get_base(struct intel_aux_map_context *ctx);
 
 uint64_t
-gen_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
+intel_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
                         uint8_t plane);
 
 uint64_t
-gen_aux_map_format_bits_for_isl_surf(const struct isl_surf *isl_surf);
+intel_aux_map_format_bits_for_isl_surf(const struct isl_surf *isl_surf);
 
 uint64_t *
-gen_aux_map_get_entry(struct gen_aux_map_context *ctx,
+intel_aux_map_get_entry(struct intel_aux_map_context *ctx,
                       uint64_t address,
                       uint64_t *entry_address);
 
 void
-gen_aux_map_add_mapping(struct gen_aux_map_context *ctx, uint64_t address,
+intel_aux_map_add_mapping(struct intel_aux_map_context *ctx, uint64_t address,
                         uint64_t aux_address, uint64_t main_size_B,
                         uint64_t format_bits);
 
 void
-gen_aux_map_unmap_range(struct gen_aux_map_context *ctx, uint64_t address,
+intel_aux_map_unmap_range(struct intel_aux_map_context *ctx, uint64_t address,
                         uint64_t size);
 
 #ifdef __cplusplus

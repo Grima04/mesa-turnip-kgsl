@@ -106,7 +106,7 @@ iris_get_device_uuid(struct pipe_screen *pscreen, char *uuid)
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    const struct isl_device *isldev = &screen->isl_dev;
 
-   gen_uuid_compute_device_id((uint8_t *)uuid, isldev, PIPE_UUID_SIZE);
+   intel_uuid_compute_device_id((uint8_t *)uuid, isldev, PIPE_UUID_SIZE);
 }
 
 static void
@@ -115,7 +115,7 @@ iris_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    const struct gen_device_info *devinfo = &screen->devinfo;
 
-   gen_uuid_compute_driver_id((uint8_t *)uuid, devinfo, PIPE_UUID_SIZE);
+   intel_uuid_compute_driver_id((uint8_t *)uuid, devinfo, PIPE_UUID_SIZE);
 }
 
 static bool
@@ -674,15 +674,15 @@ iris_getparam_integer(int fd, int param)
    return -1;
 }
 
-static const struct gen_l3_config *
+static const struct intel_l3_config *
 iris_get_default_l3_config(const struct gen_device_info *devinfo,
                            bool compute)
 {
    bool wants_dc_cache = true;
    bool has_slm = compute;
-   const struct gen_l3_weights w =
-      gen_get_default_l3_weights(devinfo, wants_dc_cache, has_slm);
-   return gen_get_l3_config(devinfo, w);
+   const struct intel_l3_weights w =
+      intel_get_default_l3_weights(devinfo, wants_dc_cache, has_slm);
+   return intel_get_l3_config(devinfo, w);
 }
 
 static void
@@ -726,7 +726,7 @@ static void
 iris_detect_kernel_features(struct iris_screen *screen)
 {
    /* Kernel 5.2+ */
-   if (gen_gem_supports_syncobj_wait(screen->fd))
+   if (intel_gem_supports_syncobj_wait(screen->fd))
       screen->kernel_features |= KERNEL_HAS_WAIT_FOR_SUBMIT;
 }
 

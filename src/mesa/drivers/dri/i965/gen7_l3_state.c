@@ -35,7 +35,7 @@
  * more statistics from the pipeline state (e.g. guess of expected URB usage
  * and bound surfaces), or by using feed-back from performance counters.
  */
-static struct gen_l3_weights
+static struct intel_l3_weights
 get_pipeline_state_l3_weights(const struct brw_context *brw)
 {
    const struct brw_stage_state *stage_states[] = {
@@ -60,7 +60,7 @@ get_pipeline_state_l3_weights(const struct brw_context *brw)
       needs_slm |= prog_data && prog_data->total_shared;
    }
 
-   return gen_get_default_l3_weights(&brw->screen->devinfo,
+   return intel_get_default_l3_weights(&brw->screen->devinfo,
                                      needs_dc, needs_slm);
 }
 
@@ -68,7 +68,7 @@ get_pipeline_state_l3_weights(const struct brw_context *brw)
  * Program the hardware to use the specified L3 configuration.
  */
 static void
-setup_l3_config(struct brw_context *brw, const struct gen_l3_config *cfg)
+setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    const bool has_dc = cfg->n[GEN_L3P_DC] || cfg->n[GEN_L3P_ALL];
@@ -192,10 +192,10 @@ setup_l3_config(struct brw_context *brw, const struct gen_l3_config *cfg)
  * configuration.
  */
 static void
-update_urb_size(struct brw_context *brw, const struct gen_l3_config *cfg)
+update_urb_size(struct brw_context *brw, const struct intel_l3_config *cfg)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   const unsigned sz = gen_get_l3_config_urb_size(devinfo, cfg);
+   const unsigned sz = intel_get_l3_config_urb_size(devinfo, cfg);
 
    if (brw->urb.size != sz) {
       brw->urb.size = sz;
@@ -215,8 +215,8 @@ update_urb_size(struct brw_context *brw, const struct gen_l3_config *cfg)
 void
 brw_emit_l3_state(struct brw_context *brw)
 {
-   const struct gen_l3_weights w = get_pipeline_state_l3_weights(brw);
-   const float dw = gen_diff_l3_weights(w, gen_get_l3_config_weights(brw->l3.config));
+   const struct intel_l3_weights w = get_pipeline_state_l3_weights(brw);
+   const float dw = intel_diff_l3_weights(w, intel_get_l3_config_weights(brw->l3.config));
    /* The distance between any two compatible weight vectors cannot exceed two
     * due to the triangle inequality.
     */
@@ -235,8 +235,8 @@ brw_emit_l3_state(struct brw_context *brw)
                                small_dw_threshold : large_dw_threshold);
 
    if (dw > dw_threshold && can_do_pipelined_register_writes(brw->screen)) {
-      const struct gen_l3_config *const cfg =
-         gen_get_l3_config(&brw->screen->devinfo, w);
+      const struct intel_l3_config *const cfg =
+         intel_get_l3_config(&brw->screen->devinfo, w);
 
       setup_l3_config(brw, cfg);
       update_urb_size(brw, cfg);
@@ -244,7 +244,7 @@ brw_emit_l3_state(struct brw_context *brw)
 
       if (INTEL_DEBUG & DEBUG_L3) {
          fprintf(stderr, "L3 config transition (%f > %f): ", dw, dw_threshold);
-         gen_dump_l3_config(cfg, stderr);
+         intel_dump_l3_config(cfg, stderr);
       }
    }
 }
@@ -301,7 +301,7 @@ void
 gen7_restore_default_l3_config(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   const struct gen_l3_config *const cfg = gen_get_default_l3_config(devinfo);
+   const struct intel_l3_config *const cfg = intel_get_default_l3_config(devinfo);
 
    if (cfg != brw->l3.config &&
        can_do_pipelined_register_writes(brw->screen)) {

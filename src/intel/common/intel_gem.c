@@ -24,14 +24,14 @@
 #include "drm-uapi/i915_drm.h"
 
 bool
-gen_gem_supports_syncobj_wait(int fd)
+intel_gem_supports_syncobj_wait(int fd)
 {
    int ret;
 
    struct drm_syncobj_create create = {
       .flags = 0,
    };
-   ret = gen_ioctl(fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
+   ret = intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_CREATE, &create);
    if (ret)
       return false;
 
@@ -43,12 +43,12 @@ gen_gem_supports_syncobj_wait(int fd)
       .timeout_nsec = 0,
       .flags = DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT,
    };
-   ret = gen_ioctl(fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
+   ret = intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_WAIT, &wait);
 
    struct drm_syncobj_destroy destroy = {
       .handle = syncobj,
    };
-   gen_ioctl(fd, DRM_IOCTL_SYNCOBJ_DESTROY, &destroy);
+   intel_ioctl(fd, DRM_IOCTL_SYNCOBJ_DESTROY, &destroy);
 
    /* If it timed out, then we have the ioctl and it supports the
     * DRM_SYNCOBJ_WAIT_FLAGS_WAIT_FOR_SUBMIT flag.
