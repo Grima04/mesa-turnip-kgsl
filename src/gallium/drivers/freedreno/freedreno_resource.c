@@ -727,15 +727,6 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		}
 	}
 
-	/* Sometimes games do silly things like MapBufferRange(UNSYNC|DISCARD_x)
-	 * In this case, the the UNSYNC is a bit redundant, but the games rely
-	 * on us rebinding/replacing the backing storage rather than going down
-	 * the UNSYNC path (ie. honoring DISCARD_x first before UNSYNC).  So
-	 * since we handle DISCARD_RANGE inside the !UNSYNC path:
-	 */
-	if (usage & (PIPE_MAP_DISCARD_RANGE | PIPE_MAP_DISCARD_WHOLE_RESOURCE))
-		usage &= ~PIPE_MAP_UNSYNCHRONIZED;
-
 	if (ctx->in_shadow && !(usage & PIPE_MAP_READ))
 		usage |= PIPE_MAP_UNSYNCHRONIZED;
 
