@@ -1673,24 +1673,6 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
    return ptr;
 }
 
-static bool
-is_per_vertex_inout(const struct vtn_variable *var, gl_shader_stage stage)
-{
-   if (var->patch || !glsl_type_is_array(var->type->type))
-      return false;
-
-   if (var->mode == vtn_variable_mode_input) {
-      return stage == MESA_SHADER_TESS_CTRL ||
-             stage == MESA_SHADER_TESS_EVAL ||
-             stage == MESA_SHADER_GEOMETRY;
-   }
-
-   if (var->mode == vtn_variable_mode_output)
-      return stage == MESA_SHADER_TESS_CTRL;
-
-   return false;
-}
-
 static void
 assign_missing_member_locations(struct vtn_variable *var)
 {
@@ -1900,22 +1882,15 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
        * able to preserve that information.
        */
 
-      struct vtn_type *per_vertex_type = var->type;
-      if (is_per_vertex_inout(var, b->shader->info.stage)) {
-         /* In Geometry shaders (and some tessellation), inputs come
-          * in per-vertex arrays.  However, some builtins come in
-          * non-per-vertex, hence the need for the is_array check.  In
-          * any case, there are no non-builtin arrays allowed so this
-          * check should be sufficient.
-          */
-         per_vertex_type = var->type->array_element;
-      }
-
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
       var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
       var->var->data.mode = nir_mode;
       var->var->data.patch = var->patch;
+
+      struct vtn_type *per_vertex_type = var->type;
+      if (nir_is_per_vertex_io(var->var, b->shader->info.stage))
+         per_vertex_type = var->type->array_element;
 
       /* Figure out the interface block type. */
       struct vtn_type *iface_type = per_vertex_type;
