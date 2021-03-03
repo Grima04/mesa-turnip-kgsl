@@ -1,4 +1,5 @@
 dEQP-GLES3.functional.primitive_restart.begin_restart.line_strip.unsigned_byte.draw_elements_instanced
 dEQP-GLES3.functional.primitive_restart.duplicate_restarts.line_strip.unsigned_byte.draw_range_elements
 dEQP-GLES3.functional.primitive_restart.end_restart.triangle_strip.unsigned_byte.draw_elements
+dEQP-GLES3.functional.primitive_restart.end_restart_duplicate_restarts.triangle_strip.unsigned_byte.draw_elements_instanced
 dEQP-GLES3.functional.primitive_restart.basic.line_strip.unsigned_byte.draw_elements_instanced
