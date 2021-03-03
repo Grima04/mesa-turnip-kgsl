@@ -1866,6 +1866,20 @@ out_unknown:
    return ~0;
 }
 
+static unsigned is_wrap_mode_legal(struct si_screen *screen, unsigned wrap)
+{
+   if (!screen->info.has_3d_cube_border_color_mipmap) {
+      switch (wrap) {
+      case PIPE_TEX_WRAP_CLAMP:
+      case PIPE_TEX_WRAP_CLAMP_TO_BORDER:
+      case PIPE_TEX_WRAP_MIRROR_CLAMP:
+      case PIPE_TEX_WRAP_MIRROR_CLAMP_TO_BORDER:
+         return false;
+      }
+   }
+   return true;
+}
+
 static unsigned si_tex_wrap(unsigned wrap)
 {
    switch (wrap) {
@@ -2168,6 +2182,10 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
       PRINT_ERR("radeonsi: unsupported texture type %d\n", target);
       return false;
    }
+
+   if ((target == PIPE_TEXTURE_3D || target == PIPE_TEXTURE_CUBE) &&
+        !sscreen->info.has_3d_cube_border_color_mipmap)
+      return NULL;
 
    if (MAX2(1, sample_count) < MAX2(1, storage_sample_count))
       return false;
@@ -4465,6 +4483,17 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    union pipe_color_union clamped_border_color;
 
    if (!rstate) {
+      return NULL;
+   }
+
+   /* Validate inputs. */
+   if (!is_wrap_mode_legal(sscreen, state->wrap_s) ||
+       !is_wrap_mode_legal(sscreen, state->wrap_t) ||
+       !is_wrap_mode_legal(sscreen, state->wrap_r) ||
+       (!sscreen->info.has_3d_cube_border_color_mipmap &&
+        (state->min_mip_filter != PIPE_TEX_MIPFILTER_NONE ||
+         state->max_anisotropy > 0))) {
+      assert(0);
       return NULL;
    }
 

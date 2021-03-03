@@ -896,6 +896,14 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    struct si_resource *resource;
    struct si_screen *sscreen = (struct si_screen *)screen;
 
+   if (!sscreen->info.has_3d_cube_border_color_mipmap &&
+       (base->last_level > 0 ||
+        base->target == PIPE_TEXTURE_3D ||
+        base->target == PIPE_TEXTURE_CUBE)) {
+      assert(0);
+      return NULL;
+   }
+
    tex = CALLOC_STRUCT(si_texture);
    if (!tex)
       goto error;

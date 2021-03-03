@@ -149,6 +149,7 @@ struct radv_nir_compiler_options {
 	bool wgp_mode;
 	enum radeon_family family;
 	enum chip_class chip_class;
+	const struct radeon_info *info;
 	uint32_t tess_offchip_block_dw_size;
 	uint32_t address32_hi;
 

@@ -22,7 +22,7 @@
  */
 
 #include "ac_nir_to_llvm.h"
-
+#include "ac_gpu_info.h"
 #include "ac_binary.h"
 #include "ac_llvm_build.h"
 #include "ac_llvm_util.h"
@@ -1503,6 +1503,10 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    default:
       break;
    }
+
+   /* Aldebaran doesn't have image_sample_lz, but image_sample behaves like lz. */
+   if (!ctx->ac.info->has_3d_cube_border_color_mipmap)
+      args->level_zero = false;
 
    if (instr->op == nir_texop_tg4 && ctx->ac.chip_class <= GFX8) {
       nir_deref_instr *texture_deref_instr = get_tex_texture_deref(instr);

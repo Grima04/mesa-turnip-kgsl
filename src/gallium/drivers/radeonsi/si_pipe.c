@@ -529,19 +529,21 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    }
 
    /* Border colors. */
-   sctx->border_color_table = malloc(SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table));
-   if (!sctx->border_color_table)
-      goto fail;
+   if (sscreen->info.has_3d_cube_border_color_mipmap) {
+      sctx->border_color_table = malloc(SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table));
+      if (!sctx->border_color_table)
+         goto fail;
 
-   sctx->border_color_buffer = si_resource(pipe_buffer_create(
-      screen, 0, PIPE_USAGE_DEFAULT, SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table)));
-   if (!sctx->border_color_buffer)
-      goto fail;
+      sctx->border_color_buffer = si_resource(pipe_buffer_create(
+         screen, 0, PIPE_USAGE_DEFAULT, SI_MAX_BORDER_COLORS * sizeof(*sctx->border_color_table)));
+      if (!sctx->border_color_buffer)
+         goto fail;
 
-   sctx->border_color_map =
-      ws->buffer_map(sctx->border_color_buffer->buf, NULL, PIPE_MAP_WRITE);
-   if (!sctx->border_color_map)
-      goto fail;
+      sctx->border_color_map =
+         ws->buffer_map(sctx->border_color_buffer->buf, NULL, PIPE_MAP_WRITE);
+      if (!sctx->border_color_map)
+         goto fail;
+   }
 
    sctx->ngg = sscreen->use_ngg;
 

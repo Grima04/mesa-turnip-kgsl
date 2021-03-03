@@ -393,8 +393,10 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
    if (ctx->chip_class == GFX10 && ctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
       ctx->flags |= SI_CONTEXT_VGT_FLUSH;
 
-   radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->border_color_buffer,
-                             RADEON_USAGE_READ, RADEON_PRIO_BORDER_COLORS);
+   if (ctx->border_color_buffer) {
+      radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->border_color_buffer,
+                                RADEON_USAGE_READ, RADEON_PRIO_BORDER_COLORS);
+   }
    if (ctx->shadowed_regs) {
       radeon_add_to_buffer_list(ctx, &ctx->gfx_cs, ctx->shadowed_regs,
                                 RADEON_USAGE_READWRITE,

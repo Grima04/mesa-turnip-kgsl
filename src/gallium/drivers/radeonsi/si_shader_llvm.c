@@ -134,7 +134,7 @@ void si_llvm_context_init(struct si_shader_context *ctx, struct si_screen *sscre
    ctx->compiler = compiler;
 
    ac_llvm_context_init(&ctx->ac, compiler, sscreen->info.chip_class, sscreen->info.family,
-                        AC_FLOAT_MODE_DEFAULT_OPENGL, wave_size, 64);
+                        &sscreen->info, AC_FLOAT_MODE_DEFAULT_OPENGL, wave_size, 64);
 }
 
 void si_llvm_create_func(struct si_shader_context *ctx, const char *name, LLVMTypeRef *return_types,

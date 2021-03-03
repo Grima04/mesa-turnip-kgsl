@@ -57,6 +57,7 @@ struct ac_llvm_flow {
  */
 void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *compiler,
                           enum chip_class chip_class, enum radeon_family family,
+                          const struct radeon_info *info,
                           enum ac_float_mode float_mode, unsigned wave_size,
                           unsigned ballot_mask_bits)
 {
@@ -64,6 +65,7 @@ void ac_llvm_context_init(struct ac_llvm_context *ctx, struct ac_llvm_compiler *
 
    ctx->chip_class = chip_class;
    ctx->family = family;
+   ctx->info = info;
    ctx->wave_size = wave_size;
    ctx->ballot_mask_bits = ballot_mask_bits;
    ctx->float_mode = float_mode;
