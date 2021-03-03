@@ -642,6 +642,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->mid_command_buffer_preemption_enabled = amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
    info->kernel_has_modifiers = info->chip_class >= GFX9 && info->drm_minor >= 40;
+   info->has_graphics = gfx.available_rings > 0;
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
    info->max_render_backends = amdinfo->rb_pipes;
@@ -673,7 +674,11 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          info->tcc_harvested = (info->vram_size / info->max_tcc_blocks) != 512 * 1024 * 1024;
       }
    } else {
-      info->tcc_cache_line_size = 64;
+      if (!info->has_graphics && info->family >= CHIP_ALDEBARAN)
+         info->tcc_cache_line_size = 128;
+      else
+         info->tcc_cache_line_size = 64;
+
       info->num_tcc_blocks = info->max_tcc_blocks;
    }
 
@@ -732,7 +737,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    assert(util_is_power_of_two_or_zero(dma.available_rings + 1));
    assert(util_is_power_of_two_or_zero(compute.available_rings + 1));
 
-   info->has_graphics = gfx.available_rings > 0;
    info->num_rings[RING_GFX] = util_bitcount(gfx.available_rings);
    info->num_rings[RING_COMPUTE] = util_bitcount(compute.available_rings);
    info->num_rings[RING_DMA] = util_bitcount(dma.available_rings);
