@@ -89,9 +89,9 @@ lower_alu_instr(nir_builder *bld, nir_alu_instr *alu, unsigned bit_size)
        dst_bit_size != bit_size) {
       nir_alu_type type = nir_op_infos[op].output_type;
       nir_ssa_def *dst = nir_convert_to_bit_size(bld, lowered_dst, type, dst_bit_size);
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(dst));
+      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, dst);
    } else {
-      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(lowered_dst));
+      nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, lowered_dst);
    }
 }
 
@@ -175,7 +175,7 @@ lower_intrinsic_instr(nir_builder *b, nir_intrinsic_instr *intrin,
           intrin->intrinsic != nir_intrinsic_vote_ieq)
          res = nir_u2u(b, res, old_bit_size);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(res));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
       break;
    }
 
@@ -314,7 +314,7 @@ split_phi(nir_builder *b, nir_phi_instr *phi)
 
    b->cursor = nir_after_phis(nir_cursor_current_block(b->cursor));
    nir_ssa_def *merged = nir_pack_64_2x32_split(b, &lowered[0]->dest.ssa, &lowered[1]->dest.ssa);
-   nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_src_for_ssa(merged));
+   nir_ssa_def_rewrite_uses(&phi->dest.ssa, merged);
    nir_instr_remove(&phi->instr);
 }
 

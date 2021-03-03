@@ -411,7 +411,7 @@ ir3_nir_lower_view_layer_id(nir_shader *nir, bool layer_zero, bool view_zero)
 				b.cursor = nir_before_instr(&intrin->instr);
 				nir_ssa_def *zero = nir_imm_int(&b, 0);
 				nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-										 nir_src_for_ssa(zero));
+										 zero);
 				nir_instr_remove(&intrin->instr);
 				progress = true;
 			}

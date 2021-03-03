@@ -734,9 +734,9 @@ vectorize_loads(nir_builder *b, struct vectorize_ctx *ctx,
    if (first == low) {
       nir_ssa_def_rewrite_uses_after(&low->intrin->dest.ssa, nir_src_for_ssa(low_def),
                                      high_def->parent_instr);
-      nir_ssa_def_rewrite_uses(&high->intrin->dest.ssa, nir_src_for_ssa(high_def));
+      nir_ssa_def_rewrite_uses(&high->intrin->dest.ssa, high_def);
    } else {
-      nir_ssa_def_rewrite_uses(&low->intrin->dest.ssa, nir_src_for_ssa(low_def));
+      nir_ssa_def_rewrite_uses(&low->intrin->dest.ssa, low_def);
       nir_ssa_def_rewrite_uses_after(&high->intrin->dest.ssa, nir_src_for_ssa(high_def),
                                      high_def->parent_instr);
    }

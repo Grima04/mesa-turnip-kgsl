@@ -226,7 +226,7 @@ midgard_nir_lower_fdot2_instr(nir_builder *b, nir_instr *instr, void *data)
                                     nir_channel(b, product, 1));
 
         /* Replace the fdot2 with this sum */
-        nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(sum));
+        nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, sum);
 
         return true;
 }

@@ -69,7 +69,7 @@ lower_ubo_to_uniform(nir_builder *b, nir_instr *instr, void *_data)
                        .range = nir_intrinsic_range(intr) / 16,
                        .dest_type = nir_type_float32);
 
-	nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(uniform));
+	nir_ssa_def_rewrite_uses(&intr->dest.ssa, uniform);
 
    return uniform;
 }

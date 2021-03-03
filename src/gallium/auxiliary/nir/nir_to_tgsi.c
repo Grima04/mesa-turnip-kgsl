@@ -2522,7 +2522,7 @@ nir_to_tgsi_lower_64bit_intrinsic(nir_builder *b, nir_intrinsic_instr *instr)
          second->num_components > 1 ? nir_channel(b, &second->dest.ssa, 1) : NULL,
       };
       nir_ssa_def *new = nir_vec(b, channels, instr->num_components);
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(new));
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa, new);
    } else {
       /* Split the src value across the two stores. */
       b->cursor = nir_before_instr(&instr->instr);
@@ -2614,7 +2614,7 @@ nir_to_tgsi_lower_64bit_load_const(nir_builder *b, nir_load_const_instr *instr)
       num_components == 4 ? nir_channel(b, &second->def, 1) : NULL,
    };
    nir_ssa_def *new = nir_vec(b, channels, num_components);
-   nir_ssa_def_rewrite_uses(&instr->def, nir_src_for_ssa(new));
+   nir_ssa_def_rewrite_uses(&instr->def, new);
    nir_instr_remove(&instr->instr);
 
    return true;

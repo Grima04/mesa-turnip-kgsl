@@ -95,7 +95,7 @@ opt_shrink_vectors_alu(nir_builder *b, nir_alu_instr *instr)
                srcs[i] = nir_ssa_for_alu_src(b, instr, i);
 
             nir_ssa_def *new_vec = nir_vec(b, srcs, last_bit);
-            nir_ssa_def_rewrite_uses(def, nir_src_for_ssa(new_vec));
+            nir_ssa_def_rewrite_uses(def, new_vec);
             return true;
          }
          break;

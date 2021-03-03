@@ -69,7 +69,7 @@ lower_fb_read(nir_builder *b, nir_intrinsic_instr *intr)
    nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
    nir_builder_instr_insert(b, &tex->instr);
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(&tex->dest.ssa));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, &tex->dest.ssa);
 }
 
 bool

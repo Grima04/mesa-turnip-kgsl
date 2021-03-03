@@ -641,7 +641,7 @@ lower_vulkan_resource_index(nir_builder *b,
     * second component (unused right now) to zero.
     */
    nir_ssa_def_rewrite_uses(&instr->dest.ssa,
-                            nir_src_for_ssa(nir_imm_int(b, index)));
+                            nir_imm_int(b, index));
    nir_instr_remove(&instr->instr);
 }
 
@@ -860,7 +860,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
        * lowering
        */
       nir_ssa_def_rewrite_uses(&instr->dest.ssa,
-                               nir_src_for_ssa(nir_imm_int(b, 0)));
+                               nir_imm_int(b, 0));
       nir_instr_remove(&instr->instr);
       return true;
 
@@ -879,7 +879,7 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
        * lower the desc back to a vec2, as it is what load_ssbo/ubo expects.
        */
       nir_ssa_def *desc = nir_vec2(b, instr->src[0].ssa, nir_imm_int(b, 0));
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(desc));
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa, desc);
       nir_instr_remove(&instr->instr);
       return true;
    }

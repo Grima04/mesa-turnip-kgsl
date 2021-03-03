@@ -650,7 +650,7 @@ static void si_nir_lower_color(nir_shader *nir)
             continue;
          }
 
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(def));
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, def);
          nir_instr_remove(instr);
       }
    }

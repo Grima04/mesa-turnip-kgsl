@@ -75,7 +75,7 @@ remap_tess_levels(nir_builder *b, nir_intrinsic_instr *intr,
       if (nir_intrinsic_infos[intr->intrinsic].has_dest) {
          b->cursor = nir_before_instr(&intr->instr);
          nir_ssa_def *undef = nir_ssa_undef(b, 1, 32);
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(undef));
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, undef);
       }
       nir_instr_remove(&intr->instr);
    }
@@ -258,7 +258,7 @@ brw_nir_lower_vs_inputs(nir_shader *nir,
                nir_builder_instr_insert(&b, &load->instr);
 
                nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                        nir_src_for_ssa(&load->dest.ssa));
+                                        &load->dest.ssa);
                nir_instr_remove(&intrin->instr);
                break;
             }

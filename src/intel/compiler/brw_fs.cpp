@@ -8953,7 +8953,7 @@ brw_nir_demote_sample_qualifiers(nir_shader *nir)
                nir_load_barycentric(&b, nir_intrinsic_load_barycentric_centroid,
                                     nir_intrinsic_interp_mode(intrin));
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                     nir_src_for_ssa(centroid));
+                                     centroid);
             nir_instr_remove(instr);
             progress = true;
          }

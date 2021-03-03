@@ -129,7 +129,7 @@ lower_load_face(nir_builder *b, struct nir_instr *instr, nir_variable *var)
 
    nir_ssa_def *load = nir_load_var(b, var);
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(load));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
    nir_instr_remove(instr);
 }
 
@@ -295,7 +295,7 @@ lower_load_first_vertex(nir_builder *b, nir_instr *instr, nir_variable **first_v
 
    nir_ssa_def *load = get_state_var(b, D3D12_STATE_VAR_FIRST_VERTEX, "d3d12_FirstVertex",
                                      glsl_uint_type(), first_vertex);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(load));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
    nir_instr_remove(instr);
 
    return true;
@@ -447,7 +447,7 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b,
                    .range = ~0,
                    );
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(load));
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, load);
 
    /* Remove the old load_* instruction and any parent derefs */
    nir_instr_remove(&instr->instr);

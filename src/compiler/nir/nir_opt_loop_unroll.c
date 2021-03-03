@@ -654,7 +654,7 @@ remove_out_of_bounds_induction_use(nir_shader *shader, nir_loop *loop,
                      nir_ssa_undef(&b, intrin->dest.ssa.num_components,
                                    intrin->dest.ssa.bit_size);
                   nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                           nir_src_for_ssa(undef));
+                                           undef);
                } else {
                   nir_instr_remove(instr);
                   continue;

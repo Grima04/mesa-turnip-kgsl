@@ -198,7 +198,7 @@ lower_load_push_constant(nir_builder *b, nir_intrinsic_instr *instr,
                        nir_ushr(b, instr->src[0].ssa, nir_imm_int(b, 2)),
                        .base = base / 4);
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(load));
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, load);
 
    nir_instr_remove(&instr->instr);
 }
@@ -235,7 +235,7 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
                                nir_iadd(b, nir_imm_int(b, base), vulkan_idx),
                                nir_imm_int(b, 0));
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(def));
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, def);
    nir_instr_remove(&instr->instr);
 }
 
@@ -319,7 +319,7 @@ lower_ssbo_ubo_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin)
    }
 
    if (info->has_dest)
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(result));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, result);
    nir_instr_remove(&intrin->instr);
 }
 

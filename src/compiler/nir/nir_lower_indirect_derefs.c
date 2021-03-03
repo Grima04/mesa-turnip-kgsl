@@ -172,7 +172,7 @@ lower_indirect_derefs_block(nir_block *block, nir_builder *b,
          nir_ssa_def *result;
          emit_load_store_deref(b, intrin, base, &path.path[1],
                                &result, NULL);
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(result));
+         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, result);
       }
 
       nir_deref_path_finish(&path);

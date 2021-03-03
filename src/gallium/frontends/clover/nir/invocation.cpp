@@ -134,7 +134,7 @@ clover_nir_lower_images(nir_shader *shader)
             nir_ssa_def *loc =
                nir_imm_intN_t(&b, deref->var->data.driver_location,
                                   deref->dest.ssa.bit_size);
-            nir_ssa_def_rewrite_uses(&deref->dest.ssa, nir_src_for_ssa(loc));
+            nir_ssa_def_rewrite_uses(&deref->dest.ssa, loc);
             progress = true;
             break;
          }

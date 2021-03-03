@@ -67,7 +67,7 @@ nir_lower_demote_to_discard_instr(nir_builder *b, nir_instr *instr, void *data)
        * we can assume there are none */
       b->cursor = nir_before_instr(instr);
       nir_ssa_def *zero = nir_imm_false(b);
-      nir_ssa_def_rewrite_uses_ssa(&intrin->dest.ssa, zero);
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, zero);
       nir_instr_remove_v(instr);
       return true;
    }
@@ -118,7 +118,7 @@ nir_lower_load_helper_to_is_helper(nir_builder *b, nir_instr *instr, void *data)
        * top-level blocks to ensure correct behavior w.r.t. loops */
       if (is_helper == NULL)
          is_helper = insert_is_helper(b, instr);
-      nir_ssa_def_rewrite_uses_ssa(&intrin->dest.ssa, is_helper);
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, is_helper);
       nir_instr_remove_v(instr);
       return true;
    default:

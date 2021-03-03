@@ -365,7 +365,7 @@ lower_rt_intrinsics_impl(nir_function_impl *impl,
 
          if (sysval) {
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                     nir_src_for_ssa(sysval));
+                                     sysval);
             nir_instr_remove(&intrin->instr);
          }
       }

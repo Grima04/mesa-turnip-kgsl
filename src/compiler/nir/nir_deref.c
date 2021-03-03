@@ -1021,7 +1021,7 @@ opt_remove_sampler_cast(nir_deref_instr *cast)
 
    /* We're a cast from a more detailed sampler type to a bare sampler */
    nir_ssa_def_rewrite_uses(&cast->dest.ssa,
-                            nir_src_for_ssa(&parent->dest.ssa));
+                            &parent->dest.ssa);
    nir_instr_remove(&cast->instr);
 
    /* Recursively crawl the deref tree and clean up types */
@@ -1059,7 +1059,7 @@ opt_replace_struct_wrapper_cast(nir_builder *b, nir_deref_instr *cast)
       return false;
 
    nir_deref_instr *replace = nir_build_deref_struct(b, parent, 0);
-   nir_ssa_def_rewrite_uses(&cast->dest.ssa, nir_src_for_ssa(&replace->dest.ssa));
+   nir_ssa_def_rewrite_uses(&cast->dest.ssa, &replace->dest.ssa);
    nir_deref_instr_remove_if_unused(cast);
    return true;
 }
@@ -1135,7 +1135,7 @@ opt_deref_ptr_as_array(nir_builder *b, nir_deref_instr *deref)
           is_trivial_deref_cast(parent))
          parent = nir_deref_instr_parent(parent);
       nir_ssa_def_rewrite_uses(&deref->dest.ssa,
-                               nir_src_for_ssa(&parent->dest.ssa));
+                               &parent->dest.ssa);
       nir_instr_remove(&deref->instr);
       return true;
    }
@@ -1320,7 +1320,7 @@ opt_known_deref_mode_is(nir_builder *b, nir_intrinsic_instr *intrin)
    if (deref_is == NULL)
       return false;
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(deref_is));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, deref_is);
    nir_instr_remove(&intrin->instr);
    return true;
 }

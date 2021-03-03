@@ -824,7 +824,7 @@ lower_alu(struct etna_compile *c, nir_alu_instr *alu)
       nir_ssa_def *def = nir_build_imm(&b, num_components, 32, value);
 
       if (num_components == info->num_inputs) {
-         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, nir_src_for_ssa(def));
+         nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa, def);
          nir_instr_remove(&alu->instr);
          return;
       }
@@ -927,7 +927,7 @@ emit_shader(struct etna_compile *c, unsigned *num_temps, unsigned *num_consts)
             b.cursor = nir_after_instr(instr);
             nir_ssa_def *def = nir_build_imm(&b, intr->dest.ssa.num_components, 32, value);
 
-            nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(def));
+            nir_ssa_def_rewrite_uses(&intr->dest.ssa, def);
             nir_instr_remove(instr);
          } break;
          default:

@@ -272,7 +272,7 @@ clc_lower_input_image_deref(nir_builder *b, struct clc_image_lower_context *cont
                }
 
                /* No actual intrinsic needed here, just reference the loaded variable */
-               nir_ssa_def_rewrite_uses(&intrinsic->dest.ssa, nir_src_for_ssa(*cached_deref));
+               nir_ssa_def_rewrite_uses(&intrinsic->dest.ssa, *cached_deref);
                nir_instr_remove(&intrinsic->instr);
                break;
             }
@@ -826,7 +826,7 @@ split_unaligned_load(nir_builder *b, nir_intrinsic_instr *intrin, unsigned align
    }
 
    nir_ssa_def *new_dest = nir_extract_bits(b, srcs, num_loads, 0, num_comps, intrin->dest.ssa.bit_size);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(new_dest));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_dest);
    nir_instr_remove(&intrin->instr);
 }
 

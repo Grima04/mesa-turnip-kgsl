@@ -93,7 +93,7 @@ rewrite_to_vec(nir_function_impl *impl, nir_alu_instr *mov, nir_alu_instr *vec)
       new_vec->src[i] = vec->src[mov->src[0].swizzle[i]];
 
    nir_ssa_def *new = nir_builder_alu_instr_finish_and_insert(&b, new_vec);
-   nir_ssa_def_rewrite_uses_ssa(&mov->dest.dest.ssa, new);
+   nir_ssa_def_rewrite_uses(&mov->dest.dest.ssa, new);
 
    /* If we remove "mov" and it's the next instruction in the
     * nir_foreach_instr_safe() loop, then we would end copy-propagation early. */

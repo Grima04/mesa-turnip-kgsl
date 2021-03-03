@@ -652,7 +652,7 @@ nir_lower_io_block(nir_block *block,
                nir_imm_zero(b, intrin->dest.ssa.num_components,
                              intrin->dest.ssa.bit_size);
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                  nir_src_for_ssa(zero));
+                                  zero);
          }
 
          nir_instr_remove(&intrin->instr);
@@ -692,7 +692,7 @@ nir_lower_io_block(nir_block *block,
 
       if (replacement) {
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                  nir_src_for_ssa(replacement));
+                                  replacement);
       }
       nir_instr_remove(&intrin->instr);
       progress = true;
@@ -1771,7 +1771,7 @@ nir_lower_explicit_io_instr(nir_builder *b,
                                         deref->modes, align_mul, align_offset,
                                         intrin->num_components);
       }
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(value));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, value);
       break;
    }
 
@@ -1806,7 +1806,7 @@ nir_lower_explicit_io_instr(nir_builder *b,
                                                   deref->modes,
                                                   align_mul, align_offset,
                                                   intrin->num_components);
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(value));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, value);
       break;
    }
 
@@ -1823,7 +1823,7 @@ nir_lower_explicit_io_instr(nir_builder *b,
    default: {
       nir_ssa_def *value =
          build_explicit_io_atomic(b, intrin, addr, addr_format, deref->modes);
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(value));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, value);
       break;
    }
    }
@@ -1957,7 +1957,7 @@ lower_explicit_io_deref(nir_builder *b, nir_deref_instr *deref,
    assert(addr->num_components == deref->dest.ssa.num_components);
 
    nir_instr_remove(&deref->instr);
-   nir_ssa_def_rewrite_uses(&deref->dest.ssa, nir_src_for_ssa(addr));
+   nir_ssa_def_rewrite_uses(&deref->dest.ssa, addr);
 }
 
 static void
@@ -1991,7 +1991,7 @@ lower_explicit_io_array_length(nir_builder *b, nir_intrinsic_instr *intrin,
    arr_size = nir_imax(b, nir_isub(b, arr_size, offset), nir_imm_int(b, 0u));
    arr_size = nir_idiv(b, arr_size, nir_imm_int(b, stride));
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(arr_size));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, arr_size);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -2018,7 +2018,7 @@ lower_explicit_io_mode_check(nir_builder *b, nir_intrinsic_instr *intrin,
       build_runtime_addr_mode_check(b, addr, addr_format,
                                     nir_intrinsic_memory_modes(intrin));
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(is_mode));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, is_mode);
 }
 
 static bool

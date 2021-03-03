@@ -221,7 +221,7 @@ anv_nir_lower_multiview(nir_shader *shader,
             value = build_view_index(&state);
          }
 
-         nir_ssa_def_rewrite_uses(&load->dest.ssa, nir_src_for_ssa(value));
+         nir_ssa_def_rewrite_uses(&load->dest.ssa, value);
 
          nir_instr_remove(&load->instr);
          progress = true;

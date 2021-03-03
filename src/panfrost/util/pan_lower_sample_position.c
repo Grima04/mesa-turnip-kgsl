@@ -58,7 +58,7 @@ pan_lower_sample_pos_impl(struct nir_builder *b,
         if (decoded->bit_size != nir_dest_bit_size(intr->dest))
                 decoded = nir_f2fN(b, decoded, nir_dest_bit_size(intr->dest));
 
-        nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(decoded));
+        nir_ssa_def_rewrite_uses(&intr->dest.ssa, decoded);
         return true;
 }
 

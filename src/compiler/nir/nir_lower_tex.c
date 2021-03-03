@@ -337,7 +337,7 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
    nir_ssa_def *result =
       nir_ffma(b, y, m0, nir_ffma(b, u, m1, nir_ffma(b, v, m2, offset)));
 
-   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(&tex->dest.ssa, result);
 }
 
 static void
@@ -717,7 +717,7 @@ lower_tex_to_txd(nir_builder *b, nir_tex_instr *tex)
    nir_ssa_dest_init(&txd->instr, &txd->dest, nir_dest_num_components(tex->dest),
                      nir_dest_bit_size(tex->dest), NULL);
    nir_builder_instr_insert(b, &txd->instr);
-   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(&txd->dest.ssa));
+   nir_ssa_def_rewrite_uses(&tex->dest.ssa, &txd->dest.ssa);
    nir_instr_remove(&tex->instr);
    return txd;
 }
@@ -754,7 +754,7 @@ lower_txb_to_txl(nir_builder *b, nir_tex_instr *tex)
    nir_ssa_dest_init(&txl->instr, &txl->dest, nir_dest_num_components(tex->dest),
                      nir_dest_bit_size(tex->dest), NULL);
    nir_builder_instr_insert(b, &txl->instr);
-   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(&txl->dest.ssa));
+   nir_ssa_def_rewrite_uses(&tex->dest.ssa, &txl->dest.ssa);
    nir_instr_remove(&tex->instr);
    return txl;
 }
@@ -1052,7 +1052,7 @@ lower_tg4_offsets(nir_builder *b, nir_tex_instr *tex)
    }
 
    nir_ssa_def *res = nir_vec(b, dest, tex->dest.ssa.num_components);
-   nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(res));
+   nir_ssa_def_rewrite_uses(&tex->dest.ssa, res);
    nir_instr_remove(&tex->instr);
 
    return true;

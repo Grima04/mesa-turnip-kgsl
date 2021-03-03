@@ -91,7 +91,7 @@ lower_instr(nir_intrinsic_instr *instr, nir_builder *b, int multiplier)
                         load->num_components, instr->dest.ssa.bit_size,
                         instr->dest.ssa.name);
       nir_builder_instr_insert(b, &load->instr);
-      nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+      nir_ssa_def_rewrite_uses(&instr->dest.ssa, &load->dest.ssa);
 
       nir_intrinsic_set_range_base(load, nir_intrinsic_base(instr) * multiplier);
       nir_intrinsic_set_range(load, nir_intrinsic_range(instr) * multiplier);

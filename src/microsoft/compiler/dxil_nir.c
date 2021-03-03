@@ -166,7 +166,7 @@ lower_load_deref(nir_builder *b, nir_intrinsic_instr *intr)
    nir_deref_path_finish(&path);
    assert(comp_idx == num_components);
    nir_ssa_def *result = nir_vec(b, comps, num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
    return true;
 }
@@ -308,7 +308,7 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
 
    assert(comp_idx == num_components);
    nir_ssa_def *result = nir_vec(b, comps, num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
    return true;
 }
@@ -458,7 +458,7 @@ lower_32b_offset_load(nir_builder *b, nir_intrinsic_instr *intr)
    }
 
    nir_ssa_def *result = nir_vec(b, comps, num_components);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
 
    return true;
@@ -696,7 +696,7 @@ lower_load_ubo(nir_builder *b, nir_intrinsic_instr *intr)
                              nir_dest_num_components(intr->dest),
                              nir_dest_bit_size(intr->dest));
 
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, result);
    nir_instr_remove(&intr->instr);
    return true;
 }
@@ -774,7 +774,7 @@ lower_shared_atomic(nir_builder *b, nir_intrinsic_instr *intr,
    nir_ssa_dest_init(&atomic->instr, &atomic->dest, 1, 32, intr->dest.ssa.name);
 
    nir_builder_instr_insert(b, &atomic->instr);
-   nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(&atomic->dest.ssa));
+   nir_ssa_def_rewrite_uses(&intr->dest.ssa, &atomic->dest.ssa);
    nir_instr_remove(&intr->instr);
    return true;
 }
@@ -847,7 +847,7 @@ lower_deref_ssbo(nir_builder *b, nir_deref_instr *deref)
          nir_build_deref_cast(b, ptr, nir_var_mem_ssbo, deref->type,
                               glsl_get_explicit_stride(var->type));
       nir_ssa_def_rewrite_uses(&deref->dest.ssa,
-                               nir_src_for_ssa(&deref_cast->dest.ssa));
+                               &deref_cast->dest.ssa);
       nir_instr_remove(&deref->instr);
 
       deref = deref_cast;
@@ -1082,7 +1082,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
    b->cursor = nir_after_phis(nir_cursor_current_block(b->cursor));
    nir_ssa_def *result = nir_build_alu(b, downcast_op, &lowered->dest.ssa, NULL, NULL, NULL);
 
-   nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(&phi->dest.ssa, result);
    nir_instr_remove(&phi->instr);
 }
 

@@ -261,7 +261,7 @@ optimize_and_rewrite_atomic(nir_builder *b, nir_intrinsic_instr *intrin)
 
    if (result) {
       assert(result->divergent == original_result_divergent);
-      nir_ssa_def_rewrite_uses(&old_result, nir_src_for_ssa(result));
+      nir_ssa_def_rewrite_uses(&old_result, result);
    }
 }
 

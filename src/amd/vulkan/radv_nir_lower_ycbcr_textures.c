@@ -298,7 +298,7 @@ try_lower_tex_ycbcr(const struct radv_pipeline_layout *layout,
 		                                  bpcs);
 	}
 
-	nir_ssa_def_rewrite_uses(&tex->dest.ssa, nir_src_for_ssa(result));
+	nir_ssa_def_rewrite_uses(&tex->dest.ssa, result);
 	nir_instr_remove(&tex->instr);
 
 	return true;

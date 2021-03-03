@@ -945,7 +945,7 @@ replace_constant_input(nir_shader *shader, nir_intrinsic_instr *store_intr)
                                              intr->dest.ssa.bit_size,
                                              out_const->value);
 
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(nconst));
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nconst);
 
          progress = true;
       }
@@ -992,7 +992,7 @@ replace_duplicate_input(nir_shader *shader, nir_variable *input_var,
          b.cursor = nir_before_instr(instr);
 
          nir_ssa_def *load = nir_load_var(&b, input_var);
-         nir_ssa_def_rewrite_uses(&intr->dest.ssa, nir_src_for_ssa(load));
+         nir_ssa_def_rewrite_uses(&intr->dest.ssa, load);
 
          progress = true;
       }

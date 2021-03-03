@@ -451,7 +451,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                                intrin->dest.ssa.bit_size);
 
             nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                     nir_src_for_ssa(data));
+                                     data);
             continue;
          }
          case nir_intrinsic_load_user_clip_plane: {
@@ -574,7 +574,7 @@ iris_setup_uniforms(const struct brw_compiler *compiler,
                          .range = ~0);
 
          nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-                                  nir_src_for_ssa(load));
+                                  load);
          nir_instr_remove(instr);
       }
    }

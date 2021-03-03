@@ -431,7 +431,7 @@ lower_res_index_intrinsic(nir_intrinsic_instr *intrin,
    }
 
    assert(intrin->dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(index));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, index);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -488,7 +488,7 @@ lower_res_reindex_intrinsic(nir_intrinsic_instr *intrin,
    }
 
    assert(intrin->dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(new_index));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, new_index);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -659,7 +659,7 @@ lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin,
    }
 
    assert(intrin->dest.is_ssa);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(desc));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
    nir_instr_remove(&intrin->instr);
 }
 
@@ -682,7 +682,7 @@ lower_get_ssbo_size(nir_intrinsic_instr *intrin,
    if (state->pdevice->has_a64_buffer_access) {
       nir_ssa_def *desc = build_ssbo_descriptor_load(desc_type, index, state);
       nir_ssa_def *size = nir_channel(b, desc, 2);
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(size));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, size);
       nir_instr_remove(&intrin->instr);
    } else {
       /* We're following the nir_address_format_32bit_index_offset model so
@@ -765,7 +765,7 @@ lower_image_intrinsic(nir_intrinsic_instr *intrin,
                                intrin->dest.ssa.num_components,
                                intrin->dest.ssa.bit_size, state);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(desc));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, desc);
    } else if (binding_offset > MAX_BINDING_TABLE_SIZE) {
       const bool write_only =
          (var->data.access & ACCESS_NON_READABLE) != 0;
@@ -837,7 +837,7 @@ lower_load_constant(nir_intrinsic_instr *intrin,
                           .range = nir_intrinsic_range(intrin));
    }
 
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(data));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, data);
 }
 
 static void

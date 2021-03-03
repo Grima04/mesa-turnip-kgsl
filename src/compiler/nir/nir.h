@@ -3945,8 +3945,7 @@ nir_ssa_dest_init_for_type(nir_instr *instr, nir_dest *dest,
    nir_ssa_dest_init(instr, dest, glsl_get_components(type),
                      glsl_get_bit_size(type), name);
 }
-void nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_src new_src);
-void nir_ssa_def_rewrite_uses_ssa(nir_ssa_def *def, nir_ssa_def *new_ssa);
+void nir_ssa_def_rewrite_uses(nir_ssa_def *def, nir_ssa_def *new_ssa);
 void nir_ssa_def_rewrite_uses_src(nir_ssa_def *def, nir_src new_src);
 void nir_ssa_def_rewrite_uses_after(nir_ssa_def *def, nir_src new_src,
                                     nir_instr *after_me);

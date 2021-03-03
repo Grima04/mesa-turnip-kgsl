@@ -363,7 +363,7 @@ lower_intrinsics(nir_shader *nir)
 			}
 
 			nir_ssa_def_rewrite_uses(&intrin->dest.ssa,
-						 nir_src_for_ssa(def));
+						 def);
 
 			nir_instr_remove(instr);
 			progress = true;
@@ -770,7 +770,7 @@ lower_view_index(nir_shader *nir)
 			b.cursor = nir_before_instr(instr);
 			nir_ssa_def *def = nir_load_var(&b, layer);
 			nir_ssa_def_rewrite_uses(&load->dest.ssa,
-						 nir_src_for_ssa(def));
+						 def);
 
 			nir_instr_remove(instr);
 			progress = true;

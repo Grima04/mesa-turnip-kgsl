@@ -144,10 +144,10 @@ try_lower_input_load(nir_function_impl *impl, nir_intrinsic_instr *load,
       nir_ssa_def *res = nir_channels(
          &b, &tex->dest.ssa, load_result_mask | 0x10);
 
-      nir_ssa_def_rewrite_uses(&load->dest.ssa, nir_src_for_ssa(res));
+      nir_ssa_def_rewrite_uses(&load->dest.ssa, res);
    } else {
       nir_ssa_def_rewrite_uses(&load->dest.ssa,
-                               nir_src_for_ssa(&tex->dest.ssa));
+                               &tex->dest.ssa);
    }
 
    return true;

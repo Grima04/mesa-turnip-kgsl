@@ -541,7 +541,7 @@ opt_split_alu_of_phi(nir_builder *b, nir_loop *loop)
        * result of the phi.
        */
       nir_ssa_def_rewrite_uses(&alu->dest.dest.ssa,
-                               nir_src_for_ssa(&phi->dest.ssa));
+                               &phi->dest.ssa);
 
       /* Since the original ALU instruction no longer has any readers, just
        * remove it.
@@ -714,7 +714,7 @@ opt_simplify_bcsel_of_phi(nir_builder *b, nir_loop *loop)
        * the phi.
        */
       nir_ssa_def_rewrite_uses(&bcsel->dest.dest.ssa,
-                               nir_src_for_ssa(&phi->dest.ssa));
+                               &phi->dest.ssa);
 
       /* Since the original bcsel instruction no longer has any readers,
        * just remove it.

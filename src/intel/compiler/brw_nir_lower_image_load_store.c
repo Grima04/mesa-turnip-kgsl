@@ -379,7 +379,7 @@ lower_image_load_instr(nir_builder *b,
        * conversion.
        */
       nir_ssa_def *placeholder = nir_ssa_undef(b, 4, 32);
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(placeholder));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, placeholder);
 
       intrin->num_components = isl_format_get_num_channels(lower_fmt);
       intrin->dest.ssa.num_components = intrin->num_components;
@@ -391,7 +391,7 @@ lower_image_load_instr(nir_builder *b,
                                                   image_fmt, lower_fmt,
                                                   dest_components);
 
-      nir_ssa_def_rewrite_uses(placeholder, nir_src_for_ssa(color));
+      nir_ssa_def_rewrite_uses(placeholder, color);
       nir_instr_remove(placeholder->parent_instr);
    } else {
       const struct isl_format_layout *image_fmtl =
@@ -439,7 +439,7 @@ lower_image_load_instr(nir_builder *b,
                                                   image_fmt, raw_fmt,
                                                   dest_components);
 
-      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(color));
+      nir_ssa_def_rewrite_uses(&intrin->dest.ssa, color);
    }
 
    return true;
@@ -604,7 +604,7 @@ lower_image_atomic_instr(nir_builder *b,
 
    /* Use an undef to hold the uses of the load conversion. */
    nir_ssa_def *placeholder = nir_ssa_undef(b, 4, 32);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(placeholder));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, placeholder);
 
    /* Check the first component of the size field to find out if the
     * image is bound.  Necessary on IVB for typed atomics because
@@ -620,7 +620,7 @@ lower_image_atomic_instr(nir_builder *b,
    nir_pop_if(b, NULL);
 
    nir_ssa_def *result = nir_if_phi(b, &intrin->dest.ssa, zero);
-   nir_ssa_def_rewrite_uses(placeholder, nir_src_for_ssa(result));
+   nir_ssa_def_rewrite_uses(placeholder, result);
 
    return true;
 }
@@ -669,7 +669,7 @@ lower_image_size_instr(nir_builder *b,
       comps[c] = nir_imm_int(b, 1);
 
    nir_ssa_def *vec = nir_vec(b, comps, intrin->dest.ssa.num_components);
-   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, nir_src_for_ssa(vec));
+   nir_ssa_def_rewrite_uses(&intrin->dest.ssa, vec);
 
    return true;
 }

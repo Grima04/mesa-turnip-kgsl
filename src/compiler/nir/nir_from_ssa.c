@@ -404,7 +404,7 @@ isolate_phi_nodes_block(nir_block *block, void *dead_ctx)
       exec_list_push_tail(&block_pcopy->entries, &entry->node);
 
       nir_ssa_def_rewrite_uses(&phi->dest.ssa,
-                               nir_src_for_ssa(&entry->dest.ssa));
+                               &entry->dest.ssa);
 
       nir_instr_rewrite_src(&block_pcopy->instr, &entry->src,
                             nir_src_for_ssa(&phi->dest.ssa));
@@ -970,7 +970,7 @@ nir_lower_phis_to_regs_block(nir_block *block)
       b.cursor = nir_after_instr(&phi->instr);
       nir_ssa_def *def = nir_load_reg(&b, reg);
 
-      nir_ssa_def_rewrite_uses(&phi->dest.ssa, nir_src_for_ssa(def));
+      nir_ssa_def_rewrite_uses(&phi->dest.ssa, def);
 
       nir_foreach_phi_src(src, phi) {
          assert(src->src.is_ssa);

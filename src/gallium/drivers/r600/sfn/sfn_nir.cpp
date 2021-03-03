@@ -695,7 +695,7 @@ r600_lower_shared_io_impl(nir_function *func)
             load->src[0] = nir_src_for_ssa(addr);
             nir_ssa_dest_init(&load->instr, &load->dest,
                               load->num_components, 32, NULL);
-            nir_ssa_def_rewrite_uses(&op->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+            nir_ssa_def_rewrite_uses(&op->dest.ssa, &load->dest.ssa);
             nir_builder_instr_insert(&b, &load->instr);
          } else {
             nir_ssa_def *addr = op->src[1].ssa;

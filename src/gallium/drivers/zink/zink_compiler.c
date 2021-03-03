@@ -275,7 +275,7 @@ lower_drawid_instr(nir_builder *b, nir_instr *in, void *data)
    nir_ssa_dest_init(&load->instr, &load->dest, 1, 32, "draw_id");
    nir_builder_instr_insert(b, &load->instr);
 
-   nir_ssa_def_rewrite_uses(&instr->dest.ssa, nir_src_for_ssa(&load->dest.ssa));
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, &load->dest.ssa);
 
    return true;
 }
