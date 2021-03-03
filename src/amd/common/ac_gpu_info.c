@@ -963,9 +963,15 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_3d_cube_border_color_mipmap = info->has_graphics || info->family == CHIP_ARCTURUS;
    info->max_sgpr_alloc = info->family == CHIP_TONGA || info->family == CHIP_ICELAND ? 96 : 104;
 
-   info->min_wave64_vgpr_alloc = 4;
-   info->max_vgpr_alloc = 256;
-   info->wave64_vgpr_alloc_granularity = 4;
+   if (!info->has_graphics && info->family >= CHIP_ALDEBARAN) {
+      info->min_wave64_vgpr_alloc = 8;
+      info->max_vgpr_alloc = 512;
+      info->wave64_vgpr_alloc_granularity = 8;
+   } else {
+      info->min_wave64_vgpr_alloc = 4;
+      info->max_vgpr_alloc = 256;
+      info->wave64_vgpr_alloc_granularity = 4;
+   }
 
    info->num_physical_wave64_vgprs_per_simd = info->chip_class >= GFX10 ? 512 : 256;
    info->num_simd_per_compute_unit = info->chip_class >= GFX10 ? 2 : 4;

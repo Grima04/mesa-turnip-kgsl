@@ -190,7 +190,8 @@ static void si_create_compute_state_async(void *job, int thread_index)
       bool scratch_enabled = shader->config.scratch_bytes_per_wave > 0;
 
       shader->config.rsrc1 = S_00B848_VGPRS((shader->config.num_vgprs - 1) /
-                                            (sscreen->compute_wave_size == 32 ? 8 : 4)) |
+                                            ((sscreen->compute_wave_size == 32 ||
+                                              sscreen->info.wave64_vgpr_alloc_granularity == 8) ? 8 : 4)) |
                              S_00B848_DX10_CLAMP(1) |
                              S_00B848_MEM_ORDERED(si_shader_mem_ordered(shader)) |
                              S_00B848_WGP_MODE(sscreen->info.chip_class >= GFX10) |
