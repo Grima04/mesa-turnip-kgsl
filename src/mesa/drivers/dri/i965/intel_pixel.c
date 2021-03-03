@@ -131,4 +131,3 @@ brw_init_pixel_functions(struct dd_function_table *functions)
    functions->DrawPixels = brw_drawpixels;
    functions->ReadPixels = brw_readpixels;
 }
-
