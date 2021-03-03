@@ -6978,10 +6978,12 @@ radv_initialise_color_surface(struct radv_device *device,
 			 */
 			cb->cb_color_info |= S_028C70_FMASK_COMPRESS_1FRAG_ONLY(1);
 
-			/* Set CMASK into a tiling format that allows the
-			 * texture block to read it.
-			 */
-			cb->cb_color_info |= S_028C70_CMASK_ADDR_TYPE(2);
+			if (device->physical_device->rad_info.chip_class == GFX8) {
+				/* Set CMASK into a tiling format that allows
+				 * the texture block to read it.
+				 */
+				cb->cb_color_info |= S_028C70_CMASK_ADDR_TYPE(2);
+			}
 		}
 	}
 
