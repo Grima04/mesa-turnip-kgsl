@@ -325,10 +325,10 @@ struct ir3_shader_key {
 		uint32_t global;
 	};
 
-	/* bitmask of ms shifts */
+	/* bitmask of ms shifts (a3xx) */
 	uint32_t vsamples, fsamples;
 
-	/* bitmask of samplers which need astc srgb workaround: */
+	/* bitmask of samplers which need astc srgb workaround (a4xx+a5xx): */
 	uint16_t vastc_srgb, fastc_srgb;
 };
 
