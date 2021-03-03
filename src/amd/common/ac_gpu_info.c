@@ -892,7 +892,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->has_gds_ordered_append = info->chip_class >= GFX7 && info->drm_minor >= 29;
 
-   if (info->chip_class >= GFX9) {
+   if (info->chip_class >= GFX9 && info->has_graphics) {
       unsigned pc_lines = 0;
 
       switch (info->family) {
@@ -916,9 +916,6 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
          break;
       case CHIP_VANGOGH:
          pc_lines = 256;
-         break;
-      case CHIP_ARCTURUS:
-      case CHIP_ALDEBARAN:
          break;
       default:
          assert(0);
