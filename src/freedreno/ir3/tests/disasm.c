@@ -134,6 +134,8 @@ static const struct test {
 	INSTR_6XX(a0c00f00_04400002, "sam (f16)(xyzw)hr0.x, hr0.y, s#2, t#2"),
 	INSTR_6XX(a6c02f00_00000000, "rgetinfo (u16)(xyzw)hr0.x"),
 	INSTR_6XX(a3482f08_c0000000, "getinfo.base0 (u16)(xyzw)hr2.x, t#0"),
+	/* dEQP-GLES31.functional.texture.texture_buffer.render.as_fragment_texture.buffer_size_65536 */
+	INSTR_5XX(a2c03102_00000000, "getbuf (u32)(x)r0.z, t#0"),
 
 
 	/* cat6 */

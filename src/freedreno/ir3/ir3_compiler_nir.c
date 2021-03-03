@@ -2568,7 +2568,17 @@ emit_tex_txs(struct ir3_context *ctx, nir_tex_instr *tex)
 
 	lod = ir3_get_src(ctx, &tex->src[lod_idx].src)[0];
 
-	sam = emit_sam(ctx, OPC_GETSIZE, info, dst_type, 0b1111, lod, NULL);
+	if (tex->sampler_dim != GLSL_SAMPLER_DIM_BUF) {
+		sam = emit_sam(ctx, OPC_GETSIZE, info, dst_type, 0b1111, lod, NULL);
+	} else {
+		/*
+		 * The maximum value which OPC_GETSIZE could return for one dimension
+		 * is 0x007ff0, however sampler buffer could be much bigger.
+		 * Blob uses OPC_GETBUF for them.
+		 */
+		sam = emit_sam(ctx, OPC_GETBUF, info, dst_type, 0b1111, NULL, NULL);
+	}
+
 	ir3_split_dest(b, dst, sam, 0, 4);
 
 	/* Array size actually ends up in .w rather than .z. This doesn't
