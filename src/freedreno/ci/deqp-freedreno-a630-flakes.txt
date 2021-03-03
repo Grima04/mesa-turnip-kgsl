@@ -22,6 +22,9 @@ dEQP-GLES31.functional.ssbo.atomic.compswap.lowp_uint
 dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_int
 dEQP-GLES31.functional.ssbo.atomic.compswap.mediump_uint
 
+# No valgrind warning I've seen, not sure.
+dEQP-VK.wsi.display.get_display_plane_capabilities
+
 # Fails NIR_VALIDATE so probably flaky
 dEQP-VK.memory_model.write_after_read.core11.u32.coherent.fence_fence.atomicwrite.workgroup.payload_nonlocal.workgroup.guard_local.buffer.comp
 
