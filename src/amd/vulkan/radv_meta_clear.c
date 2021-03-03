@@ -1726,8 +1726,6 @@ radv_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 		if (radv_image_has_cmask(iview->image)) {
 			flush_bits = radv_clear_cmask(cmd_buffer, iview->image,
 						      &range, cmask_clear_value);
-
-			need_decompress_pass = true;
 		}
 
 		if (!can_avoid_fast_clear_elim)
