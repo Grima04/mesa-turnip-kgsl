@@ -29,7 +29,7 @@
 #include "drm-uapi/sync_file.h"
 #include "util/u_debug.h"
 #include "util/u_inlines.h"
-#include "intel/common/gen_gem.h"
+#include "intel/common/intel_gem.h"
 
 #include "iris_batch.h"
 #include "iris_bufmgr.h"

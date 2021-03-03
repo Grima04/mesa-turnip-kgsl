@@ -41,7 +41,7 @@
 #include "iris_context.h"
 
 #include "util/u_upload_mgr.h"
-#include "intel/common/gen_l3_config.h"
+#include "intel/common/intel_l3_config.h"
 
 #include "blorp/blorp_genX_exec.h"
 

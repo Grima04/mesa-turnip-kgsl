@@ -29,8 +29,8 @@
 
 #include "anv_private.h"
 
-#include "common/gen_aux_map.h"
-#include "common/gen_sample_positions.h"
+#include "common/intel_aux_map.h"
+#include "common/intel_sample_positions.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 

@@ -44,8 +44,8 @@
 
 #include "drm-uapi/i915_drm.h"
 
-#include "common/gen_aux_map.h"
-#include "intel/common/gen_gem.h"
+#include "common/intel_aux_map.h"
+#include "intel/common/intel_gem.h"
 #include "util/hash_table.h"
 #include "util/set.h"
 #include "util/u_upload_mgr.h"

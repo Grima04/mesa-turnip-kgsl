@@ -53,9 +53,9 @@
 #include "iris_screen.h"
 #include "compiler/glsl_types.h"
 #include "intel/compiler/brw_compiler.h"
-#include "intel/common/gen_gem.h"
-#include "intel/common/gen_l3_config.h"
-#include "intel/common/gen_uuid.h"
+#include "intel/common/intel_gem.h"
+#include "intel/common/intel_l3_config.h"
+#include "intel/common/intel_uuid.h"
 #include "iris_monitor.h"
 
 #define genX_call(devinfo, func, ...)             \

@@ -26,8 +26,8 @@
 
 #include "blorp_priv.h"
 #include "dev/gen_device_info.h"
-#include "common/gen_sample_positions.h"
-#include "common/gen_l3_config.h"
+#include "common/intel_sample_positions.h"
+#include "common/intel_l3_config.h"
 #include "genxml/gen_macros.h"
 
 /**

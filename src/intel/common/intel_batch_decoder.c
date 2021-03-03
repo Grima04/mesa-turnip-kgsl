@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#include "common/gen_decoder.h"
-#include "gen_disasm.h"
+#include "common/intel_decoder.h"
+#include "intel_disasm.h"
 #include "util/macros.h"
 #include "main/macros.h" /* Needed for ROUND_DOWN_TO */
 

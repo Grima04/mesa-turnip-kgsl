@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_BUFFER_ALLOC_H
-#define GEN_BUFFER_ALLOC_H
+#ifndef INTEL_BUFFER_ALLOC_H
+#define INTEL_BUFFER_ALLOC_H
 
 #include <stdint.h>
 
@@ -46,4 +46,4 @@ struct gen_mapped_pinned_buffer_alloc {
 }
 #endif
 
-#endif /* GEN_BUFFER_ALLOC_H */
+#endif /* INTEL_BUFFER_ALLOC_H */

@@ -27,7 +27,7 @@
 #include "util/macros.h"
 #include "main/macros.h"
 
-#include "gen_l3_config.h"
+#include "intel_l3_config.h"
 
 struct gen_l3_list {
    const struct gen_l3_config *configs;

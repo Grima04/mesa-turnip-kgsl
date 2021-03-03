@@ -33,8 +33,8 @@
 #include "iris_context.h"
 #include "iris_resource.h"
 #include "iris_screen.h"
-#include "common/gen_defines.h"
-#include "common/gen_sample_positions.h"
+#include "common/intel_defines.h"
+#include "common/intel_sample_positions.h"
 
 /**
  * For debugging purposes, this returns a time in seconds.

@@ -48,10 +48,10 @@
 #include <unistd.h>
 
 #include "errno.h"
-#include "common/gen_aux_map.h"
-#include "common/gen_clflush.h"
+#include "common/intel_aux_map.h"
+#include "common/intel_clflush.h"
 #include "dev/gen_debug.h"
-#include "common/gen_gem.h"
+#include "common/intel_gem.h"
 #include "dev/gen_device_info.h"
 #include "main/macros.h"
 #include "os/os_mman.h"

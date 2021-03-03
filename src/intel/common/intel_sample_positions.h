@@ -20,8 +20,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#ifndef GEN_SAMPLE_POSITIONS_H
-#define GEN_SAMPLE_POSITIONS_H
+#ifndef INTEL_SAMPLE_POSITIONS_H
+#define INTEL_SAMPLE_POSITIONS_H
 
 #include <util/macros.h>
 
@@ -126,4 +126,4 @@ prefix##sample_idx##YOffset = arr[sample_idx].y;
 #define GEN_SAMPLE_POS_16X(prefix) \
    GEN_SAMPLE_POS_16X_ARRAY(prefix, gen_sample_positions_16x)
 
-#endif /* GEN_SAMPLE_POSITIONS_H */
+#endif /* INTEL_SAMPLE_POSITIONS_H */

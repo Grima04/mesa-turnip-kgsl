@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_DISASM_H
-#define GEN_DISASM_H
+#ifndef INTEL_DISASM_H
+#define INTEL_DISASM_H
 
 #include "intel/dev/gen_device_info.h"
 
@@ -37,4 +37,4 @@ void gen_disassemble(const struct gen_device_info *devinfo,
 }
 #endif
 
-#endif /* GEN_DISASM_H */
+#endif /* INTEL_DISASM_H */

@@ -30,8 +30,8 @@
 #include "vk_util.h"
 #include "util/fast_idiv_by_const.h"
 
-#include "common/gen_aux_map.h"
-#include "common/gen_l3_config.h"
+#include "common/intel_aux_map.h"
+#include "common/intel_l3_config.h"
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 

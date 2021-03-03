@@ -22,8 +22,8 @@
   *
   */
 
-#ifndef GEN_UUID_H
-#define GEN_UUID_H
+#ifndef INTEL_UUID_H
+#define INTEL_UUID_H
 
 #include "dev/gen_device_info.h"
 #include "isl/isl.h"
@@ -44,4 +44,4 @@ void gen_uuid_compute_driver_id(uint8_t *uuid,
 }
 #endif
 
-#endif /* GEN_UUID_H */
+#endif /* INTEL_UUID_H */

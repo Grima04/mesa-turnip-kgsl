@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_L3_CONFIG_H
-#define GEN_L3_CONFIG_H
+#ifndef INTEL_L3_CONFIG_H
+#define INTEL_L3_CONFIG_H
 
 #include <stdio.h>
 
@@ -106,4 +106,4 @@ void gen_get_urb_config(const struct gen_device_info *devinfo,
                         enum gen_urb_deref_block_size *deref_block_size,
                         bool *constrained);
 
-#endif /* GEN_L3_CONFIG_H */
+#endif /* INTEL_L3_CONFIG_H */

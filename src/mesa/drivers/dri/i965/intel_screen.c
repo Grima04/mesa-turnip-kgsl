@@ -48,7 +48,7 @@
 #include "util/u_cpu_detect.h"
 #include "util/u_memory.h"
 
-#include "common/gen_defines.h"
+#include "common/intel_defines.h"
 
 static const driOptionDescription brw_driconf[] = {
    DRI_CONF_SECTION_PERFORMANCE

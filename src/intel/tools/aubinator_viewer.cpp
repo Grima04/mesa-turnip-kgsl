@@ -39,7 +39,7 @@
 #include "aub_read.h"
 #include "aub_mem.h"
 
-#include "common/gen_disasm.h"
+#include "common/intel_disasm.h"
 
 #define xtzalloc(name) ((decltype(&name)) calloc(1, sizeof(name)))
 #define xtalloc(name) ((decltype(&name)) malloc(sizeof(name)))

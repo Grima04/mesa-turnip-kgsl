@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include "gen_decoder.h"
+#include "intel_decoder.h"
 
 static bool quiet = false;
 

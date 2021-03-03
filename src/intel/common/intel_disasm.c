@@ -26,7 +26,7 @@
 #include "compiler/brw_inst.h"
 #include "compiler/brw_eu.h"
 
-#include "gen_disasm.h"
+#include "intel_disasm.h"
 
 static bool
 is_send(uint32_t opcode)

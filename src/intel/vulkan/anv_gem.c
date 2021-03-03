@@ -30,8 +30,8 @@
 #include <fcntl.h>
 
 #include "anv_private.h"
-#include "common/gen_defines.h"
-#include "common/gen_gem.h"
+#include "common/intel_defines.h"
+#include "common/intel_gem.h"
 #include "drm-uapi/sync_file.h"
 
 /**

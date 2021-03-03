@@ -33,7 +33,7 @@
 #include <util/macros.h>
 #include <util/ralloc.h>
 
-#include "gen_decoder.h"
+#include "intel_decoder.h"
 
 #include "isl/isl.h"
 #include "genxml/genX_xml.h"

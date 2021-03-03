@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_CLFLUSH_H
-#define GEN_CLFLUSH_H
+#ifndef INTEL_CLFLUSH_H
+#define INTEL_CLFLUSH_H
 
 #define CACHELINE_SIZE 64
 #define CACHELINE_MASK 63

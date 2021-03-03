@@ -31,7 +31,7 @@
 #include "util/rb_tree.h"
 
 #include "dev/gen_device_info.h"
-#include "common/gen_decoder.h"
+#include "common/intel_decoder.h"
 
 #ifdef __cplusplus
 extern "C" {

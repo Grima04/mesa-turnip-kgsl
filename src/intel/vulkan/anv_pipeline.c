@@ -29,9 +29,9 @@
 
 #include "util/mesa-sha1.h"
 #include "util/os_time.h"
-#include "common/gen_l3_config.h"
-#include "common/gen_disasm.h"
-#include "common/gen_sample_positions.h"
+#include "common/intel_l3_config.h"
+#include "common/intel_disasm.h"
+#include "common/intel_sample_positions.h"
 #include "anv_private.h"
 #include "compiler/brw_nir.h"
 #include "anv_nir.h"

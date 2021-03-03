@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "common/gen_l3_config.h"
+#include "common/intel_l3_config.h"
 
 #include "brw_context.h"
 #include "brw_defines.h"

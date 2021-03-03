@@ -26,7 +26,7 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-#include "common/gen_l3_config.h"
+#include "common/intel_l3_config.h"
 
 /**
  * This file implements some lightweight memcpy/memset operations on the GPU

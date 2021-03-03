@@ -38,7 +38,7 @@
 #include "util/u_upload_mgr.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
-#include "intel/common/gen_disasm.h"
+#include "intel/common/intel_disasm.h"
 #include "intel/compiler/brw_compiler.h"
 #include "intel/compiler/brw_eu.h"
 #include "intel/compiler/brw_nir.h"

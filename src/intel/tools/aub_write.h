@@ -33,7 +33,7 @@
 #include "drm-uapi/i915_drm.h"
 
 #include "dev/gen_device_info.h"
-#include "common/gen_gem.h"
+#include "common/intel_gem.h"
 
 #ifdef __cplusplus
 extern "C" {

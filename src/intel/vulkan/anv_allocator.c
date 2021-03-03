@@ -29,7 +29,7 @@
 
 #include "anv_private.h"
 
-#include "common/gen_aux_map.h"
+#include "common/intel_aux_map.h"
 #include "util/anon_file.h"
 
 #ifdef HAVE_VALGRIND

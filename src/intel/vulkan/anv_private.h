@@ -43,10 +43,10 @@
 #define VG(x) ((void)0)
 #endif
 
-#include "common/gen_clflush.h"
-#include "common/gen_decoder.h"
-#include "common/gen_gem.h"
-#include "common/gen_l3_config.h"
+#include "common/intel_clflush.h"
+#include "common/intel_decoder.h"
+#include "common/intel_gem.h"
+#include "common/intel_l3_config.h"
 #include "common/intel_measure.h"
 #include "dev/gen_device_info.h"
 #include "blorp/blorp.h"

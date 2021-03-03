@@ -38,7 +38,7 @@
 #include <getopt.h>
 #include <zlib.h>
 
-#include "common/gen_decoder.h"
+#include "common/intel_decoder.h"
 #include "dev/gen_debug.h"
 #include "util/macros.h"
 

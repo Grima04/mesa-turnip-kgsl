@@ -28,7 +28,7 @@
 #include "main/macros.h"
 #include "compiler/shader_enums.h"
 
-#include "gen_l3_config.h"
+#include "intel_l3_config.h"
 
 /**
  * The following diagram shows how we partition the URB:

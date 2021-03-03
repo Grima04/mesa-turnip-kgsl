@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_AUX_MAP_H
-#define GEN_AUX_MAP_H
+#ifndef INTEL_AUX_MAP_H
+#define INTEL_AUX_MAP_H
 
-#include "gen_buffer_alloc.h"
+#include "intel_buffer_alloc.h"
 
 #include "isl/isl.h"
 
@@ -109,4 +109,4 @@ gen_aux_map_unmap_range(struct gen_aux_map_context *ctx, uint64_t address,
 }
 #endif
 
-#endif /* GEN_AUX_MAP_H */
+#endif /* INTEL_AUX_MAP_H */

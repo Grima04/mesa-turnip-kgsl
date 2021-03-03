@@ -31,8 +31,8 @@
 #include "brw_context.h"
 #include "brw_defines.h"
 #include "brw_state.h"
-#include "common/gen_decoder.h"
-#include "common/gen_gem.h"
+#include "common/intel_decoder.h"
+#include "common/intel_gem.h"
 
 #include "util/hash_table.h"
 

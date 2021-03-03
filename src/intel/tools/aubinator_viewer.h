@@ -3,8 +3,8 @@
 
 #include "imgui/imgui.h"
 
-#include "common/gen_decoder.h"
-#include "common/gen_disasm.h"
+#include "common/intel_decoder.h"
+#include "common/intel_disasm.h"
 
 struct aub_viewer_cfg {
    ImColor clear_color;

@@ -78,7 +78,7 @@
 #include "util/u_memory.h"
 #include "isl/isl.h"
 
-#include "common/gen_defines.h"
+#include "common/intel_defines.h"
 
 #include "compiler/spirv/nir_spirv.h"
 /***************************************

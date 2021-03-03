@@ -8,26 +8,26 @@ BLORP_FILES = \
 	blorp/blorp_priv.h
 
 COMMON_FILES = \
-	common/gen_aux_map.c \
-	common/gen_aux_map.h \
-	common/gen_buffer_alloc.h \
-	common/gen_clflush.h \
-	common/gen_batch_decoder.c \
-	common/gen_decoder.c \
-	common/gen_decoder.h \
-	common/gen_disasm.c \
-	common/gen_disasm.h \
-	common/gen_defines.h \
-	common/gen_gem.c \
-	common/gen_gem.h \
-	common/gen_guardband.h \
-	common/gen_l3_config.c \
-	common/gen_l3_config.h \
-	common/gen_urb_config.c \
-	common/gen_sample_positions.c \
-	common/gen_sample_positions.h \
-	common/gen_uuid.c \
-	common/gen_uuid.h \
+	common/intel_aux_map.c \
+	common/intel_aux_map.h \
+	common/intel_buffer_alloc.h \
+	common/intel_clflush.h \
+	common/intel_batch_decoder.c \
+	common/intel_decoder.c \
+	common/intel_decoder.h \
+	common/intel_disasm.c \
+	common/intel_disasm.h \
+	common/intel_defines.h \
+	common/intel_gem.c \
+	common/intel_gem.h \
+	common/intel_guardband.h \
+	common/intel_l3_config.c \
+	common/intel_l3_config.h \
+	common/intel_urb_config.c \
+	common/intel_sample_positions.c \
+	common/intel_sample_positions.h \
+	common/intel_uuid.c \
+	common/intel_uuid.h \
 	common/intel_measure.c \
 	common/intel_measure.h
 

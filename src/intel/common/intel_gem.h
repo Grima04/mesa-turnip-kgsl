@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_GEM_H
-#define GEN_GEM_H
+#ifndef INTEL_GEM_H
+#define INTEL_GEM_H
 
 #include <errno.h>
 #include <stdbool.h>
@@ -74,4 +74,4 @@ gen_ioctl(int fd, unsigned long request, void *arg)
 
 bool gen_gem_supports_syncobj_wait(int fd);
 
-#endif /* GEN_GEM_H */
+#endif /* INTEL_GEM_H */

@@ -26,8 +26,8 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-#include "common/gen_l3_config.h"
-#include "common/gen_sample_positions.h"
+#include "common/intel_l3_config.h"
+#include "common/intel_sample_positions.h"
 #include "nir/nir_xfb_info.h"
 #include "vk_util.h"
 #include "vk_format.h"

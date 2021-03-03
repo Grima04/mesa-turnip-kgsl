@@ -74,8 +74,8 @@
  *  - V: entry is valid
  */
 
-#include "gen_aux_map.h"
-#include "gen_gem.h"
+#include "intel_aux_map.h"
+#include "intel_gem.h"
 
 #include "dev/gen_device_info.h"
 #include "isl/isl.h"

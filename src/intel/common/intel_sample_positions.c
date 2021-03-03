@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "gen_sample_positions.h"
+#include "intel_sample_positions.h"
 
 /**
  * 1x MSAA has a single sample at the center: (0.5, 0.5) -> (0x8, 0x8).

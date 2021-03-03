@@ -47,7 +47,7 @@
 #include <brw_bufmgr.h>
 
 #include "dev/gen_debug.h"
-#include "common/gen_decoder.h"
+#include "common/intel_decoder.h"
 #include "intel_screen.h"
 #include "intel_tex_obj.h"
 #include "perf/gen_perf.h"

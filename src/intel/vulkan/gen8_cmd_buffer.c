@@ -31,7 +31,7 @@
 
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
-#include "common/gen_guardband.h"
+#include "common/intel_guardband.h"
 
 #if GEN_GEN == 8
 void

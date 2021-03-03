@@ -31,7 +31,7 @@
 #undef __gen_user_data
 #undef __gen_combine_address
 
-#include "common/gen_l3_config.h"
+#include "common/intel_l3_config.h"
 #include "blorp/blorp_genX_exec.h"
 
 static void blorp_measure_start(struct blorp_batch *_batch,

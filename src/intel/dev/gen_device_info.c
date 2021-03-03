@@ -29,7 +29,7 @@
 #include <unistd.h>
 #include "gen_device_info.h"
 #include "compiler/shader_enums.h"
-#include "intel/common/gen_gem.h"
+#include "intel/common/intel_gem.h"
 #include "util/bitscan.h"
 #include "util/macros.h"
 

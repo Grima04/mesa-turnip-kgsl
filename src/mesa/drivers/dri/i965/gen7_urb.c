@@ -27,7 +27,7 @@
 #include "brw_state.h"
 #include "brw_defines.h"
 
-#include "common/gen_l3_config.h"
+#include "common/intel_l3_config.h"
 
 /**
  * The following diagram shows how we partition the URB:

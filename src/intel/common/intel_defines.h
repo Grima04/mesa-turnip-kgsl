@@ -22,8 +22,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef GEN_DEFINES_H
-#define GEN_DEFINES_H
+#ifndef INTEL_DEFINES_H
+#define INTEL_DEFINES_H
 
 #include "drm-uapi/i915_drm.h"
 
@@ -51,4 +51,4 @@ extern "C" {
 }
 #endif
 
-#endif /* GEN_DEFINES_H */
+#endif /* INTEL_DEFINES_H */

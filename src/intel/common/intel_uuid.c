@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "gen_uuid.h"
+#include "intel_uuid.h"
 #include "git_sha1.h"
 #include "util/mesa-sha1.h"
 

@@ -20,8 +20,8 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  */
-#ifndef GEN_GUARDBAND_H
-#define GEN_GUARDBAND_H
+#ifndef INTEL_GUARDBAND_H
+#define INTEL_GUARDBAND_H
 
 static inline void
 gen_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
@@ -114,4 +114,4 @@ gen_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
    }
 }
 
-#endif /* GEN_GUARDBAND_H */
+#endif /* INTEL_GUARDBAND_H */

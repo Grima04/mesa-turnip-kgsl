@@ -26,9 +26,9 @@
 #include "main/samplerobj.h"
 
 #include "dev/gen_device_info.h"
-#include "common/gen_sample_positions.h"
+#include "common/intel_sample_positions.h"
 #include "genxml/gen_macros.h"
-#include "common/gen_guardband.h"
+#include "common/intel_guardband.h"
 
 #include "main/bufferobj.h"
 #include "main/context.h"

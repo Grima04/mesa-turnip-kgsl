@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_DECODER_H
-#define GEN_DECODER_H
+#ifndef INTEL_DECODER_H
+#define INTEL_DECODER_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -274,4 +274,4 @@ void gen_print_batch(struct gen_batch_decode_ctx *ctx,
 #endif
 
 
-#endif /* GEN_DECODER_H */
+#endif /* INTEL_DECODER_H */

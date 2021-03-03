@@ -99,9 +99,9 @@
 #include "drm-uapi/i915_drm.h"
 #include "nir.h"
 #include "intel/compiler/brw_compiler.h"
-#include "intel/common/gen_aux_map.h"
-#include "intel/common/gen_l3_config.h"
-#include "intel/common/gen_sample_positions.h"
+#include "intel/common/intel_aux_map.h"
+#include "intel/common/intel_l3_config.h"
+#include "intel/common/intel_sample_positions.h"
 #include "iris_batch.h"
 #include "iris_context.h"
 #include "iris_defines.h"
@@ -109,7 +109,7 @@
 #include "iris_resource.h"
 
 #include "iris_genx_macros.h"
-#include "intel/common/gen_guardband.h"
+#include "intel/common/intel_guardband.h"
 
 /**
  * Statically assert that PIPE_* enums match the hardware packets.

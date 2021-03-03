@@ -45,9 +45,9 @@
 #include "git_sha1.h"
 #include "vk_util.h"
 #include "vk_deferred_operation.h"
-#include "common/gen_aux_map.h"
-#include "common/gen_defines.h"
-#include "common/gen_uuid.h"
+#include "common/intel_aux_map.h"
+#include "common/intel_defines.h"
+#include "common/intel_uuid.h"
 #include "compiler/glsl_types.h"
 #include "perf/gen_perf.h"
 

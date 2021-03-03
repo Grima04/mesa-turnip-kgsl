@@ -20,7 +20,7 @@
  * DEALINGS IN THE SOFTWARE.
  */
 
-#include "gen_gem.h"
+#include "intel_gem.h"
 #include "drm-uapi/i915_drm.h"
 
 bool
