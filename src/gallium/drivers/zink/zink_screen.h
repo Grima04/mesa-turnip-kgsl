@@ -147,6 +147,14 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
       } \
    } while (0)
 
+#define GET_PROC_ADDR_KHR(x) do {                                               \
+      screen->vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x"KHR"); \
+      if (!screen->vk_##x) {                                                \
+         mesa_loge("ZINK: vkGetDeviceProcAddr failed: vk"#x"KHR\n");           \
+         return false;                                                      \
+      } \
+   } while (0)
+
 #define GET_PROC_ADDR_INSTANCE(x) do {                                          \
       screen->vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(screen->instance, "vk"#x); \
       if (!screen->vk_##x) {                                                \
@@ -155,7 +163,6 @@ zink_is_depth_format_supported(struct zink_screen *screen, VkFormat format);
       } \
    } while (0)
 
-#define GET_PROC_ADDR_DEVICE_LOCAL(x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetDeviceProcAddr(screen->dev, "vk"#x)
 #define GET_PROC_ADDR_INSTANCE_LOCAL(instance, x) PFN_vk##x vk_##x = (PFN_vk##x)vkGetInstanceProcAddr(instance, "vk"#x)
 
 void
