@@ -1200,7 +1200,8 @@ apply_var_decoration(struct vtn_builder *b,
       default:
          break;
       }
-      FALLTHROUGH;
+
+      break;
    }
 
    case SpvDecorationSpecId:
