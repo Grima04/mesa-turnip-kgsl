@@ -813,7 +813,7 @@ radv_fast_clear_flush_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radv_barrier_data barrier = {0};
 
-	if (radv_image_has_fmask(image)) {
+	if (radv_image_has_fmask(image) && !image->tc_compatible_cmask) {
 		barrier.layout_transitions.fmask_decompress = 1;
 	} else {
 		barrier.layout_transitions.fast_clear_eliminate = 1;
