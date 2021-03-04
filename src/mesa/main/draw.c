@@ -1336,6 +1336,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
    info.start_instance = baseInstance;
    info.instance_count = numInstances;
    info.drawid = 0;
+   info.view_mask = 0;
    info.min_index = start;
    info.max_index = start + count - 1;
 
@@ -1664,6 +1665,7 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
    info.start_instance = 0;
    info.instance_count = 1;
    info.drawid = 0;
+   info.view_mask = 0;
 
    for (int i = 0; i < primcount; i++) {
       draw[i].start = first[i];
@@ -1778,6 +1780,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
    info.start_instance = baseInstance;
    info.instance_count = numInstances;
    info.drawid = 0;
+   info.view_mask = 0;
    info.index_bias = basevertex;
    info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
@@ -2176,6 +2179,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
    info.start_instance = 0;
    info.instance_count = 1;
    info.drawid = 0;
+   info.view_mask = 0;
    info.restart_index = ctx->Array._RestartIndex[index_size_shift];
 
    if (info.has_user_indices)

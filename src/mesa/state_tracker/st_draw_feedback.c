@@ -127,6 +127,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
    info.take_index_buffer_ownership = false;
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
    info.restart_index = 0;
+   info.view_mask = 0;
 
    st_flush_bitmap_cache(st);
    st_invalidate_readpix_cache(st);

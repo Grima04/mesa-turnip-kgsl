@@ -746,7 +746,8 @@ struct pipe_draw_info
 {
    enum pipe_prim_type mode:8;  /**< the mode of the primitive */
    ubyte vertices_per_patch; /**< the number of vertices per patch */
-   ubyte index_size;  /**< if 0, the draw is not indexed. */
+   unsigned index_size:4;  /**< if 0, the draw is not indexed. */
+   unsigned view_mask:6; /**< mask of multiviews for this draw */
    bool primitive_restart:1;
    bool has_user_indices:1;   /**< if true, use index.user_buffer */
    bool index_bounds_valid:1; /**< whether min_index and max_index are valid;
@@ -754,7 +755,7 @@ struct pipe_draw_info
    bool increment_draw_id:1;  /**< whether drawid increments for direct draws */
    bool take_index_buffer_ownership:1; /**< callee inherits caller's refcount
          (no need to reference indexbuf, but still needs to unreference it) */
-   char _pad:3;               /**< padding for memcmp */
+   char _pad:1;               /**< padding for memcmp */
 
    unsigned start_instance; /**< first instance id */
    unsigned instance_count; /**< number of instances */
