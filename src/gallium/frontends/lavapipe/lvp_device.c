@@ -120,6 +120,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
    .EXT_shader_stencil_export             = true,
+   .EXT_shader_viewport_index_layer       = true,
    .EXT_transform_feedback                = true,
    .EXT_vertex_attribute_divisor          = true,
    .GOOGLE_decorate_string                = true,
