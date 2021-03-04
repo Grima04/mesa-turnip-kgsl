@@ -334,6 +334,7 @@ __attribute__((__packed__))
 {
         midgard_alu_op op         :  8;
         unsigned src1             :  6;
+        /* last 5 bits are used when src2 is an immediate */
         unsigned src2             : 11;
         unsigned unknown          :  1;
         unsigned outmod           :  2;

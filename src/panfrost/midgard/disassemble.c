@@ -755,7 +755,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         fprintf(fp, ", ");
 
-        if (reg_info->src1_reg == 26)
+        if (reg_info->src1_reg == REGISTER_CONSTANT)
                 print_vector_constants(fp, alu_field->src1, consts, alu_field);
         else {
                 midgard_special_arg_mod argmod = midgard_alu_special_arg_mod(op, 1);
@@ -768,7 +768,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         if (reg_info->src2_imm) {
                 uint16_t imm = decode_vector_imm(reg_info->src2_reg, alu_field->src2 >> 2);
                 print_immediate(fp, imm);
-        } else if (reg_info->src2_reg == 26) {
+        } else if (reg_info->src2_reg == REGISTER_CONSTANT) {
                 print_vector_constants(fp, alu_field->src2, consts, alu_field);
         } else {
                 midgard_special_arg_mod argmod = midgard_alu_special_arg_mod(op, 2);
@@ -832,8 +832,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         fprintf(fp, " ");
 
-        update_dest(reg_info->out_reg);
-        print_reg(fp, reg_info->out_reg);
+        print_dest(fp, reg_info->out_reg);
         unsigned c = alu_field->output_component;
 
         if (full) {
@@ -847,7 +846,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         fprintf(fp, ", ");
 
-        if (reg_info->src1_reg == 26)
+        if (reg_info->src1_reg == REGISTER_CONSTANT)
                 print_scalar_constant(fp, alu_field->src1, consts, alu_field);
         else
                 print_scalar_src(fp, is_int, alu_field->src1, reg_info->src1_reg);
@@ -858,7 +857,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                 uint16_t imm = decode_scalar_imm(reg_info->src2_reg,
                                                  alu_field->src2);
                 print_immediate(fp, imm);
-	} else if (reg_info->src2_reg == 26) {
+	} else if (reg_info->src2_reg == REGISTER_CONSTANT) {
                 print_scalar_constant(fp, alu_field->src2, consts, alu_field);
         } else
                 print_scalar_src(fp, is_int, alu_field->src2, reg_info->src2_reg);
@@ -1256,8 +1255,7 @@ update_stats(signed *stat, unsigned address)
 }
 
 static void
-print_load_store_instr(FILE *fp, uint64_t data,
-                       unsigned tabs)
+print_load_store_instr(FILE *fp, uint64_t data)
 {
         midgard_load_store_word *word = (midgard_load_store_word *) &data;
 
@@ -1319,16 +1317,16 @@ print_load_store_instr(FILE *fp, uint64_t data,
 }
 
 static void
-print_load_store_word(FILE *fp, uint32_t *word, unsigned tabs)
+print_load_store_word(FILE *fp, uint32_t *word)
 {
         midgard_load_store *load_store = (midgard_load_store *) word;
 
         if (load_store->word1 != 3) {
-                print_load_store_instr(fp, load_store->word1, tabs);
+                print_load_store_instr(fp, load_store->word1);
         }
 
         if (load_store->word2 != 3) {
-                print_load_store_instr(fp, load_store->word2, tabs);
+                print_load_store_instr(fp, load_store->word2);
         }
 }
 
@@ -1740,7 +1738,7 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id)
                 }
 
                 case TAG_LOAD_STORE_4:
-                        print_load_store_word(fp, &words[i], tabs);
+                        print_load_store_word(fp, &words[i]);
                         break;
 
                 case TAG_ALU_4 ... TAG_ALU_16_WRITEOUT:

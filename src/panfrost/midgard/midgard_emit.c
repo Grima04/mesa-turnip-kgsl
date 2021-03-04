@@ -31,8 +31,8 @@ mir_get_imod(bool shift, nir_alu_type T, bool half, bool scalar)
 {
         if (!half) {
                 assert(!shift);
-                /* Sign-extension, really... */
-                return scalar ? 0 : midgard_int_replicate;
+                /* Doesn't matter, src mods are only used when expanding */
+                return midgard_int_sign_extend;
         }
 
         if (shift)
