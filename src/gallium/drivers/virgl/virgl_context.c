@@ -1417,6 +1417,13 @@ virgl_release_shader_binding(struct virgl_context *vctx,
 }
 
 static void
+virgl_emit_string_marker(struct pipe_context *ctx, const char *message,  int len)
+{
+    struct virgl_context *vctx = virgl_context(ctx);
+    virgl_encode_emit_string_marker(vctx, message, len);
+}
+
+static void
 virgl_context_destroy( struct pipe_context *ctx )
 {
    struct virgl_context *vctx = virgl_context(ctx);
@@ -1594,6 +1601,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
    vctx->base.set_hw_atomic_buffers = virgl_set_hw_atomic_buffers;
    vctx->base.set_shader_images = virgl_set_shader_images;
    vctx->base.memory_barrier = virgl_memory_barrier;
+   vctx->base.emit_string_marker = virgl_emit_string_marker;
 
    virgl_init_context_resource_functions(&vctx->base);
    virgl_init_query_functions(vctx);

@@ -1511,3 +1511,20 @@ void virgl_encode_get_memory_info(struct virgl_context *ctx, struct virgl_resour
    virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_GET_MEMORY_INFO, 0, 1));
    virgl_encoder_write_res(ctx, res);
 }
+
+void virgl_encode_emit_string_marker(struct virgl_context *ctx,
+                                     const char *message, int len)
+{
+    if (!len)
+      return;
+
+   if (len > 4 * 0xffff) {
+      debug_printf("VIRGL: host debug flag string too long, will be truncated\n");
+      len = 4 * 0xffff;
+   }
+
+   uint32_t buf_len = (uint32_t )(len + 3) / 4 + 1;
+   virgl_encoder_write_cmd_dword(ctx, VIRGL_CMD0(VIRGL_CCMD_EMIT_STRING_MARKER, 0, buf_len));
+   virgl_encoder_write_dword(ctx->cbuf, len);
+   virgl_encoder_write_block(ctx->cbuf, (const uint8_t *)message, len);
+}
