@@ -1623,7 +1623,7 @@ struct pipe_context *virgl_context_create(struct pipe_screen *pscreen,
       vctx->supports_staging = true;
    }
 
-   vctx->hw_sub_ctx_id = rs->sub_ctx_id++;
+   vctx->hw_sub_ctx_id = p_atomic_inc_return(&rs->sub_ctx_id);
    virgl_encoder_create_sub_ctx(vctx, vctx->hw_sub_ctx_id);
 
    virgl_encoder_set_sub_ctx(vctx, vctx->hw_sub_ctx_id);
