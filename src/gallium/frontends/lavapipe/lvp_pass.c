@@ -23,6 +23,8 @@
 
 #include "lvp_private.h"
 
+#include "vk_util.h"
+
 static void
 lvp_render_pass_compile(struct lvp_render_pass *pass)
 {
@@ -152,6 +154,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass(
    struct lvp_render_pass *pass;
    size_t size;
    size_t attachments_offset;
+   VkRenderPassMultiviewCreateInfo *multiview_info = NULL;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO);
 
@@ -175,6 +178,16 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass(
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
    pass->attachments = (struct lvp_render_pass_attachment *)((char *)pass + attachments_offset);
+
+   vk_foreach_struct(ext, pCreateInfo->pNext) {
+      switch(ext->sType) {
+      case  VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
+         multiview_info = (VkRenderPassMultiviewCreateInfo*)ext;
+         break;
+      default:
+         break;
+      }
+   }
 
    for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
       struct lvp_render_pass_attachment *att = &pass->attachments[i];
@@ -213,6 +226,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateRenderPass(
       subpass->color_count = desc->colorAttachmentCount;
       subpass->attachment_count = lvp_num_subpass_attachments(desc);
       subpass->attachments = p;
+
+      if (multiview_info)
+         subpass->view_mask = multiview_info->pViewMasks[i];
 
       if (desc->inputAttachmentCount > 0) {
          subpass->input_attachments = p;

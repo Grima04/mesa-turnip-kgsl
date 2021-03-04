@@ -353,6 +353,8 @@ struct lvp_subpass {
    bool                                         has_color_att;
 
    VkSampleCountFlagBits                        max_sample_count;
+
+   uint32_t                                     view_mask;
 };
 
 struct lvp_render_pass_attachment {
