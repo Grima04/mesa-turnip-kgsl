@@ -110,6 +110,7 @@ ACO_FILES = \
 	compiler/aco_opt_value_numbering.cpp \
 	compiler/aco_print_asm.cpp \
 	compiler/aco_print_ir.cpp \
+	compiler/aco_reindex_ssa.cpp \
 	compiler/aco_scheduler.cpp \
 	compiler/aco_ssa_elimination.cpp \
 	compiler/aco_spill.cpp \
