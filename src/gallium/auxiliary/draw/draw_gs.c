@@ -398,7 +398,8 @@ llvm_gs_run(struct draw_geometry_shader *shader,
       input_primitives,
       shader->draw->instance_id,
       shader->llvm_prim_ids,
-      shader->invocation_id);
+      shader->invocation_id,
+      shader->draw->pt.user.viewid);
 
    for (unsigned i = 0; i < shader->num_vertex_streams; i++) {
       out_prims[i] = shader->jit_context->emitted_prims[i];

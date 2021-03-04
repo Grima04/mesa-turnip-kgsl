@@ -146,7 +146,7 @@ static void
 llvm_tcs_run(struct draw_tess_ctrl_shader *shader, uint32_t prim_id)
 {
    shader->current_variant->jit_func(shader->jit_context, shader->tcs_input->data, shader->tcs_output->data, prim_id,
-      shader->draw->pt.vertices_per_patch);
+                                     shader->draw->pt.vertices_per_patch, shader->draw->pt.user.viewid);
 }
 #endif
 
@@ -309,7 +309,8 @@ llvm_tes_run(struct draw_tess_eval_shader *shader,
 {
    shader->current_variant->jit_func(shader->jit_context, shader->tes_input->data, output, prim_id,
                                      tess_data->num_domain_points, tess_data->domain_points_u, tess_data->domain_points_v,
-                                     tess_factors->outer_tf, tess_factors->inner_tf, patch_vertices_in);
+                                     tess_factors->outer_tf, tess_factors->inner_tf, patch_vertices_in,
+                                     shader->draw->pt.user.viewid);
 }
 #endif
 
