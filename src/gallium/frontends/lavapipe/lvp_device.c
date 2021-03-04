@@ -273,7 +273,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyInstance(
    vk_free(&instance->vk.alloc, instance);
 }
 
-#ifndef _WIN32
+#if defined(HAVE_PIPE_LOADER_DRI)
 static void lvp_get_image(struct dri_drawable *dri_drawable,
                           int x, int y, unsigned width, unsigned height, unsigned stride,
                           void *data)
@@ -314,10 +314,10 @@ lvp_enumerate_physical_devices(struct lvp_instance *instance)
 
    assert(instance->num_devices == 1);
 
-#ifdef _WIN32
-   pipe_loader_sw_probe_null(&instance->devs);
-#else
+#if defined(HAVE_PIPE_LOADER_DRI)
    pipe_loader_sw_probe_dri(&instance->devs, &lvp_sw_lf);
+#else
+   pipe_loader_sw_probe_null(&instance->devs);
 #endif
 
    result = lvp_physical_device_init(&instance->physicalDevice,
