@@ -2254,9 +2254,6 @@ enum bifrost_tex_dreg {
 static void
 bi_emit_texc(bi_builder *b, nir_tex_instr *instr)
 {
-        /* TODO: support more with other encodings */
-        assert(instr->sampler_index < 16);
-
         struct bifrost_texture_operation desc = {
                 .op = bi_tex_op(instr->op),
                 .offset_or_bias_disable = false, /* TODO */
