@@ -410,7 +410,7 @@ struct radv_shader_variant {
 	char *nir_string;
 	char *disasm_string;
 	char *ir_string;
-	struct aco_compiler_statistics *statistics;
+	uint32_t *statistics;
 
 	struct list_head slab_list;
 };

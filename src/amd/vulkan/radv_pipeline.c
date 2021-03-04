@@ -5943,14 +5943,13 @@ VkResult radv_GetPipelineExecutableStatisticsKHR(
 	++s;
 
 	if (shader->statistics) {
-		for (unsigned i = 0; i < shader->statistics->count; i++) {
-			const struct aco_compiler_statistic_info *info = &shader->statistics->infos[i];
-			uint32_t value = shader->statistics->values[i];
+		for (unsigned i = 0; i < aco_num_statistics; i++) {
+			const struct aco_compiler_statistic_info *info = &aco_statistic_infos[i];
 			if (s < end) {
 				desc_copy(s->name, info->name);
 				desc_copy(s->description, info->desc);
 				s->format = VK_PIPELINE_EXECUTABLE_STATISTIC_FORMAT_UINT64_KHR;
-				s->value.u64 = value;
+				s->value.u64 = shader->statistics[i];
 			}
 			++s;
 		}
