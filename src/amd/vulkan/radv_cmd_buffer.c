@@ -5426,10 +5426,9 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
  			uint32_t remaining_indexes = cmd_buffer->state.max_index_count;
  			remaining_indexes = MAX2(remaining_indexes, info->first_index) - info->first_index;
 
-			/* Skip draw calls with 0-sized index buffers. They
-			 * cause a hang on some chips, like Navi10-14.
-			 */
-			if (!remaining_indexes)
+			/* Skip draw calls with 0-sized index buffers if the GPU can't handle them */
+			if (!remaining_indexes &&
+			    cmd_buffer->device->physical_device->rad_info.has_zero_index_buffer_bug)
 				return;
 
 			index_va = state->index_va;
