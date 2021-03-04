@@ -45,6 +45,7 @@
 
 #include "util/build_id.h"
 #include "util/debug.h"
+#include "util/u_cpu_detect.h"
 
 #ifdef VK_USE_PLATFORM_XCB_KHR
 #include <xcb/xcb.h>
@@ -164,6 +165,8 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
                 "Performance can be affected negatively\n");
       }
    }
+
+   util_cpu_detect();
 
    glsl_type_singleton_init_or_ref();
 
