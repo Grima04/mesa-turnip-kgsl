@@ -197,8 +197,7 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
 
         if (immediate) {
                 bi_ld_attr_imm_to(b, bi_dest_index(&instr->dest),
-                                bi_register(61), /* TODO RA */
-                                bi_register(62), /* TODO RA */
+                                bi_register(61), bi_register(62),
                                 regfmt, instr->num_components - 1, imm_index);
         } else {
                 bi_index idx = bi_src_index(&instr->src[0]);
@@ -209,8 +208,7 @@ bi_emit_load_attr(bi_builder *b, nir_intrinsic_instr *instr)
                         idx = bi_iadd_u32(b, idx, bi_imm_u32(base), false);
 
                 bi_ld_attr_to(b, bi_dest_index(&instr->dest),
-                                bi_register(61), /* TODO RA */
-                                bi_register(62), /* TODO RA */
+                                bi_register(61), bi_register(62),
                                 idx, regfmt, instr->num_components - 1);
         }
 }
@@ -389,7 +387,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
                 /* Blend descriptor comes from the compile inputs */
                 /* Put the result in r0 */
                 bi_blend_to(b, bi_register(0), rgba,
-                                bi_register(60) /* TODO RA */,
+                                bi_register(60),
                                 bi_imm_u32(blend_desc & 0xffffffff),
                                 bi_imm_u32(blend_desc >> 32), sr_count);
         } else {
@@ -397,7 +395,7 @@ bi_emit_blend_op(bi_builder *b, bi_index rgba, nir_alu_type T, unsigned rt)
                  * return address is stored in r48 and will be used by the
                  * blend shader to jump back to the fragment shader after */
                 bi_blend_to(b, bi_register(48), rgba,
-                                bi_register(60) /* TODO RA */,
+                                bi_register(60),
                                 bi_fau(BIR_FAU_BLEND_0 + rt, false),
                                 bi_fau(BIR_FAU_BLEND_0 + rt, true), sr_count);
         }
@@ -456,8 +454,8 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 unsigned count = nir_src_num_components(instr->src[0]);
 
                 for (unsigned i = 0; i < count; ++i)
-                        bi_mov_i32_to(b, bi_register(4 + i),
-                                      bi_word(src0, i));
+                        bi_mov_i32_to(b, bi_register(4 + i), bi_word(src0, i));
+
                 return;
         }
 
@@ -496,8 +494,7 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 if (writeout & PAN_WRITEOUT_S)
                         s = bi_src_index(&instr->src[3]);
 
-                bi_zs_emit_to(b, bi_register(60), z, s,
-                                bi_register(60) /* TODO RA */,
+                bi_zs_emit_to(b, bi_register(60), z, s, bi_register(60),
                                 writeout & PAN_WRITEOUT_S,
                                 writeout & PAN_WRITEOUT_Z);
         }
@@ -549,8 +546,7 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
         bi_index address;
         if (immediate) {
                 address = bi_lea_attr_imm(b,
-                                          bi_register(61), /* TODO RA */
-                                          bi_register(62), /* TODO RA */
+                                          bi_register(61), bi_register(62),
                                           regfmt, imm_index);
         } else {
                 bi_index idx =
@@ -559,8 +555,7 @@ bi_emit_store_vary(bi_builder *b, nir_intrinsic_instr *instr)
                                     bi_imm_u32(nir_intrinsic_base(instr)),
                                     false);
                 address = bi_lea_attr(b,
-                                      bi_register(61), /* TODO RA */
-                                      bi_register(62), /* TODO RA */
+                                      bi_register(61), bi_register(62),
                                       idx, regfmt);
         }
 
