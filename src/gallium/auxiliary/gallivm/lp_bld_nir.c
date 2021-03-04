@@ -113,14 +113,16 @@ static unsigned glsl_sampler_to_pipe(int sampler_dim, bool is_array)
       pipe_target = is_array ? PIPE_TEXTURE_1D_ARRAY : PIPE_TEXTURE_1D;
       break;
    case GLSL_SAMPLER_DIM_2D:
-   case GLSL_SAMPLER_DIM_SUBPASS:
       pipe_target = is_array ? PIPE_TEXTURE_2D_ARRAY : PIPE_TEXTURE_2D;
+      break;
+   case GLSL_SAMPLER_DIM_SUBPASS:
+   case GLSL_SAMPLER_DIM_SUBPASS_MS:
+      pipe_target = PIPE_TEXTURE_2D_ARRAY;
       break;
    case GLSL_SAMPLER_DIM_3D:
       pipe_target = PIPE_TEXTURE_3D;
       break;
    case GLSL_SAMPLER_DIM_MS:
-   case GLSL_SAMPLER_DIM_SUBPASS_MS:
       pipe_target = is_array ? PIPE_TEXTURE_2D_ARRAY : PIPE_TEXTURE_2D;
       break;
    case GLSL_SAMPLER_DIM_CUBE:
