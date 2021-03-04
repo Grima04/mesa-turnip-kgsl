@@ -667,6 +667,9 @@ fd_resource_transfer_unmap(struct pipe_context *pctx,
 
 	assert(trans->b.staging == NULL); /* for threaded context only */
 
+	/* Don't use pool_transfers_unsync. We are always in the driver
+	 * thread. Freeing an object into a different pool is allowed.
+	 */
 	slab_free(&ctx->transfer_pool, ptrans);
 }
 
@@ -928,7 +931,12 @@ fd_resource_transfer_map(struct pipe_context *pctx,
 		return NULL;
 	}
 
-	ptrans = slab_alloc(&ctx->transfer_pool);
+	if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC) {
+		ptrans = slab_alloc(&ctx->transfer_pool_unsync);
+	} else {
+		ptrans = slab_alloc(&ctx->transfer_pool);
+	}
+
 	if (!ptrans)
 		return NULL;
 

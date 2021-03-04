@@ -204,6 +204,7 @@ struct fd_context {
 
 	/* slab for pipe_transfer allocations: */
 	struct slab_child_pool transfer_pool dt;
+	struct slab_child_pool transfer_pool_unsync; /* for threaded_context */
 
 	/**
 	 * query related state:

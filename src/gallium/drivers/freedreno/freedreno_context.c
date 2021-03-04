@@ -325,6 +325,7 @@ fd_context_destroy(struct pipe_context *pctx)
 		util_primconvert_destroy(ctx->primconvert);
 
 	slab_destroy_child(&ctx->transfer_pool);
+	slab_destroy_child(&ctx->transfer_pool_unsync);
 
 	for (i = 0; i < ARRAY_SIZE(ctx->vsc_pipe_bo); i++) {
 		if (!ctx->vsc_pipe_bo[i])
@@ -577,6 +578,7 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	pctx->const_uploader = pctx->stream_uploader;
 
 	slab_create_child(&ctx->transfer_pool, &screen->transfer_pool);
+	slab_create_child(&ctx->transfer_pool_unsync, &screen->transfer_pool);
 
 	fd_draw_init(pctx);
 	fd_resource_context_init(pctx);
