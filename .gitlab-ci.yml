@@ -311,7 +311,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &x86_build "2021-02-19-strace"
 
 .use-x86_build:
   extends:

@@ -33,6 +33,7 @@ apt-get install -y --no-remove \
       libxml2-dev \
       ocl-icd-opencl-dev \
       procps \
+      strace \
       time \
       wine-development \
       wine32-development
