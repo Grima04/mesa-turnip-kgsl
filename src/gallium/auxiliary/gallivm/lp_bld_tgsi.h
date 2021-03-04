@@ -187,6 +187,7 @@ struct lp_bld_tgsi_system_values {
    LLVMValueRef sample_id;
    LLVMValueRef sample_pos;
    LLVMValueRef sample_mask_in;
+   LLVMValueRef view_index;
 };
 
 
