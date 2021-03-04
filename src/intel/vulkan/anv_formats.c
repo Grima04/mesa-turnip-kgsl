@@ -978,7 +978,15 @@ anv_get_image_format_properties(
       maxExtent.width = 2048;
       maxExtent.height = 2048;
       maxExtent.depth = 2048;
-      maxMipLevels = 12; /* log2(maxWidth) + 1 */
+      /* Prior to SKL, the mipmaps for 3D surfaces are laid out in a way
+       * that make it impossible to represent in the way that
+       * VkSubresourceLayout expects. Since we can't tell users how to make
+       * sense of them, don't report them as available.
+       */
+      if (devinfo->gen < 9 && info->tiling == VK_IMAGE_TILING_LINEAR)
+         maxMipLevels = 1;
+      else
+         maxMipLevels = 12; /* log2(maxWidth) + 1 */
       maxArraySize = 1;
       sampleCounts = VK_SAMPLE_COUNT_1_BIT;
       break;
