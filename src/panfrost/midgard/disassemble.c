@@ -716,13 +716,6 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
 
         print_alu_opcode(fp, alu_field->op);
 
-        /* Postfix with the size to disambiguate if necessary */
-        char postfix = prefix_for_bits(bits_for_mode(mode));
-        bool size_ambiguous = shrink_mode != midgard_shrink_mode_none;
-
-        if (size_ambiguous)
-                fprintf(fp, "%c", postfix ? postfix : 'r');
-
         /* Print lane width */
         fprintf(fp, ".%c%d", is_int ? 'i' : 'f', bits_for_mode(mode));
 
