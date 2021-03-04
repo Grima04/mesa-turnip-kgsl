@@ -124,6 +124,7 @@ struct rendering_state {
 
    const struct lvp_attachment_state *attachments;
    VkImageAspectFlags *pending_clear_aspects;
+   uint32_t *cleared_views;
    int num_pending_aspects;
 
    uint32_t num_so_targets;
@@ -1195,8 +1196,11 @@ static inline bool
 attachment_needs_clear(struct rendering_state *state,
                        uint32_t a)
 {
+   const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
+   uint32_t view_mask = subpass->view_mask;
    return (a != VK_ATTACHMENT_UNUSED &&
-           state->pending_clear_aspects[a]);
+           state->pending_clear_aspects[a] &&
+           (!view_mask || (view_mask & ~state->cleared_views[a])));
 }
 
 static bool
@@ -1217,6 +1221,40 @@ subpass_needs_clear(struct rendering_state *state)
    return false;
 }
 
+static void clear_attachment_layers(struct rendering_state *state,
+                                    struct lvp_image_view *imgv,
+                                    VkRect2D *rect,
+                                    unsigned base_layer, unsigned layer_count,
+                                    unsigned ds_clear_flags, double dclear_val,
+                                    uint32_t sclear_val,
+                                    union pipe_color_union *col_val)
+{
+   struct pipe_surface *clear_surf = create_img_surface(state,
+                                                        imgv,
+                                                        imgv->format,
+                                                        state->framebuffer.width,
+                                                        state->framebuffer.height,
+                                                        base_layer,
+                                                        base_layer + layer_count - 1);
+
+   if (ds_clear_flags) {
+      state->pctx->clear_depth_stencil(state->pctx,
+                                       clear_surf,
+                                       ds_clear_flags,
+                                       dclear_val, sclear_val,
+                                       rect->offset.x, rect->offset.y,
+                                       rect->extent.width, rect->extent.height,
+                                       true);
+   } else {
+      state->pctx->clear_render_target(state->pctx, clear_surf,
+                                       col_val,
+                                       rect->offset.x, rect->offset.y,
+                                       rect->extent.width, rect->extent.height,
+                                       true);
+   }
+   state->pctx->surface_destroy(state->pctx, clear_surf);
+}
+
 static void render_subpass_clear(struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
@@ -1227,25 +1265,31 @@ static void render_subpass_clear(struct rendering_state *state)
       if (!attachment_needs_clear(state, a))
          continue;
 
-      struct lvp_render_pass_attachment *att = &state->pass->attachments[a];
-      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[a];
-
-      add_img_view_surface(state, imgv, att->format, state->framebuffer.width, state->framebuffer.height);
-
       union pipe_color_union color_clear_val = { 0 };
       const VkClearValue value = state->attachments[a].clear_value;
       color_clear_val.ui[0] = value.color.uint32[0];
       color_clear_val.ui[1] = value.color.uint32[1];
       color_clear_val.ui[2] = value.color.uint32[2];
       color_clear_val.ui[3] = value.color.uint32[3];
-      state->pctx->clear_render_target(state->pctx,
-                                       imgv->surface,
-                                       &color_clear_val,
-                                       state->render_area.offset.x, state->render_area.offset.y,
-                                       state->render_area.extent.width, state->render_area.extent.height,
-                                       false);
 
-      state->pending_clear_aspects[a] = 0;
+      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[a];
+
+      assert(imgv->surface);
+
+      if (subpass->view_mask) {
+         u_foreach_bit(i, subpass->view_mask)
+            clear_attachment_layers(state, imgv, &state->render_area,
+                                    i, 1, 0, 0, 0, &color_clear_val);
+         state->cleared_views[a] |= subpass->view_mask;
+      } else {
+         state->pctx->clear_render_target(state->pctx,
+                                          imgv->surface,
+                                          &color_clear_val,
+                                          state->render_area.offset.x, state->render_area.offset.y,
+                                          state->render_area.extent.width, state->render_area.extent.height,
+                                          false);
+         state->pending_clear_aspects[a] = 0;
+      }
    }
 
    if (subpass->depth_stencil_attachment) {
@@ -1257,28 +1301,34 @@ static void render_subpass_clear(struct rendering_state *state)
       struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
       struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds];
 
-      add_img_view_surface(state, imgv, att->format, state->framebuffer.width, state->framebuffer.height);
+      assert (util_format_is_depth_or_stencil(imgv->surface->format));
 
-      if (util_format_is_depth_or_stencil(imgv->surface->format)) {
-         const struct util_format_description *desc = util_format_description(imgv->surface->format);
-         double dclear_val = 0;
-         uint32_t sclear_val = 0;
-         uint32_t ds_clear_flags = 0;
+      const struct util_format_description *desc = util_format_description(imgv->surface->format);
+      double dclear_val = 0;
+      uint32_t sclear_val = 0;
+      uint32_t ds_clear_flags = 0;
 
-         if ((util_format_has_stencil(desc) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
-             (util_format_is_depth_and_stencil(imgv->surface->format) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)) {
-            ds_clear_flags |= PIPE_CLEAR_STENCIL;
-            if (att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-               sclear_val = state->attachments[ds].clear_value.depthStencil.stencil;
-         }
-         if ((util_format_has_depth(desc) && att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
-             (util_format_is_depth_and_stencil(imgv->surface->format) && att->load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)) {
-            ds_clear_flags |= PIPE_CLEAR_DEPTH;
-            if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
-               dclear_val = state->attachments[ds].clear_value.depthStencil.depth;
-         }
+      if ((util_format_has_stencil(desc) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
+          (util_format_is_depth_and_stencil(imgv->surface->format) && att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)) {
+         ds_clear_flags |= PIPE_CLEAR_STENCIL;
+         if (att->stencil_load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+            sclear_val = state->attachments[ds].clear_value.depthStencil.stencil;
+      }
+      if ((util_format_has_depth(desc) && att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR) ||
+          (util_format_is_depth_and_stencil(imgv->surface->format) && att->load_op == VK_ATTACHMENT_LOAD_OP_DONT_CARE)) {
+         ds_clear_flags |= PIPE_CLEAR_DEPTH;
+         if (att->load_op == VK_ATTACHMENT_LOAD_OP_CLEAR)
+            dclear_val = state->attachments[ds].clear_value.depthStencil.depth;
+      }
 
-         if (ds_clear_flags)
+      assert(imgv->surface);
+      if (ds_clear_flags) {
+         if (subpass->view_mask) {
+            u_foreach_bit(i, subpass->view_mask)
+               clear_attachment_layers(state, imgv, &state->render_area,
+                                       i, 1, ds_clear_flags, dclear_val, sclear_val, NULL);
+            state->cleared_views[ds] |= subpass->view_mask;
+         } else {
             state->pctx->clear_depth_stencil(state->pctx,
                                              imgv->surface,
                                              ds_clear_flags,
@@ -1286,8 +1336,10 @@ static void render_subpass_clear(struct rendering_state *state)
                                              state->render_area.offset.x, state->render_area.offset.y,
                                              state->render_area.extent.width, state->render_area.extent.height,
                                              false);
-         state->pending_clear_aspects[ds] = 0;
+            state->pending_clear_aspects[ds] = 0;
+         }
       }
+
    }
 
 }
@@ -1314,6 +1366,8 @@ static void render_subpass_clear_fast(struct rendering_state *state)
        state->render_area.extent.height != state->framebuffer.height)
       goto slow_clear;
 
+   if (subpass->view_mask)
+      goto slow_clear;
    for (unsigned i = 0; i < subpass->color_count; i++) {
       uint32_t a = subpass->color_attachments[i].attachment;
 
@@ -1458,11 +1512,13 @@ static void handle_begin_render_pass(struct lvp_cmd_buffer_entry *cmd,
 
    if (state->num_pending_aspects < state->pass->attachment_count) {
       state->pending_clear_aspects = realloc(state->pending_clear_aspects, sizeof(VkImageAspectFlags) * state->pass->attachment_count);
+      state->cleared_views = realloc(state->cleared_views, sizeof(uint32_t) * state->pass->attachment_count);
       state->num_pending_aspects = state->pass->attachment_count;
    }
 
    for (unsigned a = 0; a < state->pass->attachment_count; a++) {
       state->pending_clear_aspects[a] = state->attachments[a].pending_clear_aspects;
+      state->cleared_views[a] = 0;
    }
    begin_render_subpass(state, 0);
 }
@@ -2437,30 +2493,17 @@ static void handle_clear_attachments(struct lvp_cmd_buffer_entry *cmd,
       for (uint32_t r = 0; r < cmd->u.clear_attachments.rect_count; r++) {
 
          VkClearRect *rect = &cmd->u.clear_attachments.rects[r];
-         struct pipe_surface *clear_surf = create_img_surface(state,
-                                                              imgv,
-                                                              imgv->format,
-                                                              state->framebuffer.width,
-                                                              state->framebuffer.height,
-                                                              rect->baseArrayLayer,
-                                                              rect->baseArrayLayer + rect->layerCount - 1);
-
-         if (ds_clear_flags) {
-            state->pctx->clear_depth_stencil(state->pctx,
-                                             clear_surf,
-                                             ds_clear_flags,
-                                             dclear_val, sclear_val,
-                                             rect->rect.offset.x, rect->rect.offset.y,
-                                             rect->rect.extent.width, rect->rect.extent.height,
-                                             true);
-         } else {
-            state->pctx->clear_render_target(state->pctx, clear_surf,
-                                             &col_val,
-                                             rect->rect.offset.x, rect->rect.offset.y,
-                                             rect->rect.extent.width, rect->rect.extent.height,
-                                             true);
-         }
-         state->pctx->surface_destroy(state->pctx, clear_surf);
+         if (subpass->view_mask) {
+            u_foreach_bit(i, subpass->view_mask)
+               clear_attachment_layers(state, imgv, &rect->rect,
+                                       i, 1,
+                                       ds_clear_flags, dclear_val, sclear_val,
+                                       &col_val);
+         } else
+            clear_attachment_layers(state, imgv, &rect->rect,
+                                    rect->baseArrayLayer, rect->layerCount,
+                                    ds_clear_flags, dclear_val, sclear_val,
+                                    &col_val);
       }
    }
 }
@@ -3062,5 +3105,6 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
    }
 
    free(state.pending_clear_aspects);
+   free(state.cleared_views);
    return VK_SUCCESS;
 }
