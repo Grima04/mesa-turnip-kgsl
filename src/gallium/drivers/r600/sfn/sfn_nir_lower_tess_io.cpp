@@ -131,22 +131,99 @@ static nir_ssa_def *load_offset_group(nir_builder *b, int ncomponents)
    }
 }
 
+static nir_ssa_def *load_offset_group_from_mask(nir_builder *b, uint32_t mask)
+{
+   auto full_mask = nir_imm_ivec4(b, 0, 4, 8, 12);
+   return nir_channels(b, full_mask, mask);
+}
+
+struct MaskQuery {
+   uint32_t mask;
+   uint32_t ssa_index;
+   nir_alu_instr *alu;
+   int index;
+   uint32_t full_mask;
+};
+
+static bool update_alu_mask(nir_src *src, void *data)
+{
+   auto mq = reinterpret_cast<MaskQuery *>(data);
+
+   if (mq->ssa_index == src->ssa->index) {
+      mq->mask |= nir_alu_instr_src_read_mask(mq->alu, mq->index);
+   }
+   ++mq->index;
+
+   return mq->mask != mq->full_mask;
+}
+
+static uint32_t get_dest_usee_mask(nir_intrinsic_instr *op)
+{
+   assert(op->dest.is_ssa);
+
+   MaskQuery mq = {0};
+   mq.full_mask = (1 << nir_dest_num_components(op->dest)) - 1;
+
+   nir_foreach_use(use_src,  &op->dest.ssa) {
+      auto use_instr = use_src->parent_instr;
+      mq.ssa_index = use_src->ssa->index;
+
+      switch (use_instr->type) {
+      case nir_instr_type_alu: {
+         mq.alu = nir_instr_as_alu(use_instr);
+         mq.index = 0;
+         if (!nir_foreach_src(use_instr, update_alu_mask, &mq))
+            return 0xf;
+         break;
+      }
+      case nir_instr_type_intrinsic:  {
+         auto intr = nir_instr_as_intrinsic(use_instr);
+         switch (intr->intrinsic) {
+         case nir_intrinsic_store_output:
+         case nir_intrinsic_store_per_vertex_output:
+            mq.mask |= nir_intrinsic_write_mask(intr) << nir_intrinsic_component(intr);
+            break;
+         case nir_intrinsic_store_scratch:
+         case nir_intrinsic_store_local_shared_r600:
+            mq.mask |= nir_intrinsic_write_mask(intr);
+            break;
+         default:
+            return 0xf;
+         }
+         break;
+      }
+      default:
+         return 0xf;
+      }
+
+   }
+   return mq.mask;
+}
+
 static void replace_load_instr(nir_builder *b, nir_intrinsic_instr *op, nir_ssa_def *addr)
 {
-   nir_intrinsic_instr *load_tcs_in = nir_intrinsic_instr_create(b->shader, nir_intrinsic_load_local_shared_r600);
-   load_tcs_in->num_components = op->num_components;
-   nir_ssa_dest_init(&load_tcs_in->instr, &load_tcs_in->dest,
-                     load_tcs_in->num_components, 32, NULL);
+   uint32_t mask = get_dest_usee_mask(op);
+   if (mask) {
+      nir_ssa_def *addr_outer = nir_iadd(b, addr, load_offset_group_from_mask(b, mask));
+      if (nir_intrinsic_component(op))
+         addr_outer = nir_iadd(b, addr_outer, nir_imm_int(b, 4 * nir_intrinsic_component(op)));
 
-   nir_ssa_def *addr_outer = nir_iadd(b, addr, load_offset_group(b, load_tcs_in->num_components));
-   if (nir_intrinsic_component(op))
-      addr_outer = nir_iadd(b, addr_outer, nir_imm_int(b, 4 * nir_intrinsic_component(op)));
+      auto new_load = nir_load_local_shared_r600(b, 32, addr_outer);
 
-   load_tcs_in->src[0] = nir_src_for_ssa(addr_outer);
-   nir_builder_instr_insert(b, &load_tcs_in->instr);
-   nir_ssa_def_rewrite_uses(&op->dest.ssa, nir_src_for_ssa(&load_tcs_in->dest.ssa));
+      auto undef = nir_ssa_undef(b, 1, 32);
+      int comps = nir_dest_num_components(op->dest);
+      nir_ssa_def *remix[4] = {undef, undef, undef, undef};
+
+      int chan = 0;
+      for (int i = 0; i < comps; ++i) {
+         if (mask & (1 << i)) {
+            remix[i] = nir_channel(b, new_load, chan++);
+         }
+      }
+      auto new_load_remixed = nir_vec(b, remix, comps);
+      nir_ssa_def_rewrite_uses(&op->dest.ssa, nir_src_for_ssa(new_load_remixed));
+   }
    nir_instr_remove(&op->instr);
-
 }
 
 static nir_ssa_def *
