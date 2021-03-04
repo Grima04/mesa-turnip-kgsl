@@ -230,7 +230,7 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
       flags |= PIPE_CONTROL_CS_STALL;
    }
 
-   if (GEN_IS_HASWELL) {
+   if (GEN_VERSIONx10 == 75) {
       /* From the PIPE_CONTROL page itself:
        *
        *    "HSW - Programming Note: PIPECONTROL with RO Cache Invalidation:
@@ -407,7 +407,7 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
     * don't skip the ones with only read-cache-invalidate bits set.  This
     * may or may not be a problem...
     */
-   if (GEN_GEN == 7 && !GEN_IS_HASWELL) {
+   if (GEN_GEN == 7 && GEN_VERSIONx10 != 75) {
       if (flags & PIPE_CONTROL_CS_STALL) {
          /* If we're doing a CS stall, reset the counter and carry on. */
          brw->pipe_controls_since_last_cs_stall = 0;

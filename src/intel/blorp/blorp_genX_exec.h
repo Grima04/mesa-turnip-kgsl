@@ -227,7 +227,7 @@ emit_urb_config(struct blorp_batch *batch,
                         false, false, entry_size,
                         entries, start, deref_block_size, &constrained);
 
-#if GEN_GEN == 7 && !GEN_IS_HASWELL
+#if GEN_GEN == 7 && GEN_VERSIONx10 != 75
    /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
     *
     *    "A PIPE_CONTROL with Post-Sync Operation set to 1h and a depth stall
@@ -958,7 +958,7 @@ blorp_emit_ps_config(struct blorp_batch *batch,
       ps.MaximumNumberofThreads =
          batch->blorp->isl_dev->info->max_wm_threads - 1;
 
-#if GEN_IS_HASWELL
+#if GEN_VERSIONx10 == 75
       ps.SampleMask = 1;
 #endif
 

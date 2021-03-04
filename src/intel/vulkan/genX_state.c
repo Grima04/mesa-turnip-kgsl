@@ -410,7 +410,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
       l3sqc.ConvertIS_UC = !has_is;
       l3sqc.ConvertC_UC = !has_c;
       l3sqc.ConvertT_UC = !has_t;
-#if GEN_IS_HASWELL
+#if GEN_VERSIONx10 == 75
       l3sqc.L3SQGeneralPriorityCreditInitialization = SQGPCI_DEFAULT;
 #else
       l3sqc.L3SQGeneralPriorityCreditInitialization =
@@ -423,7 +423,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
       l3cr2.SLMEnable = cfg->n[INTEL_L3P_SLM];
       l3cr2.URBLowBandwidth = urb_low_bw;
       l3cr2.URBAllocation = cfg->n[INTEL_L3P_URB] - n0_urb;
-#if !GEN_IS_HASWELL
+#if !GEN_VERSIONx10 == 75
       l3cr2.ALLAllocation = cfg->n[INTEL_L3P_ALL];
 #endif
       l3cr2.ROAllocation = cfg->n[INTEL_L3P_RO];
@@ -439,7 +439,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
       l3cr3.TLowBandwidth = 0;
    }
 
-#if GEN_IS_HASWELL
+#if GEN_VERSIONx10 == 75
    if (device->physical->cmd_parser_version >= 4) {
       /* Enable L3 atomics on HSW if we have a DC partition, otherwise keep
        * them disabled to avoid crashing the system hard.
@@ -452,7 +452,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
          c3.L3AtomicDisable = !has_dc;
       }
    }
-#endif /* GEN_IS_HASWELL */
+#endif /* GEN_VERSIONx10 == 75 */
 
 #endif /* GEN_GEN < 8 */
 }
@@ -656,7 +656,7 @@ VkResult genX(CreateSampler)(
    vk_object_base_init(&device->vk, &sampler->base, VK_OBJECT_TYPE_SAMPLER);
    sampler->n_planes = 1;
 
-   uint32_t border_color_stride = GEN_IS_HASWELL ? 512 : 64;
+   uint32_t border_color_stride = GEN_VERSIONx10 == 75 ? 512 : 64;
    uint32_t border_color_offset;
    ASSERTED bool has_custom_color = false;
    if (pCreateInfo->borderColor <= VK_BORDER_COLOR_INT_OPAQUE_WHITE) {

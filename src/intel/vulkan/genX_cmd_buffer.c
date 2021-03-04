@@ -759,7 +759,7 @@ set_image_fast_clear_state(struct anv_cmd_buffer *cmd_buffer,
 /* This is only really practical on haswell and above because it requires
  * MI math in order to get it correct.
  */
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
 static void
 anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                   const struct anv_image *image,
@@ -840,7 +840,7 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
       mip.CompareOperation = COMPARE_SRCS_EQUAL;
    }
 }
-#endif /* GEN_GEN >= 8 || GEN_IS_HASWELL */
+#endif /* GEN_GEN >= 8 || GEN_VERSIONx10 == 75 */
 
 #if GEN_GEN <= 8
 static void
@@ -931,7 +931,7 @@ anv_cmd_predicated_mcs_resolve(struct anv_cmd_buffer *cmd_buffer,
    assert(aspect == VK_IMAGE_ASPECT_COLOR_BIT);
    assert(resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE);
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
    anv_cmd_compute_resolve_predicate(cmd_buffer, image,
                                      aspect, 0, array_layer,
                                      resolve_op, fast_clear_supported);
@@ -1000,7 +1000,7 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
    } else {
       anv_batch_emit(&cmd_buffer->batch, GENX(MI_STORE_DATA_IMM), sdi) {
          sdi.Address = addr;
-         if (GEN_GEN >= 8 || GEN_IS_HASWELL) {
+         if (GEN_GEN >= 8 || GEN_VERSIONx10 == 75) {
             /* Pre-SKL, the dword containing the clear values also contains
              * other fields, so we need to initialize those fields to match the
              * values that would be in a color attachment.
@@ -1682,7 +1682,7 @@ genX(BeginCommandBuffer)(
       cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_RENDER_TARGETS;
    }
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
    if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY) {
       const VkCommandBufferInheritanceConditionalRenderingInfoEXT *conditional_rendering_info =
          vk_find_struct_const(pBeginInfo->pInheritanceInfo->pNext, COMMAND_BUFFER_INHERITANCE_CONDITIONAL_RENDERING_INFO_EXT);
@@ -1801,7 +1801,7 @@ genX(CmdExecuteCommands)(
       assert(secondary->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
       assert(!anv_batch_has_error(&secondary->batch));
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
       if (secondary->state.conditional_render_enabled) {
          if (!primary->state.conditional_render_enabled) {
             /* Secondary buffer is constructed as if it will be executed
@@ -2144,7 +2144,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
       if (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT)
          bits &= ~(ANV_PIPE_RENDER_TARGET_BUFFER_WRITES);
 
-      if (GEN_IS_HASWELL) {
+      if (GEN_VERSIONx10 == 75) {
          /* Haswell needs addition work-arounds:
           *
           * From Haswell PRM, volume 2, part 1, "End-of-Pipe Synchronization":
@@ -2345,7 +2345,7 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
 
 #if GEN_GEN >= 8
    const unsigned push_constant_kb = 32;
-#elif GEN_IS_HASWELL
+#elif GEN_VERSIONx10 == 75
    const unsigned push_constant_kb = cmd_buffer->device->info.gt == 3 ? 32 : 16;
 #else
    const unsigned push_constant_kb = 16;
@@ -3053,7 +3053,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
          c.MOCS = isl_mocs(&cmd_buffer->device->isl_dev, 0, false);
 #endif
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
          /* The Skylake PRM contains the following restriction:
           *
           *    "The driver must ensure The following case does not occur
@@ -3076,7 +3076,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
             /* For Ivy Bridge, make sure we only set the first range (actual
              * push constants)
              */
-            assert((GEN_GEN >= 8 || GEN_IS_HASWELL) || i == 0);
+            assert((GEN_GEN >= 8 || GEN_VERSIONx10 == 75) || i == 0);
 
             c.ConstantBody.ReadLength[i + shift] = range->length;
             c.ConstantBody.Buffer[i + shift] =
@@ -3780,7 +3780,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
     uint32_t                                    counterOffset,
     uint32_t                                    vertexStride)
 {
-#if GEN_IS_HASWELL || GEN_GEN >= 8
+#if GEN_VERSIONx10 == 75 || GEN_GEN >= 8
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
    ANV_FROM_HANDLE(anv_buffer, counter_buffer, counterBuffer);
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -3838,7 +3838,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
    }
 
    update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
-#endif /* GEN_IS_HASWELL || GEN_GEN >= 8 */
+#endif /* GEN_VERSIONx10 == 75 || GEN_GEN >= 8 */
 }
 
 static void
@@ -3855,7 +3855,7 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
    struct mi_value instance_count = mi_mem32(anv_address_add(addr, 4));
    unsigned view_count = anv_subpass_view_count(cmd_buffer->state.subpass);
    if (view_count > 1) {
-#if GEN_IS_HASWELL || GEN_GEN >= 8
+#if GEN_VERSIONx10 == 75 || GEN_GEN >= 8
       instance_count = mi_imul_imm(&b, instance_count, view_count);
 #else
       anv_finishme("Multiview + indirect draw requires MI_MATH; "
@@ -3987,7 +3987,7 @@ prepare_for_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
    struct mi_value ret = mi_imm(0);
 
    if (conditional_render_enabled) {
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
       ret = mi_new_gpr(b);
       mi_store(b, mi_value_ref(b, ret), mi_mem32(count_address));
 #endif
@@ -4032,7 +4032,7 @@ emit_draw_count_predicate(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
 static void
 emit_draw_count_predicate_with_conditional_render(
                           struct anv_cmd_buffer *cmd_buffer,
@@ -4094,7 +4094,7 @@ void genX(CmdDrawIndirectCount)(
    for (uint32_t i = 0; i < maxDrawCount; i++) {
       struct anv_address draw = anv_address_add(buffer->address, offset);
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
       if (cmd_state->conditional_render_enabled) {
          emit_draw_count_predicate_with_conditional_render(
             cmd_buffer, &b, i, mi_value_ref(&b, max));
@@ -4165,7 +4165,7 @@ void genX(CmdDrawIndexedIndirectCount)(
    for (uint32_t i = 0; i < maxDrawCount; i++) {
       struct anv_address draw = anv_address_add(buffer->address, offset);
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
       if (cmd_state->conditional_render_enabled) {
          emit_draw_count_predicate_with_conditional_render(
             cmd_buffer, &b, i, mi_value_ref(&b, max));
@@ -4674,7 +4674,7 @@ void genX(CmdDispatchIndirect)(
       mip.CompareOperation = COMPARE_FALSE;
    }
 
-#if GEN_IS_HASWELL
+#if GEN_VERSIONx10 == 75
    if (cmd_buffer->state.conditional_render_enabled) {
       /* predicate &= !(conditional_rendering_predicate == 0); */
       mi_store(&b, mi_reg32(MI_PREDICATE_SRC0),
@@ -6071,7 +6071,7 @@ void genX(CmdEndRenderPass2)(
 void
 genX(cmd_emit_conditional_render_predicate)(struct anv_cmd_buffer *cmd_buffer)
 {
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->batch);
 
@@ -6087,7 +6087,7 @@ genX(cmd_emit_conditional_render_predicate)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 }
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
 void genX(CmdBeginConditionalRenderingEXT)(
    VkCommandBuffer                             commandBuffer,
    const VkConditionalRenderingBeginInfoEXT*   pConditionalRenderingBegin)

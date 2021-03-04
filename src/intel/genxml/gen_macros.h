@@ -31,7 +31,7 @@
  *
  * You can do pseudo-runtime checks in your function such as
  *
- * if (GEN_GEN > 8 || GEN_IS_HASWELL) {
+ * if (GEN_GEN > 8 || GEN_VERSIONx10 == 75) {
  *    // Do something
  * }
  *
@@ -41,7 +41,7 @@
  * For places where you really do have a compile-time conflict, you can
  * use preprocessor logic:
  *
- * #if (GEN_GEN > 8 || GEN_IS_HASWELL)
+ * #if (GEN_GEN > 8 || GEN_VERSIONx10 == 75)
  *    // Do something
  * #endif
  *
@@ -57,7 +57,6 @@
 #endif
 
 #define GEN_GEN ((GEN_VERSIONx10) / 10)
-#define GEN_IS_HASWELL ((GEN_VERSIONx10) == 75)
 #define GEN_IS_G4X ((GEN_VERSIONx10) == 45)
 
 /* Prefixing macros */
