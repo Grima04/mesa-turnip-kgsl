@@ -41,9 +41,19 @@ if [ -n "$CROSS" ]; then
 fi
 
 # Only use GNU time if available, not any shell built-in command
-if test -f /usr/bin/time; then
-    MESON_TEST_ARGS+=--wrapper=$PWD/.gitlab-ci/meson/test-wrapper.sh
-fi
+case $CI_JOB_NAME in
+    # ASAN leak detection is incompatible with strace
+    *-asan*)
+        if test -f /usr/bin/time; then
+            MESON_TEST_ARGS+=--wrapper=$PWD/.gitlab-ci/meson/time.sh
+        fi
+        ;;
+    *)
+        if test -f /usr/bin/time -a -f /usr/bin/strace; then
+            MESON_TEST_ARGS+=--wrapper=$PWD/.gitlab-ci/meson/time-strace.sh
+        fi
+        ;;
+esac
 
 rm -rf _build
 meson _build --native-file=native.file \

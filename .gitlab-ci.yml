@@ -197,6 +197,7 @@ success:
       # https://gitlab.com/gitlab-org/gitlab-ce/commit/8788fb925706cad594adf6917a6c5f6587dd1521
       - artifacts
       - _build/meson-logs/*.txt
+      - _build/meson-logs/strace
 
 
 # Docker image tag helper templates
@@ -586,6 +587,7 @@ sanity:
     when: always
     paths:
       - _build/meson-logs/*.txt
+      - _build/meson-logs/strace
       # scons:
       - build/*/config.log
       - shader-db
