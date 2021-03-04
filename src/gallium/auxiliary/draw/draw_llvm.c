@@ -1891,7 +1891,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    struct gallivm_state *gallivm = variant->gallivm;
    LLVMContextRef context = gallivm->context;
    LLVMTypeRef int32_type = LLVMInt32TypeInContext(context);
-   LLVMTypeRef arg_types[12];
+   LLVMTypeRef arg_types[13];
    unsigned num_arg_types = ARRAY_SIZE(arg_types);
    LLVMTypeRef func_type;
    LLVMValueRef context_ptr;
@@ -1958,6 +1958,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    arg_types[i++] = int32_type;                          /* start_instance */
    arg_types[i++] = LLVMPointerType(int32_type, 0);      /* fetch_elts  */
    arg_types[i++] = int32_type;                          /* draw_id */
+   arg_types[i++] = int32_type;                          /* view_id */
 
    func_type = LLVMFunctionType(LLVMInt8TypeInContext(context),
                                 arg_types, num_arg_types, 0);
@@ -1995,6 +1996,7 @@ draw_llvm_generate(struct draw_llvm *llvm, struct draw_llvm_variant *variant)
    system_values.base_instance = LLVMGetParam(variant_func, 9);
    fetch_elts                = LLVMGetParam(variant_func, 10);
    system_values.draw_id     = LLVMGetParam(variant_func, 11);
+   system_values.view_index  = LLVMGetParam(variant_func, 12);
 
    lp_build_name(context_ptr, "context");
    lp_build_name(io_ptr, "io");
