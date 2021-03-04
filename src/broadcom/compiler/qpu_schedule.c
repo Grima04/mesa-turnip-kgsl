@@ -461,6 +461,7 @@ struct choose_scoreboard {
         bool tlb_locked;
         bool ldvary_pipelining;
         bool fixup_ldvary;
+        int ldvary_count;
 };
 
 static bool
@@ -875,7 +876,7 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
 }
 
 static struct schedule_node *
-choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
+choose_instruction_to_schedule(struct v3d_compile *c,
                                struct choose_scoreboard *scoreboard,
                                struct schedule_node *prev_inst)
 {
@@ -899,12 +900,6 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                     !n->inst->is_ldvary_sequence) {
                         continue;
                 }
-
-                /* Sanity check: if we are scheduling a smooth ldvary sequence
-                 * we cannot be starting another sequence in the middle of it.
-                 */
-                assert(!scoreboard->ldvary_pipelining ||
-                       !n->inst->ldvary_pipelining_start);
 
                 const struct v3d_qpu_instr *inst = &n->inst->qpu;
 
@@ -947,7 +942,7 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                 if (reads_too_soon_after_write(scoreboard, n->inst))
                         continue;
 
-                if (writes_too_soon_after_write(devinfo, scoreboard, n->inst))
+                if (writes_too_soon_after_write(c->devinfo, scoreboard, n->inst))
                         continue;
 
                 /* "A scoreboard wait must not occur in the first two
@@ -991,7 +986,7 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                                 continue;
 
                         struct v3d_qpu_instr merged_inst;
-                        if (!qpu_merge_inst(devinfo, &merged_inst,
+                        if (!qpu_merge_inst(c->devinfo, &merged_inst,
                                             &prev_inst->inst->qpu, inst)) {
                                 continue;
                         }
@@ -1002,12 +997,13 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                          */
                         if (scoreboard->ldvary_pipelining && inst->sig.ldvary) {
                                 assert(n->inst->is_ldvary_sequence);
+                                scoreboard->ldvary_count++;
                                 scoreboard->fixup_ldvary = true;
                                 return n;
                         }
                 }
 
-                int prio = get_instruction_priority(devinfo, inst);
+                int prio = get_instruction_priority(c->devinfo, inst);
 
                 if (mux_read_stalls(scoreboard, inst)) {
                         /* Don't merge an instruction that stalls */
@@ -1045,39 +1041,49 @@ choose_instruction_to_schedule(const struct v3d_device_info *devinfo,
                 }
         }
 
-        /* If we are in the middle of an ldvary sequence we only pick up
-         * instructions that can continue the sequence so we can pipeline
-         * them, however, if we failed to find anything to schedule then we
-         * can't possibly continue the sequence and we need to stop the
-         * pipelining process and try again.
-         *
-         * There is one exception to the above: noperspective or flat
-         * varyings can cause us to not be able to pick an instruction
-         * because they need a nop between the ldvary and the next instruction
-         * to account for the ldvary r5 write latency. We can try to detect this
-         * by checking if we are also unable to schedule an instruction after
-         * disabling pipelining.
-         *
-         * FIXME: dropping pipelining and picking up another instruction could
-         * break the sequence for flat/noperspective varyings we could've been
-         * able to continue if we returned NULL here and scheduled a NOP as a
-         * result, but detecting this case would require us to know in advance
-         * that emitting the next NOP will guarantee that we will be able to
-         * continue the sequence.
-         */
-        if (scoreboard->ldvary_pipelining && !prev_inst && !chosen) {
-                scoreboard->ldvary_pipelining = false;
-                chosen = choose_instruction_to_schedule(devinfo, scoreboard,
-                                                        prev_inst);
-                scoreboard->ldvary_pipelining = !chosen;
-        } else if (chosen) {
-                if (scoreboard->ldvary_pipelining) {
-                        assert(chosen->inst->is_ldvary_sequence);
+        /* Update ldvary pipelining state */
+        if (chosen) {
+                if (chosen->inst->qpu.sig.ldvary &&
+                    chosen->inst->is_ldvary_sequence) {
                         scoreboard->ldvary_pipelining =
-                                !chosen->inst->ldvary_pipelining_end;
-                } else if (chosen->inst->ldvary_pipelining_start) {
-                        assert(chosen->inst->qpu.sig.ldvary);
-                        scoreboard->ldvary_pipelining = true;
+                            c->num_inputs > ++scoreboard->ldvary_count;
+                }
+        } else if (scoreboard->ldvary_pipelining) {
+                /* If we are in the middle of an ldvary sequence we only pick
+                 * up instructions that can continue the sequence so we can
+                 * pipeline them, however, if we failed to find anything to
+                 * schedule (!prev_inst) then we can't possibly continue the
+                 * sequence and we need to stop the pipelining process and try
+                 * again.
+                 *
+                 * There is one exception to the above: noperspective or flat
+                 * varyings can cause us to not be able to pick an instruction
+                 * because they need a nop between the ldvary and the next
+                 * instruction to account for the ldvary r5 write latency. We
+                 * can try to detect this by checking if we are also unable to
+                 * schedule an instruction after disabling pipelining.
+                 *
+                 * FIXME: dropping pipelining and picking up another instruction
+                 * could break the sequence for flat/noperspective varyings we
+                 * could've been able to continue if we returned NULL here and
+                 * scheduled a NOP as a result, but detecting this case would
+                 * require us to know in advance that emitting the next NOP will
+                 * guarantee that we will be able to continue the sequence.
+                 *
+                 * If we failed to pair up (prev_inst != NULL), then we disable
+                 * pipelining if we have already scheduled the last ldvary. This
+                 * may allow any other instruction that is not part of an ldvary
+                 * sequence to be merged into the last instruction of the last
+                 * ldvary sequence for optimal results.
+                 */
+                if (!prev_inst) {
+                        scoreboard->ldvary_pipelining = false;
+                        chosen = choose_instruction_to_schedule(c, scoreboard,
+                                                                prev_inst);
+                        scoreboard->ldvary_pipelining = !chosen;
+                } else {
+                        scoreboard->ldvary_pipelining =
+                                c->num_inputs > scoreboard->ldvary_count;
                 }
         }
 
@@ -1667,9 +1673,7 @@ schedule_instructions(struct v3d_compile *c,
 
         while (!list_is_empty(&scoreboard->dag->heads)) {
                 struct schedule_node *chosen =
-                        choose_instruction_to_schedule(devinfo,
-                                                       scoreboard,
-                                                       NULL);
+                        choose_instruction_to_schedule(c, scoreboard, NULL);
                 struct schedule_node *merge = NULL;
 
                 /* If there are no valid instructions to schedule, drop a NOP
@@ -1702,8 +1706,7 @@ schedule_instructions(struct v3d_compile *c,
                         pre_remove_head(scoreboard->dag, chosen);
 
                         while ((merge =
-                                choose_instruction_to_schedule(devinfo,
-                                                               scoreboard,
+                                choose_instruction_to_schedule(c, scoreboard,
                                                                chosen))) {
                                 time = MAX2(merge->unblocked_time, time);
                                 pre_remove_head(scoreboard->dag, merge);

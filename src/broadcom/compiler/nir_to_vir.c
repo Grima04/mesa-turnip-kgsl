@@ -928,76 +928,31 @@ ldvary_sequence_inst(struct v3d_compile *c, struct qreg result)
                    (struct qinst *) c->cur_block->instructions.prev;
         assert(producer);
         producer->is_ldvary_sequence = true;
-        c->ldvary_sequence_end_inst = producer;
         return result;
-}
-
-static void
-track_ldvary_pipelining(struct v3d_compile *c, struct qinst *ldvary)
-{
-        if (ldvary) {
-                ldvary->is_ldvary_sequence = true;
-                c->ldvary_sequence_length++;
-                if (c->ldvary_sequence_length == 1) {
-                        ldvary->ldvary_pipelining_start = true;
-                        c->ldvary_sequence_start_inst = ldvary;
-                }
-        }
 }
 
 static struct qreg
 emit_smooth_varying(struct v3d_compile *c,
-                    struct qinst *ldvary,
                     struct qreg vary, struct qreg w, struct qreg r5)
 {
-        track_ldvary_pipelining(c, ldvary);
         return ldvary_sequence_inst(c, vir_FADD(c,
                ldvary_sequence_inst(c, vir_FMUL(c, vary, w)), r5));
 }
 
 static struct qreg
 emit_noperspective_varying(struct v3d_compile *c,
-                           struct qinst *ldvary,
                            struct qreg vary, struct qreg r5)
 {
-        track_ldvary_pipelining(c, ldvary);
         return ldvary_sequence_inst(c, vir_FADD(c,
                ldvary_sequence_inst(c, vir_MOV(c, vary)), r5));
 }
 
 static struct qreg
 emit_flat_varying(struct v3d_compile *c,
-                  struct qinst *ldvary,
                   struct qreg vary, struct qreg r5)
 {
-        track_ldvary_pipelining(c, ldvary);
         vir_MOV_dest(c, c->undef, vary);
         return ldvary_sequence_inst(c, vir_MOV(c, r5));
-}
-
-static void
-varying_sequence_end(struct v3d_compile *c)
-{
-        if (!c->ldvary_sequence_start_inst) {
-                assert(!c->ldvary_sequence_end_inst);
-                assert(c->ldvary_sequence_length == 0);
-                return;
-        }
-
-        assert(c->ldvary_sequence_start_inst);
-        assert(c->ldvary_sequence_end_inst);
-        assert(c->ldvary_sequence_start_inst != c->ldvary_sequence_end_inst);
-
-        /* We need at least two ldvary sequences to do some pipelining */
-        if (c->ldvary_sequence_length == 1)
-                c->ldvary_sequence_start_inst->ldvary_pipelining_start = false;
-
-        if (c->ldvary_sequence_length > 1)
-                c->ldvary_sequence_end_inst->ldvary_pipelining_end = true;
-
-        c->ldvary_sequence_length = 0;
-        c->ldvary_sequence_start_inst = NULL;
-        c->ldvary_sequence_end_inst = NULL;
 }
 
 static struct qreg
@@ -1013,6 +968,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 ldvary = vir_add_inst(V3D_QPU_A_NOP, c->undef,
                                       c->undef, c->undef);
                 ldvary->qpu.sig.ldvary = true;
+                ldvary->is_ldvary_sequence = true;
                 vary = vir_emit_def(c, ldvary);
         } else {
                 vir_NOP(c)->qpu.sig.ldvary = true;
@@ -1035,7 +991,7 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
          */
         if (!var) {
                 assert(input_idx < 0);
-                return emit_smooth_varying(c, ldvary, vary, c->payload_w, r5);
+                return emit_smooth_varying(c, vary, c->payload_w, r5);
         }
 
         int i = c->num_inputs++;
@@ -1049,22 +1005,21 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
         case INTERP_MODE_SMOOTH:
                 if (var->data.centroid) {
                         BITSET_SET(c->centroid_flags, i);
-                        result = emit_smooth_varying(c, ldvary, vary,
+                        result = emit_smooth_varying(c, vary,
                                                      c->payload_w_centroid, r5);
                 } else {
-                        result = emit_smooth_varying(c, ldvary, vary,
-                                                     c->payload_w, r5);
+                        result = emit_smooth_varying(c, vary, c->payload_w, r5);
                 }
                 break;
 
         case INTERP_MODE_NOPERSPECTIVE:
                 BITSET_SET(c->noperspective_flags, i);
-                result = emit_noperspective_varying(c, ldvary, vary, r5);
+                result = emit_noperspective_varying(c, vary, r5);
                 break;
 
         case INTERP_MODE_FLAT:
                 BITSET_SET(c->flat_shade_flags, i);
-                result = emit_flat_varying(c, ldvary, vary, r5);
+                result = emit_flat_varying(c, vary, r5);
                 break;
 
         default:
@@ -2099,8 +2054,6 @@ ntq_setup_fs_inputs(struct v3d_compile *c)
                         }
                 }
         }
-
-        varying_sequence_end(c);
 }
 
 static void
