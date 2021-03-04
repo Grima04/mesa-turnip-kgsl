@@ -198,6 +198,7 @@ struct draw_context
          unsigned min_index;
          unsigned max_index;
          unsigned drawid;
+         unsigned viewid;
          
          /** vertex arrays */
          struct draw_vertex_buffer vbuffer[PIPE_MAX_ATTRIBS];

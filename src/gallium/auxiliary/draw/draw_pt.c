@@ -540,7 +540,7 @@ draw_vbo(struct draw_context *draw,
    draw->pt.user.max_index = info->index_bounds_valid ? info->max_index : ~0;
    draw->pt.user.eltSize = info->index_size ? draw->pt.user.eltSizeIB : 0;
    draw->pt.user.drawid = info->drawid;
-
+   draw->pt.user.viewid = 0;
    draw->pt.vertices_per_patch = info->vertices_per_patch;
 
    if (0)
@@ -604,7 +604,13 @@ draw_vbo(struct draw_context *draw,
     * the min_index/max_index hints given by gallium frontends.
     */
 
-   draw_instances(draw, info, draws, count);
+   if (info->view_mask) {
+      u_foreach_bit(i, info->view_mask) {
+         draw->pt.user.viewid = i;
+         draw_instances(draw, info, draws, count);
+      }
+   } else
+      draw_instances(draw, info, draws, count);
 
    /* If requested emit the pipeline statistics for this run */
    if (draw->collect_statistics) {
