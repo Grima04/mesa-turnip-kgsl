@@ -82,11 +82,6 @@ radv_use_tc_compat_htile_for_image(struct radv_device *device,
 	if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
 		return false;
 
-	if (pCreateInfo->mipLevels > 1 &&
-	    (device->physical_device->rad_info.chip_class < GFX10 ||
-	     pCreateInfo->arrayLayers > 1))
-		return false;
-
 	/* Do not enable TC-compatible HTILE if the image isn't readable by a
 	 * shader because no texture fetches will happen.
 	 */
