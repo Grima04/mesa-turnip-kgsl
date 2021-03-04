@@ -84,17 +84,13 @@ condense_writemask(unsigned expanded_mask,
 static void
 print_alu_opcode(FILE *fp, midgard_alu_op op)
 {
-        bool int_op = false;
-
-        if (alu_opcode_props[op].name) {
+        if (alu_opcode_props[op].name)
                 fprintf(fp, "%s", alu_opcode_props[op].name);
-
-                int_op = midgard_is_integer_op(op);
-        } else
+        else
                 fprintf(fp, "alu_op_%02X", op);
 
         /* For constant analysis */
-        is_instruction_int = int_op;
+        is_instruction_int = midgard_is_integer_op(op);
 }
 
 static void
@@ -105,9 +101,6 @@ print_ld_st_opcode(FILE *fp, midgard_load_store_op op)
         else
                 fprintf(fp, "ldst_op_%02X", op);
 }
-
-static bool is_embedded_constant_half = false;
-static bool is_embedded_constant_int = false;
 
 static char
 prefix_for_bits(unsigned bits)
@@ -133,13 +126,6 @@ uint16_t midg_ever_written = 0;
 static void
 print_reg(FILE *fp, unsigned reg, unsigned bits)
 {
-        /* Perform basic static analysis for expanding constants correctly */
-
-        if (reg == 26) {
-                is_embedded_constant_int = is_instruction_int;
-                is_embedded_constant_half = (bits < 32);
-        }
-
         unsigned uniform_reg = 23 - reg;
         bool is_uniform = false;
 
@@ -1674,10 +1660,6 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id)
 
                 case TAG_ALU_4 ... TAG_ALU_16_WRITEOUT:
                         branch_forward = print_alu_word(fp, &words[i], num_quad_words, tabs, i + 4*num_quad_words);
-
-                        /* Reset word static analysis state */
-                        is_embedded_constant_half = false;
-                        is_embedded_constant_int = false;
 
                         /* TODO: infer/verify me */
                         if (tag >= TAG_ALU_4_WRITEOUT)
