@@ -182,6 +182,8 @@ struct ir3_shader_key;
 struct fd_context {
 	struct pipe_context base;
 
+	struct threaded_context *tc;
+
 	struct list_head node;   /* node in screen->context_list */
 
 	/* We currently need to serialize emitting GMEM batches, because of
@@ -549,6 +551,7 @@ void fd_emit_string5(struct fd_ringbuffer *ring, const char *string, int len);
 struct pipe_context * fd_context_init(struct fd_context *ctx,
 		struct pipe_screen *pscreen, const uint8_t *primtypes,
 		void *priv, unsigned flags);
+struct pipe_context * fd_context_init_tc(struct pipe_context *pctx, unsigned flags);
 
 void fd_context_destroy(struct pipe_context *pctx) assert_dt;
 

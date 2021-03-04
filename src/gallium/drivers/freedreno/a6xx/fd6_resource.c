@@ -112,6 +112,8 @@ void
 fd6_validate_format(struct fd_context *ctx, struct fd_resource *rsc,
 		enum pipe_format format)
 {
+	tc_assert_driver_thread(ctx->tc);
+
 	if (!rsc->layout.ubwc)
 		return;
 

@@ -487,6 +487,8 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
 void
 fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
 {
+	tc_assert_driver_thread(ctx->tc);
+
 	bool success =
 		fd_try_shadow_resource(ctx, rsc, 0, NULL, FD_FORMAT_MOD_QCOM_TILED);
 
@@ -743,6 +745,8 @@ resource_transfer_map(struct pipe_context *pctx,
 	struct fd_resource *rsc = fd_resource(prsc);
 	char *buf;
 	int ret = 0;
+
+	tc_assert_driver_thread(ctx->tc);
 
 	/* we always need a staging texture for tiled buffers:
 	 *

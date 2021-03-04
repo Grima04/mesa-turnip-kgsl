@@ -192,7 +192,7 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	fd6_blitter_init(pctx);
 
 	fd6_ctx->border_color_uploader = u_upload_create(pctx, 4096, 0,
-                                                         PIPE_USAGE_STREAM, 0);
+			PIPE_USAGE_STREAM, 0);
 
-	return pctx;
+	return fd_context_init_tc(pctx, flags);
 }

@@ -249,6 +249,8 @@ fd_context_batch(struct fd_context *ctx)
 {
 	struct fd_batch *batch = NULL;
 
+	tc_assert_driver_thread(ctx->tc);
+
 	fd_batch_reference(&batch, ctx->batch);
 
 	if (unlikely(!batch)) {
@@ -612,4 +614,30 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 fail:
 	pctx->destroy(pctx);
 	return NULL;
+}
+
+struct pipe_context *
+fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
+{
+	struct fd_context *ctx = fd_context(pctx);
+
+	if (!(flags & PIPE_CONTEXT_PREFER_THREADED))
+		return pctx;
+
+	/* Clover (compute-only) is unsupported. */
+	if (flags & PIPE_CONTEXT_COMPUTE_ONLY)
+		return pctx;
+
+	struct pipe_context *tc = threaded_context_create(pctx,
+			&ctx->screen->transfer_pool,
+			fd_replace_buffer_storage,
+			NULL, // TODO fd_create_fence for async flush
+			&ctx->tc);
+
+	uint64_t total_ram;
+	if (tc && tc != pctx && os_get_total_physical_memory(&total_ram)) {
+		((struct threaded_context *) tc)->bytes_mapped_limit = total_ram / 16;
+	}
+
+	return tc;
 }

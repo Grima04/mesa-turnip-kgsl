@@ -1072,6 +1072,8 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	struct fd_context *ctx = fd_context(data);
 	struct fd6_program_state *state = CALLOC_STRUCT(fd6_program_state);
 
+	tc_assert_driver_thread(ctx->tc);
+
 	/* if we have streamout, use full VS in binning pass, as the
 	 * binning pass VS will have outputs on other than position/psize
 	 * stripped out:

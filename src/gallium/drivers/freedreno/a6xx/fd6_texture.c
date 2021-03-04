@@ -339,6 +339,9 @@ fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so
 	}
 }
 
+/* NOTE this can be called in either driver thread or frontend thread
+ * depending on where the last unref comes from
+ */
 static void
 fd6_sampler_view_destroy(struct pipe_context *pctx,
 		struct pipe_sampler_view *_view)
