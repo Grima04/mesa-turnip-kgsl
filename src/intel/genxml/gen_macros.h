@@ -57,7 +57,6 @@
 #endif
 
 #define GEN_GEN ((GEN_VERSIONx10) / 10)
-#define GEN_IS_G4X ((GEN_VERSIONx10) == 45)
 
 /* Prefixing macros */
 #if (GEN_VERSIONx10 == 40)

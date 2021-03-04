@@ -1332,7 +1332,7 @@ genX(upload_clip_state)(struct brw_context *brw)
                                        ctx->Transform.DepthClampFar);
 
       /* _NEW_TRANSFORM */
-      if (GEN_GEN == 5 || GEN_IS_G4X) {
+      if (GEN_GEN == 5 || GEN_VERSIONx10 == 45) {
          clip.UserClipDistanceClipTestEnableBitmask =
             ctx->Transform.ClipPlanesEnabled;
       } else {
@@ -1352,7 +1352,7 @@ genX(upload_clip_state)(struct brw_context *brw)
 
       clip.ClipMode = brw->clip.prog_data->clip_mode;
 
-#if GEN_IS_G4X
+#if GEN_VERSIONx10 == 45
       clip.NegativeWClipTestEnable = true;
 #endif
    }
@@ -1679,7 +1679,7 @@ genX(upload_sf)(struct brw_context *brw)
          sf.SmoothPointEnable = false;
 #endif
 
-#if GEN_IS_G4X || GEN_GEN >= 5
+#if GEN_VERSIONx10 == 45 || GEN_GEN >= 5
       sf.AALineDistanceMode = AALINEDISTANCE_TRUE;
 #endif
 
