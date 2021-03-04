@@ -246,6 +246,54 @@ do_blit(struct fd_context *ctx, const struct pipe_blit_info *blit, bool fallback
 	}
 }
 
+/**
+ * Replace the storage of dst with src.  This is only used by TC in the
+ * DISCARD_WHOLE_RESOURCE path, and src is a freshly allocated buffer.
+ */
+void
+fd_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *pdst,
+		struct pipe_resource *psrc)
+{
+	struct fd_context  *ctx = fd_context(pctx);
+	struct fd_resource *dst = fd_resource(pdst);
+	struct fd_resource *src = fd_resource(psrc);
+
+	DBG("pdst=%p, psrc=%p", pdst, psrc);
+
+	/* This should only be called with buffers.. which side-steps some tricker
+	 * cases, like a rsc that is in a batch-cache key...
+	 */
+	assert(pdst->target == PIPE_BUFFER);
+	assert(psrc->target == PIPE_BUFFER);
+	assert(dst->track->bc_batch_mask == 0);
+	assert(src->track->bc_batch_mask == 0);
+	assert(src->track->batch_mask == 0);
+	assert(src->track->write_batch == NULL);
+	assert(memcmp(&dst->layout, &src->layout, sizeof(dst->layout)) == 0);
+
+	/* get rid of any references that batch-cache might have to us (which
+	 * should empty/destroy rsc->batches hashset)
+	 *
+	 * Note that we aren't actually destroying dst, but we are replacing
+	 * it's storage so we want to go thru the same motions of decoupling
+	 * it's batch connections.
+	 */
+	fd_bc_invalidate_resource(dst, true);
+	rebind_resource(dst);
+
+	fd_screen_lock(ctx->screen);
+
+	fd_bo_del(dst->bo);
+	dst->bo = fd_bo_ref(src->bo);
+
+	fd_resource_tracking_reference(&dst->track, src->track);
+	src->is_replacement = true;
+
+	dst->seqno = p_atomic_inc_return(&ctx->screen->rsc_seqno);
+
+	fd_screen_unlock(ctx->screen);
+}
+
 static void
 flush_resource(struct fd_context *ctx, struct fd_resource *rsc, unsigned usage);
 
@@ -918,7 +966,9 @@ fd_resource_destroy(struct pipe_screen *pscreen,
 		struct pipe_resource *prsc)
 {
 	struct fd_resource *rsc = fd_resource(prsc);
-	fd_bc_invalidate_resource(rsc, true);
+
+	if (!rsc->is_replacement)
+		fd_bc_invalidate_resource(rsc, true);
 	if (rsc->bo)
 		fd_bo_del(rsc->bo);
 	if (rsc->lrz)

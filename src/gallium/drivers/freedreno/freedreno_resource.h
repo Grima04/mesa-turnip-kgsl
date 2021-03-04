@@ -142,6 +142,13 @@ struct fd_resource {
 	/* Sequence # incremented each time bo changes: */
 	uint16_t seqno;
 
+	/* Is this buffer a replacement created by threaded_context to avoid
+	 * a stall in PIPE_MAP_DISCARD_WHOLE_RESOURCE|PIPE_MAP_WRITE case?
+	 * If so, it no longer "owns" it's rsc->track, and so should not
+	 * invalidate when the rsc is destroyed.
+	 */
+	bool is_replacement : 1;
+
 	/* Uninitialized resources with UBWC format need their UBWC flag data
 	 * cleared before writes, as the UBWC state is read and used during
 	 * writes, so undefined UBWC flag data results in undefined results.
@@ -335,6 +342,8 @@ void fd_resource_context_init(struct pipe_context *pctx);
 
 uint32_t fd_setup_slices(struct fd_resource *rsc);
 void fd_resource_resize(struct pipe_resource *prsc, uint32_t sz);
+void fd_replace_buffer_storage(struct pipe_context *ctx, struct pipe_resource *dst,
+		struct pipe_resource *src) in_dt;
 void fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc) assert_dt;
 void fd_resource_dump(struct fd_resource *rsc, const char *name);
 
