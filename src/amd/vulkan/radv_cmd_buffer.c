@@ -6289,9 +6289,10 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		 * CMASK is used (such as when transitioning to a compressed
 		 * layout).
 		 */
-		if (radv_image_has_fmask(image) &&
-		    radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
-					       dst_render_loop, dst_queue_mask)) {
+		if (radv_image_is_tc_compat_cmask(image) ||
+		    (radv_image_has_fmask(image) &&
+		     radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
+					       dst_render_loop, dst_queue_mask))) {
 			value = 0xccccccccu;
 		}
 
