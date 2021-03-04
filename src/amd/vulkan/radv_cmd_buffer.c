@@ -5283,13 +5283,21 @@ radv_cs_emit_draw_packet(struct radv_cmd_buffer *cmd_buffer,
 	                            S_0287F0_USE_OPAQUE(use_opaque));
 }
 
+/**
+ * Emit a PKT3_DRAW_INDEX_2 packet to render "index_count` vertices.
+ *
+ * The starting address "index_va" may point anywhere within the index buffer. The number of
+ * indexes allocated in the index buffer *past that point* is specified by "max_index_count".
+ * Hardware uses this information to return 0 for out-of-bounds reads.
+ */
 static void
 radv_cs_emit_draw_indexed_packet(struct radv_cmd_buffer *cmd_buffer,
                                  uint64_t index_va,
+                                 uint32_t max_index_count,
                                  uint32_t index_count)
 {
 	radeon_emit(cmd_buffer->cs, PKT3(PKT3_DRAW_INDEX_2, 4, cmd_buffer->state.predicating));
-	radeon_emit(cmd_buffer->cs, cmd_buffer->state.max_index_count);
+	radeon_emit(cmd_buffer->cs, max_index_count);
 	radeon_emit(cmd_buffer->cs, index_va);
 	radeon_emit(cmd_buffer->cs, index_va >> 32);
 	radeon_emit(cmd_buffer->cs, index_count);
@@ -5415,10 +5423,13 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 			int index_size = radv_get_vgt_index_size(state->index_type);
 			uint64_t index_va;
 
+ 			uint32_t remaining_indexes = cmd_buffer->state.max_index_count;
+ 			remaining_indexes = MAX2(remaining_indexes, info->first_index) - info->first_index;
+
 			/* Skip draw calls with 0-sized index buffers. They
 			 * cause a hang on some chips, like Navi10-14.
 			 */
-			if (!cmd_buffer->state.max_index_count)
+			if (!remaining_indexes)
 				return;
 
 			index_va = state->index_va;
@@ -5427,6 +5438,7 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 			if (!state->subpass->view_mask) {
 				radv_cs_emit_draw_indexed_packet(cmd_buffer,
 								 index_va,
+ 								 remaining_indexes,
 								 info->count);
 			} else {
 				u_foreach_bit(i, state->subpass->view_mask) {
@@ -5434,6 +5446,7 @@ radv_emit_draw_packets(struct radv_cmd_buffer *cmd_buffer,
 
 					radv_cs_emit_draw_indexed_packet(cmd_buffer,
 									 index_va,
+ 									 remaining_indexes,
 									 info->count);
 				}
 			}
