@@ -1218,7 +1218,7 @@ apply_var_decoration(struct vtn_builder *b,
       break;
 
    case SpvDecorationLocation:
-      vtn_fail("Handled above");
+      vtn_fail("Should be handled earlier by var_decoration_cb()");
 
    case SpvDecorationBlock:
    case SpvDecorationBufferBlock:
@@ -1875,14 +1875,6 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
                                 var_is_patch_cb, &var->patch);
       }
 
-      /* For inputs and outputs, we immediately split structures.  This
-       * is for a couple of reasons.  For one, builtins may all come in
-       * a struct and we really want those split out into separate
-       * variables.  For another, interpolation qualifiers can be
-       * applied to members of the top-level struct ane we need to be
-       * able to preserve that information.
-       */
-
       var->var = rzalloc(b->shader, nir_variable);
       var->var->name = ralloc_strdup(var->var, val->name);
       var->var->type = vtn_type_get_nir_type(b, var->type, var->mode);
@@ -1910,9 +1902,17 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
          var->var->interface_type = vtn_type_get_nir_type(b, iface_type,
                                                           var->mode);
 
+      /* If it's a block, set it up as per-member so can be splitted later by
+       * nir_split_per_member_structs.
+       *
+       * This is for a couple of reasons.  For one, builtins may all come in a
+       * block and we really want those split out into separate variables.
+       * For another, interpolation qualifiers can be applied to members of
+       * the top-level struct and we need to be able to preserve that
+       * information.
+       */
       if (per_vertex_type->base_type == vtn_base_type_struct &&
           per_vertex_type->block) {
-         /* It's a struct.  Set it up as per-member. */
          var->var->num_members = glsl_get_length(per_vertex_type->type);
          var->var->members = rzalloc_array(var->var, struct nir_variable_data,
                                            var->var->num_members);
