@@ -82,8 +82,6 @@ fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond, bool discard)
 {
 	fd_fence_ref(&ctx->last_fence, NULL);
 
-	util_blitter_save_fragment_constant_buffer_slot(ctx->blitter,
-			ctx->constbuf[PIPE_SHADER_FRAGMENT].cb);
 	util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vtx.vertexbuf.vb);
 	util_blitter_save_vertex_elements(ctx->blitter, ctx->vtx.vtx);
 	util_blitter_save_vertex_shader(ctx->blitter, ctx->prog.vs);
@@ -183,6 +181,9 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	 * discard, that would have been already handled in fd_clear().
 	 */
 	fd_blitter_pipe_begin(ctx, false, false);
+
+	util_blitter_save_fragment_constant_buffer_slot(ctx->blitter,
+			ctx->constbuf[PIPE_SHADER_FRAGMENT].cb);
 
 	util_blitter_common_clear_setup(blitter, pfb->width, pfb->height,
 			buffers, NULL, NULL);
