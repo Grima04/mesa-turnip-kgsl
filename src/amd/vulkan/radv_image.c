@@ -476,11 +476,14 @@ radv_get_surface_flags(struct radv_device *device,
 
 	if (is_depth) {
 		flags |= RADEON_SURF_ZBUFFER;
-		if (!radv_use_htile_for_image(device, image) ||
-		    (device->instance->debug_flags & RADV_DEBUG_NO_HIZ))
+
+		if (radv_use_htile_for_image(device, image) &&
+		    !(device->instance->debug_flags & RADV_DEBUG_NO_HIZ)) {
+			if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
+				flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
+		} else {
 			flags |= RADEON_SURF_NO_HTILE;
-		if (radv_use_tc_compat_htile_for_image(device, pCreateInfo, image_format))
-			flags |= RADEON_SURF_TC_COMPATIBLE_HTILE;
+		}
 	}
 
 	if (is_stencil)
