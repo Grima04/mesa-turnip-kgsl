@@ -2175,7 +2175,10 @@ vtn_handle_constant(struct vtn_builder *b, SpvOp opcode,
    }
 
    /* Now that we have the value, update the workgroup size if needed */
-   vtn_foreach_decoration(b, val, handle_workgroup_size_decoration_cb, NULL);
+   if (b->entry_point_stage == MESA_SHADER_COMPUTE ||
+       b->entry_point_stage == MESA_SHADER_KERNEL)
+      vtn_foreach_decoration(b, val, handle_workgroup_size_decoration_cb,
+                             NULL);
 }
 
 static void
@@ -5922,6 +5925,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
                                  vtn_handle_execution_mode_id, NULL);
 
    if (b->workgroup_size_builtin) {
+      vtn_assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
       vtn_assert(b->workgroup_size_builtin->type->type ==
                  glsl_vector_type(GLSL_TYPE_UINT, 3));
 
