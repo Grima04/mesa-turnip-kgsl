@@ -498,6 +498,7 @@ try_setup_point( struct lp_setup_context *setup,
    point->inputs.opaque = FALSE;
    point->inputs.layer = layer;
    point->inputs.viewport_index = viewport_index;
+   point->inputs.view_index = setup->view_index;
 
    {
       struct lp_rast_plane *plane = GET_PLANES(point);
