@@ -108,12 +108,12 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                                struct MALI_RENDERER_STATE *rsd)
 {
         unsigned fau_count = DIV_ROUND_UP(info->push.count, 2);
+        rsd->preload.uniform_count = fau_count;
 
         switch (info->stage) {
         case MESA_SHADER_VERTEX:
                 rsd->properties.bifrost.zs_update_operation = MALI_PIXEL_KILL_STRONG_EARLY;
 
-                rsd->preload.uniform_count = fau_count;
                 rsd->preload.vertex.vertex_id = true;
                 rsd->preload.vertex.instance_id = true;
                 break;
@@ -124,7 +124,6 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 rsd->properties.bifrost.shader_wait_dependency_6 = info->bifrost.wait_6;
                 rsd->properties.bifrost.shader_wait_dependency_7 = info->bifrost.wait_7;
 
-                rsd->preload.uniform_count = fau_count;
                 rsd->preload.fragment.fragment_position = info->fs.reads_frag_coord;
                 rsd->preload.fragment.coverage = true;
                 rsd->preload.fragment.primitive_flags = info->fs.reads_face;
@@ -141,7 +140,6 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
                 break;
 
         case MESA_SHADER_COMPUTE:
-                rsd->preload.uniform_count = fau_count;
                 rsd->preload.compute.local_invocation_xy = true;
                 rsd->preload.compute.local_invocation_z = true;
                 rsd->preload.compute.work_group_x = true;
