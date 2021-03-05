@@ -1226,9 +1226,9 @@ _mesa_test_framebuffer_completeness(struct gl_context *ctx,
       }
       else if (att->Type == GL_RENDERBUFFER_EXT) {
          minWidth = MIN2(minWidth, att->Renderbuffer->Width);
-         maxWidth = MAX2(minWidth, att->Renderbuffer->Width);
+         maxWidth = MAX2(maxWidth, att->Renderbuffer->Width);
          minHeight = MIN2(minHeight, att->Renderbuffer->Height);
-         maxHeight = MAX2(minHeight, att->Renderbuffer->Height);
+         maxHeight = MAX2(maxHeight, att->Renderbuffer->Height);
          f = att->Renderbuffer->InternalFormat;
          baseFormat = att->Renderbuffer->_BaseFormat;
          attFormat = att->Renderbuffer->Format;
@@ -1305,7 +1305,8 @@ _mesa_test_framebuffer_completeness(struct gl_context *ctx,
          }
       }
       else {
-         if (!ctx->Extensions.ARB_framebuffer_object) {
+         if (!_mesa_has_ARB_framebuffer_object(ctx) &&
+             !_mesa_is_gles3(ctx)) {
             /* check that width, height, format are same */
             if (minWidth != maxWidth || minHeight != maxHeight) {
                fb->_Status = GL_FRAMEBUFFER_INCOMPLETE_DIMENSIONS_EXT;
