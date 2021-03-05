@@ -239,7 +239,7 @@ schedule(struct ir3_sched_ctx *ctx, struct ir3_instruction *instr)
 	list_addtail(&instr->node, &instr->block->instr_list);
 	ctx->scheduled = instr;
 
-	if (is_kill(instr)){
+	if (is_kill_or_demote(instr)){
 		assert(ctx->remaining_kills > 0);
 		ctx->remaining_kills--;
 	}
@@ -409,7 +409,7 @@ check_instr(struct ir3_sched_ctx *ctx, struct ir3_sched_notes *notes,
 	 *
 	 * TODO we could handle this by false-deps now, probably.
 	 */
-	if (is_kill(instr)) {
+	if (is_kill_or_demote(instr)) {
 		struct ir3 *ir = instr->block->shader;
 
 		for (unsigned i = 0; i < ir->baryfs_count; i++) {
@@ -1003,7 +1003,7 @@ sched_node_add_deps(struct ir3_instruction *instr)
 	/* NOTE that all inputs must be scheduled before a kill, so
 	 * mark these to be prioritized as well:
 	 */
-	if (is_kill(instr) || is_input(instr)) {
+	if (is_kill_or_demote(instr) || is_input(instr)) {
 		mark_kill_path(instr);
 	}
 
@@ -1073,7 +1073,7 @@ sched_block(struct ir3_sched_ctx *ctx, struct ir3_block *block)
 	ctx->remaining_kills = 0;
 	ctx->remaining_tex = 0;
 	foreach_instr_safe (instr, &ctx->unscheduled_list) {
-		if (is_kill(instr))
+		if (is_kill_or_demote(instr))
 			ctx->remaining_kills++;
 		if (is_tex_or_prefetch(instr))
 			ctx->remaining_tex++;

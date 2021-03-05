@@ -197,7 +197,7 @@ choose_instr(struct ir3_postsched_ctx *ctx)
 		if (d > 0)
 			continue;
 
-		if (!is_kill(n->instr))
+		if (!is_kill_or_demote(n->instr))
 			continue;
 
 		if (!chosen || (chosen->max_delay < n->max_delay))
@@ -562,7 +562,7 @@ sched_dag_init(struct ir3_postsched_ctx *ctx)
 
 		if (is_input(instr)) {
 			util_dynarray_append(&inputs, struct ir3_instruction *, instr);
-		} else if (is_kill(instr)) {
+		} else if (is_kill_or_demote(instr)) {
 			util_dynarray_foreach(&inputs, struct ir3_instruction *, instrp) {
 				struct ir3_instruction *input = *instrp;
 				struct ir3_postsched_node *in = input->data;

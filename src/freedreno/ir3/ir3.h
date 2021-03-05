@@ -668,9 +668,9 @@ static inline bool is_flow(struct ir3_instruction *instr)
 	return (opc_cat(instr->opc) == 0);
 }
 
-static inline bool is_kill(struct ir3_instruction *instr)
+static inline bool is_kill_or_demote(struct ir3_instruction *instr)
 {
-	return instr->opc == OPC_KILL;
+	return instr->opc == OPC_KILL || instr->opc == OPC_DEMOTE;
 }
 
 static inline bool is_nop(struct ir3_instruction *instr)
@@ -1591,6 +1591,7 @@ ir3_##name(struct ir3_block *block,                                      \
 INSTR1(B)
 INSTR0(JUMP)
 INSTR1(KILL)
+INSTR1(DEMOTE)
 INSTR0(END)
 INSTR0(CHSH)
 INSTR0(CHMASK)

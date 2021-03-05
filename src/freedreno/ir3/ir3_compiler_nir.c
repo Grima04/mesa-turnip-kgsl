@@ -1950,10 +1950,13 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		}
 		break;
 	case nir_intrinsic_discard_if:
-	case nir_intrinsic_discard: {
+	case nir_intrinsic_discard:
+	case nir_intrinsic_demote:
+	case nir_intrinsic_demote_if: {
 		struct ir3_instruction *cond, *kill;
 
-		if (intr->intrinsic == nir_intrinsic_discard_if) {
+		if (intr->intrinsic == nir_intrinsic_discard_if ||
+			intr->intrinsic == nir_intrinsic_demote_if) {
 			/* conditional discard: */
 			src = ir3_get_src(ctx, &intr->src[0]);
 			cond = src[0];
@@ -1970,7 +1973,13 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		cond->regs[0]->num = regid(REG_P0, 0);
 		cond->regs[0]->flags &= ~IR3_REG_SSA;
 
-		kill = ir3_KILL(b, cond, 0);
+		if (intr->intrinsic == nir_intrinsic_demote ||
+			intr->intrinsic == nir_intrinsic_demote_if) {
+			kill = ir3_DEMOTE(b, cond, 0);
+		} else {
+			kill = ir3_KILL(b, cond, 0);
+		}
+
 		/* Side-effects should not be moved on a different side of the kill */
 		kill->barrier_class = IR3_BARRIER_IMAGE_W | IR3_BARRIER_BUFFER_W;
 		kill->barrier_conflict = IR3_BARRIER_IMAGE_W | IR3_BARRIER_BUFFER_W;

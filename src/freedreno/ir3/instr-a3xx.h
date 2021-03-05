@@ -90,6 +90,9 @@ typedef enum {
 	OPC_BALL            = _OPC(0, 45),
 	OPC_BRAX            = _OPC(0, 46),
 
+	/* Logical opcode to distinguish kill and demote */
+	OPC_DEMOTE          = _OPC(0, 47),
+
 	/* category 1: */
 	OPC_MOV             = _OPC(1, 0),
 	OPC_MOVP            = _OPC(1, 1),
