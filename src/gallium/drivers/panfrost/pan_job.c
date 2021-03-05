@@ -874,7 +874,7 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                         pan_blend_get_shader_locked(dev, &blend_state,
                                                     loc - FRAG_RESULT_DATA0);
 
-                assert(b->work_reg_count <= 4);
+                assert(pan_is_bifrost(dev) || b->work_reg_count <= 4);
                 memcpy(bo->ptr.cpu, b->binary.data, b->binary.size);
 
                 blend_shader = bo->ptr.gpu | b->first_tag;
