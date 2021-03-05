@@ -633,6 +633,9 @@ bi_node_to_index(unsigned node, unsigned node_count)
 #define bi_foreach_block(ctx, v) \
         list_for_each_entry(pan_block, v, &ctx->blocks, link)
 
+#define bi_foreach_block_rev(ctx, v) \
+        list_for_each_entry_rev(pan_block, v, &ctx->blocks, link)
+
 #define bi_foreach_block_from(ctx, from, v) \
         list_for_each_entry_from(pan_block, v, from, &ctx->blocks, link)
 
