@@ -995,6 +995,8 @@ draw_current_shader_uses_viewport_index(const struct draw_context *draw)
 {
    if (draw->gs.geometry_shader)
       return draw->gs.geometry_shader->info.writes_viewport_index;
+   else if (draw->tes.tess_eval_shader)
+      return draw->tes.tess_eval_shader->info.writes_viewport_index;
    return draw->vs.vertex_shader->info.writes_viewport_index;
 }
 
