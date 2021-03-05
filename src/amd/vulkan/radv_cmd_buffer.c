@@ -4912,6 +4912,12 @@ void radv_CmdSetFragmentShadingRateKHR(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_cmd_state *state = &cmd_buffer->state;
 
+	if (state->dynamic.fragment_shading_rate.size.width == pFragmentSize->width &&
+	    state->dynamic.fragment_shading_rate.size.height == pFragmentSize->height &&
+	    state->dynamic.fragment_shading_rate.combiner_ops[0] == combinerOps[0] &&
+	    state->dynamic.fragment_shading_rate.combiner_ops[1] == combinerOps[1])
+		return;
+
 	state->dynamic.fragment_shading_rate.size = *pFragmentSize;
 	for (unsigned i = 0; i < 2; i++)
 		state->dynamic.fragment_shading_rate.combiner_ops[i] = combinerOps[i];
