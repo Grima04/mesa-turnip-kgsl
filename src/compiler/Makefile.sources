@@ -278,6 +278,7 @@ NIR_FILES = \
 	nir/nir_lower_io_to_temporaries.c \
 	nir/nir_lower_io_to_scalar.c \
 	nir/nir_lower_io_to_vector.c \
+	nir/nir_lower_is_helper_invocation.c \
 	nir/nir_lower_multiview.c \
 	nir/nir_lower_mediump.c \
 	nir/nir_lower_memcpy.c \
