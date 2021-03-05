@@ -968,16 +968,13 @@ bi_rewrite_fau_to_pass(bi_tuple *tuple)
 static void
 bi_rewrite_zero(bi_instr *ins, bool fma)
 {
+        bi_index zero = bi_passthrough(fma ? BIFROST_SRC_STAGE : BIFROST_SRC_FAU_LO);
+
         bi_foreach_src(ins, s) {
                 bi_index src = ins->src[s];
-                unsigned swizzle = src.swizzle;
 
-                if (src.type == BI_INDEX_CONSTANT && src.value == 0) {
-                        assert(!src.abs && !src.neg);
-                        ins->src[s] = bi_passthrough(
-                                        fma ? BIFROST_SRC_STAGE : BIFROST_SRC_FAU_LO);
-                        ins->src[s].swizzle = swizzle;
-                }
+                if (src.type == BI_INDEX_CONSTANT && src.value == 0)
+                        ins->src[s] = bi_replace_index(src, zero);
         }
 }
 
@@ -990,7 +987,6 @@ bi_rewrite_constants_to_pass(bi_tuple *tuple, uint64_t constant, bool pcrel)
                 if (ins->src[s].type != BI_INDEX_CONSTANT) continue;
 
                 uint32_t cons = ins->src[s].value;
-                unsigned swizzle = ins->src[s].swizzle;
 
                 ASSERTED bool lo = (cons == (constant & 0xffffffff));
                 bool hi = (cons == (constant >> 32ull));
@@ -1009,9 +1005,9 @@ bi_rewrite_constants_to_pass(bi_tuple *tuple, uint64_t constant, bool pcrel)
 
                 assert(lo || hi);
 
-                ins->src[s] = bi_passthrough(hi ?
-                                BIFROST_SRC_FAU_HI : BIFROST_SRC_FAU_LO);
-                ins->src[s].swizzle = swizzle;
+                ins->src[s] = bi_replace_index(ins->src[s],
+                                bi_passthrough(hi ?  BIFROST_SRC_FAU_HI :
+                                        BIFROST_SRC_FAU_LO));
         }
 }
 
