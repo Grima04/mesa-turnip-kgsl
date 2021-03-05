@@ -671,12 +671,14 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          state->scissor_dirty = true;
       }
 
-      if (!dynamic_states[VK_DYNAMIC_STATE_VIEWPORT]) {
+      if (!dynamic_states[VK_DYNAMIC_STATE_VIEWPORT] &&
+          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)]) {
          for (i = 0; i < vpi->viewportCount; i++)
             get_viewport_xform(&vpi->pViewports[i], state->viewports[i].scale, state->viewports[i].translate);
          state->vp_dirty = true;
       }
-      if (!dynamic_states[VK_DYNAMIC_STATE_SCISSOR]) {
+      if (!dynamic_states[VK_DYNAMIC_STATE_SCISSOR] &&
+          !dynamic_states[conv_dynamic_state_idx(VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT)]) {
          for (i = 0; i < vpi->scissorCount; i++) {
             const VkRect2D *ss = &vpi->pScissors[i];
             state->scissors[i].minx = ss->offset.x;
