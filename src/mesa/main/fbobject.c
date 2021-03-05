@@ -800,11 +800,12 @@ is_format_color_renderable(const struct gl_context *ctx, mesa_format format,
              (_mesa_has_EXT_color_buffer_half_float(ctx) &&
               _mesa_has_EXT_texture_rg(ctx));
    case GL_RGBA16F:
+      return _mesa_is_gles3(ctx) ||
+             _mesa_has_EXT_color_buffer_half_float(ctx);
    case GL_RGBA32F:
       return _mesa_has_EXT_color_buffer_float(ctx);
    case GL_RGB16F:
-      return _mesa_has_EXT_color_buffer_half_float(ctx) &&
-              _mesa_has_OES_texture_half_float(ctx);
+      return _mesa_has_EXT_color_buffer_half_float(ctx);
    case GL_RGB32F:
    case GL_RGB32I:
    case GL_RGB32UI:
@@ -2316,6 +2317,13 @@ _mesa_base_fbo_format(const struct gl_context *ctx, GLenum internalFormat)
          ? GL_INTENSITY : 0;
 
    case GL_R16F:
+      return ((_mesa_is_desktop_gl(ctx) &&
+               ctx->Extensions.ARB_texture_rg &&
+               ctx->Extensions.ARB_texture_float) ||
+              _mesa_is_gles3(ctx) /* EXT_color_buffer_float */ ||
+              (_mesa_has_EXT_color_buffer_half_float(ctx) &&
+               _mesa_has_EXT_texture_rg(ctx)))
+         ? GL_RED : 0;
    case GL_R32F:
       return ((_mesa_is_desktop_gl(ctx) &&
                ctx->Extensions.ARB_texture_rg &&
@@ -2323,6 +2331,13 @@ _mesa_base_fbo_format(const struct gl_context *ctx, GLenum internalFormat)
               _mesa_is_gles3(ctx) /* EXT_color_buffer_float */ )
          ? GL_RED : 0;
    case GL_RG16F:
+      return ((_mesa_is_desktop_gl(ctx) &&
+               ctx->Extensions.ARB_texture_rg &&
+               ctx->Extensions.ARB_texture_float) ||
+              _mesa_is_gles3(ctx) /* EXT_color_buffer_float */ ||
+              (_mesa_has_EXT_color_buffer_half_float(ctx) &&
+               _mesa_has_EXT_texture_rg(ctx)))
+         ? GL_RG : 0;
    case GL_RG32F:
       return ((_mesa_is_desktop_gl(ctx) &&
                ctx->Extensions.ARB_texture_rg &&
@@ -2330,13 +2345,17 @@ _mesa_base_fbo_format(const struct gl_context *ctx, GLenum internalFormat)
               _mesa_is_gles3(ctx) /* EXT_color_buffer_float */ )
          ? GL_RG : 0;
    case GL_RGB16F:
-      return (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_float) ||
-             (_mesa_is_gles(ctx) && _mesa_has_EXT_color_buffer_half_float(ctx))
+      return (_mesa_has_ARB_texture_float(ctx) ||
+              _mesa_has_EXT_color_buffer_half_float(ctx))
          ? GL_RGB : 0;
    case GL_RGB32F:
       return (_mesa_is_desktop_gl(ctx) && ctx->Extensions.ARB_texture_float)
          ? GL_RGB : 0;
    case GL_RGBA16F:
+      return (_mesa_has_ARB_texture_float(ctx) ||
+              _mesa_is_gles3(ctx) ||
+              _mesa_has_EXT_color_buffer_half_float(ctx))
+         ? GL_RGBA : 0;
    case GL_RGBA32F:
       return ((_mesa_is_desktop_gl(ctx) &&
                ctx->Extensions.ARB_texture_float) ||
