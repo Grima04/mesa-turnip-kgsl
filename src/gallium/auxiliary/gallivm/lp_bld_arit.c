@@ -1580,7 +1580,6 @@ lp_build_min(struct lp_build_context *bld,
    return lp_build_min_simple(bld, a, b, GALLIVM_NAN_BEHAVIOR_UNDEFINED);
 }
 
-
 /**
  * Generate min(a, b)
  * NaN's are handled according to the behavior specified by the

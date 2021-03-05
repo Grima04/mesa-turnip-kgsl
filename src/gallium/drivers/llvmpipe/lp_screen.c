@@ -340,6 +340,7 @@ llvmpipe_get_param(struct pipe_screen *screen, enum pipe_cap param)
    case PIPE_CAP_TGSI_TG4_COMPONENT_IN_SWIZZLE:
    case PIPE_CAP_TGSI_FS_FACE_IS_INTEGER_SYSVAL:
       return 1;
+   case PIPE_CAP_SAMPLER_REDUCTION_MINMAX:
    case PIPE_CAP_TGSI_TXQS:
    case PIPE_CAP_TGSI_VOTE:
    case PIPE_CAP_LOAD_CONSTBUF:

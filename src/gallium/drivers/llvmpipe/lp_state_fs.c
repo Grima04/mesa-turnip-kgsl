@@ -3399,6 +3399,7 @@ dump_fs_variant_key(struct lp_fragment_shader_variant_key *key)
       debug_printf("  .lod_bias_non_zero = %u\n", sampler->lod_bias_non_zero);
       debug_printf("  .apply_min_lod = %u\n", sampler->apply_min_lod);
       debug_printf("  .apply_max_lod = %u\n", sampler->apply_max_lod);
+      debug_printf("  .reduction_mode = %u\n", sampler->reduction_mode);
    }
    for (i = 0; i < key->nr_sampler_views; ++i) {
       const struct lp_static_texture_state *texture = &key->samplers[i].texture_state;
