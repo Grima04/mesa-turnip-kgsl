@@ -476,8 +476,8 @@ pandecode_uniform_buffers(mali_ptr pubufs, int ubufs_count, int job_no)
         uint64_t *PANDECODE_PTR_VAR(ubufs, umem, pubufs);
 
         for (int i = 0; i < ubufs_count; i++) {
-                unsigned size = (ubufs[i] & ((1 << 10) - 1)) * 16;
                 mali_ptr addr = (ubufs[i] >> 10) << 2;
+                unsigned size = addr ? (((ubufs[i] & ((1 << 10) - 1)) + 1) * 16) : 0;
 
                 pandecode_validate_buffer(addr, size);
 
