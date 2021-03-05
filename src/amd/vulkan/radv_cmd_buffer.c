@@ -4718,6 +4718,10 @@ void radv_CmdSetLineStippleEXT(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	struct radv_cmd_state *state = &cmd_buffer->state;
 
+	if (state->dynamic.line_stipple.factor == lineStippleFactor &&
+	    state->dynamic.line_stipple.pattern == lineStipplePattern)
+		return;
+
 	state->dynamic.line_stipple.factor = lineStippleFactor;
 	state->dynamic.line_stipple.pattern = lineStipplePattern;
 
