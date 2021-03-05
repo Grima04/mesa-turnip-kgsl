@@ -355,7 +355,7 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
       emit_instruction(new AluInstruction(op2_add_int, addr_vec.reg_i(0),
                                           {addr_vec.reg_i(0), Value::one_i}, last_write));
       store = new RatInstruction(cf_op, RatInstruction::STORE_TYPED,
-                                 temp2, addr_vec, 0, rat_id, 1,
+                                 temp2, addr_vec, m_ssbo_image_offset, rat_id, 1,
                                  1, 0, false);
       emit_instruction(store);
       if (!(nir_intrinsic_access(instr) & ACCESS_COHERENT))
