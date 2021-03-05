@@ -96,12 +96,12 @@ def _valgrind(glcpp, filename):
     extra_args = parse_test_file(contents, nl_format='\n')
 
     proc = subprocess.Popen(
-        ['valgrind', '--error-exitcode=31'] + glcpp + extra_args,
+        ['valgrind', '--error-exitcode=126'] + glcpp + extra_args,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.PIPE,
         stdin=subprocess.PIPE)
     _, errors = proc.communicate(contents)
-    if proc.returncode != 31:
+    if proc.returncode != 126:
         return (True, [])
     return (False, errors.decode('utf-8'))
 
