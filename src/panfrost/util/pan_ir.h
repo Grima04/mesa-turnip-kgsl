@@ -126,6 +126,7 @@ struct panfrost_compile_inputs {
                 uint64_t bifrost_blend_desc;
         } blend;
         bool shaderdb;
+        bool no_ubo_to_push;
 
         enum pipe_format rt_formats[8];
 };

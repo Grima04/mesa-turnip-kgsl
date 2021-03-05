@@ -258,6 +258,9 @@ mir_special_indices(compiler_context *ctx)
 void
 midgard_promote_uniforms(compiler_context *ctx)
 {
+        if (ctx->inputs->no_ubo_to_push)
+                return;
+
         struct mir_ubo_analysis analysis = mir_analyze_ranges(ctx);
 
         unsigned work_count = mir_work_heuristic(ctx, &analysis);

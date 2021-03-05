@@ -118,6 +118,9 @@ bi_pick_ubo(struct panfrost_ubo_push *push, struct bi_ubo_analysis *analysis)
 void
 bi_opt_push_ubo(bi_context *ctx)
 {
+        if (ctx->inputs->no_ubo_to_push)
+                return;
+
         /* This pass only runs once */
         assert(ctx->info->push.count == 0);
 
