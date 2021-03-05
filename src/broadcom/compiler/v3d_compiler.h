@@ -162,9 +162,6 @@ struct qinst {
          * otherwise.
          */
         int uniform;
-
-        /* Set if this instruction participates in a varying setup. */
-        bool is_ldvary_sequence;
 };
 
 enum quniform_contents {

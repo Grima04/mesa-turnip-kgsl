@@ -922,29 +922,17 @@ emit_fragcoord_input(struct v3d_compile *c, int attr)
 }
 
 static struct qreg
-ldvary_sequence_inst(struct v3d_compile *c, struct qreg result)
-{
-        struct qinst *producer =
-                   (struct qinst *) c->cur_block->instructions.prev;
-        assert(producer);
-        producer->is_ldvary_sequence = true;
-        return result;
-}
-
-static struct qreg
 emit_smooth_varying(struct v3d_compile *c,
                     struct qreg vary, struct qreg w, struct qreg r5)
 {
-        return ldvary_sequence_inst(c, vir_FADD(c,
-               ldvary_sequence_inst(c, vir_FMUL(c, vary, w)), r5));
+        return vir_FADD(c, vir_FMUL(c, vary, w), r5);
 }
 
 static struct qreg
 emit_noperspective_varying(struct v3d_compile *c,
                            struct qreg vary, struct qreg r5)
 {
-        return ldvary_sequence_inst(c, vir_FADD(c,
-               ldvary_sequence_inst(c, vir_MOV(c, vary)), r5));
+        return vir_FADD(c, vir_MOV(c, vary), r5);
 }
 
 static struct qreg
@@ -952,7 +940,7 @@ emit_flat_varying(struct v3d_compile *c,
                   struct qreg vary, struct qreg r5)
 {
         vir_MOV_dest(c, c->undef, vary);
-        return ldvary_sequence_inst(c, vir_MOV(c, r5));
+        return vir_MOV(c, r5);
 }
 
 static struct qreg
@@ -968,7 +956,6 @@ emit_fragment_varying(struct v3d_compile *c, nir_variable *var,
                 ldvary = vir_add_inst(V3D_QPU_A_NOP, c->undef,
                                       c->undef, c->undef);
                 ldvary->qpu.sig.ldvary = true;
-                ldvary->is_ldvary_sequence = true;
                 vary = vir_emit_def(c, ldvary);
         } else {
                 vir_NOP(c)->qpu.sig.ldvary = true;

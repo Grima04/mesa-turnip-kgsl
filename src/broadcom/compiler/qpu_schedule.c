@@ -459,9 +459,7 @@ struct choose_scoreboard {
         int last_uniforms_reset_tick;
         int last_thrsw_tick;
         bool tlb_locked;
-        bool ldvary_pipelining;
         bool fixup_ldvary;
-        int ldvary_count;
 };
 
 static bool
@@ -893,14 +891,6 @@ choose_instruction_to_schedule(struct v3d_compile *c,
 
         list_for_each_entry(struct schedule_node, n, &scoreboard->dag->heads,
                             dag.link) {
-                /* If we are scheduling a pipelined varying sequence then
-                 * we want to pick up the next instruction in the sequence.
-                 */
-                if (scoreboard->ldvary_pipelining &&
-                    !n->inst->is_ldvary_sequence) {
-                        continue;
-                }
-
                 const struct v3d_qpu_instr *inst = &n->inst->qpu;
 
 
@@ -991,17 +981,6 @@ choose_instruction_to_schedule(struct v3d_compile *c,
                                             &prev_inst->inst->qpu, inst)) {
                                 continue;
                         }
-
-                        /* If we find an ldvary inside an ongoing pipelineable
-                         * ldvary sequence we want to pick that and start
-                         * pipelining the new sequence into the previous one.
-                         */
-                        if (scoreboard->ldvary_pipelining && inst->sig.ldvary) {
-                                assert(n->inst->is_ldvary_sequence);
-                                scoreboard->ldvary_count++;
-                                scoreboard->fixup_ldvary = true;
-                                return n;
-                        }
                 }
 
                 int prio = get_instruction_priority(c->devinfo, inst);
@@ -1042,51 +1021,11 @@ choose_instruction_to_schedule(struct v3d_compile *c,
                 }
         }
 
-        /* Update ldvary pipelining state */
-        if (chosen) {
-                if (chosen->inst->qpu.sig.ldvary &&
-                    chosen->inst->is_ldvary_sequence) {
-                        scoreboard->ldvary_pipelining =
-                            c->num_inputs > ++scoreboard->ldvary_count;
-                }
-        } else if (scoreboard->ldvary_pipelining) {
-                /* If we are in the middle of an ldvary sequence we only pick
-                 * up instructions that can continue the sequence so we can
-                 * pipeline them, however, if we failed to find anything to
-                 * schedule (!prev_inst) then we can't possibly continue the
-                 * sequence and we need to stop the pipelining process and try
-                 * again.
-                 *
-                 * There is one exception to the above: noperspective or flat
-                 * varyings can cause us to not be able to pick an instruction
-                 * because they need a nop between the ldvary and the next
-                 * instruction to account for the ldvary r5 write latency. We
-                 * can try to detect this by checking if we are also unable to
-                 * schedule an instruction after disabling pipelining.
-                 *
-                 * FIXME: dropping pipelining and picking up another instruction
-                 * could break the sequence for flat/noperspective varyings we
-                 * could've been able to continue if we returned NULL here and
-                 * scheduled a NOP as a result, but detecting this case would
-                 * require us to know in advance that emitting the next NOP will
-                 * guarantee that we will be able to continue the sequence.
-                 *
-                 * If we failed to pair up (prev_inst != NULL), then we disable
-                 * pipelining if we have already scheduled the last ldvary. This
-                 * may allow any other instruction that is not part of an ldvary
-                 * sequence to be merged into the last instruction of the last
-                 * ldvary sequence for optimal results.
-                 */
-                if (!prev_inst) {
-                        scoreboard->ldvary_pipelining = false;
-                        chosen = choose_instruction_to_schedule(c, scoreboard,
-                                                                prev_inst);
-                        scoreboard->ldvary_pipelining = !chosen;
-                } else {
-                        scoreboard->ldvary_pipelining =
-                                c->num_inputs > scoreboard->ldvary_count;
-                }
-        }
+        /* If we are pairing an ldvary, flag it so we can fix it up for optimal
+         * pipelining of ldvary sequences.
+         */
+        if (prev_inst && chosen && chosen->inst->qpu.sig.ldvary)
+                scoreboard->fixup_ldvary = true;
 
         return chosen;
 }
@@ -1741,7 +1680,6 @@ schedule_instructions(struct v3d_compile *c,
                                 }
 
                                 if (scoreboard->fixup_ldvary) {
-                                        assert(scoreboard->ldvary_pipelining);
                                         scoreboard->fixup_ldvary = false;
                                         if (fixup_pipelined_ldvary(c, scoreboard, block, inst)) {
                                                 /* Flag the ldvary as scheduled
