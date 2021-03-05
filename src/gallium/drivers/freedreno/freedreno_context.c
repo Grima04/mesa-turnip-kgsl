@@ -54,6 +54,42 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 
 	DBG("%p: flush: flags=%x", batch, flags);
 
+	if (fencep && !batch) {
+		batch = fd_context_batch(ctx);
+	} else if (!batch) {
+		fd_bc_dump(ctx->screen, "%p: NULL batch, remaining:\n", ctx);
+		return;
+	}
+
+	/* With TC_FLUSH_ASYNC, the fence will have been pre-created from
+	 * the front-end thread.  But not yet associated with a batch,
+	 * because we cannot safely access ctx->batch outside of the driver
+	 * thread.  So instead, replace the existing batch->fence with the
+	 * one created earlier
+	 */
+	if ((flags & TC_FLUSH_ASYNC) && fencep) {
+		/* We don't currently expect async+flush in the fence-fd
+		 * case.. for that to work properly we'd need TC to tell
+		 * us in the create_fence callback that it needs an fd.
+		 */
+		assert(!(flags & PIPE_FLUSH_FENCE_FD));
+
+		fd_fence_set_batch(*fencep, batch);
+		fd_fence_ref(&batch->fence, *fencep);
+
+		/* We (a) cannot substitute the provided fence with last_fence,
+		 * and (b) need fd_fence_populate() to be eventually called on
+		 * the fence that was pre-created in frontend-thread:
+		 */
+		fd_fence_ref(&ctx->last_fence, NULL);
+
+		/* async flush is not compatible with deferred flush, since
+		 * nothing triggers the batch flush which fence_flush() would
+		 * be waiting for
+		 */
+		flags &= ~PIPE_FLUSH_DEFERRED;
+	}
+
 	/* In some sequence of events, we can end up with a last_fence that is
 	 * not an "fd" fence, which results in eglDupNativeFenceFDANDROID()
 	 * errors.
@@ -69,13 +105,6 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
 		fd_fence_ref(&fence, ctx->last_fence);
 		fd_bc_dump(ctx->screen, "%p: reuse last_fence, remaining:\n", ctx);
 		goto out;
-	}
-
-	if (fencep && !batch) {
-		batch = fd_context_batch(ctx);
-	} else if (!batch) {
-		fd_bc_dump(ctx->screen, "%p: NULL batch, remaining:\n", ctx);
-		return;
 	}
 
 	/* Take a ref to the batch's fence (batch can be unref'd when flushed: */
@@ -631,7 +660,7 @@ fd_context_init_tc(struct pipe_context *pctx, unsigned flags)
 	struct pipe_context *tc = threaded_context_create(pctx,
 			&ctx->screen->transfer_pool,
 			fd_replace_buffer_storage,
-			NULL, // TODO fd_create_fence for async flush
+			fd_fence_create_unflushed,
 			&ctx->tc);
 
 	uint64_t total_ram;
