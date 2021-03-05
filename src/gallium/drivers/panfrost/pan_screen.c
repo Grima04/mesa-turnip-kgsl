@@ -355,7 +355,7 @@ panfrost_get_shader_param(struct pipe_screen *screen,
                 return 0;
 
         case PIPE_SHADER_CAP_INDIRECT_TEMP_ADDR:
-                return 0;
+                return pan_is_bifrost(dev);
 
         case PIPE_SHADER_CAP_INDIRECT_CONST_ADDR:
                 return 1;

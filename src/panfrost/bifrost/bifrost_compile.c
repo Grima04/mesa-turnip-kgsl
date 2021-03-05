@@ -3007,6 +3007,12 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 NIR_PASS_V(nir, nir_lower_point_size, 1.0, 1024.0);
         }
 
+        /* Lower large arrays to scratch and small arrays to bcsel (TODO: tune
+         * threshold, but not until addresses / csel is optimized better) */
+        NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 16,
+                        glsl_get_natural_size_align_bytes);
+        NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
+
         NIR_PASS_V(nir, nir_split_var_copies);
         NIR_PASS_V(nir, nir_lower_global_vars_to_local);
         NIR_PASS_V(nir, nir_lower_var_copies);
