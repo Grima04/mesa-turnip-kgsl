@@ -349,6 +349,11 @@ static void radeon_enc_destroy(struct pipe_video_codec *encoder)
       enc->fb = &fb;
       enc->destroy(enc);
       flush(enc);
+      if (enc->si) {
+         si_vid_destroy_buffer(enc->si);
+         FREE(enc->si);
+         enc->si = NULL;
+      }
       si_vid_destroy_buffer(&fb);
    }
 
@@ -412,10 +417,6 @@ struct pipe_video_codec *radeon_create_encoder(struct pipe_context *context,
       RVID_ERR("Can't get command submission context.\n");
       goto error;
    }
-
-   struct rvid_buffer si;
-   si_vid_create_buffer(enc->screen, &si, 128 * 1024, PIPE_USAGE_STAGING);
-   enc->si = &si;
 
    templat.buffer_format = PIPE_FORMAT_NV12;
    if (enc->base.profile == PIPE_VIDEO_PROFILE_HEVC_MAIN_10)
