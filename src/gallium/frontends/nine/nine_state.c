@@ -211,6 +211,16 @@ nine_csmt_process( struct NineDevice9 *device )
     nine_csmt_wait_processed(ctx);
 }
 
+void
+nine_csmt_flush( struct NineDevice9* device )
+{
+    if (!device->csmt_active)
+        return;
+
+    nine_queue_flush(device->csmt_ctx->pool);
+}
+
+
 /* Destroys a CSMT context.
  * Waits for the worker thread to terminate.
  */
@@ -2646,6 +2656,13 @@ nine_context_get_query_result(struct NineDevice9 *device, struct pipe_query *que
 
     DBG("Query result %s\n", ret ? "found" : "not yet available");
     return ret;
+}
+
+CSMT_ITEM_NO_WAIT(nine_context_pipe_flush)
+{
+    struct nine_context *context = &device->context;
+
+    context->pipe->flush(context->pipe, NULL, PIPE_FLUSH_ASYNC);
 }
 
 /* State defaults */

@@ -90,6 +90,7 @@ struct NineDevice9
 
     boolean is_recording;
     boolean in_scene;
+    unsigned end_scene_since_present;
 
     uint16_t vs_const_size;
     uint16_t ps_const_size;

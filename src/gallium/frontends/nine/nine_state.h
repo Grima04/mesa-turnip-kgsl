@@ -604,6 +604,9 @@ nine_context_get_query_result(struct NineDevice9 *device, struct pipe_query *que
                               unsigned *counter, boolean flush, boolean wait,
                               union pipe_query_result *result);
 
+void
+nine_context_pipe_flush(struct NineDevice9 *device);
+
 void nine_state_restore_non_cso(struct NineDevice9 *device);
 void nine_state_set_defaults(struct NineDevice9 *, const D3DCAPS9 *,
                              boolean is_reset);
@@ -648,9 +651,13 @@ nine_csmt_create( struct NineDevice9 *This );
 void
 nine_csmt_destroy( struct NineDevice9 *This, struct csmt_context *ctx );
 
+/* Flushes and waits everything is executed */
 void
 nine_csmt_process( struct NineDevice9 *This );
 
+/* Flushes and doesn't wait */
+void
+nine_csmt_flush( struct NineDevice9 *This );
 
 /* Get the pipe_context (should not be called from the worker thread).
  * All the work in the worker thread is finished before returning. */

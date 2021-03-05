@@ -2035,6 +2035,19 @@ NineDevice9_EndScene( struct NineDevice9 *This )
     DBG("This=%p\n", This);
     user_assert(This->in_scene, D3DERR_INVALIDCALL);
     This->in_scene = FALSE;
+    This->end_scene_since_present++;
+    /* EndScene() is supposed to flush the GPU commands.
+     * The idea is to flush ahead of the Present() call.
+     * (Apps could take advantage of this by inserting CPU
+     * work between EndScene() and Present()).
+     * Most apps will have one EndScene per frame.
+     * Some will have 2 or 3.
+     * Some bad behaving apps do a lot of them.
+     * As flushing has a cost, do it only once. */
+    if (This->end_scene_since_present <= 1) {
+        nine_context_pipe_flush(This);
+        nine_csmt_flush(This);
+    }
     return D3D_OK;
 }
 
