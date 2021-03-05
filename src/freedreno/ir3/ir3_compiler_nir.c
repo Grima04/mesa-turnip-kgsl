@@ -1952,11 +1952,15 @@ emit_intrinsic(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	case nir_intrinsic_discard_if:
 	case nir_intrinsic_discard:
 	case nir_intrinsic_demote:
-	case nir_intrinsic_demote_if: {
+	case nir_intrinsic_demote_if:
+	case nir_intrinsic_terminate:
+	case nir_intrinsic_terminate_if:
+	{
 		struct ir3_instruction *cond, *kill;
 
 		if (intr->intrinsic == nir_intrinsic_discard_if ||
-			intr->intrinsic == nir_intrinsic_demote_if) {
+			intr->intrinsic == nir_intrinsic_demote_if ||
+			intr->intrinsic == nir_intrinsic_terminate_if) {
 			/* conditional discard: */
 			src = ir3_get_src(ctx, &intr->src[0]);
 			cond = src[0];
