@@ -125,6 +125,7 @@ struct panfrost_compile_inputs {
                 float constants[4];
                 uint64_t bifrost_blend_desc;
         } blend;
+        unsigned sysval_ubo;
         bool shaderdb;
         bool no_ubo_to_push;
 

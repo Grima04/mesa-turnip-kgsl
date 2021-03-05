@@ -226,7 +226,10 @@ pan_shader_compile(const struct panfrost_device *dev,
         info->outputs_written = s->info.outputs_written;
 
         /* Sysvals have dedicated UBO */
-        info->ubo_count = s->info.num_ubos + (info->sysvals.sysval_count ? 1 : 0);
+        if (info->sysvals.sysval_count)
+                info->ubo_count = MAX2(s->info.num_ubos + 1, inputs->sysval_ubo + 1);
+        else
+                info->ubo_count = s->info.num_ubos;
 
         info->attribute_count += util_bitcount(s->info.images_used);
         info->writes_global = s->info.writes_memory;

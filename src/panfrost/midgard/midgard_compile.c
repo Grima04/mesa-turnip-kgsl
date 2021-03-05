@@ -1445,6 +1445,8 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         nir_dest nir_dest;
 
         /* Figure out which uniform this is */
+        unsigned sysval_ubo =
+                MAX2(ctx->inputs->sysval_ubo, ctx->nir->info.num_ubos);
         int sysval = panfrost_sysval_for_instr(instr, &nir_dest);
         unsigned dest = nir_dest_index(&nir_dest);
         unsigned uniform =
@@ -1453,7 +1455,7 @@ emit_sysval_read(compiler_context *ctx, nir_instr *instr,
         /* Emit the read itself -- this is never indirect */
         midgard_instruction *ins =
                 emit_ubo_read(ctx, instr, dest, (uniform * 16) + offset, NULL, 0,
-                                ctx->nir->info.num_ubos);
+                              sysval_ubo);
 
         ins->mask = mask_of(nr_components);
 }

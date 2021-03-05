@@ -325,6 +325,8 @@ static bi_instr *
 bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
                 unsigned nr_components, unsigned offset)
 {
+        unsigned sysval_ubo =
+                MAX2(b->shader->inputs->sysval_ubo, b->shader->nir->info.num_ubos);
         unsigned uniform =
                 pan_lookup_sysval(b->shader->sysval_to_id,
                                   &b->shader->info->sysvals,
@@ -333,7 +335,7 @@ bi_load_sysval_to(bi_builder *b, bi_index dest, int sysval,
 
         return bi_load_to(b, nr_components * 32, dest,
                         bi_imm_u32(idx),
-                        bi_imm_u32(b->shader->nir->info.num_ubos), BI_SEG_UBO);
+                        bi_imm_u32(sysval_ubo), BI_SEG_UBO);
 }
 
 static void
