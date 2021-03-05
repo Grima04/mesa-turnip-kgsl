@@ -761,6 +761,7 @@ static void fill_sampler(struct pipe_sampler_state *ss,
    ss->compare_mode = samp->create_info.compareEnable ? PIPE_TEX_COMPARE_R_TO_TEXTURE : PIPE_TEX_COMPARE_NONE;
    ss->compare_func = samp->create_info.compareOp;
    ss->seamless_cube_map = true;
+   ss->reduction_mode = samp->reduction_mode;
 
    switch (samp->create_info.borderColor) {
    case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:

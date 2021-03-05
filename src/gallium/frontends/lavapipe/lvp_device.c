@@ -120,6 +120,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_index_type_uint8                  = true,
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
+   .EXT_sampler_filter_minmax             = true,
    .EXT_shader_stencil_export             = true,
    .EXT_shader_viewport_index_layer       = true,
    .EXT_transform_feedback                = true,
@@ -1673,6 +1674,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_sampler *sampler;
+   const VkSamplerReductionModeCreateInfo *reduction_mode_create_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           SAMPLER_REDUCTION_MODE_CREATE_INFO);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
@@ -1684,6 +1688,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    vk_object_base_init(&device->vk, &sampler->base,
                        VK_OBJECT_TYPE_SAMPLER);
    sampler->create_info = *pCreateInfo;
+
+   sampler->reduction_mode = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+   if (reduction_mode_create_info)
+      sampler->reduction_mode = reduction_mode_create_info->reductionMode;
+
    *pSampler = lvp_sampler_to_handle(sampler);
 
    return VK_SUCCESS;
