@@ -156,12 +156,12 @@ pan_shader_compile(const struct panfrost_device *dev,
 
                 bool vertex_id = BITSET_TEST(s->info.system_values_read,
                                              SYSTEM_VALUE_VERTEX_ID);
-                if (vertex_id)
+                if (vertex_id && !pan_is_bifrost(dev))
                         info->attribute_count = MAX2(info->attribute_count, PAN_VERTEX_ID + 1);
 
                 bool instance_id = BITSET_TEST(s->info.system_values_read,
                                                SYSTEM_VALUE_INSTANCE_ID);
-                if (instance_id)
+                if (instance_id && !pan_is_bifrost(dev))
                         info->attribute_count = MAX2(info->attribute_count, PAN_INSTANCE_ID + 1);
 
                 info->vs.writes_point_size =
