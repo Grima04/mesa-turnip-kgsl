@@ -75,6 +75,7 @@ tegra_draw_vbo(struct pipe_context *pcontext,
       if (pindirect && pindirect->buffer) {
          memcpy(&indirect, pindirect, sizeof(indirect));
          indirect.buffer = tegra_resource_unwrap(pindirect->buffer);
+         indirect.indirect_draw_count = tegra_resource_unwrap(pindirect->indirect_draw_count);
          pindirect = &indirect;
       }
 
