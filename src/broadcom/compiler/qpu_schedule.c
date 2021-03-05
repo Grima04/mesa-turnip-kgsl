@@ -1644,6 +1644,8 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
          */
         if (v3d_qpu_writes_flags(&prev->qpu))
                 return false;
+        if (v3d_qpu_reads_flags(&prev->qpu))
+                return false;
 
         /* Move the ldvary to the previous instruction and remove it from the
          * current one.
