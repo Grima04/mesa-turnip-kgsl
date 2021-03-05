@@ -815,7 +815,7 @@ v3d_qpu_writes_r3(const struct v3d_device_info *devinfo,
                 return true;
         }
 
-        return inst->sig.ldvary || inst->sig.ldvpm;
+        return (devinfo->ver < 41 && inst->sig.ldvary) || inst->sig.ldvpm;
 }
 
 bool
