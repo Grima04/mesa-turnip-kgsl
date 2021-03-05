@@ -210,6 +210,12 @@ enum pipe_tex_compare {
    PIPE_TEX_COMPARE_R_TO_TEXTURE,
 };
 
+enum pipe_tex_reduction_mode {
+   PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE,
+   PIPE_TEX_REDUCTION_MIN,
+   PIPE_TEX_REDUCTION_MAX,
+};
+
 /**
  * Clear buffer bits
  */
@@ -979,6 +985,7 @@ enum pipe_cap
    PIPE_CAP_PREFER_REAL_BUFFER_IN_CONSTBUF0,
    PIPE_CAP_GL_CLAMP,
    PIPE_CAP_TEXRECT,
+   PIPE_CAP_SAMPLER_REDUCTION_MINMAX,
 
    PIPE_CAP_LAST,
    /* XXX do not add caps after PIPE_CAP_LAST! */
