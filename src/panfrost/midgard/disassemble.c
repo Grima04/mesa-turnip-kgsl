@@ -605,19 +605,6 @@ print_dest(FILE *fp, unsigned reg, midgard_reg_mode mode, midgard_shrink_mode sh
         print_reg(fp, reg, bits);
 }
 
-static void
-print_mask_vec16(FILE *fp, uint8_t mask, midgard_shrink_mode shrink_mode)
-{
-        fprintf(fp, ".");
-
-        for (unsigned i = 0; i < 8; i++) {
-                if (mask & (1 << i))
-                        fprintf(fp, "%c%c",
-                               components[i*2 + 0],
-                               components[i*2 + 1]);
-        }
-}
-
 /* For 16-bit+ masks, we read off from the 8-bit mask field. For 16-bit (vec8),
  * it's just one bit per channel, easy peasy. For 32-bit (vec4), it's one bit
  * per channel with one duplicate bit in the middle. For 64-bit (vec2), it's
@@ -626,21 +613,16 @@ print_mask_vec16(FILE *fp, uint8_t mask, midgard_shrink_mode shrink_mode)
  * the mask to make it obvious what happened */
 
 static void
-print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_shrink_mode shrink_mode)
+print_alu_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_shrink_mode shrink_mode)
 {
-        if (bits == 8) {
-                print_mask_vec16(fp, mask, shrink_mode);
-                return;
-        }
-
         /* Skip 'complete' masks */
 
-        if (shrink_mode == midgard_shrink_mode_none)
-                if (bits >= 32 && mask == 0xFF) return;
+        if (shrink_mode == midgard_shrink_mode_none && mask == 0xFF)
+                return;
 
         fprintf(fp, ".");
 
-        unsigned skip = (bits / 16);
+        unsigned skip = MAX2(bits / 16, 1);
         bool uppercase = bits > 32;
         bool tripped = false;
 
@@ -650,8 +632,10 @@ print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_shrink_mode shrink_mod
 
         const char *alphabet = components;
 
-        if (shrink_mode == midgard_shrink_mode_upper)
+        if (shrink_mode == midgard_shrink_mode_upper) {
+                assert(bits != 8);
                 alphabet += (128 / bits);
+        }
 
         for (unsigned i = 0; i < 8; i += skip) {
                 bool a = (mask & (1 << i)) != 0;
@@ -662,7 +646,9 @@ print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_shrink_mode shrink_mod
                 }
 
                 if (a) {
-                        char c = alphabet[i / skip];
+                        /* TODO: handle shrinking from 16-bit */
+                        unsigned comp_idx = bits == 8 ? i * 2 : i;
+                        char c = alphabet[comp_idx / skip];
 
                         if (uppercase) {
                                 c = toupper(c);
@@ -670,6 +656,8 @@ print_mask(FILE *fp, uint8_t mask, unsigned bits, midgard_shrink_mode shrink_mod
                         }
 
                         fprintf(fp, "%c", c);
+                        if (bits == 8)
+                                fprintf(fp, "%c", alphabet[comp_idx+1]);
                 }
         }
 
@@ -746,7 +734,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
                 if (num_comp != 1)
                         fprintf(fp, "/* err too many components */");
         }
-        print_mask(fp, mask, bits_for_mode(mode), shrink_mode);
+        print_alu_mask(fp, mask, bits_for_mode(mode), shrink_mode);
 
         /* Print output modifiers */
 
