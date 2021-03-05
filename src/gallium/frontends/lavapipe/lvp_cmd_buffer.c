@@ -23,6 +23,7 @@
 
 #include "lvp_private.h"
 #include "pipe/p_context.h"
+#include "vk_util.h"
 
 static VkResult lvp_create_cmd_buffer(
    struct lvp_device *                         device,
@@ -352,8 +353,14 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRenderPass2(
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    LVP_FROM_HANDLE(lvp_render_pass, pass, pRenderPassBeginInfo->renderPass);
    LVP_FROM_HANDLE(lvp_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
+   const struct VkRenderPassAttachmentBeginInfo *attachment_info =
+      vk_find_struct_const(pRenderPassBeginInfo->pNext,
+                           RENDER_PASS_ATTACHMENT_BEGIN_INFO);
    struct lvp_cmd_buffer_entry *cmd;
    uint32_t cmd_size = pass->attachment_count * sizeof(struct lvp_attachment_state);
+
+   if (attachment_info)
+      cmd_size += attachment_info->attachmentCount * sizeof(struct lvp_image_view *);
 
    cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_BEGIN_RENDER_PASS);
    if (!cmd)
@@ -364,6 +371,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRenderPass2(
    cmd->u.begin_render_pass.render_area = pRenderPassBeginInfo->renderArea;
 
    cmd->u.begin_render_pass.attachments = (struct lvp_attachment_state *)(cmd + 1);
+   cmd->u.begin_render_pass.imageless_views = NULL;
+   if (attachment_info) {
+      cmd->u.begin_render_pass.imageless_views = (struct lvp_image_view **)(cmd->u.begin_render_pass.attachments + pass->attachment_count);
+      for (unsigned i = 0; i < attachment_info->attachmentCount; i++)
+         cmd->u.begin_render_pass.imageless_views[i] = lvp_image_view_from_handle(attachment_info->pAttachments[i]);
+   }
+
    state_setup_attachments(cmd->u.begin_render_pass.attachments, pass, pRenderPassBeginInfo->pClearValues);
 
    cmd_buf_queue(cmd_buffer, cmd);

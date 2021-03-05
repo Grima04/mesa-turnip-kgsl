@@ -107,6 +107,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .KHR_incremental_present               = true,
 #endif
    .KHR_image_format_list                 = true,
+   .KHR_imageless_framebuffer             = true,
    .KHR_maintenance1                      = true,
    .KHR_maintenance2                      = true,
    .KHR_maintenance3                      = true,
@@ -547,6 +548,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceShaderAtomicInt64FeaturesKHR *features = (void *)ext;
          features->shaderBufferInt64Atomics = true;
          features->shaderSharedInt64Atomics = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+         VkPhysicalDeviceImagelessFramebufferFeatures *features =
+            (VkPhysicalDeviceImagelessFramebufferFeatures*)ext;
+         features->imagelessFramebuffer = true;
          break;
       }
       default:
@@ -1540,11 +1547,16 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateFramebuffer(
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    struct lvp_framebuffer *framebuffer;
+   const VkFramebufferAttachmentsCreateInfo *imageless_create_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           FRAMEBUFFER_ATTACHMENTS_CREATE_INFO);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO);
 
-   size_t size = sizeof(*framebuffer) +
-      sizeof(struct lvp_image_view *) * pCreateInfo->attachmentCount;
+   size_t size = sizeof(*framebuffer);
+
+   if (!imageless_create_info)
+      size += sizeof(struct lvp_image_view *) * pCreateInfo->attachmentCount;
    framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
                            VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
    if (framebuffer == NULL)
@@ -1552,15 +1564,19 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateFramebuffer(
 
    vk_object_base_init(&device->vk, &framebuffer->base,
                        VK_OBJECT_TYPE_FRAMEBUFFER);
-   framebuffer->attachment_count = pCreateInfo->attachmentCount;
-   for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-      VkImageView _iview = pCreateInfo->pAttachments[i];
-      framebuffer->attachments[i] = lvp_image_view_from_handle(_iview);
+
+   if (!imageless_create_info) {
+      framebuffer->attachment_count = pCreateInfo->attachmentCount;
+      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+         VkImageView _iview = pCreateInfo->pAttachments[i];
+         framebuffer->attachments[i] = lvp_image_view_from_handle(_iview);
+      }
    }
 
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
+   framebuffer->imageless = !!imageless_create_info;
 
    *pFramebuffer = lvp_framebuffer_to_handle(framebuffer);
 

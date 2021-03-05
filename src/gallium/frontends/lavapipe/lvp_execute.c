@@ -122,6 +122,7 @@ struct rendering_state {
    uint32_t sample_mask;
    unsigned min_samples;
 
+   struct lvp_image_view **imageless_views;
    const struct lvp_attachment_state *attachments;
    VkImageAspectFlags *pending_clear_aspects;
    uint32_t *cleared_views;
@@ -1269,6 +1270,16 @@ static void clear_attachment_layers(struct rendering_state *state,
    state->pctx->surface_destroy(state->pctx, clear_surf);
 }
 
+static struct lvp_image_view *
+get_attachment(struct rendering_state *state,
+               unsigned idx)
+{
+   if (state->imageless_views)
+      return state->imageless_views[idx];
+   else
+      return state->vk_framebuffer->attachments[idx];
+}
+
 static void render_subpass_clear(struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
@@ -1286,7 +1297,7 @@ static void render_subpass_clear(struct rendering_state *state)
       color_clear_val.ui[2] = value.color.uint32[2];
       color_clear_val.ui[3] = value.color.uint32[3];
 
-      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[a];
+      struct lvp_image_view *imgv = get_attachment(state, a);
 
       assert(imgv->surface);
 
@@ -1313,7 +1324,7 @@ static void render_subpass_clear(struct rendering_state *state)
          return;
 
       struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
-      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds];
+      struct lvp_image_view *imgv = get_attachment(state, ds);
 
       assert (util_format_is_depth_or_stencil(imgv->surface->format));
 
@@ -1411,7 +1422,7 @@ static void render_subpass_clear_fast(struct rendering_state *state)
       uint32_t ds = subpass->depth_stencil_attachment->attachment;
 
       struct lvp_render_pass_attachment *att = &state->pass->attachments[ds];
-      struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds];
+      struct lvp_image_view *imgv = get_attachment(state, ds);
       const struct util_format_description *desc = util_format_description(imgv->surface->format);
 
       /* also clear stencil for don't care to avoid RMW */
@@ -1450,8 +1461,8 @@ static void render_pass_resolve(struct rendering_state *state)
       if (dst_att.attachment == VK_ATTACHMENT_UNUSED)
          continue;
 
-      struct lvp_image_view *src_imgv = state->vk_framebuffer->attachments[src_att.attachment];
-      struct lvp_image_view *dst_imgv = state->vk_framebuffer->attachments[dst_att.attachment];
+      struct lvp_image_view *src_imgv = get_attachment(state, src_att.attachment);
+      struct lvp_image_view *dst_imgv = get_attachment(state, dst_att.attachment);
 
       struct pipe_blit_info info;
       memset(&info, 0, sizeof(info));
@@ -1485,8 +1496,7 @@ static void begin_render_subpass(struct rendering_state *state,
    for (unsigned i = 0; i < subpass->color_count; i++) {
       struct lvp_subpass_attachment *color_att = &subpass->color_attachments[i];
       if (color_att->attachment != VK_ATTACHMENT_UNUSED) {
-         struct lvp_image_view *imgv = state->vk_framebuffer->attachments[color_att->attachment];
-
+         struct lvp_image_view *imgv = get_attachment(state, color_att->attachment);
          add_img_view_surface(state, imgv, state->pass->attachments[color_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.cbufs[state->framebuffer.nr_cbufs] = imgv->surface;
       } else
@@ -1498,7 +1508,7 @@ static void begin_render_subpass(struct rendering_state *state,
       struct lvp_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
 
       if (ds_att->attachment != VK_ATTACHMENT_UNUSED) {
-         struct lvp_image_view *imgv = state->vk_framebuffer->attachments[ds_att->attachment];
+         struct lvp_image_view *imgv = get_attachment(state, ds_att->attachment);
          add_img_view_surface(state, imgv, state->pass->attachments[ds_att->attachment].format, state->framebuffer.width, state->framebuffer.height);
          state->framebuffer.zsbuf = imgv->surface;
       }
@@ -1520,6 +1530,7 @@ static void handle_begin_render_pass(struct lvp_cmd_buffer_entry *cmd,
 
    state->attachments = cmd->u.begin_render_pass.attachments;
 
+   state->imageless_views = cmd->u.begin_render_pass.imageless_views;
    state->framebuffer.width = state->vk_framebuffer->width;
    state->framebuffer.height = state->vk_framebuffer->height;
    state->framebuffer.layers = state->vk_framebuffer->layers;
@@ -2522,12 +2533,12 @@ static void handle_clear_attachments(struct lvp_cmd_buffer_entry *cmd,
          struct lvp_subpass_attachment *color_att = &subpass->color_attachments[att->colorAttachment];
          if (!color_att || color_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
-         imgv = state->vk_framebuffer->attachments[color_att->attachment];
+         imgv = get_attachment(state, color_att->attachment);
       } else {
          struct lvp_subpass_attachment *ds_att = subpass->depth_stencil_attachment;
          if (!ds_att || ds_att->attachment == VK_ATTACHMENT_UNUSED)
             continue;
-         imgv = state->vk_framebuffer->attachments[ds_att->attachment];
+         imgv = get_attachment(state, ds_att->attachment);
       }
       union pipe_color_union col_val;
       double dclear_val = 0;

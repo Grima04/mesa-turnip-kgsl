@@ -317,6 +317,7 @@ struct lvp_framebuffer {
    uint32_t                                     height;
    uint32_t                                     layers;
 
+   bool                                         imageless;
    uint32_t                                     attachment_count;
    struct lvp_image_view *                      attachments[0];
 };
@@ -925,6 +926,7 @@ struct lvp_cmd_begin_render_pass {
    struct lvp_render_pass *render_pass;
    VkRect2D render_area;
    struct lvp_attachment_state *attachments;
+   struct lvp_image_view **imageless_views;
 };
 
 struct lvp_cmd_next_subpass {
