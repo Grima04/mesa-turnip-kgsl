@@ -117,6 +117,51 @@ prefix_for_bits(unsigned bits)
         }
 }
 
+static void
+validate_expand_mode(midgard_src_expand_mode expand_mode,
+                     midgard_reg_mode reg_mode)
+{
+        switch (expand_mode) {
+        case midgard_src_passthrough:
+                break;
+
+        case midgard_src_rep_low:
+                assert(reg_mode == midgard_reg_mode_8 ||
+                       reg_mode == midgard_reg_mode_16);
+                break;
+
+        case midgard_src_rep_high:
+                assert(reg_mode == midgard_reg_mode_8 ||
+                       reg_mode == midgard_reg_mode_16);
+                break;
+
+        case midgard_src_swap:
+                assert(reg_mode == midgard_reg_mode_8 ||
+                       reg_mode == midgard_reg_mode_16);
+                break;
+
+        case midgard_src_expand_low:
+                assert(reg_mode != midgard_reg_mode_8);
+                break;
+
+        case midgard_src_expand_high:
+                assert(reg_mode != midgard_reg_mode_8);
+                break;
+
+        case midgard_src_expand_low_swap:
+                assert(reg_mode == midgard_reg_mode_16);
+                break;
+
+        case midgard_src_expand_high_swap:
+                assert(reg_mode == midgard_reg_mode_16);
+                break;
+
+        default:
+                unreachable("Invalid expand mode");
+                break;
+        }
+}
+
 /* For static analysis to ensure all registers are written at least once before
  * use along the source code path (TODO: does this break done for complex CF?)
  */
@@ -492,6 +537,9 @@ print_vector_src(FILE *fp, unsigned src_binary,
                  midgard_shrink_mode shrink_mode, bool is_int)
 {
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
+
+        validate_expand_mode(src->expand_mode, mode);
+
         print_srcmod(fp, is_int, src->mod, false);
 
         bool half = INPUT_EXPANDS(src->expand_mode);
