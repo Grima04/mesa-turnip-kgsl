@@ -339,22 +339,6 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
    emit_instruction(new AluInstruction(op1_mov, addr_vec.reg_i(2), Value::zero, last_write));
 
 
-//#define WRITE_AS_VECTOR
-#ifdef WRITE_AS_VECTOR
-   std::unique_ptr<GPRVector> value(vec_from_nir_with_fetch_constant(instr->src[0],
-                                    (1 << instr->src[0].ssa->num_components) - 1, swz));
-
-   /* TODO fix resource index */
-   int nelements = instr->src[0].ssa->num_components - 1;
-   if (nelements == 2)
-      nelements = 3;
-   auto ir = new RatInstruction(cf_mem_rat, RatInstruction::STORE_TYPED,
-                                *value, addr_vec, 0, rat_id, 11,
-                                (1 << instr->src[0].ssa->num_components) - 1,
-                                0, false);
-   emit_instruction(ir);
-#else
-
    auto values = vec_from_nir_with_fetch_constant(instr->src[0],
          (1 << nir_src_num_components(instr->src[0])) - 1, {0,1,2,3}, true);
 
@@ -377,7 +361,7 @@ bool EmitSSBOInstruction::emit_store_ssbo(const nir_intrinsic_instr* instr)
       if (!(nir_intrinsic_access(instr) & ACCESS_COHERENT))
          m_store_ops.push_back(store);
    }
-#endif
+
    return true;
 }
 
