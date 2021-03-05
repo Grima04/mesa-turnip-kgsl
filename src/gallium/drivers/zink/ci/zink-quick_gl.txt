@@ -779,9 +779,6 @@ spec/amd_pinned_memory/map-buffer increment-offset: skip
 spec/amd_pinned_memory/map-buffer offset=0: skip
 spec/amd_pinned_memory/offset=0: skip
 spec/amd_seamless_cubemap_per_texture/amd_seamless_cubemap_per_texture: skip
-spec/amd_vertex_shader_layer/amd_vertex_shader_layer-layered-2d-texture-render: skip
-spec/amd_vertex_shader_layer/amd_vertex_shader_layer-layered-depth-texture-render: skip
-spec/amd_vertex_shader_viewport_index/amd_vertex_shader_viewport_index-render: skip
 spec/apple_object_purgeable/object_purgeable-api-pbo: skip
 spec/apple_object_purgeable/object_purgeable-api-texture: skip
 spec/apple_object_purgeable/object_purgeable-api-vbo: skip
