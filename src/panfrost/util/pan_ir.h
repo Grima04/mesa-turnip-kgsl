@@ -186,6 +186,7 @@ struct pan_shader_info {
         bool writes_global;
         uint64_t outputs_written;
 
+        unsigned sampler_count;
         unsigned texture_count;
         unsigned ubo_count;
         unsigned attribute_count;

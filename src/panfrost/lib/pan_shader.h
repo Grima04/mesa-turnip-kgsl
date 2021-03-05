@@ -176,7 +176,7 @@ pan_shader_prepare_rsd(const struct panfrost_device *dev,
         rsd->shader.varying_count = shader_info->varyings.input_count +
                                    shader_info->varyings.output_count;
         rsd->shader.texture_count = shader_info->texture_count;
-        rsd->shader.sampler_count = shader_info->texture_count;
+        rsd->shader.sampler_count = shader_info->sampler_count;
         rsd->properties.shader_contains_barrier = shader_info->contains_barrier;
 
         if (shader_info->stage == MESA_SHADER_FRAGMENT) {
