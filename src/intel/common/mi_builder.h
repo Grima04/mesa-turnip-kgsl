@@ -374,13 +374,17 @@ _mi_copy_no_unref(struct mi_builder *b,
          if (dst.type == MI_VALUE_TYPE_REG64) {
             uint32_t *dw = (uint32_t *)__gen_get_batch_dwords(b->user_data,
                                                               GENX(MI_LOAD_REGISTER_IMM_length) + 2);
+            struct mi_reg_num reg = mi_adjust_reg_num(dst.reg);
             mi_builder_pack(b, GENX(MI_LOAD_REGISTER_IMM), dw, lri) {
                lri.DWordLength = GENX(MI_LOAD_REGISTER_IMM_length) + 2 -
                                  GENX(MI_LOAD_REGISTER_IMM_length_bias);
+#if GEN_GEN >= 11
+               lri.AddCSMMIOStartOffset = reg.cs;
+#endif
             }
-            dw[1] = dst.reg;
+            dw[1] = reg.num;
             dw[2] = src.imm;
-            dw[3] = dst.reg + 4;
+            dw[3] = reg.num + 4;
             dw[4] = src.imm >> 32;
          } else {
 #if GEN_GEN >= 8
