@@ -83,9 +83,12 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_bany_inequal3: return emit_any_all_icomp(instr, op2_setne_int, 3, false);
    case nir_op_bany_inequal4: return emit_any_all_icomp(instr, op2_setne_int, 4, false);
    case nir_op_bcsel: return emit_alu_op3(instr, op3_cnde_int,  {0, 2, 1});
+   case nir_op_bfi: return emit_alu_op3(instr, op3_bfi_int);
+   case nir_op_bfm: return emit_alu_op2_int(instr, op2_bfm_int);
    case nir_op_bit_count: return emit_alu_op1(instr, op1_bcnt_int);
    case nir_op_bitfield_insert: return emit_bitfield_insert(instr);
    case nir_op_bitfield_reverse: return emit_alu_op1(instr, op1_bfrev_int);
+   case nir_op_bitfield_select: return emit_alu_op3(instr, op3_bfi_int);
    case nir_op_cube_r600: return emit_cube(instr);
    case nir_op_f2b1: return emit_alu_i2orf2_b1(instr, op2_setne_dx10);
    case nir_op_f2b32: return emit_alu_f2b32(instr);
@@ -137,7 +140,6 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_iadd: return emit_alu_op2_int(instr, op2_add_int);
    case nir_op_iand: return emit_alu_op2_int(instr, op2_and_int);
    case nir_op_ibfe: return emit_alu_op3(instr, op3_bfe_int);
-   case nir_op_ibitfield_extract: return emit_bitfield_extract(instr, op3_bfe_int);
    case nir_op_idiv: return emit_alu_div_int(instr, true, false);
    case nir_op_ieq32: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
@@ -164,7 +166,6 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_pack_half_2x16_split: return emit_pack_32_2x16_split(instr);
    case nir_op_u2f32: return emit_alu_trans_op1(instr, op1_uint_to_flt);
    case nir_op_ubfe: return emit_alu_op3(instr, op3_bfe_uint);
-   case nir_op_ubitfield_extract: return emit_bitfield_extract(instr, op3_bfe_uint);
    case nir_op_udiv: return emit_alu_div_int(instr, false, false);
    case nir_op_ufind_msb: return emit_find_msb(instr, false);
    case nir_op_uge32: return emit_alu_op2_int(instr, op2_setge_uint);
@@ -1129,54 +1130,6 @@ bool EmitAluInstruction::emit_tex_fdd(const nir_alu_instr& instr, TexInstruction
       tex->set_flag(TexInstruction::grad_fine);
 
    emit_instruction(tex);
-
-   return true;
-}
-
-bool EmitAluInstruction::emit_bitfield_extract(const nir_alu_instr& instr, EAluOp opcode)
-{
-   int itmp = allocate_temp_register();
-   std::array<PValue, 4> tmp;
-   std::array<PValue, 4> dst;
-   std::array<PValue, 4> src0;
-   std::array<PValue, 4> shift;
-
-   PValue l32(new LiteralValue(32));
-   unsigned write_mask = instr.dest.write_mask;
-
-   AluInstruction *ir = nullptr;
-   for (int i = 0; i < 4; i++) {
-      if (!(write_mask & (1<<i)))
-			continue;
-      dst[i] = from_nir(instr.dest, i);
-      src0[i] = m_src[0][i];
-      shift[i] = m_src[2][i];
-
-      ir = new AluInstruction(opcode, dst[i],
-                              {src0[i], m_src[1][i], shift[i]},
-                              {alu_write});
-      emit_instruction(ir);
-   }
-   make_last(ir);
-
-   for (int i = 0; i < 4; i++) {
-      if (!(write_mask & (1<<i)))
-			continue;
-      tmp[i] = PValue(new GPRValue(itmp, i));
-      ir = new AluInstruction(op2_setge_int, tmp[i], {shift[i], l32},
-      {alu_write});
-      emit_instruction(ir);
-   }
-   make_last(ir);
-
-   for (int i = 0; i < 4; i++) {
-      if (!(write_mask & (1<<i)))
-			continue;
-      ir = new AluInstruction(op3_cnde_int, dst[i], {tmp[i], dst[i], src0[i]},
-                              {alu_write});
-      emit_instruction(ir);
-   }
-   make_last(ir);
 
    return true;
 }

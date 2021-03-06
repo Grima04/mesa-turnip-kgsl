@@ -1327,6 +1327,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.has_fsub = true,
 		.has_isub = true,
 		.lower_iabs = true,
+		.lower_bitfield_extract = true,
+		.lower_bitfield_insert_to_bitfield_select = true,
 	};
 
 	rscreen->nir_options = nir_options;

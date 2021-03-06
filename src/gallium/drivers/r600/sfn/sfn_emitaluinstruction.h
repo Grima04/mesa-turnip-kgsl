@@ -89,7 +89,6 @@ private:
    bool emit_unpack_64_2x32_split(const nir_alu_instr& instr, unsigned comp);
 
    bool emit_tex_fdd(const nir_alu_instr& instr, TexInstruction::Opcode op, bool fine);
-   bool emit_bitfield_extract(const nir_alu_instr& instr, EAluOp opcode);
    bool emit_bitfield_insert(const nir_alu_instr& instr);
    bool emit_unpack_32_2x16_split_y(const nir_alu_instr& instr);
    bool emit_unpack_32_2x16_split_x(const nir_alu_instr& instr);
