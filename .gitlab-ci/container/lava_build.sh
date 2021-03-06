@@ -120,6 +120,7 @@ mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}
 . .gitlab-ci/container/build-deqp-runner.sh
 mkdir -p /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin
 mv /usr/local/bin/deqp-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
+mv /usr/local/bin/piglit-runner /lava-files/rootfs-${DEBIAN_ARCH}/usr/bin/.
 
 
 ############### Build dEQP
