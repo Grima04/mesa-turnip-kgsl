@@ -512,12 +512,78 @@ disk_cache_get_cache_filename(struct disk_cache *cache, const cache_key key)
    return filename;
 }
 
+static bool
+create_cache_item_header_and_blob(struct disk_cache_put_job *dc_job,
+                                  struct blob *cache_blob)
+{
+
+   /* Compress the cache item data */
+   size_t max_buf = util_compress_max_compressed_len(dc_job->size);
+   void *compressed_data = malloc(max_buf);
+   if (compressed_data == NULL)
+      return false;
+
+   size_t compressed_size =
+      util_compress_deflate(dc_job->data, dc_job->size,
+                            compressed_data, max_buf);
+   if (compressed_size == 0)
+      goto fail;
+
+   /* Copy the driver_keys_blob, this can be used find information about the
+    * mesa version that produced the entry or deal with hash collisions,
+    * should that ever become a real problem.
+    */
+   if (!blob_write_bytes(cache_blob, dc_job->cache->driver_keys_blob,
+                         dc_job->cache->driver_keys_blob_size))
+      goto fail;
+
+   /* Write the cache item metadata. This data can be used to deal with
+    * hash collisions, as well as providing useful information to 3rd party
+    * tools reading the cache files.
+    */
+   if (!blob_write_uint32(cache_blob, dc_job->cache_item_metadata.type))
+      goto fail;
+
+   if (dc_job->cache_item_metadata.type == CACHE_ITEM_TYPE_GLSL) {
+      if (!blob_write_uint32(cache_blob, dc_job->cache_item_metadata.num_keys))
+         goto fail;
+
+      size_t metadata_keys_size =
+         dc_job->cache_item_metadata.num_keys * sizeof(cache_key);
+      if (!blob_write_bytes(cache_blob, dc_job->cache_item_metadata.keys[0],
+                            metadata_keys_size))
+         goto fail;
+   }
+
+   /* Create CRC of the compressed data. We will read this when restoring the
+    * cache and use it to check for corruption.
+    */
+   struct cache_entry_file_data cf_data;
+   cf_data.crc32 = util_hash_crc32(compressed_data, compressed_size);
+   cf_data.uncompressed_size = dc_job->size;
+
+   if (!blob_write_bytes(cache_blob, &cf_data, sizeof(cf_data)))
+      goto fail;
+
+   /* Finally copy the compressed cache blob */
+   if (!blob_write_bytes(cache_blob, compressed_data, compressed_size))
+      goto fail;
+
+   free(compressed_data);
+   return true;
+
+ fail:
+   free(compressed_data);
+   return false;
+}
+
 void
 disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
                               char *filename)
 {
    int fd = -1, fd_final = -1;
-   void *compressed_data = NULL;
+   struct blob cache_blob;
+   blob_init(&cache_blob);
 
    /* Write to a temporary file to allow for an atomic rename to the
     * final destination filename, (to prevent any readers from seeing
@@ -576,81 +642,16 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
     * not in the cache, and is also not being written out to the cache
     * by some other process.
     */
-
-   /* Write the driver_keys_blob, this can be used find information about the
-    * mesa version that produced the entry or deal with hash collisions,
-    * should that ever become a real problem.
-    */
-   int ret = write_all(fd, dc_job->cache->driver_keys_blob,
-                       dc_job->cache->driver_keys_blob_size);
-   if (ret == -1) {
+   if (!create_cache_item_header_and_blob(dc_job, &cache_blob)) {
       unlink(filename_tmp);
       goto done;
    }
-
-   /* Write the cache item metadata. This data can be used to deal with
-    * hash collisions, as well as providing useful information to 3rd party
-    * tools reading the cache files.
-    */
-   ret = write_all(fd, &dc_job->cache_item_metadata.type,
-                   sizeof(uint32_t));
-   if (ret == -1) {
-      unlink(filename_tmp);
-      goto done;
-   }
-
-   if (dc_job->cache_item_metadata.type == CACHE_ITEM_TYPE_GLSL) {
-      ret = write_all(fd, &dc_job->cache_item_metadata.num_keys,
-                      sizeof(uint32_t));
-      if (ret == -1) {
-         unlink(filename_tmp);
-         goto done;
-      }
-
-      ret = write_all(fd, dc_job->cache_item_metadata.keys[0],
-                      dc_job->cache_item_metadata.num_keys *
-                      sizeof(cache_key));
-      if (ret == -1) {
-         unlink(filename_tmp);
-         goto done;
-      }
-   }
-
-   /* Compress the cache item data */
-   size_t max_buf = util_compress_max_compressed_len(dc_job->size);
-   compressed_data = malloc(max_buf);
-   if (compressed_data == NULL) {
-      unlink(filename_tmp);
-      goto done;
-   }
-
-   size_t compressed_size =
-      util_compress_deflate(dc_job->data, dc_job->size,
-                            compressed_data, max_buf);
-   if (compressed_size == 0) {
-      unlink(filename_tmp);
-      goto done;
-   }
-
-   /* Create CRC of the compressed data. We will read this when restoring the
-    * cache and use it to check for corruption.
-    */
-   struct cache_entry_file_data cf_data;
-   cf_data.crc32 = util_hash_crc32(compressed_data, compressed_size);
-   cf_data.uncompressed_size = dc_job->size;
 
    /* Now, finally, write out the contents to the temporary file, then
     * rename them atomically to the destination filename, and also
     * perform an atomic increment of the total cache size.
     */
-   size_t cf_data_size = sizeof(cf_data);
-   ret = write_all(fd, &cf_data, cf_data_size);
-   if (ret == -1) {
-      unlink(filename_tmp);
-      goto done;
-   }
-
-   ret = write_all(fd, compressed_data, compressed_size);
+   int ret = write_all(fd, cache_blob.data, cache_blob.size);
    if (ret == -1) {
       unlink(filename_tmp);
       goto done;
@@ -680,7 +681,7 @@ disk_cache_write_item_to_disk(struct disk_cache_put_job *dc_job,
    if (fd != -1)
       close(fd);
    free(filename_tmp);
-   free(compressed_data);
+   blob_finish(&cache_blob);
 }
 
 /* Determine path for cache based on the first defined name as follows:
