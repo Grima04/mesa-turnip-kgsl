@@ -25,9 +25,7 @@
  * use with the Mesa shader cache.
  *
  * The format is compatible enough to allow the fossilize db tools to be used
- * to do things like merge db collections, but unlike fossilize db which uses
- * a zlib implementation for compression of data entries, we use zstd for
- * compression.
+ * to do things like merge db collections.
  */
 
 #include "fossilize_db.h"
@@ -42,15 +40,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "zstd.h"
-
 #include "crc32.h"
 #include "hash_table.h"
 #include "mesa-sha1.h"
 #include "ralloc.h"
-
-/* 3 is the recomended level, with 22 as the absolute maximum */
-#define ZSTD_COMPRESSION_LEVEL 3
 
 #define FOZ_REF_MAGIC_SIZE 16
 
@@ -326,8 +319,7 @@ foz_read_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
 {
    uint64_t hash = truncate_hash_to_64bits(cache_key_160bit);
 
-   uint8_t *compressed_data = NULL;
-   void *blob = NULL;
+   void *data = NULL;
 
    if (!foz_db->alive)
       return NULL;
@@ -359,48 +351,29 @@ foz_read_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
          goto fail;
    }
 
-   uint32_t compressed_data_sz = entry->header.payload_size;
-   compressed_data = malloc(compressed_data_sz);
-   if (!compressed_data ||
-       (fread(compressed_data, 1, compressed_data_sz, foz_db->file[file_idx]) !=
-        compressed_data_sz))
+   uint32_t data_sz = entry->header.payload_size;
+   data = malloc(data_sz);
+   if (fread(data, 1, data_sz, foz_db->file[file_idx]) != data_sz)
       goto fail;
 
    /* verify checksum */
    if (entry->header.crc != 0) {
-      if (util_hash_crc32(compressed_data, compressed_data_sz) !=
-          entry->header.crc)
+      if (util_hash_crc32(data, data_sz) != entry->header.crc)
          goto fail;
    }
-
-   /* Uncompress the db entry */
-   uint32_t out_size = entry->header.uncompressed_size;
-   blob = malloc(out_size);
-   if (!blob)
-      goto fail;
-
-   size_t ret = ZSTD_decompress(blob, out_size, compressed_data,
-                                compressed_data_sz);
-   if (ZSTD_isError(ret))
-      goto fail;
-
-   free(compressed_data);
 
    simple_mtx_unlock(&foz_db->mtx);
 
    if (size)
-      *size = out_size;
+      *size = data_sz;
 
    /* Reset file offset to the end of the file ready for writing */
    fseek(foz_db->file[file_idx], offset, SEEK_SET);
 
-   return blob;
+   return data;
 
 fail:
-   if (compressed_data)
-      free(compressed_data);
-   if (blob)
-      free(blob);
+   free(data);
 
    /* reading db entry failed. reset the file offset */
    fseek(foz_db->file[file_idx], offset, SEEK_SET);
@@ -413,7 +386,7 @@ fail:
  */
 bool
 foz_write_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
-                const void *blob, size_t size)
+                const void *blob, size_t blob_size)
 {
    uint64_t hash = truncate_hash_to_64bits(cache_key_160bit);
 
@@ -431,22 +404,10 @@ foz_write_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
 
    /* Prepare db entry header and blob ready for writing */
    struct foz_payload_header header;
-   header.uncompressed_size = size;
-   header.format = FOSSILIZE_COMPRESSION_DEFLATE;
-
-   /* from the zstd docs (https://facebook.github.io/zstd/zstd_manual.html):
-    * compression runs faster if `dstCapacity` >= `ZSTD_compressBound(srcSize)`.
-    */
-   size_t out_size = ZSTD_compressBound(size);
-   void *out = malloc(out_size);
-
-   size_t blob_size = ZSTD_compress(out, out_size, blob, size,
-                                    ZSTD_COMPRESSION_LEVEL);
-   if (ZSTD_isError(blob_size))
-      goto fail;
-
+   header.uncompressed_size = blob_size;
+   header.format = FOSSILIZE_COMPRESSION_NONE;
    header.payload_size = blob_size;
-   header.crc = util_hash_crc32(out, blob_size);
+   header.crc = util_hash_crc32(blob, blob_size);
 
    /* Write hash header to db */
    char hash_str[FOSSILIZE_BLOB_HASH_LENGTH + 1]; /* 40 digits + null */
@@ -462,7 +423,7 @@ foz_write_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
       goto fail;
 
    /* Now write the db entry blob */
-   if (fwrite(out, 1, blob_size, foz_db->file[0]) != blob_size)
+   if (fwrite(blob, 1, blob_size, foz_db->file[0]) != blob_size)
       goto fail;
 
    /* Flush everything to file to reduce chance of cache corruption */
@@ -497,13 +458,11 @@ foz_write_entry(struct foz_db *foz_db, const uint8_t *cache_key_160bit,
    _mesa_hash_table_u64_insert(foz_db->index_db, hash, entry);
 
    simple_mtx_unlock(&foz_db->mtx);
-   free(out);
 
    return true;
 
 fail:
    simple_mtx_unlock(&foz_db->mtx);
-   free(out);
    return false;
 }
 #else
