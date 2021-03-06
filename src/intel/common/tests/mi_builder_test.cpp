@@ -896,3 +896,66 @@ TEST_F(mi_builder_test, store_if)
 }
 
 #endif /* GEN_GEN >= 8 || GEN_IS_HASWELL */
+
+#if GEN_VERSIONx10 >= 125
+
+/*
+ * Indirect load/store tests.  Only available on GFX 12.5+
+ */
+
+TEST_F(mi_builder_test, load_mem64_offset)
+{
+   uint64_t values[8] = {
+      0x0123456789abcdef,
+      0xdeadbeefac0ffee2,
+      (uint64_t)-1,
+      1,
+      0,
+      1049571,
+      (uint64_t)-240058,
+      20204184,
+   };
+   memcpy(input, values, sizeof(values));
+
+   uint32_t offsets[8] = { 0, 40, 24, 48, 56, 8, 32, 16 };
+   memcpy(input + 64, offsets, sizeof(offsets));
+
+   for (unsigned i = 0; i < ARRAY_SIZE(offsets); i++) {
+      mi_store(&b, out_mem64(i * 8),
+               mi_load_mem64_offset(&b, in_addr(0), in_mem32(i * 4 + 64)));
+   }
+
+   submit_batch();
+
+   for (unsigned i = 0; i < ARRAY_SIZE(offsets); i++)
+      EXPECT_EQ(*(uint64_t *)(output + i * 8), values[offsets[i] / 8]);
+}
+
+TEST_F(mi_builder_test, store_mem64_offset)
+{
+   uint64_t values[8] = {
+      0x0123456789abcdef,
+      0xdeadbeefac0ffee2,
+      (uint64_t)-1,
+      1,
+      0,
+      1049571,
+      (uint64_t)-240058,
+      20204184,
+   };
+   memcpy(input, values, sizeof(values));
+
+   uint32_t offsets[8] = { 0, 40, 24, 48, 56, 8, 32, 16 };
+   memcpy(input + 64, offsets, sizeof(offsets));
+
+   for (unsigned i = 0; i < ARRAY_SIZE(offsets); i++) {
+      mi_store_mem64_offset(&b, out_addr(0), in_mem32(i * 4 + 64),
+                                in_mem64(i * 8));
+   }
+
+   submit_batch();
+
+   for (unsigned i = 0; i < ARRAY_SIZE(offsets); i++)
+      EXPECT_EQ(*(uint64_t *)(output + offsets[i]), values[i]);
+}
+#endif /* GEN_VERSIONx10 >= 125 */

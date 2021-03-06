@@ -650,10 +650,13 @@
     </field>
     <field name="ALU Opcode" start="20" end="31" type="uint" prefix="MI_ALU">
       <value name="NOOP" value="0x000"/>
+      <value name="FENCE_RD" value="0x001"/>
+      <value name="FENCE_WR" value="0x002"/>
       <value name="LOAD" value="0x080"/>
       <value name="LOADINV" value="0x480"/>
       <value name="LOAD0" value="0x081"/>
       <value name="LOAD1" value="0x481"/>
+      <value name="LOADIND" value="0x082"/>
       <value name="ADD" value="0x100"/>
       <value name="SUB" value="0x101"/>
       <value name="AND" value="0x102"/>
@@ -664,6 +667,7 @@
       <value name="SAR" value="0x107"/>
       <value name="STORE" value="0x180"/>
       <value name="STOREINV" value="0x580"/>
+      <value name="STOREIND" value="0x181"/>
     </field>
   </struct>
 

@@ -1180,4 +1180,63 @@ _mi_resolve_address_token(struct mi_builder *b,
 
 #endif /* MI_BUILDER_CAN_WRITE_BATCH */
 
+#if GEN_VERSIONx10 >= 125
+
+/*
+ * Indirect load/store.  Only available on GFX 12.5+
+ */
+
+MUST_CHECK static inline struct mi_value
+mi_load_mem64_offset(struct mi_builder *b,
+                     __gen_address_type addr, struct mi_value offset)
+{
+   uint64_t addr_u64 = __gen_combine_address(b->user_data, NULL, addr, 0);
+   struct mi_value addr_val = mi_imm(addr_u64);
+
+   struct mi_value dst = mi_new_gpr(b);
+
+   uint32_t dw[5];
+   dw[0] = _mi_math_load_src(b, MI_ALU_SRCA, &addr_val);
+   dw[1] = _mi_math_load_src(b, MI_ALU_SRCB, &offset);
+   dw[2] = _mi_pack_alu(MI_ALU_ADD, 0, 0);
+   dw[3] = _mi_pack_alu(MI_ALU_LOADIND, _mi_value_as_gpr(dst), MI_ALU_ACCU);
+   dw[4] = _mi_pack_alu(MI_ALU_FENCE_RD, 0, 0);
+   _mi_builder_push_math(b, dw, 5);
+
+   mi_value_unref(b, addr_val);
+   mi_value_unref(b, offset);
+
+   return dst;
+}
+
+static inline void
+mi_store_mem64_offset(struct mi_builder *b,
+                          __gen_address_type addr, struct mi_value offset,
+                          struct mi_value data)
+{
+   uint64_t addr_u64 = __gen_combine_address(b->user_data, NULL, addr, 0);
+   struct mi_value addr_val = mi_imm(addr_u64);
+
+   data = mi_value_to_gpr(b, mi_resolve_invert(b, data));
+
+   uint32_t dw[5];
+   dw[0] = _mi_math_load_src(b, MI_ALU_SRCA, &addr_val);
+   dw[1] = _mi_math_load_src(b, MI_ALU_SRCB, &offset);
+   dw[2] = _mi_pack_alu(MI_ALU_ADD, 0, 0);
+   dw[3] = _mi_pack_alu(MI_ALU_STOREIND, MI_ALU_ACCU, _mi_value_as_gpr(data));
+   dw[4] = _mi_pack_alu(MI_ALU_FENCE_WR, 0, 0);
+   _mi_builder_push_math(b, dw, 5);
+
+   mi_value_unref(b, addr_val);
+   mi_value_unref(b, offset);
+   mi_value_unref(b, data);
+
+   /* This is the only math case which has side-effects outside of regular
+    * registers to flush math afterwards so we don't confuse anyone.
+    */
+   mi_builder_flush_math(b);
+}
+
+#endif /* GEN_VERSIONx10 >= 125 */
+
 #endif /* MI_BUILDER_H */
