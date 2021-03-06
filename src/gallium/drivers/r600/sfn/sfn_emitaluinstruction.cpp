@@ -52,163 +52,139 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    preload_src(instr);
 
    switch (instr.op) {
-   case nir_op_f2b32: return emit_alu_f2b32(instr);
+    /* These are in the ALU instruction list, but they should be texture instructions */
+   case nir_op_b2b1: return emit_mov(instr);
+   case nir_op_b2b32: return emit_mov(instr);
    case nir_op_b2f32: return emit_alu_b2f(instr);
-   case nir_op_i2b1: return emit_alu_i2orf2_b1(instr, op2_setne_int);
-   case nir_op_i2b32: return emit_alu_i2orf2_b1(instr, op2_setne_int);
-   case nir_op_f2b1: return emit_alu_i2orf2_b1(instr, op2_setne_dx10);
-   case nir_op_b2b1:
-   case nir_op_b2b32:
-   case nir_op_mov:return emit_mov(instr);
-   case nir_op_ftrunc: return emit_alu_op1(instr, op1_trunc);
-   case nir_op_fabs: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_abs});
-   case nir_op_fneg: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_neg});
-   case nir_op_fsat: return emit_alu_op1(instr, op1_mov, {1 << alu_dst_clamp});
-   case nir_op_frcp: return emit_alu_trans_op1(instr, op1_recip_ieee);
-   case nir_op_frsq: return emit_alu_trans_op1(instr, op1_recipsqrt_ieee1);
-   case nir_op_fsin: return emit_alu_trig_op1(instr, op1_sin);
-   case nir_op_fcos: return emit_alu_trig_op1(instr, op1_cos);
-   case nir_op_fexp2: return emit_alu_trans_op1(instr, op1_exp_ieee);
-   case nir_op_flog2: return emit_alu_trans_op1(instr, op1_log_clamped);
-
-   case nir_op_fround_even: return emit_alu_op1(instr, op1_rndne);
-   case nir_op_fsqrt: return emit_alu_trans_op1(instr, op1_sqrt_ieee);
-   case nir_op_i2f32: return emit_alu_trans_op1(instr, op1_int_to_flt);
-   case nir_op_u2f32: return emit_alu_trans_op1(instr, op1_uint_to_flt);
-   case nir_op_f2i32: return emit_alu_f2i32_or_u32(instr, op1_flt_to_int);
-   case nir_op_f2u32: return emit_alu_f2i32_or_u32(instr, op1_flt_to_uint);
-
-   case nir_op_fceil: return emit_alu_op1(instr, op1_ceil);
-   case nir_op_ffract: return emit_alu_op1(instr, op1_fract);
-   case nir_op_ffloor: return emit_alu_op1(instr, op1_floor);
-   case nir_op_fdph:  return emit_fdph(instr);
-
-   case nir_op_ibitfield_extract: return emit_bitfield_extract(instr, op3_bfe_int);
-   case nir_op_ubitfield_extract: return emit_bitfield_extract(instr, op3_bfe_uint);
-   case nir_op_bitfield_insert: return emit_bitfield_insert(instr);
-   case nir_op_bit_count: return emit_alu_op1(instr, op1_bcnt_int);
-   case nir_op_bitfield_reverse: return emit_alu_op1(instr, op1_bfrev_int);
-
-   case nir_op_ieq32:
-   case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
-
-   case nir_op_ine32:
-   case nir_op_ine: return emit_alu_op2_int(instr, op2_setne_int);
-   case nir_op_uge32:
-   case nir_op_uge: return emit_alu_op2_int(instr, op2_setge_uint);
-   case nir_op_ige32:
-   case nir_op_ige: return emit_alu_op2_int(instr, op2_setge_int);
-   case nir_op_ishl: return emit_alu_op2_int(instr, op2_lshl_int);
-   case nir_op_ishr: return emit_alu_op2_int(instr, op2_ashr_int);
-
-   case nir_op_ult32:
-   case nir_op_ult: return emit_alu_op2_int(instr, op2_setgt_uint, op2_opt_reverse);
-
-   case nir_op_ilt32:
-   case nir_op_ilt: return emit_alu_op2_int(instr, op2_setgt_int, op2_opt_reverse);
-   case nir_op_iand: return emit_alu_op2_int(instr, op2_and_int);
-   case nir_op_ixor: return emit_alu_op2_int(instr, op2_xor_int);
-   case nir_op_imin: return emit_alu_op2_int(instr, op2_min_int);
-   case nir_op_imax: return emit_alu_op2_int(instr, op2_max_int);
-   case nir_op_imul_high: return emit_alu_trans_op2(instr, op2_mulhi_int);
-   case nir_op_umul_high: return emit_alu_trans_op2(instr, op2_mulhi_uint);
-   case nir_op_umax: return emit_alu_op2_int(instr, op2_max_uint);
-   case nir_op_umin: return emit_alu_op2_int(instr, op2_min_uint);
-   case nir_op_ior: return emit_alu_op2_int(instr, op2_or_int);
-   case nir_op_inot: return emit_alu_op1(instr, op1_not_int);
-   case nir_op_ineg: return emit_alu_ineg(instr);
-   case nir_op_idiv: return emit_alu_div_int(instr, true, false);
-   case nir_op_udiv: return emit_alu_div_int(instr, false, false);
-   case nir_op_umod: return emit_alu_div_int(instr, false, true);
-
-   case nir_op_ushr: return emit_alu_op2_int(instr, op2_lshr_int);
-
-   case nir_op_flt32:
-   case nir_op_flt: return emit_alu_op2(instr, op2_setgt_dx10, op2_opt_reverse);
-
-   case nir_op_fge32:
-   case nir_op_fge: return emit_alu_op2(instr, op2_setge_dx10);
-   case nir_op_fneu32:
-   case nir_op_fneu: return emit_alu_op2(instr, op2_setne_dx10);
-   case nir_op_feq32:
-   case nir_op_feq: return emit_alu_op2(instr, op2_sete_dx10);
-
-   case nir_op_fmin: return emit_alu_op2(instr, op2_min_dx10);
-   case nir_op_fmax: return emit_alu_op2(instr, op2_max_dx10);
-   case nir_op_fmul: return emit_alu_op2(instr, op2_mul_ieee);
-   case nir_op_imul: return emit_alu_trans_op2(instr, op2_mullo_int);
-   case nir_op_fadd: return emit_alu_op2(instr, op2_add);
-   case nir_op_fsub: return emit_alu_op2(instr, op2_add, op2_opt_neg_src1);
-   case nir_op_iadd: return emit_alu_op2_int(instr, op2_add_int);
-   case nir_op_isub: return emit_alu_op2_int(instr, op2_sub_int);
-   case nir_op_fdot2: return emit_dot(instr, 2);
-   case nir_op_fdot3: return emit_dot(instr, 3);
-   case nir_op_fdot4: return emit_dot(instr, 4);
-
-   case nir_op_bany_inequal2: return emit_any_all_icomp(instr, op2_setne_int, 2, false);
-   case nir_op_bany_inequal3: return emit_any_all_icomp(instr, op2_setne_int, 3, false);
-   case nir_op_bany_inequal4: return emit_any_all_icomp(instr, op2_setne_int, 4, false);
-
-   case nir_op_ball_iequal2: return emit_any_all_icomp(instr, op2_sete_int, 2, true);
-   case nir_op_ball_iequal3: return emit_any_all_icomp(instr, op2_sete_int, 3, true);
-   case nir_op_ball_iequal4: return emit_any_all_icomp(instr, op2_sete_int, 4, true);
-
-   case nir_op_bany_fnequal2: return emit_any_all_fcomp2(instr, op2_setne_dx10, false);
-   case nir_op_bany_fnequal3: return emit_any_all_fcomp(instr, op2_setne, 3, false);
-   case nir_op_bany_fnequal4: return emit_any_all_fcomp(instr, op2_setne, 4, false);
-
-   case nir_op_ball_fequal2: return emit_any_all_fcomp2(instr, op2_sete_dx10, true);
-   case nir_op_ball_fequal3: return emit_any_all_fcomp(instr, op2_sete, 3, true);
-   case nir_op_ball_fequal4: return emit_any_all_fcomp(instr, op2_sete, 4, true);
-
-   case nir_op_b32any_inequal2: return emit_any_all_icomp(instr, op2_setne_int, 2, false);
-   case nir_op_b32any_inequal3: return emit_any_all_icomp(instr, op2_setne_int, 3, false);
-   case nir_op_b32any_inequal4: return emit_any_all_icomp(instr, op2_setne_int, 4, false);
-
-   case nir_op_b32all_iequal2: return emit_any_all_icomp(instr, op2_sete_int, 2, true);
-   case nir_op_b32all_iequal3: return emit_any_all_icomp(instr, op2_sete_int, 3, true);
-   case nir_op_b32all_iequal4: return emit_any_all_icomp(instr, op2_sete_int, 4, true);
-
-   case nir_op_b32any_fnequal2: return emit_any_all_fcomp2(instr, op2_setne_dx10, false);
-   case nir_op_b32any_fnequal3: return emit_any_all_fcomp(instr, op2_setne, 3, false);
-   case nir_op_b32any_fnequal4: return emit_any_all_fcomp(instr, op2_setne, 4, false);
-
+   case nir_op_b2i32: return emit_b2i32(instr);
    case nir_op_b32all_fequal2: return emit_any_all_fcomp2(instr, op2_sete_dx10, true);
    case nir_op_b32all_fequal3: return emit_any_all_fcomp(instr, op2_sete, 3, true);
    case nir_op_b32all_fequal4: return emit_any_all_fcomp(instr, op2_sete, 4, true);
-
-   case nir_op_ffma: return emit_alu_op3(instr, op3_muladd_ieee);
+   case nir_op_b32all_iequal2: return emit_any_all_icomp(instr, op2_sete_int, 2, true);
+   case nir_op_b32all_iequal3: return emit_any_all_icomp(instr, op2_sete_int, 3, true);
+   case nir_op_b32all_iequal4: return emit_any_all_icomp(instr, op2_sete_int, 4, true);
+   case nir_op_b32any_fnequal2: return emit_any_all_fcomp2(instr, op2_setne_dx10, false);
+   case nir_op_b32any_fnequal3: return emit_any_all_fcomp(instr, op2_setne, 3, false);
+   case nir_op_b32any_fnequal4: return emit_any_all_fcomp(instr, op2_setne, 4, false);
+   case nir_op_b32any_inequal2: return emit_any_all_icomp(instr, op2_setne_int, 2, false);
+   case nir_op_b32any_inequal3: return emit_any_all_icomp(instr, op2_setne_int, 3, false);
+   case nir_op_b32any_inequal4: return emit_any_all_icomp(instr, op2_setne_int, 4, false);
    case nir_op_b32csel: return emit_alu_op3(instr, op3_cnde_int,  {0, 2, 1});
+   case nir_op_ball_fequal2: return emit_any_all_fcomp2(instr, op2_sete_dx10, true);
+   case nir_op_ball_fequal3: return emit_any_all_fcomp(instr, op2_sete, 3, true);
+   case nir_op_ball_fequal4: return emit_any_all_fcomp(instr, op2_sete, 4, true);
+   case nir_op_ball_iequal2: return emit_any_all_icomp(instr, op2_sete_int, 2, true);
+   case nir_op_ball_iequal3: return emit_any_all_icomp(instr, op2_sete_int, 3, true);
+   case nir_op_ball_iequal4: return emit_any_all_icomp(instr, op2_sete_int, 4, true);
+   case nir_op_bany_fnequal2: return emit_any_all_fcomp2(instr, op2_setne_dx10, false);
+   case nir_op_bany_fnequal3: return emit_any_all_fcomp(instr, op2_setne, 3, false);
+   case nir_op_bany_fnequal4: return emit_any_all_fcomp(instr, op2_setne, 4, false);
+   case nir_op_bany_inequal2: return emit_any_all_icomp(instr, op2_setne_int, 2, false);
+   case nir_op_bany_inequal3: return emit_any_all_icomp(instr, op2_setne_int, 3, false);
+   case nir_op_bany_inequal4: return emit_any_all_icomp(instr, op2_setne_int, 4, false);
    case nir_op_bcsel: return emit_alu_op3(instr, op3_cnde_int,  {0, 2, 1});
-   case nir_op_vec2: return emit_create_vec(instr, 2);
-   case nir_op_vec3: return emit_create_vec(instr, 3);
-   case nir_op_vec4: return emit_create_vec(instr, 4);
-
+   case nir_op_bit_count: return emit_alu_op1(instr, op1_bcnt_int);
+   case nir_op_bitfield_insert: return emit_bitfield_insert(instr);
+   case nir_op_bitfield_reverse: return emit_alu_op1(instr, op1_bfrev_int);
+   case nir_op_cube_r600: return emit_cube(instr);
+   case nir_op_f2b1: return emit_alu_i2orf2_b1(instr, op2_setne_dx10);
+   case nir_op_f2b32: return emit_alu_f2b32(instr);
+   case nir_op_f2i32: return emit_alu_f2i32_or_u32(instr, op1_flt_to_int);
+   case nir_op_f2u32: return emit_alu_f2i32_or_u32(instr, op1_flt_to_uint);
+   case nir_op_fabs: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_abs});
+   case nir_op_fadd: return emit_alu_op2(instr, op2_add);
+   case nir_op_fceil: return emit_alu_op1(instr, op1_ceil);
+   case nir_op_fcos: return emit_alu_trig_op1(instr, op1_cos);
+   case nir_op_fddx: return emit_tex_fdd(instr, TexInstruction::get_gradient_h, false);
+   case nir_op_fddx_coarse: return emit_tex_fdd(instr, TexInstruction::get_gradient_h, false);
+   case nir_op_fddx_fine: return emit_tex_fdd(instr, TexInstruction::get_gradient_h, true);
+   case nir_op_fddy: return emit_tex_fdd(instr,TexInstruction::get_gradient_v, false);
+   case nir_op_fddy_coarse:
+   case nir_op_fddy_fine: return emit_tex_fdd(instr, TexInstruction::get_gradient_v,  true);
+   case nir_op_fdot2: return emit_dot(instr, 2);
+   case nir_op_fdot3: return emit_dot(instr, 3);
+   case nir_op_fdot4: return emit_dot(instr, 4);
+   case nir_op_fdph:  return emit_fdph(instr);
+   case nir_op_feq32: return emit_alu_op2(instr, op2_sete_dx10);
+   case nir_op_feq: return emit_alu_op2(instr, op2_sete_dx10);
+   case nir_op_fexp2: return emit_alu_trans_op1(instr, op1_exp_ieee);
+   case nir_op_ffloor: return emit_alu_op1(instr, op1_floor);
+   case nir_op_ffma: return emit_alu_op3(instr, op3_muladd_ieee);
+   case nir_op_ffract: return emit_alu_op1(instr, op1_fract);
+   case nir_op_fge32: return emit_alu_op2(instr, op2_setge_dx10);
+   case nir_op_fge: return emit_alu_op2(instr, op2_setge_dx10);
    case nir_op_find_lsb: return emit_alu_op1(instr, op1_ffbl_int);
-   case nir_op_ufind_msb: return emit_find_msb(instr, false);
+   case nir_op_flog2: return emit_alu_trans_op1(instr, op1_log_clamped);
+   case nir_op_flt32: return emit_alu_op2(instr, op2_setgt_dx10, op2_opt_reverse);
+   case nir_op_flt: return emit_alu_op2(instr, op2_setgt_dx10, op2_opt_reverse);
+   case nir_op_fmax: return emit_alu_op2(instr, op2_max_dx10);
+   case nir_op_fmin: return emit_alu_op2(instr, op2_min_dx10);
+   case nir_op_fmul: return emit_alu_op2(instr, op2_mul_ieee);
+   case nir_op_fneg: return emit_alu_op1(instr, op1_mov, {1 << alu_src0_neg});
+   case nir_op_fneu32: return emit_alu_op2(instr, op2_setne_dx10);
+   case nir_op_fneu: return emit_alu_op2(instr, op2_setne_dx10);
+   case nir_op_frcp: return emit_alu_trans_op1(instr, op1_recip_ieee);
+   case nir_op_fround_even: return emit_alu_op1(instr, op1_rndne);
+   case nir_op_frsq: return emit_alu_trans_op1(instr, op1_recipsqrt_ieee1);
+   case nir_op_fsat: return emit_alu_op1(instr, op1_mov, {1 << alu_dst_clamp});
+   case nir_op_fsin: return emit_alu_trig_op1(instr, op1_sin);
+   case nir_op_fsqrt: return emit_alu_trans_op1(instr, op1_sqrt_ieee);
+   case nir_op_fsub: return emit_alu_op2(instr, op2_add, op2_opt_neg_src1);
+   case nir_op_ftrunc: return emit_alu_op1(instr, op1_trunc);
+   case nir_op_i2b1: return emit_alu_i2orf2_b1(instr, op2_setne_int);
+   case nir_op_i2b32: return emit_alu_i2orf2_b1(instr, op2_setne_int);
+   case nir_op_i2f32: return emit_alu_trans_op1(instr, op1_int_to_flt);
+   case nir_op_iadd: return emit_alu_op2_int(instr, op2_add_int);
+   case nir_op_iand: return emit_alu_op2_int(instr, op2_and_int);
+   case nir_op_ibfe: return emit_alu_op3(instr, op3_bfe_int);
+   case nir_op_ibitfield_extract: return emit_bitfield_extract(instr, op3_bfe_int);
+   case nir_op_idiv: return emit_alu_div_int(instr, true, false);
+   case nir_op_ieq32: return emit_alu_op2_int(instr, op2_sete_int);
+   case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ifind_msb: return emit_find_msb(instr, true);
-   case nir_op_b2i32: return emit_b2i32(instr);
+   case nir_op_ige32: return emit_alu_op2_int(instr, op2_setge_int);
+   case nir_op_ige: return emit_alu_op2_int(instr, op2_setge_int);
+   case nir_op_ilt32: return emit_alu_op2_int(instr, op2_setgt_int, op2_opt_reverse);
+   case nir_op_ilt: return emit_alu_op2_int(instr, op2_setgt_int, op2_opt_reverse);
+   case nir_op_imax: return emit_alu_op2_int(instr, op2_max_int);
+   case nir_op_imin: return emit_alu_op2_int(instr, op2_min_int);
+   case nir_op_imul: return emit_alu_trans_op2(instr, op2_mullo_int);
+   case nir_op_imul_high: return emit_alu_trans_op2(instr, op2_mulhi_int);
+   case nir_op_ine32: return emit_alu_op2_int(instr, op2_setne_int);
+   case nir_op_ine: return emit_alu_op2_int(instr, op2_setne_int);
+   case nir_op_ineg: return emit_alu_ineg(instr);
+   case nir_op_inot: return emit_alu_op1(instr, op1_not_int);
+   case nir_op_ior: return emit_alu_op2_int(instr, op2_or_int);
+   case nir_op_ishl: return emit_alu_op2_int(instr, op2_lshl_int);
+   case nir_op_ishr: return emit_alu_op2_int(instr, op2_ashr_int);
+   case nir_op_isub: return emit_alu_op2_int(instr, op2_sub_int);
+   case nir_op_ixor: return emit_alu_op2_int(instr, op2_xor_int);
+   case nir_op_mov:return emit_mov(instr);
    case nir_op_pack_64_2x32_split: return emit_pack_64_2x32_split(instr);
+   case nir_op_pack_half_2x16_split: return emit_pack_32_2x16_split(instr);
+   case nir_op_u2f32: return emit_alu_trans_op1(instr, op1_uint_to_flt);
+   case nir_op_ubfe: return emit_alu_op3(instr, op3_bfe_uint);
+   case nir_op_ubitfield_extract: return emit_bitfield_extract(instr, op3_bfe_uint);
+   case nir_op_udiv: return emit_alu_div_int(instr, false, false);
+   case nir_op_ufind_msb: return emit_find_msb(instr, false);
+   case nir_op_uge32: return emit_alu_op2_int(instr, op2_setge_uint);
+   case nir_op_uge: return emit_alu_op2_int(instr, op2_setge_uint);
+   case nir_op_ult32: return emit_alu_op2_int(instr, op2_setgt_uint, op2_opt_reverse);
+   case nir_op_ult: return emit_alu_op2_int(instr, op2_setgt_uint, op2_opt_reverse);
+   case nir_op_umad24: return emit_alu_op3(instr, op3_muladd_uint24,  {0, 1, 2});
+   case nir_op_umax: return emit_alu_op2_int(instr, op2_max_uint);
+   case nir_op_umin: return emit_alu_op2_int(instr, op2_min_uint);
+   case nir_op_umod: return emit_alu_div_int(instr, false, true);
+   case nir_op_umul24: return emit_alu_op2(instr, op2_mul_uint24);
+   case nir_op_umul_high: return emit_alu_trans_op2(instr, op2_mulhi_uint);
    case nir_op_unpack_64_2x32_split_x: return emit_unpack_64_2x32_split(instr, 0);
    case nir_op_unpack_64_2x32_split_y: return emit_unpack_64_2x32_split(instr, 1);
    case nir_op_unpack_half_2x16_split_x: return emit_unpack_32_2x16_split_x(instr);
    case nir_op_unpack_half_2x16_split_y: return emit_unpack_32_2x16_split_y(instr);
-   case nir_op_pack_half_2x16_split: return emit_pack_32_2x16_split(instr);
-
-
-   /* These are in the ALU instruction list, but they should be texture instructions */
-   case nir_op_fddx_fine: return emit_tex_fdd(instr, TexInstruction::get_gradient_h, true);
-   case nir_op_fddx_coarse:
-   case nir_op_fddx: return emit_tex_fdd(instr, TexInstruction::get_gradient_h, false);
-
-   case nir_op_fddy_fine: return emit_tex_fdd(instr, TexInstruction::get_gradient_v,  true);
-   case nir_op_fddy_coarse:
-   case nir_op_fddy: return emit_tex_fdd(instr,TexInstruction::get_gradient_v, false);
-
-   case nir_op_umad24: return emit_alu_op3(instr, op3_muladd_uint24,  {0, 1, 2});
-   case nir_op_umul24: return emit_alu_op2(instr, op2_mul_uint24);
-
-   case nir_op_cube_r600: return emit_cube(instr);
+   case nir_op_ushr: return emit_alu_op2_int(instr, op2_lshr_int);
+   case nir_op_vec2: return emit_create_vec(instr, 2);
+   case nir_op_vec3: return emit_create_vec(instr, 3);
+   case nir_op_vec4: return emit_create_vec(instr, 4);
    default:
       return false;
    }
