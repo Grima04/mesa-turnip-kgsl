@@ -140,7 +140,6 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_iadd: return emit_alu_op2_int(instr, op2_add_int);
    case nir_op_iand: return emit_alu_op2_int(instr, op2_and_int);
    case nir_op_ibfe: return emit_alu_op3(instr, op3_bfe_int);
-   case nir_op_idiv: return emit_alu_div_int(instr, true, false);
    case nir_op_ieq32: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ifind_msb: return emit_find_msb(instr, true);
@@ -166,7 +165,6 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_pack_half_2x16_split: return emit_pack_32_2x16_split(instr);
    case nir_op_u2f32: return emit_alu_trans_op1(instr, op1_uint_to_flt);
    case nir_op_ubfe: return emit_alu_op3(instr, op3_bfe_uint);
-   case nir_op_udiv: return emit_alu_div_int(instr, false, false);
    case nir_op_ufind_msb: return emit_find_msb(instr, false);
    case nir_op_uge32: return emit_alu_op2_int(instr, op2_setge_uint);
    case nir_op_uge: return emit_alu_op2_int(instr, op2_setge_uint);
@@ -175,7 +173,6 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_umad24: return emit_alu_op3(instr, op3_muladd_uint24,  {0, 1, 2});
    case nir_op_umax: return emit_alu_op2_int(instr, op2_max_uint);
    case nir_op_umin: return emit_alu_op2_int(instr, op2_min_uint);
-   case nir_op_umod: return emit_alu_div_int(instr, false, true);
    case nir_op_umul24: return emit_alu_op2(instr, op2_mul_uint24);
    case nir_op_umul_high: return emit_alu_trans_op2(instr, op2_mulhi_uint);
    case nir_op_unpack_64_2x32_split_x: return emit_unpack_64_2x32_split(instr, 0);
@@ -975,105 +972,6 @@ bool EmitAluInstruction::emit_alu_ineg(const nir_alu_instr& instr)
 }
 
 static const char swz[] = "xyzw01?_";
-
-bool EmitAluInstruction::emit_alu_div_int(const nir_alu_instr& instr, bool use_signed, bool mod)
-{
-
-   int sel_tmp = allocate_temp_register();
-   int sel_tmp0 = allocate_temp_register();
-   int sel_tmp1 = allocate_temp_register();
-
-   PValue asrc1(new GPRValue(sel_tmp, 0));
-   PValue asrc2(new GPRValue(sel_tmp, 1));
-   PValue rsign(new GPRValue(sel_tmp, 2));
-   PValue err(new GPRValue(sel_tmp, 3));
-
-   GPRVector tmp0(sel_tmp0, {0,1,2,3});
-   GPRVector tmp1(sel_tmp1, {0,1,2,3});
-
-   std::array<PValue, 4> src0;
-   std::array<PValue, 4> src1;
-
-   for (int i = 0; i < 4 ; ++i) {
-      if (instr.dest.write_mask & (1 << i)) {
-         src0[i] = m_src[0][i];
-         src1[i] = m_src[1][i];
-      }
-   }
-
-
-   for (int i = 3; i >= 0 ; --i) {
-      if (!(instr.dest.write_mask & (1 << i)))
-         continue;
-      if (use_signed) {
-         emit_instruction(op2_sub_int, asrc1, {Value::zero, src0[i]}, {alu_write});
-         emit_instruction(op2_sub_int, asrc2, {Value::zero, src1[i]}, {alu_write});
-         emit_instruction(op2_xor_int, rsign, {src0[i], src1[i]}, {alu_write, alu_last_instr});
-
-
-         emit_instruction(op3_cndge_int, asrc1, {src0[i], src0[i], asrc1}, {alu_write});
-         emit_instruction(op3_cndge_int, asrc2, {src1[i], src1[i], asrc2}, {alu_write, alu_last_instr});
-      } else {
-         asrc1 = src0[i];
-         asrc2 = src1[i];
-      }
-
-      emit_instruction(op1_recip_uint,  tmp0.x(), {asrc2}, {alu_write, alu_last_instr});
-
-      emit_instruction(op2_mullo_uint,  tmp0.z(), {tmp0.x(), asrc2}, {alu_write, alu_last_instr});
-
-      emit_instruction(op2_sub_int,  tmp0.w(), {Value::zero, tmp0.z()}, {alu_write});
-      emit_instruction(op2_mulhi_uint,  tmp0.y(), {tmp0.x(), asrc2 }, {alu_write, alu_last_instr});
-
-      emit_instruction(op3_cnde_int,  tmp0.z(), {tmp0.y(), tmp0.w(), tmp0.z()}, {alu_write, alu_last_instr});
-
-      emit_instruction(op2_mulhi_uint,  err, {tmp0.z(), tmp0.x()}, {alu_write, alu_last_instr});
-
-      emit_instruction(op2_sub_int, tmp1.x(), {tmp0.x(), err}, {alu_write});
-      emit_instruction(op2_add_int, tmp1.y(), {tmp0.x(), err}, {alu_write, alu_last_instr});
-
-      emit_instruction(op3_cnde_int,  tmp0.x(), {tmp0.y(), tmp1.y(), tmp1.x()}, {alu_write, alu_last_instr});
-
-      emit_instruction(op2_mulhi_uint,  tmp0.z(), {tmp0.x(), asrc1 }, {alu_write, alu_last_instr});
-      emit_instruction(op2_mullo_uint,  tmp0.y(), {tmp0.z(), asrc2 }, {alu_write, alu_last_instr});
-
-      emit_instruction(op2_sub_int,  tmp0.w(), {asrc1, tmp0.y()}, {alu_write, alu_last_instr});
-
-
-      emit_instruction(op2_setge_uint,  tmp1.x(), {tmp0.w(), asrc2}, {alu_write});
-      emit_instruction(op2_setge_uint,  tmp1.y(), {asrc1, tmp0.y()}, {alu_write});
-
-      if (mod) {
-         emit_instruction(op2_sub_int,  tmp1.z(), {tmp0.w(), asrc2}, {alu_write});
-         emit_instruction(op2_add_int,  tmp1.w(), {tmp0.w(), asrc2}, {alu_write, alu_last_instr});
-      } else {
-         emit_instruction(op2_add_int,  tmp1.z(), {tmp0.z(), Value::one_i}, {alu_write});
-         emit_instruction(op2_sub_int,  tmp1.w(), {tmp0.z(), Value::one_i}, {alu_write, alu_last_instr});
-      }
-
-      emit_instruction(op2_and_int,  tmp1.x(), {tmp1.x(), tmp1.y()}, {alu_write, alu_last_instr});
-
-      if (mod)
-         emit_instruction(op3_cnde_int,  tmp0.z(), {tmp1.x(), tmp0.w(), tmp1.z()}, {alu_write, alu_last_instr});
-      else
-         emit_instruction(op3_cnde_int,  tmp0.z(), {tmp1.x(), tmp0.z(), tmp1.z()}, {alu_write, alu_last_instr});
-
-      if (use_signed) {
-         emit_instruction(op3_cnde_int,  tmp0.z(), {tmp1.y(), tmp1.w(), tmp0.z()}, {alu_write, alu_last_instr});
-         emit_instruction(op2_sub_int,  tmp0.y(), {Value::zero, tmp0.z()}, {alu_write, alu_last_instr});
-
-         if (mod)
-            emit_instruction(op3_cndge_int,  from_nir(instr.dest, i), {src0[i], tmp0.z(), tmp0.y()},
-                          {alu_write, alu_last_instr});
-         else
-            emit_instruction(op3_cndge_int,  from_nir(instr.dest, i), {rsign, tmp0.z(), tmp0.y()},
-                          {alu_write, alu_last_instr});
-      } else {
-         emit_instruction(op3_cnde_int,  from_nir(instr.dest, i), {tmp1.y(), tmp1.w(), tmp0.z()}, {alu_write, alu_last_instr});
-      }
-   }
-   return true;
-}
 
 void EmitAluInstruction::split_alu_modifiers(const nir_alu_src& src,
                                              const GPRVector::Values& v, GPRVector::Values& out, int ncomp)
