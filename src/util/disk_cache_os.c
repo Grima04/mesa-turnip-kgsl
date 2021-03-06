@@ -792,14 +792,32 @@ void *
 disk_cache_load_item_foz(struct disk_cache *cache, const cache_key key,
                          size_t *size)
 {
-   return foz_read_entry(&cache->foz_db, key, size);
+   size_t cache_tem_size = 0;
+   void *cache_item = foz_read_entry(&cache->foz_db, key, &cache_tem_size);
+   if (!cache_item)
+      return NULL;
+
+   uint8_t *uncompressed_data =
+       parse_and_validate_cache_item(cache, cache_item, cache_tem_size, size);
+   free(cache_item);
+
+   return uncompressed_data;
 }
 
 bool
 disk_cache_write_item_to_disk_foz(struct disk_cache_put_job *dc_job)
 {
-   return foz_write_entry(&dc_job->cache->foz_db, dc_job->key, dc_job->data,
-                          dc_job->size);
+   struct blob cache_blob;
+   blob_init(&cache_blob);
+
+   if (!create_cache_item_header_and_blob(dc_job, &cache_blob))
+      return false;
+
+   bool r = foz_write_entry(&dc_job->cache->foz_db, dc_job->key,
+                            cache_blob.data, cache_blob.size);
+
+   blob_finish(&cache_blob);
+   return r;
 }
 
 bool
