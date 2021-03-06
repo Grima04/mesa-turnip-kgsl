@@ -151,6 +151,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
                          struct r600_pipe_shader *pipeshader,
                          union r600_shader_key *key);
 
+bool r600_lower_alu(nir_shader *sh);
 
 #ifdef __cplusplus
 }

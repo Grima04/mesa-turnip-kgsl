@@ -65,7 +65,6 @@ private:
 
    bool emit_alu_op3(const nir_alu_instr& instr, EAluOp opcode, std::array<uint8_t, 3> reorder={0,1,2});
    bool emit_alu_trans_op1(const nir_alu_instr& instr, EAluOp opcode, bool absolute = false);
-   bool emit_alu_trig_op1(const nir_alu_instr& instr, EAluOp opcode);
 
    bool emit_alu_b2f(const nir_alu_instr& instr);
    bool emit_alu_i2orf2_b1(const nir_alu_instr& instr, EAluOp op);
@@ -88,7 +87,6 @@ private:
    bool emit_unpack_64_2x32_split(const nir_alu_instr& instr, unsigned comp);
 
    bool emit_tex_fdd(const nir_alu_instr& instr, TexInstruction::Opcode op, bool fine);
-   bool emit_bitfield_insert(const nir_alu_instr& instr);
    bool emit_unpack_32_2x16_split_y(const nir_alu_instr& instr);
    bool emit_unpack_32_2x16_split_x(const nir_alu_instr& instr);
    bool emit_pack_32_2x16_split(const nir_alu_instr& instr);

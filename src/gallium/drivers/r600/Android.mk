@@ -49,6 +49,15 @@ $(intermediates)/egd_tables.h: $(MESA_TOP)/src/gallium/drivers/r600/egd_tables.p
 	@echo "Gen Header: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	$(hide) $(MESA_PYTHON2) $(MESA_TOP)/src/gallium/drivers/r600/egd_tables.py $(MESA_TOP)/src/gallium/drivers/r600/evergreend.h > $@
 
+r600_nir_algebraic_gen := $(LOCAL_PATH)/sfn/r600_nir_algebraic.py
+r600_nir_algebraic_deps := \
+	$(LOCAL_PATH)/sfn/r600_nir_algebraic.py \
+	$(MESA_TOP)/src/compiler/nir/nir_algebraic.py
+
+$(intermediates)/sfn_nir_algebraic.c: $(r600_nir_algebraic_deps)
+	@mkdir -p $(dir $@)
+	$(hide) $(MESA_PYTHON2) $(nir_opt_algebraic_gen) $< > $@
+
 ifeq ($(MESA_ENABLE_LLVM),true)
 $(call mesa-build-with-llvm)
 endif

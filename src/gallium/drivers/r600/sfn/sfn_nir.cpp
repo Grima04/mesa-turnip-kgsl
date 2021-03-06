@@ -878,6 +878,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_idiv,
               sel->nir->info.stage == MESA_SHADER_COMPUTE ?
                  nir_lower_idiv_precise : nir_lower_idiv_fast);
+   NIR_PASS_V(sel->nir, r600_lower_alu);
    NIR_PASS_V(sel->nir, nir_lower_phis_to_scalar);
 
    if (lower_64bit)
