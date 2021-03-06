@@ -2376,7 +2376,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_primitive,
     draw.start = StartVertex;
     info.index_bias = 0;
     info.min_index = draw.start;
-    info.max_index = draw.count - 1;
+    info.max_index = draw.start + draw.count - 1;
     info.index.resource = NULL;
 
     context->pipe->draw_vbo(context->pipe, &info, NULL, &draw, 1);
