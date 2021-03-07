@@ -412,10 +412,17 @@ bi_must_not_last(bi_instr *ins)
         return !bi_is_null(ins->dest[0]) && !bi_is_null(ins->dest[1]);
 }
 
+/* Check for a message-passing instruction. +DISCARD.f32 is special-cased; we
+ * treat it as a message-passing instruction for the purpose of scheduling
+ * despite no passing no logical message. Otherwise invalid encoding faults may
+ * be raised for unknown reasons (possibly an errata).
+ */
+
 ASSERTED static bool
 bi_must_message(bi_instr *ins)
 {
-        return bi_opcode_props[ins->op].message != BIFROST_MESSAGE_NONE;
+        return (bi_opcode_props[ins->op].message != BIFROST_MESSAGE_NONE) ||
+                (ins->op == BI_OPCODE_DISCARD_F32);
 }
 
 static bool
