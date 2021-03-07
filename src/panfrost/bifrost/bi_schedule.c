@@ -1304,16 +1304,13 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
                 tuple->add = tuple_state.add;
 
                 /* We may have a message, but only one per clause */
-                if (tuple->add) {
-                        enum bifrost_message_type msg =
-                                bi_message_type_for_instr(tuple->add);
-                        assert(!(msg && clause->message_type));
+                if (tuple->add && bi_must_message(tuple->add)) {
+                        assert(!clause_state.message);
+                        clause_state.message = true;
 
-                        if (!clause->message_type) {
-                                clause->message_type = msg;
-                                clause->message = tuple->add;
-                                clause_state.message = true;
-                        }
+                        clause->message_type =
+                                bi_message_type_for_instr(tuple->add);
+                        clause->message = tuple->add;
 
                         switch (tuple->add->op) {
                         case BI_OPCODE_ATEST:
