@@ -1104,6 +1104,7 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
    NIR_PASS_V(s, nir_lower_indirect_derefs, nir_var_all, UINT32_MAX);
    NIR_PASS_V(s, nir_lower_tex, &(struct nir_lower_tex_options) { .lower_txp = ~0u });
    NIR_PASS_V(s, nir_lower_alu_to_scalar, etna_alu_to_scalar_filter_cb, specs);
+   NIR_PASS_V(s, nir_lower_idiv, nir_lower_idiv_fast);
 
    etna_optimize_loop(s);
 
@@ -1125,7 +1126,6 @@ etna_compile_shader_nir(struct etna_shader_variant *v)
       NIR_PASS_V(s, nir_opt_algebraic);
       NIR_PASS_V(s, nir_lower_bool_to_float);
    } else {
-      NIR_PASS_V(s, nir_lower_idiv, nir_lower_idiv_fast);
       NIR_PASS_V(s, nir_lower_bool_to_int32);
    }
 
