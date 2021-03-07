@@ -1567,6 +1567,23 @@ static int gfx9_get_preferred_swizzle_mode(ADDR_HANDLE addrlib, struct radeon_su
          sin.preferredSwSet.sw_R = 1;
    }
 
+   if (in->resourceType == ADDR_RSRC_TEX_3D && in->numSlices > 1) {
+      /* 3D textures should use S swizzle modes for the best performance.
+       * THe only exception is 3D render targets, which prefer 64KB_D_X.
+       *
+       * 3D texture sampler performance with a very large 3D texture:
+       *   ADDR_SW_64KB_R_X = 19 FPS (DCC on), 26 FPS (DCC off)
+       *   ADDR_SW_64KB_Z_X = 25 FPS
+       *   ADDR_SW_64KB_D_X = 53 FPS
+       *   ADDR_SW_4KB_S    = 53 FPS
+       *   ADDR_SW_64KB_S   = 53 FPS
+       *   ADDR_SW_64KB_S_T = 61 FPS
+       *   ADDR_SW_4KB_S_X  = 63 FPS
+       *   ADDR_SW_64KB_S_X = 62 FPS
+       */
+      sin.preferredSwSet.sw_S = 1;
+   }
+
    ret = Addr2GetPreferredSurfaceSetting(addrlib, &sin, &sout);
    if (ret != ADDR_OK)
       return ret;
