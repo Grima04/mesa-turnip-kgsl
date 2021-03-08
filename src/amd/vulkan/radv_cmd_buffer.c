@@ -2207,23 +2207,29 @@ radv_set_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 			      uint32_t color_values[2])
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
-	uint64_t va = radv_image_get_fast_clear_va(image, range->baseMipLevel);
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
 
 	assert(radv_image_has_cmask(image) ||
 	       radv_dcc_enabled(image, range->baseMipLevel));
 
-	radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, cmd_buffer->state.predicating));
-	radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
-			S_370_WR_CONFIRM(1) |
-			S_370_ENGINE_SEL(V_370_PFP));
-	radeon_emit(cs, va);
-	radeon_emit(cs, va >> 32);
+	if (radv_image_has_clear_value(image)) {
+		uint64_t va = radv_image_get_fast_clear_va(image, range->baseMipLevel);
 
-	for (uint32_t l = 0; l < level_count; l++) {
-		radeon_emit(cs, color_values[0]);
-		radeon_emit(cs, color_values[1]);
+		radeon_emit(cs, PKT3(PKT3_WRITE_DATA, 2 + count, cmd_buffer->state.predicating));
+		radeon_emit(cs, S_370_DST_SEL(V_370_MEM) |
+				S_370_WR_CONFIRM(1) |
+				S_370_ENGINE_SEL(V_370_PFP));
+		radeon_emit(cs, va);
+		radeon_emit(cs, va >> 32);
+
+		for (uint32_t l = 0; l < level_count; l++) {
+			radeon_emit(cs, color_values[0]);
+			radeon_emit(cs, color_values[1]);
+		}
+	} else {
+		/* Some default value we can set in the update. */
+		assert(color_values[0] == 0 && color_values[1] == 0);
 	}
 }
 
@@ -2264,12 +2270,19 @@ radv_load_color_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
 {
 	struct radeon_cmdbuf *cs = cmd_buffer->cs;
 	struct radv_image *image = iview->image;
-	uint64_t va = radv_image_get_fast_clear_va(image, iview->base_mip);
 
 	if (!radv_image_has_cmask(image) &&
 	    !radv_dcc_enabled(image, iview->base_mip))
 		return;
 
+	if (!radv_image_has_clear_value(image)) {
+		uint32_t color_values[2] = {0, 0};
+		radv_update_bound_fast_clear_color(cmd_buffer, image, cb_idx,
+		                                   color_values);
+		return;
+	}
+
+	uint64_t va = radv_image_get_fast_clear_va(image, iview->base_mip);
 	uint32_t reg = R_028C8C_CB_COLOR0_CLEAR_WORD0 + cb_idx * 0x3c;
 
 	if (cmd_buffer->device->physical_device->rad_info.has_load_ctx_reg_pkt) {

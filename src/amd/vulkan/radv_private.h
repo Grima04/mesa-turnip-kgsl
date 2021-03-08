@@ -2022,10 +2022,18 @@ radv_image_tile_stencil_disabled(const struct radv_device *device,
 	}
 }
 
+static inline bool
+radv_image_has_clear_value(const struct radv_image *image)
+{
+	return image->clear_value_offset != 0;
+}
+
 static inline uint64_t
 radv_image_get_fast_clear_va(const struct radv_image *image,
 			     uint32_t base_level)
 {
+	assert(radv_image_has_clear_value(image));
+
 	uint64_t va = radv_buffer_get_va(image->bo);
 	va += image->offset + image->clear_value_offset + base_level * 8;
 	return va;
@@ -2062,6 +2070,8 @@ static inline uint64_t
 radv_get_ds_clear_value_va(const struct radv_image *image,
 			   uint32_t base_level)
 {
+	assert(radv_image_has_clear_value(image));
+
 	uint64_t va = radv_buffer_get_va(image->bo);
 	va += image->offset + image->clear_value_offset + base_level * 8;
 	return va;

@@ -1636,6 +1636,10 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer,
 					  clear_color, &clear_value))
 		return false;
 
+	if (!radv_image_has_clear_value(iview->image) &&
+	    (clear_color[0] != 0 || clear_color[1] != 0))
+		return false;
+
 	if (radv_dcc_enabled(iview->image, iview->base_mip)) {
 		bool can_avoid_fast_clear_elim;
 		uint32_t reset_value;
