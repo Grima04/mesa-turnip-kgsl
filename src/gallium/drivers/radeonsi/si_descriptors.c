@@ -428,6 +428,16 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[4] &= C_008F20_PITCH;
       state[4] |= S_008F20_PITCH(pitch - 1);
    }
+
+   if (tex->swap_rgb_to_bgr) {
+      unsigned swizzle_x = G_008F1C_DST_SEL_X(state[3]);
+      unsigned swizzle_z = G_008F1C_DST_SEL_Z(state[3]);
+
+      state[3] &= C_008F1C_DST_SEL_X;
+      state[3] |= S_008F1C_DST_SEL_X(swizzle_z);
+      state[3] &= C_008F1C_DST_SEL_Z;
+      state[3] |= S_008F1C_DST_SEL_Z(swizzle_x);
+   }
 }
 
 static void si_set_sampler_state_desc(struct si_sampler_state *sstate,

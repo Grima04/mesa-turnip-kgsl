@@ -1033,6 +1033,28 @@ static void si_do_CB_resolve(struct si_context *sctx, const struct pipe_blit_inf
    si_make_CB_shader_coherent(sctx, 1, false, true /* no DCC */);
 }
 
+static bool resolve_formats_compatible(enum pipe_format src, enum pipe_format dst,
+                                       bool src_swaps_rgb_to_bgr, bool *need_rgb_to_bgr)
+{
+   *need_rgb_to_bgr = false;
+
+   if (src_swaps_rgb_to_bgr) {
+      /* We must only check the swapped format. */
+      enum pipe_format swapped_src = util_format_rgb_to_bgr(src);
+      assert(swapped_src);
+      return util_is_format_compatible(util_format_description(swapped_src),
+                                       util_format_description(dst));
+   }
+
+   if (util_is_format_compatible(util_format_description(src), util_format_description(dst)))
+      return true;
+
+   enum pipe_format swapped_src = util_format_rgb_to_bgr(src);
+   *need_rgb_to_bgr = util_is_format_compatible(util_format_description(swapped_src),
+                                                util_format_description(dst));
+   return *need_rgb_to_bgr;
+}
+
 static bool do_hardware_msaa_resolve(struct pipe_context *ctx, const struct pipe_blit_info *info)
 {
    struct si_context *sctx = (struct si_context *)ctx;
@@ -1059,19 +1081,22 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx, const struct pipe
    if (format == PIPE_FORMAT_R16G16_SNORM)
       format = PIPE_FORMAT_R16A16_SNORM;
 
+   bool need_rgb_to_bgr = false;
+
    /* Check the remaining requirements for hw resolve. */
    if (util_max_layer(info->dst.resource, info->dst.level) == 0 && !info->scissor_enable &&
        (info->mask & PIPE_MASK_RGBA) == PIPE_MASK_RGBA &&
-       util_is_format_compatible(util_format_description(info->src.format),
-                                 util_format_description(info->dst.format)) &&
+       resolve_formats_compatible(info->src.format, info->dst.format,
+                                  src->swap_rgb_to_bgr, &need_rgb_to_bgr) &&
        dst_width == info->src.resource->width0 && dst_height == info->src.resource->height0 &&
        info->dst.box.x == 0 && info->dst.box.y == 0 && info->dst.box.width == dst_width &&
        info->dst.box.height == dst_height && info->dst.box.depth == 1 && info->src.box.x == 0 &&
        info->src.box.y == 0 && info->src.box.width == dst_width &&
        info->src.box.height == dst_height && info->src.box.depth == 1 && !dst->surface.is_linear &&
        (!dst->cmask_buffer || !dst->dirty_level_mask)) { /* dst cannot be fast-cleared */
-      /* Check the last constraint. */
-      if (src->surface.micro_tile_mode != dst->surface.micro_tile_mode) {
+      /* Check the remaining constraints. */
+      if (src->surface.micro_tile_mode != dst->surface.micro_tile_mode ||
+          need_rgb_to_bgr) {
          /* The next fast clear will switch to this mode to
           * get direct hw resolve next time if the mode is
           * different now.
@@ -1082,7 +1107,11 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx, const struct pipe
           * destination texture instead, but the more general
           * solution is to implement compute shader resolve.
           */
-         src->last_msaa_resolve_target_micro_mode = dst->surface.micro_tile_mode;
+         if (src->surface.micro_tile_mode != dst->surface.micro_tile_mode)
+            src->last_msaa_resolve_target_micro_mode = dst->surface.micro_tile_mode;
+         if (need_rgb_to_bgr)
+            src->swap_rgb_to_bgr_on_next_clear = true;
+
          goto resolve_to_temp;
       }
 
@@ -1128,6 +1157,8 @@ resolve_to_temp:
    if (!tmp)
       return false;
    stmp = (struct si_texture *)tmp;
+   /* Match the channel order of src. */
+   stmp->swap_rgb_to_bgr = src->swap_rgb_to_bgr;
 
    assert(!stmp->surface.is_linear);
    assert(src->surface.micro_tile_mode == stmp->surface.micro_tile_mode);

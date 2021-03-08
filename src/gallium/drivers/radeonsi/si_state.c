@@ -2995,6 +2995,20 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       cb_color_info = cb->cb_color_info | tex->cb_color_info;
       cb_color_attrib = cb->cb_color_attrib;
 
+      if (tex->swap_rgb_to_bgr) {
+         /* Swap R and B channels. */
+         static unsigned rgb_to_bgr[4] = {
+            [V_028C70_SWAP_STD] = V_028C70_SWAP_ALT,
+            [V_028C70_SWAP_ALT] = V_028C70_SWAP_STD,
+            [V_028C70_SWAP_STD_REV] = V_028C70_SWAP_ALT_REV,
+            [V_028C70_SWAP_ALT_REV] = V_028C70_SWAP_STD_REV,
+         };
+         unsigned swap = rgb_to_bgr[G_028C70_COMP_SWAP(cb_color_info)];
+
+         cb_color_info &= C_028C70_COMP_SWAP;
+         cb_color_info |= S_028C70_COMP_SWAP(swap);
+      }
+
       if (cb->base.u.tex.level > 0)
          cb_color_info &= C_028C70_FAST_CLEAR;
 

@@ -70,6 +70,9 @@ static bool si_set_clear_color(struct si_texture *tex, enum pipe_format surface_
       uc.ui[0] = color->ui[0];
       uc.ui[1] = color->ui[3];
    } else {
+      if (tex->swap_rgb_to_bgr)
+         surface_format = util_format_rgb_to_bgr(surface_format);
+
       util_pack_color_union(surface_format, &uc, color);
    }
 
@@ -418,6 +421,16 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
       /* We can change the micro tile mode before a full clear. */
       /* This is only used for MSAA textures when clearing all layers. */
       si_set_optimal_micro_tile_mode(sctx->screen, tex);
+
+      if (tex->swap_rgb_to_bgr_on_next_clear) {
+         assert(!tex->swap_rgb_to_bgr);
+         assert(tex->buffer.b.b.nr_samples >= 2);
+         tex->swap_rgb_to_bgr = true;
+         tex->swap_rgb_to_bgr_on_next_clear = false;
+
+         /* Update all sampler views and images. */
+         p_atomic_inc(&sctx->screen->dirty_tex_counter);
+      }
 
       /* only supported on tiled surfaces */
       if (tex->surface.is_linear) {

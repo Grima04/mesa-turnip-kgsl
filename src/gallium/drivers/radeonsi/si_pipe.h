@@ -355,6 +355,8 @@ struct si_texture {
    unsigned cb_color_info; /* fast clear enable bit */
    unsigned color_clear_value[2];
    unsigned last_msaa_resolve_target_micro_mode;
+   bool swap_rgb_to_bgr_on_next_clear;
+   bool swap_rgb_to_bgr;
    unsigned num_level0_transfers;
    unsigned plane_index; /* other planes are different pipe_resources */
    unsigned num_planes;
