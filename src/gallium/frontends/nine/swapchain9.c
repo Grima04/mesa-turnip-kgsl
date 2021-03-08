@@ -1314,6 +1314,9 @@ NineSwapChain9_GetBackBufferCountForParams( struct NineSwapChain9 *This,
              * the Xserver will hold 4 buffers. */
             else if (!This->actx->thread_submit && count < 5)
                 count = 5;
+            /* Somehow this cases needs 5 with thread_submit, or else you get a small performance hit */
+            if (This->actx->tearfree_discard && count < 5)
+                count = 5;
         }
     }
 
