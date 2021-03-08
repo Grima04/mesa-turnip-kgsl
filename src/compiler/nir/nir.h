@@ -3770,6 +3770,15 @@ nir_after_phis(nir_block *block)
 }
 
 static inline nir_cursor
+nir_after_instr_and_phis(nir_instr *instr)
+{
+   if (instr->type == nir_instr_type_phi)
+      return nir_after_phis(instr->block);
+   else
+      return nir_after_instr(instr);
+}
+
+static inline nir_cursor
 nir_after_cf_node_and_phis(nir_cf_node *node)
 {
    if (node->type == nir_cf_node_block)
