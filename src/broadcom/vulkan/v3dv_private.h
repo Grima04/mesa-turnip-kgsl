@@ -260,6 +260,19 @@ struct v3dv_pipeline_cache_stats {
    uint32_t count;
 };
 
+/* Equivalent to gl_shader_stage, but including the coordinate shaders
+ *
+ * FIXME: perhaps move to common
+ */
+typedef enum {
+   BROADCOM_SHADER_VERTEX,
+   BROADCOM_SHADER_VERTEX_BIN,
+   BROADCOM_SHADER_FRAGMENT,
+   BROADCOM_SHADER_COMPUTE,
+} broadcom_shader_stage;
+
+#define BROADCOM_SHADER_STAGES (BROADCOM_SHADER_COMPUTE + 1)
+
 struct v3dv_pipeline_cache {
    struct vk_object_base base;
 
