@@ -531,6 +531,11 @@ _mi_copy_no_unref(struct mi_builder *b,
    }
 }
 
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
+static inline struct mi_value
+mi_resolve_invert(struct mi_builder *b, struct mi_value src);
+#endif
+
 /** Store the value in src to the value represented by dst
  *
  * If the bit size of src and dst mismatch, this function does an unsigned
@@ -542,6 +547,9 @@ _mi_copy_no_unref(struct mi_builder *b,
 static inline void
 mi_store(struct mi_builder *b, struct mi_value dst, struct mi_value src)
 {
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
+   src = mi_resolve_invert(b, src);
+#endif
    _mi_copy_no_unref(b, dst, src);
    mi_value_unref(b, src);
    mi_value_unref(b, dst);
@@ -754,9 +762,19 @@ mi_inot(struct mi_builder *b, struct mi_value val)
    if (val.type == MI_VALUE_TYPE_IMM)
       return mi_imm(~mi_value_to_u64(val));
 
-   /* TODO These currently can't be passed into mi_copy */
    val.invert = !val.invert;
    return val;
+}
+
+static inline struct mi_value
+mi_resolve_invert(struct mi_builder *b, struct mi_value src)
+{
+   if (!src.invert)
+      return src;
+
+   assert(src.type != MI_VALUE_TYPE_IMM);
+   return mi_math_binop(b, MI_ALU_ADD, src, mi_imm(0),
+                           MI_ALU_STORE, MI_ALU_ACCU);
 }
 
 static inline struct mi_value

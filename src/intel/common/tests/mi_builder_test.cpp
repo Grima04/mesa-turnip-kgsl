@@ -478,6 +478,34 @@ TEST_F(mi_builder_test, memcpy)
 
 #define EXPECT_EQ_IMM(x, imm) EXPECT_EQ(x, mi_value_to_u64(imm))
 
+TEST_F(mi_builder_test, inot)
+{
+   const uint64_t value = 0x0123456789abcdef;
+   const uint32_t value_lo = (uint32_t)value;
+   const uint32_t value_hi = (uint32_t)(value >> 32);
+   memcpy(input, &value, sizeof(value));
+
+   mi_store(&b, out_mem64(0),  mi_inot(&b, in_mem64(0)));
+   mi_store(&b, out_mem64(8),  mi_inot(&b, mi_inot(&b, in_mem64(0))));
+   mi_store(&b, out_mem64(16), mi_inot(&b, in_mem32(0)));
+   mi_store(&b, out_mem64(24), mi_inot(&b, in_mem32(4)));
+   mi_store(&b, out_mem32(32), mi_inot(&b, in_mem64(0)));
+   mi_store(&b, out_mem32(36), mi_inot(&b, in_mem32(0)));
+   mi_store(&b, out_mem32(40), mi_inot(&b, mi_inot(&b, in_mem32(0))));
+   mi_store(&b, out_mem32(44), mi_inot(&b, in_mem32(4)));
+
+   submit_batch();
+
+   EXPECT_EQ(*(uint64_t *)(output + 0),  ~value);
+   EXPECT_EQ(*(uint64_t *)(output + 8),  value);
+   EXPECT_EQ(*(uint64_t *)(output + 16), ~(uint64_t)value_lo);
+   EXPECT_EQ(*(uint64_t *)(output + 24), ~(uint64_t)value_hi);
+   EXPECT_EQ(*(uint32_t *)(output + 32), (uint32_t)~value);
+   EXPECT_EQ(*(uint32_t *)(output + 36), (uint32_t)~value_lo);
+   EXPECT_EQ(*(uint32_t *)(output + 40), (uint32_t)value_lo);
+   EXPECT_EQ(*(uint32_t *)(output + 44), (uint32_t)~value_hi);
+}
+
 /* Test adding of immediates of all kinds including
  *
  *  - All zeroes
