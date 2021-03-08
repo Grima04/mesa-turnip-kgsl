@@ -36,7 +36,6 @@ protected:
    const_value_negative_equal_test()
    {
       glsl_type_singleton_init_or_ref();
-      util_cpu_detect();
 
       memset(c1, 0, sizeof(c1));
       memset(c2, 0, sizeof(c2));
@@ -56,7 +55,6 @@ protected:
    alu_srcs_negative_equal_test()
    {
       glsl_type_singleton_init_or_ref();
-      util_cpu_detect();
 
       static const nir_shader_compiler_options options = { };
       bld = nir_builder_init_simple_shader(MESA_SHADER_VERTEX, &options,
