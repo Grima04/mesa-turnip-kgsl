@@ -625,7 +625,7 @@ sanity:
   variables:
     LLVM_VERSION: 10
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
 
 .scons-build:
   extends:
@@ -655,7 +655,7 @@ meson-testing:
       -D werror=true
     MINIO_ARTIFACT_NAME: mesa-amd64
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
 meson-testing-asan:
@@ -686,7 +686,7 @@ meson-clover-testing:
     EXTRA_OPTION: >
       -D werror=true
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
 meson-gallium:
@@ -718,7 +718,7 @@ meson-gallium:
       -D tools=all
       -D werror=true
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
     - .gitlab-ci/run-shader-db.sh
     - src/freedreno/.gitlab-ci/run-fdtools.sh
 
@@ -750,7 +750,7 @@ meson-release:
       -D tools=all
       -D werror=true
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
 
 meson-android:
   extends:
@@ -779,12 +779,12 @@ meson-android:
     LLVM_VERSION: ""
   script:
     # arm64 build: Can't build v3d/vc4 because they require expat for v3d_decode.
-    - PKG_CONFIG_PATH=/usr/local/lib/aarch64-linux-android/pkgconfig/:/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/pkgconfig/ CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost VULKAN_DRIVERS=freedreno .gitlab-ci/meson-build.sh
+    - PKG_CONFIG_PATH=/usr/local/lib/aarch64-linux-android/pkgconfig/:/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/pkgconfig/ CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost VULKAN_DRIVERS=freedreno .gitlab-ci/meson/build.sh
     # x86_64 build:
     # Can't do Intel because gen_decoder.c currently requires libexpat, which
     # is not a dependency that AOSP wants to accept.  Can't do Radeon because
     # it requires LLVM, which we don't have an Android build of.
-    # - PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-android/pkgconfig/ CROSS=x86_64-linux-android GALLIUM_DRIVERS=iris VULKAN_DRIVERS=intel .gitlab-ci/meson-build.sh
+    # - PKG_CONFIG_PATH=/usr/local/lib/x86_64-linux-android/pkgconfig/ CROSS=x86_64-linux-android GALLIUM_DRIVERS=iris VULKAN_DRIVERS=intel .gitlab-ci/meson/build.sh
 
 .meson-cross:
   extends:
@@ -832,7 +832,7 @@ meson-armhf:
       -D llvm=disabled
     MINIO_ARTIFACT_NAME: mesa-armhf
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
 meson-arm64:
@@ -845,7 +845,7 @@ meson-arm64:
       -D llvm=disabled
     MINIO_ARTIFACT_NAME: mesa-arm64
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
     - .gitlab-ci/prepare-artifacts.sh
 
 meson-arm64-asan:
@@ -869,7 +869,7 @@ meson-arm64-build-test:
       -Dtools=panfrost
       -D werror=true
   script:
-    - .gitlab-ci/meson-build.sh
+    - .gitlab-ci/meson/build.sh
 
 meson-clang:
   extends: .meson-build
@@ -946,9 +946,9 @@ meson-clover:
     EXTRA_OPTION: >
       -D werror=true
   script:
-    - LLVM_VERSION=8 .gitlab-ci/meson-build.sh
-    - LLVM_VERSION=9 .gitlab-ci/meson-build.sh
-    - .gitlab-ci/meson-build.sh
+    - LLVM_VERSION=8 .gitlab-ci/meson/build.sh
+    - LLVM_VERSION=9 .gitlab-ci/meson/build.sh
+    - .gitlab-ci/meson/build.sh
 
 meson-vulkan:
   extends: .meson-build
