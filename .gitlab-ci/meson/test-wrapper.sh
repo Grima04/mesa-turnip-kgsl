@@ -1,11 +1,5 @@
 #!/bin/sh
 
-# Only use GNU time if available, not any shell built-in command
-if ! test -f /usr/bin/time; then
-    exec "$@"
-fi
-
-
 # If the test times out, meson sends SIGTERM to this process.
 # Simply exec'ing "time" would result in no output from that in this case.
 # Instead, we need to run "time" in the background, catch the signals and

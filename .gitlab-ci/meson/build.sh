@@ -40,6 +40,11 @@ if [ -n "$CROSS" ]; then
     fi
 fi
 
+# Only use GNU time if available, not any shell built-in command
+if test -f /usr/bin/time; then
+    MESON_TEST_ARGS+=--wrapper=$PWD/.gitlab-ci/meson/test-wrapper.sh
+fi
+
 rm -rf _build
 meson _build --native-file=native.file \
       --wrap-mode=nofallback \
@@ -59,6 +64,6 @@ meson _build --native-file=native.file \
 cd _build
 meson configure
 ninja
-LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4} ${MESON_TEST_ARGS} --wrapper=$PWD/../.gitlab-ci/meson/test-wrapper.sh
+LC_ALL=C.UTF-8 meson test --num-processes ${FDO_CI_CONCURRENT:-4} ${MESON_TEST_ARGS}
 ninja install
 cd ..
