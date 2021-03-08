@@ -23,6 +23,7 @@
 
 %{
 #include <stdlib.h>
+#include "util/ralloc.h"
 #include "ir3/ir3.h"
 #include "ir3_parser.h"
 
@@ -30,6 +31,7 @@
 #define YY_NO_UNPUT
 #define TOKEN(t) (ir3_yylval.tok = t)
 extern YYSTYPE ir3_yylval;
+extern void *ir3_parser_dead_ctx;
 
 void ir3_yyset_input(FILE *f);
 
@@ -396,10 +398,11 @@ static int parse_w(const char *str)
 ">"                               return '>';
 "!"                               return '!';
 "#"                               return '#';
+":"                               return ':';
 
 "nan"                             return TOKEN(T_NAN);
 "inf"                             return TOKEN(T_INF);
 
-[a-zA-Z_][a-zA-Z_0-9]*            ir3_yylval.str = yytext;     return T_IDENTIFIER;
+[a-zA-Z_][a-zA-Z_0-9]*            ir3_yylval.str = ralloc_strdup(ir3_parser_dead_ctx, yytext); return T_IDENTIFIER;
 .                                 fprintf(stderr, "error at line %d: Unknown token: %s\n", ir3_yyget_lineno(), yytext); yyterminate();
 %%

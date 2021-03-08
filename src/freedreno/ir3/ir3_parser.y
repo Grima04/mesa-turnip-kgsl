@@ -66,6 +66,10 @@ static struct ir3_shader_variant *variant;
  */
 static struct ir3_block          *block;   /* current shader block */
 static struct ir3_instruction    *instr;   /* current instruction */
+static unsigned ip; /* current instruction pointer */
+static struct hash_table *labels;
+
+void *ir3_parser_dead_ctx;
 
 static struct {
 	unsigned flags;
@@ -80,6 +84,12 @@ static struct {
 
 int ir3_yyget_lineno(void);
 
+static void new_label(const char *name)
+{
+	ralloc_steal(labels, (void *) name);
+	_mesa_hash_table_insert(labels, name, (void *)(uintptr_t)ip);
+}
+
 static struct ir3_instruction * new_instr(opc_t opc)
 {
 	instr = ir3_instr_create(block, opc, 5);
@@ -88,6 +98,7 @@ static struct ir3_instruction * new_instr(opc_t opc)
 	instr->nop = iflags.nop;
 	instr->line = ir3_yyget_lineno();
 	iflags.flags = iflags.repeat = iflags.nop = 0;
+	ip++;
 	return instr;
 }
 
@@ -96,6 +107,9 @@ static void new_shader(void)
 	variant->ir = ir3_create(variant->shader->compiler, variant);
 	block = ir3_block_create(variant->ir);
 	list_addtail(&block->node, &variant->ir->block_list);
+	ip = 0;
+	labels = _mesa_hash_table_create(variant, _mesa_hash_string, _mesa_key_string_equal);
+	ir3_parser_dead_ctx = ralloc_context(NULL);
 }
 
 static type_t parse_type(const char **type)
@@ -204,6 +218,24 @@ static void add_sysval(unsigned reg, unsigned compmask, gl_system_value sysval)
 	variant->total_in++;
 }
 
+static bool resolve_labels(void)
+{
+	int instr_ip = 0;
+	foreach_instr (instr, &block->instr_list) {
+		if (opc_cat(instr->opc) == 0 && instr->cat0.target_label) {
+			struct hash_entry *entry = _mesa_hash_table_search(labels, instr->cat0.target_label);
+			if (!entry) {
+				fprintf(stderr, "unknown label %s\n", instr->cat0.target_label);
+				return false;
+			}
+			int target_ip = (uintptr_t)entry->data;
+			instr->cat0.immed = target_ip - instr_ip;
+		}
+		instr_ip++;
+	}
+	return true;
+}
+
 #ifdef YYDEBUG
 int yydebug;
 #endif
@@ -229,10 +261,12 @@ struct ir3 * ir3_parse(struct ir3_shader_variant *v,
 #endif
 	info = k;
 	variant = v;
-	if (yyparse()) {
+	if (yyparse() || !resolve_labels()) {
 		ir3_destroy(variant->ir);
 		variant->ir = NULL;
 	}
+	ralloc_free(labels);
+	ralloc_free(ir3_parser_dead_ctx);
 	return variant->ir;
 }
 %}
@@ -670,6 +704,9 @@ instr:             iflags cat0_instr
 |                  iflags cat5_instr { fixup_cat5_s2en(); }
 |                  iflags cat6_instr
 |                  iflags cat7_instr
+|                  label
+
+label:             T_IDENTIFIER ':' { new_label($1); }
 
 cat0_src1:         '!' T_P0        { instr->cat0.inv1 = true; instr->cat0.comp1 = $2 >> 1; }
 |                  T_P0            { instr->cat0.comp1 = $1 >> 1; }
@@ -678,6 +715,7 @@ cat0_src2:         '!' T_P0        { instr->cat0.inv2 = true; instr->cat0.comp2 
 |                  T_P0            { instr->cat0.comp2 = $1 >> 1; }
 
 cat0_immed:        '#' integer     { instr->cat0.immed = $2; }
+|                  '#' T_IDENTIFIER { ralloc_steal(instr, (void *)$2); instr->cat0.target_label = $2; }
 
 cat0_instr:        T_OP_NOP        { new_instr(OPC_NOP); }
 |                  T_OP_BR         { new_instr(OPC_B)->cat0.brtype = BRANCH_PLAIN; } cat0_src1 ',' cat0_immed

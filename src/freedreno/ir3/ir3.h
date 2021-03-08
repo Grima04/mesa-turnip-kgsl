@@ -253,6 +253,7 @@ struct ir3_instruction {
 			char comp1, comp2;
 			int  immed;
 			struct ir3_block *target;
+			const char *target_label;
 			brtype_t brtype;
 			unsigned idx;  /* for brac.N */
 		} cat0;
