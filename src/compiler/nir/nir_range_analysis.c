@@ -852,31 +852,34 @@ analyze_expression(const nir_alu_instr *instr, unsigned src,
       r.range = fneg_table[r.range];
       break;
 
-   case nir_op_fsat:
-      r = analyze_expression(alu, 0, ht, nir_alu_src_type(alu, 0));
+   case nir_op_fsat: {
+      const struct ssa_result_range left =
+         analyze_expression(alu, 0, ht, nir_alu_src_type(alu, 0));
 
-      switch (r.range) {
+      switch (left.range) {
       case le_zero:
       case lt_zero:
+      case eq_zero:
          r.range = eq_zero;
          r.is_integral = true;
          break;
 
-      case eq_zero:
-         assert(r.is_integral);
-         FALLTHROUGH;
       case gt_zero:
-      case ge_zero:
-         /* The fsat doesn't add any information in these cases. */
+         /* The fsat doesn't add any information in this case. */
+         r.range = left.range;
+         r.is_integral = left.is_integral;
          break;
 
+      case ge_zero:
       case ne_zero:
       case unknown:
          /* Since the result must be in [0, 1], the value must be >= 0. */
          r.range = ge_zero;
+         r.is_integral = left.is_integral;
          break;
       }
       break;
+   }
 
    case nir_op_fsign:
       r = (struct ssa_result_range){
