@@ -910,7 +910,7 @@ mi_ishl(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
       return mi_imm(mi_value_to_u64(src0) << mi_value_to_u64(src1));
 
    return mi_math_binop(b, MI_ALU_SHL, src0, src1,
-                            MI_ALU_STORE, MI_ALU_ACCU);
+                           MI_ALU_STORE, MI_ALU_ACCU);
 }
 
 static inline struct mi_value
@@ -925,7 +925,7 @@ mi_ushr(struct mi_builder *b, struct mi_value src0, struct mi_value src1)
       return mi_imm(mi_value_to_u64(src0) >> mi_value_to_u64(src1));
 
    return mi_math_binop(b, MI_ALU_SHR, src0, src1,
-                            MI_ALU_STORE, MI_ALU_ACCU);
+                           MI_ALU_STORE, MI_ALU_ACCU);
 }
 
 static inline struct mi_value
