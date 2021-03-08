@@ -193,6 +193,13 @@ static void device_select_DestroyInstance(VkInstance instance, const VkAllocatio
    free(info);
 }
 
+static void get_device_properties(const struct instance_info *info, VkPhysicalDevice device, VkPhysicalDeviceProperties2 *properties)
+{
+    info->GetPhysicalDeviceProperties(device, &properties->properties);
+
+    if (info->GetPhysicalDeviceProperties2 && properties->properties.apiVersion >= VK_API_VERSION_1_1)
+        info->GetPhysicalDeviceProperties2(device, properties);
+}
 
 static void print_gpu(const struct instance_info *info, unsigned index, VkPhysicalDevice device)
 {
@@ -205,10 +212,7 @@ static void print_gpu(const struct instance_info *info, unsigned index, VkPhysic
    };
    if (info->has_vulkan11 && info->has_pci_bus)
       properties.pNext = &ext_pci_properties;
-   if (info->GetPhysicalDeviceProperties2)
-      info->GetPhysicalDeviceProperties2(device, &properties);
-   else
-      info->GetPhysicalDeviceProperties(device, &properties.properties);
+   get_device_properties(info, device, &properties);
 
    switch(properties.properties.deviceType) {
    case VK_PHYSICAL_DEVICE_TYPE_OTHER:
@@ -251,10 +255,7 @@ static bool fill_drm_device_info(const struct instance_info *info,
 
    if (info->has_vulkan11 && info->has_pci_bus)
       properties.pNext = &ext_pci_properties;
-   if (info->GetPhysicalDeviceProperties2)
-     info->GetPhysicalDeviceProperties2(device, &properties);
-   else
-     info->GetPhysicalDeviceProperties(device, &properties.properties);
+   get_device_properties(info, device, &properties);
 
    drm_device->cpu_device = properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU;
    drm_device->dev_info.vendor_id = properties.properties.vendorID;
