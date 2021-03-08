@@ -358,7 +358,10 @@ NineDevice9_ctor( struct NineDevice9 *This,
 
     This->workarounds.dynamic_texture_workaround = pCTX->dynamic_texture_workaround;
 
-    This->buffer_upload = nine_upload_create(This->pipe_secondary, 4 * 1024 * 1024, 4);
+    /* Due to the pb_cache, in some cases the buffer_upload path can increase GTT usage/virtual memory.
+     * As the performance gain is negligible when csmt is off, disable it in this case.
+     * That way csmt_force=0 can be used as a workaround to reduce GTT usage/virtual memory. */
+    This->buffer_upload = This->csmt_active ? nine_upload_create(This->pipe_secondary, 4 * 1024 * 1024, 4) : NULL;
 
     /* Initialize a dummy VBO to be used when a vertex declaration does not
      * specify all the inputs needed by vertex shader, on win default behavior
