@@ -1063,7 +1063,7 @@ cast_phi(nir_builder *b, nir_phi_instr *phi, unsigned new_bit_size)
       assert(num_components == 0 || num_components == src->src.ssa->num_components);
       num_components = src->src.ssa->num_components;
 
-      b->cursor = nir_after_instr(src->src.ssa->parent_instr);
+      b->cursor = nir_after_instr_and_phis(src->src.ssa->parent_instr);
 
       nir_ssa_def *cast = nir_build_alu(b, upcast_op, src->src.ssa, NULL, NULL, NULL);
 
