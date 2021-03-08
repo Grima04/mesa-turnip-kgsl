@@ -481,7 +481,7 @@ job_compute_frame_tiling(struct v3dv_job *job,
 
    tiling->internal_bpp = max_internal_bpp;
    tile_size_index += tiling->internal_bpp;
-   assert(tile_size_index < ARRAY_SIZE(tile_sizes));
+   assert(tile_size_index < ARRAY_SIZE(tile_sizes) / 2);
 
    tiling->tile_width = tile_sizes[tile_size_index * 2];
    tiling->tile_height = tile_sizes[tile_size_index * 2 + 1];
