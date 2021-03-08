@@ -183,8 +183,8 @@ brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
 {
    NIR_PASS_V(nir, brw_nir_lower_uniforms, nir->options->lower_to_scalar);
    NIR_PASS_V(prog->nir, gl_nir_lower_samplers, shader_prog);
-   prog->info.textures_used = prog->nir->info.textures_used;
-   prog->info.textures_used_by_txf = prog->nir->info.textures_used_by_txf;
+   BITSET_COPY(prog->info.textures_used, prog->nir->info.textures_used);
+   BITSET_COPY(prog->info.textures_used_by_txf, prog->nir->info.textures_used_by_txf);
 
    NIR_PASS_V(prog->nir, brw_nir_lower_image_load_store, devinfo, NULL);
 

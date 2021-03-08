@@ -968,8 +968,8 @@ st_nir_lower_samplers(struct pipe_screen *screen, nir_shader *nir,
       NIR_PASS_V(nir, gl_nir_lower_samplers, shader_program);
 
    if (prog) {
-      prog->info.textures_used = nir->info.textures_used;
-      prog->info.textures_used_by_txf = nir->info.textures_used_by_txf;
+      BITSET_COPY(prog->info.textures_used, nir->info.textures_used);
+      BITSET_COPY(prog->info.textures_used_by_txf, nir->info.textures_used_by_txf);
       prog->info.images_used = nir->info.images_used;
    }
 }

@@ -340,8 +340,7 @@ build_bindless(nir_builder *b, nir_deref_instr *deref, bool is_sampler,
       const struct glsl_type *glsl_type = glsl_without_array(var->type);
       uint32_t idx = var->data.index * 2;
 
-      b->shader->info.textures_used |=
-         ((1ull << (bind_layout->array_size * 2)) - 1) << (idx * 2);
+      BITSET_SET_RANGE(b->shader->info.textures_used, idx * 2, ((idx * 2) + (bind_layout->array_size * 2)) - 1);
 
       /* D24S8 workaround: stencil of D24S8 will be sampled as uint */
       if (glsl_get_sampler_result_type(glsl_type) == GLSL_TYPE_UINT)

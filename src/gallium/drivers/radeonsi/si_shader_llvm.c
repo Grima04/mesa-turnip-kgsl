@@ -820,7 +820,7 @@ bool si_llvm_translate_nir(struct si_shader_context *ctx, struct si_shader *shad
    ctx->num_const_buffers = info->base.num_ubos;
    ctx->num_shader_buffers = info->base.num_ssbos;
 
-   ctx->num_samplers = util_last_bit(info->base.textures_used);
+   ctx->num_samplers = BITSET_LAST_BIT(info->base.textures_used);
    ctx->num_images = info->base.num_images;
 
    si_llvm_init_resource_callbacks(ctx);

@@ -165,10 +165,10 @@ typedef struct shader_info {
    uint64_t patch_outputs_accessed_indirectly;
 
    /** Bitfield of which textures are used */
-   uint32_t textures_used;
+   BITSET_DECLARE(textures_used, 32);
 
    /** Bitfield of which textures are used by texelFetch() */
-   uint32_t textures_used_by_txf;
+   BITSET_DECLARE(textures_used_by_txf, 32);
 
    /** Bitfield of which images are used */
    uint32_t images_used;

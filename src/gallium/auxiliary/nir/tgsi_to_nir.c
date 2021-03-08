@@ -1274,12 +1274,11 @@ get_sampler_var(struct ttn_compile *c, int binding,
       c->num_samplers = MAX2(c->num_samplers, binding + 1);
 
       /* Record textures used */
-      unsigned mask = 1 << binding;
-      c->build.shader->info.textures_used |= mask;
+      BITSET_SET(c->build.shader->info.textures_used, binding);
       if (op == nir_texop_txf ||
           op == nir_texop_txf_ms ||
           op == nir_texop_txf_ms_mcs)
-         c->build.shader->info.textures_used_by_txf |= mask;
+         BITSET_SET(c->build.shader->info.textures_used_by_txf, binding);
    }
 
    return var;

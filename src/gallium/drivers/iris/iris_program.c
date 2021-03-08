@@ -822,8 +822,8 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
       bt->sizes[IRIS_SURFACE_GROUP_CS_WORK_GROUPS] = 1;
    }
 
-   bt->sizes[IRIS_SURFACE_GROUP_TEXTURE] = util_last_bit(info->textures_used);
-   bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE] = info->textures_used;
+   bt->sizes[IRIS_SURFACE_GROUP_TEXTURE] = BITSET_LAST_BIT(info->textures_used);
+   bt->used_mask[IRIS_SURFACE_GROUP_TEXTURE] = info->textures_used[0];
 
    bt->sizes[IRIS_SURFACE_GROUP_IMAGE] = info->num_images;
 
@@ -2570,8 +2570,8 @@ bind_shader_state(struct iris_context *ice,
    const struct shader_info *old_info = iris_get_shader_info(ice, stage);
    const struct shader_info *new_info = ish ? &ish->nir->info : NULL;
 
-   if ((old_info ? util_last_bit(old_info->textures_used) : 0) !=
-       (new_info ? util_last_bit(new_info->textures_used) : 0)) {
+   if ((old_info ? BITSET_LAST_BIT(old_info->textures_used) : 0) !=
+       (new_info ? BITSET_LAST_BIT(new_info->textures_used) : 0)) {
       ice->state.stage_dirty |= IRIS_STAGE_DIRTY_SAMPLER_STATES_VS << stage;
    }
 

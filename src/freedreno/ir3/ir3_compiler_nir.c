@@ -3405,7 +3405,7 @@ emit_instructions(struct ir3_context *ctx)
 	 * it is write-only we don't have to count it, but after lowering derefs
 	 * is too late to compact indices for that.
 	 */
-	ctx->so->num_samp = util_last_bit(ctx->s->info.textures_used) + ctx->s->info.num_images;
+	ctx->so->num_samp = BITSET_LAST_BIT(ctx->s->info.textures_used) + ctx->s->info.num_images;
 
 	/* Save off clip+cull information. Note that in OpenGL clip planes may
 	 * be individually enabled/disabled, so we can't use the

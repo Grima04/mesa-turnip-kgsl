@@ -837,7 +837,7 @@ static bool si_check_needs_implicit_sync(struct si_context *sctx)
     */
    struct si_shader_info *info = &sctx->cs_shader_state.program->sel.info;
    struct si_samplers *samplers = &sctx->samplers[PIPE_SHADER_COMPUTE];
-   unsigned mask = samplers->enabled_mask & info->base.textures_used;
+   unsigned mask = samplers->enabled_mask & info->base.textures_used[0];
 
    while (mask) {
       int i = u_bit_scan(&mask);

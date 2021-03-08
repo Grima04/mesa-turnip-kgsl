@@ -403,7 +403,7 @@ ntt_setup_uniforms(struct ntt_compile *c)
    }
 
    for (int i = 0; i < PIPE_MAX_SAMPLERS; i++) {
-      if (c->s->info.textures_used & (1 << i))
+      if (BITSET_TEST(c->s->info.textures_used, i))
          ureg_DECL_sampler(c->ureg, i);
    }
 }

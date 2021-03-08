@@ -2100,7 +2100,7 @@ iris_upload_sampler_states(struct iris_context *ice, gl_shader_stage stage)
    /* We assume gallium frontends will call pipe->bind_sampler_states()
     * if the program's number of textures changes.
     */
-   unsigned count = info ? util_last_bit(info->textures_used) : 0;
+   unsigned count = info ? BITSET_LAST_BIT(info->textures_used) : 0;
 
    if (!count)
       return;

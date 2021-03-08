@@ -4868,7 +4868,7 @@ count_resources(glsl_to_tgsi_visitor *v, gl_program *prog)
 {
    v->samplers_used = 0;
    v->images_used = 0;
-   prog->info.textures_used_by_txf = 0;
+   BITSET_ZERO(prog->info.textures_used_by_txf);
 
    foreach_in_list(glsl_to_tgsi_instruction, inst, &v->instructions) {
       if (inst->info->is_tex) {
@@ -4882,7 +4882,7 @@ count_resources(glsl_to_tgsi_visitor *v, gl_program *prog)
                st_translate_texture_target(inst->tex_target, inst->tex_shadow);
 
             if (inst->op == TGSI_OPCODE_TXF || inst->op == TGSI_OPCODE_TXF_LZ) {
-               prog->info.textures_used_by_txf |= 1u << idx;
+               BITSET_SET(prog->info.textures_used_by_txf, idx);
             }
          }
       }

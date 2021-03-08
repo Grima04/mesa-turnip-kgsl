@@ -214,9 +214,9 @@ _mesa_meta_compile_and_link_program(struct gl_context *ctx,
     * around this bad interaction.  This is a bit fragile as it may break
     * if you re-run the pass that gathers this info, but we probably won't...
     */
-   fp->info.textures_used_by_txf = 0;
+   BITSET_ZERO(fp->info.textures_used_by_txf);
    if (fp->nir)
-      fp->nir->info.textures_used_by_txf = 0;
+      BITSET_ZERO(fp->nir->info.textures_used_by_txf);
 
    _mesa_meta_use_program(ctx, sh_prog);
 
