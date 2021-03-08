@@ -1659,6 +1659,15 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
         inst->sig_magic = false;
         inst->sig_addr = 0;
 
+        /* By moving ldvary to the previous instruction we make it update
+         * r5 in the current one, so nothing else in it should write r5.
+         * This should've been prevented by our depedency tracking, which
+         * would not allow ldvary to be paired up with an instruction that
+         * writes r5 (since our dependency tracking doesn't know that the
+         * ldvary write r5 happens in the next instruction).
+         */
+        assert(!v3d_qpu_writes_r5(c->devinfo, inst));
+
         return true;
 }
 
