@@ -1270,29 +1270,6 @@ emit_intrinsic_image_size_tex(struct ir3_context *ctx, nir_intrinsic_instr *intr
 
 	ir3_split_dest(b, tmp, sam, 0, 4);
 
-	/* get_size instruction returns size in bytes instead of texels
-	 * for imageBuffer, so we need to divide it by the pixel size
-	 * of the image format.
-	 *
-	 * TODO: This is at least true on a5xx. Check other gens.
-	 */
-	if (nir_intrinsic_image_dim(intr) == GLSL_SAMPLER_DIM_BUF) {
-		/* Since all the possible values the divisor can take are
-		 * power-of-two (4, 8, or 16), the division is implemented
-		 * as a shift-right.
-		 * During shader setup, the log2 of the image format's
-		 * bytes-per-pixel should have been emitted in 2nd slot of
-		 * image_dims. See ir3_shader::emit_image_dims().
-		 */
-		const struct ir3_const_state *const_state =
-				ir3_const_state(ctx->so);
-		unsigned cb = regid(const_state->offsets.image_dims, 0) +
-			const_state->image_dims.off[nir_src_as_uint(intr->src[0])];
-		struct ir3_instruction *aux = create_uniform(b, cb + 1);
-
-		tmp[0] = ir3_SHR_B(b, tmp[0], 0, aux, 0);
-	}
-
 	for (unsigned i = 0; i < ncoords; i++)
 		dst[i] = tmp[i];
 

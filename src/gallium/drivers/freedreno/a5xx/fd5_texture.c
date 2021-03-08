@@ -185,10 +185,11 @@ fd5_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 
 		lvl = 0;
 		so->texconst1 =
-			A5XX_TEX_CONST_1_WIDTH(elements) |
-			A5XX_TEX_CONST_1_HEIGHT(1);
+			A5XX_TEX_CONST_1_WIDTH(elements & MASK(15)) |
+			A5XX_TEX_CONST_1_HEIGHT(elements >> 15);
 		so->texconst2 =
-			A5XX_TEX_CONST_2_PITCH(elements * rsc->layout.cpp);
+			A5XX_TEX_CONST_2_UNK4 |
+			A5XX_TEX_CONST_2_UNK31;
 		so->offset = cso->u.buf.offset;
 	} else {
 		unsigned miplevels;
