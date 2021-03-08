@@ -95,7 +95,7 @@ struct mi_value {
       uint32_t reg;
    };
 
-#if GEN_GEN >= 7 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
    bool invert;
 #endif
 };
@@ -360,7 +360,7 @@ static inline void
 _mi_copy_no_unref(struct mi_builder *b,
                   struct mi_value dst, struct mi_value src)
 {
-#if GEN_GEN >= 7 || GEN_IS_HASWELL
+#if GEN_GEN >= 8 || GEN_IS_HASWELL
    /* TODO: We could handle src.invert by emitting a bit of math if we really
     * wanted to.
     */
