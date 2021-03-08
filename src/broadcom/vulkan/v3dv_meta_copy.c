@@ -2212,9 +2212,10 @@ emit_copy_buffer(struct v3dv_job *job,
                  uint32_t dst_offset,
                  uint32_t src_offset,
                  struct framebuffer_data *framebuffer,
-                 uint32_t format)
+                 uint32_t format,
+                 uint32_t item_size)
 {
-   const uint32_t stride = job->frame_tiling.width * 4;
+   const uint32_t stride = job->frame_tiling.width * item_size;
    emit_copy_buffer_per_tile_list(job, dst, src,
                                   dst_offset, src_offset,
                                   stride, format);
@@ -2228,13 +2229,17 @@ emit_copy_buffer_rcl(struct v3dv_job *job,
                      uint32_t dst_offset,
                      uint32_t src_offset,
                      struct framebuffer_data *framebuffer,
-                     uint32_t format)
+                     uint32_t format,
+                     uint32_t item_size)
 {
    struct v3dv_cl *rcl = emit_rcl_prologue(job, framebuffer, NULL);
    v3dv_return_if_oom(NULL, job);
 
    emit_frame_setup(job, 0, NULL);
-   emit_copy_buffer(job, dst, src, dst_offset, src_offset, framebuffer, format);
+
+   emit_copy_buffer(job, dst, src, dst_offset, src_offset,
+                    framebuffer, format, item_size);
+
    cl_emit(rcl, END_OF_RENDERING, end);
 }
 
@@ -2337,7 +2342,7 @@ copy_buffer(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_job_emit_binning_flush(job);
 
       emit_copy_buffer_rcl(job, dst, src, dst_offset, src_offset,
-                           &framebuffer, format);
+                           &framebuffer, format, item_size);
 
       v3dv_cmd_buffer_finish_job(cmd_buffer);
 
