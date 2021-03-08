@@ -89,18 +89,18 @@ static int parse_w(const char *str)
 "\n"                              yylineno++;
 [ \t]                             ; /* ignore whitespace */
 ";"[^\n]*"\n"                     yylineno++; /* ignore comments */
-"0.0"                             ir3_yylval.num = 0;  return T_FLUT_0_0;
-"0.5"                             ir3_yylval.num = 1;  return T_FLUT_0_5;
-"1.0"                             ir3_yylval.num = 2;  return T_FLUT_1_0;
-"2.0"                             ir3_yylval.num = 3;  return T_FLUT_2_0;
-"e"                               ir3_yylval.num = 4;  return T_FLUT_E;
-"pi"                              ir3_yylval.num = 5;  return T_FLUT_PI;
-"1/pi"                            ir3_yylval.num = 6;  return T_FLUT_INV_PI;
-"1/log2(e)"                       ir3_yylval.num = 7;  return T_FLUT_INV_LOG2_E;
-"log2(e)"                         ir3_yylval.num = 8;  return T_FLUT_LOG2_E;
-"1/log2(10)"                      ir3_yylval.num = 9;  return T_FLUT_INV_LOG2_10;
-"log2(10)"                        ir3_yylval.num = 10; return T_FLUT_LOG2_10;
-"4.0"                             ir3_yylval.num = 11; return T_FLUT_4_0;
+"(0.0)"                           ir3_yylval.num = 0;  return T_FLUT_0_0;
+"(0.5)"                           ir3_yylval.num = 1;  return T_FLUT_0_5;
+"(1.0)"                           ir3_yylval.num = 2;  return T_FLUT_1_0;
+"(2.0)"                           ir3_yylval.num = 3;  return T_FLUT_2_0;
+"(e)"                             ir3_yylval.num = 4;  return T_FLUT_E;
+"(pi)"                            ir3_yylval.num = 5;  return T_FLUT_PI;
+"(1/pi)"                          ir3_yylval.num = 6;  return T_FLUT_INV_PI;
+"(1/log2(e))"                     ir3_yylval.num = 7;  return T_FLUT_INV_LOG2_E;
+"(log2(e))"                       ir3_yylval.num = 8;  return T_FLUT_LOG2_E;
+"(1/log2(10))"                    ir3_yylval.num = 9;  return T_FLUT_INV_LOG2_10;
+"(log2(10))"                      ir3_yylval.num = 10; return T_FLUT_LOG2_10;
+"(4.0)"                           ir3_yylval.num = 11; return T_FLUT_4_0;
 [0-9]+"."[0-9]+                   ir3_yylval.flt = strtod(yytext, NULL);       return T_FLOAT;
 [0-9]*                            ir3_yylval.num = strtoul(yytext, NULL, 0);    return T_INT;
 "0x"[0-9a-fA-F]*                  ir3_yylval.num = strtoul(yytext, NULL, 0);    return T_HEX;
@@ -374,7 +374,7 @@ static int parse_w(const char *str)
 "nonuniform"                      return T_NONUNIFORM;
 "imm"                             return T_IMM;
 
-"h("                              return TOKEN(T_HP);
+"h"                               return 'h';
 "="                               return '=';
 "("                               return '(';
 ")"                               return ')';

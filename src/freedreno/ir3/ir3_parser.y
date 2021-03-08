@@ -289,7 +289,6 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 
 %token <tok> T_HR
 %token <tok> T_HC
-%token <tok> T_HP
 
 /* dst register flags */
 %token <tok> T_EVEN
@@ -1119,16 +1118,16 @@ relative:          relative_gpr
 immediate_cat1:    integer             { new_reg(0, IR3_REG_IMMED)->iim_val = type_size(instr->cat1.src_type) < 32 ? $1 & 0xffff : $1; }
 |                  '(' integer ')'     { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
 |                  '(' float ')'       { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
-|                  T_HP integer ')'    { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->iim_val = $2 & 0xffff; }
-|                  T_HP float ')'      { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->uim_val = _mesa_float_to_half($2); }
+|                  'h' '(' integer ')' { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->iim_val = $3 & 0xffff; }
+|                  'h' '(' float ')'   { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->uim_val = _mesa_float_to_half($3); }
 |                  '(' T_NAN ')'       { new_reg(0, IR3_REG_IMMED)->fim_val = NAN; }
 |                  '(' T_INF ')'       { new_reg(0, IR3_REG_IMMED)->fim_val = INFINITY; }
 
 immediate:         integer             { new_reg(0, IR3_REG_IMMED)->iim_val = $1; }
 |                  '(' integer ')'     { new_reg(0, IR3_REG_IMMED)->fim_val = $2; }
-|                  '(' flut_immed ')'  { new_reg(0, IR3_REG_IMMED)->uim_val = $2; }
-|                  T_HP integer ')'    { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->iim_val = $2; }
-|                  T_HP flut_immed ')' { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->uim_val = $2; }
+|                  flut_immed          { new_reg(0, IR3_REG_IMMED)->uim_val = $1; }
+|                  'h' '(' integer ')' { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->iim_val = $3; }
+|                  'h' flut_immed      { new_reg(0, IR3_REG_IMMED | IR3_REG_HALF)->uim_val = $2; }
 
 /* Float LUT values accepted as immed: */
 flut_immed:        T_FLUT_0_0
