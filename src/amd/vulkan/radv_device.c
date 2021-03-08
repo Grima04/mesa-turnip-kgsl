@@ -53,7 +53,6 @@ typedef void* drmDevicePtr;
 #include "util/mesa-sha1.h"
 #include "util/timespec.h"
 #include "util/u_atomic.h"
-#include "compiler/glsl_types.h"
 #include "util/driconf.h"
 
 /* The number of IBs per submit isn't infinite, it depends on the ring type
@@ -982,8 +981,6 @@ VkResult radv_CreateInstance(
 	instance->physical_devices_enumerated = false;
 	list_inithead(&instance->physical_devices);
 
-	glsl_type_singleton_init_or_ref();
-
 	VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
 	radv_init_dri_options(instance);
@@ -1009,8 +1006,6 @@ void radv_DestroyInstance(
 	}
 
 	VG(VALGRIND_DESTROY_MEMPOOL(instance));
-
-	glsl_type_singleton_decref();
 
 	driDestroyOptionCache(&instance->dri_options);
 	driDestroyOptionInfo(&instance->available_dri_options);

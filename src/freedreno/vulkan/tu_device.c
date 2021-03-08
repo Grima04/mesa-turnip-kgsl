@@ -35,7 +35,6 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 
-#include "compiler/glsl_types.h"
 #include "util/debug.h"
 #include "util/disk_cache.h"
 #include "util/u_atomic.h"
@@ -255,8 +254,6 @@ tu_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (instance->debug_flags & TU_DEBUG_STARTUP)
       mesa_logi("Created an instance");
 
-   glsl_type_singleton_init_or_ref();
-
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
    *pInstance = tu_instance_to_handle(instance);
@@ -278,8 +275,6 @@ tu_DestroyInstance(VkInstance _instance,
    }
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
-
-   glsl_type_singleton_decref();
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);

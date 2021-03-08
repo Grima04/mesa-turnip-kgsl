@@ -48,7 +48,6 @@
 #include "common/intel_aux_map.h"
 #include "common/intel_defines.h"
 #include "common/intel_uuid.h"
-#include "compiler/glsl_types.h"
 #include "perf/gen_perf.h"
 
 #include "genxml/gen7_pack.h"
@@ -1035,8 +1034,6 @@ VkResult anv_CreateInstance(
    instance->pipeline_cache_enabled =
       env_var_as_boolean("ANV_ENABLE_PIPELINE_CACHE", true);
 
-   glsl_type_singleton_init_or_ref();
-
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
    anv_init_dri_options(instance);
@@ -1060,8 +1057,6 @@ void anv_DestroyInstance(
       anv_physical_device_destroy(pdevice);
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
-
-   glsl_type_singleton_decref();
 
    driDestroyOptionCache(&instance->dri_options);
    driDestroyOptionInfo(&instance->available_dri_options);

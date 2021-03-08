@@ -30,7 +30,6 @@
 #include "pipe/p_context.h"
 #include "frontend/drisw_api.h"
 
-#include "compiler/glsl_types.h"
 #include "util/u_inlines.h"
 #include "util/os_memory.h"
 #include "util/u_thread.h"
@@ -242,7 +241,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateInstance(
    instance->physicalDeviceCount = -1;
 
    //   _mesa_locale_init();
-   glsl_type_singleton_init_or_ref();
    //   VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
    *pInstance = lvp_instance_to_handle(instance);
@@ -258,7 +256,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyInstance(
 
    if (!instance)
       return;
-   glsl_type_singleton_decref();
    if (instance->physicalDeviceCount > 0)
       lvp_physical_device_finish(&instance->physicalDevice);
    //   _mesa_locale_fini();

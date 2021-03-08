@@ -37,7 +37,6 @@
 #include "broadcom/cle/v3dx_pack.h"
 
 #include "compiler/v3d_compiler.h"
-#include "compiler/glsl_types.h"
 
 #include "drm-uapi/v3d_drm.h"
 #include "format/u_format.h"
@@ -168,8 +167,6 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
 
    util_cpu_detect();
 
-   glsl_type_singleton_init_or_ref();
-
    VG(VALGRIND_CREATE_MEMPOOL(instance, 0, false));
 
    *pInstance = v3dv_instance_to_handle(instance);
@@ -216,8 +213,6 @@ v3dv_DestroyInstance(VkInstance _instance,
    }
 
    VG(VALGRIND_DESTROY_MEMPOOL(instance));
-
-   glsl_type_singleton_decref();
 
    vk_instance_finish(&instance->vk);
    vk_free(&instance->vk.alloc, instance);

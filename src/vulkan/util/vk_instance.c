@@ -27,6 +27,8 @@
 #include "vk_common_entrypoints.h"
 #include "vk_util.h"
 
+#include "compiler/glsl_types.h"
+
 VkResult
 vk_instance_init(struct vk_instance *instance,
                  const struct vk_instance_extension_table *supported_extensions,
@@ -91,12 +93,15 @@ vk_instance_init(struct vk_instance *instance,
 
    list_inithead(&instance->debug_report.callbacks);
 
+   glsl_type_singleton_init_or_ref();
+
    return VK_SUCCESS;
 }
 
 void
 vk_instance_finish(struct vk_instance *instance)
 {
+   glsl_type_singleton_decref();
    mtx_destroy(&instance->debug_report.callbacks_mutex);
    vk_free(&instance->alloc, (char *)instance->app_info.app_name);
    vk_free(&instance->alloc, (char *)instance->app_info.engine_name);
