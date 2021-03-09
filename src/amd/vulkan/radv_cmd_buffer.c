@@ -2116,12 +2116,13 @@ radv_update_fce_metadata(struct radv_cmd_buffer *cmd_buffer,
 			 struct radv_image *image,
 			 const VkImageSubresourceRange *range, bool value)
 {
+	if (!image->fce_pred_offset)
+		return;
+
 	uint64_t pred_val = value;
 	uint64_t va = radv_image_get_fce_pred_va(image, range->baseMipLevel);
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
-
-	assert(image->fce_pred_offset != 0);
 
 	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
@@ -2144,15 +2145,15 @@ radv_update_dcc_metadata(struct radv_cmd_buffer *cmd_buffer,
 			 struct radv_image *image,
 			 const VkImageSubresourceRange *range, bool value)
 {
+	if (image->dcc_pred_offset == 0)
+		return;
+
 	uint64_t pred_val = value;
 	uint64_t va = radv_image_get_dcc_pred_va(image, range->baseMipLevel);
 	uint32_t level_count = radv_get_levelCount(image, range);
 	uint32_t count = 2 * level_count;
 
 	assert(radv_dcc_enabled(image, range->baseMipLevel));
-
-	if (image->dcc_pred_offset == 0)
-		return;
 
 	radeon_emit(cmd_buffer->cs, PKT3(PKT3_WRITE_DATA, 2 + count, 0));
 	radeon_emit(cmd_buffer->cs, S_370_DST_SEL(V_370_MEM) |
