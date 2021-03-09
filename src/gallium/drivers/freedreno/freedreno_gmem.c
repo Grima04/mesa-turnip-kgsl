@@ -680,10 +680,8 @@ fd_gmem_render_tiles(struct fd_batch *batch)
 	}
 
 	if (ctx->emit_sysmem_prep && !batch->nondraw) {
-		if (batch->cleared || batch->gmem_reason ||
-				((batch->num_draws > 5) && !batch->blit) ||
-				(pfb->samples > 1)) {
-		} else if (!FD_DBG(NOBYPASS)) {
+		if (fd_autotune_use_bypass(&ctx->autotune, batch) &&
+				!FD_DBG(NOBYPASS)) {
 			sysmem = true;
 		}
 

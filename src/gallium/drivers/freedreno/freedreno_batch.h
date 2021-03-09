@@ -44,6 +44,7 @@
 
 struct fd_resource;
 struct fd_batch_key;
+struct fd_batch_result;
 
 /* A batch tracks everything about a cmdstream batch/submit, including the
  * ringbuffers used for binning, draw, and gmem cmds, list of associated
@@ -143,6 +144,13 @@ struct fd_batch {
 	 * just intended to be a rough estimate that is easy to calculate.
 	 */
 	unsigned cost;
+
+	/* Tells the gen specific backend where to write stats used for
+	 * the autotune module.
+	 *
+	 * Pointer only valid during gmem emit code.
+	 */
+	struct fd_batch_result *autotune_result;
 
 	unsigned num_draws;      /* number of draws in current batch */
 	unsigned num_vertices;   /* number of vertices in current batch */

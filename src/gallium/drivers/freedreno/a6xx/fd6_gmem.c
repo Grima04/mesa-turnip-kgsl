@@ -471,6 +471,50 @@ check_vsc_overflow(struct fd_context *ctx)
 	}
 }
 
+static void
+emit_common_init(struct fd_batch *batch)
+{
+	struct fd_ringbuffer *ring = batch->gmem;
+	struct fd_autotune *at = &batch->ctx->autotune;
+	struct fd_batch_result *result = batch->autotune_result;
+
+	if (!result)
+		return;
+
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_CONTROL, 1);
+	OUT_RING(ring, A6XX_RB_SAMPLE_COUNT_CONTROL_COPY);
+
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR, 2);
+	OUT_RELOC(ring, results_ptr(at, result[result->idx].samples_start));
+
+	fd6_event_write(batch, ring, ZPASS_DONE, false);
+}
+
+static void
+emit_common_fini(struct fd_batch *batch)
+{
+	struct fd_ringbuffer *ring = batch->gmem;
+	struct fd_autotune *at = &batch->ctx->autotune;
+	struct fd_batch_result *result = batch->autotune_result;
+
+	if (!result)
+		return;
+
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_CONTROL, 1);
+	OUT_RING(ring, A6XX_RB_SAMPLE_COUNT_CONTROL_COPY);
+
+	OUT_PKT4(ring, REG_A6XX_RB_SAMPLE_COUNT_ADDR, 2);
+	OUT_RELOC(ring, results_ptr(at, result[result->idx].samples_end));
+
+	fd6_event_write(batch, ring, ZPASS_DONE, false);
+
+	// TODO is there a better event to use.. a single ZPASS_DONE_TS would be nice
+	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
+	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_TS));
+	OUT_RELOC(ring, results_ptr(at, fence));
+	OUT_RING(ring, result->fence);
+}
+
 /*
  * Emit conditional CP_INDIRECT_BRANCH based on VSC_STATE[p], ie. the IB
  * is skipped for tiles that have no visible geometry.
@@ -731,6 +775,8 @@ fd6_emit_tile_init(struct fd_batch *batch)
 	}
 
 	update_render_cntl(batch, pfb, false);
+
+	emit_common_init(batch);
 }
 
 static void
@@ -1316,6 +1362,8 @@ fd6_emit_tile_fini(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
 
+	emit_common_fini(batch);
+
 	OUT_PKT4(ring, REG_A6XX_GRAS_LRZ_CNTL, 1);
 	OUT_RING(ring, A6XX_GRAS_LRZ_CNTL_ENABLE);
 
@@ -1479,12 +1527,16 @@ fd6_emit_sysmem_prep(struct fd_batch *batch)
 	emit_msaa(ring, pfb->samples);
 
 	update_render_cntl(batch, pfb, false);
+
+	emit_common_init(batch);
 }
 
 static void
 fd6_emit_sysmem_fini(struct fd_batch *batch)
 {
 	struct fd_ringbuffer *ring = batch->gmem;
+
+	emit_common_fini(batch);
 
 	if (batch->epilogue)
 		fd6_emit_ib(batch->gmem, batch->epilogue);

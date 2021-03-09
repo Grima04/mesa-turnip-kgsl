@@ -37,6 +37,7 @@
 #include "util/u_threaded_context.h"
 #include "util/u_trace.h"
 
+#include "freedreno_autotune.h"
 #include "freedreno_screen.h"
 #include "freedreno_gmem.h"
 #include "freedreno_util.h"
@@ -208,6 +209,8 @@ struct fd_context {
 	/* slab for pipe_transfer allocations: */
 	struct slab_child_pool transfer_pool dt;
 	struct slab_child_pool transfer_pool_unsync; /* for threaded_context */
+
+	struct fd_autotune autotune dt;
 
 	/**
 	 * query related state:
