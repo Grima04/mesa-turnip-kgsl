@@ -2280,9 +2280,7 @@ void radv_CmdClearColorImage(
 	bool cs;
 
 	cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE ||
-	     image->vk_format == VK_FORMAT_R32G32B32_UINT ||
-	     image->vk_format == VK_FORMAT_R32G32B32_SINT ||
-	     image->vk_format == VK_FORMAT_R32G32B32_SFLOAT;
+	     !radv_image_is_renderable(cmd_buffer->device, image);
 
 	if (cs) {
 		radv_meta_save(&saved_state, cmd_buffer,

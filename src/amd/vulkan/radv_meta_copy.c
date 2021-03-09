@@ -104,8 +104,8 @@ blit_surf_for_image_level_layer(struct radv_image *image,
 	};
 }
 
-static bool
-image_is_renderable(struct radv_device *device, struct radv_image *image)
+bool
+radv_image_is_renderable(struct radv_device *device, struct radv_image *image)
 {
 	if (image->vk_format == VK_FORMAT_R32G32B32_UINT ||
 	    image->vk_format == VK_FORMAT_R32G32B32_SINT ||
@@ -137,7 +137,7 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer,
 	assert(image->info.samples == 1);
 
 	cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE ||
-	     !image_is_renderable(cmd_buffer->device, image);
+	     !radv_image_is_renderable(cmd_buffer->device, image);
 
 	radv_meta_save(&saved_state, cmd_buffer,
 		       (cs ? RADV_META_SAVE_COMPUTE_PIPELINE :
@@ -473,7 +473,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer,
 	assert(src_image->info.samples == dst_image->info.samples);
 
 	cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE ||
-	     !image_is_renderable(cmd_buffer->device, dst_image);
+	     !radv_image_is_renderable(cmd_buffer->device, dst_image);
 
 	radv_meta_save(&saved_state, cmd_buffer,
 		       (cs ? RADV_META_SAVE_COMPUTE_PIPELINE :

@@ -2118,6 +2118,9 @@ radv_get_levelCount(const struct radv_image *image,
 		image->info.levels - range->baseMipLevel : range->levelCount;
 }
 
+bool
+radv_image_is_renderable(struct radv_device *device, struct radv_image *image);
+
 struct radeon_bo_metadata;
 void
 radv_init_metadata(struct radv_device *device,
