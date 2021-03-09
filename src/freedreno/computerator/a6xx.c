@@ -115,7 +115,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 	struct ir3_kernel *ir3_kernel = to_ir3_kernel(kernel);
 	struct ir3_shader_variant *v = ir3_kernel->v;
 	const struct ir3_info *i = &v->info;
-	enum a3xx_threadsize thrsz = FOUR_QUADS;
+	enum a6xx_threadsize thrsz = THREAD128;
 
 	OUT_PKT4(ring, REG_A6XX_SP_MODE_CONTROL, 1);
 	OUT_RING(ring, A6XX_SP_MODE_CONTROL_CONSTANT_DEMOTION_ENABLE | 4);
@@ -166,7 +166,7 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 		A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
 		A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
 	OUT_RING(ring, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
-			       A6XX_HLSQ_CS_CNTL_1_THREADSIZE(THREAD128));
+			       A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz));
 
 	OUT_PKT4(ring, REG_A6XX_SP_CS_OBJ_START, 2);
 	OUT_RELOC(ring, v->bo, 0, 0, 0);   /* SP_CS_OBJ_START_LO/HI */
