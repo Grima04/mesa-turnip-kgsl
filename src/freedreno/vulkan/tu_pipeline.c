@@ -391,29 +391,63 @@ tu6_emit_xs_config(struct tu_cs *cs,
       return;
    }
 
-   bool is_fs = xs->type == MESA_SHADER_FRAGMENT;
-   enum a6xx_threadsize threadsize = THREAD128;
-
-   /* TODO: We probably should be setting the VS threadsize to 64 if paired
-    * with a GS, and HS + DS threadsize to 64 like freedreno. However this
-    * should probably come from ir3.
-    */
-   if (xs->type == MESA_SHADER_GEOMETRY)
-      threadsize = THREAD64;
-
-   tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_ctrl, 1);
-   tu_cs_emit(cs,
-              A6XX_SP_VS_CTRL_REG0_THREADSIZE(threadsize) |
-              A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(xs->info.max_reg + 1) |
-              A6XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(xs->info.max_half_reg + 1) |
-              COND(xs->mergedregs, A6XX_SP_VS_CTRL_REG0_MERGEDREGS) |
-              A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(xs->branchstack) |
-              COND(xs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE) |
-              COND(xs->need_fine_derivatives, A6XX_SP_VS_CTRL_REG0_DIFF_FINE) |
-              /* only fragment shader sets VARYING bit */
-              COND(xs->total_in && is_fs, A6XX_SP_FS_CTRL_REG0_VARYING) |
-              /* unknown bit, seems unnecessary */
-              COND(is_fs, 0x1000000));
+   switch (stage) {
+   case MESA_SHADER_VERTEX:
+      tu_cs_emit_regs(cs, A6XX_SP_VS_CTRL_REG0(
+               .fullregfootprint = xs->info.max_reg + 1,
+               .halfregfootprint = xs->info.max_half_reg + 1,
+               .branchstack = xs->branchstack,
+               .mergedregs = xs->mergedregs,
+      ));
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      tu_cs_emit_regs(cs, A6XX_SP_HS_CTRL_REG0(
+               .fullregfootprint = xs->info.max_reg + 1,
+               .halfregfootprint = xs->info.max_half_reg + 1,
+               .branchstack = xs->branchstack,
+      ));
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      tu_cs_emit_regs(cs, A6XX_SP_DS_CTRL_REG0(
+               .fullregfootprint = xs->info.max_reg + 1,
+               .halfregfootprint = xs->info.max_half_reg + 1,
+               .branchstack = xs->branchstack,
+               .mergedregs = xs->mergedregs,
+      ));
+      break;
+   case MESA_SHADER_GEOMETRY:
+      tu_cs_emit_regs(cs, A6XX_SP_GS_CTRL_REG0(
+               .fullregfootprint = xs->info.max_reg + 1,
+               .halfregfootprint = xs->info.max_half_reg + 1,
+               .branchstack = xs->branchstack,
+      ));
+      break;
+   case MESA_SHADER_FRAGMENT:
+      tu_cs_emit_regs(cs, A6XX_SP_FS_CTRL_REG0(
+               .fullregfootprint = xs->info.max_reg + 1,
+               .halfregfootprint = xs->info.max_half_reg + 1,
+               .branchstack = xs->branchstack,
+               .mergedregs = xs->mergedregs,
+               .threadsize = THREAD128,
+               .pixlodenable = xs->need_pixlod,
+               .diff_fine = xs->need_fine_derivatives,
+               .varying = xs->total_in != 0,
+               /* unknown bit, seems unnecessary */
+               .unk24 = true,
+      ));
+      break;
+   case MESA_SHADER_COMPUTE:
+      tu_cs_emit_regs(cs, A6XX_SP_CS_CTRL_REG0(
+               .fullregfootprint = xs->info.max_reg + 1,
+               .halfregfootprint = xs->info.max_half_reg + 1,
+               .branchstack = xs->branchstack,
+               .mergedregs = xs->mergedregs,
+               .threadsize = THREAD128,
+      ));
+      break;
+   default:
+      unreachable("bad shader stage");
+   }
 
    tu_cs_emit_pkt4(cs, cfg->reg_sp_xs_config, 2);
    tu_cs_emit(cs, A6XX_SP_VS_CONFIG_ENABLED |

@@ -450,20 +450,12 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 			 COND(fs_has_dual_src_color,
 					A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
 
-	enum a6xx_threadsize vssz;
-	if (ds || hs) {
-		vssz = THREAD64;
-	} else {
-		vssz = THREAD128;
-	}
-
 	OUT_PKT4(ring, REG_A6XX_SP_VS_CTRL_REG0, 1);
-	OUT_RING(ring, A6XX_SP_VS_CTRL_REG0_THREADSIZE(vssz) |
+	OUT_RING(ring,
 			A6XX_SP_VS_CTRL_REG0_FULLREGFOOTPRINT(vs->info.max_reg + 1) |
 			A6XX_SP_VS_CTRL_REG0_HALFREGFOOTPRINT(vs->info.max_half_reg + 1) |
 			COND(vs->mergedregs, A6XX_SP_VS_CTRL_REG0_MERGEDREGS) |
-			A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack) |
-			COND(vs->need_pixlod, A6XX_SP_VS_CTRL_REG0_PIXLODENABLE));
+			A6XX_SP_VS_CTRL_REG0_BRANCHSTACK(vs->branchstack));
 
 	fd6_emit_shader(ctx, ring, vs);
 	fd6_emit_immediates(ctx->screen, vs, ring);
@@ -577,25 +569,23 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 	}
 
 	if (hs) {
+		assert(vs->mergedregs == hs->mergedregs);
 		OUT_PKT4(ring, REG_A6XX_SP_HS_CTRL_REG0, 1);
-		OUT_RING(ring, A6XX_SP_HS_CTRL_REG0_THREADSIZE(THREAD64) |
+		OUT_RING(ring,
 			A6XX_SP_HS_CTRL_REG0_FULLREGFOOTPRINT(hs->info.max_reg + 1) |
 			A6XX_SP_HS_CTRL_REG0_HALFREGFOOTPRINT(hs->info.max_half_reg + 1) |
-			COND(hs->mergedregs, A6XX_SP_HS_CTRL_REG0_MERGEDREGS) |
-			A6XX_SP_HS_CTRL_REG0_BRANCHSTACK(hs->branchstack) |
-			COND(hs->need_pixlod, A6XX_SP_HS_CTRL_REG0_PIXLODENABLE));
+			A6XX_SP_HS_CTRL_REG0_BRANCHSTACK(hs->branchstack));
 
 		fd6_emit_shader(ctx, ring, hs);
 		fd6_emit_immediates(ctx->screen, hs, ring);
 		fd6_emit_link_map(ctx->screen, vs, hs, ring);
 
 		OUT_PKT4(ring, REG_A6XX_SP_DS_CTRL_REG0, 1);
-		OUT_RING(ring, A6XX_SP_DS_CTRL_REG0_THREADSIZE(THREAD64) |
+		OUT_RING(ring,
 			A6XX_SP_DS_CTRL_REG0_FULLREGFOOTPRINT(ds->info.max_reg + 1) |
 			A6XX_SP_DS_CTRL_REG0_HALFREGFOOTPRINT(ds->info.max_half_reg + 1) |
 			COND(ds->mergedregs, A6XX_SP_DS_CTRL_REG0_MERGEDREGS) |
-			A6XX_SP_DS_CTRL_REG0_BRANCHSTACK(ds->branchstack) |
-			COND(ds->need_pixlod, A6XX_SP_DS_CTRL_REG0_PIXLODENABLE));
+			A6XX_SP_DS_CTRL_REG0_BRANCHSTACK(ds->branchstack));
 
 		fd6_emit_shader(ctx, ring, ds);
 		fd6_emit_immediates(ctx->screen, ds, ring);
@@ -804,13 +794,12 @@ setup_stateobj(struct fd_ringbuffer *ring, struct fd_context *ctx,
 			 A6XX_VPC_VS_PACK_STRIDE_IN_VPC(l.max_loc));
 
 	if (gs) {
+		assert(gs->mergedregs == (ds ? ds->mergedregs : vs->mergedregs));
 		OUT_PKT4(ring, REG_A6XX_SP_GS_CTRL_REG0, 1);
-		OUT_RING(ring, A6XX_SP_GS_CTRL_REG0_THREADSIZE(THREAD64) |
+		OUT_RING(ring,
 			A6XX_SP_GS_CTRL_REG0_FULLREGFOOTPRINT(gs->info.max_reg + 1) |
 			A6XX_SP_GS_CTRL_REG0_HALFREGFOOTPRINT(gs->info.max_half_reg + 1) |
-			COND(gs->mergedregs, A6XX_SP_GS_CTRL_REG0_MERGEDREGS) |
-			A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(gs->branchstack) |
-			COND(gs->need_pixlod, A6XX_SP_GS_CTRL_REG0_PIXLODENABLE));
+			A6XX_SP_GS_CTRL_REG0_BRANCHSTACK(gs->branchstack));
 
 		fd6_emit_shader(ctx, ring, gs);
 		fd6_emit_immediates(ctx->screen, gs, ring);
