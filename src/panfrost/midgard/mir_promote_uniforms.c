@@ -128,7 +128,7 @@ mir_dump_ubo_analysis(struct mir_ubo_analysis *res)
                 BITSET_WORD *uses = res->blocks[i].uses;
                 BITSET_WORD *push = res->blocks[i].pushed;
 
-                unsigned last = BITSET_LAST_BIT(uses, BITSET_WORDS(MAX_UBO_QWORDS));
+                unsigned last = BITSET_LAST_BIT_SIZED(uses, BITSET_WORDS(MAX_UBO_QWORDS));
 
                 printf("\t");
 

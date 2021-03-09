@@ -134,7 +134,7 @@ update_array_sizes(struct gl_shader_program *prog, nir_variable *var,
          _mesa_hash_table_search(referenced_uniforms[stage], var->name);
       if (entry) {
          ainfo = (struct uniform_array_info *)  entry->data;
-         max_array_size = MAX2(BITSET_LAST_BIT(ainfo->indices, words),
+         max_array_size = MAX2(BITSET_LAST_BIT_SIZED(ainfo->indices, words),
                                max_array_size);
       }
 
