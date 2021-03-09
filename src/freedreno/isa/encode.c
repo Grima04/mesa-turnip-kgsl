@@ -178,6 +178,8 @@ extract_cat5_DESC_MODE(struct ir3_instruction *instr)
 		if (instr->flags & IR3_INSTR_B) {
 			if (instr->flags & IR3_INSTR_A1EN) {
 				return CAT5_BINDLESS_A1_UNIFORM;
+			} else if (instr->flags & IR3_INSTR_NONUNIF) {
+				return CAT5_BINDLESS_NONUNIFORM;
 			} else {
 				return CAT5_BINDLESS_UNIFORM;
 			}

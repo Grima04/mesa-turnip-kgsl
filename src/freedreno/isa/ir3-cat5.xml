@@ -58,7 +58,7 @@ SOFTWARE.
 			The s2en (indirect) or bindless case
 		</doc>
 		<display>
-			{SY}{JP}{NAME}{3D}{A}{O}{P}{S}{S2EN}{UNIFORM}{BASE} {TYPE}({WRMASK}){DST_HALF}{DST}{SRC1}{SRC2}{SRC3}{A1}
+			{SY}{JP}{NAME}{3D}{A}{O}{P}{S}{S2EN}{UNIFORM}{NONUNIFORM}{BASE} {TYPE}({WRMASK}){DST_HALF}{DST}{SRC1}{SRC2}{SRC3}{A1}
 		</display>
 		<field name="BASE_HI" low="19" high="20" type="uint"/>
 		<field name="SRC3" low="21" high="28" type="#cat5-src3">
@@ -75,6 +75,7 @@ SOFTWARE.
 		<derived name="BINDLESS" expr="#cat5-s2enb-is-bindless" type="bool"/>
 		<derived name="S2EN" expr="#cat5-s2enb-is-indirect" type="bool" display=".s2en"/>
 		<derived name="UNIFORM" expr="#cat5-s2enb-is-uniform" type="bool" display=".uniform"/>
+		<derived name="NONUNIFORM" expr="#cat5-s2enb-is-nonuniform" type="bool" display=".nonuniform"/>
 		<derived name="A1" expr="#cat5-s2enb-uses_a1" type="bool" display=", a1.x"/>
 	</override>
 
@@ -602,6 +603,14 @@ SOFTWARE.
 	({DESC_MODE} == 1) /* CAT5_BINDLESS_A1_UNIFORM */ ||
 	({DESC_MODE} == 4) /* CAT5_UNIFORM */ ||
 	({DESC_MODE} == 5) /* CAT5_BINDLESS_UNIFORM */
+</expr>
+
+<!-- Helper to map s2en/bindless DESC_MODE to whether it is non-uniform mode
+	 Note that it returns only for bindless for now, since we need to figure out bindful
+	 uniform/nonuniform mode correctly. See TODO in extract_cat5_DESC_MODE in encode.c -->
+<expr name="#cat5-s2enb-is-nonuniform">
+	({DESC_MODE} == 2) /* CAT5_BINDLESS_NONUNIFORM */ ||
+	({DESC_MODE} == 3) /* CAT5_BINDLESS_A1_NONUNIFORM */
 </expr>
 
 <bitset name="#cat5-src3" size="8">

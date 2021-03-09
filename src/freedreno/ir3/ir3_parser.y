@@ -181,7 +181,12 @@ static void fixup_cat5_s2en(void)
 	 * fix things up.
 	 */
 	struct ir3_register *s2en_src = instr->regs[instr->regs_count - 1];
-	assert(s2en_src->flags & IR3_REG_HALF);
+
+	if (instr->flags & IR3_INSTR_B)
+		assert(!(s2en_src->flags & IR3_REG_HALF));
+	else
+		assert(s2en_src->flags & IR3_REG_HALF);
+
 	for (int i = 1; i < instr->regs_count - 1; i++) {
 		instr->regs[i+1] = instr->regs[i];
 	}
@@ -919,6 +924,7 @@ cat5_flag:         '.' T_3D       { instr->flags |= IR3_INSTR_3D; }
 |                  '.' 'p'        { instr->flags |= IR3_INSTR_P; }
 |                  '.' 's'        { instr->flags |= IR3_INSTR_S; }
 |                  '.' T_S2EN     { instr->flags |= IR3_INSTR_S2EN; }
+|                  '.' T_NONUNIFORM  { instr->flags |= IR3_INSTR_NONUNIF; }
 |                  '.' T_BASE     { instr->flags |= IR3_INSTR_B; instr->cat5.tex_base = $2; }
 cat5_flags:
 |                  cat5_flag cat5_flags
@@ -928,6 +934,7 @@ cat5_tex:          T_TEX          { if (instr->flags & IR3_INSTR_B) instr->cat5.
 cat5_type:         '(' type ')'   { instr->cat5.type = $2; }
 
 cat5_instr:        cat5_opc_dsxypp cat5_flags dst_reg ',' src_reg
+|                  cat5_opc cat5_flags cat5_type dst_reg ',' src_reg ',' src_reg ',' src_reg
 |                  cat5_opc cat5_flags cat5_type dst_reg ',' src_reg ',' src_reg ',' cat5_samp ',' cat5_tex
 |                  cat5_opc cat5_flags cat5_type dst_reg ',' src_reg ',' src_reg ',' cat5_samp
 |                  cat5_opc cat5_flags cat5_type dst_reg ',' src_reg ',' src_reg ',' cat5_tex

@@ -40,6 +40,15 @@
 #include "ir3_context.h"
 
 void
+ir3_handle_nonuniform(struct ir3_instruction *instr, nir_intrinsic_instr *intrin)
+{
+	if (nir_intrinsic_has_access(intrin) &&
+			(nir_intrinsic_access(intrin) & ACCESS_NON_UNIFORM)) {
+		instr->flags |= IR3_INSTR_NONUNIF;
+	}
+}
+
+void
 ir3_handle_bindless_cat6(struct ir3_instruction *instr, nir_src rsrc)
 {
 	nir_intrinsic_instr *intrin = ir3_bindless_resource(rsrc);
@@ -741,6 +750,7 @@ emit_intrinsic_load_ubo_ldc(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 	ir3_handle_bindless_cat6(ldc, intr->src[0]);
 	if (ldc->flags & IR3_INSTR_B)
 		ctx->so->bindless_ubo = true;
+	ir3_handle_nonuniform(ldc, intr);
 
 	ir3_split_dest(b, dst, ldc, 0, ncomp);
 }
@@ -1232,6 +1242,8 @@ emit_intrinsic_load_image(struct ir3_context *ctx, nir_intrinsic_instr *intr,
 
 	sam = emit_sam(ctx, OPC_ISAM, info, type, 0b1111,
 				   ir3_create_collect(ctx, coords, ncoords), NULL);
+
+	ir3_handle_nonuniform(sam, intr);
 
 	sam->barrier_class = IR3_BARRIER_IMAGE_R;
 	sam->barrier_conflict = IR3_BARRIER_IMAGE_W;
@@ -2092,6 +2104,9 @@ get_tex_samp_tex_src(struct ir3_context *ctx, nir_tex_instr *tex)
 	if (texture_idx >= 0 || sampler_idx >= 0) {
 		/* Bindless case */
 		info.flags |= IR3_INSTR_B;
+
+		if (tex->texture_non_uniform || tex->sampler_non_uniform)
+			info.flags |= IR3_INSTR_NONUNIF;
 
 		/* Gather information required to determine which encoding to
 		 * choose as well as for prefetch.
