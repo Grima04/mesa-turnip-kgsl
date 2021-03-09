@@ -2229,11 +2229,6 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer,
 		internal_clear_value.color.uint32[0] = (r << 4) | (g & 0xf);
 	}
 
-	if (format == VK_FORMAT_R32G32B32_UINT ||
-	    format == VK_FORMAT_R32G32B32_SINT ||
-	    format == VK_FORMAT_R32G32B32_SFLOAT)
-		cs = true;
-
 	for (uint32_t r = 0; r < range_count; r++) {
 		const VkImageSubresourceRange *range = &ranges[r];
 
@@ -2282,7 +2277,12 @@ void radv_CmdClearColorImage(
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 	RADV_FROM_HANDLE(radv_image, image, image_h);
 	struct radv_meta_saved_state saved_state;
-	bool cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE;
+	bool cs;
+
+	cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE ||
+	     image->vk_format == VK_FORMAT_R32G32B32_UINT ||
+	     image->vk_format == VK_FORMAT_R32G32B32_SINT ||
+	     image->vk_format == VK_FORMAT_R32G32B32_SFLOAT;
 
 	if (cs) {
 		radv_meta_save(&saved_state, cmd_buffer,

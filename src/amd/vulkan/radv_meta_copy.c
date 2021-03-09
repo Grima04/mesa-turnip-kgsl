@@ -127,14 +127,17 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer,
 		     VkImageLayout layout,
 		     const VkBufferImageCopy2KHR* region)
 {
-	bool cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE;
 	struct radv_meta_saved_state saved_state;
 	bool old_predicating;
+	bool cs;
 
 	/* The Vulkan 1.0 spec says "dstImage must have a sample count equal to
 	 * VK_SAMPLE_COUNT_1_BIT."
 	 */
 	assert(image->info.samples == 1);
+
+	cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE ||
+	     !image_is_renderable(cmd_buffer->device, image);
 
 	radv_meta_save(&saved_state, cmd_buffer,
 		       (cs ? RADV_META_SAVE_COMPUTE_PIPELINE :
@@ -224,8 +227,7 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer,
 
 
 		/* Perform Blit */
-		if (cs ||
-		    !image_is_renderable(cmd_buffer->device, img_bsurf.image)) {
+		if (cs) {
 			radv_meta_buffer_to_image_cs(cmd_buffer, &buf_bsurf, &img_bsurf, 1, &rect);
 		} else {
 			radv_meta_blit2d(cmd_buffer, NULL, &buf_bsurf, &img_bsurf, 1, &rect);
@@ -459,9 +461,9 @@ copy_image(struct radv_cmd_buffer *cmd_buffer,
 	   VkImageLayout dst_image_layout,
 	   const VkImageCopy2KHR *region)
 {
-	bool cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE;
 	struct radv_meta_saved_state saved_state;
 	bool old_predicating;
+	bool cs;
 
 	/* From the Vulkan 1.0 spec:
 	 *
@@ -469,6 +471,9 @@ copy_image(struct radv_cmd_buffer *cmd_buffer,
 	 *    images, but both images must have the same number of samples.
 	 */
 	assert(src_image->info.samples == dst_image->info.samples);
+
+	cs = cmd_buffer->queue_family_index == RADV_QUEUE_COMPUTE ||
+	     !image_is_renderable(cmd_buffer->device, dst_image);
 
 	radv_meta_save(&saved_state, cmd_buffer,
 		       (cs ? RADV_META_SAVE_COMPUTE_PIPELINE :
@@ -582,8 +587,7 @@ copy_image(struct radv_cmd_buffer *cmd_buffer,
 			rect.src_y = src_offset_el.y;
 
 			/* Perform Blit */
-			if (cs ||
-			    !image_is_renderable(cmd_buffer->device, b_dst.image)) {
+			if (cs) {
 				radv_meta_image_to_image_cs(cmd_buffer, &b_src, &b_dst, 1, &rect);
 			} else {
 				radv_meta_blit2d(cmd_buffer, &b_src, NULL, &b_dst, 1, &rect);
