@@ -460,6 +460,7 @@ struct choose_scoreboard {
         int last_thrsw_tick;
         bool tlb_locked;
         bool fixup_ldvary;
+        int ldvary_count;
 };
 
 static bool
@@ -873,6 +874,12 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
         return ok;
 }
 
+static inline bool
+try_skip_for_ldvary_pipelining(const struct v3d_qpu_instr *inst)
+{
+        return inst->sig.ldunif || inst->sig.ldunifrf;
+}
+
 static struct schedule_node *
 choose_instruction_to_schedule(struct v3d_compile *c,
                                struct choose_scoreboard *scoreboard,
@@ -889,10 +896,18 @@ choose_instruction_to_schedule(struct v3d_compile *c,
                         return NULL;
         }
 
+        bool ldvary_pipelining = c->s->info.stage == MESA_SHADER_FRAGMENT &&
+                                 scoreboard->ldvary_count < c->num_inputs;
+        bool skipped_insts_for_ldvary_pipelining = false;
+retry:
         list_for_each_entry(struct schedule_node, n, &scoreboard->dag->heads,
                             dag.link) {
                 const struct v3d_qpu_instr *inst = &n->inst->qpu;
 
+                if (ldvary_pipelining && try_skip_for_ldvary_pipelining(inst)) {
+                        skipped_insts_for_ldvary_pipelining = true;
+                        continue;
+                }
 
                 /* Don't choose the branch instruction until it's the last one
                  * left.  We'll move it up to fit its delay slots after we
@@ -1021,11 +1036,23 @@ choose_instruction_to_schedule(struct v3d_compile *c,
                 }
         }
 
-        /* If we are pairing an ldvary, flag it so we can fix it up for optimal
-         * pipelining of ldvary sequences.
+        /* If we did not find any instruction to schedule but we discarded
+         * some of them to prioritize ldvary pipelining, try again.
          */
-        if (prev_inst && chosen && chosen->inst->qpu.sig.ldvary)
-                scoreboard->fixup_ldvary = true;
+        if (!chosen && !prev_inst && skipped_insts_for_ldvary_pipelining) {
+                skipped_insts_for_ldvary_pipelining = false;
+                ldvary_pipelining = false;
+                goto retry;
+        }
+
+        if (chosen && chosen->inst->qpu.sig.ldvary) {
+                scoreboard->ldvary_count++;
+                /* If we are pairing an ldvary, flag it so we can fix it up for
+                 * optimal pipelining of ldvary sequences.
+                 */
+                if (prev_inst)
+                        scoreboard->fixup_ldvary = true;
+        }
 
         return chosen;
 }
