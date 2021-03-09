@@ -536,6 +536,13 @@ nv50_sampler_state_create(struct pipe_context *pipe,
       so->seamless_cube_map = cso->seamless_cube_map;
    }
 
+   if (nouveau_screen(pipe->screen)->class_3d >= GM200_3D_CLASS) {
+      if (cso->reduction_mode == PIPE_TEX_REDUCTION_MIN)
+         so->tsc[1] |= GM204_TSC_1_REDUCTION_MODE_MIN;
+      if (cso->reduction_mode == PIPE_TEX_REDUCTION_MAX)
+         so->tsc[1] |= GM204_TSC_1_REDUCTION_MODE_MAX;
+   }
+
    if (cso->max_anisotropy >= 16)
       so->tsc[0] |= (7 << 20);
    else
