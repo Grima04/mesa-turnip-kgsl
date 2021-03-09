@@ -53,6 +53,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
+#include "vk_util.h"
 
 #include "wsi_common.h"
 
@@ -118,19 +119,6 @@ void __lvp_finishme(const char *file, int line, const char *format, ...)
       lvp_finishme("stub %s", __func__); \
       return; \
    } while (0)
-
-static inline gl_shader_stage
-vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
-{
-   assert(__builtin_popcount(vk_stage) == 1);
-   return ffs(vk_stage) - 1;
-}
-
-static inline VkShaderStageFlagBits
-mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
-{
-   return (1 << mesa_stage);
-}
 
 #define LVP_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
 

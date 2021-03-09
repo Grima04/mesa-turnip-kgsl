@@ -68,6 +68,7 @@
 #include "vk_instance.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
+#include "vk_util.h"
 
 /* Pre-declarations needed for WSI entrypoints */
 struct wl_surface;
@@ -3219,19 +3220,6 @@ struct anv_semaphore {
 
 void anv_semaphore_reset_temporary(struct anv_device *device,
                                    struct anv_semaphore *semaphore);
-
-static inline gl_shader_stage
-vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
-{
-   assert(__builtin_popcount(vk_stage) == 1);
-   return ffs(vk_stage) - 1;
-}
-
-static inline VkShaderStageFlagBits
-mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
-{
-   return (1 << mesa_stage);
-}
 
 #define ANV_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
 

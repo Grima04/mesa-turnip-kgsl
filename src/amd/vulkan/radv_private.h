@@ -61,6 +61,7 @@
 #include "vk_format.h"
 #include "vk_physical_device.h"
 #include "vk_shader_module.h"
+#include "vk_util.h"
 
 #include "radv_radeon_winsys.h"
 #include "ac_binary.h"
@@ -1647,19 +1648,6 @@ radv_hash_shaders(unsigned char *hash,
 		  const struct radv_pipeline_layout *layout,
 		  const struct radv_pipeline_key *key,
 		  uint32_t flags);
-
-static inline gl_shader_stage
-vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
-{
-	assert(util_bitcount(vk_stage) == 1);
-	return ffs(vk_stage) - 1;
-}
-
-static inline VkShaderStageFlagBits
-mesa_to_vk_shader_stage(gl_shader_stage mesa_stage)
-{
-	return (1 << mesa_stage);
-}
 
 #define RADV_STAGE_MASK ((1 << MESA_SHADER_STAGES) - 1)
 
