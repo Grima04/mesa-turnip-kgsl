@@ -903,21 +903,6 @@ choose_instruction_to_schedule(struct v3d_compile *c,
 
                 const struct v3d_qpu_instr *inst = &n->inst->qpu;
 
-                /* Simulator complains if we have two uniforms loaded in the
-                 * the same instruction, which could happen if we have a ldunif
-                 * or sideband uniform and we pair that with ldunifa.
-                 */
-                if (prev_inst) {
-                        if (vir_has_uniform(prev_inst->inst) &&
-                            (inst->sig.ldunifa || inst->sig.ldunifarf)) {
-                                continue;
-                        }
-                        if ((prev_inst->inst->qpu.sig.ldunifa ||
-                             prev_inst->inst->qpu.sig.ldunifarf) &&
-                            vir_has_uniform(n->inst)) {
-                                continue;
-                        }
-                }
 
                 /* Don't choose the branch instruction until it's the last one
                  * left.  We'll move it up to fit its delay slots after we
@@ -976,6 +961,22 @@ choose_instruction_to_schedule(struct v3d_compile *c,
                         if (prev_inst->inst->uniform != -1 &&
                             n->inst->uniform != -1)
                                 continue;
+
+                       /* Simulator complains if we have two uniforms loaded in
+                        * the the same instruction, which could happen if we
+                        * have a ldunif or sideband uniform and we pair that
+                        * with ldunifa.
+                        */
+                        if (vir_has_uniform(prev_inst->inst) &&
+                            (inst->sig.ldunifa || inst->sig.ldunifarf)) {
+                                continue;
+                        }
+
+                        if ((prev_inst->inst->qpu.sig.ldunifa ||
+                             prev_inst->inst->qpu.sig.ldunifarf) &&
+                            vir_has_uniform(n->inst)) {
+                                continue;
+                        }
 
                         /* Don't merge in something that will lock the TLB.
                          * Hopwefully what we have in inst will release some
