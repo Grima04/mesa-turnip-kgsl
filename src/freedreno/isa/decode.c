@@ -673,7 +673,9 @@ decode(struct decode_state *state, void *bin, int sz)
 void
 isa_decode(void *bin, int sz, FILE *out, const struct isa_decode_options *options)
 {
-	static const struct isa_decode_options default_options = {};
+	const struct isa_decode_options default_options = {
+		.branch_labels = options ? options->branch_labels : false
+	};
 	struct decode_state *state;
 
 	if (!options)
