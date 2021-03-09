@@ -310,6 +310,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 %token <tok> T_A_INVOCATIONID
 %token <tok> T_A_WGID
 %token <tok> T_A_NUMWG
+%token <tok> T_A_BRANCHSTACK
 %token <tok> T_A_IN
 %token <tok> T_A_OUT
 %token <tok> T_A_TEX
@@ -624,6 +625,7 @@ header:            localsize_header
 |                  invocationid_header
 |                  wgid_header
 |                  numwg_header
+|                  branchstack_header
 |                  in_header
 |                  out_header
 |                  tex_header
@@ -669,6 +671,8 @@ numwg_header:      T_A_NUMWG '(' T_CONSTANT ')' {
                        /* reserve space in immediates for the actual value to be plugged in later: */
                        add_const($3, 0, 0, 0, 0);
 }
+
+branchstack_header: T_A_BRANCHSTACK const_val { variant->branchstack = $2; }
 
 /* Stubs for now */
 in_header:         T_A_IN '(' T_REGISTER ')' T_IDENTIFIER '(' T_IDENTIFIER '=' integer ')' { }

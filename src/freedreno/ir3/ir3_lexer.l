@@ -112,6 +112,7 @@ static int parse_w(const char *str)
 "@invocationid"                   return TOKEN(T_A_INVOCATIONID);
 "@wgid"                           return TOKEN(T_A_WGID);
 "@numwg"                          return TOKEN(T_A_NUMWG);
+"@branchstack"                    return TOKEN(T_A_BRANCHSTACK);
 "@in"                             return TOKEN(T_A_IN);
 "@out"                            return TOKEN(T_A_OUT);
 "@tex"                            return TOKEN(T_A_TEX);
