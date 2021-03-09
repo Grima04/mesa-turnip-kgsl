@@ -105,7 +105,7 @@ class Bitset(object):
 		self.name = name
 		self.inline = False
 		if template:
-			self.fields = template.fields
+			self.fields = template.fields[:]
 		else:
 			self.fields = []
 
@@ -358,7 +358,12 @@ class Parser(object):
 
 	def parse_reg(self, attrs, bit_size):
 		if "type" in attrs and attrs["type"] in self.bitsets:
-			self.current_bitset = self.bitsets[attrs["type"]]
+			bitset = self.bitsets[attrs["type"]]
+			if bitset.inline:
+				self.current_bitset = Bitset(attrs["name"], bitset)
+				self.current_bitset.inline = True
+			else:
+				self.current_bitset = bitset
 		else:
 			self.current_bitset = Bitset(attrs["name"], None)
 			self.current_bitset.inline = True
