@@ -66,6 +66,7 @@ struct zink_screen {
    struct zink_instance_info instance_info;
 
    VkPhysicalDevice pdev;
+   uint32_t vk_version;
 
    struct zink_device_info info;
    struct nir_shader_compiler_options nir_options;

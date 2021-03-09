@@ -852,43 +852,47 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    FREE(screen);
 }
 
-static VkPhysicalDevice
-choose_pdev(const VkInstance instance)
+static void
+choose_pdev(struct zink_screen *screen)
 {
    uint32_t i, pdev_count;
-   VkPhysicalDevice *pdevs, pdev = NULL;
-   VkResult result = vkEnumeratePhysicalDevices(instance, &pdev_count, NULL);
+   VkPhysicalDevice *pdevs;
+   VkResult result = vkEnumeratePhysicalDevices(screen->instance, &pdev_count, NULL);
    if (result != VK_SUCCESS)
-      return VK_NULL_HANDLE;
+      return;
 
    assert(pdev_count > 0);
 
    pdevs = malloc(sizeof(*pdevs) * pdev_count);
-   result = vkEnumeratePhysicalDevices(instance, &pdev_count, pdevs);
+   result = vkEnumeratePhysicalDevices(screen->instance, &pdev_count, pdevs);
    assert(result == VK_SUCCESS);
    assert(pdev_count > 0);
 
+   VkPhysicalDeviceProperties *props = &screen->info.props;
    for (i = 0; i < pdev_count; ++i) {
-      VkPhysicalDeviceProperties props;
-      vkGetPhysicalDeviceProperties(pdevs[i], &props);
+      vkGetPhysicalDeviceProperties(pdevs[i], props);
 
 #ifdef ZINK_WITH_SWRAST_VK
       char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE");
       if (use_lavapipe) {
-         if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
-            pdev = pdevs[i];
+         if (props->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+            screen->pdev = pdevs[i];
+            screen->info.device_version = props->apiVersion;
             break;
-         } else
-            continue;
+         }
+         continue;
       }
 #endif
-      if (props.deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU) {
-         pdev = pdevs[i];
+      if (props->deviceType != VK_PHYSICAL_DEVICE_TYPE_CPU) {
+         screen->pdev = pdevs[i];
+         screen->info.device_version = props->apiVersion;
          break;
       }
    }
    free(pdevs);
-   return pdev;
+
+   /* runtime version is the lesser of the instance version and device version */
+   screen->vk_version = MIN2(screen->info.device_version, screen->instance_info.loader_version);
 }
 
 static void
@@ -1260,13 +1264,10 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!screen->instance)
       goto fail;
 
-   if (!zink_load_instance_extensions(screen))
-      goto fail;
-
    if (screen->instance_info.have_EXT_debug_utils && !create_debug(screen))
       debug_printf("ZINK: failed to setup debug utils\n");
 
-   screen->pdev = choose_pdev(screen->instance);
+   choose_pdev(screen);
    if (screen->pdev == VK_NULL_HANDLE)
       goto fail;
 
@@ -1276,6 +1277,9 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
                                               VK_FORMAT_X8_D24_UNORM_PACK32);
    screen->have_D24_UNORM_S8_UINT = zink_is_depth_format_supported(screen,
                                               VK_FORMAT_D24_UNORM_S8_UINT);
+
+   if (!zink_load_instance_extensions(screen))
+      goto fail;
 
    if (!zink_get_physical_device_info(screen)) {
       debug_printf("ZINK: failed to detect features\n");
