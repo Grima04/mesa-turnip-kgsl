@@ -252,4 +252,19 @@ panfrost_load_bifrost(struct pan_pool *pool,
         ((mod >> 52) == (DRM_FORMAT_MOD_ARM_TYPE_AFBC | \
                 (DRM_FORMAT_MOD_VENDOR_ARM << 4)))
 
+/* Map modifiers to mali_texture_layout for packing in a texture descriptor */
+
+static inline enum mali_texture_layout
+panfrost_modifier_to_layout(uint64_t modifier)
+{
+        if (drm_is_afbc(modifier))
+                return MALI_TEXTURE_LAYOUT_AFBC;
+        else if (modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED)
+                return MALI_TEXTURE_LAYOUT_TILED;
+        else if (modifier == DRM_FORMAT_MOD_LINEAR)
+                return MALI_TEXTURE_LAYOUT_LINEAR;
+        else
+                unreachable("Invalid modifer");
+}
+
 #endif
