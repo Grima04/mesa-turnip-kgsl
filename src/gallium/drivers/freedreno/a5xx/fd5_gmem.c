@@ -780,6 +780,7 @@ fd5_emit_sysmem_fini(struct fd_batch *batch)
 	fd5_emit_lrz_flush(batch, ring);
 
 	fd5_event_write(batch, ring, PC_CCU_FLUSH_COLOR_TS, true);
+	fd5_event_write(batch, ring, PC_CCU_FLUSH_DEPTH_TS, true);
 }
 
 void
