@@ -110,6 +110,20 @@ get_border_clamp(unsigned wrap, bool clamp_to_border)
    return wrap;
 }
 
+static inline enum pipe_tex_reduction_mode
+gl_reduction_mode_to_pipe(GLenum reduction_mode)
+{
+   switch (reduction_mode) {
+   case GL_MIN:
+      return PIPE_TEX_REDUCTION_MIN;
+   case GL_MAX:
+      return PIPE_TEX_REDUCTION_MAX;
+   case GL_WEIGHTED_AVERAGE_EXT:
+   default:
+      return PIPE_TEX_REDUCTION_WEIGHTED_AVERAGE;
+   }
+}
+
 /**
  * Convert a gl_sampler_object to a pipe_sampler_state object.
  */
@@ -243,6 +257,8 @@ st_convert_sampler(const struct st_context *st,
     * handles, as specified by ARB_bindless_texture.
     */
    sampler->seamless_cube_map = msamp->Attrib.CubeMapSeamless;
+
+   sampler->reduction_mode = gl_reduction_mode_to_pipe(msamp->Attrib.ReductionMode);
 }
 
 /**
