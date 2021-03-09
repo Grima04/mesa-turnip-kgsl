@@ -29,6 +29,8 @@ files_vulkan_util = files(
   'vk_debug_report.h',
   'vk_deferred_operation.c',
   'vk_deferred_operation.h',
+  'vk_descriptors.c',
+  'vk_descriptors.h',
   'vk_device.c',
   'vk_device.h',
   'vk_format.c',

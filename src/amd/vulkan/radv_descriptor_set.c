@@ -29,6 +29,7 @@
 #include "util/mesa-sha1.h"
 #include "radv_private.h"
 #include "sid.h"
+#include "vk_descriptors.h"
 #include "vk_format.h"
 #include "vk_util.h"
 
@@ -44,28 +45,6 @@ static bool has_equal_immutable_samplers(const VkSampler *samplers, uint32_t cou
 		}
 	}
 	return true;
-}
-
-static int binding_compare(const void* av, const void *bv)
-{
-	const VkDescriptorSetLayoutBinding *a = (const VkDescriptorSetLayoutBinding*)av;
-	const VkDescriptorSetLayoutBinding *b = (const VkDescriptorSetLayoutBinding*)bv;
-
-	return (a->binding < b->binding) ? -1 : (a->binding > b->binding) ? 1 : 0;
-}
-
-static VkDescriptorSetLayoutBinding *
-create_sorted_bindings(const VkDescriptorSetLayoutBinding *bindings, unsigned count) {
-	VkDescriptorSetLayoutBinding *sorted_bindings = malloc(MAX2(count * sizeof(VkDescriptorSetLayoutBinding), 1));
-	if (!sorted_bindings)
-		return NULL;
-
-	if (count) {
-		memcpy(sorted_bindings, bindings, count * sizeof(VkDescriptorSetLayoutBinding));
-		qsort(sorted_bindings, count, sizeof(VkDescriptorSetLayoutBinding), binding_compare);
-	}
-
-	return sorted_bindings;
 }
 
 static bool radv_mutable_descriptor_type_size_alignment(const VkMutableDescriptorTypeListVALVE *list,
@@ -176,8 +155,8 @@ VkResult radv_CreateDescriptorSetLayout(
 	} else
 		set_layout->ycbcr_sampler_offsets_offset = 0;
 
-	VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(pCreateInfo->pBindings,
-	                                                                pCreateInfo->bindingCount);
+	VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
+	                                                                   pCreateInfo->bindingCount);
 	if (!bindings) {
 		vk_object_base_finish(&set_layout->base);
 		vk_free2(&device->vk.alloc, pAllocator, set_layout);
@@ -358,8 +337,8 @@ void radv_GetDescriptorSetLayoutSupport(VkDevice device,
                                         const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
                                         VkDescriptorSetLayoutSupport* pSupport)
 {
-	VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(pCreateInfo->pBindings,
-	                                                                pCreateInfo->bindingCount);
+	VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
+	                                                                   pCreateInfo->bindingCount);
 	if (!bindings) {
 		pSupport->supported = false;
 		return;

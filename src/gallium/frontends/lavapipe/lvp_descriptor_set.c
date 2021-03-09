@@ -22,30 +22,9 @@
  */
 
 #include "lvp_private.h"
+#include "vk_descriptors.h"
 #include "vk_util.h"
 #include "u_math.h"
-
-static int binding_compare(const void* av, const void *bv)
-{
-   const VkDescriptorSetLayoutBinding *a = (const VkDescriptorSetLayoutBinding*)av;
-   const VkDescriptorSetLayoutBinding *b = (const VkDescriptorSetLayoutBinding*)bv;
-
-   return (a->binding < b->binding) ? -1 : (a->binding > b->binding) ? 1 : 0;
-}
-
-static VkDescriptorSetLayoutBinding *
-create_sorted_bindings(const VkDescriptorSetLayoutBinding *bindings, unsigned count) {
-   VkDescriptorSetLayoutBinding *sorted_bindings = malloc(MAX2(count * sizeof(VkDescriptorSetLayoutBinding), 1));
-   if (!sorted_bindings)
-      return NULL;
-
-   if (count) {
-      memcpy(sorted_bindings, bindings, count * sizeof(VkDescriptorSetLayoutBinding));
-      qsort(sorted_bindings, count, sizeof(VkDescriptorSetLayoutBinding), binding_compare);
-   }
-
-   return sorted_bindings;
-}
 
 VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
     VkDevice                                    _device,
@@ -100,8 +79,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    set_layout->shader_stages = 0;
    set_layout->size = 0;
 
-   VkDescriptorSetLayoutBinding *bindings = create_sorted_bindings(pCreateInfo->pBindings,
-								   pCreateInfo->bindingCount);
+   VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
+                                                                      pCreateInfo->bindingCount);
    if (!bindings) {
       vk_object_base_finish(&set_layout->base);
       vk_free2(&device->vk.alloc, pAllocator, set_layout);
