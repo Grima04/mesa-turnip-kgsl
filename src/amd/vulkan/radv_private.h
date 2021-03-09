@@ -662,6 +662,9 @@ struct radv_meta_state {
 #define RADV_QUEUE_COMPUTE 1
 #define RADV_QUEUE_TRANSFER 2
 
+/* Not a real queue family */
+#define RADV_QUEUE_FOREIGN 3
+
 #define RADV_MAX_QUEUE_FAMILIES 3
 
 #define RADV_NUM_HW_CTX (RADEON_CTX_PRIORITY_REALTIME + 1)
