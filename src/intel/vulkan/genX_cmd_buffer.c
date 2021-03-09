@@ -1892,8 +1892,6 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       intel_dump_l3_config(cfg, stderr);
    }
 
-   UNUSED const bool has_slm = cfg->n[INTEL_L3P_SLM];
-
    /* According to the hardware docs, the L3 partitioning can only be changed
     * while the pipeline is completely drained and the caches are flushed,
     * which involves a first PIPE_CONTROL flush which stalls the pipeline...
@@ -1935,112 +1933,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       pc.CommandStreamerStallEnable = true;
    }
 
-#if GEN_GEN >= 8
-
-   assert(!cfg->n[INTEL_L3P_IS] && !cfg->n[INTEL_L3P_C] && !cfg->n[INTEL_L3P_T]);
-
-#if GEN_GEN >= 12
-#define L3_ALLOCATION_REG GENX(L3ALLOC)
-#define L3_ALLOCATION_REG_num GENX(L3ALLOC_num)
-#else
-#define L3_ALLOCATION_REG GENX(L3CNTLREG)
-#define L3_ALLOCATION_REG_num GENX(L3CNTLREG_num)
-#endif
-
-   anv_batch_write_reg(&cmd_buffer->batch, L3_ALLOCATION_REG, l3cr) {
-#if GEN_GEN < 11
-      l3cr.SLMEnable = has_slm;
-#endif
-#if GEN_GEN == 11
-   /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
-    * in L3CNTLREG register. The default setting of the bit is not the
-    * desirable behavior.
-   */
-      l3cr.ErrorDetectionBehaviorControl = true;
-      l3cr.UseFullWays = true;
-#endif
-      l3cr.URBAllocation = cfg->n[INTEL_L3P_URB];
-      l3cr.ROAllocation = cfg->n[INTEL_L3P_RO];
-      l3cr.DCAllocation = cfg->n[INTEL_L3P_DC];
-      l3cr.AllAllocation = cfg->n[INTEL_L3P_ALL];
-   }
-
-#else
-
-   const bool has_dc = cfg->n[INTEL_L3P_DC] || cfg->n[INTEL_L3P_ALL];
-   const bool has_is = cfg->n[INTEL_L3P_IS] || cfg->n[INTEL_L3P_RO] ||
-                       cfg->n[INTEL_L3P_ALL];
-   const bool has_c = cfg->n[INTEL_L3P_C] || cfg->n[INTEL_L3P_RO] ||
-                      cfg->n[INTEL_L3P_ALL];
-   const bool has_t = cfg->n[INTEL_L3P_T] || cfg->n[INTEL_L3P_RO] ||
-                      cfg->n[INTEL_L3P_ALL];
-
-   assert(!cfg->n[INTEL_L3P_ALL]);
-
-   /* When enabled SLM only uses a portion of the L3 on half of the banks,
-    * the matching space on the remaining banks has to be allocated to a
-    * client (URB for all validated configurations) set to the
-    * lower-bandwidth 2-bank address hashing mode.
-    */
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
-   const bool urb_low_bw = has_slm && !devinfo->is_baytrail;
-   assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
-
-   /* Minimum number of ways that can be allocated to the URB. */
-   const unsigned n0_urb = devinfo->is_baytrail ? 32 : 0;
-   assert(cfg->n[INTEL_L3P_URB] >= n0_urb);
-
-   anv_batch_write_reg(&cmd_buffer->batch, GENX(L3SQCREG1), l3sqc) {
-      l3sqc.ConvertDC_UC = !has_dc;
-      l3sqc.ConvertIS_UC = !has_is;
-      l3sqc.ConvertC_UC = !has_c;
-      l3sqc.ConvertT_UC = !has_t;
-#if GEN_IS_HASWELL
-      l3sqc.L3SQGeneralPriorityCreditInitialization = SQGPCI_DEFAULT;
-#else
-      l3sqc.L3SQGeneralPriorityCreditInitialization =
-         devinfo->is_baytrail ? BYT_SQGPCI_DEFAULT : SQGPCI_DEFAULT;
-#endif
-      l3sqc.L3SQHighPriorityCreditInitialization = SQHPCI_DEFAULT;
-   }
-
-   anv_batch_write_reg(&cmd_buffer->batch, GENX(L3CNTLREG2), l3cr2) {
-      l3cr2.SLMEnable = has_slm;
-      l3cr2.URBLowBandwidth = urb_low_bw;
-      l3cr2.URBAllocation = cfg->n[INTEL_L3P_URB] - n0_urb;
-#if !GEN_IS_HASWELL
-      l3cr2.ALLAllocation = cfg->n[INTEL_L3P_ALL];
-#endif
-      l3cr2.ROAllocation = cfg->n[INTEL_L3P_RO];
-      l3cr2.DCAllocation = cfg->n[INTEL_L3P_DC];
-   }
-
-   anv_batch_write_reg(&cmd_buffer->batch, GENX(L3CNTLREG3), l3cr3) {
-      l3cr3.ISAllocation = cfg->n[INTEL_L3P_IS];
-      l3cr3.ISLowBandwidth = 0;
-      l3cr3.CAllocation = cfg->n[INTEL_L3P_C];
-      l3cr3.CLowBandwidth = 0;
-      l3cr3.TAllocation = cfg->n[INTEL_L3P_T];
-      l3cr3.TLowBandwidth = 0;
-   }
-
-#if GEN_IS_HASWELL
-   if (cmd_buffer->device->physical->cmd_parser_version >= 4) {
-      /* Enable L3 atomics on HSW if we have a DC partition, otherwise keep
-       * them disabled to avoid crashing the system hard.
-       */
-      anv_batch_write_reg(&cmd_buffer->batch, GENX(SCRATCH1), s1) {
-         s1.L3AtomicDisable = !has_dc;
-      }
-      anv_batch_write_reg(&cmd_buffer->batch, GENX(CHICKEN3), c3) {
-         c3.L3AtomicDisableMask = true;
-         c3.L3AtomicDisable = !has_dc;
-      }
-   }
-#endif
-
-#endif
-
+   genX(emit_l3_config)(&cmd_buffer->batch, cmd_buffer->device, cfg);
    cmd_buffer->state.current_l3_config = cfg;
 }
 
