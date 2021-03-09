@@ -1898,3 +1898,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetCalibratedTimestampsEXT(
    }
    return VK_SUCCESS;
 }
+
+VKAPI_ATTR void VKAPI_CALL lvp_GetDeviceGroupPeerMemoryFeaturesKHR(
+    VkDevice device,
+    uint32_t heapIndex,
+    uint32_t localDeviceIndex,
+    uint32_t remoteDeviceIndex,
+    VkPeerMemoryFeatureFlags *pPeerMemoryFeatures)
+{
+   *pPeerMemoryFeatures = 0;
+}
