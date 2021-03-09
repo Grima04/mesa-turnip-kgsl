@@ -1360,6 +1360,10 @@ radv_image_alloc_single_sample_cmask(const struct radv_device *device,
 static void
 radv_image_alloc_values(const struct radv_device *device, struct radv_image *image)
 {
+	/* images with modifiers can be potentially imported */
+	if (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT)
+		return;
+
 	if (radv_image_has_cmask(image) || radv_image_has_dcc(image)) {
 		image->fce_pred_offset = image->size;
 		image->size += 8 * image->info.levels;
