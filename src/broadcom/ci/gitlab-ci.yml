@@ -37,15 +37,17 @@ vc4-rpi3-gles2:armhf:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
     BM_POE_TIMEOUT: 180
+    BM_START_XORG: 1
     PIGLIT_OPTIONS: >-
       --timeout 60
-    PIGLIT_PLATFORM: gbm
+    PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_TESTS: >-
       -x .tesc
       -x .tese
       -x arb_gpu_shader_fp64
       -x arb_gpu_shader_gpu5
       -x arb_gpu_shader_int64
+      -x arb_sync_control@timing
       -x arb_tessellation_shader
       -x arb_texture_cube_map
       -x clipflat
@@ -153,15 +155,17 @@ v3d-rpi4-gles2:armhf:
     - .test-manual
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    BM_START_XORG: 1
     PIGLIT_OPTIONS: >-
       --timeout 60
-    PIGLIT_PLATFORM: gbm
+    PIGLIT_PLATFORM: mixed_glx_egl
     PIGLIT_TESTS: >-
       -x .tesc
       -x .tese
       -x arb_gpu_shader_fp64
       -x arb_gpu_shader_gpu5
       -x arb_gpu_shader_int64
+      -x arb_sync_control@timing
       -x arb_tessellation_shader
       -x depthstencil-default_fb
       -x egl_ext_platform_device
