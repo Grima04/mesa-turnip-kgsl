@@ -61,6 +61,8 @@ struct fd6_pipe_sampler_view {
 	 * to uncompressed, which means the sampler state needs to be updated
 	 */
 	uint16_t rsc_seqno;
+
+	bool needs_validate;
 };
 
 static inline struct fd6_pipe_sampler_view *
@@ -69,7 +71,7 @@ fd6_pipe_sampler_view(struct pipe_sampler_view *pview)
 	return (struct fd6_pipe_sampler_view *)pview;
 }
 
-void fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so);
+void fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so) assert_dt;
 
 void fd6_texture_init(struct pipe_context *pctx);
 void fd6_texture_fini(struct pipe_context *pctx);

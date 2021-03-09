@@ -160,22 +160,46 @@ fd6_sampler_view_create(struct pipe_context *pctx, struct pipe_resource *prsc,
 		const struct pipe_sampler_view *cso)
 {
 	struct fd6_pipe_sampler_view *so = CALLOC_STRUCT(fd6_pipe_sampler_view);
-	struct fd_resource *rsc = fd_resource(prsc);
 
 	if (!so)
 		return NULL;
-
-	fd6_validate_format(fd_context(pctx), rsc, cso->format);
 
 	so->base = *cso;
 	pipe_reference(NULL, &prsc->reference);
 	so->base.texture = prsc;
 	so->base.reference.count = 1;
 	so->base.context = pctx;
-
-	fd6_sampler_view_update(fd_context(pctx), so);
+	so->needs_validate = true;
 
 	return &so->base;
+}
+
+static void
+fd6_set_sampler_views(struct pipe_context *pctx, enum pipe_shader_type shader,
+		unsigned start, unsigned nr, unsigned unbind_num_trailing_slots,
+		struct pipe_sampler_view **views)
+	in_dt
+{
+	struct fd_context *ctx = fd_context(pctx);
+
+	fd_set_sampler_views(pctx, shader, start, nr, unbind_num_trailing_slots, views);
+
+	if (!views)
+		return;
+
+	for (unsigned i = 0; i < nr; i++) {
+		struct fd6_pipe_sampler_view *so = fd6_pipe_sampler_view(views[i]);
+
+		if (!(so && so->needs_validate))
+			continue;
+
+		struct fd_resource *rsc = fd_resource(so->base.texture);
+
+		fd6_validate_format(ctx, rsc, so->base.format);
+		fd6_sampler_view_update(ctx, so);
+
+		so->needs_validate = false;
+	}
 }
 
 void
@@ -188,6 +212,8 @@ fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so
 	bool ubwc_enabled = false;
 	unsigned lvl, layers = 0;
 
+	fd6_validate_format(ctx, rsc, cso->format);
+
 	if (format == PIPE_FORMAT_X32_S8X24_UINT) {
 		rsc = rsc->stencil;
 		format = rsc->b.b.format;
@@ -195,7 +221,7 @@ fd6_sampler_view_update(struct fd_context *ctx, struct fd6_pipe_sampler_view *so
 
 	so->seqno = ++fd6_context(ctx)->tex_seqno;
 	so->ptr1 = rsc;
-	so->rsc_seqno = so->ptr1->seqno;
+	so->rsc_seqno = rsc->seqno;
 
 	if (cso->target == PIPE_BUFFER) {
 		unsigned elements = cso->u.buf.size / util_format_get_blocksize(format);
@@ -479,7 +505,7 @@ fd6_texture_init(struct pipe_context *pctx)
 
 	pctx->create_sampler_view = fd6_sampler_view_create;
 	pctx->sampler_view_destroy = fd6_sampler_view_destroy;
-	pctx->set_sampler_views = fd_set_sampler_views;
+	pctx->set_sampler_views = fd6_set_sampler_views;
 
 	ctx->rebind_resource = fd6_rebind_resource;
 

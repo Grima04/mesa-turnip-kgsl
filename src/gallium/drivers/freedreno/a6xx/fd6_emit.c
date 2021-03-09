@@ -394,7 +394,7 @@ fd6_emit_textures(struct fd_context *ctx, struct fd_ringbuffer *ring,
 
 			if (tex->textures[i]) {
 				view = fd6_pipe_sampler_view(tex->textures[i]);
-				if (unlikely(view->rsc_seqno != view->ptr1->seqno)) {
+				if (unlikely(view->rsc_seqno != fd_resource(view->base.texture)->seqno)) {
 					fd6_sampler_view_update(ctx,
 							fd6_pipe_sampler_view(tex->textures[i]));
 				}

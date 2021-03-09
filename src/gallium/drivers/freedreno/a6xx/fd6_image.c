@@ -318,6 +318,7 @@ static void fd6_set_shader_images(struct pipe_context *pctx,
 		unsigned start, unsigned count,
 		unsigned unbind_num_trailing_slots,
 		const struct pipe_image_view *images)
+	in_dt
 {
 	struct fd_context *ctx = fd_context(pctx);
 	struct fd_shaderimg_stateobj *so = &ctx->shaderimg[shader];
