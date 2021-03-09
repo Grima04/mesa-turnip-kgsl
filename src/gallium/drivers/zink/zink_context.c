@@ -1501,18 +1501,13 @@ zink_set_framebuffer_state(struct pipe_context *pctx,
 
    for (int i = 0; i < ctx->fb_state.nr_cbufs; i++) {
       struct pipe_surface *surf = ctx->fb_state.cbufs[i];
-      if (surf &&
-          (!state->cbufs[i] || i >= state->nr_cbufs ||
-           surf->texture != state->cbufs[i]->texture ||
-           surf->format != state->cbufs[i]->format ||
-           memcmp(&surf->u, &state->cbufs[i]->u, sizeof(union pipe_surface_desc))))
+      if (surf && (i >= state->nr_cbufs || surf != state->cbufs[i]))
          zink_fb_clears_apply(ctx, surf->texture);
    }
    if (ctx->fb_state.zsbuf) {
       struct pipe_surface *surf = ctx->fb_state.zsbuf;
-      if (!state->zsbuf || surf->texture != state->zsbuf->texture ||
-          memcmp(&surf->u, &state->zsbuf->u, sizeof(union pipe_surface_desc)))
-      zink_fb_clears_apply(ctx, ctx->fb_state.zsbuf->texture);
+      if (surf != state->zsbuf)
+         zink_fb_clears_apply(ctx, ctx->fb_state.zsbuf->texture);
    }
 
    util_copy_framebuffer_state(&ctx->fb_state, state);
