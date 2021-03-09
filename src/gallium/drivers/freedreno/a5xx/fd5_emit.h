@@ -134,17 +134,22 @@ fd5_set_render_mode(struct fd_context *ctx, struct fd_ringbuffer *ring,
 }
 
 static inline void
-fd5_emit_blit(struct fd_context *ctx, struct fd_ringbuffer *ring)
+fd5_event_write(struct fd_batch *batch, struct fd_ringbuffer *ring,
+		enum vgt_event_type evt, bool timestamp)
 {
-	struct fd5_context *fd5_ctx = fd5_context(ctx);
+	OUT_PKT7(ring, CP_EVENT_WRITE, timestamp ? 4 : 1);
+	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(evt));
+	if (timestamp) {
+		OUT_RELOC(ring, fd5_context(batch->ctx)->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
+		OUT_RING(ring, 0x00000000);
+	}
+}
 
+static inline void
+fd5_emit_blit(struct fd_batch *batch, struct fd_ringbuffer *ring)
+{
 	emit_marker5(ring, 7);
-
-	OUT_PKT7(ring, CP_EVENT_WRITE, 4);
-	OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(BLIT));
-	OUT_RELOC(ring, fd5_ctx->blit_mem, 0, 0, 0);  /* ADDR_LO/HI */
-	OUT_RING(ring, 0x00000000);
-
+	fd5_event_write(batch, ring, BLIT, true);
 	emit_marker5(ring, 7);
 }
 
@@ -177,7 +182,7 @@ fd5_emit_render_cntl(struct fd_context *ctx, bool blit, bool binning)
 }
 
 static inline void
-fd5_emit_lrz_flush(struct fd_ringbuffer *ring)
+fd5_emit_lrz_flush(struct fd_batch *batch, struct fd_ringbuffer *ring)
 {
 	/* TODO I think the extra writes to GRAS_LRZ_CNTL are probably
 	 * a workaround and not needed on all a5xx.
@@ -185,8 +190,7 @@ fd5_emit_lrz_flush(struct fd_ringbuffer *ring)
 	OUT_PKT4(ring, REG_A5XX_GRAS_LRZ_CNTL, 1);
 	OUT_RING(ring, A5XX_GRAS_LRZ_CNTL_ENABLE);
 
-	OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-	OUT_RING(ring, LRZ_FLUSH);
+	fd5_event_write(batch, ring, LRZ_FLUSH, false);
 
 	OUT_PKT4(ring, REG_A5XX_GRAS_LRZ_CNTL, 1);
 	OUT_RING(ring, 0x0);

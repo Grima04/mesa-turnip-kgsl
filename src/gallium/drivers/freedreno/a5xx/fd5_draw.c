@@ -130,8 +130,7 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 		for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
 			if (emit.streamout_mask & (1 << i)) {
-				OUT_PKT7(ring, CP_EVENT_WRITE, 1);
-				OUT_RING(ring, FLUSH_SO_0 + i);
+				fd5_event_write(ctx->batch, ring, FLUSH_SO_0 + i, false);
 			}
 		}
 	}
@@ -220,7 +219,7 @@ fd5_clear_lrz(struct fd_batch *batch, struct fd_resource *zsbuf, double depth)
 	OUT_RING(ring, A5XX_RB_RESOLVE_CNTL_2_X(zsbuf->lrz_width - 1) |
 			A5XX_RB_RESOLVE_CNTL_2_Y(zsbuf->lrz_height - 1));
 
-	fd5_emit_blit(batch->ctx, ring);
+	fd5_emit_blit(batch, ring);
 }
 
 static bool
@@ -293,7 +292,7 @@ fd5_clear(struct fd_context *ctx, unsigned buffers,
 			OUT_RING(ring, uc.ui[2]);  /* RB_CLEAR_COLOR_DW2 */
 			OUT_RING(ring, uc.ui[3]);  /* RB_CLEAR_COLOR_DW3 */
 
-			fd5_emit_blit(ctx, ring);
+			fd5_emit_blit(ctx->batch, ring);
 		}
 	}
 
@@ -318,7 +317,7 @@ fd5_clear(struct fd_context *ctx, unsigned buffers,
 		OUT_PKT4(ring, REG_A5XX_RB_CLEAR_COLOR_DW0, 1);
 		OUT_RING(ring, clear);    /* RB_CLEAR_COLOR_DW0 */
 
-		fd5_emit_blit(ctx, ring);
+		fd5_emit_blit(ctx->batch, ring);
 
 		if (pfb->zsbuf && (buffers & PIPE_CLEAR_DEPTH)) {
 			struct fd_resource *zsbuf = fd_resource(pfb->zsbuf->texture);
