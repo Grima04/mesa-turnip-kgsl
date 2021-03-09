@@ -149,7 +149,7 @@ radv_image_use_fast_clear_for_image(const struct radv_device *device,
 	}
 
 	return image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT &&
-	       (image->exclusive || image->queue_family_mask == 1);
+	       image->exclusive;
 }
 
 bool
