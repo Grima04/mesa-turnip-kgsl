@@ -109,6 +109,7 @@ __bitset_last_bit(const BITSET_WORD *x, int n)
 }
 
 #define BITSET_FFS(x) __bitset_ffs(x, ARRAY_SIZE(x))
+#define BITSET_LAST_BIT(x) __bitset_last_bit(x, ARRAY_SIZE(x))
 #define BITSET_LAST_BIT_SIZED(x, size) __bitset_last_bit(x, size)
 
 static inline unsigned
