@@ -2989,9 +2989,9 @@ VkResult anv_CreateDevice(
          GEN_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&device->decoder_ctx,
-                                &physical_device->info,
-                                stderr, decode_flags, NULL,
-                                decode_get_bo, NULL, device);
+                                  &physical_device->info,
+                                  stderr, decode_flags, NULL,
+                                  decode_get_bo, NULL, device);
    }
 
    device->physical = physical_device;
@@ -3205,7 +3205,7 @@ VkResult anv_CreateDevice(
 
    if (device->info.has_aux_map) {
       device->aux_map_ctx = intel_aux_map_init(device, &aux_map_allocator,
-                                             &physical_device->info);
+                                               &physical_device->info);
       if (!device->aux_map_ctx)
          goto fail_binding_table_pool;
    }

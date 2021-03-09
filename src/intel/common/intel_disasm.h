@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 void intel_disassemble(const struct gen_device_info *devinfo,
-                     const void *assembly, int start, FILE *out);
+                       const void *assembly, int start, FILE *out);
 
 #ifdef __cplusplus
 }

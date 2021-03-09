@@ -199,8 +199,8 @@ intel_aux_map_get_state_num(struct intel_aux_map_context *ctx)
 
 struct intel_aux_map_context *
 intel_aux_map_init(void *driver_ctx,
-                 struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
-                 const struct gen_device_info *devinfo)
+                   struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
+                   const struct gen_device_info *devinfo)
 {
    struct intel_aux_map_context *ctx;
    if (devinfo->gen < 12)
@@ -314,7 +314,7 @@ get_bpp_encoding(enum isl_format format)
 
 uint64_t
 intel_aux_map_format_bits(enum isl_tiling tiling, enum isl_format format,
-                        uint8_t plane)
+                          uint8_t plane)
 {
    if (aux_map_debug)
       fprintf(stderr, "AUX-MAP entry %s, bpp_enc=%d\n",
@@ -434,8 +434,8 @@ add_mapping(struct intel_aux_map_context *ctx, uint64_t address,
 
 uint64_t *
 intel_aux_map_get_entry(struct intel_aux_map_context *ctx,
-                      uint64_t address,
-                      uint64_t *entry_address)
+                        uint64_t address,
+                        uint64_t *entry_address)
 {
    pthread_mutex_lock(&ctx->mutex);
    uint64_t *l1_entry_map;
@@ -447,8 +447,8 @@ intel_aux_map_get_entry(struct intel_aux_map_context *ctx,
 
 void
 intel_aux_map_add_mapping(struct intel_aux_map_context *ctx, uint64_t address,
-                        uint64_t aux_address, uint64_t main_size_B,
-                        uint64_t format_bits)
+                          uint64_t aux_address, uint64_t main_size_B,
+                          uint64_t format_bits)
 {
    bool state_changed = false;
    pthread_mutex_lock(&ctx->mutex);
@@ -521,7 +521,7 @@ remove_mapping(struct intel_aux_map_context *ctx, uint64_t address,
 
 void
 intel_aux_map_unmap_range(struct intel_aux_map_context *ctx, uint64_t address,
-                        uint64_t size)
+                          uint64_t size)
 {
    bool state_changed = false;
    pthread_mutex_lock(&ctx->mutex);
@@ -548,7 +548,7 @@ intel_aux_map_get_num_buffers(struct intel_aux_map_context *ctx)
 
 void
 intel_aux_map_fill_bos(struct intel_aux_map_context *ctx, void **driver_bos,
-                     uint32_t max_bos)
+                       uint32_t max_bos)
 {
    assert(p_atomic_read(&ctx->num_buffers) >= max_bos);
    uint32_t i = 0;

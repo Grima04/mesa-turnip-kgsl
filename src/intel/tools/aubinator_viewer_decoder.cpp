@@ -563,7 +563,7 @@ decode_3dstate_constant(struct aub_viewer_decode_ctx *ctx,
 
       struct intel_field_iterator iter;
       intel_field_iterator_init(&iter, body, &outer.p[outer.start_bit / 32],
-                              0, false);
+                                0, false);
 
       while (intel_field_iterator_next(&iter)) {
          int idx;
@@ -815,7 +815,7 @@ handle_urb_constant(struct aub_viewer_decode_ctx *ctx,
 
       struct intel_field_iterator iter;
       intel_field_iterator_init(&iter, body, &outer.p[outer.start_bit / 32],
-                              0, false);
+                                0, false);
 
       ctx->urb_stages[ctx->stage].const_rd_length = 0;
       while (intel_field_iterator_next(&iter)) {

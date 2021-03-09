@@ -25,9 +25,9 @@
 
 static inline void
 intel_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
-                             float m00, float m11, float m30, float m31,
-                             float *xmin, float *xmax,
-                             float *ymin, float *ymax)
+                               float m00, float m11, float m30, float m31,
+                               float *xmin, float *xmax,
+                               float *ymin, float *ymax)
 {
    /* According to the "Vertex X,Y Clamping and Quantization" section of the
     * Strips and Fans documentation:

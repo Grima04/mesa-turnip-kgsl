@@ -39,7 +39,7 @@ is_send(uint32_t opcode)
 
 static int
 intel_disasm_find_end(const struct gen_device_info *devinfo,
-                    const void *assembly, int start)
+                      const void *assembly, int start)
 {
    int offset = start;
 
@@ -65,7 +65,7 @@ intel_disasm_find_end(const struct gen_device_info *devinfo,
 
 void
 intel_disassemble(const struct gen_device_info *devinfo,
-                const void *assembly, int start, FILE *out)
+                  const void *assembly, int start, FILE *out)
 {
    int end = intel_disasm_find_end(devinfo, assembly, start);
 

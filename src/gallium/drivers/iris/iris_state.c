@@ -5641,9 +5641,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
          float vp_ymax = viewport_extent(state, 1,  1.0f);
 
          intel_calculate_guardband_size(cso_fb->width, cso_fb->height,
-                                      state->scale[0], state->scale[1],
-                                      state->translate[0], state->translate[1],
-                                      &gb_xmin, &gb_xmax, &gb_ymin, &gb_ymax);
+                                        state->scale[0], state->scale[1],
+                                        state->translate[0], state->translate[1],
+                                        &gb_xmin, &gb_xmax, &gb_ymin, &gb_ymax);
 
          iris_pack_state(GENX(SF_CLIP_VIEWPORT), vp_map, vp) {
             vp.ViewportMatrixElementm00 = state->scale[0];
@@ -5683,14 +5683,14 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
 
       intel_get_urb_config(&batch->screen->devinfo,
-                         batch->screen->l3_config_3d,
-                         ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
-                         ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
-                         ice->shaders.urb.size,
-                         ice->shaders.urb.entries,
-                         ice->shaders.urb.start,
-                         &ice->state.urb_deref_block_size,
-                         &ice->shaders.urb.constrained);
+                           batch->screen->l3_config_3d,
+                           ice->shaders.prog[MESA_SHADER_TESS_EVAL] != NULL,
+                           ice->shaders.prog[MESA_SHADER_GEOMETRY] != NULL,
+                           ice->shaders.urb.size,
+                           ice->shaders.urb.entries,
+                           ice->shaders.urb.start,
+                           &ice->state.urb_deref_block_size,
+                           &ice->shaders.urb.constrained);
 
       for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
          iris_emit_cmd(batch, GENX(3DSTATE_URB_VS), urb) {

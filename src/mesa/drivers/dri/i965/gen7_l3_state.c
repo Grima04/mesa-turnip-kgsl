@@ -61,7 +61,7 @@ get_pipeline_state_l3_weights(const struct brw_context *brw)
    }
 
    return intel_get_default_l3_weights(&brw->screen->devinfo,
-                                     needs_dc, needs_slm);
+                                       needs_dc, needs_slm);
 }
 
 /**

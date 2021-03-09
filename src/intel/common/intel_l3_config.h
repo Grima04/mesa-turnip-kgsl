@@ -74,7 +74,7 @@ float intel_diff_l3_weights(struct intel_l3_weights w0, struct intel_l3_weights 
 
 struct intel_l3_weights
 intel_get_default_l3_weights(const struct gen_device_info *devinfo,
-                           bool needs_dc, bool needs_slm);
+                             bool needs_dc, bool needs_slm);
 
 struct intel_l3_weights
 intel_get_l3_config_weights(const struct intel_l3_config *cfg);
@@ -84,11 +84,11 @@ intel_get_default_l3_config(const struct gen_device_info *devinfo);
 
 const struct intel_l3_config *
 intel_get_l3_config(const struct gen_device_info *devinfo,
-                  struct intel_l3_weights w0);
+                    struct intel_l3_weights w0);
 
 unsigned
 intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
-                           const struct intel_l3_config *cfg);
+                             const struct intel_l3_config *cfg);
 
 void intel_dump_l3_config(const struct intel_l3_config *cfg, FILE *fp);
 
@@ -99,11 +99,11 @@ enum intel_urb_deref_block_size {
 };
 
 void intel_get_urb_config(const struct gen_device_info *devinfo,
-                        const struct intel_l3_config *l3_cfg,
-                        bool tess_present, bool gs_present,
-                        const unsigned entry_size[4],
-                        unsigned entries[4], unsigned start[4],
-                        enum intel_urb_deref_block_size *deref_block_size,
-                        bool *constrained);
+                          const struct intel_l3_config *l3_cfg,
+                          bool tess_present, bool gs_present,
+                          const unsigned entry_size[4],
+                          unsigned entries[4], unsigned start[4],
+                          enum intel_urb_deref_block_size *deref_block_size,
+                          bool *constrained);
 
 #endif /* INTEL_L3_CONFIG_H */

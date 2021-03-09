@@ -528,7 +528,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
          uint64_t aux_entry_addr64, *aux_entry_map;
          aux_entry_map = intel_aux_map_get_entry(cmd_buffer->device->aux_map_ctx,
-                                               address, &aux_entry_addr64);
+                                                 address, &aux_entry_addr64);
 
          assert(cmd_buffer->device->physical->use_softpin);
          struct anv_address aux_entry_address = {

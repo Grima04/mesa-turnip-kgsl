@@ -736,7 +736,7 @@ intel_spec_load_filename(const char *filename)
 
 struct intel_spec *
 intel_spec_load_from_path(const struct gen_device_info *devinfo,
-                        const char *path)
+                          const char *path)
 {
    size_t filename_len = strlen(path) + 20;
    char *filename = malloc(filename_len);
@@ -758,8 +758,8 @@ void intel_spec_destroy(struct intel_spec *spec)
 
 struct intel_group *
 intel_spec_find_instruction(struct intel_spec *spec,
-                          enum drm_i915_gem_engine_class engine,
-                          const uint32_t *p)
+                            enum drm_i915_gem_engine_class engine,
+                            const uint32_t *p)
 {
    hash_table_foreach(spec->commands, entry) {
       struct intel_group *command = entry->data;
@@ -1092,7 +1092,7 @@ iter_decode_field(struct intel_field_iterator *iter)
                iter->field->type.intel_struct->name);
       iter->struct_desc =
          intel_spec_find_struct(iter->group->spec,
-                              iter->field->type.intel_struct->name);
+                                iter->field->type.intel_struct->name);
       break;
    case GEN_TYPE_UFIXED:
       snprintf(iter->value, sizeof(iter->value), "%f",
@@ -1149,9 +1149,9 @@ iter_decode_field(struct intel_field_iterator *iter)
 
 void
 intel_field_iterator_init(struct intel_field_iterator *iter,
-                        struct intel_group *group,
-                        const uint32_t *p, int p_bit,
-                        bool print_colors)
+                          struct intel_group *group,
+                          const uint32_t *p, int p_bit,
+                          bool print_colors)
 {
    memset(iter, 0, sizeof(*iter));
 
@@ -1221,7 +1221,7 @@ intel_field_is_header(struct intel_field *field)
 
 void
 intel_print_group(FILE *outfile, struct intel_group *group, uint64_t offset,
-                const uint32_t *p, int p_bit, bool color)
+                  const uint32_t *p, int p_bit, bool color)
 {
    struct intel_field_iterator iter;
    int last_dword = -1;
@@ -1240,7 +1240,7 @@ intel_print_group(FILE *outfile, struct intel_group *group, uint64_t offset,
             int struct_dword = iter.start_bit / 32;
             uint64_t struct_offset = offset + 4 * struct_dword;
             intel_print_group(outfile, iter.struct_desc, struct_offset,
-                            &p[struct_dword], iter.start_bit % 32, color);
+                              &p[struct_dword], iter.start_bit % 32, color);
          }
       }
    }

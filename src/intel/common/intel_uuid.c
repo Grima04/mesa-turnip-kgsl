@@ -27,8 +27,8 @@
 
 void
 intel_uuid_compute_device_id(uint8_t *uuid,
-                           const struct isl_device *isldev,
-                           size_t size)
+                             const struct isl_device *isldev,
+                             size_t size)
 {
    struct mesa_sha1 sha1_ctx;
    uint8_t sha1[20];
@@ -53,8 +53,8 @@ intel_uuid_compute_device_id(uint8_t *uuid,
 
 void
 intel_uuid_compute_driver_id(uint8_t *uuid,
-                           const struct gen_device_info *devinfo,
-                           size_t size)
+                             const struct gen_device_info *devinfo,
+                             size_t size)
 {
    const char* intelDriver = PACKAGE_VERSION MESA_GIT_SHA1;
    struct mesa_sha1 sha1_ctx;

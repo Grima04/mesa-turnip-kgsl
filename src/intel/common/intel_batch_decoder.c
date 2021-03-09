@@ -30,15 +30,15 @@
 
 void
 intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
-                          const struct gen_device_info *devinfo,
-                          FILE *fp, enum intel_batch_decode_flags flags,
-                          const char *xml_path,
-                          struct intel_batch_decode_bo (*get_bo)(void *,
-                                                               bool,
-                                                               uint64_t),
-                          unsigned (*get_state_size)(void *, uint64_t,
-                                                     uint64_t),
-                          void *user_data)
+                            const struct gen_device_info *devinfo,
+                            FILE *fp, enum intel_batch_decode_flags flags,
+                            const char *xml_path,
+                            struct intel_batch_decode_bo (*get_bo)(void *,
+                                                                   bool,
+                                                                   uint64_t),
+                            unsigned (*get_state_size)(void *, uint64_t,
+                                                       uint64_t),
+                            void *user_data)
 {
    memset(ctx, 0, sizeof(*ctx));
 
@@ -1078,8 +1078,8 @@ struct custom_decoder {
 
 void
 intel_print_batch(struct intel_batch_decode_ctx *ctx,
-                const uint32_t *batch, uint32_t batch_size,
-                uint64_t batch_addr, bool from_ring)
+                  const uint32_t *batch, uint32_t batch_size,
+                  uint64_t batch_addr, bool from_ring)
 {
    const uint32_t *p, *end = batch + batch_size / sizeof(uint32_t);
    int length;
@@ -1181,7 +1181,7 @@ intel_print_batch(struct intel_batch_decode_ctx *ctx,
                        next_batch_addr);
             } else {
                intel_print_batch(ctx, next_batch.map, next_batch.size,
-                               next_batch.addr, false);
+                                 next_batch.addr, false);
             }
             if (second_level) {
                /* MI_BATCH_BUFFER_START with "2nd Level Batch Buffer" set acts

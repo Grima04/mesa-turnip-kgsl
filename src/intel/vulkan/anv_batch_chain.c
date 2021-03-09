@@ -1932,8 +1932,8 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
                                               submit->perf_query_pass);
 
             intel_print_batch(&device->decoder_ctx,
-                            pass_batch_bo->map + pass_batch_offset, 64,
-                            pass_batch_bo->offset + pass_batch_offset, false);
+                              pass_batch_bo->map + pass_batch_offset, 64,
+                              pass_batch_bo->offset + pass_batch_offset, false);
          }
 
          for (uint32_t i = 0; i < submit->cmd_buffer_count; i++) {
@@ -1941,17 +1941,17 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
                u_vector_tail(&submit->cmd_buffers[i]->seen_bbos);
             device->cmd_buffer_being_decoded = submit->cmd_buffers[i];
             intel_print_batch(&device->decoder_ctx, (*bo)->bo->map,
-                            (*bo)->bo->size, (*bo)->bo->offset, false);
+                              (*bo)->bo->size, (*bo)->bo->offset, false);
             device->cmd_buffer_being_decoded = NULL;
          }
       } else if (submit->simple_bo) {
          intel_print_batch(&device->decoder_ctx, submit->simple_bo->map,
-                         submit->simple_bo->size, submit->simple_bo->offset, false);
+                           submit->simple_bo->size, submit->simple_bo->offset, false);
       } else {
          intel_print_batch(&device->decoder_ctx,
-                         device->trivial_batch_bo->map,
-                         device->trivial_batch_bo->size,
-                         device->trivial_batch_bo->offset, false);
+                           device->trivial_batch_bo->map,
+                           device->trivial_batch_bo->size,
+                           device->trivial_batch_bo->offset, false);
       }
    }
 
@@ -1995,7 +1995,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
           (query_info->kind == GEN_PERF_QUERY_TYPE_OA ||
            query_info->kind == GEN_PERF_QUERY_TYPE_RAW)) {
          int ret = intel_ioctl(device->perf_fd, I915_PERF_IOCTL_CONFIG,
-                             (void *)(uintptr_t) query_info->oa_metrics_set_id);
+                               (void *)(uintptr_t) query_info->oa_metrics_set_id);
          if (ret < 0) {
             result = anv_device_set_lost(device,
                                          "i915-perf config failed: %s",

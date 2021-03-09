@@ -959,8 +959,8 @@ void genX(CmdBeginQueryIndexedEXT)(
                mi_iadd(
                   &b,
                   mi_imm(intel_canonical_address(pool->bo->offset +
-                                               khr_perf_query_data_offset(pool, query, 0, end) +
-                                               field->location)),
+                                                 khr_perf_query_data_offset(pool, query, 0, end) +
+                                                 field->location)),
                   mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
             cmd_buffer->self_mod_locations[reloc_idx++] = mi_store_address(&b, reg_addr);
 
@@ -970,8 +970,8 @@ void genX(CmdBeginQueryIndexedEXT)(
                   mi_iadd(
                      &b,
                      mi_imm(intel_canonical_address(pool->bo->offset +
-                                                  khr_perf_query_data_offset(pool, query, 0, end) +
-                                                  field->location + 4)),
+                                                    khr_perf_query_data_offset(pool, query, 0, end) +
+                                                    field->location + 4)),
                      mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
                cmd_buffer->self_mod_locations[reloc_idx++] = mi_store_address(&b, reg_addr);
             }

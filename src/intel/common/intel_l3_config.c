@@ -258,7 +258,7 @@ intel_diff_l3_weights(struct intel_l3_weights w0, struct intel_l3_weights w1)
  */
 struct intel_l3_weights
 intel_get_default_l3_weights(const struct gen_device_info *devinfo,
-                           bool needs_dc, bool needs_slm)
+                             bool needs_dc, bool needs_slm)
 {
    struct intel_l3_weights w = {{ 0 }};
 
@@ -302,7 +302,7 @@ intel_get_default_l3_config(const struct gen_device_info *devinfo)
  */
 const struct intel_l3_config *
 intel_get_l3_config(const struct gen_device_info *devinfo,
-                  struct intel_l3_weights w0)
+                    struct intel_l3_weights w0)
 {
    const struct intel_l3_list *const list = get_l3_list(devinfo);
    const struct intel_l3_config *const cfgs = list->configs;
@@ -349,7 +349,7 @@ get_urb_size_scale(const struct gen_device_info *devinfo)
 
 unsigned
 intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
-                           const struct intel_l3_config *cfg)
+                             const struct intel_l3_config *cfg)
 {
    /* We don't have to program the URB size in DG1, it's a fixed value. */
    if (devinfo->is_dg1)

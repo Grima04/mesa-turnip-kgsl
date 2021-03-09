@@ -93,7 +93,7 @@ aubinator_init(void *user_data, int aub_pci_id, const char *app_name)
    batch_flags |= GEN_BATCH_DECODE_FLOATS;
 
    intel_batch_decode_ctx_init(&batch_ctx, &devinfo, outfile, batch_flags,
-                             xml_path, NULL, NULL, NULL);
+                               xml_path, NULL, NULL, NULL);
 
    /* Check for valid spec instance, if wrong xml_path is passed then spec
     * instance is not initialized properly
@@ -157,7 +157,7 @@ handle_execlist_write(void *user_data, enum drm_i915_gem_engine_class engine, ui
    batch_ctx.user_data = &mem;
 
    struct intel_batch_decode_bo ring_bo = aub_mem_get_ggtt_bo(&mem,
-                                                            ring_buffer_start);
+                                                              ring_buffer_start);
    assert(ring_bo.size > 0);
    void *commands = (uint8_t *)ring_bo.map + (ring_buffer_start - ring_bo.addr) + ring_buffer_head;
 

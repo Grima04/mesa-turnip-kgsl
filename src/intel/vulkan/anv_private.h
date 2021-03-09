@@ -1242,7 +1242,7 @@ struct anv_device {
     int                                         _lost;
     int                                         lost_reported;
 
-    struct intel_batch_decode_ctx                 decoder_ctx;
+    struct intel_batch_decode_ctx               decoder_ctx;
     /*
      * When decoding a anv_cmd_buffer, we might need to search for BOs through
      * the cmd_buffer's list.
@@ -1252,7 +1252,7 @@ struct anv_device {
     int                                         perf_fd; /* -1 if no opened */
     uint64_t                                    perf_metric; /* 0 if unset */
 
-    struct intel_aux_map_context                  *aux_map_ctx;
+    struct intel_aux_map_context                *aux_map_ctx;
 
     struct gen_debug_block_frame                *debug_frame_desc;
 };
@@ -2784,7 +2784,7 @@ struct anv_cmd_compute_state {
 struct anv_cmd_state {
    /* PIPELINE_SELECT.PipelineSelection */
    uint32_t                                     current_pipeline;
-   const struct intel_l3_config *                 current_l3_config;
+   const struct intel_l3_config *               current_l3_config;
    uint32_t                                     last_aux_map_state;
 
    struct anv_cmd_graphics_state                gfx;
@@ -3331,7 +3331,7 @@ struct anv_pipeline {
 
    struct util_dynarray                         executables;
 
-   const struct intel_l3_config *                 l3_config;
+   const struct intel_l3_config *               l3_config;
 };
 
 struct anv_graphics_pipeline {

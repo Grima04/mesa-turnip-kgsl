@@ -61,12 +61,12 @@
  */
 void
 intel_get_urb_config(const struct gen_device_info *devinfo,
-                   const struct intel_l3_config *l3_cfg,
-                   bool tess_present, bool gs_present,
-                   const unsigned entry_size[4],
-                   unsigned entries[4], unsigned start[4],
-                   enum intel_urb_deref_block_size *deref_block_size,
-                   bool *constrained)
+                     const struct intel_l3_config *l3_cfg,
+                     bool tess_present, bool gs_present,
+                     const unsigned entry_size[4],
+                     unsigned entries[4], unsigned start[4],
+                     enum intel_urb_deref_block_size *deref_block_size,
+                     bool *constrained)
 {
    unsigned urb_size_kB = intel_get_l3_config_urb_size(devinfo, l3_cfg);
 

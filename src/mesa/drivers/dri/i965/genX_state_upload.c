@@ -2464,11 +2464,11 @@ genX(upload_sf_clip_viewport)(struct brw_context *brw)
       sfv.ViewportMatrixElementm31 = translate[1] * y_scale + y_bias,
       sfv.ViewportMatrixElementm32 = translate[2],
       intel_calculate_guardband_size(fb_width, fb_height,
-                                   sfv.ViewportMatrixElementm00,
-                                   sfv.ViewportMatrixElementm11,
-                                   sfv.ViewportMatrixElementm30,
-                                   sfv.ViewportMatrixElementm31,
-                                   &gb_xmin, &gb_xmax, &gb_ymin, &gb_ymax);
+                                     sfv.ViewportMatrixElementm00,
+                                     sfv.ViewportMatrixElementm11,
+                                     sfv.ViewportMatrixElementm30,
+                                     sfv.ViewportMatrixElementm31,
+                                     &gb_xmin, &gb_xmax, &gb_ymin, &gb_ymax);
 
 
       clv.XMinClipGuardband = gb_xmin;

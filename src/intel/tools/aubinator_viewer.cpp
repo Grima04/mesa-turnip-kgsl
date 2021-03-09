@@ -393,8 +393,8 @@ new_shader_window(struct aub_mem *mem, uint64_t address, const char *desc)
       FILE *f = open_memstream(&window->shader, &window->shader_size);
       if (f) {
          intel_disassemble(&context.file->devinfo,
-                         (const uint8_t *) shader_bo.map +
-                         (address - shader_bo.addr), 0, f);
+                           (const uint8_t *) shader_bo.map +
+                           (address - shader_bo.addr), 0, f);
          fclose(f);
       }
    }

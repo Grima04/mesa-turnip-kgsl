@@ -1714,9 +1714,9 @@ anv_device_alloc_bo(struct anv_device *device,
    if (new_bo._ccs_size > 0) {
       assert(device->info.has_aux_map);
       intel_aux_map_add_mapping(device->aux_map_ctx,
-                              intel_canonical_address(new_bo.offset),
-                              intel_canonical_address(new_bo.offset + new_bo.size),
-                              new_bo.size, 0 /* format_bits */);
+                                intel_canonical_address(new_bo.offset),
+                                intel_canonical_address(new_bo.offset + new_bo.size),
+                                new_bo.size, 0 /* format_bits */);
    }
 
    assert(new_bo.gem_handle);
@@ -2036,8 +2036,8 @@ anv_device_release_bo(struct anv_device *device,
       assert(device->info.has_aux_map);
       assert(bo->has_implicit_ccs);
       intel_aux_map_unmap_range(device->aux_map_ctx,
-                              intel_canonical_address(bo->offset),
-                              bo->size);
+                                intel_canonical_address(bo->offset),
+                                bo->size);
    }
 
    if ((bo->flags & EXEC_OBJECT_PINNED) && !bo->has_fixed_address)

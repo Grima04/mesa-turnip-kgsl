@@ -53,13 +53,13 @@ static inline uint32_t intel_make_gen(uint32_t major, uint32_t minor)
 struct intel_group *intel_spec_find_struct(struct intel_spec *spec, const char *name);
 struct intel_spec *intel_spec_load(const struct gen_device_info *devinfo);
 struct intel_spec *intel_spec_load_from_path(const struct gen_device_info *devinfo,
-                                         const char *path);
+                                             const char *path);
 struct intel_spec *intel_spec_load_filename(const char *filename);
 void intel_spec_destroy(struct intel_spec *spec);
 uint32_t intel_spec_get_gen(struct intel_spec *spec);
 struct intel_group *intel_spec_find_instruction(struct intel_spec *spec,
-                                            enum drm_i915_gem_engine_class engine,
-                                            const uint32_t *p);
+                                                enum drm_i915_gem_engine_class engine,
+                                                const uint32_t *p);
 struct intel_group *intel_spec_find_register(struct intel_spec *spec, uint32_t offset);
 struct intel_group *intel_spec_find_register_by_name(struct intel_spec *spec, const char *name);
 struct intel_enum *intel_spec_find_enum(struct intel_spec *spec, const char *name);
@@ -194,16 +194,16 @@ struct intel_field {
 };
 
 void intel_field_iterator_init(struct intel_field_iterator *iter,
-                             struct intel_group *group,
-                             const uint32_t *p, int p_bit,
-                             bool print_colors);
+                               struct intel_group *group,
+                               const uint32_t *p, int p_bit,
+                               bool print_colors);
 
 bool intel_field_iterator_next(struct intel_field_iterator *iter);
 
 void intel_print_group(FILE *out,
-                     struct intel_group *group,
-                     uint64_t offset, const uint32_t *p, int p_bit,
-                     bool color);
+                       struct intel_group *group,
+                       uint64_t offset, const uint32_t *p, int p_bit,
+                       bool color);
 
 enum intel_batch_decode_flags {
    /** Print in color! */
@@ -252,22 +252,21 @@ struct intel_batch_decode_ctx {
 };
 
 void intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
-                               const struct gen_device_info *devinfo,
-                               FILE *fp, enum intel_batch_decode_flags flags,
-                               const char *xml_path,
-                               struct intel_batch_decode_bo (*get_bo)(void *,
-                                                                    bool,
-                                                                    uint64_t),
-
-                               unsigned (*get_state_size)(void *, uint64_t,
-                                                          uint64_t),
-                               void *user_data);
+                                 const struct gen_device_info *devinfo,
+                                 FILE *fp, enum intel_batch_decode_flags flags,
+                                 const char *xml_path,
+                                 struct intel_batch_decode_bo (*get_bo)(void *,
+                                                                        bool,
+                                                                        uint64_t),
+                                 unsigned (*get_state_size)(void *, uint64_t,
+                                                            uint64_t),
+                                 void *user_data);
 void intel_batch_decode_ctx_finish(struct intel_batch_decode_ctx *ctx);
 
 
 void intel_print_batch(struct intel_batch_decode_ctx *ctx,
-                     const uint32_t *batch, uint32_t batch_size,
-                     uint64_t batch_addr, bool from_ring);
+                       const uint32_t *batch, uint32_t batch_size,
+                       uint64_t batch_addr, bool from_ring);
 
 #ifdef __cplusplus
 }

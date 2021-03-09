@@ -159,8 +159,8 @@ brw_batch_init(struct brw_context *brw)
          GEN_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&batch->decoder, devinfo, stderr,
-                                decode_flags, NULL, decode_get_bo,
-                                decode_get_state_size, brw);
+                                  decode_flags, NULL, decode_get_bo,
+                                  decode_get_state_size, brw);
       batch->decoder.max_vbo_decoded_lines = 100;
    }
 
@@ -832,8 +832,8 @@ submit_batch(struct brw_context *brw, int in_fence_fd, int *out_fence_fd)
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
       intel_print_batch(&batch->decoder, batch->batch.map,
-                      4 * USED_BATCH(*batch),
-                      batch->batch.bo->gtt_offset, false);
+                        4 * USED_BATCH(*batch),
+                        batch->batch.bo->gtt_offset, false);
    }
 
    if (brw->ctx.Const.ResetStrategy == GL_LOSE_CONTEXT_ON_RESET_ARB)

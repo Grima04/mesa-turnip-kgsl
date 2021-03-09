@@ -430,7 +430,7 @@ alloc_bo_from_cache(struct iris_bufmgr *bufmgr,
        */
       if (bo->bufmgr->aux_map_ctx)
          intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->gtt_offset,
-                                 bo->size);
+                                   bo->size);
       bo->aux_map_address = 0;
    }
 
@@ -781,7 +781,7 @@ bo_close(struct iris_bo *bo)
 
    if (bo->aux_map_address && bo->bufmgr->aux_map_ctx) {
       intel_aux_map_unmap_range(bo->bufmgr->aux_map_ctx, bo->gtt_offset,
-                              bo->size);
+                                bo->size);
    }
 
    /* Return the VMA for reuse */
@@ -1887,7 +1887,7 @@ iris_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
 
    if (devinfo->has_aux_map) {
       bufmgr->aux_map_ctx = intel_aux_map_init(bufmgr, &aux_map_allocator,
-                                             devinfo);
+                                               devinfo);
       assert(bufmgr->aux_map_ctx);
    }
 

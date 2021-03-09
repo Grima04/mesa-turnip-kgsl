@@ -72,7 +72,7 @@ print_register(struct intel_spec *spec, const char *name, uint32_t reg)
 
    if (reg_spec) {
       intel_print_group(stdout, reg_spec, 0, &reg, 0,
-                      option_color == COLOR_ALWAYS);
+                        option_color == COLOR_ALWAYS);
    }
 }
 
@@ -663,7 +663,7 @@ read_data_file(FILE *file)
 
    struct intel_batch_decode_ctx batch_ctx;
    intel_batch_decode_ctx_init(&batch_ctx, &devinfo, stdout, batch_flags,
-                             xml_path, get_gen_batch_bo, NULL, NULL);
+                               xml_path, get_gen_batch_bo, NULL, NULL);
 
 
    for (int s = 0; s < num_sections; s++) {
@@ -685,8 +685,8 @@ read_data_file(FILE *file)
          uint8_t *data = (uint8_t *)sections[s].data + sections[s].data_offset;
          uint64_t batch_addr = sections[s].gtt_offset + sections[s].data_offset;
          intel_print_batch(&batch_ctx, (uint32_t *)data,
-                         sections[s].dword_count * 4, batch_addr,
-                         is_ring_buffer);
+                           sections[s].dword_count * 4, batch_addr,
+                           is_ring_buffer);
          batch_ctx.flags = batch_flags;
       }
    }

@@ -72,14 +72,14 @@ gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
           * fall back to a worst-case guardband of [-1, 1].
           */
          intel_calculate_guardband_size(fb->width, fb->height,
-                                      sfv.ViewportMatrixElementm00,
-                                      sfv.ViewportMatrixElementm11,
-                                      sfv.ViewportMatrixElementm30,
-                                      sfv.ViewportMatrixElementm31,
-                                      &sfv.XMinClipGuardband,
-                                      &sfv.XMaxClipGuardband,
-                                      &sfv.YMinClipGuardband,
-                                      &sfv.YMaxClipGuardband);
+                                        sfv.ViewportMatrixElementm00,
+                                        sfv.ViewportMatrixElementm11,
+                                        sfv.ViewportMatrixElementm30,
+                                        sfv.ViewportMatrixElementm31,
+                                        &sfv.XMinClipGuardband,
+                                        &sfv.XMaxClipGuardband,
+                                        &sfv.YMinClipGuardband,
+                                        &sfv.YMaxClipGuardband);
       }
 
       GENX(SF_CLIP_VIEWPORT_pack)(NULL, sf_clip_state.map + i * 64, &sfv);

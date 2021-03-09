@@ -164,7 +164,7 @@ decode_batch(struct iris_batch *batch)
 {
    void *map = iris_bo_map(batch->dbg, batch->exec_bos[0], MAP_READ);
    intel_print_batch(&batch->decoder, map, batch->primary_batch_size,
-                   batch->exec_bos[0]->gtt_offset, false);
+                     batch->exec_bos[0]->gtt_offset, false);
 }
 
 void
@@ -221,8 +221,8 @@ iris_init_batch(struct iris_context *ice,
          GEN_BATCH_DECODE_FLOATS;
 
       intel_batch_decode_ctx_init(&batch->decoder, &screen->devinfo,
-                                stderr, decode_flags, NULL,
-                                decode_get_bo, decode_get_state_size, batch);
+                                  stderr, decode_flags, NULL,
+                                  decode_get_bo, decode_get_state_size, batch);
       batch->decoder.dynamic_base = IRIS_MEMZONE_DYNAMIC_START;
       batch->decoder.instruction_base = IRIS_MEMZONE_SHADER_START;
       batch->decoder.max_vbo_decoded_lines = 32;
@@ -510,7 +510,7 @@ add_aux_map_bos_to_batch(struct iris_batch *batch)
    uint32_t count = intel_aux_map_get_num_buffers(aux_map_ctx);
    ensure_exec_obj_space(batch, count);
    intel_aux_map_fill_bos(aux_map_ctx,
-                        (void**)&batch->exec_bos[batch->exec_count], count);
+                          (void**)&batch->exec_bos[batch->exec_count], count);
    for (uint32_t i = 0; i < count; i++) {
       struct iris_bo *bo = batch->exec_bos[batch->exec_count];
       iris_bo_reference(bo);
