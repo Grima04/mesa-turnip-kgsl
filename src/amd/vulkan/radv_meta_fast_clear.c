@@ -135,8 +135,8 @@ create_dcc_compress_compute(struct radv_device *device)
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
 		.setLayoutCount = 1,
 		.pSetLayouts = &device->meta_state.fast_clear_flush.dcc_decompress_compute_ds_layout,
-		.pushConstantRangeCount = 1,
-		.pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_COMPUTE_BIT, 0, 8},
+		.pushConstantRangeCount = 0,
+		.pPushConstantRanges = NULL,
 	};
 
 	result = radv_CreatePipelineLayout(radv_device_to_handle(device),
