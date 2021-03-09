@@ -155,8 +155,10 @@ $BM/fastboot_run.py \
 ret=$?
 set -e
 
-# Bring artifacts back from the NFS dir to the build dir where gitlab-runner
-# will look for them.
-cp -Rp /nfs/results/. results/
+if [ -n "$BM_FASTBOOT_NFSROOT" ]; then
+  # Bring artifacts back from the NFS dir to the build dir where gitlab-runner
+  # will look for them.
+  cp -Rp /nfs/results/. results/
+fi
 
 exit $ret
