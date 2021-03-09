@@ -365,6 +365,8 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 		util_format_short_name(pipe_surface_format(pfb->cbufs[0])),
 		util_format_short_name(pipe_surface_format(pfb->zsbuf)));
 
+	batch->cost += ctx->draw_cost;
+
 	for (unsigned i = 0; i < num_draws; i++) {
 		if (ctx->draw_vbo(ctx, info, indirect, &draws[i], index_offset))
 			batch->needs_flush = true;

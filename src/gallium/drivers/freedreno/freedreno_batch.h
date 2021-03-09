@@ -125,6 +125,33 @@ struct fd_batch {
 	 */
 	const struct fd_gmem_stateobj *gmem_state;
 
+	/* A calculated "draw cost" value for the batch, which tries to
+	 * estimate the bandwidth-per-sample of all the draws according
+	 * to:
+	 *
+	 *    foreach_draw (...) {
+	 *      cost += num_mrt;
+	 *      if (blend_enabled)
+	 *        cost += num_mrt;
+	 *      if (depth_test_enabled)
+	 *        cost++;
+	 *      if (depth_write_enabled)
+	 *        cost++;
+	 *    }
+	 *
+	 * The idea is that each sample-passed minimally does one write
+	 * per MRT.  If blend is enabled, the hw will additionally do
+	 * a framebuffer read per sample-passed (for each MRT with blend
+	 * enabled).  If depth-test is enabled, the hw will additionally
+	 * a depth buffer read.  If depth-write is enable, the hw will
+	 * additionally do a depth buffer write.
+	 *
+	 * This does ignore depth buffer traffic for samples which do not
+	 * pass do to depth-test fail, and some other details.  But it is
+	 * just intended to be a rough estimate that is easy to calculate.
+	 */
+	unsigned cost;
+
 	unsigned num_draws;      /* number of draws in current batch */
 	unsigned num_vertices;   /* number of vertices in current batch */
 

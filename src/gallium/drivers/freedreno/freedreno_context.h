@@ -312,6 +312,11 @@ struct fd_context {
 	/* Context sequence #, used for batch-cache key: */
 	uint16_t seqno;
 
+	/* Cost per draw, used in conjunction with samples-passed history to
+	 * estimate whether GMEM or bypass is the better option.
+	 */
+	uint8_t draw_cost;
+
 	/* Are we in process of shadowing a resource? Used to detect recursion
 	 * in transfer_map, and skip unneeded synchronization.
 	 */

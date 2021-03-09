@@ -48,6 +48,12 @@ static inline bool fd_stencil_enabled(struct fd_context *ctx)
 	return ctx->zsa && ctx->zsa->stencil[0].enabled;
 }
 
+static inline bool fd_blend_enabled(struct fd_context *ctx, unsigned n)
+	assert_dt
+{
+	return ctx->blend && ctx->blend->rt[n].blend_enable;
+}
+
 static inline bool fd_depth_clamp_enabled(struct fd_context *ctx)
 	assert_dt
 {
