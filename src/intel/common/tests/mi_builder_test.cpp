@@ -55,7 +55,7 @@ __gen_address_offset(address addr, uint64_t offset)
    return addr;
 }
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
 #define RSVD_TEMP_REG 0x2678 /* MI_ALU_REG15 */
 #else
 #define RSVD_TEMP_REG 0x2430 /* GEN7_3DPRIM_START_VERTEX */
@@ -412,7 +412,7 @@ TEST_F(mi_builder_test, imm_mem)
 }
 
 /* mem -> mem copies are only supported on HSW+ */
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
 TEST_F(mi_builder_test, mem_mem)
 {
    const uint64_t value = 0x0123456789abcdef;
@@ -532,7 +532,7 @@ TEST_F(mi_builder_test, memcpy)
 }
 
 /* Start of MI_MATH section */
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
 
 #define EXPECT_EQ_IMM(x, imm) EXPECT_EQ(x, mi_value_to_u64(imm))
 
@@ -953,7 +953,7 @@ TEST_F(mi_builder_test, store_if)
    EXPECT_EQ(*(uint32_t *)(output + 12), (uint32_t)canary);
 }
 
-#endif /* GEN_GEN >= 8 || GEN_VERSIONx10 == 75 */
+#endif /* GEN_VERSIONx10 >= 75 */
 
 #if GEN_VERSIONx10 >= 125
 

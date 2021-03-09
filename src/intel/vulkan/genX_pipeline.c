@@ -280,7 +280,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                         entry_size, entries, start, deref_block_size,
                         &constrained);
 
-#if GEN_GEN == 7 && GEN_VERSIONx10 != 75
+#if GEN_VERSIONx10 == 70
    /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
     *
     *    "A PIPE_CONTROL with Post-Sync Operation set to 1h and a depth stall
@@ -2451,7 +2451,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
       .ConstantURBEntryReadOffset = 0,
 #endif
       .ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs,
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
       .CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs,
 #endif

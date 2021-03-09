@@ -583,7 +583,7 @@ genX(emit_vertices)(struct brw_context *brw)
           * vertex element may poke over the end of the buffer by 2 bytes.
           */
          const unsigned padding =
-            (GEN_GEN <= 7 && GEN_VERSIONx10 != 75 && !devinfo->is_baytrail) * 2;
+            (GEN_VERSIONx10 < 75 && !devinfo->is_baytrail) * 2;
          const unsigned end = buffer->offset + buffer->size + padding;
          dw = genX(emit_vertex_buffer_state)(brw, dw, i, buffer->bo,
                                              buffer->offset,
@@ -864,7 +864,7 @@ genX(emit_index_buffer)(struct brw_context *brw)
    vf_invalidate_for_ib_48bit_transition(brw);
 
    brw_batch_emit(brw, GENX(3DSTATE_INDEX_BUFFER), ib) {
-#if GEN_GEN < 8 && GEN_VERSIONx10 != 75
+#if GEN_VERSIONx10 < 75
       assert(brw->ib.enable_cut_index == brw->prim_restart.enable_cut_index);
       ib.CutIndexEnable = brw->ib.enable_cut_index;
 #endif
@@ -897,7 +897,7 @@ static const struct brw_tracked_state genX(index_buffer) = {
    .emit = genX(emit_index_buffer),
 };
 
-#if GEN_VERSIONx10 == 75 || GEN_GEN >= 8
+#if GEN_VERSIONx10 >= 75
 static void
 genX(upload_cut_index)(struct brw_context *brw)
 {
@@ -2579,7 +2579,7 @@ genX(upload_gs_state)(struct brw_context *brw)
    }
 #endif
 
-#if GEN_GEN == 7 && GEN_VERSIONx10 != 75
+#if GEN_VERSIONx10 == 70
    /**
     * From Graphics BSpec: 3D-Media-GPGPU Engine > 3D Pipeline Stages >
     * Geometry > Geometry Shader > State:
@@ -3092,7 +3092,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
       &brw->wm.base,
    };
 
-   if (GEN_GEN == 7 && GEN_VERSIONx10 != 75 && !devinfo->is_baytrail &&
+   if (GEN_VERSIONx10 == 70 && !devinfo->is_baytrail &&
        stage_states[MESA_SHADER_VERTEX]->push_constants_dirty)
       gen7_emit_vs_workaround_flush(brw);
 
@@ -3106,7 +3106,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
       brw_batch_emit(brw, GENX(3DSTATE_CONSTANT_VS), pkt) {
          pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
          if (stage_state->prog_data) {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
             /* The Skylake PRM contains the following restriction:
              *
              *    "The driver must ensure The following case does not occur
@@ -4394,7 +4394,7 @@ genX(upload_cs_state)(struct brw_context *brw)
       .SharedLocalMemorySize = encode_slm_size(GEN_GEN,
                                                prog_data->total_shared),
       .BarrierEnable = cs_prog_data->uses_barrier,
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
       .CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs,
 #endif
@@ -4925,7 +4925,7 @@ genX(emit_sampler_state_pointers_xs)(UNUSED struct brw_context *brw,
    };
 
    /* Ivybridge requires a workaround flush before VS packets. */
-   if (GEN_GEN == 7 && GEN_VERSIONx10 != 75 &&
+   if (GEN_VERSIONx10 == 70 &&
        stage_state->stage == MESA_SHADER_VERTEX) {
       gen7_emit_vs_workaround_flush(brw);
    }
@@ -5276,7 +5276,7 @@ genX(update_sampler_state)(struct brw_context *brw,
        * integer formats.  Fall back to CLAMP for now.
        */
       if ((tex_cube_map_seamless || sampler->Attrib.CubeMapSeamless) &&
-          !(GEN_GEN == 7 && GEN_VERSIONx10 != 75 && texObj->_IsIntegerFormat)) {
+          !(GEN_VERSIONx10 == 70 && texObj->_IsIntegerFormat)) {
          wrap_s = TCM_CUBE;
          wrap_t = TCM_CUBE;
          wrap_r = TCM_CUBE;

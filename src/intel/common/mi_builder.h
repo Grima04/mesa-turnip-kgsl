@@ -95,7 +95,7 @@ struct mi_value {
       uint32_t reg;
    };
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    bool invert;
 #endif
 };
@@ -130,7 +130,7 @@ mi_adjust_reg_num(uint32_t reg)
 struct mi_builder {
    __gen_user_data *user_data;
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    uint32_t gprs;
    uint8_t gpr_refs[MI_BUILDER_NUM_ALLOC_GPRS];
 
@@ -145,7 +145,7 @@ mi_builder_init(struct mi_builder *b, __gen_user_data *user_data)
    memset(b, 0, sizeof(*b));
    b->user_data = user_data;
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    b->gprs = 0;
    b->num_math_dwords = 0;
 #endif
@@ -154,7 +154,7 @@ mi_builder_init(struct mi_builder *b, __gen_user_data *user_data)
 static inline void
 mi_builder_flush_math(struct mi_builder *b)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    if (b->num_math_dwords == 0)
       return;
 
@@ -172,7 +172,7 @@ mi_builder_flush_math(struct mi_builder *b)
 /* The actual hardware limit on GPRs */
 #define _MI_BUILDER_NUM_HW_GPRS 16
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
 
 static inline bool
 mi_value_is_reg(struct mi_value val)
@@ -221,7 +221,7 @@ mi_new_gpr(struct mi_builder *b)
       .reg = _MI_BUILDER_GPR_BASE + gpr * 8,
    };
 }
-#endif /* GEN_GEN >= 8 || GEN_VERSIONx10 == 75 */
+#endif /* GEN_VERSIONx10 >= 75 */
 
 /** Take a reference to a mi_value
  *
@@ -236,7 +236,7 @@ mi_new_gpr(struct mi_builder *b)
 static inline struct mi_value
 mi_value_ref(struct mi_builder *b, struct mi_value val)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    if (_mi_value_is_allocated_gpr(val)) {
       unsigned gpr = _mi_value_as_gpr(val);
       assert(gpr < MI_BUILDER_NUM_ALLOC_GPRS);
@@ -244,7 +244,7 @@ mi_value_ref(struct mi_builder *b, struct mi_value val)
       assert(b->gpr_refs[gpr] < UINT8_MAX);
       b->gpr_refs[gpr]++;
    }
-#endif /* GEN_GEN >= 8 || GEN_VERSIONx10 == 75 */
+#endif /* GEN_VERSIONx10 >= 75 */
 
    return val;
 }
@@ -256,7 +256,7 @@ mi_value_ref(struct mi_builder *b, struct mi_value val)
 static inline void
 mi_value_unref(struct mi_builder *b, struct mi_value val)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    if (_mi_value_is_allocated_gpr(val)) {
       unsigned gpr = _mi_value_as_gpr(val);
       assert(gpr < MI_BUILDER_NUM_ALLOC_GPRS);
@@ -265,7 +265,7 @@ mi_value_unref(struct mi_builder *b, struct mi_value val)
       if (--b->gpr_refs[gpr] == 0)
          b->gprs &= ~(1u << gpr);
    }
-#endif /* GEN_GEN >= 8 || GEN_VERSIONx10 == 75 */
+#endif /* GEN_VERSIONx10 >= 75 */
 }
 
 static inline struct mi_value
@@ -284,7 +284,7 @@ mi_reg32(uint32_t reg)
       .type = MI_VALUE_TYPE_REG32,
       .reg = reg,
    };
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    assert(!_mi_value_is_allocated_gpr(val));
 #endif
    return val;
@@ -297,7 +297,7 @@ mi_reg64(uint32_t reg)
       .type = MI_VALUE_TYPE_REG64,
       .reg = reg,
    };
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    assert(!_mi_value_is_allocated_gpr(val));
 #endif
    return val;
@@ -360,7 +360,7 @@ static inline void
 _mi_copy_no_unref(struct mi_builder *b,
                   struct mi_value dst, struct mi_value src)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    /* TODO: We could handle src.invert by emitting a bit of math if we really
     * wanted to.
     */
@@ -506,7 +506,7 @@ _mi_copy_no_unref(struct mi_builder *b,
 
       case MI_VALUE_TYPE_REG32:
       case MI_VALUE_TYPE_REG64:
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
          if (src.reg != dst.reg) {
             mi_builder_emit(b, GENX(MI_LOAD_REGISTER_REG), lrr) {
                struct mi_reg_num reg = mi_adjust_reg_num(src.reg);
@@ -536,7 +536,7 @@ _mi_copy_no_unref(struct mi_builder *b,
    }
 }
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
 static inline struct mi_value
 mi_resolve_invert(struct mi_builder *b, struct mi_value src);
 #endif
@@ -552,7 +552,7 @@ mi_resolve_invert(struct mi_builder *b, struct mi_value src);
 static inline void
 mi_store(struct mi_builder *b, struct mi_value dst, struct mi_value src)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    src = mi_resolve_invert(b, src);
 #endif
    _mi_copy_no_unref(b, dst, src);
@@ -564,7 +564,7 @@ static inline void
 mi_memset(struct mi_builder *b, __gen_address_type dst,
           uint32_t value, uint32_t size)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    assert(b->num_math_dwords == 0);
 #endif
 
@@ -582,7 +582,7 @@ static inline void
 mi_memcpy(struct mi_builder *b, __gen_address_type dst,
           __gen_address_type src, uint32_t size)
 {
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
    assert(b->num_math_dwords == 0);
 #endif
 
@@ -592,7 +592,7 @@ mi_memcpy(struct mi_builder *b, __gen_address_type dst,
    for (uint32_t i = 0; i < size; i += 4) {
       struct mi_value dst_val = mi_mem32(__gen_address_offset(dst, i));
       struct mi_value src_val = mi_mem32(__gen_address_offset(src, i));
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
       mi_store(b, dst_val, src_val);
 #else
       /* IVB does not have a general purpose register for command streamer
@@ -609,7 +609,7 @@ mi_memcpy(struct mi_builder *b, __gen_address_type dst,
  * MI_MATH Section.  Only available on Haswell+
  */
 
-#if GEN_GEN >= 8 || GEN_VERSIONx10 == 75
+#if GEN_VERSIONx10 >= 75
 
 /**
  * Perform a predicated store (assuming the condition is already loaded

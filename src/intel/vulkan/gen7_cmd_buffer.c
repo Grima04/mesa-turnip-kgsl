@@ -33,7 +33,7 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-#if GEN_GEN == 7 && GEN_VERSIONx10 != 75
+#if GEN_VERSIONx10 == 70
 static int64_t
 clamp_int64(int64_t x, int64_t min, int64_t max)
 {

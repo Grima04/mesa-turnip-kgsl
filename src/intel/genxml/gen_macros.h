@@ -31,7 +31,7 @@
  *
  * You can do pseudo-runtime checks in your function such as
  *
- * if (GEN_GEN > 8 || GEN_VERSIONx10 == 75) {
+ * if (GEN_VERSIONx10 == 75) {
  *    // Do something
  * }
  *
@@ -41,7 +41,7 @@
  * For places where you really do have a compile-time conflict, you can
  * use preprocessor logic:
  *
- * #if (GEN_GEN > 8 || GEN_VERSIONx10 == 75)
+ * #if (GEN_VERSIONx10 == 75)
  *    // Do something
  * #endif
  *
