@@ -2255,6 +2255,7 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer,
 					surf.level = range->baseMipLevel + l;
 					surf.layer = range->baseArrayLayer + s;
 					surf.aspect_mask = range->aspectMask;
+					surf.disable_compression = true;
 					radv_meta_clear_image_cs(cmd_buffer, &surf,
 								 &internal_clear_value.color);
 				} else {
