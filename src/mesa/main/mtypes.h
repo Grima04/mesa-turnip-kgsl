@@ -951,6 +951,7 @@ struct gl_sampler_attrib
    GLenum16 CompareMode;	/**< GL_ARB_shadow */
    GLenum16 CompareFunc;	/**< GL_ARB_shadow */
    GLboolean CubeMapSeamless;   /**< GL_AMD_seamless_cubemap_per_texture */
+   GLenum16 ReductionMode;      /**< GL_EXT_texture_filter_minmax */
 };
 
 /**
@@ -4486,6 +4487,7 @@ struct gl_extensions
    GLboolean EXT_texture_compression_s3tc_srgb;
    GLboolean EXT_texture_env_dot3;
    GLboolean EXT_texture_filter_anisotropic;
+   GLboolean EXT_texture_filter_minmax;
    GLboolean EXT_texture_integer;
    GLboolean EXT_texture_mirror_clamp;
    GLboolean EXT_texture_norm16;

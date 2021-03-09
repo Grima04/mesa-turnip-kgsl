@@ -596,6 +596,23 @@ set_tex_parameteri(struct gl_context *ctx,
       }
       goto invalid_pname;
 
+   case GL_TEXTURE_REDUCTION_MODE_EXT:
+      if (ctx->Extensions.EXT_texture_filter_minmax) {
+         GLenum mode = params[0];
+
+         if (!_mesa_target_allows_setting_sampler_parameters(texObj->Target))
+            goto invalid_dsa;
+
+         if (mode == GL_WEIGHTED_AVERAGE_EXT || mode == GL_MIN || mode == GL_MAX) {
+            if (texObj->Sampler.Attrib.ReductionMode != mode) {
+               flush(ctx);
+               texObj->Sampler.Attrib.ReductionMode = mode;
+            }
+            return GL_TRUE;
+         }
+      }
+      goto invalid_pname;
+
    case GL_TEXTURE_CUBE_MAP_SEAMLESS:
       if (_mesa_is_desktop_gl(ctx)
           && ctx->Extensions.AMD_seamless_cubemap_per_texture) {
@@ -834,6 +851,7 @@ _mesa_texture_parameterf(struct gl_context *ctx,
    case GL_DEPTH_TEXTURE_MODE_ARB:
    case GL_DEPTH_STENCIL_TEXTURE_MODE:
    case GL_TEXTURE_SRGB_DECODE_EXT:
+   case GL_TEXTURE_REDUCTION_MODE_EXT:
    case GL_TEXTURE_CUBE_MAP_SEAMLESS:
    case GL_TEXTURE_SWIZZLE_R_EXT:
    case GL_TEXTURE_SWIZZLE_G_EXT:
@@ -890,6 +908,7 @@ _mesa_texture_parameterfv(struct gl_context *ctx,
    case GL_DEPTH_TEXTURE_MODE_ARB:
    case GL_DEPTH_STENCIL_TEXTURE_MODE:
    case GL_TEXTURE_SRGB_DECODE_EXT:
+   case GL_TEXTURE_REDUCTION_MODE_EXT:
    case GL_TEXTURE_CUBE_MAP_SEAMLESS:
       {
          /* convert float param to int */
@@ -2357,6 +2376,12 @@ get_tex_parameterfv(struct gl_context *ctx,
          *params = (GLfloat) obj->Sampler.Attrib.sRGBDecode;
          break;
 
+      case GL_TEXTURE_REDUCTION_MODE_EXT:
+         if (!ctx->Extensions.EXT_texture_filter_minmax)
+            goto invalid_pname;
+         *params = (GLfloat) obj->Sampler.Attrib.ReductionMode;
+         break;
+
       case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
          if (!ctx->Extensions.ARB_shader_image_load_store)
             goto invalid_pname;
@@ -2621,6 +2646,12 @@ get_tex_parameteriv(struct gl_context *ctx,
          if (!ctx->Extensions.EXT_texture_sRGB_decode)
             goto invalid_pname;
          *params = obj->Sampler.Attrib.sRGBDecode;
+         break;
+
+      case GL_TEXTURE_REDUCTION_MODE_EXT:
+         if (!ctx->Extensions.EXT_texture_filter_minmax)
+            goto invalid_pname;
+         *params = obj->Sampler.Attrib.ReductionMode;
          break;
 
       case GL_IMAGE_FORMAT_COMPATIBILITY_TYPE:
