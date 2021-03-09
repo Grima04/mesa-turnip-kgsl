@@ -410,10 +410,6 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    uint32_t surface_index = state->set[set].surface_offsets[binding];
    uint32_t array_size = bind_layout->array_size;
 
-   nir_ssa_def *array_index = nir_ssa_for_src(b, intrin->src[0], 1);
-   if (nir_src_is_const(intrin->src[0]) || state->add_bounds_checks)
-      array_index = nir_umin(b, array_index, nir_imm_int(b, array_size - 1));
-
    nir_ssa_def *index;
    if (state->pdevice->has_a64_buffer_access) {
       /* We store the descriptor offset as 16.8.8 where the top 16 bits are
@@ -456,8 +452,11 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
              nir_address_format_32bit_index_offset);
       assert(intrin->dest.ssa.num_components == 2);
       assert(intrin->dest.ssa.bit_size == 32);
-      index = nir_vec2(b, nir_iadd_imm(b, array_index, surface_index),
-                          nir_imm_int(b, 0));
+      assert(array_size > 0 && array_size <= UINT16_MAX);
+      assert(surface_index <= UINT16_MAX);
+      uint32_t packed = ((array_size - 1) << 16) | surface_index;
+      index = nir_vec2(b, nir_ssa_for_src(b, intrin->src[0], 1),
+                          nir_imm_int(b, packed));
    }
 
    assert(intrin->dest.is_ssa);
@@ -682,8 +681,16 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
          }
       }
    } else {
-      /* We follow the nir_address_format_32bit_index_offset model */
-      desc = index;
+      nir_ssa_def *array_index = nir_channel(b, index, 0);
+      nir_ssa_def *packed = nir_channel(b, index, 1);
+      nir_ssa_def *array_max = nir_ushr_imm(b, packed, 16);
+      nir_ssa_def *surface_index = nir_iand_imm(b, packed, 0xffff);
+
+      if (state->add_bounds_checks)
+         array_index = nir_umin(b, array_index, array_max);
+
+      desc = nir_vec2(b, nir_iadd(b, surface_index, array_index),
+                         nir_imm_int(b, 0));
    }
 
    assert(intrin->dest.is_ssa);
