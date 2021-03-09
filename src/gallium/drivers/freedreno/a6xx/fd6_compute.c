@@ -92,7 +92,7 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		A6XX_HLSQ_CS_CNTL_0_WGOFFSETCONSTID(regid(63, 0)) |
 		A6XX_HLSQ_CS_CNTL_0_LOCALIDREGID(local_invocation_id));
 	OUT_RING(ring, A6XX_HLSQ_CS_CNTL_1_LINEARLOCALIDREGID(regid(63, 0)) |
-			       A6XX_HLSQ_CS_CNTL_1_THREADSIZE(THREAD128));
+			       A6XX_HLSQ_CS_CNTL_1_THREADSIZE(thrsz));
 
 	OUT_PKT4(ring, REG_A6XX_SP_CS_OBJ_START, 2);
 	OUT_RELOC(ring, v->bo, 0, 0, 0);   /* SP_CS_OBJ_START_LO/HI */
