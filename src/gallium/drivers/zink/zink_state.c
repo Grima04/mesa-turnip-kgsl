@@ -243,7 +243,7 @@ zink_create_blend_state(struct pipe_context *pctx,
 
    cso->need_blend_constants = false;
 
-   for (int i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
+   for (int i = 0; i < blend_state->max_rt + 1; ++i) {
       const struct pipe_rt_blend_state *rt = blend_state->rt;
       if (blend_state->independent_blend_enable)
          rt = blend_state->rt + i;
