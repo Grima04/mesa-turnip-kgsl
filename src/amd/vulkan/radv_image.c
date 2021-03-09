@@ -149,7 +149,12 @@ radv_image_use_fast_clear_for_image(const struct radv_device *device,
 	}
 
 	return image->usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT &&
-	       image->exclusive;
+	       (image->exclusive ||
+		/* Enable DCC for concurrent images if stores are
+		 * supported because that means we can keep DCC compressed on
+		 * all layouts/queues.
+		 */
+		radv_image_use_dcc_image_stores(device, image));
 }
 
 bool
