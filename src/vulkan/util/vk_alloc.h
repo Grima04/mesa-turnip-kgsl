@@ -155,8 +155,7 @@ struct vk_multialloc {
 #define VK_MULTIALLOC(_name) \
    struct vk_multialloc _name = VK_MULTIALLOC_INIT
 
-__attribute__((always_inline))
-static inline void
+static ALWAYS_INLINE void
 _vk_multialloc_add(struct vk_multialloc *ma,
                    void **ptr, size_t size, size_t align)
 {
@@ -178,8 +177,7 @@ _vk_multialloc_add(struct vk_multialloc *ma,
 #define vk_multialloc_add(_ma, _ptr, _count) \
    vk_multialloc_add_size(_ma, _ptr, (_count) * sizeof(**(_ptr)));
 
-__attribute__((always_inline))
-static inline void *
+static ALWAYS_INLINE void *
 vk_multialloc_alloc(struct vk_multialloc *ma,
                     const VkAllocationCallbacks *alloc,
                     VkSystemAllocationScope scope)
@@ -214,8 +212,7 @@ vk_multialloc_alloc(struct vk_multialloc *ma,
    return ptr;
 }
 
-__attribute__((always_inline))
-static inline void *
+static ALWAYS_INLINE void *
 vk_multialloc_alloc2(struct vk_multialloc *ma,
                      const VkAllocationCallbacks *parent_alloc,
                      const VkAllocationCallbacks *alloc,
