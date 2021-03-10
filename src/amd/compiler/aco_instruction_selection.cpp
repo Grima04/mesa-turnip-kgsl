@@ -2421,11 +2421,24 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_i2f16: {
       assert(dst.regClass() == v2b);
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 8)
-         src = convert_int(ctx, bld, src, 8, 16, true);
-      else if (instr->src[0].src.ssa->bit_size == 64)
+      const unsigned input_size = instr->src[0].src.ssa->bit_size;
+      if (input_size <= 16) {
+         /* Expand integer to the size expected by the uint→float converter used below */
+         unsigned target_size = (ctx->program->chip_class >= GFX8 ? 16 : 32);
+         if (input_size != target_size) {
+            src = convert_int(ctx, bld, src, input_size, target_size, true);
+         }
+      } else if (input_size == 64) {
          src = convert_int(ctx, bld, src, 64, 32, false);
-      bld.vop1(aco_opcode::v_cvt_f16_i16, Definition(dst), src);
+      }
+
+      if (ctx->program->chip_class >= GFX8) {
+         bld.vop1(aco_opcode::v_cvt_f16_i16, Definition(dst), src);
+      } else {
+         /* GFX7 and earlier do not support direct f16⟷i16 conversions */
+         src = bld.vop1(aco_opcode::v_cvt_f32_i32, bld.def(v1), src);
+         bld.vop1(aco_opcode::v_cvt_f16_f32, Definition(dst), src);
+      }
       break;
    }
    case nir_op_i2f32: {
@@ -2460,11 +2473,24 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    case nir_op_u2f16: {
       assert(dst.regClass() == v2b);
       Temp src = get_alu_src(ctx, instr->src[0]);
-      if (instr->src[0].src.ssa->bit_size == 8)
-         src = convert_int(ctx, bld, src, 8, 16, false);
-      else if (instr->src[0].src.ssa->bit_size == 64)
+      const unsigned input_size = instr->src[0].src.ssa->bit_size;
+      if (input_size <= 16) {
+         /* Expand integer to the size expected by the uint→float converter used below */
+         unsigned target_size = (ctx->program->chip_class >= GFX8 ? 16 : 32);
+         if (input_size != target_size) {
+            src = convert_int(ctx, bld, src, input_size, target_size, false);
+         }
+      } else if (input_size == 64) {
          src = convert_int(ctx, bld, src, 64, 32, false);
-      bld.vop1(aco_opcode::v_cvt_f16_u16, Definition(dst), src);
+      }
+
+      if (ctx->program->chip_class >= GFX8) {
+         bld.vop1(aco_opcode::v_cvt_f16_u16, Definition(dst), src);
+      } else {
+         /* GFX7 and earlier do not support direct f16⟷u16 conversions */
+         src = bld.vop1(aco_opcode::v_cvt_f32_u32, bld.def(v1), src);
+         bld.vop1(aco_opcode::v_cvt_f16_f32, Definition(dst), src);
+      }
       break;
    }
    case nir_op_u2f32: {
@@ -2501,22 +2527,46 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
    }
    case nir_op_f2i8:
    case nir_op_f2i16: {
-      if (instr->src[0].src.ssa->bit_size == 16)
-         emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_i16_f16, dst);
-      else if (instr->src[0].src.ssa->bit_size == 32)
+      if (instr->src[0].src.ssa->bit_size == 16) {
+         if (ctx->program->chip_class >= GFX8) {
+            emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_i16_f16, dst);
+         } else {
+            /* GFX7 and earlier do not support direct f16⟷i16 conversions */
+            Temp tmp = bld.tmp(v1);
+            emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_f32_f16, tmp);
+            tmp = bld.vop1(aco_opcode::v_cvt_i32_f32, bld.def(v1), tmp);
+            tmp = convert_int(ctx, bld, tmp, 32, 16, false, (dst.type() == RegType::sgpr) ? Temp() : dst);
+            if (dst.type() == RegType::sgpr) {
+               bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp);
+            }
+         }
+      } else if (instr->src[0].src.ssa->bit_size == 32) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_i32_f32, dst);
-      else
+      } else {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_i32_f64, dst);
+      }
       break;
    }
    case nir_op_f2u8:
    case nir_op_f2u16: {
-      if (instr->src[0].src.ssa->bit_size == 16)
-         emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_u16_f16, dst);
-      else if (instr->src[0].src.ssa->bit_size == 32)
+      if (instr->src[0].src.ssa->bit_size == 16) {
+         if (ctx->program->chip_class >= GFX8) {
+            emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_u16_f16, dst);
+         } else {
+            /* GFX7 and earlier do not support direct f16⟷u16 conversions */
+            Temp tmp = bld.tmp(v1);
+            emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_f32_f16, tmp);
+            tmp = bld.vop1(aco_opcode::v_cvt_u32_f32, bld.def(v1), tmp);
+            tmp = convert_int(ctx, bld, tmp, 32, 16, false, (dst.type() == RegType::sgpr) ? Temp() : dst);
+            if (dst.type() == RegType::sgpr) {
+               bld.pseudo(aco_opcode::p_as_uniform, Definition(dst), tmp);
+            }
+         }
+      } else if (instr->src[0].src.ssa->bit_size == 32) {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_u32_f32, dst);
-      else
+      } else {
          emit_vop1_instruction(ctx, instr, aco_opcode::v_cvt_u32_f64, dst);
+      }
       break;
    }
    case nir_op_f2i32: {
