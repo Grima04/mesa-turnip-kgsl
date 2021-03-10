@@ -43,57 +43,11 @@
 #include "program/prog_instruction.h"
 
 // Shader functions
-
-VkResult anv_CreateShaderModule(
-    VkDevice                                    _device,
-    const VkShaderModuleCreateInfo*             pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkShaderModule*                             pShaderModule)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   struct anv_shader_module *module;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-   assert(pCreateInfo->flags == 0);
-
-   module = vk_alloc2(&device->vk.alloc, pAllocator,
-                       sizeof(*module) + pCreateInfo->codeSize, 8,
-                       VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (module == NULL)
-      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &module->base,
-                       VK_OBJECT_TYPE_SHADER_MODULE);
-   module->size = pCreateInfo->codeSize;
-   memcpy(module->data, pCreateInfo->pCode, module->size);
-
-   _mesa_sha1_compute(module->data, module->size, module->sha1);
-
-   *pShaderModule = anv_shader_module_to_handle(module);
-
-   return VK_SUCCESS;
-}
-
-void anv_DestroyShaderModule(
-    VkDevice                                    _device,
-    VkShaderModule                              _module,
-    const VkAllocationCallbacks*                pAllocator)
-{
-   ANV_FROM_HANDLE(anv_device, device, _device);
-   ANV_FROM_HANDLE(anv_shader_module, module, _module);
-
-   if (!module)
-      return;
-
-   vk_object_base_finish(&module->base);
-   vk_free2(&device->vk.alloc, pAllocator, module);
-}
-
 #define SPIR_V_MAGIC_NUMBER 0x07230203
 
 struct anv_spirv_debug_data {
    struct anv_device *device;
-   const struct anv_shader_module *module;
+   const struct vk_shader_module *module;
 };
 
 static void anv_spirv_nir_debug(void *private_data,
@@ -124,7 +78,7 @@ static void anv_spirv_nir_debug(void *private_data,
 static nir_shader *
 anv_shader_compile_to_nir(struct anv_device *device,
                           void *mem_ctx,
-                          const struct anv_shader_module *module,
+                          const struct vk_shader_module *module,
                           const char *entrypoint_name,
                           gl_shader_stage stage,
                           const VkSpecializationInfo *spec_info)
@@ -590,7 +544,7 @@ populate_cs_prog_key(const struct gen_device_info *devinfo,
 struct anv_pipeline_stage {
    gl_shader_stage stage;
 
-   const struct anv_shader_module *module;
+   const struct vk_shader_module *module;
    const char *entrypoint;
    const VkSpecializationInfo *spec_info;
 
@@ -621,7 +575,7 @@ struct anv_pipeline_stage {
 };
 
 static void
-anv_pipeline_hash_shader(const struct anv_shader_module *module,
+anv_pipeline_hash_shader(const struct vk_shader_module *module,
                          const char *entrypoint,
                          gl_shader_stage stage,
                          const VkSpecializationInfo *spec_info,
@@ -1297,7 +1251,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       int64_t stage_start = os_time_get_nano();
 
       stages[stage].stage = stage;
-      stages[stage].module = anv_shader_module_from_handle(sinfo->module);
+      stages[stage].module = vk_shader_module_from_handle(sinfo->module);
       stages[stage].entrypoint = sinfo->pName;
       stages[stage].spec_info = sinfo->pSpecializationInfo;
       anv_pipeline_hash_shader(stages[stage].module,
@@ -1666,7 +1620,7 @@ VkResult
 anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         struct anv_pipeline_cache *cache,
                         const VkComputePipelineCreateInfo *info,
-                        const struct anv_shader_module *module,
+                        const struct vk_shader_module *module,
                         const char *entrypoint,
                         const VkSpecializationInfo *spec_info)
 {
