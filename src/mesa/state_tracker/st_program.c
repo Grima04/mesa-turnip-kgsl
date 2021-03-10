@@ -948,6 +948,20 @@ st_get_common_variant(struct st_context *st,
    }
 
    if (!v) {
+      if (stp->variants != NULL) {
+         _mesa_perf_debug(st->ctx, MESA_DEBUG_SEVERITY_MEDIUM,
+                          "Compiling %s shader variant (%s%s%s%s%s%s%s%s)",
+                          _mesa_shader_stage_to_string(stp->Base.info.stage),
+                          key->passthrough_edgeflags ? "edgeflags," : "",
+                          key->clamp_color ? "clamp_color," : "",
+                          key->lower_depth_clamp ? "depth_clamp," : "",
+                          key->clip_negative_one_to_one ? "clip_negative_one," : "",
+                          key->lower_point_size ? "point_size," : "",
+                          key->lower_ucp ? "ucp," : "",
+                          key->is_draw_shader ? "draw," : "",
+                          key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2] ? "GL_CLAMP," : "");
+      }
+
       /* create now */
       v = st_create_common_variant(st, stp, key);
       if (v) {
@@ -1634,6 +1648,27 @@ st_get_fp_variant(struct st_context *st,
 
    if (!fpv) {
       /* create new */
+
+      if (stfp->variants != NULL) {
+         _mesa_perf_debug(st->ctx, MESA_DEBUG_SEVERITY_MEDIUM,
+                          "Compiling fragment shader variant (%s%s%s%s%s%s%s%s%s%s%s%s%s%s)",
+                          key->bitmap ? "bitmap," : "",
+                          key->drawpixels ? "drawpixels," : "",
+                          key->scaleAndBias ? "scale_bias," : "",
+                          key->pixelMaps ? "pixel_maps," : "",
+                          key->clamp_color ? "clamp_color," : "",
+                          key->persample_shading ? "persample_shading," : "",
+                          key->fog ? "fog," : "",
+                          key->lower_depth_clamp ? "depth_clamp," : "",
+                          key->lower_two_sided_color ? "twoside," : "",
+                          key->lower_flatshade ? "flatshade," : "",
+                          key->lower_texcoord_replace ? "texcoord_replace," : "",
+                          key->lower_alpha_func ? "alpha_compare," : "",
+                          /* skipped ATI_fs targets */
+                          stfp->Base.ExternalSamplersUsed ? "external?," : "",
+                          key->gl_clamp[0] || key->gl_clamp[1] || key->gl_clamp[2] ? "GL_CLAMP," : "");
+      }
+
       fpv = st_create_fp_variant(st, stfp, key);
       if (fpv) {
          fpv->base.st = key->st;

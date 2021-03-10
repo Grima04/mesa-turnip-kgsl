@@ -115,7 +115,10 @@ st_get_external_sampler_key(struct st_context *st, struct gl_program *prog)
    return key;
 }
 
-/** Fragment program variant key */
+/** Fragment program variant key
+ *
+ * Please update st_get_fp_variant() perf_debug() when adding fields.
+ */
 struct st_fp_variant_key
 {
    struct st_context *st;         /**< variants are per-context */
@@ -189,7 +192,10 @@ struct st_fp_variant
 };
 
 
-/** Shader key shared by other shaders */
+/** Shader key shared by other shaders.
+ *
+ * Please update st_get_common_variant() perf_debug() when adding fields.
+ */
 struct st_common_variant_key
 {
    struct st_context *st;          /**< variants are per-context */
