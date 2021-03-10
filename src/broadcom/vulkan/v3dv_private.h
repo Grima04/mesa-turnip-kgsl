@@ -39,6 +39,7 @@
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
+#include "vk_shader_module.h"
 
 #include <xf86drm.h>
 
@@ -1283,20 +1284,6 @@ struct v3dv_event {
    int state;
 };
 
-struct v3dv_shader_module {
-   struct vk_object_base base;
-
-   /* A NIR shader. We create NIR modules for shaders that are generated
-    * internally by the driver.
-    */
-   struct nir_shader *nir;
-
-   /* A SPIR-V shader */
-   unsigned char sha1[20];
-   uint32_t size;
-   char data[0];
-};
-
 /* FIXME: the same function at anv, radv and tu, perhaps create common
  * place?
  */
@@ -1365,7 +1352,7 @@ struct v3dv_pipeline_stage {
     */
    bool is_coord;
 
-   const struct v3dv_shader_module *module;
+   const struct vk_shader_module *module;
    const char *entrypoint;
    const VkSpecializationInfo *spec_info;
 
@@ -1968,7 +1955,8 @@ v3dv_pipeline_cache_upload_variant(struct v3dv_pipeline *pipeline,
                                    struct v3dv_pipeline_cache *cache,
                                    struct v3dv_shader_variant  *variant);
 
-void v3dv_shader_module_internal_init(struct v3dv_shader_module *module,
+void v3dv_shader_module_internal_init(struct v3dv_device *device,
+                                      struct vk_shader_module *module,
                                       nir_shader *nir);
 
 #define V3DV_DEFINE_HANDLE_CASTS(__v3dv_type, __VkType)   \
@@ -2027,7 +2015,6 @@ V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_query_pool, VkQueryPool)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_render_pass, VkRenderPass)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_sampler, VkSampler)
 V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_semaphore, VkSemaphore)
-V3DV_DEFINE_NONDISP_HANDLE_CASTS(v3dv_shader_module, VkShaderModule)
 
 /* This is defined as a macro so that it works for both
  * VkImageSubresourceRange and VkImageSubresourceLayers

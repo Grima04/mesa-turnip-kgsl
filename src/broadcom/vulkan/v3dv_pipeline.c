@@ -57,40 +57,13 @@ v3dv_print_v3d_key(struct v3d_key *key,
    fprintf(stderr, "key %p: %s\n", key, sha1buf);
 }
 
-VkResult
-v3dv_CreateShaderModule(VkDevice _device,
-                        const VkShaderModuleCreateInfo *pCreateInfo,
-                        const VkAllocationCallbacks *pAllocator,
-                        VkShaderModule *pShaderModule)
-{
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   struct v3dv_shader_module *module;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-   assert(pCreateInfo->flags == 0);
-
-   module = vk_object_zalloc(&device->vk, pAllocator,
-                             sizeof(*module) + pCreateInfo->codeSize,
-                             VK_OBJECT_TYPE_SHADER_MODULE);
-   if (module == NULL)
-      return vk_error(NULL, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   module->nir = NULL;
-
-   module->size = pCreateInfo->codeSize;
-   memcpy(module->data, pCreateInfo->pCode, module->size);
-
-   _mesa_sha1_compute(module->data, module->size, module->sha1);
-
-   *pShaderModule = v3dv_shader_module_to_handle(module);
-
-   return VK_SUCCESS;
-}
-
 void
-v3dv_shader_module_internal_init(struct v3dv_shader_module *module,
+v3dv_shader_module_internal_init(struct v3dv_device *device,
+                                 struct vk_shader_module *module,
                                  nir_shader *nir)
 {
+   vk_object_base_init(&device->vk, &module->base,
+                       VK_OBJECT_TYPE_SHADER_MODULE);
    module->nir = nir;
    module->size = 0;
 
@@ -104,27 +77,6 @@ v3dv_shader_module_internal_init(struct v3dv_shader_module *module,
 
       blob_finish(&blob);
    }
-}
-
-void
-v3dv_DestroyShaderModule(VkDevice _device,
-                         VkShaderModule _module,
-                         const VkAllocationCallbacks *pAllocator)
-{
-   V3DV_FROM_HANDLE(v3dv_device, device, _device);
-   V3DV_FROM_HANDLE(v3dv_shader_module, module, _module);
-
-   if (!module)
-      return;
-
-   /* NIR modules (which are only created internally by the driver) are not
-    * dynamically allocated so we should never call this for them.
-    * Instead the driver is responsible for freeing the NIR code when it is
-    * no longer needed.
-    */
-   assert(module->nir == NULL);
-
-   vk_object_free(&device->vk, pAllocator, module);
 }
 
 void
@@ -1778,7 +1730,7 @@ pipeline_stage_get_nir(struct v3dv_pipeline_stage *p_stage,
 }
 
 static void
-pipeline_hash_shader(const struct v3dv_shader_module *module,
+pipeline_hash_shader(const struct vk_shader_module *module,
                      const char *entrypoint,
                      gl_shader_stage stage,
                      const VkSpecializationInfo *spec_info,
@@ -1927,7 +1879,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       if (stage == MESA_SHADER_VERTEX)
          p_stage->is_coord = false;
       p_stage->entrypoint = sinfo->pName;
-      p_stage->module = v3dv_shader_module_from_handle(sinfo->module);
+      p_stage->module = vk_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
 
       pipeline_hash_shader(p_stage->module,
@@ -3048,7 +3000,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
    p_stage->pipeline = pipeline;
    p_stage->stage = stage;
    p_stage->entrypoint = sinfo->pName;
-   p_stage->module = v3dv_shader_module_from_handle(sinfo->module);
+   p_stage->module = vk_shader_module_from_handle(sinfo->module);
    p_stage->spec_info = sinfo->pSpecializationInfo;
 
    pipeline_hash_shader(p_stage->module,
