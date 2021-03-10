@@ -113,3 +113,51 @@ BEGIN_TEST(insert_nops.nsa_to_vmem_bug)
 
    finish_insert_nops_test();
 END_TEST
+
+BEGIN_TEST(insert_nops.writelane_to_nsa_bug)
+   if (!setup_cs(NULL, GFX10))
+      return;
+
+   /* nop needed */
+   //>> p_unit_test 0
+   //! v1: %0:v[255] = v_writelane_b32_e64 0, 0, %0:v[255]
+   //! s_nop
+   //! v1: %0:v[0] = image_sample %0:s[0-7], %0:s[0-3],  v1: undef, %0:v[0], %0:v[2] 2d storage: semantics: scope:invocation
+   bld.pseudo(aco_opcode::p_unit_test, Operand(0u));
+   bld.writelane(Definition(PhysReg(511), v1), Operand(0u), Operand(0u), Operand(PhysReg(511), v1));
+   create_mimg(true, 2, 3);
+
+   /* no nop needed because the MIMG is not NSA */
+   //! p_unit_test 1
+   //! v1: %0:v[255] = v_writelane_b32_e64 0, 0, %0:v[255]
+   //! v1: %0:v[0] = image_sample %0:s[0-7], %0:s[0-3],  v1: undef, %0:v[0], %0:v[1] 2d storage: semantics: scope:invocation
+   bld.pseudo(aco_opcode::p_unit_test, Operand(1u));
+   bld.writelane(Definition(PhysReg(511), v1), Operand(0u), Operand(0u), Operand(PhysReg(511), v1));
+   create_mimg(false, 2, 2);
+
+   /* no nop needed because there's already an instruction in-between */
+   //! p_unit_test 2
+   //! v1: %0:v[255] = v_writelane_b32_e64 0, 0, %0:v[255]
+   //! v_nop
+   //! v1: %0:v[0] = image_sample %0:s[0-7], %0:s[0-3],  v1: undef, %0:v[0], %0:v[2] 2d storage: semantics: scope:invocation
+   bld.pseudo(aco_opcode::p_unit_test, Operand(2u));
+   bld.writelane(Definition(PhysReg(511), v1), Operand(0u), Operand(0u), Operand(PhysReg(511), v1));
+   bld.vop1(aco_opcode::v_nop);
+   create_mimg(true, 2, 3);
+
+   /* writelane and NSA instruction in different blocks */
+   //! p_unit_test 3
+   //! v1: %0:v[255] = v_writelane_b32_e64 0, 0, %0:v[255]
+   //! BB1
+   //! /* logical preds: / linear preds: BB0, / kind: uniform, */
+   //! s_nop
+   //! v1: %0:v[0] = image_sample %0:s[0-7], %0:s[0-3],  v1: undef, %0:v[0], %0:v[2] 2d storage: semantics: scope:invocation
+   bld.pseudo(aco_opcode::p_unit_test, Operand(3u));
+   bld.writelane(Definition(PhysReg(511), v1), Operand(0u), Operand(0u), Operand(PhysReg(511), v1));
+   bld.reset(program->create_and_insert_block());
+   create_mimg(true, 2, 3);
+   program->blocks[0].linear_succs.push_back(1);
+   program->blocks[1].linear_preds.push_back(0);
+
+   finish_insert_nops_test();
+END_TEST
