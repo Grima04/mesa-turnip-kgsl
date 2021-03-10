@@ -1424,12 +1424,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
       /* We can't reinterpret HiZ */
       assert(surface->surf.format == surface->view.format);
    }
-
    enum isl_aux_usage aux_usage = surface->aux_usage;
-
-   /* On gen12, implicit CCS has no aux buffer */
-   bool use_aux_address = (aux_usage != ISL_AUX_USAGE_NONE) &&
-                          (surface->aux_addr.buffer != NULL);
 
    isl_channel_mask_t write_disable_mask = 0;
    if (is_render_target && GEN_GEN <= 5) {
@@ -1451,7 +1446,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
                        .aux_surf = &surface->aux_surf, .aux_usage = aux_usage,
                        .address =
                           blorp_get_surface_address(batch, surface->addr),
-                       .aux_address = use_aux_address ? 0 :
+                       .aux_address = aux_usage == ISL_AUX_USAGE_NONE ? 0 :
                           blorp_get_surface_address(batch, surface->aux_addr),
                        .clear_address = !use_clear_address ? 0 :
                           blorp_get_surface_address(batch,
@@ -1464,7 +1459,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
    blorp_surface_reloc(batch, state_offset + isl_dev->ss.addr_offset,
                        surface->addr, 0);
 
-   if (use_aux_address) {
+   if (aux_usage != ISL_AUX_USAGE_NONE) {
       /* On gen7 and prior, the bottom 12 bits of the MCS base address are
        * used to store other information.  This should be ok, however, because
        * surface buffer addresses are always 4K page alinged.
