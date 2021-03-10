@@ -261,6 +261,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s,
 
    NIR_PASS_V(s, nir_move_vec_src_uses_to_dest);
    NIR_PASS_V(s, nir_lower_vec_to_movs, lima_vec_to_movs_filter_cb, NULL);
+   NIR_PASS_V(s, nir_opt_dce); /* clean up any new dead code from vec to movs */
 
    NIR_PASS_V(s, lima_nir_duplicate_load_uniforms);
    NIR_PASS_V(s, lima_nir_duplicate_load_inputs);
