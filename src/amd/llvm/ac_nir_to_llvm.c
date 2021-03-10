@@ -492,15 +492,20 @@ static LLVMValueRef enter_waterfall(struct ac_nir_context *ctx, struct waterfall
 
    ac_build_bgnloop(&ctx->ac, 6000);
 
-   LLVMValueRef scalar_value = ac_build_readlane(&ctx->ac, value, NULL);
+   LLVMValueRef active = LLVMConstInt(ctx->ac.i1, 1, false);
+   LLVMValueRef scalar_value[NIR_MAX_VEC_COMPONENTS];
 
-   LLVMValueRef active =
-      LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, value, scalar_value, "uniform_active");
+   for (unsigned i = 0; i < ac_get_llvm_num_components(value); i++) {
+      LLVMValueRef comp = ac_llvm_extract_elem(&ctx->ac, value, i);
+      scalar_value[i] = ac_build_readlane(&ctx->ac, comp, NULL);
+      active = LLVMBuildAnd(ctx->ac.builder, active,
+                            LLVMBuildICmp(ctx->ac.builder, LLVMIntEQ, comp, scalar_value[i], ""), "");
+   }
 
    wctx->phi_bb[0] = LLVMGetInsertBlock(ctx->ac.builder);
    ac_build_ifcc(&ctx->ac, active, 6001);
 
-   return scalar_value;
+   return ac_build_gather_values(&ctx->ac, scalar_value, ac_get_llvm_num_components(value));
 }
 
 static LLVMValueRef exit_waterfall(struct ac_nir_context *ctx, struct waterfall_context *wctx,

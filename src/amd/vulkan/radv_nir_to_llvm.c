@@ -223,11 +223,10 @@ radv_load_resource(struct ac_shader_abi *abi, LLVMValueRef index, unsigned desc_
       offset = ac_build_imad(&ctx->ac, index, stride, offset);
    }
 
-   desc_ptr = LLVMBuildGEP(ctx->ac.builder, desc_ptr, &offset, 1, "");
    desc_ptr = LLVMBuildPtrToInt(ctx->ac.builder, desc_ptr, ctx->ac.i32, "");
 
-   LLVMValueRef res[] = {desc_ptr, ctx->ac.i32_0};
-   return ac_build_gather_values(&ctx->ac, res, 2);
+   LLVMValueRef res[] = {desc_ptr, offset, ctx->ac.i32_0};
+   return ac_build_gather_values(&ctx->ac, res, 3);
 }
 
 static uint32_t
@@ -416,8 +415,12 @@ radv_load_base_vertex(struct ac_shader_abi *abi, bool non_indexed_is_zero)
 }
 
 static LLVMValueRef
-convert_pointer_to_64_bit(struct radv_shader_context *ctx, LLVMValueRef ptr, bool non_uniform)
+get_desc_ptr(struct radv_shader_context *ctx, LLVMValueRef ptr, bool non_uniform)
 {
+   LLVMValueRef set_ptr = ac_llvm_extract_elem(&ctx->ac, ptr, 0);
+   LLVMValueRef offset = ac_llvm_extract_elem(&ctx->ac, ptr, 1);
+   ptr = LLVMBuildNUWAdd(ctx->ac.builder, set_ptr, offset, "");
+
    unsigned addr_space = AC_ADDR_SPACE_CONST_32BIT;
    if (non_uniform) {
       /* 32-bit seems to always use SMEM. addrspacecast from 32-bit -> 64-bit is broken. */
@@ -436,7 +439,7 @@ radv_load_ssbo(struct ac_shader_abi *abi, LLVMValueRef buffer_ptr, bool write, b
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
    LLVMValueRef result;
 
-   buffer_ptr = convert_pointer_to_64_bit(ctx, buffer_ptr, non_uniform);
+   buffer_ptr = get_desc_ptr(ctx, buffer_ptr, non_uniform);
    if (!non_uniform)
       LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
 
@@ -458,6 +461,10 @@ radv_load_ubo(struct ac_shader_abi *abi, unsigned desc_set, unsigned binding, bo
       struct radv_descriptor_set_layout *layout = pipeline_layout->set[desc_set].layout;
 
       if (layout->binding[binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+         LLVMValueRef set_ptr = ac_llvm_extract_elem(&ctx->ac, buffer_ptr, 0);
+         LLVMValueRef offset = ac_llvm_extract_elem(&ctx->ac, buffer_ptr, 1);
+         buffer_ptr = LLVMBuildNUWAdd(ctx->ac.builder, set_ptr, offset, "");
+
          uint32_t desc_type =
             S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) | S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
             S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) | S_008F0C_DST_SEL_W(V_008F0C_SQ_SEL_W);
@@ -482,7 +489,7 @@ radv_load_ubo(struct ac_shader_abi *abi, unsigned desc_set, unsigned binding, bo
       }
    }
 
-   buffer_ptr = convert_pointer_to_64_bit(ctx, buffer_ptr, false);
+   buffer_ptr = get_desc_ptr(ctx, buffer_ptr, false);
    LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
 
    result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");

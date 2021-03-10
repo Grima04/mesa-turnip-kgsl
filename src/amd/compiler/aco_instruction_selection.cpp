@@ -4998,46 +4998,29 @@ void visit_load_resource(isel_context *ctx, nir_intrinsic_instr *instr)
       stride = layout->binding[binding].size;
    }
 
-   nir_const_value* nir_const_index = nir_src_as_const_value(instr->src[0]);
-   unsigned const_index = nir_const_index ? nir_const_index->u32 : 0;
-   if (stride != 1) {
-      if (nir_const_index) {
-         const_index = const_index * stride;
-      } else if (index.type() == RegType::vgpr) {
+   if (nir_src_is_const(instr->src[0])) {
+      index = bld.copy(bld.def(s1), Operand((uint32_t)(offset + nir_src_as_uint(instr->src[0]) * stride)));
+   } else if (index.type() == RegType::vgpr) {
+      if (stride != 1) {
          bool index24bit = layout->binding[binding].array_size <= 0x1000000;
          index = bld.v_mul_imm(bld.def(v1), index, stride, index24bit);
-      } else {
-         index = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(stride), Operand(index));
       }
-   }
-   if (offset) {
-      if (nir_const_index) {
-         const_index = const_index + offset;
-      } else if (index.type() == RegType::vgpr) {
+      if (offset)
          index = bld.vadd32(bld.def(v1), Operand(offset), index);
-      } else {
-         index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand(offset), Operand(index));
-      }
-   }
-
-   if (nir_const_index && const_index == 0) {
-      index = desc_ptr;
-   } else if (index.type() == RegType::vgpr) {
-      index = bld.vadd32(bld.def(v1),
-                         nir_const_index ? Operand(const_index) : Operand(index),
-                         Operand(desc_ptr));
    } else {
-      index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc),
-                       nir_const_index ? Operand(const_index) : Operand(index),
-                       Operand(desc_ptr));
+      if (stride != 1)
+         index = bld.sop2(aco_opcode::s_mul_i32, bld.def(s1), Operand(stride), index);
+      if (offset)
+         index = bld.sop2(aco_opcode::s_add_i32, bld.def(s1), bld.def(s1, scc), Operand(offset), index);
    }
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    std::array<Temp,NIR_MAX_VEC_COMPONENTS> elems;
-   elems[0] = index;
+   elems[0] = desc_ptr;
+   elems[1] = index;
    ctx->allocated_vec.emplace(dst.id(), elems);
-   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), index,
-              Operand((unsigned)ctx->options->address32_hi));
+   bld.pseudo(aco_opcode::p_create_vector, Definition(dst), desc_ptr, index,
+              Operand(0u));
 }
 
 void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_size,
@@ -5061,6 +5044,25 @@ void load_buffer(isel_context *ctx, unsigned num_components, unsigned component_
       emit_load(ctx, bld, info, mubuf_load_params);
 }
 
+Temp load_buffer_rsrc(isel_context *ctx, Temp rsrc)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp set_ptr = emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1));
+   Temp binding = bld.as_uniform(emit_extract_vector(ctx, rsrc, 1, RegClass(rsrc.type(), 1)));
+   set_ptr = convert_pointer_to_64_bit(ctx, set_ptr);
+   return bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), set_ptr, binding);
+}
+
+bool is_inline_ubo(isel_context *ctx, nir_src rsrc)
+{
+   nir_binding binding = nir_chase_binding(rsrc);
+   if (!binding.success)
+      return false;
+
+   radv_descriptor_set_layout *layout = ctx->options->layout->set[binding.desc_set].layout;
+   return layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT;
+}
+
 void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
@@ -5068,11 +5070,11 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Builder bld(ctx->program, ctx->block);
 
-   nir_binding binding = nir_chase_binding(instr->src[0]);
-   assert(binding.success);
-   radv_descriptor_set_layout *layout = ctx->options->layout->set[binding.desc_set].layout;
+   if (is_inline_ubo(ctx, instr->src[0])) {
+      Temp set_ptr = bld.as_uniform(emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1)));
+      Temp binding_off = bld.as_uniform(emit_extract_vector(ctx, rsrc, 1, RegClass(rsrc.type(), 1)));
+      rsrc = bld.sop2(aco_opcode::s_add_u32, bld.def(s1), bld.def(s1, scc), set_ptr, binding_off);
 
-   if (layout->binding[binding.binding].type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
       uint32_t desc_type = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
                            S_008F0C_DST_SEL_Y(V_008F0C_SQ_SEL_Y) |
                            S_008F0C_DST_SEL_Z(V_008F0C_SQ_SEL_Z) |
@@ -5085,15 +5087,11 @@ void visit_load_ubo(isel_context *ctx, nir_intrinsic_instr *instr)
          desc_type |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |
                       S_008F0C_DATA_FORMAT(V_008F0C_BUF_DATA_FORMAT_32);
       }
-      Temp upper_dwords = bld.pseudo(aco_opcode::p_create_vector, bld.def(s3),
-                                     Operand(S_008F04_BASE_ADDRESS_HI(ctx->options->address32_hi)),
-                                     Operand(0xFFFFFFFFu),
-                                     Operand(desc_type));
-      rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
-                        rsrc, upper_dwords);
+      rsrc = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4), rsrc,
+                        Operand(S_008F04_BASE_ADDRESS_HI(ctx->options->address32_hi)),
+                        Operand(0xFFFFFFFFu), Operand(desc_type));
    } else {
-      rsrc = convert_pointer_to_64_bit(ctx, rsrc);
-      rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
+      rsrc = load_buffer_rsrc(ctx, rsrc);
    }
    unsigned size = instr->dest.ssa.bit_size / 8;
    load_buffer(ctx, instr->num_components, size, dst, rsrc, get_ssa_temp(ctx, instr->src[1].ssa),
@@ -6190,8 +6188,7 @@ void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned num_components = instr->num_components;
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-   rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
+   Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
 
    unsigned access = nir_intrinsic_access(instr);
    bool glc = access & (ACCESS_VOLATILE | ACCESS_COHERENT);
@@ -6217,8 +6214,7 @@ void visit_store_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
    unsigned writemask = widen_mask(nir_intrinsic_write_mask(instr), elem_size_bytes);
    Temp offset = get_ssa_temp(ctx, instr->src[2].ssa);
 
-   Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
-   rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
+   Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[1].ssa));
 
    memory_sync_info sync = get_memory_sync_info(instr, storage_buffer, 0);
    bool glc = nir_intrinsic_access(instr) & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE);
@@ -6269,8 +6265,7 @@ void visit_atomic_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
                         get_ssa_temp(ctx, instr->src[3].ssa), data);
 
    Temp offset = get_ssa_temp(ctx, instr->src[1].ssa);
-   Temp rsrc = convert_pointer_to_64_bit(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
-   rsrc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), rsrc, Operand(0u));
+   Temp rsrc = load_buffer_rsrc(ctx, get_ssa_temp(ctx, instr->src[0].ssa));
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
@@ -6342,17 +6337,20 @@ void visit_get_ssbo_size(isel_context *ctx, nir_intrinsic_instr *instr) {
    Temp rsrc = get_ssa_temp(ctx, instr->src[0].ssa);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
    bool non_uniform = dst.type() == RegType::vgpr;
-   Temp index = convert_pointer_to_64_bit(ctx, rsrc, non_uniform);
 
    Builder bld(ctx->program, ctx->block);
    if (non_uniform) {
+      Temp set_ptr = emit_extract_vector(ctx, rsrc, 0, RegClass(rsrc.type(), 1));
+      Temp binding = emit_extract_vector(ctx, rsrc, 1, RegClass(rsrc.type(), 1));
+      Temp index = bld.vadd32(bld.def(v1), set_ptr, binding);
+      index = convert_pointer_to_64_bit(ctx, index, non_uniform);
+
       LoadEmitInfo info = {Operand(index), dst, 1, 4};
       info.align_mul = 4;
       info.const_offset = 8;
       emit_load(ctx, bld, info, global_load_params);
    } else {
-      Temp desc = bld.smem(aco_opcode::s_load_dwordx4, bld.def(s4), index, Operand(0u));
-      emit_extract_vector(ctx, desc, 2, dst);
+      emit_extract_vector(ctx, load_buffer_rsrc(ctx, rsrc), 2, dst);
    }
 }
 

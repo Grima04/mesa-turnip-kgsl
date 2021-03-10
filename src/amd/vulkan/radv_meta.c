@@ -653,7 +653,7 @@ radv_meta_build_resolve_shader_core(nir_builder *b, bool is_integer, int samples
 nir_ssa_def *
 radv_meta_load_descriptor(nir_builder *b, unsigned desc_set, unsigned binding)
 {
-   nir_ssa_def *rsrc = nir_vulkan_resource_index(b, 2, 32, nir_imm_int(b, 0), .desc_set = desc_set,
+   nir_ssa_def *rsrc = nir_vulkan_resource_index(b, 3, 32, nir_imm_int(b, 0), .desc_set = desc_set,
                                                  .binding = binding);
-   return nir_channel(b, rsrc, 0);
+   return nir_channels(b, rsrc, 0x3);
 }

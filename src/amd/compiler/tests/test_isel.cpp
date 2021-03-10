@@ -145,7 +145,7 @@ BEGIN_TEST(isel.sparse.clause)
          QO_EXTENSION GL_ARB_sparse_texture2 : require
          layout(local_size_x=1) in;
          layout(binding=0) uniform sampler2D tex;
-         layout(binding=0) buffer Buf {
+         layout(binding=1) buffer Buf {
             vec4 res[4];
             uint code[4];
          };
