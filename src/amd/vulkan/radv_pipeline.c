@@ -5312,6 +5312,10 @@ static bool
 gfx103_pipeline_vrs_coarse_shading(const struct radv_pipeline *pipeline)
 {
 	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+	struct radv_device *device = pipeline->device;
+
+	if (device->instance->debug_flags & RADV_DEBUG_NO_VRS_FLAT_SHADING)
+		return false;
 
 	if (!ps->info.ps.allow_flat_shading)
 		return false;

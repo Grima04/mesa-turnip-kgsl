@@ -601,6 +601,8 @@ RADV driver environment variables
       disable LLVM threaded compilation
    ``noumr``
       disable UMR dumps during GPU hang detection (only with RADV_DEBUG=hang)
+   ``novrsflatshading``
+      disable VRS for flat shading (only on GFX10.3+)
    ``preoptir``
       dump LLVM IR before any optimizations
    ``shaders``

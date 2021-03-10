@@ -62,6 +62,7 @@ enum {
 	RADV_DEBUG_INVARIANT_GEOM    = 1ull << 31,
 	RADV_DEBUG_NO_DISPLAY_DCC    = 1ull << 32,
 	RADV_DEBUG_NO_TC_COMPAT_CMASK= 1ull << 33,
+	RADV_DEBUG_NO_VRS_FLAT_SHADING = 1ull << 34,
 };
 
 enum {
