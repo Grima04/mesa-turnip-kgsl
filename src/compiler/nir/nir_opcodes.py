@@ -1015,6 +1015,12 @@ opcode("b16csel", 0, tuint, [0, 0, 0],
 opcode("b32csel", 0, tuint, [0, 0, 0],
        [tbool32, tuint, tuint], False, "", "src0 ? src1 : src2")
 
+triop("i32csel_gt", tint32, "", "(src0 > 0.0f) ? src1 : src2")
+triop("i32csel_ge", tint32, "", "(src0 >= 0.0f) ? src1 : src2")
+
+triop("fcsel_gt", tfloat32, "", "(src0 > 0.0f) ? src1 : src2")
+triop("fcsel_ge", tfloat32, "", "(src0 >= 0.0f) ? src1 : src2")
+
 # SM5 bfi assembly
 triop("bfi", tuint32, "", """
 unsigned mask = src0, insert = src1, base = src2;

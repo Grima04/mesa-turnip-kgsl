@@ -3392,6 +3392,9 @@ typedef struct nir_shader_compiler_options {
     * to imul with masked inputs and iadd */
    bool has_umad24;
 
+   /* Backend supports fused comapre against zero and csel */
+   bool has_fused_comp_and_csel;
+
    /** Backend supports fsub, if not set fsub will automatically be lowered to
     * fadd(x, fneg(y)). If true, driver should call nir_opt_algebraic_late(). */
    bool has_fsub;
