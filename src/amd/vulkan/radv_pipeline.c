@@ -5308,6 +5308,17 @@ radv_pipeline_generate_vgt_gs_out(struct radeon_cmdbuf *ctx_cs,
 	radeon_set_context_reg(ctx_cs, R_028A6C_VGT_GS_OUT_PRIM_TYPE, gs_out);
 }
 
+static bool
+gfx103_pipeline_vrs_coarse_shading(const struct radv_pipeline *pipeline)
+{
+	struct radv_shader_variant *ps = pipeline->shaders[MESA_SHADER_FRAGMENT];
+
+	if (!ps->info.ps.allow_flat_shading)
+		return false;
+
+	return true;
+}
+
 static void
 gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
 				   const VkGraphicsPipelineCreateInfo *pCreateInfo)

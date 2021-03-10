@@ -322,6 +322,7 @@ struct radv_shader_info {
 		bool reads_sample_mask_in;
 		uint8_t depth_layout;
 		bool uses_persp_or_linear_interp;
+		bool allow_flat_shading;
 	} ps;
 	struct {
 		bool uses_grid_size;
