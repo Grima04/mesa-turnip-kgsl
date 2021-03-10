@@ -660,6 +660,9 @@ struct ir3_shader_variant {
 	/* texture sampler pre-dispatches */
 	uint32_t num_sampler_prefetch;
 	struct ir3_sampler_prefetch sampler_prefetch[IR3_MAX_SAMPLER_PREFETCH];
+
+	uint16_t local_size[3];
+	bool local_size_variable;
 };
 
 static inline const char *

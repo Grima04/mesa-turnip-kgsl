@@ -3050,7 +3050,7 @@ tu_compute_pipeline_create(VkDevice device,
    tu_setup_pvtmem(dev, pipeline, &pvtmem, v->pvtmem_size, v->pvtmem_per_wave);
 
    for (int i = 0; i < 3; i++)
-      pipeline->compute.local_size[i] = v->shader->nir->info.cs.local_size[i];
+      pipeline->compute.local_size[i] = v->local_size[i];
 
    struct tu_cs prog_cs;
    tu_cs_begin_sub_stream(&pipeline->cs, 512, &prog_cs);

@@ -641,9 +641,9 @@ const_val:         T_FLOAT   { $$ = fui($1); }
 |                  T_HEX     { $$ = $1;      }
 
 localsize_header:  T_A_LOCALSIZE const_val ',' const_val ',' const_val {
-                       info->local_size[0] = $2;
-                       info->local_size[1] = $4;
-                       info->local_size[2] = $6;
+                       variant->local_size[0] = $2;
+                       variant->local_size[1] = $4;
+                       variant->local_size[2] = $6;
 }
 
 const_header:      T_A_CONST '(' T_CONSTANT ')' const_val ',' const_val ',' const_val ',' const_val {

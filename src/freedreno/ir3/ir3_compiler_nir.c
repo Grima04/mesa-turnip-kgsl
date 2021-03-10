@@ -3903,6 +3903,13 @@ ir3_compile_shader_nir(struct ir3_compiler *compiler,
 			ctx->s->info.fs.needs_quad_helper_invocations)
 		so->need_pixlod = true;
 
+	if (so->type == MESA_SHADER_COMPUTE) {
+		so->local_size[0] = ctx->s->info.cs.local_size[0];
+		so->local_size[1] = ctx->s->info.cs.local_size[1];
+		so->local_size[2] = ctx->s->info.cs.local_size[2];
+		so->local_size_variable = ctx->s->info.cs.local_size_variable;
+	}
+
 out:
 	if (ret) {
 		if (so->ir)
