@@ -147,6 +147,7 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
 
    anv_batch_emit(batch, GENX(3DSTATE_3D_MODE), p) {
       p.SubsliceHashingTableEnable = true;
+      p.SubsliceHashingTableEnableMask = true;
    }
 #endif
 }

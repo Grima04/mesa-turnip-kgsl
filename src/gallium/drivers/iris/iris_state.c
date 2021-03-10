@@ -915,6 +915,7 @@ gen12_upload_pixel_hashing_tables(struct iris_batch *batch)
 
    iris_emit_cmd(batch, GENX(3DSTATE_3D_MODE), p) {
       p.SubsliceHashingTableEnable = true;
+      p.SubsliceHashingTableEnableMask = true;
    }
 }
 #endif
