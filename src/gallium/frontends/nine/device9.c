@@ -2592,14 +2592,28 @@ HRESULT NINE_WINAPI
 NineDevice9_SetClipStatus( struct NineDevice9 *This,
                            const D3DCLIPSTATUS9 *pClipStatus )
 {
-    STUB(D3DERR_INVALIDCALL);
+    user_assert(pClipStatus, D3DERR_INVALIDCALL);
+    return D3D_OK;
 }
 
 HRESULT NINE_WINAPI
 NineDevice9_GetClipStatus( struct NineDevice9 *This,
                            D3DCLIPSTATUS9 *pClipStatus )
 {
-    STUB(D3DERR_INVALIDCALL);
+    user_assert(pClipStatus, D3DERR_INVALIDCALL);
+    /* Set/GetClipStatus is supposed to get the app some infos
+     * about vertices being clipped if it is using the software
+     * vertex rendering. It would be too complicated to implement.
+     * Probably the info is for developpers when working on their
+     * applications. Else it could be for apps to know if it is worth
+     * drawing some elements. In that case it makes sense to send
+     * 0 for ClipUnion and 0xFFFFFFFF for ClipIntersection (basically
+     * means not all vertices are clipped). Those values are known to
+     * be the default if SetClipStatus is not set. Else we could return
+     * what was set with SetClipStatus unchanged. */
+    pClipStatus->ClipUnion = 0;
+    pClipStatus->ClipIntersection = 0xFFFFFFFF;
+    return D3D_OK;
 }
 
 HRESULT NINE_WINAPI
