@@ -151,6 +151,7 @@ struct NOP_ctx_gfx10 {
    bool has_DS = false;
    bool has_branch_after_DS = false;
    bool has_NSA_MIMG = false;
+   bool has_writelane = false;
    std::bitset<128> sgprs_read_by_VMEM;
    std::bitset<128> sgprs_read_by_SMEM;
 
@@ -162,6 +163,7 @@ struct NOP_ctx_gfx10 {
       has_DS |= other.has_DS;
       has_branch_after_DS |= other.has_branch_after_DS;
       has_NSA_MIMG |= other.has_NSA_MIMG;
+      has_writelane |= other.has_writelane;
       sgprs_read_by_VMEM |= other.sgprs_read_by_VMEM;
       sgprs_read_by_SMEM |= other.sgprs_read_by_SMEM;
    }
@@ -176,6 +178,7 @@ struct NOP_ctx_gfx10 {
          has_DS == other.has_DS &&
          has_branch_after_DS == other.has_branch_after_DS &&
          has_NSA_MIMG == other.has_NSA_MIMG &&
+         has_writelane == other.has_writelane &&
          sgprs_read_by_VMEM == other.sgprs_read_by_VMEM &&
          sgprs_read_by_SMEM == other.sgprs_read_by_SMEM;
    }
@@ -755,6 +758,17 @@ void handle_instruction_gfx10(Program *program, Block *cur_block, NOP_ctx_gfx10 
          if (offset & 6)
             Builder(program, &new_instructions).sopp(aco_opcode::s_nop, -1, 0);
       }
+   }
+
+   /* waNsaCannotFollowWritelane
+    * Handles NSA MIMG immediately following a v_writelane_b32.
+    */
+   if (instr->opcode == aco_opcode::v_writelane_b32_e64) {
+      ctx.has_writelane = true;
+   } else if (ctx.has_writelane) {
+      ctx.has_writelane = false;
+      if (instr->isMIMG() && get_mimg_nsa_dwords(instr.get()) > 0)
+         Builder(program, &new_instructions).sopp(aco_opcode::s_nop, -1, 0);
    }
 }
 
