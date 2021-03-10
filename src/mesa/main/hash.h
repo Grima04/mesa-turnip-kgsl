@@ -37,6 +37,7 @@
 #include "glheader.h"
 
 #include "c11/threads.h"
+#include "util/simple_mtx.h"
 
 struct util_idalloc;
 
@@ -103,7 +104,7 @@ uint_key(GLuint id)
 struct _mesa_HashTable {
    struct hash_table *ht;
    GLuint MaxKey;                        /**< highest key inserted so far */
-   mtx_t Mutex;                          /**< mutual exclusion lock */
+   simple_mtx_t Mutex;                   /**< mutual exclusion lock */
    GLboolean InDeleteAll;                /**< Debug check */
    /* Used when name reuse is enabled */
    struct util_idalloc* id_alloc;
@@ -136,7 +137,7 @@ static inline void
 _mesa_HashLockMutex(struct _mesa_HashTable *table)
 {
    assert(table);
-   mtx_lock(&table->Mutex);
+   simple_mtx_lock(&table->Mutex);
 }
 
 
@@ -149,7 +150,7 @@ static inline void
 _mesa_HashUnlockMutex(struct _mesa_HashTable *table)
 {
    assert(table);
-   mtx_unlock(&table->Mutex);
+   simple_mtx_unlock(&table->Mutex);
 }
 
 extern void *_mesa_HashLookupLocked(struct _mesa_HashTable *table, GLuint key);

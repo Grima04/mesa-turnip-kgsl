@@ -62,7 +62,7 @@ _mesa_NewHashTable(void)
       }
 
       _mesa_hash_table_set_deleted_key(table->ht, uint_key(DELETED_KEY_VALUE));
-      mtx_init(&table->Mutex, mtx_plain);
+      simple_mtx_init(&table->Mutex, mtx_plain);
    }
    else {
       _mesa_error_no_memory(__func__);
@@ -96,7 +96,7 @@ _mesa_DeleteHashTable(struct _mesa_HashTable *table)
       free(table->id_alloc);
    }
 
-   mtx_destroy(&table->Mutex);
+   simple_mtx_destroy(&table->Mutex);
    free(table);
 }
 
