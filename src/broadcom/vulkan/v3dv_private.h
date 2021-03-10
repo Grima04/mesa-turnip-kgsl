@@ -1378,11 +1378,6 @@ struct v3dv_pipeline_stage {
    } key;
 
    struct v3dv_shader_variant*current_variant;
-
-   /* FIXME: only make sense on vs, so perhaps a v3dv key like radv? or a kind
-    * of pipe_draw_info
-    */
-   enum pipe_prim_type topology;
 };
 
 /* FIXME: although the full vpm_config is not required at this point, as we
@@ -1653,6 +1648,8 @@ struct v3dv_pipeline {
       VkFormat vk_format;
    } va[MAX_VERTEX_ATTRIBS];
    uint32_t va_count;
+
+   enum pipe_prim_type topology;
 
    struct v3dv_descriptor_map ubo_map;
    struct v3dv_descriptor_map ssbo_map;

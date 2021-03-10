@@ -1740,13 +1740,6 @@ pipeline_compile_vertex_shader(struct v3dv_pipeline *pipeline,
    if (pipeline->vs_bin == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   /* FIXME: likely this to be moved to a gather info method to a full
-    * struct inside pipeline_stage
-    */
-   const VkPipelineInputAssemblyStateCreateInfo *ia_info =
-      pCreateInfo->pInputAssemblyState;
-   pipeline->vs->topology = vk_to_pipe_prim_type[ia_info->topology];
-
    struct v3d_vs_key *key = &pipeline->vs->key.vs;
    pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
    VkResult vk_result;
@@ -2449,7 +2442,7 @@ pack_shader_state_record(struct v3dv_pipeline *pipeline)
       shader.enable_clipping = true;
 
       shader.point_size_in_shaded_vertex_data =
-         pipeline->vs->topology == PIPE_PRIM_POINTS;
+         pipeline->topology == PIPE_PRIM_POINTS;
 
       /* Must be set if the shader modifies Z, discards, or modifies
        * the sample mask.  For any of these cases, the fragment
@@ -2748,6 +2741,10 @@ pipeline_init(struct v3dv_pipeline *pipeline,
    assert(pCreateInfo->subpass < render_pass->subpass_count);
    pipeline->pass = render_pass;
    pipeline->subpass = &render_pass->subpasses[pCreateInfo->subpass];
+
+   const VkPipelineInputAssemblyStateCreateInfo *ia_info =
+      pCreateInfo->pInputAssemblyState;
+   pipeline->topology = vk_to_pipe_prim_type[ia_info->topology];
 
    /* If rasterization is not enabled, various CreateInfo structs must be
     * ignored.
