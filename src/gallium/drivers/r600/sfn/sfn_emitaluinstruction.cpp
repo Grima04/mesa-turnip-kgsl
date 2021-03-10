@@ -97,6 +97,9 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_fadd: return emit_alu_op2(instr, op2_add);
    case nir_op_fceil: return emit_alu_op1(instr, op1_ceil);
    case nir_op_fcos_r600: return emit_alu_trans_op1(instr, op1_cos);
+   case nir_op_fcsel: return emit_alu_op3(instr, op3_cnde, {0, 2, 1});
+   case nir_op_fcsel_ge: return emit_alu_op3(instr, op3_cndge, {0, 1, 2});
+   case nir_op_fcsel_gt: return emit_alu_op3(instr, op3_cndgt, {0, 1, 2});
 
     /* These are in the ALU instruction list, but they should be texture instructions */
    case nir_op_fddx: return emit_tex_fdd(instr, TexInstruction::get_gradient_h, false);
@@ -141,6 +144,8 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_iadd: return emit_alu_op2_int(instr, op2_add_int);
    case nir_op_iand: return emit_alu_op2_int(instr, op2_and_int);
    case nir_op_ibfe: return emit_alu_op3(instr, op3_bfe_int);
+   case nir_op_i32csel_ge: return emit_alu_op3(instr, op3_cndge_int,  {0, 1, 2});
+   case nir_op_i32csel_gt: return emit_alu_op3(instr, op3_cndgt_int,  {0, 1, 2});
    case nir_op_ieq32: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ifind_msb: return emit_find_msb(instr, true);
@@ -164,6 +169,8 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_mov:return emit_mov(instr);
    case nir_op_pack_64_2x32_split: return emit_pack_64_2x32_split(instr);
    case nir_op_pack_half_2x16_split: return emit_pack_32_2x16_split(instr);
+   case nir_op_slt: return emit_alu_op2(instr, op2_setgt, op2_opt_reverse);
+   case nir_op_sge: return emit_alu_op2(instr, op2_setge);
    case nir_op_u2f32: return emit_alu_trans_op1(instr, op1_uint_to_flt);
    case nir_op_ubfe: return emit_alu_op3(instr, op3_bfe_uint);
    case nir_op_ufind_msb: return emit_find_msb(instr, false);
