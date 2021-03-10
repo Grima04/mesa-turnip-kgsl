@@ -380,13 +380,13 @@ VkResult anv_CreateDescriptorSetLayout(
     * with DEVICE scope because they are reference counted and may not be
     * destroyed when vkDestroyDescriptorSetLayout is called.
     */
-   ANV_MULTIALLOC(ma);
-   anv_multialloc_add(&ma, &set_layout, 1);
-   anv_multialloc_add(&ma, &bindings, max_binding + 1);
-   anv_multialloc_add(&ma, &samplers, immutable_sampler_count);
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &set_layout, 1);
+   vk_multialloc_add(&ma, &bindings, max_binding + 1);
+   vk_multialloc_add(&ma, &samplers, immutable_sampler_count);
 
-   if (!anv_multialloc_alloc(&ma, &device->vk.alloc,
-                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
+   if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
+                            VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    memset(set_layout, 0, sizeof(*set_layout));

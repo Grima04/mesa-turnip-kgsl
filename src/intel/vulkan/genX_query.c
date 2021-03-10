@@ -73,7 +73,7 @@ VkResult genX(CreateQueryPool)(
 #endif
    uint32_t data_offset = 0;
    struct anv_query_pool *pool;
-   ANV_MULTIALLOC(ma);
+   VK_MULTIALLOC(ma);
    VkResult result;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO);
@@ -90,7 +90,7 @@ VkResult genX(CreateQueryPool)(
     */
    uint32_t uint64s_per_slot = 0;
 
-   anv_multialloc_add(&ma, &pool, 1);
+   vk_multialloc_add(&ma, &pool, 1);
 
    VkQueryPipelineStatisticFlags pipeline_statistics = 0;
    switch (pCreateInfo->queryType) {
@@ -142,8 +142,8 @@ VkResult genX(CreateQueryPool)(
                                        perf_query_info->pCounterIndices,
                                        perf_query_info->counterIndexCount,
                                        NULL);
-      anv_multialloc_add(&ma, &counter_pass, perf_query_info->counterIndexCount);
-      anv_multialloc_add(&ma, &pass_query, n_passes);
+      vk_multialloc_add(&ma, &counter_pass, perf_query_info->counterIndexCount);
+      vk_multialloc_add(&ma, &pass_query, n_passes);
       uint64s_per_slot = 4 /* availability + small batch */;
       /* Align to the requirement of the layout */
       uint64s_per_slot = align_u32(uint64s_per_slot,
@@ -160,9 +160,9 @@ VkResult genX(CreateQueryPool)(
       assert(!"Invalid query type");
    }
 
-   if (!anv_multialloc_alloc2(&ma, &device->vk.alloc,
-                              pAllocator,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+   if (!vk_multialloc_alloc2(&ma, &device->vk.alloc,
+                             pAllocator,
+                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &pool->base, VK_OBJECT_TYPE_QUERY_POOL);

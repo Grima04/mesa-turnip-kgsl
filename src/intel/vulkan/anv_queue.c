@@ -2789,17 +2789,17 @@ VkResult anv_WaitSemaphores(
    struct anv_timeline **timelines;
    uint64_t *values;
 
-   ANV_MULTIALLOC(ma);
+   VK_MULTIALLOC(ma);
 
-   anv_multialloc_add(&ma, &values, pWaitInfo->semaphoreCount);
+   vk_multialloc_add(&ma, &values, pWaitInfo->semaphoreCount);
    if (device->has_thread_submit) {
-      anv_multialloc_add(&ma, &handles, pWaitInfo->semaphoreCount);
+      vk_multialloc_add(&ma, &handles, pWaitInfo->semaphoreCount);
    } else {
-      anv_multialloc_add(&ma, &timelines, pWaitInfo->semaphoreCount);
+      vk_multialloc_add(&ma, &timelines, pWaitInfo->semaphoreCount);
    }
 
-   if (!anv_multialloc_alloc(&ma, &device->vk.alloc,
-                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
+   if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
+                            VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    uint32_t handle_count = 0;

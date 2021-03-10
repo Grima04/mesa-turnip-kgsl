@@ -247,11 +247,11 @@ VkResult anv_CreateRenderPass(
    struct anv_render_pass_attachment *attachments;
    enum anv_pipe_bits *subpass_flushes;
 
-   ANV_MULTIALLOC(ma);
-   anv_multialloc_add(&ma, &pass, 1);
-   anv_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
-   anv_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
-   anv_multialloc_add(&ma, &subpass_flushes, pCreateInfo->subpassCount + 1);
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &pass, 1);
+   vk_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
+   vk_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
+   vk_multialloc_add(&ma, &subpass_flushes, pCreateInfo->subpassCount + 1);
 
    struct anv_subpass_attachment *subpass_attachments;
    uint32_t subpass_attachment_count = 0;
@@ -259,10 +259,10 @@ VkResult anv_CreateRenderPass(
       subpass_attachment_count +=
          num_subpass_attachments(&pCreateInfo->pSubpasses[i]);
    }
-   anv_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
+   vk_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
 
-   if (!anv_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+   if (!vk_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
+                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Clear the subpasses along with the parent pass. This required because
@@ -486,11 +486,11 @@ VkResult anv_CreateRenderPass2(
    struct anv_render_pass_attachment *attachments;
    enum anv_pipe_bits *subpass_flushes;
 
-   ANV_MULTIALLOC(ma);
-   anv_multialloc_add(&ma, &pass, 1);
-   anv_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
-   anv_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
-   anv_multialloc_add(&ma, &subpass_flushes, pCreateInfo->subpassCount + 1);
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &pass, 1);
+   vk_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
+   vk_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
+   vk_multialloc_add(&ma, &subpass_flushes, pCreateInfo->subpassCount + 1);
 
    struct anv_subpass_attachment *subpass_attachments;
    uint32_t subpass_attachment_count = 0;
@@ -498,10 +498,10 @@ VkResult anv_CreateRenderPass2(
       subpass_attachment_count +=
          num_subpass_attachments2(&pCreateInfo->pSubpasses[i]);
    }
-   anv_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
+   vk_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
 
-   if (!anv_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+   if (!vk_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
+                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Clear the subpasses along with the parent pass. This required because

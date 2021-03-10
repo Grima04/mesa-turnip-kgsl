@@ -306,16 +306,16 @@ VkResult anv_QueuePresentKHR(
       /* Make sure all of the dependency semaphores have materialized when
        * using a threaded submission.
        */
-      ANV_MULTIALLOC(ma);
+      VK_MULTIALLOC(ma);
 
       uint64_t *values;
       uint32_t *syncobjs;
 
-      anv_multialloc_add(&ma, &values, pPresentInfo->waitSemaphoreCount);
-      anv_multialloc_add(&ma, &syncobjs, pPresentInfo->waitSemaphoreCount);
+      vk_multialloc_add(&ma, &values, pPresentInfo->waitSemaphoreCount);
+      vk_multialloc_add(&ma, &syncobjs, pPresentInfo->waitSemaphoreCount);
 
-      if (!anv_multialloc_alloc(&ma, &device->vk.alloc,
-                                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
+      if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
+                               VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
       uint32_t wait_count = 0;
