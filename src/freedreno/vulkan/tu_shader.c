@@ -241,6 +241,21 @@ lower_vulkan_resource_index(nir_builder *b, nir_intrinsic_instr *instr,
 }
 
 static void
+lower_vulkan_resource_reindex(nir_builder *b, nir_intrinsic_instr *instr)
+{
+   nir_ssa_def *old_index = instr->src[0].ssa;
+   nir_ssa_def *delta = instr->src[1].ssa;
+
+   nir_ssa_def *new_index =
+      nir_vec3(b, nir_channel(b, old_index, 0),
+               nir_iadd(b, nir_channel(b, old_index, 1), delta),
+               nir_channel(b, old_index, 2));
+
+   nir_ssa_def_rewrite_uses(&instr->dest.ssa, new_index);
+   nir_instr_remove(&instr->instr);
+}
+
+static void
 lower_load_vulkan_descriptor(nir_intrinsic_instr *intrin)
 {
    /* Loading the descriptor happens as part of the load/store instruction so
@@ -409,6 +424,9 @@ lower_intrinsic(nir_builder *b, nir_intrinsic_instr *instr,
 
    case nir_intrinsic_vulkan_resource_index:
       lower_vulkan_resource_index(b, instr, shader, layout);
+      return true;
+   case nir_intrinsic_vulkan_resource_reindex:
+      lower_vulkan_resource_reindex(b, instr);
       return true;
 
    case nir_intrinsic_load_ubo:
