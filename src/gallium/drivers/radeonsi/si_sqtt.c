@@ -90,7 +90,7 @@ si_emit_thread_trace_start(struct si_context* sctx,
       /* Select the first active CUs */
       int first_active_cu = ffs(sctx->screen->info.cu_mask[se][0]);
 
-      if (sctx->chip_class == GFX10) {
+      if (sctx->chip_class >= GFX10) {
          /* Order seems important for the following 2 registers. */
          radeon_set_privileged_config_reg(cs, R_008D04_SQ_THREAD_TRACE_BUF0_SIZE,
                                           S_008D04_SIZE(shifted_size) |
@@ -125,7 +125,9 @@ si_emit_thread_trace_start(struct si_context* sctx,
                                           S_008D1C_REG_STALL_EN(1) |
                                           S_008D1C_SPI_STALL_EN(1) |
                                           S_008D1C_SQ_STALL_EN(1) |
-                                          S_008D1C_REG_DROP_ON_STALL(0));
+                                          S_008D1C_REG_DROP_ON_STALL(0) |
+                                          S_008D1C_LOWATER_OFFSET(
+                                             sctx->chip_class >= GFX10_3 ? 4 : 0));
       } else {
          /* Order seems important for the following 4 registers. */
          radeon_set_uconfig_reg(cs, R_030CDC_SQ_THREAD_TRACE_BASE2,
@@ -235,6 +237,7 @@ si_copy_thread_trace_info_regs(struct si_context* sctx,
    const uint32_t *thread_trace_info_regs = NULL;
 
    switch (sctx->chip_class) {
+   case GFX10_3:
    case GFX10:
       thread_trace_info_regs = gfx10_thread_trace_info_regs;
       break;
@@ -298,7 +301,7 @@ si_emit_thread_trace_stop(struct si_context *sctx,
                              S_030800_SH_INDEX(0) |
                              S_030800_INSTANCE_BROADCAST_WRITES(1));
 
-      if (sctx->chip_class == GFX10) {
+      if (sctx->chip_class >= GFX10) {
          /* Make sure to wait for the trace buffer. */
          radeon_emit(cs, PKT3(PKT3_WAIT_REG_MEM, 5, 0));
          radeon_emit(cs, WAIT_REG_MEM_NOT_EQUAL); /* wait until the register is equal to the reference value */
@@ -559,7 +562,7 @@ si_init_thread_trace(struct si_context *sctx)
       return false;
    }
 
-   if (sctx->chip_class > GFX10) {
+   if (sctx->chip_class > GFX10_3) {
       fprintf(stderr, "radeonsi: Thread trace is not supported "
               "for that GPU!\n");
       return false;
@@ -741,7 +744,7 @@ si_emit_spi_config_cntl(struct si_context* sctx,
                                  S_031100_ENABLE_SQG_TOP_EVENTS(enable) |
                                  S_031100_ENABLE_SQG_BOP_EVENTS(enable);
 
-      if (sctx->chip_class == GFX10)
+      if (sctx->chip_class >= GFX10)
          spi_config_cntl |= S_031100_PS_PKR_PRIORITY_CNTL(3);
 
       radeon_set_uconfig_reg(cs, R_031100_SPI_CONFIG_CNTL, spi_config_cntl);
