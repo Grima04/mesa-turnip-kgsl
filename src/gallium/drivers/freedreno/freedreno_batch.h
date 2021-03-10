@@ -283,6 +283,9 @@ void fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc) as
 void fd_batch_resource_read_slowpath(struct fd_batch *batch, struct fd_resource *rsc) assert_dt;
 void fd_batch_check_size(struct fd_batch *batch) assert_dt;
 
+uint32_t fd_batch_key_hash(const void *_key);
+bool fd_batch_key_equals(const void *_a, const void *_b);
+
 /* not called directly: */
 void __fd_batch_describe(char* buf, const struct fd_batch *batch) assert_dt;
 void __fd_batch_destroy(struct fd_batch *batch);
