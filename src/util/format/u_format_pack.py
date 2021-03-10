@@ -617,7 +617,8 @@ def generate_format_unpack(format, dst_channel, dst_native_type, dst_suffix):
     else:
         dst_proto_type = 'void'
 
-    proto = 'util_format_%s_unpack_%s(%s *dst_row, unsigned dst_stride, const uint8_t *src_row, unsigned src_stride, unsigned width, unsigned height)' % (name, dst_suffix, dst_proto_type)
+    proto = 'util_format_%s_unpack_%s(%s *restrict dst_row, unsigned dst_stride, const uint8_t *restrict src_row, unsigned src_stride, unsigned width, unsigned height)' % (
+        name, dst_suffix, dst_proto_type)
     print('void %s;' % proto, file=sys.stdout2)
 
     print('void')
@@ -650,10 +651,12 @@ def generate_format_pack(format, src_channel, src_native_type, src_suffix):
     name = format.short_name()
 
     print('void')
-    print('util_format_%s_pack_%s(uint8_t *dst_row, unsigned dst_stride, const %s *src_row, unsigned src_stride, unsigned width, unsigned height)' % (name, src_suffix, src_native_type))
+    print('util_format_%s_pack_%s(uint8_t *restrict dst_row, unsigned dst_stride, const %s *restrict src_row, unsigned src_stride, unsigned width, unsigned height)' %
+          (name, src_suffix, src_native_type))
     print('{')
 
-    print('void util_format_%s_pack_%s(uint8_t *dst_row, unsigned dst_stride, const %s *src_row, unsigned src_stride, unsigned width, unsigned height);' % (name, src_suffix, src_native_type), file=sys.stdout2)
+    print('void util_format_%s_pack_%s(uint8_t *restrict dst_row, unsigned dst_stride, const %s *restrict src_row, unsigned src_stride, unsigned width, unsigned height);' %
+          (name, src_suffix, src_native_type), file=sys.stdout2)
     
     if is_format_supported(format):
         print('   unsigned x, y;')
@@ -680,7 +683,7 @@ def generate_format_fetch(format, dst_channel, dst_native_type):
 
     name = format.short_name()
 
-    proto = 'util_format_%s_fetch_rgba(void *in_dst, const uint8_t *src, UNUSED unsigned i, UNUSED unsigned j)' % (name)
+    proto = 'util_format_%s_fetch_rgba(void *restrict in_dst, const uint8_t *restrict src, UNUSED unsigned i, UNUSED unsigned j)' % (name)
     print('void %s;' % proto, file=sys.stdout2)
 
     print('void')
