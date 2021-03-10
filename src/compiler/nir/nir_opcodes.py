@@ -454,6 +454,16 @@ for (int bit = bit_size - 1; bit >= 0; bit--) {
 }
 """)
 
+unop_convert("ufind_msb_rev", tint32, tuint, """
+dst = -1;
+for (int bit = 0; bit < bit_size; bit++) {
+   if ((src0 << bit) & 0x80000000) {
+      dst = bit;
+      break;
+   }
+}
+""")
+
 unop("uclz", tuint32, """
 int bit;
 for (bit = bit_size - 1; bit >= 0; bit--) {
@@ -473,6 +483,22 @@ for (int bit = 31; bit >= 0; bit--) {
       (!((src0 >> bit) & 1) && (src0 < 0))) {
       dst = bit;
       break;
+   }
+}
+""")
+
+unop_convert("ifind_msb_rev", tint32, tuint, """
+dst = -1;
+if (src0 != 0 || src0 != -1) {
+   for (int bit = 0; bit < 31; bit++) {
+      /* If src0 < 0, we're looking for the first 0 bit.
+       * if src0 >= 0, we're looking for the first 1 bit.
+       */
+      if ((((src0 << bit) & 0x40000000) && (src0 >= 0)) ||
+          ((!((src0 << bit) & 0x40000000)) && (src0 < 0))) {
+         dst = bit;
+         break;
+      }
    }
 }
 """)

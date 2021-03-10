@@ -3160,6 +3160,8 @@ typedef struct nir_shader_compiler_options {
    bool lower_bit_count;
    /** Lowers ifind_msb to compare and ufind_msb */
    bool lower_ifind_msb;
+   /** Lowers ifind_msb and ufind_msb to reverse variants */
+   bool lower_find_msb_to_reverse;
    /** Lowers find_lsb to ufind_msb and logic ops */
    bool lower_find_lsb;
    bool lower_uadd_carry;

@@ -1523,6 +1523,18 @@ optimizations.extend([
     ('ufind_msb', ('bcsel', ('ilt', 'value', 0), ('inot', 'value'), 'value')),
     'options->lower_ifind_msb'),
 
+   (('ifind_msb', 'value'),
+    ('bcsel', ('ige', ('ifind_msb_rev', 'value'), 0),
+     ('isub', 31, ('ifind_msb_rev', 'value')),
+     ('ifind_msb_rev', 'value')),
+    'options->lower_find_msb_to_reverse'),
+
+    (('ufind_msb', 'value'),
+     ('bcsel', ('ige', ('ufind_msb_rev', 'value'), 0),
+      ('isub', 31, ('ufind_msb_rev', 'value')),
+      ('ufind_msb_rev', 'value')),
+     'options->lower_find_msb_to_reverse'),
+
    (('find_lsb', 'value'),
     ('ufind_msb', ('iand', 'value', ('ineg', 'value'))),
     'options->lower_find_lsb'),
