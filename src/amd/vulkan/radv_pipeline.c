@@ -5321,16 +5321,32 @@ gfx103_pipeline_vrs_coarse_shading(const struct radv_pipeline *pipeline)
 
 static void
 gfx103_pipeline_generate_vrs_state(struct radeon_cmdbuf *ctx_cs,
+				   const struct radv_pipeline *pipeline,
 				   const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
+	uint32_t mode = V_028064_VRS_COMB_MODE_PASSTHRU;
+	uint8_t rate_x = 0, rate_y = 0;
 	bool enable_vrs = false;
 
 	if (vk_find_struct_const(pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) ||
-	    radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR))
+	    radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR)) {
+		/* Enable draw call VRS because it's explicitly requested.  */
 		enable_vrs = true;
+	} else if (gfx103_pipeline_vrs_coarse_shading(pipeline)) {
+		/* Enable VRS coarse shading 2x2 if the driver determined that
+		 * it's safe to enable.
+		 */
+		mode = V_028064_VRS_COMB_MODE_OVERRIDE;
+		rate_x = rate_y = 1;
+	}
 
 	radeon_set_context_reg(ctx_cs, R_028A98_VGT_DRAW_PAYLOAD_CNTL,
 			       S_028A98_EN_VRS_RATE(enable_vrs));
+
+	radeon_set_context_reg(ctx_cs, R_028064_DB_VRS_OVERRIDE_CNTL,
+			       S_028064_VRS_OVERRIDE_RATE_COMBINER_MODE(mode) |
+			       S_028064_VRS_OVERRIDE_RATE_X(rate_x) |
+			       S_028064_VRS_OVERRIDE_RATE_Y(rate_y));
 }
 
 static void
@@ -5371,7 +5387,7 @@ radv_pipeline_generate_pm4(struct radv_pipeline *pipeline,
 		gfx10_pipeline_generate_ge_cntl(ctx_cs, pipeline);
 
 	if (pipeline->device->physical_device->rad_info.chip_class >= GFX10_3)
-		gfx103_pipeline_generate_vrs_state(ctx_cs, pCreateInfo);
+		gfx103_pipeline_generate_vrs_state(ctx_cs, pipeline, pCreateInfo);
 
 	pipeline->ctx_cs_hash = _mesa_hash_data(ctx_cs->buf, ctx_cs->cdw * 4);
 
