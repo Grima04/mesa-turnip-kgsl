@@ -106,6 +106,7 @@ static inline void AlignedFree(void* p)
 #endif
 
 #if !defined(_WIN64)
+extern "C" {
 inline unsigned char _BitScanForward64(unsigned long* Index, uint64_t Mask)
 {
 #ifdef __GNUC__
@@ -130,6 +131,7 @@ inline unsigned char _BitScanReverse64(unsigned long* Index, uint64_t Mask)
         *Index = i;
 #endif
     return (Mask != 0);
+}
 }
 #endif
 
