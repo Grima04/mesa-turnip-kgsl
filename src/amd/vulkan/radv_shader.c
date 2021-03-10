@@ -266,7 +266,8 @@ mark_geom_invariant(nir_shader *nir)
 }
 
 static bool
-lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key)
+lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key,
+                 const struct radv_pipeline_layout *layout)
 {
    nir_function_impl *entry = nir_shader_get_entrypoint(nir);
    bool progress = false;
@@ -285,6 +286,29 @@ lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key)
          nir_ssa_def *def = NULL;
          if (intrin->intrinsic == nir_intrinsic_load_vulkan_descriptor) {
             def = nir_vec2(&b, nir_channel(&b, intrin->src[0].ssa, 0), nir_imm_int(&b, 0));
+         } else if (intrin->intrinsic == nir_intrinsic_vulkan_resource_index) {
+            unsigned desc_set = nir_intrinsic_desc_set(intrin);
+            unsigned binding = nir_intrinsic_binding(intrin);
+            struct radv_descriptor_set_layout *desc_layout = layout->set[desc_set].layout;
+
+            nir_ssa_def *new_res = nir_vulkan_resource_index(
+               &b, 2, 32, intrin->src[0].ssa, .desc_set = desc_set, .binding = binding,
+               .desc_type = nir_intrinsic_desc_type(intrin));
+            nir_ssa_def *ptr = nir_channel(&b, new_res, 0);
+
+            nir_ssa_def *stride;
+            if (desc_layout->binding[binding].type == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+                desc_layout->binding[binding].type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+               stride = nir_imm_int(&b, 16);
+            } else {
+               stride = nir_imm_int(&b, desc_layout->binding[binding].size);
+            }
+            def = nir_vec2(&b, ptr, stride);
+         } else if (intrin->intrinsic == nir_intrinsic_vulkan_resource_reindex) {
+            nir_ssa_def *ptr = nir_channel(&b, intrin->src[0].ssa, 0);
+            nir_ssa_def *stride = nir_channel(&b, intrin->src[0].ssa, 1);
+            ptr = nir_iadd(&b, ptr, nir_imul(&b, intrin->src[1].ssa, stride));
+            def = nir_vec2(&b, ptr, stride);
          } else if (intrin->intrinsic == nir_intrinsic_is_sparse_texels_resident) {
             def = nir_ieq_imm(&b, intrin->src[0].ssa, 0);
          } else if (intrin->intrinsic == nir_intrinsic_sparse_residency_code_and) {
@@ -614,7 +638,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
    NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
               nir_address_format_32bit_index_offset);
 
-   NIR_PASS_V(nir, lower_intrinsics, key);
+   NIR_PASS_V(nir, lower_intrinsics, key, layout);
 
    /* Lower deref operations for compute shared memory. */
    if (nir->info.stage == MESA_SHADER_COMPUTE) {

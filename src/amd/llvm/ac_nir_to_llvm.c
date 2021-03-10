@@ -1541,17 +1541,6 @@ static LLVMValueRef build_tex_intrinsic(struct ac_nir_context *ctx, const nir_te
    return ac_build_image_opcode(&ctx->ac, args);
 }
 
-static LLVMValueRef visit_vulkan_resource_reindex(struct ac_nir_context *ctx,
-                                                  nir_intrinsic_instr *instr)
-{
-   LLVMValueRef ptr = get_src(ctx, instr->src[0]);
-   LLVMValueRef index = get_src(ctx, instr->src[1]);
-
-   LLVMValueRef result = LLVMBuildGEP(ctx->ac.builder, ptr, &index, 1, "");
-   LLVMSetMetadata(result, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
-   return result;
-}
-
 static LLVMValueRef visit_load_push_constant(struct ac_nir_context *ctx, nir_intrinsic_instr *instr)
 {
    LLVMValueRef ptr, addr;
@@ -3548,9 +3537,6 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       result = ctx->abi->load_resource(ctx->abi, index, desc_set, binding);
       break;
    }
-   case nir_intrinsic_vulkan_resource_reindex:
-      result = visit_vulkan_resource_reindex(ctx, instr);
-      break;
    case nir_intrinsic_store_ssbo:
       visit_store_ssbo(ctx, instr);
       break;
