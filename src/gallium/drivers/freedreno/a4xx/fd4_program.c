@@ -176,7 +176,7 @@ fd4_program_emit(struct fd_ringbuffer *ring, struct fd4_emit *emit,
 
 	setup_stages(emit, s);
 
-	fssz = (s[FS].i->max_reg >= 24) ? TWO_QUADS : FOUR_QUADS;
+	fssz = (s[FS].i->double_threadsize) ? FOUR_QUADS : TWO_QUADS;
 
 	/* blob seems to always use constmode currently: */
 	constmode = 1;

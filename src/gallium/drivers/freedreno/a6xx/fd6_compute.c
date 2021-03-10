@@ -44,7 +44,7 @@ cs_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				struct ir3_shader_variant *v) assert_dt
 {
 	const struct ir3_info *i = &v->info;
-	enum a6xx_threadsize thrsz = THREAD128;
+	enum a6xx_threadsize thrsz = i->double_threadsize ? THREAD128 : THREAD64;
 
 	OUT_REG(ring, A6XX_HLSQ_INVALIDATE_CMD(
 			.vs_state = true,
