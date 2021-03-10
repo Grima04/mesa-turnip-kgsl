@@ -107,10 +107,10 @@ VkInstance
 zink_create_instance(struct zink_instance_info *instance_info)
 {
    /* reserve one slot for MoltenVK */
-   const char *layers[${len(extensions) + 1}] = { 0 };
+   const char *layers[${len(layers) + 1}] = { 0 };
    uint32_t num_layers = 0;
    
-   const char *extensions[${len(layers) + 1}] = { 0 };
+   const char *extensions[${len(extensions) + 1}] = { 0 };
    uint32_t num_extensions = 0;
 
 %for ext in extensions:
