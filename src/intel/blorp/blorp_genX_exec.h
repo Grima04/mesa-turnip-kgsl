@@ -1451,7 +1451,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
                        .aux_surf = &surface->aux_surf, .aux_usage = aux_usage,
                        .address =
                           blorp_get_surface_address(batch, surface->addr),
-                       .aux_address = use_aux_address ? 0 :
+                       .aux_address = !use_aux_address ? 0 :
                           blorp_get_surface_address(batch, surface->aux_addr),
                        .clear_address = !use_clear_address ? 0 :
                           blorp_get_surface_address(batch,
