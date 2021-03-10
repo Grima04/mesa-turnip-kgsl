@@ -149,6 +149,7 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_ieq32: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ieq: return emit_alu_op2_int(instr, op2_sete_int);
    case nir_op_ifind_msb: return emit_find_msb(instr, true);
+   case nir_op_ifind_msb_rev: return emit_alu_op1(instr, op1_ffbh_int);
    case nir_op_ige32: return emit_alu_op2_int(instr, op2_setge_int);
    case nir_op_ige: return emit_alu_op2_int(instr, op2_setge_int);
    case nir_op_ilt32: return emit_alu_op2_int(instr, op2_setgt_int, op2_opt_reverse);
@@ -174,6 +175,7 @@ bool EmitAluInstruction::do_emit(nir_instr* ir)
    case nir_op_u2f32: return emit_alu_trans_op1(instr, op1_uint_to_flt);
    case nir_op_ubfe: return emit_alu_op3(instr, op3_bfe_uint);
    case nir_op_ufind_msb: return emit_find_msb(instr, false);
+   case nir_op_ufind_msb_rev: return emit_alu_op1(instr, op1_ffbh_uint);
    case nir_op_uge32: return emit_alu_op2_int(instr, op2_setge_uint);
    case nir_op_uge: return emit_alu_op2_int(instr, op2_setge_uint);
    case nir_op_ult32: return emit_alu_op2_int(instr, op2_setgt_uint, op2_opt_reverse);
