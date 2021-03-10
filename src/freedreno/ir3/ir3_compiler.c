@@ -79,6 +79,13 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 	compiler->gpu_id = gpu_id;
 	compiler->set = ir3_ra_alloc_reg_set(compiler, false);
 
+	/* All known GPU's have 32k local memory (aka shared) */
+	compiler->local_mem_size = 32 * 1024;
+	/* TODO see if older GPU's were different here */
+	compiler->branchstack_size = 64;
+	compiler->wave_granularity = 2;
+	compiler->max_waves = 16;
+
 	if (compiler->gpu_id >= 600) {
 		compiler->mergedregs_set = ir3_ra_alloc_reg_set(compiler, true);
 		compiler->samgq_workaround = true;
@@ -121,6 +128,34 @@ ir3_compiler_create(struct fd_device *dev, uint32_t gpu_id)
 		 * earlier gen's.
 		 */
 		compiler->max_const_safe = 256;
+	}
+
+	if (compiler->gpu_id == 650) {
+		/* This changed mid-generation for a650, so that using r32.x and above
+		 * requires using the smallest threadsize.
+		 */
+		compiler->reg_size_vec4 = 64;
+	} else if (compiler->gpu_id >= 600) {
+		compiler->reg_size_vec4 = 96;
+	} else if (compiler->gpu_id >= 400) {
+		/* On a4xx-a5xx, using r24.x and above requires using the smallest
+		 * threadsize.
+		 */
+		compiler->reg_size_vec4 = 48;
+	} else {
+		/* TODO: confirm this */
+		compiler->reg_size_vec4 = 96;
+	}
+
+	if (compiler->gpu_id >= 600) {
+		compiler->threadsize_base = 64;
+	} else if (compiler->gpu_id >= 400) {
+		/* TODO: Confirm this for a4xx. For a5xx this is based on the Vulkan
+		 * 1.1 subgroupSize which is 32.
+		 */
+		compiler->threadsize_base = 32;
+	} else {
+		compiler->threadsize_base = 8;
 	}
 
 	if (compiler->gpu_id >= 400) {

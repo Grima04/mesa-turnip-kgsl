@@ -107,6 +107,99 @@ collect_reg_info(struct ir3_instruction *instr, struct ir3_register *reg,
 	}
 }
 
+static bool
+should_double_threadsize(struct ir3_shader_variant *v,
+						 unsigned regs_count)
+{
+	const struct ir3_compiler *compiler = v->shader->compiler;
+	switch (v->type) {
+	case MESA_SHADER_COMPUTE: {
+		unsigned threads_per_wg = v->local_size[0] * v->local_size[1] * v->local_size[2];
+
+		/* For a5xx, if the workgroup size is greater than the maximum number
+		 * of threads per core with 32 threads per wave (512) then we have to
+		 * use the doubled threadsize because otherwise the workgroup wouldn't
+		 * fit. For smaller workgroup sizes, we follow the blob and use the
+		 * smaller threadsize.
+		 */
+		if (compiler->gpu_id < 600) {
+			return v->local_size_variable || threads_per_wg >
+				compiler->threadsize_base * compiler->max_waves;
+		}
+
+		/* On a6xx, we prefer the larger threadsize unless the workgroup is
+		 * small enough that it would be useless. Note that because
+		 * threadsize_base is bumped to 64, we don't have to worry about the
+		 * workgroup fitting, unlike the a5xx case.
+		 */
+		if (!v->local_size_variable) {
+			if (threads_per_wg <= compiler->threadsize_base)
+				return false;
+		}
+	}
+	/* fallthrough */
+	case MESA_SHADER_FRAGMENT: {
+		/* Check that doubling the threadsize wouldn't exceed the regfile size */
+		return regs_count * 2 <= compiler->reg_size_vec4;
+	}
+
+	default:
+		/* On a6xx+, it's impossible to use a doubled wavesize in the geometry
+		 * stages - the bit doesn't exist. The blob never used it for the VS
+		 * on earlier gen's anyway.
+		 */
+		return false;
+	}
+}
+
+/* Get the maximum number of waves that could be used even if this shader
+ * didn't use any registers.
+ */
+static unsigned
+get_reg_independent_max_waves(struct ir3_shader_variant *v, bool double_threadsize)
+{
+	const struct ir3_compiler *compiler = v->shader->compiler;
+	unsigned max_waves = compiler->max_waves;
+
+	/* If this is a compute shader, compute the limit based on shared size */
+	if (v->type == MESA_SHADER_COMPUTE) {
+		/* Shared is allocated in chunks of 1k */
+		unsigned shared_per_wg = ALIGN_POT(v->shared_size, 1024);
+		if (shared_per_wg > 0 && !v->local_size_variable) {
+			unsigned wgs_per_core = compiler->local_mem_size / shared_per_wg;
+			unsigned threads_per_wg = v->local_size[0] * v->local_size[1] * v->local_size[2];
+			unsigned waves_per_wg =
+				DIV_ROUND_UP(threads_per_wg,
+					compiler->threadsize_base *
+					(double_threadsize ? 2 : 1) * compiler->wave_granularity);
+			max_waves =
+				MIN2(max_waves, waves_per_wg * wgs_per_core * compiler->wave_granularity);
+		}
+	}
+
+	/* Compute the limit based on branchstack */
+	if (v->branchstack > 0) {
+		unsigned branchstack_max_waves =
+			compiler->branchstack_size / v->branchstack *
+			compiler->wave_granularity;
+		max_waves = MIN2(max_waves, branchstack_max_waves);
+	}
+
+	return max_waves;
+}
+
+/* Get the maximum number of waves that could be launched limited by reg size.
+ */
+static unsigned
+get_reg_dependent_max_waves(const struct ir3_compiler *compiler,
+							unsigned reg_count, bool double_threadsize)
+{
+	return reg_count ?
+		(compiler->reg_size_vec4 / (reg_count * (double_threadsize ? 2 : 1)) *
+		 compiler->wave_granularity) :
+		compiler->max_waves;
+}
+
 void
 ir3_collect_info(struct ir3_shader_variant *v)
 {
@@ -200,6 +293,20 @@ ir3_collect_info(struct ir3_shader_variant *v)
 			}
 		}
 	}
+
+	/* TODO: for a5xx and below, is there a separate regfile for
+	 * half-registers?
+	 */
+	unsigned regs_count =
+		info->max_reg + 1 + (compiler->gpu_id >= 600 ? ((info->max_half_reg + 2) / 2) : 0);
+
+	info->double_threadsize = should_double_threadsize(v, regs_count);
+	unsigned reg_independent_max_waves =
+		get_reg_independent_max_waves(v, info->double_threadsize);
+	unsigned reg_dependent_max_waves =
+		get_reg_dependent_max_waves(compiler, regs_count, info->double_threadsize);
+	info->max_waves = MIN2(reg_independent_max_waves, reg_dependent_max_waves);
+	assert(info->max_waves <= v->shader->compiler->max_waves);
 }
 
 static struct ir3_register * reg_create(struct ir3 *shader,
