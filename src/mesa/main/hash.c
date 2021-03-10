@@ -265,10 +265,12 @@ _mesa_HashRemove_unlocked(struct _mesa_HashTable *table, GLuint key)
    assert(table);
    assert(key);
 
+   #ifndef NDEBUG
    /* assert if _mesa_HashRemove illegally called from _mesa_HashDeleteAll
     * callback function. Have to check this outside of mutex lock.
     */
    assert(!table->InDeleteAll);
+   #endif
 
    if (key == DELETED_KEY_VALUE) {
       table->deleted_key_data = NULL;
@@ -314,7 +316,9 @@ _mesa_HashDeleteAll(struct _mesa_HashTable *table,
 {
    assert(callback);
    _mesa_HashLockMutex(table);
+   #ifndef NDEBUG
    table->InDeleteAll = GL_TRUE;
+   #endif
    hash_table_foreach(table->ht, entry) {
       callback(entry->data, userData);
       _mesa_hash_table_remove(table->ht, entry);
@@ -323,12 +327,14 @@ _mesa_HashDeleteAll(struct _mesa_HashTable *table,
       callback(table->deleted_key_data, userData);
       table->deleted_key_data = NULL;
    }
-   table->InDeleteAll = GL_FALSE;
    if (table->id_alloc) {
       util_idalloc_fini(table->id_alloc);
       free(table->id_alloc);
       init_name_reuse(table);
    }
+   #ifndef NDEBUG
+   table->InDeleteAll = GL_FALSE;
+   #endif
    table->MaxKey = 0;
    _mesa_HashUnlockMutex(table);
 }

@@ -105,12 +105,14 @@ struct _mesa_HashTable {
    struct hash_table *ht;
    GLuint MaxKey;                        /**< highest key inserted so far */
    simple_mtx_t Mutex;                   /**< mutual exclusion lock */
-   GLboolean InDeleteAll;                /**< Debug check */
    /* Used when name reuse is enabled */
    struct util_idalloc* id_alloc;
 
    /** Value that would be in the table for DELETED_KEY_VALUE. */
    void *deleted_key_data;
+   #ifndef NDEBUG
+   GLboolean InDeleteAll;                /**< Debug check */
+   #endif
 };
 
 extern struct _mesa_HashTable *_mesa_NewHashTable(void);
