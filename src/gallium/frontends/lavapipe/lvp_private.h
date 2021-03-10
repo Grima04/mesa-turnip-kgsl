@@ -52,6 +52,7 @@ typedef uint32_t xcb_window_t;
 #include "vk_device.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
+#include "vk_shader_module.h"
 
 #include "wsi_common.h"
 
@@ -117,12 +118,6 @@ void __lvp_finishme(const char *file, int line, const char *format, ...)
       lvp_finishme("stub %s", __func__); \
       return; \
    } while (0)
-
-struct lvp_shader_module {
-   struct vk_object_base base;
-   uint32_t                                     size;
-   char                                         data[0];
-};
 
 static inline gl_shader_stage
 vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
@@ -615,8 +610,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_render_pass, base, VkRenderPass,
                                VK_OBJECT_TYPE_RENDER_PASS)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_sampler, base, VkSampler,
                                VK_OBJECT_TYPE_SAMPLER)
-VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_shader_module, base, VkShaderModule,
-                               VK_OBJECT_TYPE_SHADER_MODULE)
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_fence, base, VkFence, VK_OBJECT_TYPE_FENCE);
 VK_DEFINE_NONDISP_HANDLE_CASTS(lvp_semaphore, base, VkSemaphore,
                                VK_OBJECT_TYPE_SEMAPHORE);

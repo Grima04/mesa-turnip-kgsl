@@ -40,49 +40,6 @@
       dst = temp;                                                \
    } while(0)
 
-VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateShaderModule(
-   VkDevice                                    _device,
-   const VkShaderModuleCreateInfo*             pCreateInfo,
-   const VkAllocationCallbacks*                pAllocator,
-   VkShaderModule*                             pShaderModule)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   struct lvp_shader_module *module;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-   assert(pCreateInfo->flags == 0);
-
-   module = vk_alloc2(&device->vk.alloc, pAllocator,
-                      sizeof(*module) + pCreateInfo->codeSize, 8,
-                      VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (module == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vk_object_base_init(&device->vk, &module->base,
-                       VK_OBJECT_TYPE_SHADER_MODULE);
-   module->size = pCreateInfo->codeSize;
-   memcpy(module->data, pCreateInfo->pCode, module->size);
-
-   *pShaderModule = lvp_shader_module_to_handle(module);
-
-   return VK_SUCCESS;
-
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_DestroyShaderModule(
-   VkDevice                                    _device,
-   VkShaderModule                              _module,
-   const VkAllocationCallbacks*                pAllocator)
-{
-   LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_shader_module, module, _module);
-
-   if (!_module)
-      return;
-   vk_object_base_finish(&module->base);
-   vk_free2(&device->vk.alloc, pAllocator, module);
-}
-
 VKAPI_ATTR void VKAPI_CALL lvp_DestroyPipeline(
    VkDevice                                    _device,
    VkPipeline                                  _pipeline,
@@ -445,7 +402,7 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 
 static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
-                         struct lvp_shader_module *module,
+                         struct vk_shader_module *module,
                          const char *entrypoint_name,
                          gl_shader_stage stage,
                          const VkSpecializationInfo *spec_info)
@@ -782,7 +739,7 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
    pipeline->is_compute_pipeline = false;
 
    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-      LVP_FROM_HANDLE(lvp_shader_module, module,
+      VK_FROM_HANDLE(vk_shader_module, module,
                       pCreateInfo->pStages[i].module);
       gl_shader_stage stage = lvp_shader_stage(pCreateInfo->pStages[i].stage);
       lvp_shader_compile_to_ir(pipeline, module,
@@ -897,7 +854,7 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
                           const VkComputePipelineCreateInfo *pCreateInfo,
                           const VkAllocationCallbacks *alloc)
 {
-   LVP_FROM_HANDLE(lvp_shader_module, module,
+   VK_FROM_HANDLE(vk_shader_module, module,
                    pCreateInfo->stage.module);
    if (alloc == NULL)
       alloc = &device->vk.alloc;
