@@ -1461,6 +1461,12 @@ ConstantFolding::opnd(Instruction *i, ImmediateValue &imm0, int s)
    {
       if (s != 1 || i->src(0).mod != Modifier(0))
          break;
+
+      if (imm0.reg.data.u32 == 0) {
+         i->op = OP_MOV;
+         i->setSrc(1, NULL);
+         break;
+      }
       // try to concatenate shifts
       Instruction *si = i->getSrc(0)->getInsn();
       if (!si)
