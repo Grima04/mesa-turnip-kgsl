@@ -1233,6 +1233,12 @@ unop_horiz("cube_r600", 4, tfloat32, 3, tfloat32, """
    }
 """)
 
+# r600 specific sin and cos
+# these trigeometric functions need some lowering because the supported
+# input values are expected to be normalized by dividing by (2 * pi)
+unop("fsin_r600", tfloat32, "sinf(6.2831853 * src0)")
+unop("fcos_r600", tfloat32, "cosf(6.2831853 * src0)")
+
 # 24b multiply into 32b result (with sign extension)
 binop("imul24", tint32, _2src_commutative + associative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8)")
