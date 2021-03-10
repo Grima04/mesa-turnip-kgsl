@@ -1305,7 +1305,6 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.fuse_ffma16 = true,
 		.fuse_ffma32 = true,
 		.fuse_ffma64 = true,
-		.lower_scmp = true, /* TODO: Should be checked */
 		.lower_flrp32 = true,
 		.lower_flrp64 = true,
 		.lower_fpow = true,
