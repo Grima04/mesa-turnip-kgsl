@@ -545,6 +545,19 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
    case MESA_SHADER_FRAGMENT:
       shader = pipe->create_fs_state(pipe, state);
       break;
+   case MESA_SHADER_COMPUTE: {
+      struct pipe_compute_state cs = {0};
+      cs.ir_type = state->type;
+      cs.req_local_mem = nir->info.cs.shared_size;
+
+      if (state->type == PIPE_SHADER_IR_NIR)
+         cs.prog = state->ir.nir;
+      else
+         cs.prog = state->tokens;
+
+      shader = pipe->create_compute_state(pipe, &cs);
+      break;
+   }
    default:
       unreachable("unsupported shader stage");
       return NULL;
@@ -740,27 +753,27 @@ static const gl_state_index16 depth_range_state[STATE_LENGTH] =
    { STATE_DEPTH_RANGE };
 
 static struct st_common_variant *
-st_create_vp_variant(struct st_context *st,
-                     struct st_program *stvp,
+st_create_common_variant(struct st_context *st,
+                     struct st_program *stp,
                      const struct st_common_variant_key *key)
 {
-   struct st_common_variant *vpv = CALLOC_STRUCT(st_common_variant);
+   struct st_common_variant *v = CALLOC_STRUCT(st_common_variant);
    struct pipe_context *pipe = st->pipe;
    struct pipe_shader_state state = {0};
 
    static const gl_state_index16 point_size_state[STATE_LENGTH] =
       { STATE_POINT_SIZE_CLAMPED, 0 };
-   struct gl_program_parameter_list *params = stvp->Base.Parameters;
+   struct gl_program_parameter_list *params = stp->Base.Parameters;
 
-   vpv->key = *key;
+   v->key = *key;
 
-   state.stream_output = stvp->state.stream_output;
+   state.stream_output = stp->state.stream_output;
 
-   if (stvp->state.type == PIPE_SHADER_IR_NIR) {
+   if (stp->state.type == PIPE_SHADER_IR_NIR) {
       bool finalize = false;
 
       state.type = PIPE_SHADER_IR_NIR;
-      state.ir.nir = get_nir_shader(st, stvp);
+      state.ir.nir = get_nir_shader(st, stp);
       if (key->clamp_color) {
          NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
          finalize = true;
@@ -774,7 +787,21 @@ st_create_vp_variant(struct st_context *st,
          _mesa_add_state_reference(params, point_size_state);
          NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
                     point_size_state);
-         stvp->affected_states |= ST_NEW_VS_CONSTANTS;
+
+         switch (stp->Base.info.stage) {
+         case MESA_SHADER_VERTEX:
+            stp->affected_states |= ST_NEW_VS_CONSTANTS;
+            break;
+         case MESA_SHADER_TESS_EVAL:
+            stp->affected_states |= ST_NEW_TES_CONSTANTS;
+            break;
+         case MESA_SHADER_GEOMETRY:
+            stp->affected_states |= ST_NEW_GS_CONSTANTS;
+            break;
+         default:
+            unreachable("bad shader stage");
+         }
+
          finalize = true;
       }
 
@@ -793,7 +820,7 @@ st_create_vp_variant(struct st_context *st,
       }
 
       if (finalize || !st->allow_st_finalize_nir_twice) {
-         st_finalize_nir(st, &stvp->Base, stvp->shader_program, state.ir.nir,
+         st_finalize_nir(st, &stp->Base, stp->shader_program, state.ir.nir,
                          true, false);
 
          /* Some of the lowering above may have introduced new varyings */
@@ -802,15 +829,15 @@ st_create_vp_variant(struct st_context *st,
       }
 
       if (key->is_draw_shader)
-         vpv->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
+         v->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
       else
-         vpv->base.driver_shader = st_create_nir_shader(st, &state);
+         v->base.driver_shader = st_create_nir_shader(st, &state);
 
-      return vpv;
+      return v;
    }
 
    state.type = PIPE_SHADER_IR_TGSI;
-   state.tokens = tgsi_dup_tokens(stvp->state.tokens);
+   state.tokens = tgsi_dup_tokens(stp->state.tokens);
 
    /* Emulate features. */
    if (key->clamp_color || key->passthrough_edgeflags) {
@@ -844,16 +871,46 @@ st_create_vp_variant(struct st_context *st,
    if (ST_DEBUG & DEBUG_PRINT_IR)
       tgsi_dump(state.tokens, 0);
 
-   if (key->is_draw_shader)
-      vpv->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
-   else
-      vpv->base.driver_shader = pipe->create_vs_state(pipe, &state);
+   switch (stp->Base.info.stage) {
+   case MESA_SHADER_VERTEX:
+      if (key->is_draw_shader)
+         v->base.driver_shader = draw_create_vertex_shader(st->draw, &state);
+      else
+         v->base.driver_shader = pipe->create_vs_state(pipe, &state);
+      break;
+   case MESA_SHADER_TESS_CTRL:
+      v->base.driver_shader = pipe->create_tcs_state(pipe, &state);
+      break;
+   case MESA_SHADER_TESS_EVAL:
+      v->base.driver_shader = pipe->create_tes_state(pipe, &state);
+      break;
+   case MESA_SHADER_GEOMETRY:
+      v->base.driver_shader = pipe->create_gs_state(pipe, &state);
+      break;
+   case MESA_SHADER_COMPUTE: {
+      struct pipe_compute_state cs = {0};
+      cs.ir_type = state.type;
+      cs.req_local_mem = stp->Base.info.cs.shared_size;
+
+      if (state.type == PIPE_SHADER_IR_NIR)
+         cs.prog = state.ir.nir;
+      else
+         cs.prog = state.tokens;
+
+      v->base.driver_shader = pipe->create_compute_state(pipe, &cs);
+      break;
+   }
+   default:
+      assert(!"unhandled shader type");
+      free(v);
+      return NULL;
+   }
 
    if (state.tokens) {
       tgsi_free_tokens(state.tokens);
    }
 
-   return vpv;
+   return v;
 }
 
 static void
@@ -876,40 +933,42 @@ st_add_variant(struct st_variant **list, struct st_variant *v)
  * Find/create a vertex program variant.
  */
 struct st_common_variant *
-st_get_vp_variant(struct st_context *st,
+st_get_common_variant(struct st_context *st,
                   struct st_program *stp,
                   const struct st_common_variant_key *key)
 {
-   struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
-   struct st_common_variant *vpv;
+   struct st_common_variant *v;
 
    /* Search for existing variant */
-   for (vpv = st_common_variant(stp->variants); vpv;
-        vpv = st_common_variant(vpv->base.next)) {
-      if (memcmp(&vpv->key, key, sizeof(*key)) == 0) {
+   for (v = st_common_variant(stp->variants); v;
+        v = st_common_variant(v->base.next)) {
+      if (memcmp(&v->key, key, sizeof(*key)) == 0) {
          break;
       }
    }
 
-   if (!vpv) {
+   if (!v) {
       /* create now */
-      vpv = st_create_vp_variant(st, stp, key);
-      if (vpv) {
-         vpv->base.st = key->st;
+      v = st_create_common_variant(st, stp, key);
+      if (v) {
+         v->base.st = key->st;
 
-         unsigned num_inputs = stvp->num_inputs + key->passthrough_edgeflags;
-         for (unsigned index = 0; index < num_inputs; ++index) {
-            unsigned attr = stvp->index_to_input[index];
-            if (attr == ST_DOUBLE_ATTRIB_PLACEHOLDER)
-               continue;
-            vpv->vert_attrib_mask |= 1u << attr;
+         if (stp->Base.info.stage == MESA_SHADER_VERTEX) {
+            struct st_vertex_program *stvp = (struct st_vertex_program *)stp;
+            unsigned num_inputs = stvp->num_inputs + key->passthrough_edgeflags;
+            for (unsigned index = 0; index < num_inputs; ++index) {
+               unsigned attr = stvp->index_to_input[index];
+               if (attr == ST_DOUBLE_ATTRIB_PLACEHOLDER)
+                  continue;
+               v->vert_attrib_mask |= 1u << attr;
+            }
          }
 
-         st_add_variant(&stp->variants, &vpv->base);
+         st_add_variant(&stp->variants, &v->base);
       }
    }
 
-   return vpv;
+   return v;
 }
 
 
@@ -1728,130 +1787,6 @@ st_translate_common_program(struct st_context *st,
 
 
 /**
- * Get/create a basic program variant.
- */
-struct st_variant *
-st_get_common_variant(struct st_context *st,
-                      struct st_program *prog,
-                      const struct st_common_variant_key *key)
-{
-   struct pipe_context *pipe = st->pipe;
-   struct st_variant *v;
-   struct pipe_shader_state state = {0};
-   struct gl_program_parameter_list *params = prog->Base.Parameters;
-
-   /* Search for existing variant */
-   for (v = prog->variants; v; v = v->next) {
-      if (memcmp(&st_common_variant(v)->key, key, sizeof(*key)) == 0)
-         break;
-   }
-
-   if (!v) {
-      /* create new */
-      v = (struct st_variant*)CALLOC_STRUCT(st_common_variant);
-      if (v) {
-         if (prog->state.type == PIPE_SHADER_IR_NIR) {
-            bool finalize = false;
-
-            state.type = PIPE_SHADER_IR_NIR;
-            state.ir.nir = get_nir_shader(st, prog);
-
-            if (key->clamp_color) {
-               NIR_PASS_V(state.ir.nir, nir_lower_clamp_color_outputs);
-               finalize = true;
-            }
-
-            if (key->lower_ucp) {
-               lower_ucp(st, state.ir.nir, key->lower_ucp, params);
-               finalize = true;
-            }
-
-            if (key->lower_point_size) {
-               static const gl_state_index16 point_size_state[STATE_LENGTH] =
-                  { STATE_POINT_SIZE_CLAMPED, 0 };
-               _mesa_add_state_reference(params, point_size_state);
-               NIR_PASS_V(state.ir.nir, nir_lower_point_size_mov,
-                          point_size_state);
-               if (prog->Base.info.stage == MESA_SHADER_TESS_EVAL)
-                  prog->affected_states |= ST_NEW_TES_CONSTANTS;
-               else if (prog->Base.info.stage == MESA_SHADER_GEOMETRY)
-                  prog->affected_states |= ST_NEW_GS_CONSTANTS;
-               finalize = true;
-            }
-            state.stream_output = prog->state.stream_output;
-
-            if (finalize || !st->allow_st_finalize_nir_twice) {
-               st_finalize_nir(st, &prog->Base, prog->shader_program,
-                               state.ir.nir, true, false);
-            }
-
-            if (ST_DEBUG & DEBUG_PRINT_IR)
-               nir_print_shader(state.ir.nir, stderr);
-         } else {
-            if (key->lower_depth_clamp) {
-               struct gl_program_parameter_list *params = prog->Base.Parameters;
-
-               unsigned depth_range_const =
-                     _mesa_add_state_reference(params, depth_range_state);
-
-               const struct tgsi_token *tokens;
-               tokens =
-                     st_tgsi_lower_depth_clamp(prog->state.tokens,
-                                               depth_range_const,
-                                               key->clip_negative_one_to_one);
-
-               if (tokens != prog->state.tokens)
-                  tgsi_free_tokens(prog->state.tokens);
-
-               prog->state.tokens = tokens;
-            }
-            state = prog->state;
-
-            if (ST_DEBUG & DEBUG_PRINT_IR)
-               tgsi_dump(state.tokens, 0);
-         }
-         /* fill in new variant */
-         switch (prog->Base.info.stage) {
-         case MESA_SHADER_TESS_CTRL:
-            v->driver_shader = pipe->create_tcs_state(pipe, &state);
-            break;
-         case MESA_SHADER_TESS_EVAL:
-            v->driver_shader = pipe->create_tes_state(pipe, &state);
-            break;
-         case MESA_SHADER_GEOMETRY:
-            v->driver_shader = pipe->create_gs_state(pipe, &state);
-            break;
-         case MESA_SHADER_COMPUTE: {
-            struct pipe_compute_state cs = {0};
-            cs.ir_type = state.type;
-            cs.req_local_mem = prog->Base.info.cs.shared_size;
-
-            if (state.type == PIPE_SHADER_IR_NIR)
-               cs.prog = state.ir.nir;
-            else
-               cs.prog = state.tokens;
-
-            v->driver_shader = pipe->create_compute_state(pipe, &cs);
-            break;
-         }
-         default:
-            assert(!"unhandled shader type");
-            free(v);
-            return NULL;
-         }
-
-         st_common_variant(v)->key = *key;
-         v->st = key->st;
-
-         st_add_variant(&prog->variants, v);
-      }
-   }
-
-   return v;
-}
-
-
-/**
  * Vert/Geom/Frag programs have per-context variants.  Free all the
  * variants attached to the given program which match the given context.
  */
@@ -1966,14 +1901,18 @@ st_precompile_shader_variant(struct st_context *st,
                              struct gl_program *prog)
 {
    switch (prog->Target) {
-   case GL_VERTEX_PROGRAM_ARB: {
+   case GL_VERTEX_PROGRAM_ARB:
+   case GL_TESS_CONTROL_PROGRAM_NV:
+   case GL_TESS_EVALUATION_PROGRAM_NV:
+   case GL_GEOMETRY_PROGRAM_NV:
+   case GL_COMPUTE_PROGRAM_NV: {
       struct st_program *p = (struct st_program *)prog;
       struct st_common_variant_key key;
 
       memset(&key, 0, sizeof(key));
 
       key.st = st->has_shareable_shaders ? NULL : st;
-      st_get_vp_variant(st, p, &key);
+      st_get_common_variant(st, p, &key);
       break;
    }
 
@@ -1990,21 +1929,6 @@ st_precompile_shader_variant(struct st_context *st,
             key.texture_index[i] = TEXTURE_2D_INDEX;
       }
       st_get_fp_variant(st, p, &key);
-      break;
-   }
-
-   case GL_TESS_CONTROL_PROGRAM_NV:
-   case GL_TESS_EVALUATION_PROGRAM_NV:
-   case GL_GEOMETRY_PROGRAM_NV:
-   case GL_COMPUTE_PROGRAM_NV: {
-      struct st_program *p = st_program(prog);
-      struct st_common_variant_key key;
-
-      memset(&key, 0, sizeof(key));
-
-      key.st = st->has_shareable_shaders ? NULL : st;
-
-      st_get_common_variant(st, p, &key);
       break;
    }
 

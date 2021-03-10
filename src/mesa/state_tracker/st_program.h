@@ -312,18 +312,13 @@ st_get_generic_varying_index(struct st_context *st, GLuint attr)
 extern void
 st_set_prog_affected_state_flags(struct gl_program *prog);
 
-extern struct st_common_variant *
-st_get_vp_variant(struct st_context *st,
-                  struct st_program *stvp,
-                  const struct st_common_variant_key *key);
-
 
 extern struct st_fp_variant *
 st_get_fp_variant(struct st_context *st,
                   struct st_program *stfp,
                   const struct st_fp_variant_key *key);
 
-extern struct st_variant *
+extern struct st_common_variant *
 st_get_common_variant(struct st_context *st,
                       struct st_program *p,
                       const struct st_common_variant_key *key);
