@@ -90,6 +90,9 @@ float_to_half_impl(nir_builder *b, nir_ssa_def *src, nir_rounding_mode mode)
 {
    nir_ssa_def *f32infinity = nir_imm_int(b, 255 << 23);
    nir_ssa_def *f16max = nir_imm_int(b, (127 + 16) << 23);
+
+   if (src->bit_size == 64)
+      src = nir_f2f32(b, src);
    nir_ssa_def *sign = nir_iand(b, src, nir_imm_int(b, 0x80000000));
    nir_ssa_def *one = nir_imm_int(b, 1);
 
@@ -197,7 +200,6 @@ lower_fp16_cast_impl(nir_builder *b, nir_instr *instr, void *data)
       src = alu->src[0].src.ssa;
       swizzle = alu->src[0].swizzle;
       dst = &alu->dest.dest.ssa;
-      assert(src->bit_size == 32);
       switch (alu->op) {
       case nir_op_f2f16:
       case nir_op_f2f16_rtne:
