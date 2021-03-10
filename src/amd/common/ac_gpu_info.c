@@ -805,6 +805,9 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
    info->has_ls_vgpr_init_bug = info->family == CHIP_VEGA10 || info->family == CHIP_RAVEN;
 
+   /* Drawing from 0-sized index buffers causes hangs on Navi10/14. */
+   info->has_zero_index_buffer_bug = info->family == CHIP_NAVI10 || info->family == CHIP_NAVI14;
+
    /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
     * firmware version wasn't bumped.
     */
