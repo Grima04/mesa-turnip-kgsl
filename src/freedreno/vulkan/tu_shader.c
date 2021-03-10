@@ -111,11 +111,11 @@ tu_spirv_to_nir(struct tu_device *dev,
       num_spec = spec_info->mapEntryCount;
    }
 
-   struct tu_shader_module *module =
-      tu_shader_module_from_handle(stage_info->module);
-   assert(module->code_size % 4 == 0);
+   struct vk_shader_module *module =
+      vk_shader_module_from_handle(stage_info->module);
+   assert(module->size % 4 == 0);
    nir_shader *nir =
-      spirv_to_nir(module->code, module->code_size / 4,
+      spirv_to_nir((void*)module->data, module->size / 4,
                    spec, num_spec, stage, stage_info->pName,
                    &spirv_options, nir_options);
 
@@ -838,45 +838,4 @@ tu_shader_destroy(struct tu_device *dev,
    ir3_shader_destroy(shader->ir3_shader);
 
    vk_free2(&dev->vk.alloc, alloc, shader);
-}
-
-VkResult
-tu_CreateShaderModule(VkDevice _device,
-                      const VkShaderModuleCreateInfo *pCreateInfo,
-                      const VkAllocationCallbacks *pAllocator,
-                      VkShaderModule *pShaderModule)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   struct tu_shader_module *module;
-
-   assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-   assert(pCreateInfo->flags == 0);
-   assert(pCreateInfo->codeSize % 4 == 0);
-
-   module = vk_object_alloc(&device->vk, pAllocator,
-                            sizeof(*module) + pCreateInfo->codeSize,
-                            VK_OBJECT_TYPE_SHADER_MODULE);
-   if (module == NULL)
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   module->code_size = pCreateInfo->codeSize;
-   memcpy(module->code, pCreateInfo->pCode, pCreateInfo->codeSize);
-
-   *pShaderModule = tu_shader_module_to_handle(module);
-
-   return VK_SUCCESS;
-}
-
-void
-tu_DestroyShaderModule(VkDevice _device,
-                       VkShaderModule _module,
-                       const VkAllocationCallbacks *pAllocator)
-{
-   TU_FROM_HANDLE(tu_device, device, _device);
-   TU_FROM_HANDLE(tu_shader_module, module, _module);
-
-   if (!module)
-      return;
-
-   vk_object_free(&device->vk, pAllocator, module);
 }

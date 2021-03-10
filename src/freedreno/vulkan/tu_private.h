@@ -59,6 +59,7 @@
 #include "vk_extensions.h"
 #include "vk_instance.h"
 #include "vk_physical_device.h"
+#include "vk_shader_module.h"
 #include "wsi_common.h"
 
 #include "ir3/ir3_compiler.h"
@@ -1018,14 +1019,6 @@ struct tu_event
    struct tu_bo bo;
 };
 
-struct tu_shader_module
-{
-   struct vk_object_base base;
-
-   uint32_t code_size;
-   uint32_t code[];
-};
-
 struct tu_push_constant_range
 {
    uint32_t lo;
@@ -1629,7 +1622,6 @@ TU_DEFINE_NONDISP_HANDLE_CASTS(tu_query_pool, VkQueryPool)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_render_pass, VkRenderPass)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler, VkSampler)
 TU_DEFINE_NONDISP_HANDLE_CASTS(tu_sampler_ycbcr_conversion, VkSamplerYcbcrConversion)
-TU_DEFINE_NONDISP_HANDLE_CASTS(tu_shader_module, VkShaderModule)
 
 /* for TU_FROM_HANDLE with both VkFence and VkSemaphore: */
 #define tu_syncobj_from_handle(x) ((struct tu_syncobj*) (uintptr_t) (x))
