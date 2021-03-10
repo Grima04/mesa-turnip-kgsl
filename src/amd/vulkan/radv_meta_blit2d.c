@@ -730,27 +730,22 @@ blit2d_init_color_pipeline(struct radv_device *device,
 	}
 
 	const VkPipelineVertexInputStateCreateInfo *vi_create_info;
-	struct radv_shader_module fs = { .nir = NULL };
+	nir_shader *fs = build_nir_copy_fragment_shader(device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
+	nir_shader *vs = build_nir_vertex_shader();
 
-
-	fs.nir = build_nir_copy_fragment_shader(device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
 	vi_create_info = &normal_vi_create_info;
-
-	struct radv_shader_module vs = {
-		.nir = build_nir_vertex_shader(),
-	};
 
 	VkPipelineShaderStageCreateInfo pipeline_shader_stages[] = {
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
-			.module = radv_shader_module_to_handle(&vs),
+			.module = vk_shader_module_handle_from_nir(vs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		}, {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs),
+			.module = vk_shader_module_handle_from_nir(fs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		},
@@ -891,8 +886,8 @@ blit2d_init_color_pipeline(struct radv_device *device,
 					       &device->meta_state.blit2d[log2_samples].pipelines[src_type][fs_key]);
 
 
-	ralloc_free(vs.nir);
-	ralloc_free(fs.nir);
+	ralloc_free(vs);
+	ralloc_free(fs);
 
 	mtx_unlock(&device->meta_state.mtx);
 	return result;
@@ -932,26 +927,22 @@ blit2d_init_depth_only_pipeline(struct radv_device *device,
 	}
 
 	const VkPipelineVertexInputStateCreateInfo *vi_create_info;
-	struct radv_shader_module fs = { .nir = NULL };
+	nir_shader *fs = build_nir_copy_fragment_shader_depth(device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
+	nir_shader *vs = build_nir_vertex_shader();
 
-	fs.nir = build_nir_copy_fragment_shader_depth(device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
 	vi_create_info = &normal_vi_create_info;
-
-	struct radv_shader_module vs = {
-		.nir = build_nir_vertex_shader(),
-	};
 
 	VkPipelineShaderStageCreateInfo pipeline_shader_stages[] = {
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
-			.module = radv_shader_module_to_handle(&vs),
+			.module = vk_shader_module_handle_from_nir(vs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		}, {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs),
+			.module = vk_shader_module_handle_from_nir(fs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		},
@@ -1085,8 +1076,8 @@ blit2d_init_depth_only_pipeline(struct radv_device *device,
 					       &device->meta_state.blit2d[log2_samples].depth_only_pipeline[src_type]);
 
 
-	ralloc_free(vs.nir);
-	ralloc_free(fs.nir);
+	ralloc_free(vs);
+	ralloc_free(fs);
 
 	mtx_unlock(&device->meta_state.mtx);
 	return result;
@@ -1126,26 +1117,22 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device,
 	}
 
 	const VkPipelineVertexInputStateCreateInfo *vi_create_info;
-	struct radv_shader_module fs = { .nir = NULL };
+	nir_shader *fs = build_nir_copy_fragment_shader_stencil(device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
+	nir_shader *vs = build_nir_vertex_shader();
 
-	fs.nir = build_nir_copy_fragment_shader_stencil(device, src_func, name, src_type == BLIT2D_SRC_TYPE_IMAGE_3D, log2_samples > 0);
 	vi_create_info = &normal_vi_create_info;
-
-	struct radv_shader_module vs = {
-		.nir = build_nir_vertex_shader(),
-	};
 
 	VkPipelineShaderStageCreateInfo pipeline_shader_stages[] = {
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
-			.module = radv_shader_module_to_handle(&vs),
+			.module = vk_shader_module_handle_from_nir(vs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		}, {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs),
+			.module = vk_shader_module_handle_from_nir(fs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		},
@@ -1296,8 +1283,8 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device,
 					       &device->meta_state.blit2d[log2_samples].stencil_only_pipeline[src_type]);
 
 
-	ralloc_free(vs.nir);
-	ralloc_free(fs.nir);
+	ralloc_free(vs);
+	ralloc_free(fs);
 
 	mtx_unlock(&device->meta_state.mtx);
 	return result;

@@ -103,7 +103,7 @@ static const struct nir_shader_compiler_options nir_options = {
 
 bool
 radv_can_dump_shader(struct radv_device *device,
-		     struct radv_shader_module *module,
+		     struct vk_shader_module *module,
 		     bool is_gs_copy_shader)
 {
 	if (!(device->instance->debug_flags & RADV_DEBUG_DUMP_SHADERS))
@@ -117,58 +117,11 @@ radv_can_dump_shader(struct radv_device *device,
 
 bool
 radv_can_dump_shader_stats(struct radv_device *device,
-			   struct radv_shader_module *module)
+			   struct vk_shader_module *module)
 {
 	/* Only dump non-meta shader stats. */
 	return device->instance->debug_flags & RADV_DEBUG_DUMP_SHADER_STATS &&
 	       module && !module->nir;
-}
-
-VkResult radv_CreateShaderModule(
-	VkDevice                                    _device,
-	const VkShaderModuleCreateInfo*             pCreateInfo,
-	const VkAllocationCallbacks*                pAllocator,
-	VkShaderModule*                             pShaderModule)
-{
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	struct radv_shader_module *module;
-
-	assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO);
-	assert(pCreateInfo->flags == 0);
-
-	module = vk_alloc2(&device->vk.alloc, pAllocator,
-			     sizeof(*module) + pCreateInfo->codeSize, 8,
-			     VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-	if (module == NULL)
-		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-	vk_object_base_init(&device->vk, &module->base,
-			    VK_OBJECT_TYPE_SHADER_MODULE);
-
-	module->nir = NULL;
-	module->size = pCreateInfo->codeSize;
-	memcpy(module->data, pCreateInfo->pCode, module->size);
-
-	_mesa_sha1_compute(module->data, module->size, module->sha1);
-
-	*pShaderModule = radv_shader_module_to_handle(module);
-
-	return VK_SUCCESS;
-}
-
-void radv_DestroyShaderModule(
-	VkDevice                                    _device,
-	VkShaderModule                              _module,
-	const VkAllocationCallbacks*                pAllocator)
-{
-	RADV_FROM_HANDLE(radv_device, device, _device);
-	RADV_FROM_HANDLE(radv_shader_module, module, _module);
-
-	if (!module)
-		return;
-
-	vk_object_base_finish(&module->base);
-	vk_free2(&device->vk.alloc, pAllocator, module);
 }
 
 void
@@ -267,7 +220,7 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 
 struct radv_shader_debug_data {
 	struct radv_device *device;
-	const struct radv_shader_module *module;
+	const struct vk_shader_module *module;
 };
 
 static void radv_spirv_nir_debug(void *private_data,
@@ -375,7 +328,7 @@ lower_intrinsics(nir_shader *nir)
 
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device,
-			   struct radv_shader_module *module,
+			   struct vk_shader_module *module,
 			   const char *entrypoint_name,
 			   gl_shader_stage stage,
 			   const VkSpecializationInfo *spec_info,
@@ -1338,7 +1291,7 @@ radv_dump_nir_shaders(struct nir_shader * const *shaders,
 
 static struct radv_shader_variant *
 shader_variant_compile(struct radv_device *device,
-		       struct radv_shader_module *module,
+		       struct vk_shader_module *module,
 		       struct nir_shader * const *shaders,
 		       int shader_count,
 		       gl_shader_stage stage,
@@ -1443,7 +1396,7 @@ shader_variant_compile(struct radv_device *device,
 
 struct radv_shader_variant *
 radv_shader_variant_compile(struct radv_device *device,
-			   struct radv_shader_module *module,
+			   struct vk_shader_module *module,
 			   struct nir_shader *const *shaders,
 			   int shader_count,
 			   struct radv_pipeline_layout *layout,

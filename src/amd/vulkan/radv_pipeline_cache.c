@@ -130,7 +130,7 @@ radv_hash_shaders(unsigned char *hash,
 
 	for (int i = 0; i < MESA_SHADER_STAGES; ++i) {
 		if (stages[i]) {
-			RADV_FROM_HANDLE(radv_shader_module, module, stages[i]->module);
+			RADV_FROM_HANDLE(vk_shader_module, module, stages[i]->module);
 			const VkSpecializationInfo *spec_info = stages[i]->pSpecializationInfo;
 
 			_mesa_sha1_update(&ctx, module->sha1, sizeof(module->sha1));

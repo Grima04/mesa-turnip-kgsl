@@ -96,9 +96,6 @@ create_pipeline(struct radv_device *device,
 	VkDevice device_h = radv_device_to_handle(device);
 	VkResult result;
 
-	struct radv_shader_module vs_m = { .nir = vs_nir };
-	struct radv_shader_module fs_m = { .nir = fs_nir };
-
 	result = radv_graphics_pipeline_create(device_h,
 					       radv_pipeline_cache_to_handle(&device->meta_state.cache),
 					       &(VkGraphicsPipelineCreateInfo) {
@@ -108,13 +105,13 @@ create_pipeline(struct radv_device *device,
 							       {
 								       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 								       .stage = VK_SHADER_STAGE_VERTEX_BIT,
-								       .module = radv_shader_module_to_handle(&vs_m),
+								       .module = vk_shader_module_handle_from_nir(vs_nir),
 								       .pName = "main",
 							       },
 							       {
 								       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 								       .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-								       .module = radv_shader_module_to_handle(&fs_m),
+								       .module = vk_shader_module_handle_from_nir(fs_nir),
 								       .pName = "main",
 							       },
 						       },
@@ -1128,10 +1125,8 @@ static VkResult
 init_meta_clear_htile_mask_state(struct radv_device *device)
 {
 	struct radv_meta_state *state = &device->meta_state;
-	struct radv_shader_module cs = { .nir = NULL };
 	VkResult result;
-
-	cs.nir = build_clear_htile_mask_shader();
+	nir_shader *cs = build_clear_htile_mask_shader();
 
 	VkDescriptorSetLayoutCreateInfo ds_layout_info = {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -1173,7 +1168,7 @@ init_meta_clear_htile_mask_state(struct radv_device *device)
 	VkPipelineShaderStageCreateInfo shader_stage = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-		.module = radv_shader_module_to_handle(&cs),
+		.module = vk_shader_module_handle_from_nir(cs),
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 	};
@@ -1190,10 +1185,10 @@ init_meta_clear_htile_mask_state(struct radv_device *device)
 					     1, &pipeline_info, NULL,
 					     &state->clear_htile_mask_pipeline);
 
-	ralloc_free(cs.nir);
+	ralloc_free(cs);
 	return result;
 fail:
-	ralloc_free(cs.nir);
+	ralloc_free(cs);
 	return result;
 }
 

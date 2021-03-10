@@ -782,21 +782,21 @@ build_pipeline(struct radv_device *device,
 		return VK_SUCCESS;
 	}
 
-	struct radv_shader_module fs = {0};
-	struct radv_shader_module vs = {.nir = build_nir_vertex_shader()};
+        nir_shader *fs;
+        nir_shader *vs = build_nir_vertex_shader();
 	VkRenderPass rp;
 
 	switch(aspect) {
 	case VK_IMAGE_ASPECT_COLOR_BIT:
-		fs.nir = build_nir_copy_fragment_shader(tex_dim);
+		fs = build_nir_copy_fragment_shader(tex_dim);
 		rp = device->meta_state.blit.render_pass[fs_key][0];
 		break;
 	case VK_IMAGE_ASPECT_DEPTH_BIT:
-		fs.nir = build_nir_copy_fragment_shader_depth(tex_dim);
+		fs = build_nir_copy_fragment_shader_depth(tex_dim);
 		rp = device->meta_state.blit.depth_only_rp[0];
 		break;
 	case VK_IMAGE_ASPECT_STENCIL_BIT:
-		fs.nir = build_nir_copy_fragment_shader_stencil(tex_dim);
+		fs = build_nir_copy_fragment_shader_stencil(tex_dim);
 		rp = device->meta_state.blit.stencil_only_rp[0];
 		break;
 	default:
@@ -812,13 +812,13 @@ build_pipeline(struct radv_device *device,
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
-			.module = radv_shader_module_to_handle(&vs),
+			.module = vk_shader_module_handle_from_nir(vs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		}, {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs),
+			.module = vk_shader_module_handle_from_nir(fs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		},
@@ -935,8 +935,8 @@ build_pipeline(struct radv_device *device,
 	                                       radv_pipeline_cache_to_handle(&device->meta_state.cache),
 	                                       &vk_pipeline_info, &radv_pipeline_info,
 	                                       &device->meta_state.alloc, pipeline);
-	ralloc_free(vs.nir);
-	ralloc_free(fs.nir);
+	ralloc_free(vs);
+	ralloc_free(fs);
 	mtx_unlock(&device->meta_state.mtx);
 	return result;
 }

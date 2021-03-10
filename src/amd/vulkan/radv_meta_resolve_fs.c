@@ -161,11 +161,8 @@ create_resolve_pipeline(struct radv_device *device,
 	if (vk_format_is_int(format))
 		is_integer = true;
 
-	struct radv_shader_module fs = { .nir = NULL };
-	fs.nir = build_resolve_fragment_shader(device, is_integer, samples);
-	struct radv_shader_module vs = {
-		.nir = build_nir_vertex_shader(),
-	};
+	nir_shader *fs = build_resolve_fragment_shader(device, is_integer, samples);
+	nir_shader *vs = build_nir_vertex_shader();
 
 	VkRenderPass *rp = &device->meta_state.resolve_fragment.rc[samples_log2].render_pass[fs_key][0];
 
@@ -175,13 +172,13 @@ create_resolve_pipeline(struct radv_device *device,
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
-			.module = radv_shader_module_to_handle(&vs),
+			.module = vk_shader_module_handle_from_nir(vs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		}, {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs),
+			.module = vk_shader_module_handle_from_nir(fs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		},
@@ -318,8 +315,8 @@ create_resolve_pipeline(struct radv_device *device,
 					       &vk_pipeline_info, &radv_pipeline_info,
 					       &device->meta_state.alloc,
 					       pipeline);
-	ralloc_free(vs.nir);
-	ralloc_free(fs.nir);
+	ralloc_free(vs);
+	ralloc_free(fs);
 
 	mtx_unlock(&device->meta_state.mtx);
 	return result;
@@ -496,25 +493,21 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device,
 		return VK_SUCCESS;
 	}
 
-	struct radv_shader_module fs = { .nir = NULL };
-	struct radv_shader_module vs = { .nir = NULL };
 	uint32_t samples = 1 << samples_log2;
-
-	vs.nir = build_nir_vertex_shader();
-	fs.nir = build_depth_stencil_resolve_fragment_shader(device, samples,
-							     index, resolve_mode);
+	nir_shader *fs = build_depth_stencil_resolve_fragment_shader(device, samples, index, resolve_mode);
+	nir_shader *vs = build_nir_vertex_shader();
 
 	VkPipelineShaderStageCreateInfo pipeline_shader_stages[] = {
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_VERTEX_BIT,
-			.module = radv_shader_module_to_handle(&vs),
+			.module = vk_shader_module_handle_from_nir(vs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		}, {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs),
+			.module = vk_shader_module_handle_from_nir(fs),
 			.pName = "main",
 			.pSpecializationInfo = NULL
 		},
@@ -682,8 +675,8 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device,
 					       &device->meta_state.alloc,
 					       pipeline);
 
-	ralloc_free(vs.nir);
-	ralloc_free(fs.nir);
+	ralloc_free(vs);
+	ralloc_free(fs);
 
 	mtx_unlock(&device->meta_state.mtx);
 	return result;

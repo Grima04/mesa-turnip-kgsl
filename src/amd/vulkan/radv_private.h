@@ -60,6 +60,7 @@
 #include "vk_instance.h"
 #include "vk_format.h"
 #include "vk_physical_device.h"
+#include "vk_shader_module.h"
 
 #include "radv_radeon_winsys.h"
 #include "ac_binary.h"
@@ -1627,8 +1628,6 @@ struct radv_event {
 	uint64_t *map;
 };
 
-struct radv_shader_module;
-
 #define RADV_HASH_SHADER_NO_NGG              (1 << 0)
 #define RADV_HASH_SHADER_CS_WAVE32           (1 << 1)
 #define RADV_HASH_SHADER_PS_WAVE32           (1 << 2)
@@ -2781,7 +2780,6 @@ RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_query_pool, VkQueryPool)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_render_pass, VkRenderPass)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler, VkSampler)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_sampler_ycbcr_conversion, VkSamplerYcbcrConversion)
-RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_shader_module, VkShaderModule)
 RADV_DEFINE_NONDISP_HANDLE_CASTS(radv_semaphore, VkSemaphore)
 
 #endif /* RADV_PRIVATE_H */

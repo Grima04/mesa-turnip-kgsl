@@ -117,9 +117,7 @@ VkResult
 radv_device_init_meta_dcc_retile_state(struct radv_device *device)
 {
 	VkResult result = VK_SUCCESS;
-	struct radv_shader_module cs = { .nir = NULL };
-
-	cs.nir = build_dcc_retile_compute_shader(device);
+	nir_shader *cs = build_dcc_retile_compute_shader(device);
 
 	VkDescriptorSetLayoutCreateInfo ds_create_info = {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -177,7 +175,7 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device)
 	VkPipelineShaderStageCreateInfo pipeline_shader_stage = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-		.module = radv_shader_module_to_handle(&cs),
+		.module = vk_shader_module_handle_from_nir(cs),
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 	};
@@ -199,7 +197,7 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device)
 cleanup:
 	if (result != VK_SUCCESS)
 		radv_device_finish_meta_dcc_retile_state(device);
-	ralloc_free(cs.nir);
+	ralloc_free(cs);
 	return result;
 }
 

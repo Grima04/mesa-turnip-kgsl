@@ -37,20 +37,13 @@
 #include "nir/nir.h"
 #include "vulkan/vulkan.h"
 #include "vulkan/util/vk_object.h"
+#include "vulkan/util/vk_shader_module.h"
 
 #include "aco_interface.h"
 
 #define RADV_VERT_ATTRIB_MAX MAX2(VERT_ATTRIB_MAX, VERT_ATTRIB_GENERIC0 + MAX_VERTEX_ATTRIBS)
 
 struct radv_device;
-
-struct radv_shader_module {
-	struct vk_object_base base;
-	struct nir_shader *nir;
-	unsigned char sha1[20];
-	uint32_t size;
-	char data[0];
-};
 
 struct radv_vs_out_key {
 	uint32_t as_es:1;
@@ -433,7 +426,7 @@ radv_nir_lower_ycbcr_textures(nir_shader *shader,
 
 nir_shader *
 radv_shader_compile_to_nir(struct radv_device *device,
-			   struct radv_shader_module *module,
+			   struct vk_shader_module *module,
 			   const char *entrypoint_name,
 			   gl_shader_stage stage,
 			   const VkSpecializationInfo *spec_info,
@@ -460,7 +453,7 @@ radv_shader_variant_create(struct radv_device *device,
 			   bool keep_shader_info);
 struct radv_shader_variant *
 radv_shader_variant_compile(struct radv_device *device,
-			    struct radv_shader_module *module,
+			    struct vk_shader_module *module,
 			    struct nir_shader *const *shaders,
 			    int shader_count,
 			    struct radv_pipeline_layout *layout,
@@ -502,12 +495,12 @@ radv_get_shader_name(struct radv_shader_info *info,
 
 bool
 radv_can_dump_shader(struct radv_device *device,
-		     struct radv_shader_module *module,
+		     struct vk_shader_module *module,
 		     bool is_gs_copy_shader);
 
 bool
 radv_can_dump_shader_stats(struct radv_device *device,
-			   struct radv_shader_module *module);
+			   struct vk_shader_module *module);
 
 VkResult
 radv_dump_shader_stats(struct radv_device *device,

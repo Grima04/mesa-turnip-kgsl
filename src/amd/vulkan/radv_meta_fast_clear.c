@@ -97,9 +97,7 @@ static VkResult
 create_dcc_compress_compute(struct radv_device *device)
 {
 	VkResult result = VK_SUCCESS;
-	struct radv_shader_module cs = { .nir = NULL };
-
-	cs.nir = build_dcc_decompress_compute_shader(device);
+	nir_shader *cs = build_dcc_decompress_compute_shader(device);
 
 	VkDescriptorSetLayoutCreateInfo ds_create_info = {
 		.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
@@ -151,7 +149,7 @@ create_dcc_compress_compute(struct radv_device *device)
 	VkPipelineShaderStageCreateInfo pipeline_shader_stage = {
 		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-		.module = radv_shader_module_to_handle(&cs),
+		.module = vk_shader_module_handle_from_nir(cs),
 		.pName = "main",
 		.pSpecializationInfo = NULL,
 	};
@@ -171,7 +169,7 @@ create_dcc_compress_compute(struct radv_device *device)
 		goto cleanup;
 
 cleanup:
-	ralloc_free(cs.nir);
+	ralloc_free(cs);
 	return result;
 }
 
@@ -272,11 +270,9 @@ create_pipeline(struct radv_device *device,
 	VkResult result;
 	VkDevice device_h = radv_device_to_handle(device);
 
-	struct radv_shader_module fs_module = {
-		.nir = radv_meta_build_nir_fs_noop(),
-	};
+	nir_shader *fs_module = radv_meta_build_nir_fs_noop();
 
-	if (!fs_module.nir) {
+	if (!fs_module) {
 		/* XXX: Need more accurate error */
 		result = VK_ERROR_OUT_OF_HOST_MEMORY;
 		goto cleanup;
@@ -292,7 +288,7 @@ create_pipeline(struct radv_device *device,
 		{
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 			.stage = VK_SHADER_STAGE_FRAGMENT_BIT,
-			.module = radv_shader_module_to_handle(&fs_module),
+			.module = vk_shader_module_handle_from_nir(fs_module),
 			.pName = "main",
 		},
 	};
@@ -472,7 +468,7 @@ create_pipeline(struct radv_device *device,
 	goto cleanup;
 
 cleanup:
-	ralloc_free(fs_module.nir);
+	ralloc_free(fs_module);
 	return result;
 }
 
@@ -518,8 +514,8 @@ radv_device_init_meta_fast_clear_flush_state_internal(struct radv_device *device
 		return VK_SUCCESS;
 	}
 
-	struct radv_shader_module vs_module = { .nir = radv_meta_build_nir_vs_generate_vertices() };
-	if (!vs_module.nir) {
+	nir_shader *vs_module = radv_meta_build_nir_vs_generate_vertices();
+	if (!vs_module) {
 		/* XXX: Need more accurate error */
 		res = VK_ERROR_OUT_OF_HOST_MEMORY;
 		goto fail;
@@ -534,7 +530,7 @@ radv_device_init_meta_fast_clear_flush_state_internal(struct radv_device *device
 	if (res != VK_SUCCESS)
 		goto fail;
 
-	VkShaderModule vs_module_h = radv_shader_module_to_handle(&vs_module);
+	VkShaderModule vs_module_h = vk_shader_module_handle_from_nir(vs_module);
 	res = create_pipeline(device, vs_module_h,
 			      device->meta_state.fast_clear_flush.p_layout);
 	if (res != VK_SUCCESS)
@@ -550,7 +546,7 @@ fail:
 	radv_device_finish_meta_fast_clear_flush_state(device);
 
 cleanup:
-	ralloc_free(vs_module.nir);
+	ralloc_free(vs_module);
 	mtx_unlock(&device->meta_state.mtx);
 
 	return res;
