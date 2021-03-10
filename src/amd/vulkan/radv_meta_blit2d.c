@@ -760,11 +760,12 @@ blit2d_init_color_pipeline(struct radv_device *device,
 		if (!device->meta_state.blit2d_render_passes[fs_key][dst_layout]) {
 			VkImageLayout layout = radv_meta_dst_layout_to_layout(dst_layout);
 
-			result = radv_CreateRenderPass(radv_device_to_handle(device),
-						&(VkRenderPassCreateInfo) {
-							.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			result = radv_CreateRenderPass2(radv_device_to_handle(device),
+						&(VkRenderPassCreateInfo2) {
+							.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 							.attachmentCount = 1,
-							.pAttachments = &(VkAttachmentDescription) {
+							.pAttachments = &(VkAttachmentDescription2) {
+							.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 							.format = format,
 							.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 							.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -772,16 +773,19 @@ blit2d_init_color_pipeline(struct radv_device *device,
 							.finalLayout = layout,
 							},
 						.subpassCount = 1,
-						.pSubpasses = &(VkSubpassDescription) {
+						.pSubpasses = &(VkSubpassDescription2) {
+							.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
 							.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 							.inputAttachmentCount = 0,
 							.colorAttachmentCount = 1,
-							.pColorAttachments = &(VkAttachmentReference) {
+							.pColorAttachments = &(VkAttachmentReference2) {
+								.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 								.attachment = 0,
 								.layout = layout,
 								},
 						.pResolveAttachments = NULL,
-						.pDepthStencilAttachment = &(VkAttachmentReference) {
+						.pDepthStencilAttachment = &(VkAttachmentReference2) {
+							.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 							.attachment = VK_ATTACHMENT_UNUSED,
 							.layout = layout,
 						},
@@ -789,8 +793,9 @@ blit2d_init_color_pipeline(struct radv_device *device,
 						.pPreserveAttachments = NULL,
 						},
 						.dependencyCount = 2,
-						.pDependencies = (VkSubpassDependency[]) {
+						.pDependencies = (VkSubpassDependency2[]) {
 							{
+								.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 								.srcSubpass = VK_SUBPASS_EXTERNAL,
 								.dstSubpass = 0,
 								.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -800,6 +805,7 @@ blit2d_init_color_pipeline(struct radv_device *device,
 								.dependencyFlags = 0
 							},
 							{
+								.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 								.srcSubpass = 0,
 								.dstSubpass = VK_SUBPASS_EXTERNAL,
 								.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -954,11 +960,12 @@ blit2d_init_depth_only_pipeline(struct radv_device *device,
 	for (enum radv_blit_ds_layout ds_layout = RADV_BLIT_DS_LAYOUT_TILE_ENABLE; ds_layout < RADV_BLIT_DS_LAYOUT_COUNT; ds_layout++) {
 		if (!device->meta_state.blit2d_depth_only_rp[ds_layout]) {
 			VkImageLayout layout = radv_meta_blit_ds_to_layout(ds_layout);
-			result = radv_CreateRenderPass(radv_device_to_handle(device),
-						       &(VkRenderPassCreateInfo) {
-							       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			result = radv_CreateRenderPass2(radv_device_to_handle(device),
+							&(VkRenderPassCreateInfo2) {
+							       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 							       .attachmentCount = 1,
-							       .pAttachments = &(VkAttachmentDescription) {
+							       .pAttachments = &(VkAttachmentDescription2) {
+								       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 								       .format = VK_FORMAT_D32_SFLOAT,
 								       .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 								       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -966,13 +973,14 @@ blit2d_init_depth_only_pipeline(struct radv_device *device,
 								       .finalLayout = layout,
 							       },
 							       .subpassCount = 1,
-							       .pSubpasses = &(VkSubpassDescription) {
-								       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+							       .pSubpasses = &(VkSubpassDescription2) {
+								       .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
 								       .inputAttachmentCount = 0,
 								       .colorAttachmentCount = 0,
 								       .pColorAttachments = NULL,
 								       .pResolveAttachments = NULL,
-								       .pDepthStencilAttachment = &(VkAttachmentReference) {
+								       .pDepthStencilAttachment = &(VkAttachmentReference2) {
+									       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 									       .attachment = 0,
 									       .layout = layout,
 								       },
@@ -980,8 +988,9 @@ blit2d_init_depth_only_pipeline(struct radv_device *device,
 								       .pPreserveAttachments = NULL,
 							       },
 							       .dependencyCount = 2,
-							       .pDependencies = (VkSubpassDependency[]) {
+							       .pDependencies = (VkSubpassDependency2[]) {
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = VK_SUBPASS_EXTERNAL,
 									.dstSubpass = 0,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -991,6 +1000,7 @@ blit2d_init_depth_only_pipeline(struct radv_device *device,
 									.dependencyFlags = 0
 								},
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = 0,
 									.dstSubpass = VK_SUBPASS_EXTERNAL,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -1144,11 +1154,12 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device,
 	for (enum radv_blit_ds_layout ds_layout = RADV_BLIT_DS_LAYOUT_TILE_ENABLE; ds_layout < RADV_BLIT_DS_LAYOUT_COUNT; ds_layout++) {
 		if (!device->meta_state.blit2d_stencil_only_rp[ds_layout]) {
 			VkImageLayout layout = radv_meta_blit_ds_to_layout(ds_layout);
-			result = radv_CreateRenderPass(radv_device_to_handle(device),
-						       &(VkRenderPassCreateInfo) {
-							       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			result = radv_CreateRenderPass2(radv_device_to_handle(device),
+							&(VkRenderPassCreateInfo2) {
+							       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 							       .attachmentCount = 1,
-							       .pAttachments = &(VkAttachmentDescription) {
+							       .pAttachments = &(VkAttachmentDescription2) {
+								       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 								       .format = VK_FORMAT_S8_UINT,
 								       .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 								       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1156,13 +1167,15 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device,
 								       .finalLayout = layout,
 							       },
 							       .subpassCount = 1,
-							       .pSubpasses = &(VkSubpassDescription) {
+							       .pSubpasses = &(VkSubpassDescription2) {
+								       .sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
 								       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 								       .inputAttachmentCount = 0,
 								       .colorAttachmentCount = 0,
 								       .pColorAttachments = NULL,
 								       .pResolveAttachments = NULL,
-								       .pDepthStencilAttachment = &(VkAttachmentReference) {
+								       .pDepthStencilAttachment = &(VkAttachmentReference2) {
+									       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 									       .attachment = 0,
 									       .layout = layout,
 								       },
@@ -1170,8 +1183,9 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device,
 								       .pPreserveAttachments = NULL,
 							       },
 							       .dependencyCount = 2,
-							       .pDependencies = (VkSubpassDependency[]) {
+							       .pDependencies = (VkSubpassDependency2[]) {
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = VK_SUBPASS_EXTERNAL,
 									.dstSubpass = 0,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -1181,6 +1195,7 @@ blit2d_init_stencil_only_pipeline(struct radv_device *device,
 									.dependencyFlags = 0
 								},
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = 0,
 									.dstSubpass = VK_SUBPASS_EXTERNAL,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

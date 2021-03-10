@@ -950,11 +950,12 @@ radv_device_init_meta_blit_color(struct radv_device *device, bool on_demand)
 		unsigned key = radv_format_meta_fs_key(device, radv_fs_key_format_exemplars[i]);
 		for(unsigned j = 0; j < RADV_META_DST_LAYOUT_COUNT; ++j) {
 			VkImageLayout layout = radv_meta_dst_layout_to_layout(j);
-			result = radv_CreateRenderPass(radv_device_to_handle(device),
-						&(VkRenderPassCreateInfo) {
-							.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+			result = radv_CreateRenderPass2(radv_device_to_handle(device),
+						&(VkRenderPassCreateInfo2) {
+							.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 								.attachmentCount = 1,
-								.pAttachments = &(VkAttachmentDescription) {
+								.pAttachments = &(VkAttachmentDescription2) {
+								.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 								.format = radv_fs_key_format_exemplars[i],
 								.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 								.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -962,16 +963,19 @@ radv_device_init_meta_blit_color(struct radv_device *device, bool on_demand)
 								.finalLayout = layout,
 							},
 								.subpassCount = 1,
-										.pSubpasses = &(VkSubpassDescription) {
+										.pSubpasses = &(VkSubpassDescription2) {
+								.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 								.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 								.inputAttachmentCount = 0,
 								.colorAttachmentCount = 1,
-								.pColorAttachments = &(VkAttachmentReference) {
+								.pColorAttachments = &(VkAttachmentReference2) {
+									.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 									.attachment = 0,
 									.layout = layout,
 								},
 								.pResolveAttachments = NULL,
-								.pDepthStencilAttachment = &(VkAttachmentReference) {
+								.pDepthStencilAttachment = &(VkAttachmentReference2) {
+									.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 									.attachment = VK_ATTACHMENT_UNUSED,
 									.layout = VK_IMAGE_LAYOUT_GENERAL,
 								},
@@ -979,8 +983,9 @@ radv_device_init_meta_blit_color(struct radv_device *device, bool on_demand)
 								.pPreserveAttachments = NULL,
 							},
 							.dependencyCount = 2,
-							.pDependencies = (VkSubpassDependency[]) {
+							.pDependencies = (VkSubpassDependency2[]) {
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = VK_SUBPASS_EXTERNAL,
 									.dstSubpass = 0,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -990,6 +995,7 @@ radv_device_init_meta_blit_color(struct radv_device *device, bool on_demand)
 									.dependencyFlags = 0
 								},
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = 0,
 									.dstSubpass = VK_SUBPASS_EXTERNAL,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -1033,11 +1039,12 @@ radv_device_init_meta_blit_depth(struct radv_device *device, bool on_demand)
 
 	for (enum radv_blit_ds_layout ds_layout = RADV_BLIT_DS_LAYOUT_TILE_ENABLE; ds_layout < RADV_BLIT_DS_LAYOUT_COUNT; ds_layout++) {
 		VkImageLayout layout = radv_meta_blit_ds_to_layout(ds_layout);
-		result = radv_CreateRenderPass(radv_device_to_handle(device),
-					       &(VkRenderPassCreateInfo) {
-						       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		result = radv_CreateRenderPass2(radv_device_to_handle(device),
+						&(VkRenderPassCreateInfo2) {
+						       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 						       .attachmentCount = 1,
-						       .pAttachments = &(VkAttachmentDescription) {
+						       .pAttachments = &(VkAttachmentDescription2) {
+							       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 							       .format = VK_FORMAT_D32_SFLOAT,
 							       .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 							       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1045,13 +1052,15 @@ radv_device_init_meta_blit_depth(struct radv_device *device, bool on_demand)
 							       .finalLayout = layout,
 						       },
 						       .subpassCount = 1,
-						       .pSubpasses = &(VkSubpassDescription) {
+						       .pSubpasses = &(VkSubpassDescription2) {
+							       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 							       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 							       .inputAttachmentCount = 0,
 							       .colorAttachmentCount = 0,
 							       .pColorAttachments = NULL,
 							       .pResolveAttachments = NULL,
-							       .pDepthStencilAttachment = &(VkAttachmentReference) {
+							       .pDepthStencilAttachment = &(VkAttachmentReference2) {
+								       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 								       .attachment = 0,
 								       .layout = layout,
 								},
@@ -1059,8 +1068,9 @@ radv_device_init_meta_blit_depth(struct radv_device *device, bool on_demand)
 							       .pPreserveAttachments = NULL,
 							},
 							.dependencyCount = 2,
-							.pDependencies = (VkSubpassDependency[]) {
+							.pDependencies = (VkSubpassDependency2[]) {
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = VK_SUBPASS_EXTERNAL,
 									.dstSubpass = 0,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -1070,6 +1080,7 @@ radv_device_init_meta_blit_depth(struct radv_device *device, bool on_demand)
 									.dependencyFlags = 0
 								},
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = 0,
 									.dstSubpass = VK_SUBPASS_EXTERNAL,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -1110,11 +1121,12 @@ radv_device_init_meta_blit_stencil(struct radv_device *device, bool on_demand)
 
 	for (enum radv_blit_ds_layout ds_layout = RADV_BLIT_DS_LAYOUT_TILE_ENABLE; ds_layout < RADV_BLIT_DS_LAYOUT_COUNT; ds_layout++) {
 		VkImageLayout layout = radv_meta_blit_ds_to_layout(ds_layout);
-		result = radv_CreateRenderPass(radv_device_to_handle(device),
-					       &(VkRenderPassCreateInfo) {
-						       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		result = radv_CreateRenderPass2(radv_device_to_handle(device),
+						&(VkRenderPassCreateInfo2) {
+						       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 						       .attachmentCount = 1,
-						       .pAttachments = &(VkAttachmentDescription) {
+						       .pAttachments = &(VkAttachmentDescription2) {
+							       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 							       .format = VK_FORMAT_S8_UINT,
 							       .loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 							       .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -1122,13 +1134,15 @@ radv_device_init_meta_blit_stencil(struct radv_device *device, bool on_demand)
 							       .finalLayout = layout,
 						       },
 						       .subpassCount = 1,
-						       .pSubpasses = &(VkSubpassDescription) {
+						       .pSubpasses = &(VkSubpassDescription2) {
+							       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 							       .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 							       .inputAttachmentCount = 0,
 							       .colorAttachmentCount = 0,
 							       .pColorAttachments = NULL,
 							       .pResolveAttachments = NULL,
-							       .pDepthStencilAttachment = &(VkAttachmentReference) {
+							       .pDepthStencilAttachment = &(VkAttachmentReference2) {
+								       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 								       .attachment = 0,
 								       .layout = layout,
 							       },
@@ -1136,8 +1150,9 @@ radv_device_init_meta_blit_stencil(struct radv_device *device, bool on_demand)
 							       .pPreserveAttachments = NULL,
 						       },
 						       .dependencyCount = 2,
-						       .pDependencies = (VkSubpassDependency[]) {
+						       .pDependencies = (VkSubpassDependency2[]) {
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = VK_SUBPASS_EXTERNAL,
 									.dstSubpass = 0,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -1147,6 +1162,7 @@ radv_device_init_meta_blit_stencil(struct radv_device *device, bool on_demand)
 									.dependencyFlags = 0
 								},
 								{
+									.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 									.srcSubpass = 0,
 									.dstSubpass = VK_SUBPASS_EXTERNAL,
 									.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,

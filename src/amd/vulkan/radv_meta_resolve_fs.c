@@ -190,11 +190,12 @@ create_resolve_pipeline(struct radv_device *device,
 
 	for (unsigned dst_layout = 0; dst_layout < RADV_META_DST_LAYOUT_COUNT; ++dst_layout) {
 		VkImageLayout layout = radv_meta_dst_layout_to_layout(dst_layout);
-		result = radv_CreateRenderPass(radv_device_to_handle(device),
-					&(VkRenderPassCreateInfo) {
-						.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		result = radv_CreateRenderPass2(radv_device_to_handle(device),
+					&(VkRenderPassCreateInfo2) {
+						.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 						.attachmentCount = 1,
-						.pAttachments = &(VkAttachmentDescription) {
+						.pAttachments = &(VkAttachmentDescription2) {
+							.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 							.format = format,
 							.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD,
 							.storeOp = VK_ATTACHMENT_STORE_OP_STORE,
@@ -202,16 +203,19 @@ create_resolve_pipeline(struct radv_device *device,
 							.finalLayout = layout,
 						},
 						.subpassCount = 1,
-						.pSubpasses = &(VkSubpassDescription) {
+						.pSubpasses = &(VkSubpassDescription2) {
+							.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
 							.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 							.inputAttachmentCount = 0,
 							.colorAttachmentCount = 1,
-							.pColorAttachments = &(VkAttachmentReference) {
+							.pColorAttachments = &(VkAttachmentReference2) {
+								.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 								.attachment = 0,
 								.layout = layout,
 							},
 						.pResolveAttachments = NULL,
-						.pDepthStencilAttachment = &(VkAttachmentReference) {
+						.pDepthStencilAttachment = &(VkAttachmentReference2) {
+							.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 							.attachment = VK_ATTACHMENT_UNUSED,
 							.layout = VK_IMAGE_LAYOUT_GENERAL,
 						},
@@ -219,8 +223,9 @@ create_resolve_pipeline(struct radv_device *device,
 						.pPreserveAttachments = NULL,
 					},
 					.dependencyCount = 2,
-					.pDependencies = (VkSubpassDependency[]) {
+					.pDependencies = (VkSubpassDependency2[]) {
 						{
+							.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 							.srcSubpass = VK_SUBPASS_EXTERNAL,
 							.dstSubpass = 0,
 							.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -230,6 +235,7 @@ create_resolve_pipeline(struct radv_device *device,
 							.dependencyFlags = 0
 						},
 						{
+							.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 							.srcSubpass = 0,
 							.dstSubpass = VK_SUBPASS_EXTERNAL,
 							.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -523,11 +529,12 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device,
 	}
 
 	if (!*render_pass) {
-		result = radv_CreateRenderPass(radv_device_to_handle(device),
-					       &(VkRenderPassCreateInfo) {
-							.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+		result = radv_CreateRenderPass2(radv_device_to_handle(device),
+						&(VkRenderPassCreateInfo2) {
+							.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
 							.attachmentCount = 1,
-							.pAttachments = &(VkAttachmentDescription) {
+							.pAttachments = &(VkAttachmentDescription2) {
+								.sType = VK_STRUCTURE_TYPE_ATTACHMENT_DESCRIPTION_2,
 								.format = src_format,
 								.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
 								.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
@@ -537,13 +544,15 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device,
 								.finalLayout = VK_IMAGE_LAYOUT_GENERAL,
 							},
 							.subpassCount = 1,
-							.pSubpasses = &(VkSubpassDescription) {
+							.pSubpasses = &(VkSubpassDescription2) {
+								.sType = VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_2,
 								.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
 								.inputAttachmentCount = 0,
 								.colorAttachmentCount = 0,
 								.pColorAttachments = NULL,
 							.pResolveAttachments = NULL,
-							.pDepthStencilAttachment = &(VkAttachmentReference) {
+							.pDepthStencilAttachment = &(VkAttachmentReference2) {
+								.sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 								.attachment = 0,
 								.layout = VK_IMAGE_LAYOUT_GENERAL,
 							},
@@ -551,8 +560,9 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device,
 							.pPreserveAttachments = NULL,
 						},
 						.dependencyCount = 2,
-						.pDependencies = (VkSubpassDependency[]) {
+						.pDependencies = (VkSubpassDependency2[]) {
 							{
+								.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 								.srcSubpass = VK_SUBPASS_EXTERNAL,
 								.dstSubpass = 0,
 								.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
@@ -562,6 +572,7 @@ create_depth_stencil_resolve_pipeline(struct radv_device *device,
 								.dependencyFlags = 0
 							},
 							{
+								.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
 								.srcSubpass = 0,
 								.dstSubpass = VK_SUBPASS_EXTERNAL,
 								.srcStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
