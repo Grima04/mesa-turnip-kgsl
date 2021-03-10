@@ -62,11 +62,7 @@ _mesa_NewHashTable(void)
       }
 
       _mesa_hash_table_set_deleted_key(table->ht, uint_key(DELETED_KEY_VALUE));
-      /*
-       * Needs to be recursive, since the callback in _mesa_HashWalk()
-       * is allowed to call _mesa_HashRemove().
-       */
-      mtx_init(&table->Mutex, mtx_recursive);
+      mtx_init(&table->Mutex, mtx_plain);
    }
    else {
       _mesa_error_no_memory(__func__);
