@@ -1946,6 +1946,15 @@ st_precompile_shader_variant(struct st_context *st,
 
       memset(&key, 0, sizeof(key));
 
+      if (st->ctx->API == API_OPENGL_COMPAT &&
+          st->clamp_vert_color_in_shader &&
+          (prog->info.outputs_written & (VARYING_SLOT_COL0 |
+                                         VARYING_SLOT_COL1 |
+                                         VARYING_SLOT_BFC0 |
+                                         VARYING_SLOT_BFC1))) {
+         key.clamp_color = true;
+      }
+
       key.st = st->has_shareable_shaders ? NULL : st;
       st_get_common_variant(st, p, &key);
       break;
