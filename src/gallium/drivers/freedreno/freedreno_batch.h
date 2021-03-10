@@ -285,6 +285,7 @@ void fd_batch_check_size(struct fd_batch *batch) assert_dt;
 
 uint32_t fd_batch_key_hash(const void *_key);
 bool fd_batch_key_equals(const void *_a, const void *_b);
+struct fd_batch_key * fd_batch_key_clone(void *mem_ctx, const struct fd_batch_key *key);
 
 /* not called directly: */
 void __fd_batch_describe(char* buf, const struct fd_batch *batch) assert_dt;

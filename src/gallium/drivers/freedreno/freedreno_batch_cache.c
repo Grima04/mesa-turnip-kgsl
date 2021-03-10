@@ -118,6 +118,15 @@ fd_batch_key_equals(const void *_a, const void *_b)
 		(memcmp(a->surf, b->surf, sizeof(a->surf[0]) * a->num_surfs) == 0);
 }
 
+struct fd_batch_key *
+fd_batch_key_clone(void *mem_ctx, const struct fd_batch_key *key)
+{
+	unsigned sz = sizeof(struct fd_batch_key) + (sizeof(key->surf[0]) * key->num_surfs);
+	struct fd_batch_key *new_key = rzalloc_size(mem_ctx, sz);
+	memcpy(new_key, key, sz);
+	return new_key;
+}
+
 void
 fd_bc_init(struct fd_batch_cache *cache)
 {
