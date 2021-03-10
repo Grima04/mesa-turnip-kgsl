@@ -81,7 +81,7 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 			"%s shader: %u inst, %u nops, %u non-nops, %u mov, %u cov, "
 			"%u dwords, %u last-baryf, %u half, %u full, %u constlen, "
 			"%u cat0, %u cat1, %u cat2, %u cat3, %u cat4, %u cat5, %u cat6, %u cat7, "
-			"%u sstall, %u (ss), %u (sy), %d max_sun, %d loops\n",
+			"%u sstall, %u (ss), %u (sy), %d waves, %d max_sun, %d loops\n",
 			ir3_shader_stage(v),
 			v->info.instrs_count,
 			v->info.nops_count,
@@ -103,6 +103,7 @@ dump_shader_info(struct ir3_shader_variant *v, struct pipe_debug_callback *debug
 			v->info.instrs_per_cat[7],
 			v->info.sstall,
 			v->info.ss, v->info.sy,
+			v->info.max_waves,
 			v->max_sun, v->loops);
 }
 
