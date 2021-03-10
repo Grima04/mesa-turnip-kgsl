@@ -1658,7 +1658,8 @@ radv_image_create(VkDevice _device, const struct radv_image_create_info *create_
 static void
 radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_device *device,
                                 VkFormat vk_format, const VkComponentMapping *components,
-                                bool is_storage_image, bool disable_compression, unsigned plane_id,
+                                bool is_storage_image, bool disable_compression,
+                                bool enable_compression, unsigned plane_id,
                                 unsigned descriptor_plane_id)
 {
    struct radv_image *image = iview->image;
@@ -1699,7 +1700,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
    }
 
    bool enable_write_compression = radv_image_use_dcc_image_stores(device, image);
-   if (is_storage_image && !enable_write_compression)
+   if (is_storage_image && !(enable_write_compression || enable_compression))
       disable_compression = true;
    si_set_mutable_tex_desc_fields(device, image, base_level_info, plane_id, iview->base_mip,
                                   iview->base_mip, blk_w, is_stencil, is_storage_image,
@@ -1898,13 +1899,16 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    iview->support_fast_clear = radv_image_view_can_fast_clear(device, iview);
 
    bool disable_compression = extra_create_info ? extra_create_info->disable_compression : false;
+   bool enable_compression = extra_create_info ? extra_create_info->enable_compression : false;
    for (unsigned i = 0;
         i < (iview->multiple_planes ? vk_format_get_plane_count(image->vk_format) : 1); ++i) {
       VkFormat format = vk_format_get_plane_format(iview->vk_format, i);
       radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, false,
-                                      disable_compression, iview->plane_id + i, i);
+                                      disable_compression, enable_compression, iview->plane_id + i,
+                                      i);
       radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, true,
-                                      disable_compression, iview->plane_id + i, i);
+                                      disable_compression, enable_compression, iview->plane_id + i,
+                                      i);
    }
 }
 

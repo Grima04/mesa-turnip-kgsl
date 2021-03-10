@@ -2175,6 +2175,7 @@ bool radv_android_gralloc_supports_format(VkFormat format, VkImageUsageFlagBits 
 
 struct radv_image_view_extra_create_info {
    bool disable_compression;
+   bool enable_compression;
 };
 
 void radv_image_view_init(struct radv_image_view *view, struct radv_device *device,
