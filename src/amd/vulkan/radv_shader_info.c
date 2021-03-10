@@ -132,8 +132,28 @@ gather_intrinsic_info(const nir_shader *nir, const nir_intrinsic_instr *instr,
 		      struct radv_shader_info *info)
 {
 	switch (instr->intrinsic) {
+	case nir_intrinsic_load_barycentric_sample:
+	case nir_intrinsic_load_barycentric_pixel:
+	case nir_intrinsic_load_barycentric_centroid: {
+		enum glsl_interp_mode mode = nir_intrinsic_interp_mode(instr);
+		switch (mode) {
+		case INTERP_MODE_NONE:
+		case INTERP_MODE_SMOOTH:
+		case INTERP_MODE_NOPERSPECTIVE:
+			info->ps.uses_persp_or_linear_interp = true;
+			break;
+		default:
+			break;
+		}
+		break;
+	}
+	case nir_intrinsic_load_barycentric_at_offset:
 	case nir_intrinsic_load_barycentric_at_sample:
-		info->ps.needs_sample_positions = true;
+		if (nir_intrinsic_interp_mode(instr) != INTERP_MODE_FLAT)
+			info->ps.uses_persp_or_linear_interp = true;
+
+		if (instr->intrinsic == nir_intrinsic_load_barycentric_at_sample)
+			info->ps.needs_sample_positions = true;
 		break;
 	case nir_intrinsic_load_draw_id:
 		info->vs.needs_draw_id = true;
