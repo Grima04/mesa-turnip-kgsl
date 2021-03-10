@@ -1708,7 +1708,7 @@ else
   asan_c_args = ['-DBUILT_WITH_ASAN=0']
 endif
 
-if host_machine.system() == 'windows'
+if build_machine.system() == 'windows'
   # Prefer the winflexbison versions, they're much easier to install and have
   # better windows support.
 
