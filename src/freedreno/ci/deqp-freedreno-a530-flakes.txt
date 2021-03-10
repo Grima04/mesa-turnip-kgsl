@@ -10,6 +10,7 @@ dEQP-GLES31.functional.ubo.2_level_struct_array.single_buffer.packed_instance_ar
 
 # unstable results once we enabled SMP -- some state not being reset reliably?
 dEQP-GLES3.functional.transform_feedback.array.interleaved.triangles.lowp_mat3x4
+dEQP-GLES3.functional.transform_feedback.basic_types.separate.triangles.lowp_float
 dEQP-GLES3.functional.transform_feedback.interpolation.smooth.highp_vec4_triangles_separate
 
 # These are in the xfails list (they usually do), but the random
