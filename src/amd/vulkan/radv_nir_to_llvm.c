@@ -224,9 +224,10 @@ radv_load_resource(struct ac_shader_abi *abi, LLVMValueRef index, unsigned desc_
    }
 
    desc_ptr = LLVMBuildGEP(ctx->ac.builder, desc_ptr, &offset, 1, "");
-   desc_ptr = ac_cast_ptr(&ctx->ac, desc_ptr, ctx->ac.v4i32);
+   desc_ptr = LLVMBuildPtrToInt(ctx->ac.builder, desc_ptr, ctx->ac.i32, "");
 
-   return desc_ptr;
+   LLVMValueRef res[] = {desc_ptr, ctx->ac.i32_0};
+   return ac_build_gather_values(&ctx->ac, res, 2);
 }
 
 static uint32_t
@@ -415,25 +416,29 @@ radv_load_base_vertex(struct ac_shader_abi *abi, bool non_indexed_is_zero)
 }
 
 static LLVMValueRef
+convert_pointer_to_64_bit(struct radv_shader_context *ctx, LLVMValueRef ptr, bool non_uniform)
+{
+   unsigned addr_space = AC_ADDR_SPACE_CONST_32BIT;
+   if (non_uniform) {
+      /* 32-bit seems to always use SMEM. addrspacecast from 32-bit -> 64-bit is broken. */
+      LLVMValueRef dwords[] = {ptr,
+                               LLVMConstInt(ctx->ac.i32, ctx->args->options->address32_hi, false)};
+      ptr = ac_build_gather_values(&ctx->ac, dwords, 2);
+      ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, ctx->ac.i64, "");
+      addr_space = AC_ADDR_SPACE_CONST;
+   }
+   return LLVMBuildIntToPtr(ctx->ac.builder, ptr, LLVMPointerType(ctx->ac.v4i32, addr_space), "");
+}
+
+static LLVMValueRef
 radv_load_ssbo(struct ac_shader_abi *abi, LLVMValueRef buffer_ptr, bool write, bool non_uniform)
 {
    struct radv_shader_context *ctx = radv_shader_context_from_abi(abi);
    LLVMValueRef result;
 
+   buffer_ptr = convert_pointer_to_64_bit(ctx, buffer_ptr, non_uniform);
    if (!non_uniform)
       LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
-
-   if (non_uniform &&
-       LLVMGetPointerAddressSpace(LLVMTypeOf(buffer_ptr)) == AC_ADDR_SPACE_CONST_32BIT) {
-      /* 32-bit seems to always use SMEM. addrspacecast from 32-bit -> 64-bit is broken. */
-      buffer_ptr = LLVMBuildPtrToInt(ctx->ac.builder, buffer_ptr, ctx->ac.i32, ""),
-      buffer_ptr = LLVMBuildZExt(ctx->ac.builder, buffer_ptr, ctx->ac.i64, "");
-      uint64_t hi = (uint64_t)ctx->args->options->address32_hi << 32;
-      buffer_ptr =
-         LLVMBuildOr(ctx->ac.builder, buffer_ptr, LLVMConstInt(ctx->ac.i64, hi, false), "");
-      buffer_ptr = LLVMBuildIntToPtr(ctx->ac.builder, buffer_ptr,
-                                     LLVMPointerType(ctx->ac.v4i32, AC_ADDR_SPACE_CONST), "");
-   }
 
    result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");
    LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
@@ -477,6 +482,7 @@ radv_load_ubo(struct ac_shader_abi *abi, unsigned desc_set, unsigned binding, bo
       }
    }
 
+   buffer_ptr = convert_pointer_to_64_bit(ctx, buffer_ptr, false);
    LLVMSetMetadata(buffer_ptr, ctx->ac.uniform_md_kind, ctx->ac.empty_md);
 
    result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");
