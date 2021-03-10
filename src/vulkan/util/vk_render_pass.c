@@ -21,6 +21,7 @@
  * IN THE SOFTWARE.
  */
 
+#include "vk_alloc.h"
 #include "vk_common_entrypoints.h"
 #include "vk_device.h"
 #include "vk_util.h"
@@ -51,13 +52,12 @@ vk_common_CreateRenderPass(VkDevice _device,
 {
    VK_FROM_HANDLE(vk_device, device, _device);
 
-   /* note: these counts shouldn't be excessively high, so allocating it all
-    * on the stack should be OK..
-    * also note preserve attachments aren't translated, currently unused
-    */
-   VkAttachmentDescription2 attachments[pCreateInfo->attachmentCount];
-   VkSubpassDescription2 subpasses[pCreateInfo->subpassCount];
-   VkSubpassDependency2 dependencies[pCreateInfo->dependencyCount];
+   VkRenderPassCreateInfo2 *create_info;
+   VkAttachmentDescription2 *attachments;
+   VkSubpassDescription2 *subpasses;
+   VkSubpassDependency2 *dependencies;
+   VkAttachmentReference2 *references;
+
    uint32_t reference_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       reference_count += pCreateInfo->pSubpasses[i].inputAttachmentCount;
@@ -67,8 +67,18 @@ vk_common_CreateRenderPass(VkDevice _device,
       if (pCreateInfo->pSubpasses[i].pDepthStencilAttachment)
          reference_count += 1;
    }
-   VkAttachmentReference2 reference[reference_count];
-   VkAttachmentReference2 *reference_ptr = reference;
+
+   VK_MULTIALLOC(ma);
+   vk_multialloc_add(&ma, &create_info, 1);
+   vk_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
+   vk_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
+   vk_multialloc_add(&ma, &dependencies, pCreateInfo->dependencyCount);
+   vk_multialloc_add(&ma, &references, reference_count);
+   if (!vk_multialloc_alloc2(&ma, &device->alloc, pAllocator,
+                             VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   VkAttachmentReference2 *reference_ptr = references;
 
    VkRenderPassMultiviewCreateInfo *multiview_info = NULL;
    vk_foreach_struct(ext, pCreateInfo->pNext) {
@@ -132,7 +142,7 @@ vk_common_CreateRenderPass(VkDevice _device,
       }
    }
 
-   assert(reference_ptr == reference + reference_count);
+   assert(reference_ptr == references + reference_count);
 
    for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
       dependencies[i] = (VkSubpassDependency2) {
@@ -152,7 +162,7 @@ vk_common_CreateRenderPass(VkDevice _device,
          dependencies[i].viewOffset = multiview_info->pViewOffsets[i];
    }
 
-   VkRenderPassCreateInfo2 create_info = {
+   *create_info = (VkRenderPassCreateInfo2) {
       .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2,
       .pNext = pCreateInfo->pNext,
       .flags = pCreateInfo->flags,
@@ -165,10 +175,15 @@ vk_common_CreateRenderPass(VkDevice _device,
    };
 
    if (multiview_info) {
-      create_info.correlatedViewMaskCount = multiview_info->correlationMaskCount;
-      create_info.pCorrelatedViewMasks = multiview_info->pCorrelationMasks;
+      create_info->correlatedViewMaskCount = multiview_info->correlationMaskCount;
+      create_info->pCorrelatedViewMasks = multiview_info->pCorrelationMasks;
    }
 
-   return device->dispatch_table.CreateRenderPass2(_device, &create_info,
-                                                   pAllocator, pRenderPass);
+   VkResult result =
+      device->dispatch_table.CreateRenderPass2(_device, create_info,
+                                               pAllocator, pRenderPass);
+
+   vk_free2(&device->alloc, pAllocator, create_info);
+
+   return result;
 }
