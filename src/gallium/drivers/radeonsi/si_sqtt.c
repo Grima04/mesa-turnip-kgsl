@@ -828,12 +828,13 @@ si_write_user_event(struct si_context* sctx, struct radeon_cmdbuf *rcs,
       struct rgp_sqtt_marker_user_event_with_length marker = { 0 };
       marker.user_event.identifier = RGP_SQTT_MARKER_IDENTIFIER_USER_EVENT;
       marker.user_event.data_type = type;
+      len = MIN2(1024, len);
       marker.length = align(len, 4);
 
       uint8_t *buffer = alloca(sizeof(marker) + marker.length);
-      memset(buffer, 0, sizeof(marker) + marker.length);
       memcpy(buffer, &marker, sizeof(marker));
       memcpy(buffer + sizeof(marker), str, len);
+      buffer[sizeof(marker) + len - 1] = '\0';
 
       si_emit_thread_trace_userdata(sctx, rcs, buffer, sizeof(marker) / 4 + marker.length / 4);
    }
