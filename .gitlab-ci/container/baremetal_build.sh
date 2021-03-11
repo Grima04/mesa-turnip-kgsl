@@ -23,6 +23,7 @@ BAREMETAL_EPHEMERAL=" \
         libexpat1-dev:$arch \
         libffi-dev:$arch \
         libgbm-dev:$arch \
+        libgl1-mesa-dev:$arch \
         libgles2-mesa-dev:$arch \
         libpciaccess-dev:$arch \
         libpcre3-dev:$arch \
