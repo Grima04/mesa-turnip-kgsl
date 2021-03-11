@@ -486,7 +486,8 @@ static bool radv_is_sampler_format_supported(VkFormat format, bool *linear_sampl
 	const struct util_format_description *desc = vk_format_description(format);
 	uint32_t num_format;
 	if (!desc || format == VK_FORMAT_UNDEFINED ||
-	    format == VK_FORMAT_R64_UINT || format == VK_FORMAT_R64_SINT)
+	    format == VK_FORMAT_R64_UINT || format == VK_FORMAT_R64_SINT ||
+	    format == VK_FORMAT_R64_SFLOAT)
 		return false;
 	num_format = radv_translate_tex_numformat(format, desc,
 						  vk_format_get_first_non_void_channel(format));
