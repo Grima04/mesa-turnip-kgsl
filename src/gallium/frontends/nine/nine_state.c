@@ -345,10 +345,16 @@ nine_context_is_worker( struct NineDevice9 *device )
 static inline DWORD
 check_multisample(struct NineDevice9 *device)
 {
-    DWORD *rs = device->context.rs;
-    DWORD new_value = device->context.rt[0] &&
-                      device->context.rt[0]->desc.MultiSampleType >= 1 &&
-                      rs[D3DRS_MULTISAMPLEANTIALIAS];
+    struct nine_context *context = &device->context;
+    DWORD *rs = context->rs;
+    struct NineSurface9 *rt0 = context->rt[0];
+    bool multisampled_target;
+    DWORD new_value;
+
+    multisampled_target = rt0 && rt0->desc.MultiSampleType >= 1;
+    if (rt0 && rt0->desc.Format == D3DFMT_NULL && context->ds)
+        multisampled_target = context->ds->desc.MultiSampleType >= 1;
+    new_value = (multisampled_target && rs[D3DRS_MULTISAMPLEANTIALIAS]) ? 1 : 0;
     if (rs[NINED3DRS_MULTISAMPLE] != new_value) {
         rs[NINED3DRS_MULTISAMPLE] = new_value;
         return NINE_STATE_RASTERIZER;
