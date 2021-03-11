@@ -72,7 +72,6 @@ VkResult genX(CreateQueryPool)(
    uint32_t n_passes = 0;
 #endif
    uint32_t data_offset = 0;
-   struct anv_query_pool *pool;
    VK_MULTIALLOC(ma);
    VkResult result;
 
@@ -90,7 +89,7 @@ VkResult genX(CreateQueryPool)(
     */
    uint32_t uint64s_per_slot = 0;
 
-   vk_multialloc_add(&ma, &pool, 1);
+   VK_MULTIALLOC_DECL(&ma, struct anv_query_pool, pool, 1);
 
    VkQueryPipelineStatisticFlags pipeline_statistics = 0;
    switch (pCreateInfo->queryType) {

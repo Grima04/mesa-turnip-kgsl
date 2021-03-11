@@ -306,12 +306,10 @@ VkResult anv_QueuePresentKHR(
        * using a threaded submission.
        */
       VK_MULTIALLOC(ma);
-
-      uint64_t *values;
-      uint32_t *syncobjs;
-
-      vk_multialloc_add(&ma, &values, pPresentInfo->waitSemaphoreCount);
-      vk_multialloc_add(&ma, &syncobjs, pPresentInfo->waitSemaphoreCount);
+      VK_MULTIALLOC_DECL(&ma, uint64_t, values,
+                              pPresentInfo->waitSemaphoreCount);
+      VK_MULTIALLOC_DECL(&ma, uint32_t, syncobjs,
+                              pPresentInfo->waitSemaphoreCount);
 
       if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
                                VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))

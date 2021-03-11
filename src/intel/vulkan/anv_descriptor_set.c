@@ -372,18 +372,16 @@ VkResult anv_CreateDescriptorSetLayout(
          immutable_sampler_count += pCreateInfo->pBindings[j].descriptorCount;
    }
 
-   struct anv_descriptor_set_layout *set_layout;
-   struct anv_descriptor_set_binding_layout *bindings;
-   struct anv_sampler **samplers;
-
    /* We need to allocate decriptor set layouts off the device allocator
     * with DEVICE scope because they are reference counted and may not be
     * destroyed when vkDestroyDescriptorSetLayout is called.
     */
    VK_MULTIALLOC(ma);
-   vk_multialloc_add(&ma, &set_layout, 1);
-   vk_multialloc_add(&ma, &bindings, max_binding + 1);
-   vk_multialloc_add(&ma, &samplers, immutable_sampler_count);
+   VK_MULTIALLOC_DECL(&ma, struct anv_descriptor_set_layout, set_layout, 1);
+   VK_MULTIALLOC_DECL(&ma, struct anv_descriptor_set_binding_layout,
+                           bindings, max_binding + 1);
+   VK_MULTIALLOC_DECL(&ma, struct anv_sampler *, samplers,
+                           immutable_sampler_count);
 
    if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
                             VK_SYSTEM_ALLOCATION_SCOPE_DEVICE))

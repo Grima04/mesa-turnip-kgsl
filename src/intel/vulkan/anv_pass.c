@@ -311,24 +311,22 @@ VkResult anv_CreateRenderPass2(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO_2_KHR);
 
-   struct anv_render_pass *pass;
-   struct anv_subpass *subpasses;
-   struct anv_render_pass_attachment *attachments;
-   enum anv_pipe_bits *subpass_flushes;
-
    VK_MULTIALLOC(ma);
-   vk_multialloc_add(&ma, &pass, 1);
-   vk_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
-   vk_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
-   vk_multialloc_add(&ma, &subpass_flushes, pCreateInfo->subpassCount + 1);
+   VK_MULTIALLOC_DECL(&ma, struct anv_render_pass, pass, 1);
+   VK_MULTIALLOC_DECL(&ma, struct anv_subpass, subpasses,
+                           pCreateInfo->subpassCount);
+   VK_MULTIALLOC_DECL(&ma, struct anv_render_pass_attachment, attachments,
+                           pCreateInfo->attachmentCount);
+   VK_MULTIALLOC_DECL(&ma, enum anv_pipe_bits, subpass_flushes,
+                           pCreateInfo->subpassCount + 1);
 
-   struct anv_subpass_attachment *subpass_attachments;
    uint32_t subpass_attachment_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       subpass_attachment_count +=
          num_subpass_attachments2(&pCreateInfo->pSubpasses[i]);
    }
-   vk_multialloc_add(&ma, &subpass_attachments, subpass_attachment_count);
+   VK_MULTIALLOC_DECL(&ma, struct anv_subpass_attachment, subpass_attachments,
+                      subpass_attachment_count);
 
    if (!vk_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))

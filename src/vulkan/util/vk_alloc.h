@@ -182,6 +182,13 @@ _vk_multialloc_add(struct vk_multialloc *ma,
 #define vk_multialloc_add(_ma, _ptr, _count) \
    vk_multialloc_add_size(_ma, _ptr, (_count) * sizeof(**(_ptr)));
 
+#define VK_MULTIALLOC_DECL_SIZE(_ma, _type, _name, _size) \
+   _type *_name; \
+   vk_multialloc_add_size(_ma, &_name, _size);
+
+#define VK_MULTIALLOC_DECL(_ma, _type, _name, _count) \
+   VK_MULTIALLOC_DECL_SIZE(_ma, _type, _name, (_count) * sizeof(_type));
+
 static ALWAYS_INLINE void *
 vk_multialloc_alloc(struct vk_multialloc *ma,
                     const VkAllocationCallbacks *alloc,

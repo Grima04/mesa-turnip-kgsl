@@ -64,12 +64,6 @@ vk_common_CreateRenderPass(VkDevice _device,
 {
    VK_FROM_HANDLE(vk_device, device, _device);
 
-   VkRenderPassCreateInfo2 *create_info;
-   VkAttachmentDescription2 *attachments;
-   VkSubpassDescription2 *subpasses;
-   VkSubpassDependency2 *dependencies;
-   VkAttachmentReference2 *references;
-
    uint32_t reference_count = 0;
    for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
       reference_count += pCreateInfo->pSubpasses[i].inputAttachmentCount;
@@ -81,11 +75,15 @@ vk_common_CreateRenderPass(VkDevice _device,
    }
 
    VK_MULTIALLOC(ma);
-   vk_multialloc_add(&ma, &create_info, 1);
-   vk_multialloc_add(&ma, &subpasses, pCreateInfo->subpassCount);
-   vk_multialloc_add(&ma, &attachments, pCreateInfo->attachmentCount);
-   vk_multialloc_add(&ma, &dependencies, pCreateInfo->dependencyCount);
-   vk_multialloc_add(&ma, &references, reference_count);
+   VK_MULTIALLOC_DECL(&ma, VkRenderPassCreateInfo2, create_info, 1);
+   VK_MULTIALLOC_DECL(&ma, VkSubpassDescription2, subpasses,
+                           pCreateInfo->subpassCount);
+   VK_MULTIALLOC_DECL(&ma, VkAttachmentDescription2, attachments,
+                           pCreateInfo->attachmentCount);
+   VK_MULTIALLOC_DECL(&ma, VkSubpassDependency2, dependencies,
+                           pCreateInfo->dependencyCount);
+   VK_MULTIALLOC_DECL(&ma, VkAttachmentReference2, references,
+                           reference_count);
    if (!vk_multialloc_alloc2(&ma, &device->alloc, pAllocator,
                              VK_SYSTEM_ALLOCATION_SCOPE_COMMAND))
       return VK_ERROR_OUT_OF_HOST_MEMORY;
