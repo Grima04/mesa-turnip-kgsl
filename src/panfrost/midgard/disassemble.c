@@ -102,21 +102,6 @@ print_ld_st_opcode(FILE *fp, midgard_load_store_op op)
                 fprintf(fp, "ldst_op_%02X", op);
 }
 
-static char
-prefix_for_bits(unsigned bits)
-{
-        switch (bits) {
-        case 8:
-                return 'q';
-        case 16:
-                return 'h';
-        case 64:
-                return 'd';
-        default:
-                return 0;
-        }
-}
-
 static void
 validate_expand_mode(midgard_src_expand_mode expand_mode,
                      midgard_reg_mode reg_mode)
@@ -169,7 +154,7 @@ validate_expand_mode(midgard_src_expand_mode expand_mode,
 uint16_t midg_ever_written = 0;
 
 static void
-print_reg(FILE *fp, unsigned reg, unsigned bits)
+print_reg(FILE *fp, unsigned reg)
 {
         unsigned uniform_reg = 23 - reg;
         bool is_uniform = false;
@@ -191,11 +176,6 @@ print_reg(FILE *fp, unsigned reg, unsigned bits)
         if (is_uniform)
                 midg_stats.uniform_count =
                         MAX2(uniform_reg + 1, midg_stats.uniform_count);
-
-        char prefix = prefix_for_bits(bits);
-
-        if (prefix)
-                fputc(prefix, fp);
 
         fprintf(fp, "r%u", reg);
 }
@@ -551,7 +531,7 @@ print_vector_src(FILE *fp, unsigned src_binary,
 
         validate_expand_mode(src->expand_mode, mode);
 
-        print_reg(fp, reg, bits_for_mode_halved(mode, INPUT_EXPANDS(src->expand_mode)));
+        print_reg(fp, reg);
 
         print_vec_swizzle(fp, src->swizzle, src->expand_mode, mode, src_mask);
 
@@ -590,19 +570,10 @@ update_dest(unsigned reg)
 }
 
 static void
-print_dest(FILE *fp, unsigned reg, midgard_reg_mode mode, midgard_shrink_mode shrink_mode)
+print_dest(FILE *fp, unsigned reg)
 {
-        /* Depending on the lane width and shrink mode, we determine the type of
-         * destination addressed. Absent a shrink mode, we address just the
-         * type of the operation itself */
-
-        unsigned bits = bits_for_mode(mode);
-
-        if (shrink_mode != midgard_shrink_mode_none)
-                bits /= 2;
-
         update_dest(reg);
-        print_reg(fp, reg, bits);
+        print_reg(fp, reg);
 }
 
 /* For 16-bit+ masks, we read off from the 8-bit mask field. For 16-bit (vec8),
@@ -713,7 +684,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         uint8_t mask = alu_field->mask;
 
         /* First, print the destination */
-        print_dest(fp, reg_info->out_reg, mode, shrink_mode);
+        print_dest(fp, reg_info->out_reg);
 
         if (shrink_mode != midgard_shrink_mode_none) {
                 bool shrinkable = (mode != midgard_reg_mode_8);
@@ -775,7 +746,7 @@ print_scalar_src(FILE *fp, bool is_int, unsigned src_binary, unsigned reg)
 {
         midgard_scalar_alu_src *src = (midgard_scalar_alu_src *)&src_binary;
 
-        print_reg(fp, reg, src->full ? 32 : 16);
+        print_reg(fp, reg);
 
         unsigned c = src->component;
 
@@ -823,7 +794,7 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         fprintf(fp, " ");
 
         update_dest(reg_info->out_reg);
-        print_reg(fp, reg_info->out_reg, full ? 32 : 16);
+        print_reg(fp, reg_info->out_reg);
         unsigned c = alu_field->output_component;
 
         if (full) {
@@ -1328,9 +1299,6 @@ print_texture_reg_select(FILE *fp, uint8_t u, unsigned base)
         midgard_tex_register_select sel;
         memcpy(&sel, &u, sizeof(u));
 
-        if (!sel.full)
-                fprintf(fp, "h");
-
         fprintf(fp, "r%u", base + sel.select);
 
         unsigned component = sel.component;
@@ -1512,8 +1480,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->out_of_order)
                 fprintf(fp, ".ooo%u", texture->out_of_order);
 
-        fprintf(fp, " %sr%u", texture->out_full ? "" : "h",
-                        out_reg_base + texture->out_reg_select);
+        fprintf(fp, " r%u", out_reg_base + texture->out_reg_select);
         print_mask_4(fp, texture->mask, texture->out_upper);
         assert(!(texture->out_full && texture->out_upper));
 
@@ -1553,7 +1520,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         }
 
         print_vec_swizzle(fp, texture->swizzle, midgard_src_passthrough, midgard_reg_mode_32, 0xFF);
-        fprintf(fp, ", %sr%u", texture->in_reg_full ? "" : "h", in_reg_base + texture->in_reg_select);
+        fprintf(fp, ", r%u", in_reg_base + texture->in_reg_select);
         assert(!(texture->in_reg_full && texture->in_reg_upper));
 
         midgard_src_expand_mode exp =
@@ -1573,14 +1540,13 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->offset_register) {
                 fprintf(fp, " + ");
 
-                bool full = texture->offset & 1;
                 bool select = texture->offset & 2;
                 bool upper = texture->offset & 4;
                 unsigned swizzle = texture->offset >> 3;
                 midgard_src_expand_mode exp =
                         upper ? midgard_src_expand_high : midgard_src_passthrough;
 
-                fprintf(fp, "%sr%u", full ? "" : "h", in_reg_base + select);
+                fprintf(fp, "r%u", in_reg_base + select);
                 print_vec_swizzle(fp, swizzle, exp, midgard_reg_mode_32, 0xFF);
                 assert(!(texture->out_full && texture->out_upper));
 
