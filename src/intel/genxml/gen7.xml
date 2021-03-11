@@ -3788,10 +3788,17 @@
   </register>
 
   <register name="L3SQCREG1" length="1" num="0xb010">
-    <field name="Convert DC_UC" start="24" end="24" type="uint"/>
-    <field name="Convert IS_UC" start="25" end="25" type="uint"/>
-    <field name="Convert C_UC" start="26" end="26" type="uint"/>
-    <field name="Convert T_UC" start="27" end="27" type="uint"/>
+    <field name="L3SQ General Priority Credit Initialization" start="20" end="23" type="uint">
+      <value name="SQGPCI_DEFAULT" value="0x7"/>
+      <value name="BYT_SQGPCI_DEFAULT" value="0xd"/>
+    </field>
+    <field name="L3SQ High Priority Credit Initialization" start="16" end="19" type="uint">
+      <value name="SQHPCI_DEFAULT" value="0x3"/>
+    </field>
+    <field name="Convert DC_UC" start="24" end="24" type="bool"/>
+    <field name="Convert IS_UC" start="25" end="25" type="bool"/>
+    <field name="Convert C_UC" start="26" end="26" type="bool"/>
+    <field name="Convert T_UC" start="27" end="27" type="bool"/>
   </register>
 
   <register name="PS_INVOCATION_COUNT" length="2" num="0x2348">

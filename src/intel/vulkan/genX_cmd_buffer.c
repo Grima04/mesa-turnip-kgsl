@@ -1885,10 +1885,6 @@ genX(CmdExecuteCommands)(
    genX(cmd_buffer_emit_state_base_address)(primary);
 }
 
-#define IVB_L3SQCREG1_SQGHPCI_DEFAULT     0x00730000
-#define VLV_L3SQCREG1_SQGHPCI_DEFAULT     0x00d30000
-#define HSW_L3SQCREG1_SQGHPCI_DEFAULT     0x00610000
-
 /**
  * Program the hardware to use the specified L3 configuration.
  */
@@ -2011,11 +2007,15 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                    .ConvertDC_UC = !has_dc,
                    .ConvertIS_UC = !has_is,
                    .ConvertC_UC = !has_c,
-                   .ConvertT_UC = !has_t);
-   l3sqcr1 |=
-      GEN_IS_HASWELL ? HSW_L3SQCREG1_SQGHPCI_DEFAULT :
-      devinfo->is_baytrail ? VLV_L3SQCREG1_SQGHPCI_DEFAULT :
-      IVB_L3SQCREG1_SQGHPCI_DEFAULT;
+                   .ConvertT_UC = !has_t,
+#if GEN_IS_HASWELL
+                   .L3SQGeneralPriorityCreditInitialization = SQGPCI_DEFAULT,
+#else
+                   .L3SQGeneralPriorityCreditInitialization =
+                        devinfo->is_baytrail ? BYT_SQGPCI_DEFAULT :
+                                               SQGPCI_DEFAULT,
+#endif
+                   .L3SQHighPriorityCreditInitialization = SQHPCI_DEFAULT);
 
    anv_pack_struct(&l3cr2, GENX(L3CNTLREG2),
                    .SLMEnable = has_slm,
