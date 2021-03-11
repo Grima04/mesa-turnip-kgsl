@@ -807,8 +807,8 @@ emit_alu(compiler_context *ctx, nir_alu_instr *instr)
                 ALU_CASE_RTZ(i2f16, i2f_rte);
                 ALU_CASE_RTZ(u2f16, u2f_rte);
 
-                ALU_CASE(fsin, fsin);
-                ALU_CASE(fcos, fcos);
+                ALU_CASE(fsin, fsinpi);
+                ALU_CASE(fcos, fcospi);
 
                 /* We'll get 0 in the second arg, so:
                  * ~a = ~(a | 0) = nor(a, 0) */
@@ -2545,8 +2545,8 @@ max_bitsize_for_alu(midgard_instruction *ins)
         case midgard_alu_op_fsqrt:
         case midgard_alu_op_frcp:
         case midgard_alu_op_frsqrt:
-        case midgard_alu_op_fsin:
-        case midgard_alu_op_fcos:
+        case midgard_alu_op_fsinpi:
+        case midgard_alu_op_fcospi:
         case midgard_alu_op_fexp2:
         case midgard_alu_op_flog2:
                 max_bitsize = MAX2(max_bitsize, 32);

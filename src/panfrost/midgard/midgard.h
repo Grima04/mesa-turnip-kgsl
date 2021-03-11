@@ -77,133 +77,159 @@ enum {
  */
 
 typedef enum {
-        midgard_alu_op_fadd       = 0x10,
-        midgard_alu_op_fmul       = 0x14,
+        midgard_alu_op_fadd        = 0x10, /* round to even */
+        midgard_alu_op_fadd_rtz    = 0x11,
+        midgard_alu_op_fadd_rtn    = 0x12,
+        midgard_alu_op_fadd_rtp    = 0x13,
+        midgard_alu_op_fmul        = 0x14, /* round to even */
+        midgard_alu_op_fmul_rtz    = 0x15,
+        midgard_alu_op_fmul_rtn    = 0x16,
+        midgard_alu_op_fmul_rtp    = 0x17,
 
-        midgard_alu_op_fmin       = 0x28,
-        midgard_alu_op_fmax       = 0x2C,
+        midgard_alu_op_fmin        = 0x28, /* if an operand is NaN, propagate the other */
+        midgard_alu_op_fmin_nan    = 0x29, /* if an operand is NaN, propagate it */
+        midgard_alu_op_fabsmin     = 0x2A, /* min(abs(a,b)) */
+        midgard_alu_op_fabsmin_nan = 0x2B, /* min_nan(abs(a,b)) */
+        midgard_alu_op_fmax        = 0x2C, /* if an operand is NaN, propagate the other */
+        midgard_alu_op_fmax_nan    = 0x2D, /* if an operand is NaN, propagate it */
+        midgard_alu_op_fabsmax     = 0x2E, /* max(abs(a,b)) */
+        midgard_alu_op_fabsmax_nan = 0x2F, /* max_nan(abs(a,b)) */
 
-        midgard_alu_op_fmov       = 0x30, /* fmov_rte */
-        midgard_alu_op_fmov_rtz   = 0x31,
-        midgard_alu_op_fmov_rtn   = 0x32,
-        midgard_alu_op_fmov_rtp   = 0x33,
-        midgard_alu_op_froundeven = 0x34,
-        midgard_alu_op_ftrunc     = 0x35,
-        midgard_alu_op_ffloor     = 0x36,
-        midgard_alu_op_fceil      = 0x37,
-        midgard_alu_op_ffma       = 0x38,
-        midgard_alu_op_fdot3      = 0x3C,
-        midgard_alu_op_fdot3r     = 0x3D,
-        midgard_alu_op_fdot4      = 0x3E,
-        midgard_alu_op_freduce    = 0x3F,
+        midgard_alu_op_fmov        = 0x30, /* fmov_rte */
+        midgard_alu_op_fmov_rtz    = 0x31,
+        midgard_alu_op_fmov_rtn    = 0x32,
+        midgard_alu_op_fmov_rtp    = 0x33,
+        midgard_alu_op_froundeven  = 0x34,
+        midgard_alu_op_ftrunc      = 0x35,
+        midgard_alu_op_ffloor      = 0x36,
+        midgard_alu_op_fceil       = 0x37,
+        midgard_alu_op_ffma        = 0x38, /* rte */
+        midgard_alu_op_ffma_rtz    = 0x39,
+        midgard_alu_op_ffma_rtn    = 0x3A,
+        midgard_alu_op_ffma_rtp    = 0x3B,
+        midgard_alu_op_fdot3       = 0x3C,
+        midgard_alu_op_fdot3r      = 0x3D,
+        midgard_alu_op_fdot4       = 0x3E,
+        midgard_alu_op_freduce     = 0x3F,
 
-        midgard_alu_op_iadd       = 0x40,
-        midgard_alu_op_ishladd    = 0x41, /* a + (b<<1) */
-        midgard_alu_op_isub       = 0x46,
-        midgard_alu_op_iaddsat    = 0x48,
-        midgard_alu_op_uaddsat    = 0x49,
-        midgard_alu_op_isubsat    = 0x4E,
-        midgard_alu_op_usubsat    = 0x4F,
+        midgard_alu_op_iadd        = 0x40,
+        midgard_alu_op_ishladd     = 0x41, /* (a<<1) + b */
+        midgard_alu_op_isub        = 0x46,
+        midgard_alu_op_ishlsub     = 0x47, /* (a<<1) - b */
+        midgard_alu_op_iaddsat     = 0x48,
+        midgard_alu_op_uaddsat     = 0x49,
+        midgard_alu_op_isubsat     = 0x4E,
+        midgard_alu_op_usubsat     = 0x4F,
 
-        midgard_alu_op_imul       = 0x58,
+        midgard_alu_op_imul        = 0x58,
+        /* Multiplies two ints and stores the result in the next larger datasize. */
+        midgard_alu_op_iwmul       = 0x59, /* sint * sint = sint */
+        midgard_alu_op_uwmul       = 0x5A, /* uint * uint = uint */
+        midgard_alu_op_iuwmul      = 0x5B, /* sint * uint = sint */
 
-        midgard_alu_op_imin       = 0x60,
-        midgard_alu_op_umin       = 0x61,
-        midgard_alu_op_imax       = 0x62,
-        midgard_alu_op_umax       = 0x63,
-        midgard_alu_op_ihadd      = 0x64,
-        midgard_alu_op_uhadd      = 0x65,
-        midgard_alu_op_irhadd     = 0x66,
-        midgard_alu_op_urhadd     = 0x67,
-        midgard_alu_op_iasr       = 0x68,
-        midgard_alu_op_ilsr       = 0x69,
-        midgard_alu_op_ishl       = 0x6E,
+        midgard_alu_op_imin        = 0x60,
+        midgard_alu_op_umin        = 0x61,
+        midgard_alu_op_imax        = 0x62,
+        midgard_alu_op_umax        = 0x63,
+        midgard_alu_op_iavg        = 0x64,
+        midgard_alu_op_uavg        = 0x65,
+        midgard_alu_op_iravg       = 0x66,
+        midgard_alu_op_uravg       = 0x67,
+        midgard_alu_op_iasr        = 0x68,
+        midgard_alu_op_ilsr        = 0x69,
+        midgard_alu_op_ishlsat     = 0x6C,
+        midgard_alu_op_ushlsat     = 0x6D,
+        midgard_alu_op_ishl        = 0x6E,
 
-        midgard_alu_op_iand       = 0x70,
-        midgard_alu_op_ior        = 0x71,
-        midgard_alu_op_inand      = 0x72, /* ~(a & b), for inot let a = b */
-        midgard_alu_op_inor       = 0x73, /* ~(a | b) */
-        midgard_alu_op_iandnot    = 0x74, /* (a & ~b), used for not/b2f */
-        midgard_alu_op_iornot     = 0x75, /* (a | ~b) */
-        midgard_alu_op_ixor       = 0x76,
-        midgard_alu_op_inxor      = 0x77, /* ~(a & b) */
-        midgard_alu_op_iclz       = 0x78, /* Number of zeroes on left */
-        midgard_alu_op_ipopcnt    = 0x7A, /* Population count */
-        midgard_alu_op_imov       = 0x7B,
-        midgard_alu_op_iabsdiff   = 0x7C,
-        midgard_alu_op_uabsdiff   = 0x7D,
-        midgard_alu_op_ichoose    = 0x7E, /* vector, component number - dupe for shuffle() */
+        midgard_alu_op_iand        = 0x70,
+        midgard_alu_op_ior         = 0x71,
+        midgard_alu_op_inand       = 0x72, /* ~(a & b), for inot let a = b */
+        midgard_alu_op_inor        = 0x73, /* ~(a | b) */
+        midgard_alu_op_iandnot     = 0x74, /* (a & ~b), used for not/b2f */
+        midgard_alu_op_iornot      = 0x75, /* (a | ~b) */
+        midgard_alu_op_ixor        = 0x76,
+        midgard_alu_op_inxor       = 0x77, /* ~(a ^ b) */
+        midgard_alu_op_iclz        = 0x78, /* Number of zeroes on left */
+        midgard_alu_op_ipopcnt     = 0x7A, /* Population count */
+        midgard_alu_op_imov        = 0x7B,
+        midgard_alu_op_iabsdiff    = 0x7C,
+        midgard_alu_op_uabsdiff    = 0x7D,
+        midgard_alu_op_ichoose     = 0x7E, /* vector, component number - dupe for shuffle() */
 
-        midgard_alu_op_feq        = 0x80,
-        midgard_alu_op_fne        = 0x81,
-        midgard_alu_op_flt        = 0x82,
-        midgard_alu_op_fle        = 0x83,
-        midgard_alu_op_fball_eq   = 0x88,
-        midgard_alu_op_fball_neq  = 0x89,
-        midgard_alu_op_fball_lt   = 0x8A, /* all(lessThan(.., ..)) */
-        midgard_alu_op_fball_lte  = 0x8B, /* all(lessThanEqual(.., ..)) */
+        midgard_alu_op_feq         = 0x80,
+        midgard_alu_op_fne         = 0x81,
+        midgard_alu_op_flt         = 0x82,
+        midgard_alu_op_fle         = 0x83,
+        midgard_alu_op_fball_eq    = 0x88,
+        midgard_alu_op_fball_neq   = 0x89,
+        midgard_alu_op_fball_lt    = 0x8A, /* all(lessThan(.., ..)) */
+        midgard_alu_op_fball_lte   = 0x8B, /* all(lessThanEqual(.., ..)) */
 
-        midgard_alu_op_fbany_eq   = 0x90,
-        midgard_alu_op_fbany_neq  = 0x91,
-        midgard_alu_op_fbany_lt   = 0x92, /* any(lessThan(.., ..)) */
-        midgard_alu_op_fbany_lte  = 0x93, /* any(lessThanEqual(.., ..)) */
+        midgard_alu_op_fbany_eq    = 0x90,
+        midgard_alu_op_fbany_neq   = 0x91,
+        midgard_alu_op_fbany_lt    = 0x92, /* any(lessThan(.., ..)) */
+        midgard_alu_op_fbany_lte   = 0x93, /* any(lessThanEqual(.., ..)) */
 
-        midgard_alu_op_f2i_rte    = 0x98,
-        midgard_alu_op_f2i_rtz    = 0x99,
-        midgard_alu_op_f2i_rtn    = 0x9A,
-        midgard_alu_op_f2i_rtp    = 0x9B,
-        midgard_alu_op_f2u_rte    = 0x9C,
-        midgard_alu_op_f2u_rtz    = 0x9D,
-        midgard_alu_op_f2u_rtn    = 0x9E,
-        midgard_alu_op_f2u_rtp    = 0x9F,
+        midgard_alu_op_f2i_rte     = 0x98,
+        midgard_alu_op_f2i_rtz     = 0x99,
+        midgard_alu_op_f2i_rtn     = 0x9A,
+        midgard_alu_op_f2i_rtp     = 0x9B,
+        midgard_alu_op_f2u_rte     = 0x9C,
+        midgard_alu_op_f2u_rtz     = 0x9D,
+        midgard_alu_op_f2u_rtn     = 0x9E,
+        midgard_alu_op_f2u_rtp     = 0x9F,
 
-        midgard_alu_op_ieq        = 0xA0,
-        midgard_alu_op_ine        = 0xA1,
-        midgard_alu_op_ult        = 0xA2,
-        midgard_alu_op_ule        = 0xA3,
-        midgard_alu_op_ilt        = 0xA4,
-        midgard_alu_op_ile        = 0xA5,
-        midgard_alu_op_iball_eq   = 0xA8,
-        midgard_alu_op_iball_neq  = 0xA9,
-        midgard_alu_op_uball_lt   = 0xAA,
-        midgard_alu_op_uball_lte  = 0xAB,
-        midgard_alu_op_iball_lt   = 0xAC,
-        midgard_alu_op_iball_lte  = 0xAD,
+        midgard_alu_op_ieq         = 0xA0,
+        midgard_alu_op_ine         = 0xA1,
+        midgard_alu_op_ult         = 0xA2,
+        midgard_alu_op_ule         = 0xA3,
+        midgard_alu_op_ilt         = 0xA4,
+        midgard_alu_op_ile         = 0xA5,
+        midgard_alu_op_iball_eq    = 0xA8,
+        midgard_alu_op_iball_neq   = 0xA9,
+        midgard_alu_op_uball_lt    = 0xAA,
+        midgard_alu_op_uball_lte   = 0xAB,
+        midgard_alu_op_iball_lt    = 0xAC,
+        midgard_alu_op_iball_lte   = 0xAD,
 
-        midgard_alu_op_ibany_eq   = 0xB0,
-        midgard_alu_op_ibany_neq  = 0xB1,
-        midgard_alu_op_ubany_lt   = 0xB2,
-        midgard_alu_op_ubany_lte  = 0xB3,
-        midgard_alu_op_ibany_lt   = 0xB4, /* any(lessThan(.., ..)) */
-        midgard_alu_op_ibany_lte  = 0xB5, /* any(lessThanEqual(.., ..)) */
-        midgard_alu_op_i2f_rte    = 0xB8,
-        midgard_alu_op_i2f_rtz    = 0xB9,
-        midgard_alu_op_i2f_rtn    = 0xBA,
-        midgard_alu_op_i2f_rtp    = 0xBB,
-        midgard_alu_op_u2f_rte    = 0xBC,
-        midgard_alu_op_u2f_rtz    = 0xBD,
-        midgard_alu_op_u2f_rtn    = 0xBE,
-        midgard_alu_op_u2f_rtp    = 0xBF,
+        midgard_alu_op_ibany_eq    = 0xB0,
+        midgard_alu_op_ibany_neq   = 0xB1,
+        midgard_alu_op_ubany_lt    = 0xB2,
+        midgard_alu_op_ubany_lte   = 0xB3,
+        midgard_alu_op_ibany_lt    = 0xB4, /* any(lessThan(.., ..)) */
+        midgard_alu_op_ibany_lte   = 0xB5, /* any(lessThanEqual(.., ..)) */
+        midgard_alu_op_i2f_rte     = 0xB8,
+        midgard_alu_op_i2f_rtz     = 0xB9,
+        midgard_alu_op_i2f_rtn     = 0xBA,
+        midgard_alu_op_i2f_rtp     = 0xBB,
+        midgard_alu_op_u2f_rte     = 0xBC,
+        midgard_alu_op_u2f_rtz     = 0xBD,
+        midgard_alu_op_u2f_rtn     = 0xBE,
+        midgard_alu_op_u2f_rtp     = 0xBF,
 
-        midgard_alu_op_icsel_v    = 0xC0, /* condition code r31 */
-        midgard_alu_op_icsel      = 0xC1, /* condition code r31.w */
-        midgard_alu_op_fcsel_v    = 0xC4,
-        midgard_alu_op_fcsel      = 0xC5,
-        midgard_alu_op_fround     = 0xC6,
+        /* All csel* instructions use as a condition the output of the previous
+         * vector or scalar unit, thus it must run on the second pipeline stage
+         * and be scheduled to the same bundle as the opcode that it uses as a
+         * condition. */
+        midgard_alu_op_icsel_v     = 0xC0,
+        midgard_alu_op_icsel       = 0xC1,
+        midgard_alu_op_fcsel_v     = 0xC4,
+        midgard_alu_op_fcsel       = 0xC5,
+        midgard_alu_op_froundaway  = 0xC6, /* round to nearest away */
 
-        midgard_alu_op_fatan_pt2  = 0xE8,
-        midgard_alu_op_fpow_pt1   = 0xEC,
-        midgard_alu_op_fpown_pt1  = 0xED,
-        midgard_alu_op_fpowr_pt1  = 0xEE,
+        midgard_alu_op_fatan2_pt2  = 0xE8,
+        midgard_alu_op_fpow_pt1    = 0xEC,
+        midgard_alu_op_fpown_pt1   = 0xED,
+        midgard_alu_op_fpowr_pt1   = 0xEE,
 
-        midgard_alu_op_frcp       = 0xF0,
-        midgard_alu_op_frsqrt     = 0xF2,
-        midgard_alu_op_fsqrt      = 0xF3,
-        midgard_alu_op_fexp2      = 0xF4,
-        midgard_alu_op_flog2      = 0xF5,
-        midgard_alu_op_fsin       = 0xF6,
-        midgard_alu_op_fcos       = 0xF7,
-        midgard_alu_op_fatan2_pt1 = 0xF9,
+        midgard_alu_op_frcp        = 0xF0,
+        midgard_alu_op_frsqrt      = 0xF2,
+        midgard_alu_op_fsqrt       = 0xF3,
+        midgard_alu_op_fexp2       = 0xF4,
+        midgard_alu_op_flog2       = 0xF5,
+        midgard_alu_op_fsinpi      = 0xF6, /* sin(pi * x) */
+        midgard_alu_op_fcospi      = 0xF7, /* cos(pi * x) */
+        midgard_alu_op_fatan2_pt1  = 0xF9,
 } midgard_alu_op;
 
 typedef enum {
