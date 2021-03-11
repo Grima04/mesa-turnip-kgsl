@@ -207,7 +207,7 @@ foreach testcase : asm_testcases
   _gen_num = testcase[1]
   _gen_folder = join_paths(meson.current_source_dir(), 'tests', _gen_num)
   test(
-    'i965_asm : ' + _gen_num, test_runner,
+    'i965_asm_' + _gen_num, test_runner,
     args : [
       '--i965_asm', i965_asm,
       '--gen_name', _gen_name,
