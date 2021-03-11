@@ -12201,8 +12201,6 @@ void select_program(Program *program,
          bld.barrier(aco_opcode::p_barrier,
                      memory_sync_info(storage_vmem_output, semantic_release, scope_device));
          bld.sopp(aco_opcode::s_sendmsg, bld.m0(ctx.gs_wave_id), -1, sendmsg_gs_done(false, false, 0));
-      } else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
-         write_tcs_tess_factors(&ctx);
       }
 
       if (ctx.stage == fragment_fs) {

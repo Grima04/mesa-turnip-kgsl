@@ -3454,6 +3454,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 			nir_opt_sink(nir[i], nir_move_load_input | nir_move_const_undef | nir_move_copies);
 			nir_opt_move(nir[i], nir_move_load_input | nir_move_const_undef | nir_move_copies);
 
+			/* Lower I/O intrinsics to memory instructions. */
+			bool io_to_mem = radv_lower_io_to_mem(device, nir[i], &infos[i], pipeline_key);
+
 			/* optimize the lowered ALU operations */
 			bool more_algebraic = true;
 			while (more_algebraic) {
@@ -3465,7 +3468,7 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				NIR_PASS(more_algebraic, nir[i], nir_opt_algebraic);
 			}
 
-			if (i == MESA_SHADER_COMPUTE)
+			if (io_to_mem || i == MESA_SHADER_COMPUTE)
 				NIR_PASS_V(nir[i], nir_opt_offsets);
 
 			/* Do late algebraic optimization to turn add(a,

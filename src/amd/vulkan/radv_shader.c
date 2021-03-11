@@ -40,6 +40,7 @@
 #include "sid.h"
 #include "ac_binary.h"
 #include "ac_llvm_util.h"
+#include "ac_nir.h"
 #include "ac_nir_to_llvm.h"
 #include "ac_rtld.h"
 #include "vk_format.h"
@@ -759,6 +760,77 @@ radv_lower_io(struct radv_device *device, nir_shader *nir)
 		   nir_var_shader_in | nir_var_shader_out);
 }
 
+bool
+radv_lower_io_to_mem(struct radv_device *device, struct nir_shader *nir,
+                     struct radv_shader_info *info, const struct radv_pipeline_key *pl_key)
+{
+	bool llvm = radv_use_llvm_for_stage(device, nir->info.stage);
+
+	if (nir->info.stage == MESA_SHADER_VERTEX) {
+		if (info->vs.as_ls) {
+			ac_nir_lower_ls_outputs_to_mem(
+				nir,
+				info->vs.tcs_in_out_eq,
+				info->vs.tcs_temp_only_input_mask,
+				info->vs.num_linked_outputs);
+			return true;
+		} else if (info->vs.as_es) {
+			ac_nir_lower_es_outputs_to_mem(
+				nir,
+				device->physical_device->rad_info.chip_class,
+				info->vs.num_linked_outputs);
+			return true;
+		}
+	} else if (nir->info.stage == MESA_SHADER_TESS_CTRL) {
+		ac_nir_lower_hs_inputs_to_mem(
+			nir,
+			info->vs.tcs_in_out_eq,
+			info->tcs.num_linked_inputs);
+		ac_nir_lower_hs_outputs_to_mem(
+			nir, device->physical_device->rad_info.chip_class,
+			info->tcs.tes_reads_tess_factors,
+			llvm ? UINT64_MAX : info->tcs.tes_inputs_read,
+			llvm ? UINT64_MAX : info->tcs.tes_patch_inputs_read,
+			info->tcs.num_linked_inputs,
+			info->tcs.num_linked_outputs,
+			info->tcs.num_linked_patch_outputs,
+			true);
+		ac_nir_lower_tess_to_const(
+			nir,
+			pl_key->tess_input_vertices,
+			info->num_tess_patches,
+			ac_nir_lower_patch_vtx_in | ac_nir_lower_num_patches);
+
+		return true;
+	} else if (nir->info.stage == MESA_SHADER_TESS_EVAL) {
+		ac_nir_lower_tes_inputs_to_mem(
+			nir,
+			info->tes.num_linked_inputs,
+			info->tes.num_linked_patch_inputs);
+		ac_nir_lower_tess_to_const(
+			nir,
+			nir->info.tess.tcs_vertices_out,
+			info->num_tess_patches,
+			ac_nir_lower_patch_vtx_in | ac_nir_lower_num_patches);
+
+		if (info->tes.as_es) {
+			ac_nir_lower_es_outputs_to_mem(
+				nir,
+				device->physical_device->rad_info.chip_class,
+				info->tes.num_linked_outputs);
+		}
+
+		return true;
+	} else if (nir->info.stage == MESA_SHADER_GEOMETRY) {
+		ac_nir_lower_gs_inputs_to_mem(
+			nir,
+			device->physical_device->rad_info.chip_class,
+			info->gs.num_linked_inputs);
+		return true;
+	}
+
+	return false;
+}
 
 static void *
 radv_alloc_shader_memory(struct radv_device *device,
