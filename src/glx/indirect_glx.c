@@ -230,30 +230,6 @@ indirect_wait_x(struct glx_context *gc)
 }
 
 static void
-indirect_use_x_font(struct glx_context *gc,
-		    Font font, int first, int count, int listBase)
-{
-   xGLXUseXFontReq *req;
-   Display *dpy = gc->currentDpy;
-
-   /* Flush any pending commands out */
-   __glXFlushRenderBuffer(gc, gc->pc);
-
-   /* Send the glXUseFont request */
-   LockDisplay(dpy);
-   GetReq(GLXUseXFont, req);
-   req->reqType = gc->majorOpcode;
-   req->glxCode = X_GLXUseXFont;
-   req->contextTag = gc->currentContextTag;
-   req->font = font;
-   req->first = first;
-   req->count = count;
-   req->listBase = listBase;
-   UnlockDisplay(dpy);
-   SyncHandle();
-}
-
-static void
 indirect_bind_tex_image(Display * dpy,
 			GLXDrawable drawable,
 			int buffer, const int *attrib_list)
@@ -342,7 +318,6 @@ static const struct glx_context_vtable indirect_context_vtable = {
    .unbind              = indirect_unbind_context,
    .wait_gl             = indirect_wait_gl,
    .wait_x              = indirect_wait_x,
-   .use_x_font          = indirect_use_x_font,
    .bind_tex_image      = indirect_bind_tex_image,
    .release_tex_image   = indirect_release_tex_image,
    .get_proc_address    = NULL,

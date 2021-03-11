@@ -227,8 +227,6 @@ struct glx_context_vtable {
    void (*unbind)(struct glx_context *context, struct glx_context *new_ctx);
    void (*wait_gl)(struct glx_context *ctx);
    void (*wait_x)(struct glx_context *ctx);
-   void (*use_x_font)(struct glx_context *ctx,
-		      Font font, int first, int count, int listBase);
    void (*bind_tex_image)(Display * dpy,
 			  GLXDrawable drawable,
 			  int buffer, const int *attrib_list);

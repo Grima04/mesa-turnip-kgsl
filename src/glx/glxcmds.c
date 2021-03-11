@@ -583,9 +583,31 @@ _GLX_PUBLIC void
 glXUseXFont(Font font, int first, int count, int listBase)
 {
    struct glx_context *gc = __glXGetCurrentContext();
+   xGLXUseXFontReq *req;
+   Display *dpy = gc->currentDpy;
 
-   if (gc->vtable->use_x_font)
-      gc->vtable->use_x_font(gc, font, first, count, listBase);
+#ifdef GLX_DIRECT_RENDERING
+   if (gc->isDirect) {
+      DRI_glXUseXFont(gc, font, first, count, listBase);
+      return;
+   }
+#endif
+
+   /* Flush any pending commands out */
+   __glXFlushRenderBuffer(gc, gc->pc);
+
+   /* Send the glXUseFont request */
+   LockDisplay(dpy);
+   GetReq(GLXUseXFont, req);
+   req->reqType = gc->majorOpcode;
+   req->glxCode = X_GLXUseXFont;
+   req->contextTag = gc->currentContextTag;
+   req->font = font;
+   req->first = first;
+   req->count = count;
+   req->listBase = listBase;
+   UnlockDisplay(dpy);
+   SyncHandle();
 }
 
 /************************************************************************/

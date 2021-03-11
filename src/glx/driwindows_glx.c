@@ -150,7 +150,6 @@ static const struct glx_context_vtable driwindows_context_vtable = {
    .unbind              = driwindows_unbind_context,
    .wait_gl             = NULL,
    .wait_x              = NULL,
-   .use_x_font          = DRI_glXUseXFont,
    .bind_tex_image      = driwindows_bind_tex_image,
    .release_tex_image   = driwindows_release_tex_image,
    .get_proc_address    = NULL,
