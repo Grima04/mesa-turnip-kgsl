@@ -1759,6 +1759,7 @@ bool combine_ordering_test(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       new_instr = static_cast<Instruction *>(vop3);
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_op, Format::VOPC, 2, 1);
+      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = Operand(op[0]);
    new_instr->operands[1] = Operand(op[1]);
@@ -1831,6 +1832,7 @@ bool combine_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       new_instr = new_vop3;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_op, Format::VOPC, 2, 1);
+      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = cmp->operands[0];
    new_instr->operands[1] = cmp->operands[1];
@@ -1950,6 +1952,7 @@ bool combine_constant_comparison_ordering(opt_ctx &ctx, aco_ptr<Instruction>& in
       new_instr = new_vop3;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_op, Format::VOPC, 2, 1);
+      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = cmp->operands[0];
    new_instr->operands[1] = cmp->operands[1];
@@ -2011,6 +2014,7 @@ bool combine_inverse_comparison(opt_ctx &ctx, aco_ptr<Instruction>& instr)
       new_instr = new_sdwa;
    } else {
       new_instr = create_instruction<VOPC_instruction>(new_opcode, Format::VOPC, 2, 1);
+      instr->definitions[0].setHint(vcc);
    }
    new_instr->operands[0] = cmp->operands[0];
    new_instr->operands[1] = cmp->operands[1];
