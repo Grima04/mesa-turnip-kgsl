@@ -43,6 +43,15 @@
 
 #define DEFINE_CASE(define, str) case define: { fprintf(fp, str); break; }
 
+/* These are not mapped to hardware values, they just represent the possible
+ * implicit arg modifiers that some midgard opcodes have, which can be decoded
+ * from the opcodes via midgard_{alu,ldst,tex}_special_arg_mod() */
+typedef enum {
+        midgard_arg_mod_none = 0,
+        midgard_arg_mod_inv,
+        midgard_arg_mod_x2,
+} midgard_special_arg_mod;
+
 static unsigned *midg_tags;
 static bool is_instruction_int = false;
 
@@ -201,6 +210,12 @@ static char *srcmod_names_int[4] = {
         ".lshift",
 };
 
+static char *argmod_names[3] = {
+        "",
+        ".inv",
+        ".x2",
+};
+
 static void
 print_outmod(FILE *fp, unsigned outmod, bool is_int)
 {
@@ -220,6 +235,24 @@ print_alu_outmod(FILE *fp, unsigned outmod, bool is_int, bool half)
                 fprintf(fp, ".shrink");
 
         print_outmod(fp, outmod, is_int);
+}
+
+/* arg == 0 (dest), arg == 1 (src1), arg == 2 (src2) */
+static midgard_special_arg_mod
+midgard_alu_special_arg_mod(midgard_alu_op op, unsigned arg) {
+        midgard_special_arg_mod mod = midgard_arg_mod_none;
+
+        switch (op) {
+        case midgard_alu_op_ishladd:
+        case midgard_alu_op_ishlsub:
+                if (arg == 1) mod = midgard_arg_mod_x2;
+                break;
+
+        default:
+                break;
+        }
+
+        return mod;
 }
 
 static void
@@ -525,7 +558,8 @@ static void
 print_vector_src(FILE *fp, unsigned src_binary,
                  midgard_reg_mode mode, unsigned reg,
                  midgard_shrink_mode shrink_mode,
-                 uint8_t src_mask, bool is_int)
+                 uint8_t src_mask, bool is_int,
+                 midgard_special_arg_mod arg_mod)
 {
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
 
@@ -534,6 +568,8 @@ print_vector_src(FILE *fp, unsigned src_binary,
         print_reg(fp, reg);
 
         print_vec_swizzle(fp, src->swizzle, src->expand_mode, mode, src_mask);
+
+        fprintf(fp, "%s", argmod_names[arg_mod]);
 
         print_srcmod(fp, is_int, INPUT_EXPANDS(src->expand_mode), src->mod, false);
 }
@@ -666,8 +702,9 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
         midgard_reg_mode mode = alu_field->reg_mode;
+        midgard_alu_op op = alu_field->op;
         unsigned shrink_mode = alu_field->shrink_mode;
-        bool is_int = midgard_is_integer_op(alu_field->op);
+        bool is_int = midgard_is_integer_op(op);
 
         /* For now, prefix instruction names with their unit, until we
          * understand how this works on a deeper level */
@@ -697,7 +734,7 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         /* Instructions like fdot4 do *not* replicate, ensure the
          * mask is of only a single component */
 
-        unsigned rep = GET_CHANNEL_COUNT(alu_opcode_props[alu_field->op].props);
+        unsigned rep = GET_CHANNEL_COUNT(alu_opcode_props[op].props);
 
         if (rep) {
                 unsigned comp_mask = condense_writemask(mask, bits_for_mode(mode));
@@ -721,8 +758,9 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         if (reg_info->src1_reg == 26)
                 print_vector_constants(fp, alu_field->src1, consts, alu_field);
         else {
+                midgard_special_arg_mod argmod = midgard_alu_special_arg_mod(op, 1);
                 print_vector_src(fp, alu_field->src1, mode, reg_info->src1_reg,
-                                 shrink_mode, src_mask, is_int);
+                                 shrink_mode, src_mask, is_int, argmod);
         }
 
         fprintf(fp, ", ");
@@ -733,8 +771,9 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         } else if (reg_info->src2_reg == 26) {
                 print_vector_constants(fp, alu_field->src2, consts, alu_field);
         } else {
+                midgard_special_arg_mod argmod = midgard_alu_special_arg_mod(op, 2);
                 print_vector_src(fp, alu_field->src2, mode, reg_info->src2_reg,
-                                 shrink_mode, src_mask, is_int);
+                                 shrink_mode, src_mask, is_int, argmod);
         }
 
         midg_stats.instruction_count++;
