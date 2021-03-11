@@ -3451,6 +3451,9 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				nir_opt_idiv_const(nir[i], 8);
 			nir_lower_idiv(nir[i], nir_lower_idiv_precise);
 
+			nir_opt_sink(nir[i], nir_move_load_input | nir_move_const_undef | nir_move_copies);
+			nir_opt_move(nir[i], nir_move_load_input | nir_move_const_undef | nir_move_copies);
+
 			/* optimize the lowered ALU operations */
 			bool more_algebraic = true;
 			while (more_algebraic) {
@@ -3458,8 +3461,12 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 				NIR_PASS_V(nir[i], nir_copy_prop);
 				NIR_PASS_V(nir[i], nir_opt_dce);
 				NIR_PASS_V(nir[i], nir_opt_constant_folding);
+				NIR_PASS_V(nir[i], nir_opt_cse);
 				NIR_PASS(more_algebraic, nir[i], nir_opt_algebraic);
 			}
+
+			if (i == MESA_SHADER_COMPUTE)
+				NIR_PASS_V(nir[i], nir_opt_offsets);
 
 			/* Do late algebraic optimization to turn add(a,
 			 * neg(b)) back into subs, then the mandatory cleanup
