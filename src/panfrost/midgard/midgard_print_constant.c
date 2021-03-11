@@ -37,27 +37,28 @@ mir_print_constant_component(FILE *fp, const midgard_constants *consts, unsigned
         bool is_sint = false, is_uint = false, is_hex = false;
         const char *opname = alu_opcode_props[op].name;
 
+        bool is_int = midgard_is_integer_op(op);
+
         /* Add a sentinel name to prevent crashing */
         if (!opname)
                 opname = "unknown";
 
-        if (opname[0] == 'u') {
-                /* If the opcode starts with a 'u' we are sure we deal with an
-                 * unsigned int operation
-		 */
-                is_uint = true;
-	} else if (opname[0] == 'i') {
-                /* Bit ops are easier to follow when the constant is printed in
-                 * hexadecimal. Other operations starting with a 'i' are
-                 * considered to operate on signed integers. That might not
-                 * be true for all of them, but it's good enough for traces.
-                 */
-                if (op >= midgard_alu_op_iand &&
-                    op <= midgard_alu_op_ipopcnt)
-                        is_hex = true;
-                else
-                        is_sint = true;
-        }
+        if (is_int) {
+                is_uint = midgard_is_unsigned_op(op);
+
+                if (!is_uint) {
+                        /* Bit ops are easier to follow when the constant is printed in
+                         * hexadecimal. Other operations starting with a 'i' are
+                         * considered to operate on signed integers. That might not
+                         * be true for all of them, but it's good enough for traces.
+                         */
+                        if (op >= midgard_alu_op_iand &&
+                            op <= midgard_alu_op_ipopcnt)
+                                is_hex = true;
+                        else
+                                is_sint = true;
+                }
+	}
 
         if (half)
                 reg_mode--;

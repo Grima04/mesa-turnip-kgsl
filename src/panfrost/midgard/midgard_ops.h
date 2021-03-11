@@ -41,12 +41,38 @@ extern struct mir_tag_props midgard_tag_props[16];
 static inline bool
 midgard_is_integer_op(int op)
 {
-        const char *name = alu_opcode_props[op].name;
+        return (op >= 0x40 && op <= 0x7E) || (op >= 0xA0 && op <= 0xC1);
+}
 
-        if (!name)
+static inline bool
+midgard_is_unsigned_op(int op)
+{
+        assert(midgard_is_integer_op(op));
+
+        switch (op) {
+        case midgard_alu_op_uaddsat:
+        case midgard_alu_op_usubsat:
+        case midgard_alu_op_uwmul:
+        case midgard_alu_op_umin:
+        case midgard_alu_op_umax:
+        case midgard_alu_op_uavg:
+        case midgard_alu_op_uravg:
+        case midgard_alu_op_ushlsat:
+        case midgard_alu_op_uabsdiff:
+        case midgard_alu_op_ult:
+        case midgard_alu_op_ule:
+        case midgard_alu_op_uball_lt:
+        case midgard_alu_op_uball_lte:
+        case midgard_alu_op_ubany_lt:
+        case midgard_alu_op_ubany_lte:
+        case midgard_alu_op_u2f_rte:
+        case midgard_alu_op_u2f_rtz:
+        case midgard_alu_op_u2f_rtn:
+        case midgard_alu_op_u2f_rtp:
+                return true;
+        default:
                 return false;
-
-        return (name[0] == 'i') || (name[0] == 'u');
+        }
 }
 
 /* Does this opcode *write* an integer? Same as is_integer_op, unless it's a
