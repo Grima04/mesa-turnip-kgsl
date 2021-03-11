@@ -156,8 +156,8 @@ struct vk_multialloc {
    struct vk_multialloc _name = VK_MULTIALLOC_INIT
 
 static ALWAYS_INLINE void
-_vk_multialloc_add(struct vk_multialloc *ma,
-                   void **ptr, size_t size, size_t align)
+vk_multialloc_add_size_align(struct vk_multialloc *ma,
+                             void **ptr, size_t size, size_t align)
 {
    assert(util_is_power_of_two_nonzero(align));
    if (size == 0) {
@@ -176,15 +176,20 @@ _vk_multialloc_add(struct vk_multialloc *ma,
    ma->ptrs[ma->ptr_count++] = ptr;
 }
 
-#define vk_multialloc_add_size(_ma, _ptr, _size) \
-   _vk_multialloc_add((_ma), (void **)(_ptr), (_size), __alignof__(**(_ptr)))
+#define vk_multialloc_add_size(_ma, _ptr, _type, _size) \
+   do { \
+      _type **_tmp = (_ptr); \
+      (void)_tmp; \
+      vk_multialloc_add_size_align((_ma), (void **)(_ptr), \
+                                   (_size), alignof(_type)); \
+   } while(0)
 
-#define vk_multialloc_add(_ma, _ptr, _count) \
-   vk_multialloc_add_size(_ma, _ptr, (_count) * sizeof(**(_ptr)));
+#define vk_multialloc_add(_ma, _ptr, _type, _count) \
+   vk_multialloc_add_size(_ma, _ptr, _type, (_count) * sizeof(**(_ptr)));
 
 #define VK_MULTIALLOC_DECL_SIZE(_ma, _type, _name, _size) \
    _type *_name; \
-   vk_multialloc_add_size(_ma, &_name, _size);
+   vk_multialloc_add_size(_ma, &_name, _type, _size);
 
 #define VK_MULTIALLOC_DECL(_ma, _type, _name, _count) \
    VK_MULTIALLOC_DECL_SIZE(_ma, _type, _name, (_count) * sizeof(_type));

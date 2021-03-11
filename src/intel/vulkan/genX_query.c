@@ -141,8 +141,10 @@ VkResult genX(CreateQueryPool)(
                                        perf_query_info->pCounterIndices,
                                        perf_query_info->counterIndexCount,
                                        NULL);
-      vk_multialloc_add(&ma, &counter_pass, perf_query_info->counterIndexCount);
-      vk_multialloc_add(&ma, &pass_query, n_passes);
+      vk_multialloc_add(&ma, &counter_pass, struct gen_perf_counter_pass,
+                             perf_query_info->counterIndexCount);
+      vk_multialloc_add(&ma, &pass_query, struct gen_perf_query_info *,
+                             n_passes);
       uint64s_per_slot = 4 /* availability + small batch */;
       /* Align to the requirement of the layout */
       uint64s_per_slot = align_u32(uint64s_per_slot,

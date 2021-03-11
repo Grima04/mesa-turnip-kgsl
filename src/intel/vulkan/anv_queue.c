@@ -2792,9 +2792,10 @@ VkResult anv_WaitSemaphores(
 
    VK_MULTIALLOC_DECL(&ma, uint64_t, values, pWaitInfo->semaphoreCount);
    if (device->has_thread_submit) {
-      vk_multialloc_add(&ma, &handles, pWaitInfo->semaphoreCount);
+      vk_multialloc_add(&ma, &handles, uint32_t, pWaitInfo->semaphoreCount);
    } else {
-      vk_multialloc_add(&ma, &timelines, pWaitInfo->semaphoreCount);
+      vk_multialloc_add(&ma, &timelines, struct anv_timeline *,
+                             pWaitInfo->semaphoreCount);
    }
 
    if (!vk_multialloc_alloc(&ma, &device->vk.alloc,
