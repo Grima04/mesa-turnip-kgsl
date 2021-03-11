@@ -80,7 +80,7 @@ glcpp = executable(
 )
 
 # FIXME: these fail on windows due to whitespace differences
-if with_any_opengl and with_tests and host_machine.system() != 'windows' and with_glcpp_tests
+if with_any_opengl and with_tests and host_machine.system() != 'windows'
   modes = ['unix', 'windows', 'oldmac', 'bizarro']
 
   # For some unfathomable reason, three out of these four tests often time out
