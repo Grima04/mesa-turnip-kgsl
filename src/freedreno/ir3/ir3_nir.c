@@ -139,6 +139,7 @@ static const nir_shader_compiler_options options_a6xx = {
 		 */
 		.lower_int64_options = (nir_lower_int64_options)~0,
 		.lower_uniforms_to_ubo = true,
+		.lower_device_index_to_zero = true,
 };
 
 const nir_shader_compiler_options *

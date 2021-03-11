@@ -68,6 +68,7 @@ tu_spirv_to_nir(struct tu_device *dev,
          .multiview = true,
          .shader_viewport_index_layer = true,
          .geometry_streams = true,
+         .device_group = true,
       },
    };
    const nir_shader_compiler_options *nir_options =
