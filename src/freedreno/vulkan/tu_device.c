@@ -386,7 +386,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       .shaderInt64 = false,
       .shaderInt16 = false,
       .sparseBinding = false,
-      .variableMultisampleRate = false,
+      .variableMultisampleRate = true,
       .inheritedQueries = true,
    };
 

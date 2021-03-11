@@ -259,6 +259,7 @@ struct tu_pipeline_builder
 
    bool rasterizer_discard;
    /* these states are affectd by rasterizer_discard */
+   bool emit_msaa_state;
    VkSampleCountFlagBits samples;
    bool use_color_attachments;
    bool use_dual_src_blend;
@@ -2559,7 +2560,8 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
       depth_clip_disable = !depth_clip_state->depthClipEnable;
 
    struct tu_cs cs;
-   pipeline->rast_state = tu_cs_draw_state(&pipeline->cs, &cs, 13);
+   uint32_t cs_size = 13 + (builder->emit_msaa_state ? 11 : 0);
+   pipeline->rast_state = tu_cs_draw_state(&pipeline->cs, &cs, cs_size);
 
    tu_cs_emit_regs(&cs,
                    A6XX_GRAS_CL_CNTL(
@@ -2590,6 +2592,12 @@ tu_pipeline_builder_parse_rasterization(struct tu_pipeline_builder *builder,
                                        .discard = rast_info->rasterizerDiscardEnable));
    tu_cs_emit_regs(&cs,
                    A6XX_VPC_UNKNOWN_9107(.raster_discard = rast_info->rasterizerDiscardEnable));
+
+   /* If samples count couldn't be devised from the subpass, we should emit it here.
+    * It happens when subpass doesn't use any color/depth attachment.
+    */
+   if (builder->emit_msaa_state)
+      tu6_emit_msaa(&cs, builder->samples);
 
    pipeline->gras_su_cntl =
       tu6_gras_su_cntl(rast_info, builder->samples, builder->multiview_mask != 0);
@@ -2968,6 +2976,9 @@ tu_pipeline_builder_init_graphics(
 
    builder->rasterizer_discard =
       create_info->pRasterizationState->rasterizerDiscardEnable;
+
+   /* variableMultisampleRate support */
+   builder->emit_msaa_state = (subpass->samples == 0) && !builder->rasterizer_discard;
 
    if (builder->rasterizer_discard) {
       builder->samples = VK_SAMPLE_COUNT_1_BIT;

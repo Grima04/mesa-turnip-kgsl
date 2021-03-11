@@ -2964,7 +2964,8 @@ tu_CmdBeginRenderPass2(VkCommandBuffer commandBuffer,
 
    tu6_emit_zs(cmd, cmd->state.subpass, &cmd->draw_cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, &cmd->draw_cs);
-   tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples);
+   if (cmd->state.subpass->samples)
+      tu6_emit_msaa(&cmd->draw_cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, &cmd->draw_cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
@@ -3029,7 +3030,8 @@ tu_CmdNextSubpass2(VkCommandBuffer commandBuffer,
    /* emit mrt/zs/msaa/ubwc state for the subpass that is starting */
    tu6_emit_zs(cmd, cmd->state.subpass, cs);
    tu6_emit_mrt(cmd, cmd->state.subpass, cs);
-   tu6_emit_msaa(cs, cmd->state.subpass->samples);
+   if (cmd->state.subpass->samples)
+      tu6_emit_msaa(cs, cmd->state.subpass->samples);
    tu6_emit_render_cntl(cmd, cmd->state.subpass, cs, false);
 
    tu_set_input_attachments(cmd, cmd->state.subpass);
