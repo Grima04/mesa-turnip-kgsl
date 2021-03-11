@@ -212,20 +212,21 @@ radv_use_dcc_for_image(struct radv_device *device,
 	if (!radv_image_use_fast_clear_for_image(device, image))
 		return false;
 
-	/* FIXME: Fix DCC layers and mipmaps on GFX9. */
-	if ((pCreateInfo->arrayLayers > 1 || pCreateInfo->mipLevels > 1) &&
-	    device->physical_device->rad_info.chip_class == GFX9)
-		return false;
-
 	/* Do not enable DCC for mipmapped arrays because performance is worse. */
 	if (pCreateInfo->arrayLayers > 1 && pCreateInfo->mipLevels > 1)
 		return false;
 
-	/* TODO: Fix and enable DCC MSAA on older chips. */
-	if (pCreateInfo->samples > 1 &&
-	    !device->physical_device->dcc_msaa_allowed &&
-	     device->physical_device->rad_info.chip_class < GFX10)
-		return false;
+	if (device->physical_device->rad_info.chip_class < GFX10) {
+		/* TODO: Add support for DCC MSAA on GFX8-9. */
+		if (pCreateInfo->samples > 1 &&
+		    !device->physical_device->dcc_msaa_allowed)
+			return false;
+
+		/* TODO: Add support for DCC layers/mipmaps on GFX9. */
+		if ((pCreateInfo->arrayLayers > 1 || pCreateInfo->mipLevels > 1) &&
+		     device->physical_device->rad_info.chip_class == GFX9)
+			return false;
+	}
 
 	return radv_are_formats_dcc_compatible(device->physical_device,
 	                                       pCreateInfo->pNext, format,
