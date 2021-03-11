@@ -5106,6 +5106,8 @@ bool nir_opt_sink(nir_shader *shader, nir_move_options options);
 
 bool nir_opt_move(nir_shader *shader, nir_move_options options);
 
+bool nir_opt_offsets(nir_shader *shader);
+
 bool nir_opt_peephole_select(nir_shader *shader, unsigned limit,
                              bool indirect_load_ok, bool expensive_alu_ok);
 
