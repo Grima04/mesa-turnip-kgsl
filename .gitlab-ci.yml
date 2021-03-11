@@ -693,9 +693,6 @@ meson-clover-testing:
 
 meson-gallium:
   extends: .meson-build
-  tags:
-    # i965_asm tests randomly time out on packet runners
-    - gstreamer
   variables:
     UNWIND: "enabled"
     DRI_LOADERS: >
