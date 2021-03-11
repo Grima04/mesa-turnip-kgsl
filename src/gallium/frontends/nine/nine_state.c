@@ -346,7 +346,7 @@ static inline DWORD
 check_multisample(struct NineDevice9 *device)
 {
     DWORD *rs = device->context.rs;
-    DWORD new_value = (rs[D3DRS_ZENABLE] || rs[D3DRS_STENCILENABLE]) &&
+    DWORD new_value = device->context.rt[0] &&
                       device->context.rt[0]->desc.MultiSampleType >= 1 &&
                       rs[D3DRS_MULTISAMPLEANTIALIAS];
     if (rs[NINED3DRS_MULTISAMPLE] != new_value) {
