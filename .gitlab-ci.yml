@@ -654,6 +654,7 @@ meson-testing:
     VULKAN_DRIVERS: "swrast,amd"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
+      -D valgrind=false
       -D werror=true
     MINIO_ARTIFACT_NAME: mesa-amd64
   script:
@@ -666,6 +667,7 @@ meson-testing-asan:
   variables:
     EXTRA_OPTION: >
       -D b_sanitize=address
+      -D valgrind=false
     MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
@@ -686,6 +688,7 @@ meson-clover-testing:
     GALLIUM_DRIVERS: "swrast"
     BUILDTYPE: "debugoptimized"
     EXTRA_OPTION: >
+      -D valgrind=false
       -D werror=true
   script:
     - .gitlab-ci/meson/build.sh
@@ -766,6 +769,7 @@ meson-android:
       -D android-stub=true
       -D llvm=disabled
       -D platform-sdk-version=26
+      -D valgrind=false
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -829,6 +833,7 @@ meson-armhf:
     LLVM_VERSION: "7"
     EXTRA_OPTION: >
       -D llvm=disabled
+      -D valgrind=false
     MINIO_ARTIFACT_NAME: mesa-armhf
   script:
     - .gitlab-ci/meson/build.sh
@@ -842,6 +847,7 @@ meson-arm64:
     VULKAN_DRIVERS: "freedreno,broadcom"
     EXTRA_OPTION: >
       -D llvm=disabled
+      -D valgrind=false
     MINIO_ARTIFACT_NAME: mesa-arm64
   script:
     - .gitlab-ci/meson/build.sh
@@ -854,6 +860,7 @@ meson-arm64-asan:
     EXTRA_OPTION: >
       -D llvm=disabled
       -D b_sanitize=address
+      -D valgrind=false
     ARTIFACTS_DEBUG_SYMBOLS: 1
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
     MESON_TEST_ARGS: "--no-suite mesa:compiler"
@@ -943,6 +950,7 @@ meson-clover:
       -D gallium-nine=false
       -D gallium-opencl=icd
     EXTRA_OPTION: >
+      -D valgrind=false
       -D werror=true
   script:
     - LLVM_VERSION=8 .gitlab-ci/meson/build.sh
