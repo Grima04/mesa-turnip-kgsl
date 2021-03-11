@@ -1095,7 +1095,7 @@ tx_src_param(struct shader_translator *tx, const struct sm1_src_param *param)
         break;
     case D3DSPR_SAMPLER:
         assert(param->mod == NINED3DSPSM_NONE);
-        assert(param->swizzle == NINED3DSP_NOSWIZZLE);
+        /* assert(param->swizzle == NINED3DSP_NOSWIZZLE); Passed by wine tests */
         src = ureg_DECL_sampler(ureg, param->idx);
         break;
     case D3DSPR_CONST:
@@ -1204,7 +1204,7 @@ tx_src_param(struct shader_translator *tx, const struct sm1_src_param *param)
         break;
     }
 
-    if (param->swizzle != NINED3DSP_NOSWIZZLE)
+    if (param->swizzle != NINED3DSP_NOSWIZZLE && param->file != D3DSPR_SAMPLER)
         src = ureg_swizzle(src,
                            (param->swizzle >> 0) & 0x3,
                            (param->swizzle >> 2) & 0x3,
