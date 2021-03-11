@@ -1736,7 +1736,7 @@ bool operand_can_use_reg(chip_class chip, aco_ptr<Instruction>& instr, unsigned 
       return reg != scc &&
              reg != exec &&
              (reg != m0 || idx == 1 || idx == 3) && /* offset can be m0 */
-             (reg != vcc || (instr->definitions.empty() && idx == 2)); /* sdata can be vcc */
+             (reg != vcc || (instr->definitions.empty() && idx == 2) || chip >= GFX10); /* sdata can be vcc */
    default:
       // TODO: there are more instructions with restrictions on registers
       return true;
