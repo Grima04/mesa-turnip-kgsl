@@ -48,6 +48,14 @@
       - src/mesa/x86-64/**/*
       - src/util/**/*
 
+.vulkan-rules:
+  rules:
+    - *ignore_scheduled_pipelines
+    - changes: &vulkan_file_list
+      - src/vulkan/**/*
+      when: on_success
+    - when: never
+
 # Gallium core source file dependencies
 # -------------------------------------
 .gallium-rules:
@@ -311,6 +319,12 @@
     - changes:
         *gallium_core_file_list
       when: on_success
+    - changes:
+        *llvmpipe_file_list
+      when: on_success
+    - changes:
+        *vulkan_file_list
+      when: on_success
     - changes: &d3d12_file_list
       - src/gallium/drivers/d3d12/**/*
       - src/microsoft/**/*
@@ -329,6 +343,12 @@
       when: on_success
     - changes:
         *gallium_core_file_list
+      when: on_success
+    - changes:
+        *llvmpipe_file_list
+      when: on_success
+    - changes:
+        *vulkan_file_list
       when: on_success
     - changes: *d3d12_file_list
       when: on_success
