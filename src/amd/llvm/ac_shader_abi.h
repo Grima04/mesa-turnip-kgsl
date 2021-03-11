@@ -101,6 +101,8 @@ struct ac_shader_abi {
 
    LLVMValueRef (*load_ring_tess_factors)(struct ac_shader_abi *abi);
 
+   LLVMValueRef (*load_ring_esgs)(struct ac_shader_abi *abi);
+
    LLVMValueRef (*load_tess_level)(struct ac_shader_abi *abi, unsigned varying_id,
                                    bool load_default_state);
 

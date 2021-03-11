@@ -2908,6 +2908,12 @@ static LLVMValueRef visit_load_local_invocation_index(struct ac_nir_context *ctx
 {
    if (ctx->args->vs_rel_patch_id.used) {
       return ac_get_arg(&ctx->ac, ctx->args->vs_rel_patch_id);
+   } else if (ctx->args->merged_wave_info.used) {
+      /* Thread ID in threadgroup in merged ESGS. */
+      LLVMValueRef wave_id = ac_unpack_param(&ctx->ac, ac_get_arg(&ctx->ac, ctx->args->merged_wave_info), 24, 4);
+      LLVMValueRef wave_size = LLVMConstInt(ctx->ac.i32, ctx->ac.wave_size, false);
+	   LLVMValueRef threads_before = LLVMBuildMul(ctx->ac.builder, wave_id, wave_size, "");
+	   return LLVMBuildAdd(ctx->ac.builder, threads_before, ac_get_thread_id(&ctx->ac), "");
    }
 
    LLVMValueRef result;
@@ -3850,6 +3856,15 @@ static void visit_intrinsic(struct ac_nir_context *ctx, nir_intrinsic_instr *ins
       break;
    case nir_intrinsic_load_ring_tess_offchip_offset_amd:
       result = ac_get_arg(&ctx->ac, ctx->args->tess_offchip_offset);
+      break;
+   case nir_intrinsic_load_ring_esgs_amd:
+      result = ctx->abi->load_ring_esgs(ctx->abi);
+      break;
+   case nir_intrinsic_load_ring_es2gs_offset_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->es2gs_offset);
+      break;
+   case nir_intrinsic_load_gs_vertex_offset_amd:
+      result = ac_get_arg(&ctx->ac, ctx->args->gs_vtx_offset[nir_intrinsic_base(instr)]);
       break;
    case nir_intrinsic_vote_all: {
       result = ac_build_vote_all(&ctx->ac, get_src(ctx, instr->src[0]));
