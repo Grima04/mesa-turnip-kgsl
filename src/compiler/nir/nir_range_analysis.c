@@ -1252,6 +1252,21 @@ lookup_input(nir_shader *shader, unsigned driver_location)
                                                  driver_location);
 }
 
+/* The config here should be generic enough to be correct on any HW. */
+static const nir_unsigned_upper_bound_config default_ub_config = {
+   .min_subgroup_size = 1u,
+   .max_subgroup_size = UINT16_MAX,
+   .max_work_group_invocations = UINT16_MAX,
+   .max_work_group_count = {UINT16_MAX, UINT16_MAX, UINT16_MAX},
+   .max_work_group_size = {UINT16_MAX, UINT16_MAX, UINT16_MAX},
+   .vertex_attrib_max = {
+      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
+      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
+      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
+      UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX, UINT32_MAX,
+   },
+};
+
 uint32_t
 nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
                          nir_ssa_scalar scalar,
@@ -1259,6 +1274,8 @@ nir_unsigned_upper_bound(nir_shader *shader, struct hash_table *range_ht,
 {
    assert(scalar.def->bit_size <= 32);
 
+   if (!config)
+      config = &default_ub_config;
    if (nir_ssa_scalar_is_const(scalar))
       return nir_ssa_scalar_as_uint(scalar);
 
