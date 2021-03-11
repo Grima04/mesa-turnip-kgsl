@@ -199,7 +199,7 @@ vk_multialloc_alloc(struct vk_multialloc *ma,
                     const VkAllocationCallbacks *alloc,
                     VkSystemAllocationScope scope)
 {
-   void *ptr = vk_alloc(alloc, ma->size, ma->align, scope);
+   char *ptr = vk_alloc(alloc, ma->size, ma->align, scope);
    if (!ptr)
       return NULL;
 
