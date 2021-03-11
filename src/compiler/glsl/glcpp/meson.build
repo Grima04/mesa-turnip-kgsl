@@ -82,9 +82,6 @@ glcpp = executable(
 # FIXME: these fail on windows due to whitespace differences
 if with_any_opengl and with_tests and host_machine.system() != 'windows' and with_glcpp_tests
   modes = ['unix', 'windows', 'oldmac', 'bizarro']
-  if dep_valgrind.found()
-    modes += ['valgrind']
-  endif
 
   # For some unfathomable reason, three out of these four tests often time out
   # when running within CI. On the assumption that there is some
@@ -107,4 +104,18 @@ if with_any_opengl and with_tests and host_machine.system() != 'windows' and wit
       is_parallel: false,
     )
   endforeach
+
+  if dep_valgrind.found()
+    test(
+      'glcpp test (valgrind)',
+      prog_python,
+      args : [
+        join_paths(meson.current_source_dir(), 'tests/glcpp_test.py'),
+        glcpp, join_paths(meson.current_source_dir(), 'tests'),
+        '--valgrind',
+      ],
+      suite : ['compiler', 'glcpp'],
+      timeout: 240,
+    )
+  endif
 endif
