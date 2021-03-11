@@ -163,7 +163,7 @@ validate_expand_mode(midgard_src_expand_mode expand_mode,
 uint16_t midg_ever_written = 0;
 
 static void
-print_reg(FILE *fp, unsigned reg)
+print_alu_reg(FILE *fp, unsigned reg, bool is_write)
 {
         unsigned uniform_reg = 23 - reg;
         bool is_uniform = false;
@@ -186,8 +186,96 @@ print_reg(FILE *fp, unsigned reg)
                 midg_stats.uniform_count =
                         MAX2(uniform_reg + 1, midg_stats.uniform_count);
 
-        fprintf(fp, "r%u", reg);
+        if (reg == REGISTER_UNUSED || reg == REGISTER_UNUSED + 1)
+                fprintf(fp, "TMP%u", reg - REGISTER_UNUSED);
+        else if (reg == REGISTER_TEXTURE_BASE || reg == REGISTER_TEXTURE_BASE + 1)
+                fprintf(fp, "%s%u", is_write ? "AT" : "TA",  reg - REGISTER_TEXTURE_BASE);
+        else if (reg == REGISTER_LDST_BASE || reg == REGISTER_LDST_BASE + 1)
+                fprintf(fp, "AL%u", reg - REGISTER_LDST_BASE);
+        else if (is_uniform)
+                fprintf(fp, "RMU%u", uniform_reg);
+        else if (reg == 31 && !is_write)
+                fprintf(fp, "PC_SP");
+        else
+                fprintf(fp, "R%u", reg);
 }
+
+static void
+print_ldst_write_reg(FILE *fp, unsigned reg)
+{
+        switch (reg) {
+        case 26:
+        case 27:
+                fprintf(fp, "AL%u", reg - REGISTER_LDST_BASE);
+                break;
+        case 28:
+        case 29:
+                fprintf(fp, "AT%u", reg - REGISTER_TEXTURE_BASE);
+                break;
+        case 31:
+                fprintf(fp, "PC_SP");
+                break;
+        default:
+                fprintf(fp, "R%d", reg);
+                break;
+        }
+}
+
+static void
+print_ldst_read_reg(FILE *fp, unsigned reg)
+{
+        switch (reg) {
+        case 0:
+        case 1:
+                fprintf(fp, "AL%u", reg);
+                break;
+        case 2:
+                fprintf(fp, "PC_SP");
+                break;
+        case 3:
+                fprintf(fp, "LOCAL_STORAGE_PTR");
+                break;
+        case 4:
+                fprintf(fp, "LOCAL_THREAD_ID");
+                break;
+        case 5:
+                fprintf(fp, "GROUP_ID");
+                break;
+        case 6:
+                fprintf(fp, "GLOBAL_THREAD_ID");
+                break;
+        case 7:
+                fprintf(fp, "0");
+                break;
+        default:
+                unreachable("Invalid load/store register read");
+        }
+}
+
+static void
+print_tex_reg(FILE *fp, unsigned reg, bool is_write)
+{
+        char *str = is_write ? "TA" : "AT";
+        int select = reg & 1;
+
+        switch (reg) {
+        case 0:
+        case 1:
+                fprintf(fp, "R%d", select);
+                break;
+        case 26:
+        case 27:
+                fprintf(fp, "AL%d", select);
+                break;
+        case 28:
+        case 29:
+                fprintf(fp, "%s%d", str, select);
+                break;
+        default:
+                unreachable("Invalid texture register");
+        }
+}
+
 
 static char *outmod_names_float[4] = {
         "",
@@ -565,7 +653,7 @@ print_vector_src(FILE *fp, unsigned src_binary,
 
         validate_expand_mode(src->expand_mode, mode);
 
-        print_reg(fp, reg);
+        print_alu_reg(fp, reg, false);
 
         print_vec_swizzle(fp, src->swizzle, src->expand_mode, mode, src_mask);
 
@@ -609,7 +697,7 @@ static void
 print_dest(FILE *fp, unsigned reg)
 {
         update_dest(reg);
-        print_reg(fp, reg);
+        print_alu_reg(fp, reg, true);
 }
 
 /* For 16-bit+ masks, we read off from the 8-bit mask field. For 16-bit (vec8),
@@ -785,7 +873,7 @@ print_scalar_src(FILE *fp, bool is_int, unsigned src_binary, unsigned reg)
 {
         midgard_scalar_alu_src *src = (midgard_scalar_alu_src *)&src_binary;
 
-        print_reg(fp, reg);
+        print_alu_reg(fp, reg, false);
 
         unsigned c = src->component;
 
@@ -1231,10 +1319,8 @@ print_load_store_arg(FILE *fp, uint8_t arg, unsigned index)
                 return;
         }
 
-        unsigned reg = REGISTER_LDST_BASE + sel.select;
-        char comp = components[sel.component];
-
-        fprintf(fp, "r%u.%c", reg, comp);
+        print_ldst_read_reg(fp, sel.select);
+        fprintf(fp, ".%c", components[sel.component]);
 
         /* Only print a shift if it's non-zero. Shifts only make sense for the
          * second index. For the first, we're not sure what it means yet */
@@ -1279,7 +1365,13 @@ print_load_store_instr(FILE *fp, uint64_t data)
                         midg_stats.attribute_count = -16;
         }
 
-        fprintf(fp, " r%u", word->reg + (OP_IS_STORE(word->op) ? 26 : 0));
+        fprintf(fp, " ");
+
+        if (!OP_IS_STORE(word->op))
+                print_ldst_write_reg(fp, word->reg);
+        else
+                print_ldst_read_reg(fp, word->reg);
+
         print_mask_4(fp, word->mask, false);
 
         if (!OP_IS_STORE(word->op))
@@ -1336,7 +1428,7 @@ print_texture_reg_select(FILE *fp, uint8_t u, unsigned base)
         midgard_tex_register_select sel;
         memcpy(&sel, &u, sizeof(u));
 
-        fprintf(fp, "r%u", base + sel.select);
+        print_tex_reg(fp, base + sel.select, false);
 
         unsigned component = sel.component;
 
@@ -1517,7 +1609,8 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->out_of_order)
                 fprintf(fp, ".ooo%u", texture->out_of_order);
 
-        fprintf(fp, " r%u", out_reg_base + texture->out_reg_select);
+        fprintf(fp, " ");
+        print_tex_reg(fp, texture->out_reg_select, true);
         print_mask_4(fp, texture->mask, texture->out_upper);
         assert(!(texture->out_full && texture->out_upper));
 
@@ -1557,12 +1650,14 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         }
 
         print_vec_swizzle(fp, texture->swizzle, midgard_src_passthrough, midgard_reg_mode_32, 0xFF);
-        fprintf(fp, ", r%u", in_reg_base + texture->in_reg_select);
-        assert(!(texture->in_reg_full && texture->in_reg_upper));
+
+        fprintf(fp, ", ");
 
         midgard_src_expand_mode exp =
                 texture->in_reg_upper ? midgard_src_expand_high : midgard_src_passthrough;
+        print_tex_reg(fp, in_reg_base + texture->in_reg_select, false);
         print_vec_swizzle(fp, texture->in_reg_swizzle, exp, midgard_reg_mode_32, 0xFF);
+        assert(!(texture->in_reg_full && texture->in_reg_upper));
 
         /* There is *always* an offset attached. Of
          * course, that offset is just immediate #0 for a
@@ -1583,7 +1678,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
                 midgard_src_expand_mode exp =
                         upper ? midgard_src_expand_high : midgard_src_passthrough;
 
-                fprintf(fp, "r%u", in_reg_base + select);
+                print_tex_reg(fp, in_reg_base + select, false);
                 print_vec_swizzle(fp, swizzle, exp, midgard_reg_mode_32, 0xFF);
                 assert(!(texture->out_full && texture->out_upper));
 
