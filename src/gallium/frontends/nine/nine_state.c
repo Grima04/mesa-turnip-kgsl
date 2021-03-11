@@ -1415,9 +1415,16 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
             return;
         }
 
+        /* NINED3DRS_ALPHACOVERAGE:
+         * bit 0: NVIDIA alpha to coverage
+         * bit 1: NVIDIA ATOC state active
+         * bit 2: AMD alpha to coverage
+         * These need to be separate else the set of states to
+         * disable NVIDIA alpha to coverage can disable the AMD one */
         if (Value == ALPHA_TO_COVERAGE_ENABLE ||
             Value == ALPHA_TO_COVERAGE_DISABLE) {
-            context->rs[NINED3DRS_ALPHACOVERAGE] = (Value == ALPHA_TO_COVERAGE_ENABLE);
+            context->rs[NINED3DRS_ALPHACOVERAGE] &= 3;
+            context->rs[NINED3DRS_ALPHACOVERAGE] |= (Value == ALPHA_TO_COVERAGE_ENABLE) ? 4 : 0;
             context->changed.group |= NINE_STATE_BLEND;
             return;
         }
@@ -1425,16 +1432,18 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_state,
 
     /* NV hack */
     if (unlikely(State == D3DRS_ADAPTIVETESS_Y)) {
-        if (Value == D3DFMT_ATOC || (Value == D3DFMT_UNKNOWN && context->rs[NINED3DRS_ALPHACOVERAGE])) {
-            context->rs[NINED3DRS_ALPHACOVERAGE] = (Value == D3DFMT_ATOC) ? 3 : 0;
-            context->rs[NINED3DRS_ALPHACOVERAGE] &= context->rs[D3DRS_ALPHATESTENABLE] ? 3 : 2;
+        if (Value == D3DFMT_ATOC || (Value == D3DFMT_UNKNOWN && context->rs[NINED3DRS_ALPHACOVERAGE] & 3)) {
+            context->rs[NINED3DRS_ALPHACOVERAGE] &= 4;
+            context->rs[NINED3DRS_ALPHACOVERAGE] |=
+                ((Value == D3DFMT_ATOC) ? 3 : 0) & (context->rs[D3DRS_ALPHATESTENABLE] ? 3 : 2);
             context->changed.group |= NINE_STATE_BLEND;
             return;
         }
     }
     if (unlikely(State == D3DRS_ALPHATESTENABLE && (context->rs[NINED3DRS_ALPHACOVERAGE] & 2))) {
         DWORD alphacoverage_prev = context->rs[NINED3DRS_ALPHACOVERAGE];
-        context->rs[NINED3DRS_ALPHACOVERAGE] = (Value ? 3 : 2);
+        context->rs[NINED3DRS_ALPHACOVERAGE] &= 6;
+        context->rs[NINED3DRS_ALPHACOVERAGE] |= (context->rs[D3DRS_ALPHATESTENABLE] ? 1 : 0);
         if (context->rs[NINED3DRS_ALPHACOVERAGE] != alphacoverage_prev)
             context->changed.group |= NINE_STATE_BLEND;
     }
