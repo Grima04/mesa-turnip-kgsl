@@ -1296,8 +1296,6 @@ void genX(CmdWriteTimestamp)(
 
 #if GEN_GEN > 7 || GEN_IS_HASWELL
 
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
-
 #define MI_PREDICATE_SRC0    0x2400
 #define MI_PREDICATE_SRC1    0x2408
 #define MI_PREDICATE_RESULT  0x2418
@@ -1332,8 +1330,6 @@ gpu_write_query_result_cond(struct anv_cmd_buffer *cmd_buffer,
       mi_store_if(b, mi_mem32(res_addr), query_result);
    }
 }
-
-#endif /* GEN_GEN >= 8 || GEN_IS_HASWELL */
 
 static void
 gpu_write_query_result(struct mi_builder *b,
@@ -1411,7 +1407,6 @@ void genX(CmdCopyQueryPoolResults)(
       switch (pool->type) {
       case VK_QUERY_TYPE_OCCLUSION:
          result = compute_query_result(&b, anv_address_add(query_addr, 8));
-#if GEN_GEN >= 8 || GEN_IS_HASWELL
          /* Like in the case of vkGetQueryPoolResults, if the query is
           * unavailable and the VK_QUERY_RESULT_PARTIAL_BIT flag is set,
           * conservatively write 0 as the query result. If the
@@ -1424,9 +1419,6 @@ void genX(CmdCopyQueryPoolResults)(
                   0 /* unavailable */, flags, idx, mi_imm(0));
          }
          idx++;
-#else /* GEN_GEN < 8 && !GEN_IS_HASWELL */
-         gpu_write_query_result(&b, dest_addr, flags, idx++, result);
-#endif
          break;
 
       case VK_QUERY_TYPE_PIPELINE_STATISTICS: {
