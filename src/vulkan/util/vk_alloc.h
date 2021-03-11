@@ -160,6 +160,11 @@ _vk_multialloc_add(struct vk_multialloc *ma,
                    void **ptr, size_t size, size_t align)
 {
    assert(util_is_power_of_two_nonzero(align));
+   if (size == 0) {
+      *ptr = NULL;
+      return;
+   }
+
    size_t offset = ALIGN_POT(ma->size, align);
    ma->size = offset + size;
    ma->align = MAX2(ma->align, align);
