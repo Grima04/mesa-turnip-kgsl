@@ -104,19 +104,23 @@ _mesa_DeleteHashTable(struct _mesa_HashTable *table)
    free(table);
 }
 
-void
-_mesa_HashEnableNameReuse(struct _mesa_HashTable *table)
+static void init_name_reuse(struct _mesa_HashTable *table)
 {
-   _mesa_HashLockMutex(table);
    assert(_mesa_hash_table_num_entries(table->ht) == 0);
    table->id_alloc = MALLOC_STRUCT(util_idalloc);
    util_idalloc_init(table->id_alloc);
    util_idalloc_resize(table->id_alloc, 8);
    ASSERTED GLuint reserve0 = util_idalloc_alloc(table->id_alloc);
    assert (reserve0 == 0);
-   _mesa_HashUnlockMutex(table);
 }
 
+void
+_mesa_HashEnableNameReuse(struct _mesa_HashTable *table)
+{
+   _mesa_HashLockMutex(table);
+   init_name_reuse(table);
+   _mesa_HashUnlockMutex(table);
+}
 
 /**
  * Lookup an entry in the hash table, without locking.
@@ -327,7 +331,7 @@ _mesa_HashDeleteAll(struct _mesa_HashTable *table,
    if (table->id_alloc) {
       util_idalloc_fini(table->id_alloc);
       free(table->id_alloc);
-      _mesa_HashEnableNameReuse(table);
+      init_name_reuse(table);
    }
    table->MaxKey = 0;
    _mesa_HashUnlockMutex(table);
