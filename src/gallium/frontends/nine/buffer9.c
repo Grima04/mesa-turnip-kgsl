@@ -259,12 +259,6 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
         OffsetToLock, SizeToLock, Flags);
 
     user_assert(ppbData, E_POINTER);
-    user_assert(!(Flags & ~(D3DLOCK_DISCARD |
-                            D3DLOCK_DONOTWAIT |
-                            D3DLOCK_NO_DIRTY_UPDATE |
-                            D3DLOCK_NOSYSLOCK |
-                            D3DLOCK_READONLY |
-                            D3DLOCK_NOOVERWRITE)), D3DERR_INVALIDCALL);
 
     if (SizeToLock == 0) {
         SizeToLock = This->size - OffsetToLock;

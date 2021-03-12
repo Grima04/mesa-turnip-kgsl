@@ -453,12 +453,6 @@ NineSurface9_LockRect( struct NineSurface9 *This,
                 (resource && (resource->flags & NINE_RESOURCE_FLAG_LOCKABLE)),
                 D3DERR_INVALIDCALL);
 #endif
-    user_assert(!(Flags & ~(D3DLOCK_DISCARD |
-                            D3DLOCK_DONOTWAIT |
-                            D3DLOCK_NO_DIRTY_UPDATE |
-                            D3DLOCK_NOOVERWRITE |
-                            D3DLOCK_NOSYSLOCK | /* ignored */
-                            D3DLOCK_READONLY)), D3DERR_INVALIDCALL);
     user_assert(!((Flags & D3DLOCK_DISCARD) && (Flags & D3DLOCK_READONLY)),
                 D3DERR_INVALIDCALL);
 
