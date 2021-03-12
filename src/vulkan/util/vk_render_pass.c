@@ -56,7 +56,7 @@ translate_references(VkAttachmentReference2 **reference_ptr,
    }
 }
 
-VkResult
+VKAPI_ATTR VkResult VKAPI_CALL
 vk_common_CreateRenderPass(VkDevice _device,
                            const VkRenderPassCreateInfo *pCreateInfo,
                            const VkAllocationCallbacks *pAllocator,
