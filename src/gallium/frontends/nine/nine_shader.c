@@ -3649,7 +3649,8 @@ tx_ctor(struct shader_translator *tx, struct pipe_screen *screen, struct nine_sh
         tx->num_constb_allowed = NINE_MAX_CONST_B;
     }
 
-    if (info->swvp_on && tx->version.major >= 2) {
+    if (info->swvp_on) {
+        /* TODO: The values tx->version.major == 1 */
         tx->num_constf_allowed = 8192;
         tx->num_consti_allowed = 2048;
         tx->num_constb_allowed = 2048;
