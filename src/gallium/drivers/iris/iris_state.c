@@ -685,12 +685,10 @@ init_glk_barrier_mode(struct iris_batch *batch, uint32_t value)
     *     To workaround the issue, this mode bit should be set after a
     *     pipeline is selected."
     */
-   uint32_t reg_val;
-   iris_pack_state(GENX(SLICE_COMMON_ECO_CHICKEN1), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(SLICE_COMMON_ECO_CHICKEN1), reg) {
       reg.GLKBarrierMode = value;
       reg.GLKBarrierModeMask = 1;
    }
-   iris_emit_lri(batch, SLICE_COMMON_ECO_CHICKEN1, reg_val);
 #endif
 }
 
@@ -745,7 +743,6 @@ static void
 iris_emit_l3_config(struct iris_batch *batch,
                     const struct intel_l3_config *cfg)
 {
-   uint32_t reg_val;
    assert(cfg || GEN_GEN >= 12);
 
 #if GEN_GEN >= 12
@@ -756,7 +753,7 @@ iris_emit_l3_config(struct iris_batch *batch,
 #define L3_ALLOCATION_REG_num GENX(L3CNTLREG_num)
 #endif
 
-   iris_pack_state(L3_ALLOCATION_REG, &reg_val, reg) {
+   iris_emit_reg(batch, L3_ALLOCATION_REG, reg) {
 #if GEN_GEN < 11
       reg.SLMEnable = cfg->n[INTEL_L3P_SLM] > 0;
 #endif
@@ -779,26 +776,22 @@ iris_emit_l3_config(struct iris_batch *batch,
 #endif
       }
    }
-   _iris_emit_lri(batch, L3_ALLOCATION_REG_num, reg_val);
 }
 
 #if GEN_GEN == 9
 static void
 iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
 {
-   uint32_t reg_val;
-
    /* A fixed function pipe flush is required before modifying this field */
    iris_emit_end_of_pipe_sync(batch, enable ? "enable preemption"
                                             : "disable preemption",
                               PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
    /* enable object level preemption */
-   iris_pack_state(GENX(CS_CHICKEN1), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(CS_CHICKEN1), reg) {
       reg.ReplayMode = enable;
       reg.ReplayModeMask = true;
    }
-   iris_emit_lri(batch, CS_CHICKEN1, reg_val);
 }
 #endif
 
@@ -961,20 +954,16 @@ static void
 iris_init_common_context(struct iris_batch *batch)
 {
 #if GEN_GEN == 11
-   uint32_t reg_val;
-
-   iris_pack_state(GENX(SAMPLER_MODE), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(SAMPLER_MODE), reg) {
       reg.HeaderlessMessageforPreemptableContexts = 1;
       reg.HeaderlessMessageforPreemptableContextsMask = 1;
    }
-   iris_emit_lri(batch, SAMPLER_MODE, reg_val);
 
    /* Bit 1 must be set in HALF_SLICE_CHICKEN7. */
-   iris_pack_state(GENX(HALF_SLICE_CHICKEN7), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(HALF_SLICE_CHICKEN7), reg) {
       reg.EnabledTexelOffsetPrecisionFix = 1;
       reg.EnabledTexelOffsetPrecisionFixMask = 1;
    }
-   iris_emit_lri(batch, HALF_SLICE_CHICKEN7, reg_val);
 #endif
 }
 
@@ -988,7 +977,6 @@ static void
 iris_init_render_context(struct iris_batch *batch)
 {
    UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
-   uint32_t reg_val;
 
    iris_batch_sync_region_start(batch);
 
@@ -1001,21 +989,19 @@ iris_init_render_context(struct iris_batch *batch)
    iris_init_common_context(batch);
 
 #if GEN_GEN >= 9
-   iris_pack_state(GENX(CS_DEBUG_MODE2), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(CS_DEBUG_MODE2), reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
       reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
    }
-   iris_emit_lri(batch, CS_DEBUG_MODE2, reg_val);
 #else
-   iris_pack_state(GENX(INSTPM), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(INSTPM), reg) {
       reg.CONSTANT_BUFFERAddressOffsetDisable = true;
       reg.CONSTANT_BUFFERAddressOffsetDisableMask = true;
    }
-   iris_emit_lri(batch, INSTPM, reg_val);
 #endif
 
 #if GEN_GEN == 9
-   iris_pack_state(GENX(CACHE_MODE_1), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(CACHE_MODE_1), reg) {
       reg.FloatBlendOptimizationEnable = true;
       reg.FloatBlendOptimizationEnableMask = true;
       reg.MSCRAWHazardAvoidanceBit = true;
@@ -1023,30 +1009,27 @@ iris_init_render_context(struct iris_batch *batch)
       reg.PartialResolveDisableInVC = true;
       reg.PartialResolveDisableInVCMask = true;
    }
-   iris_emit_lri(batch, CACHE_MODE_1, reg_val);
 
    if (devinfo->is_geminilake)
       init_glk_barrier_mode(batch, GLK_BARRIER_MODE_3D_HULL);
 #endif
 
 #if GEN_GEN == 11
-   iris_pack_state(GENX(TCCNTLREG), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(TCCNTLREG), reg) {
       reg.L3DataPartialWriteMergingEnable = true;
       reg.ColorZPartialWriteMergingEnable = true;
       reg.URBPartialWriteMergingEnable = true;
       reg.TCDisable = true;
    }
-   iris_emit_lri(batch, TCCNTLREG, reg_val);
 
    /* Hardware specification recommends disabling repacking for the
     * compatibility with decompression mechanism in display controller.
     */
    if (devinfo->disable_ccs_repack) {
-      iris_pack_state(GENX(CACHE_MODE_0), &reg_val, reg) {
+      iris_emit_reg(batch, GENX(CACHE_MODE_0), reg) {
          reg.DisableRepackingforCompression = true;
          reg.DisableRepackingforCompressionMask = true;
       }
-      iris_emit_lri(batch, CACHE_MODE_0, reg_val);
    }
 
    gen11_upload_pixel_hashing_tables(batch);
@@ -1671,14 +1654,12 @@ genX(update_pma_fix)(struct iris_context *ice,
                                 PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                 PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
-   uint32_t reg_val;
-   iris_pack_state(GENX(CACHE_MODE_1), &reg_val, reg) {
+   iris_emit_reg(batch, GENX(CACHE_MODE_1), reg) {
       reg.NPPMAFixEnable = enable;
       reg.NPEarlyZFailsDisable = enable;
       reg.NPPMAFixEnableMask = true;
       reg.NPEarlyZFailsDisableMask = true;
    }
-   iris_emit_lri(batch, CACHE_MODE_1, reg_val);
 
    /* After the LRI, a PIPE_CONTROL with both the Depth Stall and Depth Cache
     * Flush bits is often necessary.  We do it regardless because it's easier.
@@ -7969,22 +7950,18 @@ genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
    const unsigned idx = scale > 1;
 
    if (width > min_size[idx][0] || height > min_size[idx][1]) {
-      uint32_t gt_mode;
-
-      iris_pack_state(GENX(GT_MODE), &gt_mode, reg) {
-         reg.SliceHashing = (devinfo->num_slices > 1 ? slice_hashing[idx] : 0);
-         reg.SliceHashingMask = (devinfo->num_slices > 1 ? -1 : 0);
-         reg.SubsliceHashing = subslice_hashing[idx];
-         reg.SubsliceHashingMask = -1;
-      };
-
       iris_emit_raw_pipe_control(batch,
                                  "workaround: CS stall before GT_MODE LRI",
                                  PIPE_CONTROL_STALL_AT_SCOREBOARD |
                                  PIPE_CONTROL_CS_STALL,
                                  NULL, 0, 0);
 
-      iris_emit_lri(batch, GT_MODE, gt_mode);
+      iris_emit_reg(batch, GENX(GT_MODE), reg) {
+         reg.SliceHashing = (devinfo->num_slices > 1 ? slice_hashing[idx] : 0);
+         reg.SliceHashingMask = (devinfo->num_slices > 1 ? -1 : 0);
+         reg.SubsliceHashing = subslice_hashing[idx];
+         reg.SubsliceHashingMask = -1;
+      };
 
       ice->state.current_hash_scale = scale;
    }
