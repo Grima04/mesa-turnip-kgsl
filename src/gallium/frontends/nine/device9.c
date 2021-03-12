@@ -300,7 +300,12 @@ NineDevice9_ctor( struct NineDevice9 *This,
     /* r600, radeonsi and iris are thread safe. */
     if (pCTX->csmt_force == 1)
         This->csmt_active = true;
-    else if (pCTX->csmt_force == 0)
+    else if (pCTX->csmt_force == 0 ||
+        This->params.BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING)
+        /* We disable csmt for software vertex processing because for now
+         * the csmt thread is too much synced for these due to the vertex
+         * buffer implementation. These buffers are typically locked
+         * without NOOVERWRITE between each draw call. */
         This->csmt_active = false;
     else if (strstr(pScreen->get_name(pScreen), "AMD") != NULL)
         This->csmt_active = true;
