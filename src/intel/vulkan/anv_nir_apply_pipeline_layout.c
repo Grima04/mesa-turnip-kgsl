@@ -400,6 +400,10 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
    uint32_t binding = nir_intrinsic_binding(intrin);
    const VkDescriptorType desc_type = nir_intrinsic_desc_type(intrin);
 
+   /* All UBO access should have been lowered before we get here */
+   assert(desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
+          desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC);
+
    const struct anv_descriptor_set_binding_layout *bind_layout =
       &state->layout->set[set].layout->binding[binding];
 
@@ -411,9 +415,7 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       array_index = nir_umin(b, array_index, nir_imm_int(b, array_size - 1));
 
    nir_ssa_def *index;
-   if (state->pdevice->has_a64_buffer_access &&
-       (desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER ||
-        desc_type == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC)) {
+   if (state->pdevice->has_a64_buffer_access) {
       /* We store the descriptor offset as 16.8.8 where the top 16 bits are
        * the offset into the descriptor set, the next 8 are the binding table
        * index of the descriptor buffer, and the bottom 8 bits are the offset
@@ -449,16 +451,6 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
          index = nir_pack_64_2x32_split(b, nir_imm_int(b, desc_offset),
                                            nir_ssa_for_src(b, intrin->src[0], 1));
       }
-   } else if (bind_layout->data & ANV_DESCRIPTOR_INLINE_UNIFORM) {
-      /* This is an inline uniform block.  Just reference the descriptor set
-       * and use the descriptor offset as the base.
-       */
-      assert(desc_addr_format(desc_type, state) ==
-             nir_address_format_32bit_index_offset);
-      assert(intrin->dest.ssa.num_components == 2);
-      assert(intrin->dest.ssa.bit_size == 32);
-      index = nir_imm_ivec2(b, state->set[set].desc_offset,
-                               bind_layout->descriptor_offset);
    } else {
       assert(desc_addr_format(desc_type, state) ==
              nir_address_format_32bit_index_offset);
@@ -1409,6 +1401,11 @@ anv_nir_apply_pipeline_layout(const struct anv_physical_device *pdevice,
                                 nir_metadata_block_index |
                                 nir_metadata_dominance,
                                 &state);
+
+   /* We just got rid of all the direct access.  Delete it so it's not in the
+    * way when we do our indirect lowering.
+    */
+   nir_opt_dce(shader);
 
    nir_shader_instructions_pass(shader, apply_pipeline_layout,
                                 nir_metadata_block_index |
