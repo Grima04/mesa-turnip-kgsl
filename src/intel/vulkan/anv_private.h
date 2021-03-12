@@ -1690,6 +1690,20 @@ _anv_combine_address(struct anv_batch *batch, void *location,
            _dst = NULL;                                                 \
          }))
 
+#define anv_batch_write_reg(batch, reg, name)                           \
+   for (struct reg name = {}, *_cont = (struct reg *)1; _cont != NULL;  \
+        ({                                                              \
+            uint32_t _dw[__anv_cmd_length(reg)];                        \
+            __anv_cmd_pack(reg)(NULL, _dw, &name);                      \
+            for (unsigned i = 0; i < __anv_cmd_length(reg); i++) {      \
+               anv_batch_emit(batch, GENX(MI_LOAD_REGISTER_IMM), lri) { \
+                  lri.RegisterOffset   = __anv_reg_num(reg);            \
+                  lri.DataDWord        = _dw[i];                        \
+               }                                                        \
+            }                                                           \
+           _cont = NULL;                                                \
+         }))
+
 /* #define __gen_get_batch_dwords anv_batch_emit_dwords */
 /* #define __gen_get_batch_address anv_batch_address */
 /* #define __gen_address_value anv_address_physical */

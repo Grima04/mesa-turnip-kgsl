@@ -170,18 +170,13 @@ init_render_queue_state(struct anv_queue *queue)
    }
 
 #if GEN_GEN == 9
-   uint32_t cache_mode_1;
-   anv_pack_struct(&cache_mode_1, GENX(CACHE_MODE_1),
-                   .FloatBlendOptimizationEnable = true,
-                   .FloatBlendOptimizationEnableMask = true,
-                   .MSCRAWHazardAvoidanceBit = true,
-                   .MSCRAWHazardAvoidanceBitMask = true,
-                   .PartialResolveDisableInVC = true,
-                   .PartialResolveDisableInVCMask = true);
-
-   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(CACHE_MODE_1_num);
-      lri.DataDWord      = cache_mode_1;
+   anv_batch_write_reg(&batch, GENX(CACHE_MODE_1), cm1) {
+      cm1.FloatBlendOptimizationEnable = true;
+      cm1.FloatBlendOptimizationEnableMask = true;
+      cm1.MSCRAWHazardAvoidanceBit = true;
+      cm1.MSCRAWHazardAvoidanceBitMask = true;
+      cm1.PartialResolveDisableInVC = true;
+      cm1.PartialResolveDisableInVCMask = true;
    }
 #endif
 
@@ -218,41 +213,25 @@ init_render_queue_state(struct anv_queue *queue)
     * headerless sampler messages are not allowed for pre-emptable
     * contexts. Set the bit 5 to 1 to allow them.
     */
-   uint32_t sampler_mode;
-   anv_pack_struct(&sampler_mode, GENX(SAMPLER_MODE),
-                   .HeaderlessMessageforPreemptableContexts = true,
-                   .HeaderlessMessageforPreemptableContextsMask = true);
-
-    anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(SAMPLER_MODE_num);
-      lri.DataDWord      = sampler_mode;
+   anv_batch_write_reg(&batch, GENX(SAMPLER_MODE), sm) {
+      sm.HeaderlessMessageforPreemptableContexts = true;
+      sm.HeaderlessMessageforPreemptableContextsMask = true;
    }
 
    /* Bit 1 "Enabled Texel Offset Precision Fix" must be set in
     * HALF_SLICE_CHICKEN7 register.
     */
-   uint32_t half_slice_chicken7;
-   anv_pack_struct(&half_slice_chicken7, GENX(HALF_SLICE_CHICKEN7),
-                   .EnabledTexelOffsetPrecisionFix = true,
-                   .EnabledTexelOffsetPrecisionFixMask = true);
-
-    anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(HALF_SLICE_CHICKEN7_num);
-      lri.DataDWord      = half_slice_chicken7;
+   anv_batch_write_reg(&batch, GENX(HALF_SLICE_CHICKEN7), hsc7) {
+      hsc7.EnabledTexelOffsetPrecisionFix = true;
+      hsc7.EnabledTexelOffsetPrecisionFixMask = true;
    }
 
-   uint32_t tccntlreg;
-   anv_pack_struct(&tccntlreg, GENX(TCCNTLREG),
-                   .L3DataPartialWriteMergingEnable = true,
-                   .ColorZPartialWriteMergingEnable = true,
-                   .URBPartialWriteMergingEnable = true,
-                   .TCDisable = true);
-
-   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(TCCNTLREG_num);
-      lri.DataDWord      = tccntlreg;
+   anv_batch_write_reg(&batch, GENX(TCCNTLREG), tcc) {
+      tcc.L3DataPartialWriteMergingEnable = true;
+      tcc.ColorZPartialWriteMergingEnable = true;
+      tcc.URBPartialWriteMergingEnable = true;
+      tcc.TCDisable = true;
    }
-
 #endif
    genX(emit_slice_hashing_state)(device, &batch);
 
@@ -261,15 +240,9 @@ init_render_queue_state(struct anv_queue *queue)
     * the compatibility with decompression mechanism in display controller.
     */
    if (device->info.disable_ccs_repack) {
-      uint32_t cache_mode_0;
-      anv_pack_struct(&cache_mode_0,
-                      GENX(CACHE_MODE_0),
-                      .DisableRepackingforCompression = true,
-                      .DisableRepackingforCompressionMask = true);
-
-      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-         lri.RegisterOffset = GENX(CACHE_MODE_0_num);
-         lri.DataDWord      = cache_mode_0;
+      anv_batch_write_reg(&batch, GENX(CACHE_MODE_0), cm0) {
+         cm0.DisableRepackingforCompression = true;
+         cm0.DisableRepackingforCompressionMask = true;
       }
    }
 
@@ -278,15 +251,9 @@ init_render_queue_state(struct anv_queue *queue)
     * to command buffer level preemption to avoid rendering
     * corruption.
     */
-   uint32_t cs_chicken1;
-   anv_pack_struct(&cs_chicken1,
-                   GENX(CS_CHICKEN1),
-                   .ReplayMode = MidcmdbufferPreemption,
-                   .ReplayModeMask = true);
-
-   anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-      lri.RegisterOffset = GENX(CS_CHICKEN1_num);
-      lri.DataDWord      = cs_chicken1;
+   anv_batch_write_reg(&batch, GENX(CS_CHICKEN1), cc1) {
+      cc1.ReplayMode = MidcmdbufferPreemption;
+      cc1.ReplayModeMask = true;
    }
 #endif
 
@@ -311,22 +278,15 @@ init_render_queue_state(struct anv_queue *queue)
     * This is only safe on kernels with context isolation support.
     */
    if (GEN_GEN >= 8 && device->physical->has_context_isolation) {
-      UNUSED uint32_t tmp_reg;
 #if GEN_GEN >= 9
-      anv_pack_struct(&tmp_reg, GENX(CS_DEBUG_MODE2),
-                      .CONSTANT_BUFFERAddressOffsetDisable = true,
-                      .CONSTANT_BUFFERAddressOffsetDisableMask = true);
-      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-         lri.RegisterOffset = GENX(CS_DEBUG_MODE2_num);
-         lri.DataDWord      = tmp_reg;
+      anv_batch_write_reg(&batch, GENX(CS_DEBUG_MODE2), csdm2) {
+         csdm2.CONSTANT_BUFFERAddressOffsetDisable = true;
+         csdm2.CONSTANT_BUFFERAddressOffsetDisableMask = true;
       }
 #elif GEN_GEN == 8
-      anv_pack_struct(&tmp_reg, GENX(INSTPM),
-                      .CONSTANT_BUFFERAddressOffsetDisable = true,
-                      .CONSTANT_BUFFERAddressOffsetDisableMask = true);
-      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-         lri.RegisterOffset = GENX(INSTPM_num);
-         lri.DataDWord      = tmp_reg;
+      anv_batch_write_reg(&batch, GENX(INSTPM), instpm) {
+         instpm.CONSTANT_BUFFERAddressOffsetDisable = true;
+         instpm.CONSTANT_BUFFERAddressOffsetDisableMask = true;
       }
 #endif
    }
@@ -335,12 +295,8 @@ init_render_queue_state(struct anv_queue *queue)
    const struct intel_l3_config *cfg = intel_get_default_l3_config(&device->info);
    if (!cfg) {
       /* Platforms with no configs just setup full-way allocation. */
-      uint32_t l3cr;
-      anv_pack_struct(&l3cr, GENX(L3ALLOC),
-                      .L3FullWayAllocationEnable = true);
-      anv_batch_emit(&batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
-         lri.RegisterOffset = GENX(L3ALLOC_num);
-         lri.DataDWord      = l3cr;
+      anv_batch_write_reg(&batch, GENX(L3ALLOC), l3a) {
+         l3a.L3FullWayAllocationEnable = true;
       }
    }
 #endif
