@@ -38,8 +38,7 @@ fd_vs_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->prog.vs = hwcso;
-	ctx->dirty_shader[PIPE_SHADER_VERTEX] |= FD_DIRTY_SHADER_PROG;
-	ctx->dirty |= FD_DIRTY_PROG;
+	fd_context_dirty_shader(ctx, PIPE_SHADER_VERTEX, FD_DIRTY_SHADER_PROG);
 }
 
 static void
@@ -48,8 +47,7 @@ fd_tcs_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->prog.hs = hwcso;
-	ctx->dirty_shader[PIPE_SHADER_TESS_CTRL] |= FD_DIRTY_SHADER_PROG;
-	ctx->dirty |= FD_DIRTY_PROG;
+	fd_context_dirty_shader(ctx, PIPE_SHADER_TESS_CTRL, FD_DIRTY_SHADER_PROG);
 }
 
 static void
@@ -58,8 +56,7 @@ fd_tes_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->prog.ds = hwcso;
-	ctx->dirty_shader[PIPE_SHADER_TESS_EVAL] |= FD_DIRTY_SHADER_PROG;
-	ctx->dirty |= FD_DIRTY_PROG;
+	fd_context_dirty_shader(ctx, PIPE_SHADER_TESS_EVAL, FD_DIRTY_SHADER_PROG);
 }
 
 static void
@@ -68,8 +65,7 @@ fd_gs_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->prog.gs = hwcso;
-	ctx->dirty_shader[PIPE_SHADER_GEOMETRY] |= FD_DIRTY_SHADER_PROG;
-	ctx->dirty |= FD_DIRTY_PROG;
+	fd_context_dirty_shader(ctx, PIPE_SHADER_GEOMETRY, FD_DIRTY_SHADER_PROG);
 }
 
 static void
@@ -78,8 +74,7 @@ fd_fs_state_bind(struct pipe_context *pctx, void *hwcso)
 {
 	struct fd_context *ctx = fd_context(pctx);
 	ctx->prog.fs = hwcso;
-	ctx->dirty_shader[PIPE_SHADER_FRAGMENT] |= FD_DIRTY_SHADER_PROG;
-	ctx->dirty |= FD_DIRTY_PROG;
+	fd_context_dirty_shader(ctx, PIPE_SHADER_FRAGMENT, FD_DIRTY_SHADER_PROG);
 }
 
 static const char *solid_fs =

@@ -496,6 +496,42 @@ fd_stream_output_target(struct pipe_stream_output_target *target)
 	return (struct fd_stream_output_target *)target;
 }
 
+/* Mark specified non-shader-stage related state as dirty: */
+static inline void
+fd_context_dirty(struct fd_context *ctx, enum fd_dirty_3d_state dirty)
+	assert_dt
+{
+	assert(util_is_power_of_two_nonzero(dirty));
+	ctx->dirty |= dirty;
+}
+
+static inline void
+fd_context_dirty_shader(struct fd_context *ctx, enum pipe_shader_type shader,
+		enum fd_dirty_shader_state dirty)
+	assert_dt
+{
+	const enum fd_dirty_3d_state map[] = {
+		FD_DIRTY_PROG,
+		FD_DIRTY_CONST,
+		FD_DIRTY_TEX,
+		FD_DIRTY_SSBO,
+		FD_DIRTY_IMAGE,
+	};
+
+	/* Need to update the table above if these shift: */
+	STATIC_ASSERT(FD_DIRTY_SHADER_PROG  == BIT(0));
+	STATIC_ASSERT(FD_DIRTY_SHADER_CONST == BIT(1));
+	STATIC_ASSERT(FD_DIRTY_SHADER_TEX   == BIT(2));
+	STATIC_ASSERT(FD_DIRTY_SHADER_SSBO  == BIT(3));
+	STATIC_ASSERT(FD_DIRTY_SHADER_IMAGE == BIT(4));
+
+	assert(util_is_power_of_two_nonzero(dirty));
+	assert(ffs(dirty) <= ARRAY_SIZE(map));
+
+	ctx->dirty_shader[shader] |= dirty;
+	fd_context_dirty(ctx, map[ffs(dirty) - 1]);
+}
+
 /* mark all state dirty: */
 static inline void
 fd_context_all_dirty(struct fd_context *ctx)

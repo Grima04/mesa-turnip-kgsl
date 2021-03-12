@@ -135,7 +135,7 @@ fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit)
 	if (ctx->last.dirty ||
 			(ctx->last.primitive_restart != emit->primitive_restart)) {
 		/* rasterizer state is effected by primitive-restart: */
-		ctx->dirty |= FD_DIRTY_RASTERIZER;
+		fd_context_dirty(ctx, FD_DIRTY_RASTERIZER);
 		ctx->last.primitive_restart = emit->primitive_restart;
 	}
 }
