@@ -667,11 +667,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
       info->tcc_cache_line_size = 128;
 
       if (info->drm_minor >= 35) {
-         info->tcc_harvested = device_info.tcc_disabled_mask != 0;
          info->num_tcc_blocks = info->max_tcc_blocks - util_bitcount64(device_info.tcc_disabled_mask);
       } else {
          /* This is a hack, but it's all we can do without a kernel upgrade. */
-         info->tcc_harvested = (info->vram_size / info->max_tcc_blocks) != 512 * 1024 * 1024;
+         info->num_tcc_blocks = info->vram_size / (512 * 1024 * 1024);
+         if (info->num_tcc_blocks > info->max_tcc_blocks)
+            info->num_tcc_blocks /= 2;
       }
    } else {
       if (!info->has_graphics && info->family >= CHIP_ALDEBARAN)
@@ -681,6 +682,8 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
 
       info->num_tcc_blocks = info->max_tcc_blocks;
    }
+
+   info->tcc_rb_non_coherent = !util_is_power_of_two_or_zero(info->num_tcc_blocks);
 
    switch (info->family) {
    case CHIP_TAHITI:
@@ -1070,7 +1073,7 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    max_tcc_blocks = %i\n", info->max_tcc_blocks);
    fprintf(f, "    num_tcc_blocks = %i\n", info->num_tcc_blocks);
    fprintf(f, "    tcc_cache_line_size = %u\n", info->tcc_cache_line_size);
-   fprintf(f, "    tcc_harvested = %u\n", info->tcc_harvested);
+   fprintf(f, "    tcc_rb_non_coherent = %u\n", info->tcc_rb_non_coherent);
    fprintf(f, "    pc_lines = %u\n", info->pc_lines);
    fprintf(f, "    lds_size_per_workgroup = %u\n", info->lds_size_per_workgroup);
    fprintf(f, "    lds_alloc_granularity = %i\n", info->lds_alloc_granularity);

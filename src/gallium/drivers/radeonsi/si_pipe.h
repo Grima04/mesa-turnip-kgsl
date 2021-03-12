@@ -1768,7 +1768,7 @@ static inline void si_make_CB_shader_coherent(struct si_context *sctx, unsigned 
    sctx->force_cb_shader_coherent = false;
 
    if (sctx->chip_class >= GFX10) {
-      if (sctx->screen->info.tcc_harvested)
+      if (sctx->screen->info.tcc_rb_non_coherent)
          sctx->flags |= SI_CONTEXT_INV_L2;
       else if (shaders_read_metadata)
          sctx->flags |= SI_CONTEXT_INV_L2_METADATA;
@@ -1793,7 +1793,7 @@ static inline void si_make_DB_shader_coherent(struct si_context *sctx, unsigned 
    sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_DB | SI_CONTEXT_INV_VCACHE;
 
    if (sctx->chip_class >= GFX10) {
-      if (sctx->screen->info.tcc_harvested)
+      if (sctx->screen->info.tcc_rb_non_coherent)
          sctx->flags |= SI_CONTEXT_INV_L2;
       else if (shaders_read_metadata)
          sctx->flags |= SI_CONTEXT_INV_L2_METADATA;

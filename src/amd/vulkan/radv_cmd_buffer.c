@@ -3319,7 +3319,7 @@ static bool
 radv_image_is_l2_coherent(const struct radv_device *device, const struct radv_image *image)
 {
 	if (device->physical_device->rad_info.chip_class >= GFX10) {
-		return !device->physical_device->rad_info.tcc_harvested &&
+		return !device->physical_device->rad_info.tcc_rb_non_coherent &&
 			(image && !radv_image_is_pipe_misaligned(device, image));
 	} else if (device->physical_device->rad_info.chip_class == GFX9 && image) {
 		if (image->info.samples == 1 &&
