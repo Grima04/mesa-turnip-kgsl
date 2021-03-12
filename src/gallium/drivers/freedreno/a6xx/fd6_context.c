@@ -126,6 +126,55 @@ fd6_vertex_state_delete(struct pipe_context *pctx, void *hwcso)
 	FREE(hwcso);
 }
 
+static void
+setup_state_map(struct fd_context *ctx)
+{
+	STATIC_ASSERT(FD6_GROUP_NON_GROUP < 32);
+
+	fd_context_add_map(ctx, FD_DIRTY_VTXSTATE, BIT(FD6_GROUP_VTXSTATE));
+	fd_context_add_map(ctx, FD_DIRTY_VTXBUF, BIT(FD6_GROUP_VBO));
+	fd_context_add_map(ctx, FD_DIRTY_ZSA | FD_DIRTY_RASTERIZER, BIT(FD6_GROUP_ZSA));
+	fd_context_add_map(ctx, FD_DIRTY_ZSA | FD_DIRTY_BLEND | FD_DIRTY_PROG,
+			BIT(FD6_GROUP_LRZ) | BIT(FD6_GROUP_LRZ_BINNING));
+	fd_context_add_map(ctx, FD_DIRTY_PROG, BIT(FD6_GROUP_PROG));
+	fd_context_add_map(ctx, FD_DIRTY_RASTERIZER, BIT(FD6_GROUP_RASTERIZER));
+	fd_context_add_map(ctx, FD_DIRTY_FRAMEBUFFER | FD_DIRTY_RASTERIZER_DISCARD |
+			FD_DIRTY_PROG | FD_DIRTY_BLEND_DUAL,
+			BIT(FD6_GROUP_PROG_FB_RAST));
+	fd_context_add_map(ctx, FD_DIRTY_BLEND | FD_DIRTY_SAMPLE_MASK, BIT(FD6_GROUP_BLEND));
+	fd_context_add_map(ctx, FD_DIRTY_BLEND_COLOR, BIT(FD6_GROUP_BLEND_COLOR));
+	fd_context_add_map(ctx, FD_DIRTY_SSBO | FD_DIRTY_IMAGE | FD_DIRTY_PROG,
+			BIT(FD6_GROUP_IBO));
+	fd_context_add_map(ctx, FD_DIRTY_PROG, BIT(FD6_GROUP_VS_TEX) | BIT(FD6_GROUP_HS_TEX) |
+			BIT(FD6_GROUP_DS_TEX) | BIT(FD6_GROUP_GS_TEX) | BIT(FD6_GROUP_FS_TEX));
+	fd_context_add_map(ctx, FD_DIRTY_PROG | FD_DIRTY_CONST, BIT(FD6_GROUP_CONST));
+	fd_context_add_map(ctx, FD_DIRTY_STREAMOUT, BIT(FD6_GROUP_SO));
+
+	fd_context_add_shader_map(ctx, PIPE_SHADER_VERTEX, FD_DIRTY_SHADER_TEX,
+			BIT(FD6_GROUP_VS_TEX));
+	fd_context_add_shader_map(ctx, PIPE_SHADER_TESS_CTRL, FD_DIRTY_SHADER_TEX,
+			BIT(FD6_GROUP_HS_TEX));
+	fd_context_add_shader_map(ctx, PIPE_SHADER_TESS_EVAL, FD_DIRTY_SHADER_TEX,
+			BIT(FD6_GROUP_DS_TEX));
+	fd_context_add_shader_map(ctx, PIPE_SHADER_GEOMETRY, FD_DIRTY_SHADER_TEX,
+			BIT(FD6_GROUP_GS_TEX));
+	fd_context_add_shader_map(ctx, PIPE_SHADER_FRAGMENT, FD_DIRTY_SHADER_TEX,
+			BIT(FD6_GROUP_FS_TEX));
+
+	/* NOTE: scissor enabled bit is part of rasterizer state, but
+	 * fd_rasterizer_state_bind() will mark scissor dirty if needed:
+	 */
+	fd_context_add_map(ctx, FD_DIRTY_SCISSOR, BIT(FD6_GROUP_SCISSOR));
+
+	/* Stuff still emit in IB2
+	 *
+	 * NOTE: viewport state doesn't seem to change frequently, so possibly
+	 * move it into FD6_GROUP_RASTERIZER?
+	 */
+	fd_context_add_map(ctx, FD_DIRTY_STENCIL_REF | FD_DIRTY_VIEWPORT | FD_DIRTY_RASTERIZER,
+			BIT(FD6_GROUP_NON_GROUP));
+}
+
 struct pipe_context *
 fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	disable_thread_safety_analysis
@@ -157,6 +206,8 @@ fd6_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 	fd6_prog_init(pctx);
 	fd6_emit_init(pctx);
 	fd6_query_context_init(pctx);
+
+	setup_state_map(&fd6_ctx->base);
 
 	pctx = fd_context_init(&fd6_ctx->base, pscreen, primtypes, priv, flags);
 	if (!pctx)

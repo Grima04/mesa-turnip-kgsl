@@ -185,10 +185,13 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 		struct shader_info *ds_info = ir3_get_shader_info(emit.key.ds);
 		emit.key.key.tessellation = ir3_tess_mode(ds_info->tess.primitive_mode);
+		ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
 	}
 
-	if (emit.key.gs)
+	if (emit.key.gs) {
 		emit.key.key.has_gs = true;
+		ctx->gen_dirty |= BIT(FD6_GROUP_PRIMITIVE_PARAMS);
+	}
 
 	if (!(emit.key.hs || emit.key.ds || emit.key.gs || indirect))
 		fd6_vsc_update_sizes(ctx->batch, info, draw);
@@ -207,13 +210,19 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 	fixup_draw_state(ctx, &emit);
 
-	emit.dirty = ctx->dirty;      /* *after* fixup_shader_state() */
+	/* *after* fixup_shader_state(): */
+	emit.dirty = ctx->dirty;
+	emit.dirty_groups = ctx->gen_dirty;
+
 	emit.bs = fd6_emit_get_prog(&emit)->bs;
 	emit.vs = fd6_emit_get_prog(&emit)->vs;
 	emit.hs = fd6_emit_get_prog(&emit)->hs;
 	emit.ds = fd6_emit_get_prog(&emit)->ds;
 	emit.gs = fd6_emit_get_prog(&emit)->gs;
 	emit.fs = fd6_emit_get_prog(&emit)->fs;
+
+	if (emit.vs->need_driver_params || fd6_ctx->has_dp_state)
+		emit.dirty_groups |= BIT(FD6_GROUP_VS_DRIVER_PARAMS);
 
 	ctx->stats.vs_regs += ir3_shader_halfregs(emit.vs);
 	ctx->stats.hs_regs += COND(emit.hs, ir3_shader_halfregs(emit.hs));
@@ -302,7 +311,8 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		ctx->last.restart_index = restart_index;
 	}
 
-	if (emit.dirty)
+	// TODO move fd6_emit_streamout.. I think..
+	if (emit.dirty_groups)
 		fd6_emit_state(ring, &emit);
 
 	/* for debug after a lock up, write a unique counter value
