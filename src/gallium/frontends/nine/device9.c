@@ -75,11 +75,35 @@ static void nine_setup_fpu()
     __asm__ __volatile__ ("fldcw %0" : : "m" (*&c));
 }
 
+static void nine_setup_set_fpu(uint16_t val)
+{
+    __asm__ __volatile__ ("fldcw %0" : : "m" (*&val));
+}
+
+static uint16_t nine_setup_get_fpu()
+{
+    uint16_t c;
+
+    __asm__ __volatile__ ("fnstcw %0" : "=m" (*&c));
+    return c;
+}
+
 #else
 
 static void nine_setup_fpu(void)
 {
     WARN_ONCE("FPU setup not supported on non-x86 platforms\n");
+}
+
+static void nine_setup_set_fpu(uint16_t)
+{
+    WARN_ONCE("FPU setup not supported on non-x86 platforms\n");
+}
+
+static uint16_t nine_setup_get_fpu()
+{
+    WARN_ONCE("FPU setup not supported on non-x86 platforms\n");
+    return 0;
 }
 
 #endif
@@ -159,6 +183,7 @@ NineDevice9_ctor( struct NineDevice9 *This,
                   int minorVersionNum )
 {
     unsigned i;
+    uint16_t fpu_cw = 0;
     HRESULT hr = NineUnknown_ctor(&This->base, pParams);
 
     DBG("This=%p pParams=%p pScreen=%p pCreationParameters=%p pCaps=%p pPresentationParameters=%p "
@@ -188,8 +213,13 @@ NineDevice9_ctor( struct NineDevice9 *This,
     IDirect3D9_AddRef(This->d3d9);
     ID3DPresentGroup_AddRef(This->present);
 
-    if (!(This->params.BehaviorFlags & D3DCREATE_FPU_PRESERVE))
+    if (!(This->params.BehaviorFlags & D3DCREATE_FPU_PRESERVE)) {
         nine_setup_fpu();
+    } else {
+        /* Software renderer initialization needs exceptions masked */
+        fpu_cw = nine_setup_get_fpu();
+        nine_setup_set_fpu(fpu_cw | 0x007f);
+    }
 
     if (This->params.BehaviorFlags & D3DCREATE_SOFTWARE_VERTEXPROCESSING) {
         DBG("Application asked full Software Vertex Processing.\n");
@@ -543,6 +573,9 @@ NineDevice9_ctor( struct NineDevice9 *This,
     ID3DPresentGroup_Release(This->present);
     nine_context_update_state(This); /* Some drivers needs states to be initialized */
     nine_csmt_process(This);
+
+    if (This->params.BehaviorFlags & D3DCREATE_FPU_PRESERVE)
+        nine_setup_set_fpu(fpu_cw);
 
     return D3D_OK;
 }
