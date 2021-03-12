@@ -339,15 +339,10 @@ NineSurface9_GetContainer( struct NineSurface9 *This,
 
     if (!ppContainer) return E_POINTER;
 
-    /* Return device for OffscreenPlainSurface, DepthStencilSurface and RenderTarget */
-    if (!NineUnknown(This)->container) {
-        *ppContainer = NineUnknown(This)->device;
-        NineUnknown_AddRef(NineUnknown(*ppContainer));
-
-        return D3D_OK;
-    }
-
-    hr = NineUnknown_QueryInterface(NineUnknown(This)->container, riid, ppContainer);
+    /* Use device for OffscreenPlainSurface, DepthStencilSurface and RenderTarget */
+    hr = NineUnknown_QueryInterface(NineUnknown(This)->container ?
+                                        NineUnknown(This)->container : &NineUnknown(This)->device->base,
+                                    riid, ppContainer);
     if (FAILED(hr))
         DBG("QueryInterface FAILED!\n");
     return hr;
