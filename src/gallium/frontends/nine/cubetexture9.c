@@ -179,7 +179,8 @@ NineCubeTexture9_dtor( struct NineCubeTexture9 *This )
 
     if (This->surfaces) {
         for (i = 0; i < This->base.level_count * 6; ++i)
-            NineUnknown_Destroy(&This->surfaces[i]->base.base);
+            if (This->surfaces[i])
+                NineUnknown_Destroy(&This->surfaces[i]->base.base);
         FREE(This->surfaces);
     }
 
