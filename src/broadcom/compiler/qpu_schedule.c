@@ -386,8 +386,12 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
                 add_write_dep(state, &state->last_tmu_write, n);
         }
 
+        /* Allow wrtmuc to be reordered with other instructions in the
+         * same TMU sequence by using a read dependency on the last TMU
+         * sequence terminator.
+         */
         if (inst->sig.wrtmuc)
-                add_write_dep(state, &state->last_tmu_config, n);
+                add_read_dep(state, state->last_tmu_config, n);
 
         if (inst->sig.ldtlb | inst->sig.ldtlbu)
                 add_write_dep(state, &state->last_tlb, n);
