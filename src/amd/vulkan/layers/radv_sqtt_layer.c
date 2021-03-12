@@ -432,13 +432,16 @@ VkResult sqtt_QueuePresentKHR(
 	return VK_SUCCESS;
 }
 
-#define EVENT_MARKER(cmd_name, ...) \
+#define EVENT_MARKER_ALIAS(cmd_name, api_name, ...) \
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer); \
-	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##cmd_name); \
-	cmd_buffer->state.current_event_type = EventCmd##cmd_name; \
+	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##api_name); \
+	cmd_buffer->state.current_event_type = EventCmd##api_name; \
 	radv_Cmd##cmd_name(__VA_ARGS__); \
 	cmd_buffer->state.current_event_type = EventInternalUnknown; \
-	radv_write_end_general_api_marker(cmd_buffer, ApiCmd##cmd_name);
+	radv_write_end_general_api_marker(cmd_buffer, ApiCmd##api_name);
+
+#define EVENT_MARKER(cmd_name, ...) \
+	EVENT_MARKER_ALIAS(cmd_name, cmd_name, __VA_ARGS__);
 
 void sqtt_CmdDraw(
 	VkCommandBuffer                             commandBuffer,
@@ -539,6 +542,14 @@ void sqtt_CmdCopyBuffer(
 		     regionCount, pRegions);
 }
 
+void sqtt_CmdCopyBuffer2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkCopyBufferInfo2KHR*                 pCopyBufferInfo)
+{
+	EVENT_MARKER_ALIAS(CopyBuffer2KHR, CopyBuffer, commandBuffer,
+			   pCopyBufferInfo);
+}
+
 void sqtt_CmdFillBuffer(
 	VkCommandBuffer                             commandBuffer,
 	VkBuffer                                    dstBuffer,
@@ -574,6 +585,14 @@ void sqtt_CmdCopyImage(
 		     destImage, destImageLayout, regionCount, pRegions);
 }
 
+void sqtt_CmdCopyImage2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkCopyImageInfo2KHR*                  pCopyImageInfo)
+{
+	EVENT_MARKER_ALIAS(CopyImage2KHR, CopyImage, commandBuffer,
+			   pCopyImageInfo);
+}
+
 void sqtt_CmdCopyBufferToImage(
 	VkCommandBuffer                             commandBuffer,
 	VkBuffer                                    srcBuffer,
@@ -584,6 +603,14 @@ void sqtt_CmdCopyBufferToImage(
 {
 	EVENT_MARKER(CopyBufferToImage, commandBuffer, srcBuffer, destImage,
 		     destImageLayout, regionCount, pRegions);
+}
+
+void sqtt_CmdCopyBufferToImage2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkCopyBufferToImageInfo2KHR*          pCopyBufferToImageInfo)
+{
+	EVENT_MARKER_ALIAS(CopyBufferToImage2KHR, CopyBufferToImage,
+			   commandBuffer, pCopyBufferToImageInfo);
 }
 
 void sqtt_CmdCopyImageToBuffer(
@@ -598,6 +625,14 @@ void sqtt_CmdCopyImageToBuffer(
 		     destBuffer, regionCount, pRegions);
 }
 
+void sqtt_CmdCopyImageToBuffer2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkCopyImageToBufferInfo2KHR*          pCopyImageToBufferInfo)
+{
+	EVENT_MARKER_ALIAS(CopyImageToBuffer2KHR, CopyImageToBuffer,
+			   commandBuffer, pCopyImageToBufferInfo);
+}
+
 void sqtt_CmdBlitImage(
 	VkCommandBuffer                             commandBuffer,
 	VkImage                                     srcImage,
@@ -610,6 +645,14 @@ void sqtt_CmdBlitImage(
 {
 	EVENT_MARKER(BlitImage, commandBuffer, srcImage, srcImageLayout,
 		     destImage, destImageLayout, regionCount, pRegions, filter);
+}
+
+void sqtt_CmdBlitImage2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkBlitImageInfo2KHR*                  pBlitImageInfo)
+{
+	EVENT_MARKER_ALIAS(BlitImage2KHR, BlitImage, commandBuffer,
+			   pBlitImageInfo);
 }
 
 void sqtt_CmdClearColorImage(
@@ -658,6 +701,14 @@ void sqtt_CmdResolveImage(
 {
 	EVENT_MARKER(ResolveImage, commandBuffer, src_image_h, src_image_layout,
 		     dest_image_h, dest_image_layout, region_count, regions);
+}
+
+void sqtt_CmdResolveImage2KHR(
+	VkCommandBuffer                             commandBuffer,
+	const VkResolveImageInfo2KHR*               pResolveImageInfo)
+{
+	EVENT_MARKER_ALIAS(ResolveImage2KHR, ResolveImage, commandBuffer,
+			   pResolveImageInfo);
 }
 
 void sqtt_CmdWaitEvents(VkCommandBuffer commandBuffer,
@@ -724,11 +775,14 @@ void sqtt_CmdCopyQueryPoolResults(
 }
 
 #undef EVENT_MARKER
-#define API_MARKER(cmd_name, ...) \
+#define API_MARKER_ALIAS(cmd_name, api_name, ...) \
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer); \
-	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##cmd_name); \
+	radv_write_begin_general_api_marker(cmd_buffer, ApiCmd##api_name); \
 	radv_Cmd##cmd_name(__VA_ARGS__); \
-	radv_write_end_general_api_marker(cmd_buffer, ApiCmd##cmd_name);
+	radv_write_end_general_api_marker(cmd_buffer, ApiCmd##api_name);
+
+#define API_MARKER(cmd_name, ...) \
+	API_MARKER_ALIAS(cmd_name, cmd_name, __VA_ARGS__);
 
 static bool
 radv_sqtt_dump_pipeline()
@@ -830,6 +884,15 @@ void sqtt_CmdBeginRenderPass(
 	API_MARKER(BeginRenderPass, commandBuffer, pRenderPassBegin, contents);
 }
 
+void sqtt_CmdBeginRenderPass2(
+	VkCommandBuffer                             commandBuffer,
+	const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
+	const VkSubpassBeginInfo*                   pSubpassBeginInfo)
+{
+	API_MARKER_ALIAS(BeginRenderPass2, BeginRenderPass, commandBuffer,
+			 pRenderPassBeginInfo, pSubpassBeginInfo);
+}
+
 void sqtt_CmdNextSubpass(
 	VkCommandBuffer                             commandBuffer,
 	VkSubpassContents                           contents)
@@ -837,10 +900,27 @@ void sqtt_CmdNextSubpass(
 	API_MARKER(NextSubpass, commandBuffer, contents);
 }
 
+void sqtt_CmdNextSubpass2(
+	VkCommandBuffer                             commandBuffer,
+	const VkSubpassBeginInfo*                   pSubpassBeginInfo,
+	const VkSubpassEndInfo*                     pSubpassEndInfo)
+{
+	API_MARKER_ALIAS(NextSubpass2, NextSubpass, commandBuffer,
+			 pSubpassBeginInfo, pSubpassEndInfo);
+}
+
 void sqtt_CmdEndRenderPass(
 	VkCommandBuffer                             commandBuffer)
 {
 	API_MARKER(EndRenderPass, commandBuffer);
+}
+
+void sqtt_CmdEndRenderPass2(
+	VkCommandBuffer                             commandBuffer,
+	const VkSubpassEndInfo*                     pSubpassEndInfo)
+{
+	API_MARKER_ALIAS(EndRenderPass2, EndRenderPass, commandBuffer,
+			 pSubpassEndInfo);
 }
 
 void sqtt_CmdExecuteCommands(
