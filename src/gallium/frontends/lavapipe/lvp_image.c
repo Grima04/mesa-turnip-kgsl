@@ -73,6 +73,12 @@ lvp_image_create(VkDevice _device,
       if (pCreateInfo->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)
          template.bind |= PIPE_BIND_DEPTH_STENCIL;
 
+      if (pCreateInfo->usage & VK_IMAGE_USAGE_SAMPLED_BIT)
+         template.bind |= PIPE_BIND_SAMPLER_VIEW;
+
+      if (pCreateInfo->usage & VK_IMAGE_USAGE_STORAGE_BIT)
+         template.bind |= PIPE_BIND_SHADER_IMAGE;
+
       template.format = vk_format_to_pipe(pCreateInfo->format);
       template.width0 = pCreateInfo->extent.width;
       template.height0 = pCreateInfo->extent.height;
@@ -266,6 +272,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateBuffer(
       template.height0 = 1;
       template.depth0 = 1;
       template.array_size = 1;
+      if (buffer->usage & VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT)
+         template.bind |= PIPE_BIND_SAMPLER_VIEW;
+      if (buffer->usage & VK_BUFFER_USAGE_STORAGE_BUFFER_BIT)
+         template.bind |= PIPE_BIND_SHADER_BUFFER;
+      if (buffer->usage & VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)
+         template.bind |= PIPE_BIND_SHADER_IMAGE;
       template.flags = PIPE_RESOURCE_FLAG_DONT_OVER_ALLOCATE;
       buffer->bo = device->pscreen->resource_create_unbacked(device->pscreen,
                                                              &template,
