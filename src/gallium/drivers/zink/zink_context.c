@@ -188,7 +188,7 @@ update_descriptor_stage_state(struct zink_context *ctx, enum pipe_shader_type sh
 
 static void
 update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type, bool is_compute)
-{printf("UPDATE\n");
+{
    /* we shouldn't be calling this if we don't have to */
    assert(!ctx->descriptor_states[is_compute].valid[type]);
    bool has_any_usage = false;
