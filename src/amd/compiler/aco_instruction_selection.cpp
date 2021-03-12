@@ -2450,6 +2450,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             src = convert_int(ctx, bld, src, input_size, target_size, true);
          }
       } else if (input_size == 64) {
+         /* Truncate down to 32 bits; if any of the upper bits are relevant,
+          * the value does not fall into the single-precision float range
+          * anyway. SPIR-V does not mandate any specific behavior for such
+          * large inputs.
+          */
          src = convert_int(ctx, bld, src, 64, 32, false);
       }
 
@@ -2525,6 +2530,11 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
             src = convert_int(ctx, bld, src, input_size, target_size, false);
          }
       } else if (input_size == 64) {
+         /* Truncate down to 32 bits; if any of the upper bits are non-zero,
+          * the value does not fall into the single-precision float range
+          * anyway. SPIR-V does not mandate any specific behavior for such
+          * large inputs.
+          */
          src = convert_int(ctx, bld, src, 64, 32, false);
       }
 
