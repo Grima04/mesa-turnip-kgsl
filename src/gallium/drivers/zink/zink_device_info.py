@@ -66,6 +66,7 @@ EXTENSIONS = [
     Extension("VK_KHR_external_memory_fd"),
     Extension("VK_KHR_vulkan_memory_model"),
     Extension("VK_EXT_shader_viewport_index_layer"),
+    Extension("VK_EXT_post_depth_coverage"),
     Extension("VK_KHR_driver_properties",
         alias="driver",
         properties=True),

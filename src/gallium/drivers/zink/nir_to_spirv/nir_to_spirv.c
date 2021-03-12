@@ -2600,6 +2600,7 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_sample_mask_in:
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleMaskPostDepthCoverage);
       emit_load_uint_input(ctx, intr, &ctx->sample_mask_in_var, "gl_SampleMaskIn", SpvBuiltInSampleMask);
       break;
 
@@ -3702,6 +3703,9 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info,
       if (s->info.fs.early_fragment_tests)
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                       SpvExecutionModeEarlyFragmentTests);
+      if (s->info.fs.post_depth_coverage)
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
+                                      SpvExecutionModePostDepthCoverage);
       break;
    case MESA_SHADER_TESS_CTRL:
       spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,

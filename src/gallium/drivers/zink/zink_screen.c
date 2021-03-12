@@ -502,6 +502,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
       return screen->info.feats.features.depthBounds;
 
+   case PIPE_CAP_POST_DEPTH_COVERAGE:
+      return screen->info.have_EXT_post_depth_coverage;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
