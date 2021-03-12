@@ -163,9 +163,6 @@ update_descriptor_stage_state(struct zink_context *ctx, enum pipe_shader_type sh
 {
    struct zink_shader *zs = shader == PIPE_SHADER_COMPUTE ? ctx->compute_stage : ctx->gfx_stages[shader];
 
-   if (!zink_program_get_descriptor_usage(ctx, shader, type))
-      return 0;
-
    uint32_t hash = 0;
    for (int i = 0; i < zs->num_bindings[type]; i++) {
       int idx = zs->bindings[type][i].index;
@@ -191,30 +188,50 @@ update_descriptor_stage_state(struct zink_context *ctx, enum pipe_shader_type sh
 
 static void
 update_descriptor_state(struct zink_context *ctx, enum zink_descriptor_type type, bool is_compute)
-{
+{printf("UPDATE\n");
    /* we shouldn't be calling this if we don't have to */
    assert(!ctx->descriptor_states[is_compute].valid[type]);
+   bool has_any_usage = false;
 
-   if (is_compute)
+   if (is_compute) {
       /* just update compute state */
-      ctx->descriptor_states[is_compute].state[type] = update_descriptor_stage_state(ctx, PIPE_SHADER_COMPUTE, type);
-   else {
+      bool has_usage = zink_program_get_descriptor_usage(ctx, PIPE_SHADER_COMPUTE, type);
+      if (has_usage)
+         ctx->descriptor_states[is_compute].state[type] = update_descriptor_stage_state(ctx, PIPE_SHADER_COMPUTE, type);
+      else
+         ctx->descriptor_states[is_compute].state[type] = 0;
+      has_any_usage = has_usage;
+   } else {
       /* update all gfx states */
+      bool first = true;
       for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
+         bool has_usage = false;
          /* this is the incremental update for the shader stage */
-         if (!ctx->gfx_descriptor_states[i].valid[type] && ctx->gfx_stages[i]) {
-            ctx->gfx_descriptor_states[i].state[type] = update_descriptor_stage_state(ctx, i, type);
-            ctx->gfx_descriptor_states[i].valid[type] = true;
+         if (!ctx->gfx_descriptor_states[i].valid[type]) {
+            ctx->gfx_descriptor_states[i].state[type] = 0;
+            if (ctx->gfx_stages[i]) {
+               has_usage = zink_program_get_descriptor_usage(ctx, i, type);
+               if (has_usage)
+                  ctx->gfx_descriptor_states[i].state[type] = update_descriptor_stage_state(ctx, i, type);
+               ctx->gfx_descriptor_states[i].valid[type] = has_usage;
+            }
          }
          if (ctx->gfx_descriptor_states[i].valid[type]) {
             /* this is the overall state update for the descriptor set hash */
-            ctx->descriptor_states[is_compute].state[type] = XXH32(&ctx->gfx_descriptor_states[i].state[type],
-                                                                   sizeof(uint32_t),
-                                                                   ctx->descriptor_states[is_compute].state[type]);
+            if (first) {
+               /* no need to double hash the first state */
+               ctx->descriptor_states[is_compute].state[type] = ctx->gfx_descriptor_states[i].state[type];
+               first = false;
+            } else {
+               ctx->descriptor_states[is_compute].state[type] = XXH32(&ctx->gfx_descriptor_states[i].state[type],
+                                                                      sizeof(uint32_t),
+                                                                      ctx->descriptor_states[is_compute].state[type]);
+            }
          }
+         has_any_usage |= has_usage;
       }
    }
-   ctx->descriptor_states[is_compute].valid[type] = true;
+   ctx->descriptor_states[is_compute].valid[type] = has_any_usage;
 }
 
 void

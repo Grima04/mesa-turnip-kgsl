@@ -64,12 +64,15 @@ desc_state_hash(const void *key)
 {
    const struct zink_descriptor_state_key *d_key = (void*)key;
    uint32_t hash = 0;
-   /* this is a compute shader */
-   if (!d_key->exists[PIPE_SHADER_FRAGMENT])
-      return d_key->state[0];
+   bool first = true;
    for (unsigned i = 0; i < ZINK_SHADER_COUNT; i++) {
-      if (d_key->exists[i])
-         hash = XXH32(&d_key->state[i], sizeof(uint32_t), hash);
+      if (d_key->exists[i]) {
+         if (!first)
+            hash = XXH32(&d_key->state[i], sizeof(uint32_t), hash);
+         else
+            hash = d_key->state[i];
+         first = false;
+      }
    }
    return hash;
 }
