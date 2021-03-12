@@ -2116,6 +2116,8 @@ zink_create_stream_output_target(struct pipe_context *pctx,
    t->base.buffer_offset = buffer_offset;
    t->base.buffer_size = buffer_size;
 
+   zink_resource(t->base.buffer)->bind_history |= ZINK_RESOURCE_USAGE_STREAMOUT;
+
    return &t->base;
 }
 
@@ -2170,6 +2172,11 @@ void
 zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
 {
    assert(res->base.target == PIPE_BUFFER);
+
+   if (res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT)
+      ctx->dirty_so_targets = true;
+   /* force counter buffer reset */
+   res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
 
    for (unsigned shader = 0; shader < PIPE_SHADER_TYPES; shader++) {
       if (!(res->bind_stages & (1 << shader)))

@@ -141,12 +141,16 @@ zink_emit_stream_output_targets(struct pipe_context *pctx)
          continue;
       }
       struct zink_resource *res = zink_resource(t->base.buffer);
+      if (!(res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT))
+         /* resource has been rebound */
+         t->counter_buffer_valid = false;
       buffers[i] = res->obj->buffer;
       zink_resource_buffer_barrier(ctx, NULL, zink_resource(t->base.buffer),
                                    VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT, VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT);
       zink_batch_reference_resource_rw(batch, res, true);
       buffer_offsets[i] = t->base.buffer_offset;
       buffer_sizes[i] = t->base.buffer_size;
+      res->bind_history |= ZINK_RESOURCE_USAGE_STREAMOUT;
       util_range_add(t->base.buffer, &res->valid_buffer_range, t->base.buffer_offset,
                      t->base.buffer_offset + t->base.buffer_size);
    }

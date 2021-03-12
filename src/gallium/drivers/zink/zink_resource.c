@@ -586,6 +586,11 @@ zink_resource_invalidate(struct pipe_context *pctx, struct pipe_resource *pres)
    if (res->valid_buffer_range.start > res->valid_buffer_range.end)
       return;
 
+   if (res->bind_history & ZINK_RESOURCE_USAGE_STREAMOUT)
+      ctx->dirty_so_targets = true;
+   /* force counter buffer reset */
+   res->bind_history &= ~ZINK_RESOURCE_USAGE_STREAMOUT;
+
    util_range_set_empty(&res->valid_buffer_range);
    if (!zink_get_resource_usage(res))
       return;

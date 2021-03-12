@@ -29,6 +29,8 @@ struct sw_displaytarget;
 struct zink_batch;
 struct zink_context;
 
+#define ZINK_RESOURCE_USAGE_STREAMOUT (1 << 10) //much greater than ZINK_DESCRIPTOR_TYPES
+
 #include "util/u_transfer.h"
 #include "util/u_range.h"
 #include "util/u_dynarray.h"
