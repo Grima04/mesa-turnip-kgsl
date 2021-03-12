@@ -232,7 +232,7 @@ bool lvp_physical_device_extension_supported(struct lvp_physical_device *dev,
                                               const char *name);
 
 struct lvp_queue {
-   VK_LOADER_DATA                              _loader_data;
+   struct vk_object_base base;
    VkDeviceQueueCreateFlags flags;
    struct lvp_device *                         device;
    struct pipe_context *ctx;
