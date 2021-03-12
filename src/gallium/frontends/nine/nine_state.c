@@ -1892,6 +1892,9 @@ CSMT_ITEM_NO_WAIT(nine_context_set_viewport,
 {
     struct nine_context *context = &device->context;
 
+    if (!memcmp(viewport, &context->viewport, sizeof(context->viewport)))
+        return;
+
     context->viewport = *viewport;
     context->changed.group |= NINE_STATE_VIEWPORT;
 }
@@ -1900,6 +1903,9 @@ CSMT_ITEM_NO_WAIT(nine_context_set_scissor,
                   ARG_COPY_REF(struct pipe_scissor_state, scissor))
 {
     struct nine_context *context = &device->context;
+
+    if (!memcmp(scissor, &context->scissor, sizeof(context->scissor)))
+        return;
 
     context->scissor = *scissor;
     context->changed.group |= NINE_STATE_SCISSOR;
