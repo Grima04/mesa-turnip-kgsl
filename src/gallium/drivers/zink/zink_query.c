@@ -479,12 +479,9 @@ force_cpu_read(struct zink_context *ctx, struct pipe_query *pquery, enum pipe_qu
    unsigned result_size = result_type <= PIPE_QUERY_TYPE_U32 ? sizeof(uint32_t) : sizeof(uint64_t);
    struct zink_query *query = (struct zink_query*)pquery;
    union pipe_query_result result;
-   uint32_t batch_id = p_atomic_read(&query->batch_id.usage);
 
    if (query->needs_update)
       update_qbo(ctx, query);
-
-   zink_wait_on_batch(ctx, batch_id);
 
    bool success = get_query_result(pctx, pquery, true, &result);
    if (!success) {
@@ -752,13 +749,12 @@ zink_get_query_result(struct pipe_context *pctx,
 {
    struct zink_query *query = (void*)q;
    struct zink_context *ctx = zink_context(pctx);
-   uint32_t batch_id = p_atomic_read(&query->batch_id.usage);
 
    if (query->needs_update)
       update_qbo(ctx, query);
 
-   if (wait)
-      zink_wait_on_batch(ctx, batch_id);
+   if (query->batch_id.usage == ctx->curr_batch)
+      pctx->flush(pctx, NULL, 0);
 
    return get_query_result(pctx, q, wait, result);
 }
