@@ -1995,6 +1995,8 @@ NineDevice9_SetRenderTarget( struct NineDevice9 *This,
         This->state.scissor.miny = 0;
         This->state.scissor.maxx = rt->desc.Width;
         This->state.scissor.maxy = rt->desc.Height;
+        nine_context_set_viewport(This, &This->state.viewport);
+        nine_context_set_scissor(This, &This->state.scissor);
     }
 
     if (This->state.rt[i] != NineSurface9(pRenderTarget))

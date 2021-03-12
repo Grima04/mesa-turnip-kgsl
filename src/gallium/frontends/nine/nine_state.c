@@ -1851,19 +1851,7 @@ CSMT_ITEM_NO_WAIT(nine_context_set_render_target,
     const unsigned i = RenderTargetIndex;
 
     if (i == 0) {
-        context->viewport.X = 0;
-        context->viewport.Y = 0;
-        context->viewport.Width = rt->desc.Width;
-        context->viewport.Height = rt->desc.Height;
-        context->viewport.MinZ = 0.0f;
-        context->viewport.MaxZ = 1.0f;
-
-        context->scissor.minx = 0;
-        context->scissor.miny = 0;
-        context->scissor.maxx = rt->desc.Width;
-        context->scissor.maxy = rt->desc.Height;
-
-        context->changed.group |= NINE_STATE_VIEWPORT | NINE_STATE_SCISSOR | NINE_STATE_MULTISAMPLE;
+        context->changed.group |= NINE_STATE_MULTISAMPLE;
 
         if (context->rt[0] &&
             (context->rt[0]->desc.MultiSampleType <= D3DMULTISAMPLE_NONMASKABLE) !=

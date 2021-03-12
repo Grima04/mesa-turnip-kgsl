@@ -222,6 +222,7 @@ NineDevice9Ex_ResetEx( struct NineDevice9Ex *This,
                        D3DDISPLAYMODEEX *pFullscreenDisplayMode )
 {
     HRESULT hr = D3D_OK;
+    float MinZ, MaxZ;
     unsigned i;
 
     DBG("This=%p pPresentationParameters=%p pFullscreenDisplayMode=%p\n", This, pPresentationParameters, pFullscreenDisplayMode);
@@ -235,8 +236,17 @@ NineDevice9Ex_ResetEx( struct NineDevice9Ex *This,
             break;
     }
 
+    MinZ = This->base.state.viewport.MinZ; /* These are preserved */
+    MaxZ = This->base.state.viewport.MaxZ;
     NineDevice9_SetRenderTarget(
         (struct NineDevice9 *)This, 0, (IDirect3DSurface9 *)This->base.swapchains[0]->buffers[0]);
+    This->base.state.viewport.MinZ = MinZ;
+    This->base.state.viewport.MaxZ = MaxZ;
+    nine_context_set_viewport(&This->base, &This->base.state.viewport);
+
+    if (This->base.nswapchains && This->base.swapchains[0]->params.EnableAutoDepthStencil)
+        NineDevice9_SetDepthStencilSurface(
+            &This->base, (IDirect3DSurface9 *)This->base.swapchains[0]->zsbuf);
 
     return hr;
 }
@@ -246,6 +256,7 @@ NineDevice9Ex_Reset( struct NineDevice9Ex *This,
                      D3DPRESENT_PARAMETERS *pPresentationParameters )
 {
     HRESULT hr = D3D_OK;
+    float MinZ, MaxZ;
     unsigned i;
 
     DBG("This=%p pPresentationParameters=%p\n", This, pPresentationParameters);
@@ -257,13 +268,17 @@ NineDevice9Ex_Reset( struct NineDevice9Ex *This,
             break;
     }
 
-    nine_csmt_process(&This->base);
-    nine_device_state_clear((struct NineDevice9 *)This);
-    nine_context_clear(&This->base);
-
-    NineDevice9_SetDefaultState((struct NineDevice9 *)This, TRUE);
+    MinZ = This->base.state.viewport.MinZ; /* These are preserved */
+    MaxZ = This->base.state.viewport.MaxZ;
     NineDevice9_SetRenderTarget(
         (struct NineDevice9 *)This, 0, (IDirect3DSurface9 *)This->base.swapchains[0]->buffers[0]);
+    This->base.state.viewport.MinZ = MinZ;
+    This->base.state.viewport.MaxZ = MaxZ;
+    nine_context_set_viewport(&This->base, &This->base.state.viewport);
+
+    if (This->base.nswapchains && This->base.swapchains[0]->params.EnableAutoDepthStencil)
+        NineDevice9_SetDepthStencilSurface(
+            &This->base, (IDirect3DSurface9 *)This->base.swapchains[0]->zsbuf);
 
     return hr;
 }
