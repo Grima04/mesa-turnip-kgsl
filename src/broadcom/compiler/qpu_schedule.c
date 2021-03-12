@@ -168,6 +168,36 @@ process_mux_deps(struct schedule_state *state, struct schedule_node *n,
         }
 }
 
+static bool
+tmu_write_is_sequence_terminator(uint32_t waddr)
+{
+        switch (waddr) {
+        case V3D_QPU_WADDR_TMUS:
+        case V3D_QPU_WADDR_TMUSCM:
+        case V3D_QPU_WADDR_TMUSF:
+        case V3D_QPU_WADDR_TMUSLOD:
+        case V3D_QPU_WADDR_TMUA:
+        case V3D_QPU_WADDR_TMUAU:
+                return true;
+        default:
+                return false;
+        }
+}
+
+static bool
+can_reorder_tmu_write(const struct v3d_device_info *devinfo, uint32_t waddr)
+{
+        if (devinfo->ver < 40)
+                return false;
+
+        if (tmu_write_is_sequence_terminator(waddr))
+                return false;
+
+        if (waddr == V3D_QPU_WADDR_TMUD)
+                return false;
+
+        return true;
+}
 
 static void
 process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
@@ -176,22 +206,13 @@ process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
         if (!magic) {
                 add_write_dep(state, &state->last_rf[waddr], n);
         } else if (v3d_qpu_magic_waddr_is_tmu(state->devinfo, waddr)) {
-                /* XXX perf: For V3D 4.x, we could reorder TMU writes other
-                 * than the TMUS/TMUD/TMUA to improve scheduling flexibility.
-                 */
-                add_write_dep(state, &state->last_tmu_write, n);
-                switch (waddr) {
-                case V3D_QPU_WADDR_TMUS:
-                case V3D_QPU_WADDR_TMUSCM:
-                case V3D_QPU_WADDR_TMUSF:
-                case V3D_QPU_WADDR_TMUSLOD:
-                case V3D_QPU_WADDR_TMUA:
-                case V3D_QPU_WADDR_TMUAU:
+                if (can_reorder_tmu_write(state->devinfo, waddr))
+                        add_read_dep(state, state->last_tmu_write, n);
+                else
+                        add_write_dep(state, &state->last_tmu_write, n);
+
+                if (tmu_write_is_sequence_terminator(waddr))
                         add_write_dep(state, &state->last_tmu_config, n);
-                        break;
-                default:
-                        break;
-                }
         } else if (v3d_qpu_magic_waddr_is_sfu(waddr)) {
                 /* Handled by v3d_qpu_writes_r4() check. */
         } else {
