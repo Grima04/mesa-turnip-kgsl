@@ -390,40 +390,9 @@ msm_ringbuffer_sp_grow(struct fd_ringbuffer *ring, uint32_t size)
 }
 
 static void
-msm_ringbuffer_sp_emit_reloc(struct fd_ringbuffer *ring,
-		const struct fd_reloc *reloc)
+emit_reloc_tail(struct fd_ringbuffer *ring, const struct fd_reloc *reloc,
+		struct fd_pipe *pipe)
 {
-	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
-	struct fd_pipe *pipe;
-
-	if (ring->flags & _FD_RINGBUFFER_OBJECT) {
-		/* Avoid emitting duplicate BO references into the list.  Ringbuffer
-		 * objects are long-lived, so this saves ongoing work at draw time in
-		 * exchange for a bit at context setup/first draw.  And the number of
-		 * relocs per ringbuffer object is fairly small, so the O(n^2) doesn't
-		 * hurt much.
-		 */
-		bool found = false;
-		for (int i = 0; i < msm_ring->u.nr_reloc_bos; i++) {
-			if (msm_ring->u.reloc_bos[i] == reloc->bo) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
-			APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(reloc->bo));
-		}
-
-		pipe = msm_ring->u.pipe;
-	} else {
-		struct msm_submit_sp *msm_submit =
-				to_msm_submit_sp(msm_ring->u.submit);
-
-		msm_submit_append_bo(msm_submit, reloc->bo);
-
-		pipe = msm_ring->u.submit->pipe;
-	}
-
 	uint64_t iova = reloc->bo->iova + reloc->offset;
 	int shift = reloc->shift;
 
@@ -440,6 +409,50 @@ msm_ringbuffer_sp_emit_reloc(struct fd_ringbuffer *ring,
 		dword = iova >> 32;
 		(*ring->cur++) = dword | reloc->orhi;
 	}
+}
+
+static void
+msm_ringbuffer_sp_emit_reloc_nonobj(struct fd_ringbuffer *ring,
+		const struct fd_reloc *reloc)
+{
+	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+
+	assert(!(ring->flags & _FD_RINGBUFFER_OBJECT));
+
+	struct msm_submit_sp *msm_submit =
+			to_msm_submit_sp(msm_ring->u.submit);
+
+	msm_submit_append_bo(msm_submit, reloc->bo);
+
+	emit_reloc_tail(ring, reloc, msm_ring->u.submit->pipe);
+}
+
+static void
+msm_ringbuffer_sp_emit_reloc_obj(struct fd_ringbuffer *ring,
+		const struct fd_reloc *reloc)
+{
+	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+
+	assert(ring->flags & _FD_RINGBUFFER_OBJECT);
+
+	/* Avoid emitting duplicate BO references into the list.  Ringbuffer
+	 * objects are long-lived, so this saves ongoing work at draw time in
+	 * exchange for a bit at context setup/first draw.  And the number of
+	 * relocs per ringbuffer object is fairly small, so the O(n^2) doesn't
+	 * hurt much.
+	 */
+	bool found = false;
+	for (int i = 0; i < msm_ring->u.nr_reloc_bos; i++) {
+		if (msm_ring->u.reloc_bos[i] == reloc->bo) {
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(reloc->bo));
+	}
+
+	emit_reloc_tail(ring, reloc, msm_ring->u.pipe);
 }
 
 static uint32_t
@@ -459,10 +472,17 @@ msm_ringbuffer_sp_emit_reloc_ring(struct fd_ringbuffer *ring,
 		size = offset_bytes(target->cur, target->start);
 	}
 
-	msm_ringbuffer_sp_emit_reloc(ring, &(struct fd_reloc){
-		.bo     = bo,
-		.offset = msm_target->offset,
-	});
+	if (ring->flags & _FD_RINGBUFFER_OBJECT) {
+		msm_ringbuffer_sp_emit_reloc_obj(ring, &(struct fd_reloc){
+			.bo     = bo,
+			.offset = msm_target->offset,
+		});
+	} else {
+		msm_ringbuffer_sp_emit_reloc_nonobj(ring, &(struct fd_reloc){
+			.bo     = bo,
+			.offset = msm_target->offset,
+		});
+	}
 
 	if (!(target->flags & _FD_RINGBUFFER_OBJECT))
 		return size;
@@ -521,9 +541,17 @@ msm_ringbuffer_sp_destroy(struct fd_ringbuffer *ring)
 	}
 }
 
-static const struct fd_ringbuffer_funcs ring_funcs = {
+static const struct fd_ringbuffer_funcs ring_funcs_nonobj = {
 		.grow = msm_ringbuffer_sp_grow,
-		.emit_reloc = msm_ringbuffer_sp_emit_reloc,
+		.emit_reloc = msm_ringbuffer_sp_emit_reloc_nonobj,
+		.emit_reloc_ring = msm_ringbuffer_sp_emit_reloc_ring,
+		.cmd_count = msm_ringbuffer_sp_cmd_count,
+		.destroy = msm_ringbuffer_sp_destroy,
+};
+
+static const struct fd_ringbuffer_funcs ring_funcs_obj = {
+		.grow = msm_ringbuffer_sp_grow,
+		.emit_reloc = msm_ringbuffer_sp_emit_reloc_obj,
 		.emit_reloc_ring = msm_ringbuffer_sp_emit_reloc_ring,
 		.cmd_count = msm_ringbuffer_sp_cmd_count,
 		.destroy = msm_ringbuffer_sp_destroy,
@@ -550,7 +578,11 @@ msm_ringbuffer_sp_init(struct msm_ringbuffer_sp *msm_ring, uint32_t size,
 	ring->size = size;
 	ring->flags = flags;
 
-	ring->funcs = &ring_funcs;
+	if (flags & _FD_RINGBUFFER_OBJECT) {
+		ring->funcs = &ring_funcs_obj;
+	} else {
+		ring->funcs = &ring_funcs_nonobj;
+	}
 
 	// TODO initializing these could probably be conditional on flags
 	// since unneed for FD_RINGBUFFER_STAGING case..
