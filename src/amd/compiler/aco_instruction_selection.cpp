@@ -554,8 +554,19 @@ Temp bool_to_scalar_condition(isel_context *ctx, Temp val, Temp dst = Temp(0, s1
    return emit_wqm(bld, tmp, dst);
 }
 
-Temp convert_int(isel_context *ctx, Builder& bld, Temp src, unsigned src_bits, unsigned dst_bits, bool is_signed, Temp dst=Temp())
+/**
+ * Copies the first src_bits of the input to the output Temp. Input bits at positions larger than
+ * src_bits and dst_bits are truncated.
+ *
+ * Sign extension may be applied using the sign_extend parameter. The position of the input sign
+ * bit is indicated by src_bits in this case.
+ *
+ * If dst.bytes() is larger than dst_bits/8, the value of the upper bits is undefined.
+ */
+Temp convert_int(isel_context *ctx, Builder& bld, Temp src, unsigned src_bits, unsigned dst_bits, bool sign_extend, Temp dst=Temp())
 {
+   assert(!(sign_extend && dst_bits < src_bits) && "Shrinking integers is not supported for signed inputs");
+
    if (!dst.id()) {
       if (dst_bits % 32 == 0 || src.type() == RegType::sgpr)
          dst = bld.tmp(src.type(), DIV_ROUND_UP(dst_bits, 32u));
@@ -563,10 +574,16 @@ Temp convert_int(isel_context *ctx, Builder& bld, Temp src, unsigned src_bits, u
          dst = bld.tmp(RegClass(RegType::vgpr, dst_bits / 8u).as_subdword());
    }
 
-   if (dst.bytes() == src.bytes() && dst_bits < src_bits)
+   assert(src.type() == RegType::sgpr || src_bits == src.bytes() * 8);
+   assert(dst.type() == RegType::sgpr || dst_bits == dst.bytes() * 8);
+
+   if (dst.bytes() == src.bytes() && dst_bits < src_bits) {
+      /* Copy the raw value, leaving an undefined value in the upper bits for
+       * the caller to handle appropriately */
       return bld.copy(Definition(dst), src);
-   else if (dst.bytes() < src.bytes())
+   } else if (dst.bytes() < src.bytes()) {
       return bld.pseudo(aco_opcode::p_extract_vector, Definition(dst), src, Operand(0u));
+   }
 
    Temp tmp = dst;
    if (dst_bits == 64)
@@ -574,33 +591,37 @@ Temp convert_int(isel_context *ctx, Builder& bld, Temp src, unsigned src_bits, u
 
    if (tmp == src) {
    } else if (src.regClass() == s1) {
-      if (is_signed)
+      assert(src_bits < 32);
+      if (sign_extend)
          bld.sop1(src_bits == 8 ? aco_opcode::s_sext_i32_i8 : aco_opcode::s_sext_i32_i16, Definition(tmp), src);
       else
          bld.sop2(aco_opcode::s_and_b32, Definition(tmp), bld.def(s1, scc), Operand(src_bits == 8 ? 0xFFu : 0xFFFFu), src);
    } else if (ctx->options->chip_class >= GFX8) {
+      assert(src_bits < 32);
       assert(src_bits != 8 || src.regClass() == v1b);
       assert(src_bits != 16 || src.regClass() == v2b);
+      assert(dst_bits >= 16);
       aco_ptr<SDWA_instruction> sdwa{create_instruction<SDWA_instruction>(aco_opcode::v_mov_b32, asSDWA(Format::VOP1), 1, 1)};
       sdwa->operands[0] = Operand(src);
       sdwa->definitions[0] = Definition(tmp);
-      if (is_signed)
+      if (sign_extend)
          sdwa->sel[0] = src_bits == 8 ? sdwa_sbyte : sdwa_sword;
       else
          sdwa->sel[0] = src_bits == 8 ? sdwa_ubyte : sdwa_uword;
       sdwa->dst_sel = tmp.bytes() == 2 ? sdwa_uword : sdwa_udword;
       bld.insert(std::move(sdwa));
    } else {
+      assert(src_bits < 32);
       assert(ctx->options->chip_class == GFX6 || ctx->options->chip_class == GFX7);
-      aco_opcode opcode = is_signed ? aco_opcode::v_bfe_i32 : aco_opcode::v_bfe_u32;
+      aco_opcode opcode = sign_extend ? aco_opcode::v_bfe_i32 : aco_opcode::v_bfe_u32;
       bld.vop3(opcode, Definition(tmp), src, Operand(0u), Operand(src_bits == 8 ? 8u : 16u));
    }
 
    if (dst_bits == 64) {
-      if (is_signed && dst.regClass() == s2) {
+      if (sign_extend && dst.regClass() == s2) {
          Temp high = bld.sop2(aco_opcode::s_ashr_i32, bld.def(s1), bld.def(s1, scc), tmp, Operand(31u));
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tmp, high);
-      } else if (is_signed && dst.regClass() == v2) {
+      } else if (sign_extend && dst.regClass() == v2) {
          Temp high = bld.vop2(aco_opcode::v_ashrrev_i32, bld.def(v1), Operand(31u), tmp);
          bld.pseudo(aco_opcode::p_create_vector, Definition(dst), tmp, high);
       } else {
