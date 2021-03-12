@@ -1887,6 +1887,12 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    if (cfg == cmd_buffer->state.current_l3_config)
       return;
 
+#if GEN_GEN >= 11
+   /* On Gen11+ we use only one config, so verify it remains the same and skip
+    * the stalling programming entirely.
+    */
+   assert(cfg == cmd_buffer->device->l3_config);
+#else
    if (INTEL_DEBUG & DEBUG_L3) {
       mesa_logd("L3 config transition: ");
       intel_dump_l3_config(cfg, stderr);
@@ -1934,6 +1940,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    }
 
    genX(emit_l3_config)(&cmd_buffer->batch, cmd_buffer->device, cfg);
+#endif /* GEN_GEN >= 11 */
    cmd_buffer->state.current_l3_config = cfg;
 }
 
