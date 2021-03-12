@@ -151,6 +151,7 @@ static void ppir_regalloc_update_reglist_ssa(ppir_compiler *comp)
             if (dest->type == ppir_target_ssa) {
                reg = &dest->ssa;
                list_addtail(&reg->list, &comp->reg_list);
+               comp->reg_num++;
             }
          }
       }
@@ -314,6 +315,7 @@ static bool ppir_update_spilled_src(ppir_compiler *comp, ppir_block *block,
    alu_dest->write_mask = u_bit_consecutive(0, num_components);
 
    list_addtail(&alu_dest->ssa.list, &comp->reg_list);
+   comp->reg_num++;
 
    if (!ppir_instr_insert_node(load_node->instr, move_node))
       return false;
@@ -476,7 +478,7 @@ static bool ppir_regalloc_spill_reg(ppir_compiler *comp, ppir_reg *chosen)
 static ppir_reg *ppir_regalloc_choose_spill_node(ppir_compiler *comp,
                                                  struct ra_graph *g)
 {
-   float spill_costs[list_length(&comp->reg_list)];
+   float spill_costs[comp->reg_num];
    /* experimentally determined, it seems to be worth scaling cost of
     * regs in instructions that have used uniform/store_temp slots,
     * but not too much as to offset the num_components base cost. */
@@ -532,7 +534,7 @@ static ppir_reg *ppir_regalloc_choose_spill_node(ppir_compiler *comp,
       }
    }
 
-   for (int i = 0; i < list_length(&comp->reg_list); i++)
+   for (int i = 0; i < comp->reg_num; i++)
       ra_set_node_spill_cost(g, i, spill_costs[i]);
 
    int r = ra_get_best_spill_node(g);
@@ -567,7 +569,7 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
       if (block->live_in)
          ralloc_free(block->live_in);
       block->live_in = rzalloc_array(comp,
-            struct ppir_liveness, list_length(&comp->reg_list));
+            struct ppir_liveness, comp->reg_num);
 
       if (block->live_in_set)
          _mesa_set_destroy(block->live_in_set, NULL);
@@ -578,7 +580,7 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
       if (block->live_out)
          ralloc_free(block->live_out);
       block->live_out = rzalloc_array(comp,
-            struct ppir_liveness, list_length(&comp->reg_list));
+            struct ppir_liveness, comp->reg_num);
 
       if (block->live_out_set)
          _mesa_set_destroy(block->live_out_set, NULL);
@@ -591,7 +593,7 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
          if (instr->live_in)
             ralloc_free(instr->live_in);
          instr->live_in = rzalloc_array(comp,
-               struct ppir_liveness, list_length(&comp->reg_list));
+               struct ppir_liveness, comp->reg_num);
 
          if (instr->live_in_set)
             _mesa_set_destroy(instr->live_in_set, NULL);
@@ -602,7 +604,7 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
          if (instr->live_internal)
             ralloc_free(instr->live_internal);
          instr->live_internal = rzalloc_array(comp,
-               struct ppir_liveness, list_length(&comp->reg_list));
+               struct ppir_liveness, comp->reg_num);
 
          if (instr->live_internal_set)
             _mesa_set_destroy(instr->live_internal_set, NULL);
@@ -613,7 +615,7 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
          if (instr->live_out)
             ralloc_free(instr->live_out);
          instr->live_out = rzalloc_array(comp,
-               struct ppir_liveness, list_length(&comp->reg_list));
+               struct ppir_liveness, comp->reg_num);
 
          if (instr->live_out_set)
             _mesa_set_destroy(instr->live_out_set, NULL);
@@ -645,7 +647,7 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
    ppir_regalloc_reset_liveness_info(comp);
 
    struct ra_graph *g = ra_alloc_interference_graph(
-      comp->ra, list_length(&comp->reg_list));
+      comp->ra, comp->reg_num);
 
    int n = 0;
    list_for_each_entry(ppir_reg, reg, &comp->reg_list, list) {
@@ -683,7 +685,7 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
          *spilled = true;
 
          ppir_debug("spilled register %d/%d, num_components: %d\n",
-                    chosen->regalloc_index, list_length(&comp->reg_list),
+                    chosen->regalloc_index, comp->reg_num,
                     chosen->num_components);
          goto err_out;
       }

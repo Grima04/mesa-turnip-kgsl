@@ -778,6 +778,7 @@ static ppir_compiler *ppir_compiler_create(void *prog, unsigned num_reg, unsigne
 
    list_inithead(&comp->block_list);
    list_inithead(&comp->reg_list);
+   comp->reg_num = 0;
    comp->blocks = _mesa_hash_table_u64_create(prog);
 
    comp->var_nodes = (ppir_node **)(comp + 1);
@@ -937,6 +938,7 @@ bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
       r->num_components = reg->num_components;
       r->is_head = false;
       list_addtail(&r->list, &comp->reg_list);
+      comp->reg_num++;
    }
 
    if (!ppir_emit_cf_list(comp, &func->body))

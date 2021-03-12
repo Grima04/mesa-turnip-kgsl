@@ -50,9 +50,9 @@ ppir_liveness_set_clone(ppir_compiler *comp,
                         struct set *dest_set, struct set *src_set)
 {
    _mesa_set_clear(dest_set, NULL);
-   memset(dest, 0, list_length(&comp->reg_list) * sizeof(struct ppir_liveness));
+   memset(dest, 0, comp->reg_num * sizeof(struct ppir_liveness));
    memcpy(dest, src,
-          list_length(&comp->reg_list) * sizeof(struct ppir_liveness));
+          comp->reg_num * sizeof(struct ppir_liveness));
 
    set_foreach(src_set, entry_src) {
       const struct ppir_liveness *s = entry_src->key;
@@ -260,7 +260,7 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
          struct set *temp_live_in_set = _mesa_set_create(comp,
                                                          _mesa_hash_pointer,
                                                          _mesa_key_pointer_equal);
-         struct ppir_liveness temp_live_in[list_length(&comp->reg_list)];
+         struct ppir_liveness temp_live_in[comp->reg_num];
          ppir_liveness_set_clone(comp,
                temp_live_in, instr->live_in,
                temp_live_in_set, instr->live_in_set);

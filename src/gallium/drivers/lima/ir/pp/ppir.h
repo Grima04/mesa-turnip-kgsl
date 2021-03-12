@@ -378,6 +378,7 @@ typedef struct ppir_compiler {
    int cur_instr_index;
 
    struct list_head reg_list;
+   int reg_num;
 
    /* array for searching ssa/reg node */
    ppir_node **var_nodes;
