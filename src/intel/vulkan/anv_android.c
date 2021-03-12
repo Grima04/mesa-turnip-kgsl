@@ -34,7 +34,6 @@
 #include <sync/sync.h>
 
 #include "anv_private.h"
-#include "vk_format_info.h"
 #include "vk_util.h"
 
 static int anv_hal_open(const struct hw_module_t* mod, const char* id, struct hw_device_t** dev);
@@ -113,7 +112,7 @@ enum {
    AHARDWAREBUFFER_USAGE_CAMERA_MASK = 0x00060000U,
 };
 
-static inline VkFormat
+inline VkFormat
 vk_format_from_android(unsigned android_format, unsigned android_usage)
 {
    switch (android_format) {
