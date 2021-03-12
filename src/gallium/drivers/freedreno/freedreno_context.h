@@ -162,6 +162,8 @@ enum fd_dirty_3d_state {
 	 * from hw perspective:
 	 */
 	FD_DIRTY_RASTERIZER_DISCARD = BIT(24),
+
+#define NUM_DIRTY_BITS 25
 };
 
 /* per shader-stage dirty state: */
@@ -171,6 +173,7 @@ enum fd_dirty_shader_state {
 	FD_DIRTY_SHADER_TEX   = BIT(2),
 	FD_DIRTY_SHADER_SSBO  = BIT(3),
 	FD_DIRTY_SHADER_IMAGE = BIT(4),
+#define NUM_DIRTY_SHADER_BITS 5
 };
 
 #define MAX_HW_SAMPLE_PROVIDERS 7
@@ -330,6 +333,18 @@ struct fd_context {
 
 	/* Per vsc pipe bo's (a2xx-a5xx): */
 	struct fd_bo *vsc_pipe_bo[32] dt;
+
+	/* Maps generic gallium oriented fd_dirty_3d_state bits to generation
+	 * specific bitmask of state "groups".
+	 */
+	uint32_t gen_dirty_map[NUM_DIRTY_BITS];
+	uint32_t gen_dirty_shader_map[PIPE_SHADER_TYPES][NUM_DIRTY_SHADER_BITS];
+
+	/* Bitmask of all possible gen_dirty bits: */
+	uint32_t gen_all_dirty;
+
+	/* Generation specific bitmask of dirty state groups: */
+	uint32_t gen_dirty;
 
 	/* which state objects need to be re-emit'd: */
 	enum fd_dirty_3d_state dirty dt;
@@ -502,7 +517,10 @@ fd_context_dirty(struct fd_context *ctx, enum fd_dirty_3d_state dirty)
 	assert_dt
 {
 	assert(util_is_power_of_two_nonzero(dirty));
+	STATIC_ASSERT(ffs(dirty) <= ARRAY_SIZE(ctx->gen_dirty_map));
+
 	ctx->dirty |= dirty;
+	ctx->gen_dirty |= ctx->gen_dirty_map[ffs(dirty) - 1];
 }
 
 static inline void
@@ -528,6 +546,8 @@ fd_context_dirty_shader(struct fd_context *ctx, enum pipe_shader_type shader,
 	assert(util_is_power_of_two_nonzero(dirty));
 	assert(ffs(dirty) <= ARRAY_SIZE(map));
 
+	ctx->gen_dirty |= ctx->gen_dirty_shader_map[shader][ffs(dirty) - 1];
+
 	ctx->dirty_shader[shader] |= dirty;
 	fd_context_dirty(ctx, map[ffs(dirty) - 1]);
 }
@@ -539,6 +559,12 @@ fd_context_all_dirty(struct fd_context *ctx)
 {
 	ctx->last.dirty = true;
 	ctx->dirty = ~0;
+
+	/* NOTE: don't use ~0 for gen_dirty, because the gen specific
+	 * emit code will loop over all the bits:
+	 */
+	ctx->gen_dirty = ctx->gen_all_dirty;
+
 	for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++)
 		ctx->dirty_shader[i] = ~0;
 }
@@ -549,6 +575,7 @@ fd_context_all_clean(struct fd_context *ctx)
 {
 	ctx->last.dirty = false;
 	ctx->dirty = 0;
+	ctx->gen_dirty = 0;
 	for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
 		/* don't mark compute state as clean, since it is not emitted
 		 * during normal draw call.  The places that call _all_dirty(),
@@ -559,6 +586,34 @@ fd_context_all_clean(struct fd_context *ctx)
 			continue;
 		ctx->dirty_shader[i] = 0;
 	}
+}
+
+/**
+ * Add mapping between global dirty bit and generation specific dirty
+ * bit.
+ */
+static inline void
+fd_context_add_map(struct fd_context *ctx, enum fd_dirty_3d_state dirty,
+		uint32_t gen_dirty)
+{
+	u_foreach_bit (b, dirty) {
+		ctx->gen_dirty_map[b] |= gen_dirty;
+	}
+	ctx->gen_all_dirty |= gen_dirty;
+}
+
+/**
+ * Add mapping between shader stage specific dirty bit and generation
+ * specific dirty bit
+ */
+static inline void
+fd_context_add_shader_map(struct fd_context *ctx, enum pipe_shader_type shader,
+		enum fd_dirty_shader_state dirty, uint32_t gen_dirty)
+{
+	u_foreach_bit (b, dirty) {
+		ctx->gen_dirty_shader_map[shader][b] |= gen_dirty;
+	}
+	ctx->gen_all_dirty |= gen_dirty;
 }
 
 static inline struct pipe_scissor_state *
