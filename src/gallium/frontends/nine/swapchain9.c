@@ -886,7 +886,9 @@ present( struct NineSwapChain9 *This,
         handle_draw_cursor_and_hud(This, resource);
 
     fence = NULL;
-    pipe->flush(pipe, &fence, PIPE_FLUSH_END_OF_FRAME);
+    /* When threadpool is enabled, we don't submit before the fence
+     * tells us rendering was finished, thus we can flush async there */
+    pipe->flush(pipe, &fence, PIPE_FLUSH_END_OF_FRAME | (This->enable_threadpool ? PIPE_FLUSH_ASYNC : 0));
 
     /* Present now for thread_submit, because we have the fence.
      * It's possible we return WASSTILLDRAWING and still Present,
