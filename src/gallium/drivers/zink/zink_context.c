@@ -2116,9 +2116,6 @@ zink_create_stream_output_target(struct pipe_context *pctx,
    t->base.buffer_offset = buffer_offset;
    t->base.buffer_size = buffer_size;
 
-   struct zink_resource *res = zink_resource(pres);
-   util_range_add(pres, &res->valid_buffer_range, buffer_offset,
-                  buffer_offset + buffer_size);
    return &t->base;
 }
 
