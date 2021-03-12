@@ -68,6 +68,7 @@ NineSurface9_ctor( struct NineSurface9 *This,
 
     /* Mark this as a special surface held by another internal resource. */
     pParams->container = pContainer;
+    This->base.base.device = pParams->device; /* Early fill this field in case of failure */
     /* Make sure there's a Desc */
     assert(pDesc);
 

@@ -54,6 +54,8 @@ NineCubeTexture9_ctor( struct NineCubeTexture9 *This,
         This, pParams, EdgeLength, Levels, Usage,
         Format, Pool, pSharedHandle);
 
+    This->base.base.base.device = pParams->device; /* Early fill this field in case of failure */
+
     user_assert(EdgeLength, D3DERR_INVALIDCALL);
 
     /* user_assert(!pSharedHandle || Pool == D3DPOOL_DEFAULT, D3DERR_INVALIDCALL); */
