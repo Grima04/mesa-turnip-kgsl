@@ -105,7 +105,8 @@ vc4_screen_destroy(struct pipe_screen *pscreen)
         _mesa_hash_table_destroy(screen->bo_handles, NULL);
         vc4_bufmgr_destroy(pscreen);
         slab_destroy_parent(&screen->transfer_pool);
-        screen->ro->destroy(screen->ro);
+        if (screen->ro)
+                screen->ro->destroy(screen->ro);
 
 #ifdef USE_VC4_SIMULATOR
         vc4_simulator_destroy(screen);
