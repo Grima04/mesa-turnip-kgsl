@@ -144,26 +144,21 @@ enum fd_dirty_3d_state {
 	FD_DIRTY_SCISSOR     = BIT(12),
 	FD_DIRTY_STREAMOUT   = BIT(13),
 	FD_DIRTY_UCP         = BIT(14),
-	FD_DIRTY_BLEND_DUAL  = BIT(15),
-
-	/* These are a bit redundent with fd_dirty_shader_state, and possibly
-	 * should be removed.  (But OTOH kinda convenient in some places)
-	 */
-	FD_DIRTY_PROG        = BIT(16),
-	FD_DIRTY_CONST       = BIT(17),
-	FD_DIRTY_TEX         = BIT(18),
-	FD_DIRTY_IMAGE       = BIT(19),
-	FD_DIRTY_SSBO        = BIT(20),
+	FD_DIRTY_PROG        = BIT(15),
+	FD_DIRTY_CONST       = BIT(16),
+	FD_DIRTY_TEX         = BIT(17),
+	FD_DIRTY_IMAGE       = BIT(18),
+	FD_DIRTY_SSBO        = BIT(19),
 
 	/* only used by a2xx.. possibly can be removed.. */
-	FD_DIRTY_TEXSTATE    = BIT(21),
+	FD_DIRTY_TEXSTATE    = BIT(20),
 
 	/* fine grained state changes, for cases where state is not orthogonal
 	 * from hw perspective:
 	 */
 	FD_DIRTY_RASTERIZER_DISCARD = BIT(24),
-
-#define NUM_DIRTY_BITS 25
+	FD_DIRTY_BLEND_DUAL  = BIT(25),
+#define NUM_DIRTY_BITS 26
 };
 
 /* per shader-stage dirty state: */
