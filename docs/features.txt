@@ -435,7 +435,7 @@ Vulkan 1.1 -- all DONE: anv, radv
   VK_KHR_external_semaphore_capabilities                DONE (anv, lvp, radv, tu)
   VK_KHR_get_memory_requirements2                       DONE (anv, lvp, radv, tu)
   VK_KHR_get_physical_device_properties2                DONE (anv, lvp, radv, tu, v3dv)
-  VK_KHR_maintenance1                                   DONE (anv, lvp, radv, v3dv)
+  VK_KHR_maintenance1                                   DONE (anv, lvp, radv, tu, v3dv)
   VK_KHR_maintenance2                                   DONE (anv, radv, tu)
   VK_KHR_maintenance3                                   DONE (anv, radv, tu)
   VK_KHR_multiview                                      DONE (anv, radv, tu)
