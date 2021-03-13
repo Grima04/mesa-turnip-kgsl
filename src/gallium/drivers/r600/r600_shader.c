@@ -4714,6 +4714,14 @@ static int tgsi_op2_s(struct r600_shader_ctx *ctx, int swap, int trans_only)
 	    ctx->info.properties[TGSI_PROPERTY_MUL_ZERO_WINS])
 		op = ALU_OP2_MUL;
 
+	/* nir_to_tgsi lowers nir_op_isub to UADD + negate, since r600 doesn't support
+	 * source modifiers with integer ops we switch back to SUB_INT */
+	bool src1_neg = ctx->src[1].neg;
+	if (op == ALU_OP2_ADD_INT && src1_neg) {
+		src1_neg = false;
+		op = ALU_OP2_SUB_INT;
+	}
+
 	for (i = 0; i <= lasti; i++) {
 		if (!(write_mask & (1 << i)))
 			continue;
@@ -4731,6 +4739,7 @@ static int tgsi_op2_s(struct r600_shader_ctx *ctx, int swap, int trans_only)
 			for (j = 0; j < inst->Instruction.NumSrcRegs; j++) {
 				r600_bytecode_src(&alu.src[j], &ctx->src[j], i);
 			}
+			alu.src[1].neg = src1_neg;
 		} else {
 			r600_bytecode_src(&alu.src[0], &ctx->src[1], i);
 			r600_bytecode_src(&alu.src[1], &ctx->src[0], i);
