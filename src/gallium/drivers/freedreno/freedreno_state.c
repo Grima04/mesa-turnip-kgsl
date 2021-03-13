@@ -123,6 +123,11 @@ fd_set_constant_buffer(struct pipe_context *pctx,
 
 	fd_context_dirty_shader(ctx, shader, FD_DIRTY_SHADER_CONST);
 	fd_resource_set_usage(cb->buffer, FD_DIRTY_CONST);
+
+	if (index > 0) {
+		assert(!cb->user_buffer);
+		ctx->dirty |= FD_DIRTY_RESOURCE;
+	}
 }
 
 static void

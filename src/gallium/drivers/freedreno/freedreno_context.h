@@ -159,6 +159,9 @@ enum fd_dirty_3d_state {
 	FD_DIRTY_RASTERIZER_DISCARD = BIT(24),
 	FD_DIRTY_BLEND_DUAL  = BIT(25),
 #define NUM_DIRTY_BITS 26
+
+	/* additional flag for state requires updated resource tracking: */
+	FD_DIRTY_RESOURCE    = BIT(31),
 };
 
 /* per shader-stage dirty state: */
@@ -506,6 +509,31 @@ fd_stream_output_target(struct pipe_stream_output_target *target)
 	return (struct fd_stream_output_target *)target;
 }
 
+/**
+ * Does the dirty state require resource tracking, ie. in general
+ * does it reference some resource.  There are some special cases:
+ *
+ * - FD_DIRTY_CONST can reference a resource, but cb0 is handled
+ *   specially as if it is not a user-buffer, we expect it to be
+ *   coming from const_uploader, so we can make some assumptions
+ *   that future transfer_map will be UNSYNCRONIZED
+ * - FD_DIRTY_ZSA controls how the framebuffer is accessed
+ * - FD_DIRTY_BLEND needs to update GMEM reason
+ *
+ * TODO if we can make assumptions that framebuffer state is bound
+ * first, before blend/zsa/etc state we can move some of the ZSA/
+ * BLEND state handling from draw time to bind time.  I think this
+ * is true of mesa/st, perhaps we can just document it to be a
+ * frontend requirement?
+ */
+static inline bool
+fd_context_dirty_resource(enum fd_dirty_3d_state dirty)
+{
+	return dirty & (FD_DIRTY_FRAMEBUFFER | FD_DIRTY_ZSA |
+			FD_DIRTY_BLEND | FD_DIRTY_SSBO | FD_DIRTY_IMAGE |
+			FD_DIRTY_VTXBUF | FD_DIRTY_TEX | FD_DIRTY_STREAMOUT);
+}
+
 /* Mark specified non-shader-stage related state as dirty: */
 static inline void
 fd_context_dirty(struct fd_context *ctx, enum fd_dirty_3d_state dirty)
@@ -514,8 +542,12 @@ fd_context_dirty(struct fd_context *ctx, enum fd_dirty_3d_state dirty)
 	assert(util_is_power_of_two_nonzero(dirty));
 	STATIC_ASSERT(ffs(dirty) <= ARRAY_SIZE(ctx->gen_dirty_map));
 
-	ctx->dirty |= dirty;
 	ctx->gen_dirty |= ctx->gen_dirty_map[ffs(dirty) - 1];
+
+	if (fd_context_dirty_resource(dirty))
+		dirty |= FD_DIRTY_RESOURCE;
+
+	ctx->dirty |= dirty;
 }
 
 static inline void

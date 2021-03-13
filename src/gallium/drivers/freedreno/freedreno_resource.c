@@ -99,7 +99,7 @@ rebind_resource_in_ctx(struct fd_context *ctx, struct fd_resource *rsc)
 				!(ctx->dirty_shader[stage] & FD_DIRTY_CONST)) {
 			struct fd_constbuf_stateobj *cb = &ctx->constbuf[stage];
 			const unsigned num_ubos = util_last_bit(cb->enabled_mask);
-			for (unsigned i = 0; i < num_ubos; i++) {
+			for (unsigned i = 1; i < num_ubos; i++) {
 				if (cb->cb[i].buffer == prsc) {
 					fd_context_dirty_shader(ctx, stage, FD_DIRTY_SHADER_CONST);
 					break;

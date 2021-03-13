@@ -209,7 +209,7 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 
 	fd_screen_lock(ctx->screen);
 
-	if (ctx->dirty)
+	if (ctx->dirty & FD_DIRTY_RESOURCE)
 		batch_draw_tracking_for_dirty_bits(batch);
 
 	/* Mark index buffer as being read */
