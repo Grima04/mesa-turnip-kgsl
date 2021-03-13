@@ -431,11 +431,6 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(intrin->dest.ssa.num_components == 4);
       assert(intrin->dest.ssa.bit_size == 32);
 
-      /* We store the descriptor offset as 16.8.8 where the top 16 bits are
-       * the offset into the descriptor set, the next 8 are the binding table
-       * index of the descriptor buffer, and the bottom 8 bits are the offset
-       * (in bytes) into the dynamic offset table.
-       */
       assert(bind_layout->dynamic_offset_index < MAX_DYNAMIC_BUFFERS);
       uint32_t dynamic_offset_index = 0xff; /* No dynamic offset */
       if (bind_layout->dynamic_offset_index >= 0) {
@@ -444,15 +439,14 @@ lower_res_index_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
             bind_layout->dynamic_offset_index;
       }
 
-      const uint32_t desc_offset =
-         bind_layout->descriptor_offset << 16 |
-         (uint32_t)state->set[set].desc_offset << 8 |
+      const uint32_t packed =
+         (uint32_t)state->set[set].desc_offset << 16 |
          dynamic_offset_index;
 
-      index = nir_vec4(b, nir_imm_int(b, desc_offset),
-                          nir_ssa_for_src(b, intrin->src[0], 1),
+      index = nir_vec4(b, nir_imm_int(b, packed),
+                          nir_imm_int(b, bind_layout->descriptor_offset),
                           nir_imm_int(b, array_size - 1),
-                          nir_ssa_undef(b, 1, 32));
+                          nir_ssa_for_src(b, intrin->src[0], 1));
       break;
    }
 
@@ -501,10 +495,10 @@ lower_res_reindex_intrinsic(nir_builder *b, nir_intrinsic_instr *intrin,
       assert(intrin->dest.ssa.num_components == 4);
       assert(intrin->dest.ssa.bit_size == 32);
       new_index = nir_vec4(b, nir_channel(b, old_index, 0),
-                              nir_iadd(b, nir_channel(b, old_index, 1),
-                                          offset),
+                              nir_channel(b, old_index, 1),
                               nir_channel(b, old_index, 2),
-                              nir_ssa_undef(b, 1, 32));
+                              nir_iadd(b, nir_channel(b, old_index, 3),
+                                          offset));
       break;
 
    case nir_address_format_32bit_index_offset:
@@ -534,21 +528,19 @@ build_ssbo_descriptor_load(nir_builder *b, const VkDescriptorType desc_type,
    assert(addr_format == nir_address_format_64bit_global_32bit_offset ||
           addr_format == nir_address_format_64bit_bounded_global);
 
-   nir_ssa_def *desc_offset = nir_channel(b, index, 0);
-   nir_ssa_def *array_index = nir_umin(b, nir_channel(b, index, 1),
-                                          nir_channel(b, index, 2));
+   nir_ssa_def *packed = nir_channel(b, index, 0);
+   nir_ssa_def *desc_offset_base = nir_channel(b, index, 1);
+   nir_ssa_def *array_index = nir_umin(b, nir_channel(b, index, 2),
+                                          nir_channel(b, index, 3));
 
-   /* The desc_offset is actually 16.8.8 */
    nir_ssa_def *desc_buffer_index =
-      nir_extract_u8(b, desc_offset, nir_imm_int(b, 1));
-   nir_ssa_def *desc_offset_base =
-      nir_extract_u16(b, desc_offset, nir_imm_int(b, 1));
+      nir_extract_u16(b, packed, nir_imm_int(b, 1));
 
    /* Compute the actual descriptor offset */
-   const unsigned descriptor_size =
+   const unsigned stride =
       anv_descriptor_type_size(state->pdevice, desc_type);
-   desc_offset = nir_iadd(b, desc_offset_base,
-                             nir_imul_imm(b, array_index, descriptor_size));
+   nir_ssa_def *desc_offset =
+      nir_iadd(b, desc_offset_base, nir_imul_imm(b, array_index, stride));
 
    nir_ssa_def *desc_load =
       nir_load_ubo(b, 4, 32, desc_buffer_index, desc_offset,
@@ -608,12 +600,12 @@ lower_load_vulkan_descriptor(nir_builder *b, nir_intrinsic_instr *intrin,
           * (save from the dynamic offset base index) if this buffer has a
           * dynamic offset.
           */
-         nir_ssa_def *desc_offset = nir_channel(b, index, 0);
-         nir_ssa_def *array_index = nir_umin(b, nir_channel(b, index, 1),
-                                                nir_channel(b, index, 2));
+         nir_ssa_def *packed = nir_channel(b, index, 0);
+         nir_ssa_def *array_index = nir_umin(b, nir_channel(b, index, 2),
+                                                nir_channel(b, index, 3));
 
          nir_ssa_def *dyn_offset_base =
-            nir_extract_u8(b, desc_offset, nir_imm_int(b, 0));
+            nir_extract_u16(b, packed, nir_imm_int(b, 0));
          nir_ssa_def *dyn_offset_idx =
             nir_iadd(b, dyn_offset_base, array_index);
          if (state->add_bounds_checks) {
