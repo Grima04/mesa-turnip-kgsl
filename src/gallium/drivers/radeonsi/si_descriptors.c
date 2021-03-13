@@ -434,9 +434,7 @@ static void si_set_sampler_state_desc(struct si_sampler_state *sstate,
                                       struct si_sampler_view *sview, struct si_texture *tex,
                                       uint32_t *desc)
 {
-   if (sview && sview->is_integer)
-      memcpy(desc, sstate->integer_val, 4 * 4);
-   else if (tex && tex->upgraded_depth && (!sview || !sview->is_stencil_sampler))
+   if (tex && tex->upgraded_depth && sview && !sview->is_stencil_sampler)
       memcpy(desc, sstate->upgraded_depth_val, 4 * 4);
    else
       memcpy(desc, sstate->val, 4 * 4);

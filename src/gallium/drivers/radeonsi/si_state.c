@@ -4343,20 +4343,6 @@ struct pipe_sampler_view *si_create_sampler_view_custom(struct pipe_context *ctx
       sctx->screen, tex, true, state->target, pipe_format, state_swizzle, first_level, last_level,
       state->u.tex.first_layer, last_layer, width, height, depth, view->state, view->fmask_state);
 
-   const struct util_format_description *desc = util_format_description(pipe_format);
-   view->is_integer = false;
-
-   for (unsigned i = 0; i < desc->nr_channels; ++i) {
-      if (desc->channel[i].type == UTIL_FORMAT_TYPE_VOID)
-         continue;
-
-      /* Whether the number format is {U,S}{SCALED,INT} */
-      view->is_integer = (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED ||
-                          desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED) &&
-                         (desc->channel[i].pure_integer || !desc->channel[i].normalized);
-      break;
-   }
-
    view->base_level_info = &surflevel[base_level];
    view->base_level = base_level;
    view->block_width = util_format_get_blockwidth(pipe_format);
@@ -4517,7 +4503,8 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
                      S_008F38_XY_MIN_FILTER(si_tex_filter(state->min_img_filter, max_aniso)) |
                      S_008F38_MIP_FILTER(si_tex_mipfilter(state->min_mip_filter)) |
                      S_008F38_MIP_POINT_PRECLAMP(0));
-   rstate->val[3] = si_translate_border_color(sctx, state, &state->border_color, false);
+   rstate->val[3] = si_translate_border_color(sctx, state, &state->border_color,
+                                              state->border_color_is_integer);
 
    if (sscreen->info.chip_class >= GFX10) {
       rstate->val[2] |= S_008F38_ANISO_OVERRIDE_GFX10(1);
@@ -4526,10 +4513,6 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
                         S_008F38_FILTER_PREC_FIX(1) |
                         S_008F38_ANISO_OVERRIDE_GFX8(sctx->chip_class >= GFX8);
    }
-
-   /* Create sampler resource for integer textures. */
-   memcpy(rstate->integer_val, rstate->val, sizeof(rstate->val));
-   rstate->integer_val[3] = si_translate_border_color(sctx, state, &state->border_color, true);
 
    /* Create sampler resource for upgraded depth textures. */
    memcpy(rstate->upgraded_depth_val, rstate->val, sizeof(rstate->val));
