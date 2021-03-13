@@ -227,6 +227,10 @@ void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_s
    void *hw_binary;
    struct hash_entry *entry;
    uint8_t key[CACHE_KEY_SIZE];
+   bool memory_cache_full = sscreen->shader_cache_size >= sscreen->shader_cache_max_size;
+
+   if (!insert_into_disk_cache && memory_cache_full)
+      return;
 
    entry = _mesa_hash_table_search(sscreen->shader_cache, ir_sha1_cache_key);
    if (entry)
@@ -236,10 +240,15 @@ void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_s
    if (!hw_binary)
       return;
 
-   if (_mesa_hash_table_insert(sscreen->shader_cache, mem_dup(ir_sha1_cache_key, 20), hw_binary) ==
-       NULL) {
-      FREE(hw_binary);
-      return;
+   if (!memory_cache_full) {
+      if (_mesa_hash_table_insert(sscreen->shader_cache,
+                                  mem_dup(ir_sha1_cache_key, 20),
+                                  hw_binary) == NULL) {
+          FREE(hw_binary);
+          return;
+      }
+      /* The size is stored at the start of the binary */
+      sscreen->shader_cache_size += *(uint32_t*)hw_binary;
    }
 
    if (sscreen->disk_shader_cache && insert_into_disk_cache) {
@@ -314,6 +323,9 @@ bool si_init_shader_cache(struct si_screen *sscreen)
    (void)simple_mtx_init(&sscreen->shader_cache_mutex, mtx_plain);
    sscreen->shader_cache =
       _mesa_hash_table_create(NULL, si_shader_cache_key_hash, si_shader_cache_key_equals);
+   sscreen->shader_cache_size = 0;
+   /* Maximum size: 64MB on 32 bits, 1GB else */
+   sscreen->shader_cache_max_size = ((sizeof(void *) == 4) ? 64 : 1024) * 1024 * 1024;
 
    return sscreen->shader_cache != NULL;
 }
