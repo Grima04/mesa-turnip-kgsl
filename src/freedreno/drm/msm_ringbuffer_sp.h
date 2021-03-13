@@ -33,7 +33,7 @@
 
 
 static void
-X(emit_reloc_tail)(struct fd_ringbuffer *ring, const struct fd_reloc *reloc)
+X(emit_reloc_common)(struct fd_ringbuffer *ring, const struct fd_reloc *reloc)
 {
 	uint64_t iova = reloc->bo->iova + reloc->offset;
 	int shift = reloc->shift;
@@ -57,25 +57,27 @@ static void
 X(msm_ringbuffer_sp_emit_reloc_nonobj)(struct fd_ringbuffer *ring,
 		const struct fd_reloc *reloc)
 {
-	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+	X(emit_reloc_common)(ring, reloc);
 
 	assert(!(ring->flags & _FD_RINGBUFFER_OBJECT));
+
+	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
 
 	struct msm_submit_sp *msm_submit =
 			to_msm_submit_sp(msm_ring->u.submit);
 
 	msm_submit_append_bo(msm_submit, reloc->bo);
-
-	X(emit_reloc_tail)(ring, reloc);
 }
 
 static void
 X(msm_ringbuffer_sp_emit_reloc_obj)(struct fd_ringbuffer *ring,
 		const struct fd_reloc *reloc)
 {
-	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
+	X(emit_reloc_common)(ring, reloc);
 
 	assert(ring->flags & _FD_RINGBUFFER_OBJECT);
+
+	struct msm_ringbuffer_sp *msm_ring = to_msm_ringbuffer_sp(ring);
 
 	/* Avoid emitting duplicate BO references into the list.  Ringbuffer
 	 * objects are long-lived, so this saves ongoing work at draw time in
@@ -93,8 +95,6 @@ X(msm_ringbuffer_sp_emit_reloc_obj)(struct fd_ringbuffer *ring,
 	if (!found) {
 		APPEND(&msm_ring->u, reloc_bos, fd_bo_ref(reloc->bo));
 	}
-
-	X(emit_reloc_tail)(ring, reloc);
 }
 
 static uint32_t
