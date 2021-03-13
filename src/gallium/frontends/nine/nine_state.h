@@ -361,6 +361,12 @@ nine_context_set_stream_source_apply(struct NineDevice9 *device,
                                     UINT Stride);
 
 void
+nine_context_set_indices_apply(struct NineDevice9 *device,
+                               struct pipe_resource *res,
+                               UINT IndexSize,
+                               UINT OffsetInBytes);
+
+void
 nine_context_set_render_state(struct NineDevice9 *device,
                               D3DRENDERSTATETYPE State,
                               DWORD Value);

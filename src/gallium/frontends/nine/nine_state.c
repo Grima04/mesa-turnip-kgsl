@@ -1392,12 +1392,6 @@ nine_context_set_texture_apply(struct NineDevice9 *device,
                                struct pipe_sampler_view *view1);
 
 static void
-nine_context_set_indices_apply(struct NineDevice9 *device,
-                               struct pipe_resource *res,
-                               UINT IndexSize,
-                               UINT OffsetInBytes);
-
-static void
 nine_context_set_pixel_shader_constant_i_transformed(struct NineDevice9 *device,
                                                      UINT StartRegister,
                                                      const int *pConstantData,

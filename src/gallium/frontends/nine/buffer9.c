@@ -23,6 +23,7 @@
 
 #include "buffer9.h"
 #include "device9.h"
+#include "indexbuffer9.h"
 #include "nine_buffer_upload.h"
 #include "nine_helpers.h"
 #include "nine_pipe.h"
@@ -218,7 +219,9 @@ NineBuffer9_GetResource( struct NineBuffer9 *This, unsigned *offset )
 
 static void
 NineBuffer9_RebindIfRequired( struct NineBuffer9 *This,
-                              struct NineDevice9 *device )
+                              struct NineDevice9 *device,
+                              struct pipe_resource *resource,
+                              unsigned offset )
 {
     int i;
 
@@ -226,13 +229,15 @@ NineBuffer9_RebindIfRequired( struct NineBuffer9 *This,
         return;
     for (i = 0; i < device->caps.MaxStreams; i++) {
         if (device->state.stream[i] == (struct NineVertexBuffer9 *)This)
-            nine_context_set_stream_source(device, i,
-                                           (struct NineVertexBuffer9 *)This,
-                                           device->state.vtxbuf[i].buffer_offset,
-                                           device->state.vtxbuf[i].stride);
+            nine_context_set_stream_source_apply(device, i,
+                                                 resource,
+                                                 device->state.vtxbuf[i].buffer_offset + offset,
+                                                 device->state.vtxbuf[i].stride);
     }
     if (device->state.idxbuf == (struct NineIndexBuffer9 *)This)
-        nine_context_set_indices(device, (struct NineIndexBuffer9 *)This);
+        nine_context_set_indices_apply(device, resource,
+                                       ((struct NineIndexBuffer9 *)This)->index_size,
+                                       offset);
 }
 
 HRESULT NINE_WINAPI
@@ -387,7 +392,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
             nine_upload_release_buffer(device->buffer_upload, This->buf);
         This->buf = NULL;
         /* Rebind buffer */
-        NineBuffer9_RebindIfRequired(This, device);
+        NineBuffer9_RebindIfRequired(This, device, This->base.resource, 0);
     }
 
     This->maps[This->nmaps].transfer = NULL;
@@ -406,8 +411,11 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
         }
 
         if (!This->buf) {
+            unsigned offset;
+            struct pipe_resource *res;
             This->buf = nine_upload_create_buffer(device->buffer_upload, This->base.info.width0);
-            NineBuffer9_RebindIfRequired(This, device);
+            res = nine_upload_buffer_resource_and_offset(This->buf, &offset);
+            NineBuffer9_RebindIfRequired(This, device, res, offset);
         }
 
         if (This->buf) {
@@ -451,7 +459,7 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
             pipe_resource_reference(&This->base.resource, new_res);
             pipe_resource_reference(&new_res, NULL);
             usage = PIPE_MAP_WRITE | PIPE_MAP_UNSYNCHRONIZED;
-            NineBuffer9_RebindIfRequired(This, device);
+            NineBuffer9_RebindIfRequired(This, device, This->base.resource, 0);
             This->maps[This->nmaps].is_pipe_secondary = TRUE;
         }
     } else if (Flags & D3DLOCK_NOOVERWRITE && device->csmt_active)
@@ -526,4 +534,174 @@ NineBuffer9_SetDirty( struct NineBuffer9 *This )
     This->managed.dirty = TRUE;
     u_box_1d(0, This->size, &This->managed.dirty_box);
     BASEBUF_REGISTER_UPDATE(This);
+}
+
+/* Try to remove b from a, supposed to include b */
+static void u_box_try_remove_region_1d(struct pipe_box *dst,
+                                       const struct pipe_box *a,
+                                       const struct pipe_box *b)
+{
+    int x, width;
+    if (a->x == b->x) {
+        x = a->x + b->width;
+        width = a->width - b->width;
+    } else if ((a->x + a->width) == (b->x + b->width)) {
+        x = a->x;
+        width = a->width - b->width;
+    } else {
+        x = a->x;
+        width = a->width;
+    }
+    dst->x = x;
+    dst->width = width;
+}
+
+void
+NineBuffer9_Upload( struct NineBuffer9 *This )
+{
+    struct NineDevice9 *device = This->base.base.device;
+    unsigned upload_flags = 0;
+    struct pipe_box box_upload;
+
+    assert(This->base.pool != D3DPOOL_DEFAULT && This->managed.dirty);
+
+    if (This->base.pool == D3DPOOL_SYSTEMMEM && This->base.usage & D3DUSAGE_DYNAMIC) {
+        struct pipe_box region_already_valid;
+        struct pipe_box conflicting_region;
+        struct pipe_box *valid_region = &This->managed.valid_region;
+        struct pipe_box *required_valid_region = &This->managed.required_valid_region;
+        struct pipe_box *filled_region = &This->managed.filled_region;
+        /* Try to upload SYSTEMMEM DYNAMIC in an efficient fashion.
+         * Unlike non-dynamic for which we upload the whole dirty region, try to
+         * only upload the data needed for the draw. The draw call preparation
+         * fills This->managed.required_valid_region for that */
+        u_box_intersect_1d(&region_already_valid,
+                           valid_region,
+                           required_valid_region);
+        /* If the required valid region is already valid, nothing to do */
+        if (region_already_valid.x == required_valid_region->x &&
+            region_already_valid.width == required_valid_region->width) {
+            /* Rebind if the region happens to be valid in the original buffer
+             * but we have since used vertex_uploader */
+            if (!This->managed.can_unsynchronized)
+                NineBuffer9_RebindIfRequired(This, device, This->base.resource, 0);
+            u_box_1d(0, 0, required_valid_region);
+            return;
+        }
+        /* (Try to) Remove valid areas from the region to upload */
+        u_box_try_remove_region_1d(&box_upload,
+                                   required_valid_region,
+                                   &region_already_valid);
+        assert(box_upload.width > 0);
+        /* To maintain correctly the valid region, as we will do union later with
+         * box_upload, we must ensure box_upload is consecutive with valid_region */
+        if (box_upload.x > valid_region->x + valid_region->width && valid_region->width > 0) {
+            box_upload.width = box_upload.x + box_upload.width - (valid_region->x + valid_region->width);
+            box_upload.x = valid_region->x + valid_region->width;
+        } else if (box_upload.x + box_upload.width < valid_region->x && valid_region->width > 0) {
+            box_upload.width = valid_region->x - box_upload.x;
+        }
+        /* There is conflict if some areas, that are not valid but are filled for previous draw calls,
+         * intersect with the region we plan to upload. Note by construction valid_region IS
+         * included in filled_region, thus so is region_already_valid. */
+        u_box_intersect_1d(&conflicting_region, &box_upload, filled_region);
+        /* As box_upload could still contain region_already_valid, check the intersection
+         * doesn't happen to be exactly region_already_valid (it cannot be smaller, see above) */
+        if (This->managed.can_unsynchronized && (conflicting_region.width == 0 ||
+            (conflicting_region.x == region_already_valid.x &&
+             conflicting_region.width == region_already_valid.width))) {
+            /* No conflicts. */
+            upload_flags |= PIPE_MAP_UNSYNCHRONIZED;
+        } else {
+            /* We cannot use PIPE_MAP_UNSYNCHRONIZED. We must choose between no flag and DISCARD.
+             * Criterias to discard:
+             * . Most of the resource was filled (but some apps do allocate a big buffer
+             * to only use a small part in a round fashion)
+             * . The region to upload is very small compared to the filled region and
+             * at the start of the buffer (hints at round usage starting again)
+             * . The region to upload is very big compared to the required region
+             * . We have not discarded yet this frame */
+            if (filled_region->width > (This->size / 2) ||
+                (10 * box_upload.width < filled_region->width &&
+                 box_upload.x < (filled_region->x + filled_region->width)/2) ||
+                box_upload.width > 2 * required_valid_region->width ||
+                This->managed.frame_count_last_discard != device->frame_count) {
+                /* Avoid DISCARDING too much by discarding only if most of the buffer
+                 * has been used */
+                DBG_FLAG(DBG_INDEXBUFFER|DBG_VERTEXBUFFER,
+             "Uploading %p DISCARD: valid %d %d, filled %d %d, required %d %d, box_upload %d %d, required already_valid %d %d, conficting %d %d\n",
+             This, valid_region->x, valid_region->width, filled_region->x, filled_region->width,
+             required_valid_region->x, required_valid_region->width, box_upload.x, box_upload.width,
+             region_already_valid.x, region_already_valid.width, conflicting_region.x, conflicting_region.width
+                );
+                upload_flags |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
+                u_box_1d(0, 0, filled_region);
+                u_box_1d(0, 0, valid_region);
+                box_upload = This->managed.required_valid_region;
+                /* Rebind the buffer if we used intermediate alternative buffer */
+                if (!This->managed.can_unsynchronized)
+                    NineBuffer9_RebindIfRequired(This, device, This->base.resource, 0);
+                This->managed.can_unsynchronized = true;
+                This->managed.frame_count_last_discard = device->frame_count;
+            } else {
+                /* Once we use without UNSYNCHRONIZED, we cannot use it anymore.
+                 * Use a different buffer. */
+                unsigned buffer_offset = 0;
+                struct pipe_resource *resource = NULL;
+                This->managed.can_unsynchronized = false;
+                u_upload_data(device->vertex_uploader,
+                    required_valid_region->x,
+                    required_valid_region->width,
+                    64,
+                    This->managed.data + required_valid_region->x,
+                    &buffer_offset,
+                    &resource);
+                buffer_offset -= required_valid_region->x;
+                u_upload_unmap(device->vertex_uploader);
+                if (resource) {
+                    NineBuffer9_RebindIfRequired(This, device, resource, buffer_offset);
+                    /* Note: This only works because for these types of buffers this function
+                     * is called before every draw call. Else it wouldn't work when the app
+                     * rebinds buffers. In addition it needs this function to be called only
+                     * once per buffers even if bound several times, which we do. */
+                    u_box_1d(0, 0, required_valid_region);
+                    pipe_resource_reference(&resource, NULL);
+                    return;
+                }
+            }
+        }
+
+        u_box_union_1d(filled_region,
+                       filled_region,
+                       &box_upload);
+        u_box_union_1d(valid_region,
+                       valid_region,
+                       &box_upload);
+        u_box_1d(0, 0, required_valid_region);
+    } else
+        box_upload = This->managed.dirty_box;
+
+    if (box_upload.x == 0 && box_upload.width == This->size) {
+        upload_flags |= PIPE_MAP_DISCARD_WHOLE_RESOURCE;
+    }
+
+    if (This->managed.pending_upload) {
+        u_box_union_1d(&This->managed.upload_pending_regions,
+                       &This->managed.upload_pending_regions,
+                       &box_upload);
+    } else {
+        This->managed.upload_pending_regions = box_upload;
+    }
+
+    DBG_FLAG(DBG_INDEXBUFFER|DBG_VERTEXBUFFER,
+             "Uploading %p, offset=%d, size=%d, Flags=0x%x\n",
+             This, box_upload.x, box_upload.width, upload_flags);
+    nine_context_range_upload(device, &This->managed.pending_upload,
+                              (struct NineUnknown *)This,
+                              This->base.resource,
+                              box_upload.x,
+                              box_upload.width,
+                              upload_flags,
+                              (char *)This->managed.data + box_upload.x);
+    This->managed.dirty = FALSE;
 }
