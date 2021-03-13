@@ -35,21 +35,9 @@
 static void
 X(emit_reloc_common)(struct fd_ringbuffer *ring, const struct fd_reloc *reloc)
 {
-	uint64_t iova = reloc->bo->iova + reloc->offset;
-	int shift = reloc->shift;
-
-	if (shift < 0)
-		iova >>= -shift;
-	else
-		iova <<= shift;
-
-	uint32_t dword = iova;
-
-	(*ring->cur++) = dword | reloc->or;
-
+	(*ring->cur++) = (uint32_t)reloc->iova;
 #if PTRSZ == 64
-	dword = iova >> 32;
-	(*ring->cur++) = dword | reloc->orhi;
+	(*ring->cur++) = (uint32_t)(reloc->iova >> 32);
 #endif
 }
 
@@ -117,11 +105,13 @@ X(msm_ringbuffer_sp_emit_reloc_ring)(struct fd_ringbuffer *ring,
 	if (ring->flags & _FD_RINGBUFFER_OBJECT) {
 		X(msm_ringbuffer_sp_emit_reloc_obj)(ring, &(struct fd_reloc){
 			.bo     = bo,
+			.iova   = bo->iova + msm_target->offset,
 			.offset = msm_target->offset,
 		});
 	} else {
 		X(msm_ringbuffer_sp_emit_reloc_nonobj)(ring, &(struct fd_reloc){
 			.bo     = bo,
+			.iova   = bo->iova + msm_target->offset,
 			.offset = msm_target->offset,
 		});
 	}

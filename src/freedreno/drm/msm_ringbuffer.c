@@ -573,6 +573,7 @@ msm_ringbuffer_emit_reloc_ring(struct fd_ringbuffer *ring,
 
 	msm_ringbuffer_emit_reloc(ring, &(struct fd_reloc){
 		.bo     = bo,
+		.iova   = bo->iova + msm_target->offset,
 		.offset = msm_target->offset,
 	});
 
