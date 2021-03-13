@@ -172,6 +172,7 @@ NineBuffer9_ctor( struct NineBuffer9 *This,
         u_box_1d(0, 0, &This->managed.required_valid_region);
         u_box_1d(0, 0, &This->managed.filled_region);
         This->managed.can_unsynchronized = true;
+        This->managed.num_worker_thread_syncs = 0;
         list_inithead(&This->managed.list);
         list_inithead(&This->managed.list2);
         list_add(&This->managed.list2, &pParams->device->managed_buffers);
@@ -309,6 +310,10 @@ NineBuffer9_Lock( struct NineBuffer9 *This,
         } else {
             if (!(Flags & (D3DLOCK_READONLY|D3DLOCK_NOOVERWRITE)) &&
                 p_atomic_read(&This->managed.pending_upload)) {
+                This->managed.num_worker_thread_syncs++;
+                /* If we sync too often, pick the vertex_uploader path */
+                if (This->managed.num_worker_thread_syncs >= 3)
+                    This->managed.can_unsynchronized = false;
                 nine_csmt_process(This->base.base.device);
                 /* Note: AS DISCARD is not relevant for SYSTEMMEM,
                  * NOOVERWRITE might have a similar meaning as what is
@@ -620,12 +625,15 @@ NineBuffer9_Upload( struct NineBuffer9 *This )
              * . The region to upload is very small compared to the filled region and
              * at the start of the buffer (hints at round usage starting again)
              * . The region to upload is very big compared to the required region
-             * . We have not discarded yet this frame */
-            if (filled_region->width > (This->size / 2) ||
-                (10 * box_upload.width < filled_region->width &&
-                 box_upload.x < (filled_region->x + filled_region->width)/2) ||
-                box_upload.width > 2 * required_valid_region->width ||
-                This->managed.frame_count_last_discard != device->frame_count) {
+             * . We have not discarded yet this frame
+             * If the buffer use pattern seems to sync the worker thread too often,
+             * revert to the vertex_uploader */
+            if (This->managed.num_worker_thread_syncs < 3 &&
+                (filled_region->width > (This->size / 2) ||
+                 (10 * box_upload.width < filled_region->width &&
+                  box_upload.x < (filled_region->x + filled_region->width)/2) ||
+                 box_upload.width > 2 * required_valid_region->width ||
+                 This->managed.frame_count_last_discard != device->frame_count)) {
                 /* Avoid DISCARDING too much by discarding only if most of the buffer
                  * has been used */
                 DBG_FLAG(DBG_INDEXBUFFER|DBG_VERTEXBUFFER,

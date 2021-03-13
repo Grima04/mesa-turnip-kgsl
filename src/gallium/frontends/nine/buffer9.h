@@ -76,6 +76,7 @@ struct NineBuffer9
         struct pipe_box valid_region; /* Region in the GPU buffer with valid content */
         struct pipe_box required_valid_region; /* Region that needs to be valid right now. */
         struct pipe_box filled_region; /* Region in the GPU buffer filled since last discard */
+        unsigned num_worker_thread_syncs;
         unsigned frame_count_last_discard;
     } managed;
 };
