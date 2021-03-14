@@ -100,7 +100,6 @@ public:
                   PValue src2,
                   const std::set<AluModifiers>& m_flags);
 
-
    void set_flag(AluModifiers flag);
    unsigned n_sources() const;
 

@@ -39,14 +39,18 @@ namespace r600 {
 
 using std::vector;
 
-struct AssemblyFromShaderLegacyImpl {
+
+
+struct AssemblyFromShaderLegacyImpl  {
 
    AssemblyFromShaderLegacyImpl(r600_shader *sh, r600_shader_key *key);
+
+
    bool emit(const Instruction::Pointer i);
    void reset_addr_register() {m_last_addr.reset();}
 
 private:
-   bool emit_alu(const AluInstruction& ai, ECFAluOpCode cf_op);
+   bool emit_alu(const AluInstruction& ai);
    bool emit_export(const ExportInstruction & exi);
    bool emit_streamout(const StreamOutIntruction& instr);
    bool emit_memringwrite(const MemRingOutIntruction& instr);
@@ -165,7 +169,7 @@ bool AssemblyFromShaderLegacyImpl::emit(const Instruction::Pointer i)
    sfn_log << SfnLog::assembly << "Emit from '" << *i << "\n";
    switch (i->type()) {
    case Instruction::alu:
-      return emit_alu(static_cast<const AluInstruction&>(*i), cf_alu_undefined);
+      return emit_alu(static_cast<const AluInstruction&>(*i));
    case Instruction::exprt:
       return emit_export(static_cast<const ExportInstruction&>(*i));
    case Instruction::tex:
@@ -242,7 +246,7 @@ bool AssemblyFromShaderLegacyImpl::emit_load_addr(PValue addr)
    return true;
 }
 
-bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCode cf_op)
+bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai)
 {
 
    struct r600_bytecode_alu alu;
@@ -353,8 +357,7 @@ bool AssemblyFromShaderLegacyImpl::emit_alu(const AluInstruction& ai, ECFAluOpCo
          m_last_addr.reset();
       }
 
-   if (cf_op == cf_alu_undefined)
-      cf_op = ai.cf_type();
+   auto cf_op = ai.cf_type();
 
    unsigned type = 0;
    switch (cf_op) {
@@ -518,11 +521,13 @@ bool AssemblyFromShaderLegacyImpl::emit_if_start(const IfInstruction & if_instr)
    auto op = cf_alu_push_before;
 
    if (needs_workaround) {
-		r600_bytecode_add_cfinst(m_bc, CF_OP_PUSH);
-                m_bc->cf_last->cf_addr = m_bc->cf_last->id + 2;
-		op = cf_alu;
-	}
-   emit_alu(pred, op);
+      r600_bytecode_add_cfinst(m_bc, CF_OP_PUSH);
+      m_bc->cf_last->cf_addr = m_bc->cf_last->id + 2;
+      auto new_pred = pred;
+      new_pred.set_cf_type(cf_alu);
+      emit_alu(new_pred);
+   } else
+      emit_alu(pred);
 
    r600_bytecode_add_cfinst(m_bc, CF_OP_JUMP);
 
