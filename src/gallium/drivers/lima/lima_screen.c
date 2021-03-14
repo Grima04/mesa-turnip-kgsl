@@ -568,6 +568,8 @@ static const struct debug_named_value lima_debug_options[] = {
           "disable growable heap buffer" },
         { "singlejob", LIMA_DEBUG_SINGLE_JOB,
           "disable multi job optimization" },
+        { "precompile", LIMA_DEBUG_PRECOMPILE,
+          "Precompile shaders for shader-db" },
         { NULL }
 };
 

@@ -368,15 +368,17 @@ lima_create_fs_state(struct pipe_context *pctx,
    so->base.type = PIPE_SHADER_IR_NIR;
    so->base.ir.nir = nir;
 
-   /* Trigger initial compilation with default settings */
-   struct lima_fs_key key = {
-      .shader_state = so,
-   };
-   for (int i = 0; i < ARRAY_SIZE(key.tex); i++) {
-      for (int j = 0; j < 4; j++)
-         key.tex[i].swizzle[j] = j;
+   if (lima_debug & LIMA_DEBUG_PRECOMPILE) {
+      /* Trigger initial compilation with default settings */
+      struct lima_fs_key key = {
+         .shader_state = so,
+      };
+      for (int i = 0; i < ARRAY_SIZE(key.tex); i++) {
+         for (int j = 0; j < 4; j++)
+            key.tex[i].swizzle[j] = j;
+      }
+      lima_get_compiled_fs(ctx, &key);
    }
-   lima_get_compiled_fs(ctx, &key);
 
    return so;
 }
@@ -568,11 +570,13 @@ lima_create_vs_state(struct pipe_context *pctx,
    so->base.type = PIPE_SHADER_IR_NIR;
    so->base.ir.nir = nir;
 
-   /* Trigger initial compilation with default settings */
-   struct lima_vs_key key = {
-      .shader_state = so,
-   };
-   lima_get_compiled_vs(ctx, &key);
+   if (lima_debug & LIMA_DEBUG_PRECOMPILE) {
+      /* Trigger initial compilation with default settings */
+      struct lima_vs_key key = {
+         .shader_state = so,
+      };
+      lima_get_compiled_vs(ctx, &key);
+   }
 
    return so;
 }
