@@ -133,7 +133,11 @@ schedule_barrier(compiler_context *ctx)
 M_LOAD(ld_attr_32, nir_type_uint32);
 M_LOAD(ld_vary_32, nir_type_uint32);
 M_LOAD(ld_ubo_u128, nir_type_uint32);
+M_LOAD(ld_u32, nir_type_uint32);
+M_LOAD(ld_u64, nir_type_uint32);
 M_LOAD(ld_u128, nir_type_uint32);
+M_STORE(st_u32, nir_type_uint32);
+M_STORE(st_u64, nir_type_uint32);
 M_STORE(st_u128, nir_type_uint32);
 M_LOAD(ld_color_buffer_32u, nir_type_uint32);
 M_LOAD(ld_color_buffer_as_fp16, nir_type_float16);
@@ -1186,14 +1190,34 @@ emit_global(
         nir_src *offset,
         unsigned seg)
 {
-        /* TODO: types */
-
         midgard_instruction ins;
 
-        if (is_read)
-                ins = m_ld_u128(srcdest, 0);
-        else
-                ins = m_st_u128(srcdest, 0);
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+        if (is_read) {
+                unsigned bitsize = nir_dest_bit_size(intr->dest) *
+                        nir_dest_num_components(intr->dest);
+
+                if (bitsize <= 32)
+                        ins = m_ld_u32(srcdest, 0);
+                else if (bitsize <= 64)
+                        ins = m_ld_u64(srcdest, 0);
+                else if (bitsize <= 128)
+                        ins = m_ld_u128(srcdest, 0);
+                else
+                        unreachable("Invalid global read size");
+        } else {
+                unsigned bitsize = nir_src_bit_size(intr->src[0]) *
+                        nir_src_num_components(intr->src[0]);
+
+                if (bitsize <= 32)
+                        ins = m_st_u32(srcdest, 0);
+                else if (bitsize <= 64)
+                        ins = m_st_u64(srcdest, 0);
+                else if (bitsize <= 128)
+                        ins = m_st_u128(srcdest, 0);
+                else
+                        unreachable("Invalid global store size");
+        }
 
         mir_set_offset(ctx, &ins, offset, seg);
         mir_set_intr_mask(instr, &ins, is_read);
