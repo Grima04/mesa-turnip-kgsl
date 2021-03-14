@@ -99,6 +99,12 @@ fd4_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
 	};
 
+	if (info->mode != PIPE_PRIM_MAX &&
+			!indirect &&
+			!info->primitive_restart &&
+			!u_trim_pipe_prim(info->mode, (unsigned*)&draw->count))
+		return false;
+
 	ir3_fixup_shader_state(&ctx->base, &emit.key);
 
 	enum fd_dirty_3d_state dirty = ctx->dirty;

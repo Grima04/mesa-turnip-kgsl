@@ -287,18 +287,16 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 		return;
 	}
 
-	if (info->mode != PIPE_PRIM_MAX &&
-	    !indirect &&
-	    !info->primitive_restart &&
-	    !u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
-		return;
-
 	/* TODO: push down the region versions into the tiles */
 	if (!fd_render_condition_check(pctx))
 		return;
 
 	/* emulate unsupported primitives: */
 	if (!fd_supported_prim(ctx, info->mode)) {
+		if (!indirect && !info->primitive_restart &&
+				!u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
+			return;
+
 		if (ctx->streamout.num_targets > 0)
 			mesa_loge("stream-out with emulated prims");
 		util_primconvert_save_rasterizer_state(ctx->primconvert, ctx->rasterizer);

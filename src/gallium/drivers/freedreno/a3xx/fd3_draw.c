@@ -108,6 +108,12 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
 	};
 
+	if (info->mode != PIPE_PRIM_MAX &&
+			!indirect &&
+			!info->primitive_restart &&
+			!u_trim_pipe_prim(info->mode, (unsigned*)&draw->count))
+		return false;
+
 	if (fd3_needs_manual_clipping(ir3_get_shader(ctx->prog.vs), ctx->rasterizer))
 		emit.key.ucp_enables = ctx->rasterizer->clip_plane_enable;
 

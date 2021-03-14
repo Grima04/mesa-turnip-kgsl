@@ -163,6 +163,12 @@ fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
 	if (!ctx->prog.fs || !ctx->prog.vs)
 		return false;
 
+	if (pinfo->mode != PIPE_PRIM_MAX &&
+			!indirect &&
+			!pinfo->primitive_restart &&
+			!u_trim_pipe_prim(pinfo->mode, (unsigned*)&pdraw->count))
+		return false;
+
 	if (ctx->dirty & FD_DIRTY_VTXBUF)
 		emit_vertexbufs(ctx);
 
