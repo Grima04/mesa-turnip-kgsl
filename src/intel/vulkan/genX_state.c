@@ -341,7 +341,6 @@ genX(emit_l3_config)(struct anv_batch *batch,
                      const struct intel_l3_config *cfg)
 {
    UNUSED const struct gen_device_info *devinfo = &device->info;
-   UNUSED const bool has_slm = cfg->n[INTEL_L3P_SLM];
 
 #if GEN_GEN >= 8
 
@@ -362,7 +361,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
 #endif
       } else {
 #if GEN_GEN < 11
-         l3cr.SLMEnable = has_slm;
+         l3cr.SLMEnable = cfg->n[INTEL_L3P_SLM];
 #endif
 #if GEN_GEN == 11
          /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be
@@ -399,7 +398,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
     * client (URB for all validated configurations) set to the
     * lower-bandwidth 2-bank address hashing mode.
     */
-   const bool urb_low_bw = has_slm && !devinfo->is_baytrail;
+   const bool urb_low_bw = cfg->n[INTEL_L3P_SLM] && !devinfo->is_baytrail;
    assert(!urb_low_bw || cfg->n[INTEL_L3P_URB] == cfg->n[INTEL_L3P_SLM]);
 
    /* Minimum number of ways that can be allocated to the URB. */
@@ -421,7 +420,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
    }
 
    anv_batch_write_reg(batch, GENX(L3CNTLREG2), l3cr2) {
-      l3cr2.SLMEnable = has_slm;
+      l3cr2.SLMEnable = cfg->n[INTEL_L3P_SLM];
       l3cr2.URBLowBandwidth = urb_low_bw;
       l3cr2.URBAllocation = cfg->n[INTEL_L3P_URB] - n0_urb;
 #if !GEN_IS_HASWELL
