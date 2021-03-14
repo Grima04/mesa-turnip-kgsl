@@ -114,6 +114,9 @@ fd_sw_begin_query(struct fd_context *ctx, struct fd_query *q)
 	assert_dt
 {
 	struct fd_sw_query *sq = fd_sw_query(q);
+
+	ctx->stats_users++;
+
 	sq->begin_value = read_counter(ctx, q->type);
 	if (is_time_rate_query(q)) {
 		sq->begin_time = os_time_get();
@@ -127,6 +130,10 @@ fd_sw_end_query(struct fd_context *ctx, struct fd_query *q)
 	assert_dt
 {
 	struct fd_sw_query *sq = fd_sw_query(q);
+
+	assert(ctx->stats_users > 0);
+	ctx->stats_users--;
+
 	sq->end_value = read_counter(ctx, q->type);
 	if (is_time_rate_query(q)) {
 		sq->end_time = os_time_get();

@@ -348,7 +348,8 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	batch->back_blit = ctx->in_shadow;
 	batch->num_draws++;
 
-	update_draw_stats(ctx, info, draws, num_draws);
+	if (unlikely(ctx->stats_users > 0))
+		update_draw_stats(ctx, info, draws, num_draws);
 
 	/* Clearing last_fence must come after the batch dependency tracking
 	 * (resource_read()/resource_written()), as that can trigger a flush,

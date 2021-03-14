@@ -563,6 +563,15 @@ fd_set_stream_output_targets(struct pipe_context *pctx,
 
 	debug_assert(num_targets <= ARRAY_SIZE(so->targets));
 
+	/* Older targets need sw stats enabled for streamout emulation in VS: */
+	if (ctx->screen->gpu_id < 500) {
+		if (num_targets && !so->num_targets) {
+			ctx->stats_users++;
+		} else if (so->num_targets && !num_targets) {
+			ctx->stats_users--;
+		}
+	}
+
 	for (i = 0; i < num_targets; i++) {
 		boolean changed = targets[i] != so->targets[i];
 		boolean reset = (offsets[i] != (unsigned)-1);

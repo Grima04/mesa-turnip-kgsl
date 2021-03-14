@@ -566,6 +566,12 @@ fd_context_init(struct fd_context *ctx, struct pipe_screen *pscreen,
 	else if (flags & PIPE_CONTEXT_LOW_PRIORITY)
 		prio = 2;
 
+	/* Some of the stats will get printed out at context destroy, so
+	 * make sure they are collected:
+	 */
+	if (FD_DBG(BSTAT) || FD_DBG(MSGS))
+		ctx->stats_users++;
+
 	ctx->screen = screen;
 	ctx->pipe = fd_pipe_new2(screen->dev, FD_PIPE_3D, prio);
 

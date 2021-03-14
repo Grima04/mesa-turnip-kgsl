@@ -110,8 +110,10 @@ fd4_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	if (!vp || !fp)
 		return false;
 
-	ctx->stats.vs_regs += ir3_shader_halfregs(vp);
-	ctx->stats.fs_regs += ir3_shader_halfregs(fp);
+	if (unlikely(ctx->stats_users > 0)) {
+		ctx->stats.vs_regs += ir3_shader_halfregs(vp);
+		ctx->stats.fs_regs += ir3_shader_halfregs(fp);
+	}
 
 	emit.binning_pass = false;
 	emit.dirty = dirty;

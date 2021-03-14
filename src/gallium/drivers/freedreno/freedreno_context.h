@@ -266,6 +266,11 @@ struct fd_context {
 		uint64_t vs_regs, hs_regs, ds_regs, gs_regs, fs_regs;
 	} stats dt;
 
+	/* Counter for number of users who need sw counters (so we can
+	 * skip collecting them when not needed)
+	 */
+	unsigned stats_users;
+
 	/* Current batch.. the rule here is that you can deref ctx->batch
 	 * in codepaths from pipe_context entrypoints.  But not in code-
 	 * paths from fd_batch_flush() (basically, the stuff that gets
