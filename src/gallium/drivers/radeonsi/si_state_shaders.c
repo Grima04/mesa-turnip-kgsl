@@ -255,6 +255,9 @@ void si_shader_cache_insert_shader(struct si_screen *sscreen, unsigned char ir_s
       disk_cache_compute_key(sscreen->disk_shader_cache, ir_sha1_cache_key, 20, key);
       disk_cache_put(sscreen->disk_shader_cache, key, hw_binary, *((uint32_t *)hw_binary), NULL);
    }
+
+   if (memory_cache_full)
+      FREE(hw_binary);
 }
 
 bool si_shader_cache_load_shader(struct si_screen *sscreen, unsigned char ir_sha1_cache_key[20],
