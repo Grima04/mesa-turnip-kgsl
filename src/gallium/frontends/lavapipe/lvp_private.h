@@ -219,7 +219,6 @@ struct lvp_device_memory {
 struct lvp_image {
    struct vk_object_base base;
    VkImageType type;
-   VkFormat vk_format;
    VkDeviceSize size;
    uint32_t alignment;
    struct pipe_resource *bo;
