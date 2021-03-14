@@ -570,7 +570,7 @@ v_load_store_scratch(
                 .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
                 .swizzle = SWIZZLE_IDENTITY_4,
-                .op = is_store ? midgard_op_st_int4 : midgard_op_ld_int4,
+                .op = is_store ? midgard_op_st_u128 : midgard_op_ld_u128,
                 .load_store = {
                         /* For register spilling - to thread local storage */
                         .arg_1 = 0xEA,

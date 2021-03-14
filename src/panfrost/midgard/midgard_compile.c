@@ -132,9 +132,9 @@ schedule_barrier(compiler_context *ctx)
 
 M_LOAD(ld_attr_32, nir_type_uint32);
 M_LOAD(ld_vary_32, nir_type_uint32);
-M_LOAD(ld_ubo_int4, nir_type_uint32);
-M_LOAD(ld_int4, nir_type_uint32);
-M_STORE(st_int4, nir_type_uint32);
+M_LOAD(ld_ubo_u128, nir_type_uint32);
+M_LOAD(ld_u128, nir_type_uint32);
+M_STORE(st_u128, nir_type_uint32);
 M_LOAD(ld_color_buffer_32u, nir_type_uint32);
 M_LOAD(ld_color_buffer_as_fp16, nir_type_float16);
 M_LOAD(ld_color_buffer_as_fp32, nir_type_float32);
@@ -1147,7 +1147,7 @@ emit_ubo_read(
 {
         /* TODO: half-floats */
 
-        midgard_instruction ins = m_ld_ubo_int4(dest, 0);
+        midgard_instruction ins = m_ld_ubo_u128(dest, 0);
         ins.constants.u32[0] = offset;
 
         if (instr->type == nir_instr_type_intrinsic)
@@ -1191,9 +1191,9 @@ emit_global(
         midgard_instruction ins;
 
         if (is_read)
-                ins = m_ld_int4(srcdest, 0);
+                ins = m_ld_u128(srcdest, 0);
         else
-                ins = m_st_int4(srcdest, 0);
+                ins = m_st_u128(srcdest, 0);
 
         mir_set_offset(ctx, &ins, offset, seg);
         mir_set_intr_mask(instr, &ins, is_read);

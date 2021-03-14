@@ -467,13 +467,13 @@ typedef enum {
         /* Used for compute shader's __global arguments, __local variables (or
          * for register spilling) */
 
-        midgard_op_ld_uchar = 0x80, /* zero extends */
-        midgard_op_ld_char = 0x81, /* sign extends */
-        midgard_op_ld_ushort = 0x84, /* zero extends */
-        midgard_op_ld_short = 0x85, /* sign extends */
-        midgard_op_ld_char4 = 0x88, /* short2, int, float */
-        midgard_op_ld_short4 = 0x8C, /* int2, float2, long */
-        midgard_op_ld_int4 = 0x90, /* float4, long2 */
+        midgard_op_ld_u8 = 0x80, /* zero extends */
+        midgard_op_ld_i8 = 0x81, /* sign extends */
+        midgard_op_ld_u16 = 0x84, /* zero extends */
+        midgard_op_ld_i16 = 0x85, /* sign extends */
+        midgard_op_ld_u32 = 0x88,
+        midgard_op_ld_u64 = 0x8C,
+        midgard_op_ld_u128 = 0x90,
 
         midgard_op_ld_attr_32 = 0x94,
         midgard_op_ld_attr_16 = 0x95,
@@ -497,11 +497,11 @@ typedef enum {
          * UBOs don't really exist. The ops are still listed to maintain
          * symmetry with generic I/O ops. */
 
-        midgard_op_ld_ubo_char   = 0xA0, /* theoretical */
-        midgard_op_ld_ubo_char2  = 0xA4, /* theoretical */
-        midgard_op_ld_ubo_char4  = 0xA8,
-        midgard_op_ld_ubo_short4 = 0xAC,
-        midgard_op_ld_ubo_int4   = 0xB0,
+        midgard_op_ld_ubo_u8   = 0xA0, /* theoretical */
+        midgard_op_ld_ubo_u16  = 0xA4, /* theoretical */
+        midgard_op_ld_ubo_u32  = 0xA8,
+        midgard_op_ld_ubo_u64  = 0xAC,
+        midgard_op_ld_ubo_u128 = 0xB0,
 
         midgard_op_ld_image_32f = 0xB4,
         midgard_op_ld_image_16f = 0xB5,
@@ -513,11 +513,11 @@ typedef enum {
         midgard_op_ld_color_buffer_as_fp16 = 0xB9,
         midgard_op_ld_color_buffer_32u = 0xBA,
 
-        midgard_op_st_char = 0xC0,
-        midgard_op_st_char2 = 0xC4, /* short */
-        midgard_op_st_char4 = 0xC8, /* short2, int, float */
-        midgard_op_st_short4 = 0xCC, /* int2, float2, long */
-        midgard_op_st_int4 = 0xD0, /* float4, long2 */
+        midgard_op_st_u8 = 0xC0,
+        midgard_op_st_u16 = 0xC4,
+        midgard_op_st_u32 = 0xC8,
+        midgard_op_st_u64 = 0xCC,
+        midgard_op_st_u128 = 0xD0,
 
         midgard_op_st_vary_32 = 0xD4,
         midgard_op_st_vary_16 = 0xD5,

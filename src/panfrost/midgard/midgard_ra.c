@@ -986,7 +986,7 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                         .dest_type = ins->src_types[i],
                                         .src = { ~0, ~0, ~0, ~0 },
                                         .swizzle = SWIZZLE_IDENTITY_4,
-                                        .op = midgard_op_ld_ubo_int4,
+                                        .op = midgard_op_ld_ubo_u128,
                                         .load_store = {
                                                 .arg_1 = ctx->info->push.words[idx].ubo,
                                                 .arg_2 = 0x1E,
