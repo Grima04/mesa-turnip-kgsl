@@ -124,6 +124,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
    .EXT_sampler_filter_minmax             = true,
+   .EXT_scalar_block_layout               = true,
    .EXT_shader_stencil_export             = true,
    .EXT_shader_viewport_index_layer       = true,
    .EXT_transform_feedback                = true,
@@ -510,6 +511,11 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
          features->uniformBufferStandardLayout = true;
          break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+         VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
+            (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
+         features->scalarBlockLayout = true;
       }
       default:
          break;
