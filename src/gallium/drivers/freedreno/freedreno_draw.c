@@ -257,19 +257,13 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 static void
 fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
-            const struct pipe_draw_indirect_info *indirect,
-            const struct pipe_draw_start_count *draws,
-            unsigned num_draws)
+		const struct pipe_draw_indirect_info *indirect,
+		const struct pipe_draw_start_count *draws,
+		unsigned num_draws)
 	in_dt
 {
 	if (num_draws > 1) {
-		struct pipe_draw_info tmp_info = *info;
-
-		for (unsigned i = 0; i < num_draws; i++) {
-			fd_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
-			if (tmp_info.increment_draw_id)
-				tmp_info.drawid++;
-		}
+		util_draw_multi(pctx, info, indirect, draws, num_draws);
 		return;
 	}
 
