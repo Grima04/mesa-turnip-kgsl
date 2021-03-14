@@ -120,6 +120,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_calibrated_timestamps             = true,
    .EXT_conditional_rendering             = true,
    .EXT_extended_dynamic_state            = true,
+   .EXT_host_query_reset                  = true,
    .EXT_index_type_uint8                  = true,
    .EXT_post_depth_coverage               = true,
    .EXT_private_data                      = true,
@@ -516,6 +517,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
             (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
          features->scalarBlockLayout = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+         VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
+            (VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
+         features->hostQueryReset = true;
          break;
       }
       default:
