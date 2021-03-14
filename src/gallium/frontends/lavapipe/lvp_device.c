@@ -115,6 +115,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_swapchain                         = true,
 #endif
+   .KHR_uniform_buffer_standard_layout    = true,
    .KHR_variable_pointers                 = true,
    .EXT_calibrated_timestamps             = true,
    .EXT_conditional_rendering             = true,
@@ -502,6 +503,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->multiview = true;
          features->multiviewGeometryShader = true;
          features->multiviewTessellationShader = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+         VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *features =
+            (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR *)ext;
+         features->uniformBufferStandardLayout = true;
          break;
       }
       default:

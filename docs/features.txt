@@ -463,7 +463,7 @@ Vulkan 1.2 -- all DONE: anv
   VK_KHR_shader_subgroup_extended_types                 DONE (anv/gen8+, radv)
   VK_KHR_spirv_1_4                                      DONE (anv, radv)
   VK_KHR_timeline_semaphore                             DONE (anv, radv)
-  VK_KHR_uniform_buffer_standard_layout                 DONE (anv, radv)
+  VK_KHR_uniform_buffer_standard_layout                 DONE (anv, lvp, radv)
   VK_KHR_vulkan_memory_model                            DONE (anv, radv)
   VK_EXT_descriptor_indexing                            DONE (anv/gen9+, radv)
   VK_EXT_host_query_reset                               DONE (anv, radv, tu)
