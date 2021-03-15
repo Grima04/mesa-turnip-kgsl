@@ -71,6 +71,7 @@ NineDevice9Ex_SetConvolutionMonoKernel( UNUSED struct NineDevice9Ex *This,
                                         UNUSED float *rows,
                                         UNUSED float *columns )
 {
+    DBG("This\n");
     STUB(D3D_OK);
 }
 
@@ -85,6 +86,7 @@ NineDevice9Ex_ComposeRects( UNUSED struct NineDevice9Ex *This,
                             UNUSED int Xoffset,
                             UNUSED int Yoffset )
 {
+    DBG("This\n");
     STUB(D3D_OK);
 }
 
@@ -117,6 +119,7 @@ HRESULT NINE_WINAPI
 NineDevice9Ex_GetGPUThreadPriority( struct NineDevice9Ex *This,
                                     INT *pPriority )
 {
+    DBG("This\n");
     user_assert(pPriority != NULL, D3DERR_INVALIDCALL);
     *pPriority = This->base.gpu_priority;
     return D3D_OK;
@@ -126,6 +129,7 @@ HRESULT NINE_WINAPI
 NineDevice9Ex_SetGPUThreadPriority( struct NineDevice9Ex *This,
                                     INT Priority )
 {
+    DBG("This\n");
     user_assert(Priority >= -7 && Priority <= 7, D3DERR_INVALIDCALL);
     This->base.gpu_priority = Priority;
     return D3D_OK;
@@ -135,6 +139,7 @@ HRESULT NINE_WINAPI
 NineDevice9Ex_WaitForVBlank( UNUSED struct NineDevice9Ex *This,
                              UNUSED UINT iSwapChain )
 {
+    DBG("This\n");
     STUB(D3D_OK);
 }
 
@@ -143,6 +148,7 @@ NineDevice9Ex_CheckResourceResidency( UNUSED struct NineDevice9Ex *This,
                                       UNUSED IDirect3DResource9 **pResourceArray,
                                       UNUSED UINT32 NumResources )
 {
+    DBG("This\n");
     STUB(D3D_OK);
 }
 
@@ -150,6 +156,7 @@ HRESULT NINE_WINAPI
 NineDevice9Ex_SetMaximumFrameLatency( struct NineDevice9Ex *This,
                                       UINT MaxLatency )
 {
+    DBG("This\n");
     This->base.max_frame_latency = MaxLatency;
     return D3D_OK;
 }
@@ -158,6 +165,7 @@ HRESULT NINE_WINAPI
 NineDevice9Ex_GetMaximumFrameLatency( struct NineDevice9Ex *This,
                                       UINT *pMaxLatency )
 {
+    DBG("This\n");
     user_assert(pMaxLatency != NULL, D3DERR_INVALIDCALL);
     *pMaxLatency = This->base.max_frame_latency;
     return D3D_OK;
@@ -194,6 +202,7 @@ NineDevice9Ex_CreateRenderTargetEx( struct NineDevice9Ex *This,
                                     HANDLE *pSharedHandle,
                                     UNUSED DWORD Usage )
 {
+    DBG("This\n");
     /* The Create*Ex functions only purpose seem to introduce the
      * Usage field, to pass the new d3d9ex flags on secure/restricted
      * content.
@@ -221,6 +230,7 @@ NineDevice9Ex_CreateOffscreenPlainSurfaceEx( struct NineDevice9Ex *This,
                                              HANDLE *pSharedHandle,
                                              UNUSED DWORD Usage )
 {
+    DBG("This\n");
     /* The Create*Ex functions only purpose seem to introduce the
      * Usage field, to pass the new d3d9ex flags on secure/restricted
      * content.
@@ -248,6 +258,7 @@ NineDevice9Ex_CreateDepthStencilSurfaceEx( struct NineDevice9Ex *This,
                                            HANDLE *pSharedHandle,
                                            UNUSED DWORD Usage )
 {
+    DBG("This\n");
     /* The Create*Ex functions only purpose seem to introduce the
      * Usage field, to pass the new d3d9ex flags on secure/restricted
      * content.
@@ -352,6 +363,7 @@ NineDevice9Ex_GetDisplayModeEx( struct NineDevice9Ex *This,
 HRESULT NINE_WINAPI
 NineDevice9Ex_TestCooperativeLevel( UNUSED struct NineDevice9Ex *This )
 {
+    DBG("This\n");
     return D3D_OK;
 }
 
