@@ -230,6 +230,7 @@ AssemblyFromShaderLegacyImpl::AssemblyFromShaderLegacyImpl(r600_shader *sh,
    m_last_op_was_barrier(false)
 {
    m_max_color_exports = MAX2(m_key->ps.nr_cbufs, 1);
+
 }
 
 extern const std::map<EAluOp, int> opcode_map;
@@ -502,20 +503,21 @@ bool AssemblyFromShaderLegacyImpl::emit_export(const ExportInstruction & exi)
 
 bool AssemblyFromShaderLegacyImpl::emit_if_start(const IfInstruction & if_instr)
 {
-	bool needs_workaround = false;
    int elems = m_callstack.push(FC_PUSH_VPM);
+   bool needs_workaround = false;
 
    if (m_bc->chip_class == CAYMAN && m_bc->stack.loop > 1)
       needs_workaround = true;
+
    if (m_bc->family != CHIP_HEMLOCK &&
        m_bc->family != CHIP_CYPRESS &&
        m_bc->family != CHIP_JUNIPER) {
       unsigned dmod1 = (elems - 1) % m_bc->stack.entry_size;
-		unsigned dmod2 = (elems) % m_bc->stack.entry_size;
+      unsigned dmod2 = (elems) % m_bc->stack.entry_size;
 
       if (elems && (!dmod1 || !dmod2))
-			needs_workaround = true;
-	}
+         needs_workaround = true;
+   }
 
    auto& pred = if_instr.pred();
    auto op = cf_alu_push_before;
