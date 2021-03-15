@@ -112,8 +112,8 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer,
 			const struct radv_dynamic_state *src)
 {
 	struct radv_dynamic_state *dest = &cmd_buffer->state.dynamic;
-	uint32_t copy_mask = src->mask;
-	uint32_t dest_mask = 0;
+	uint64_t copy_mask = src->mask;
+	uint64_t dest_mask = 0;
 
 	dest->discard_rectangle.count = src->discard_rectangle.count;
 	dest->sample_location.count = src->sample_location.count;
@@ -5482,7 +5482,7 @@ static bool radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 	if (cmd_buffer->state.context_roll_without_scissor_emitted || info->strmout_buffer)
 		return true;
 
-	uint32_t used_states = cmd_buffer->state.pipeline->graphics.needed_dynamic_state | ~RADV_CMD_DIRTY_DYNAMIC_ALL;
+	uint64_t used_states = cmd_buffer->state.pipeline->graphics.needed_dynamic_state | ~RADV_CMD_DIRTY_DYNAMIC_ALL;
 
 	/* Index, vertex and streamout buffers don't change context regs, and
 	 * pipeline is already handled.

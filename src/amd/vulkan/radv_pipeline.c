@@ -1339,7 +1339,7 @@ si_conv_prim_to_gs_out(enum VkPrimitiveTopology topology)
 	}
 }
 
-static unsigned radv_dynamic_state_mask(VkDynamicState state)
+static uint64_t radv_dynamic_state_mask(VkDynamicState state)
 {
 	switch(state) {
 	case VK_DYNAMIC_STATE_VIEWPORT:
@@ -1395,9 +1395,9 @@ static unsigned radv_dynamic_state_mask(VkDynamicState state)
 	}
 }
 
-static uint32_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
+static uint64_t radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-	uint32_t states = RADV_DYNAMIC_ALL;
+	uint64_t states = RADV_DYNAMIC_ALL;
 
 	/* If rasterization is disabled we do not care about any of the
 	 * dynamic states, since they are all rasterization related only,
@@ -1559,8 +1559,8 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 				 const VkGraphicsPipelineCreateInfo *pCreateInfo,
 				 const struct radv_graphics_pipeline_create_info *extra)
 {
-	uint32_t needed_states = radv_pipeline_needed_dynamic_state(pCreateInfo);
-	uint32_t states = needed_states;
+	uint64_t needed_states = radv_pipeline_needed_dynamic_state(pCreateInfo);
+	uint64_t states = needed_states;
 	RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
 	struct radv_subpass *subpass = &pass->subpasses[pCreateInfo->subpass];
 
