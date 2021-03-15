@@ -812,6 +812,58 @@ si_write_event_with_dims_marker(struct si_context* sctx, struct radeon_cmdbuf *r
 }
 
 void
+si_sqtt_describe_barrier_start(struct si_context* sctx, struct radeon_cmdbuf *rcs)
+{
+   struct rgp_sqtt_marker_barrier_start marker = {0};
+
+   marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_START;
+   marker.cb_id = 0;
+   marker.dword02 = 0xC0000000 + 10; /* RGP_BARRIER_INTERNAL_BASE */
+
+   si_emit_thread_trace_userdata(sctx, rcs, &marker, sizeof(marker) / 4);
+}
+
+void
+si_sqtt_describe_barrier_end(struct si_context* sctx, struct radeon_cmdbuf *rcs,
+                            unsigned flags)
+{
+   struct rgp_sqtt_marker_barrier_end marker = {0};
+
+   marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BARRIER_END;
+   marker.cb_id = 0;
+
+   if (flags & SI_CONTEXT_VS_PARTIAL_FLUSH)
+      marker.vs_partial_flush = true;
+   if (flags & SI_CONTEXT_PS_PARTIAL_FLUSH)
+      marker.ps_partial_flush = true;
+   if (flags & SI_CONTEXT_CS_PARTIAL_FLUSH)
+      marker.cs_partial_flush = true;
+
+   if (flags & SI_CONTEXT_PFP_SYNC_ME)
+      marker.pfp_sync_me = true;
+
+   if (flags & SI_CONTEXT_INV_VCACHE)
+      marker.inval_tcp = true;
+   if (flags & SI_CONTEXT_INV_ICACHE)
+      marker.inval_sqI = true;
+   if (flags & SI_CONTEXT_INV_SCACHE)
+      marker.inval_sqK = true;
+   if (flags & SI_CONTEXT_INV_L2)
+      marker.inval_tcc = true;
+
+   if (flags & SI_CONTEXT_FLUSH_AND_INV_CB) {
+      marker.inval_cb = true;
+      marker.flush_cb = true;
+   }
+   if (flags & SI_CONTEXT_FLUSH_AND_INV_DB) {
+      marker.inval_db = true;
+      marker.flush_db = true;
+   }
+
+   si_emit_thread_trace_userdata(sctx, rcs, &marker, sizeof(marker) / 4);
+}
+
+void
 si_write_user_event(struct si_context* sctx, struct radeon_cmdbuf *rcs,
                     enum rgp_sqtt_marker_user_event_type type,
                     const char *str, int len)

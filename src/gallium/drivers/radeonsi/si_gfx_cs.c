@@ -744,7 +744,16 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
                         EOP_DST_SEL_MEM, EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM,
                         EOP_DATA_SEL_VALUE_32BIT, wait_mem_scratch, va, ctx->wait_mem_number,
                         SI_NOT_QUERY);
+
+      if (unlikely(ctx->thread_trace_enabled)) {
+         si_sqtt_describe_barrier_start(ctx, &ctx->gfx_cs);
+      }
+
       si_cp_wait_mem(ctx, cs, va, ctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
+
+      if (unlikely(ctx->thread_trace_enabled)) {
+         si_sqtt_describe_barrier_end(ctx, &ctx->gfx_cs, flags);
+      }
    }
 
    radeon_begin_again(cs);
@@ -953,7 +962,16 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
       si_cp_release_mem(sctx, cs, cb_db_event, tc_flags, EOP_DST_SEL_MEM,
                         EOP_INT_SEL_SEND_DATA_AFTER_WR_CONFIRM, EOP_DATA_SEL_VALUE_32BIT,
                         wait_mem_scratch, va, sctx->wait_mem_number, SI_NOT_QUERY);
+
+      if (unlikely(sctx->thread_trace_enabled)) {
+         si_sqtt_describe_barrier_start(sctx, &sctx->gfx_cs);
+      }
+
       si_cp_wait_mem(sctx, cs, va, sctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
+
+      if (unlikely(sctx->thread_trace_enabled)) {
+         si_sqtt_describe_barrier_end(sctx, &sctx->gfx_cs, sctx->flags);
+      }
    }
 
    /* GFX6-GFX8 only:
