@@ -1281,10 +1281,11 @@ static void visit_ssbo_atomic(struct lp_build_nir_context *bld_base,
    LLVMValueRef offset = get_src(bld_base, instr->src[1]);
    LLVMValueRef val = get_src(bld_base, instr->src[2]);
    LLVMValueRef val2 = NULL;
+   int bitsize = nir_src_bit_size(instr->src[2]);
    if (instr->intrinsic == nir_intrinsic_ssbo_atomic_comp_swap)
       val2 = get_src(bld_base, instr->src[3]);
 
-   bld_base->atomic_mem(bld_base, instr->intrinsic, idx, offset, val, val2, &result[0]);
+   bld_base->atomic_mem(bld_base, instr->intrinsic, bitsize, idx, offset, val, val2, &result[0]);
 
 }
 
@@ -1507,10 +1508,11 @@ static void visit_shared_atomic(struct lp_build_nir_context *bld_base,
    LLVMValueRef offset = get_src(bld_base, instr->src[0]);
    LLVMValueRef val = get_src(bld_base, instr->src[1]);
    LLVMValueRef val2 = NULL;
+   int bitsize = nir_src_bit_size(instr->src[1]);
    if (instr->intrinsic == nir_intrinsic_shared_atomic_comp_swap)
       val2 = get_src(bld_base, instr->src[2]);
 
-   bld_base->atomic_mem(bld_base, instr->intrinsic, NULL, offset, val, val2, &result[0]);
+   bld_base->atomic_mem(bld_base, instr->intrinsic, bitsize, NULL, offset, val, val2, &result[0]);
 
 }
 
