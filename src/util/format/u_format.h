@@ -982,6 +982,8 @@ util_format_srgb(enum pipe_format format)
       return PIPE_FORMAT_DXT3_SRGBA;
    case PIPE_FORMAT_DXT5_RGBA:
       return PIPE_FORMAT_DXT5_SRGBA;
+   case PIPE_FORMAT_R5G6B5_UNORM:
+      return PIPE_FORMAT_R5G6B5_SRGB;
    case PIPE_FORMAT_B5G6R5_UNORM:
       return PIPE_FORMAT_B5G6R5_SRGB;
    case PIPE_FORMAT_BPTC_RGBA_UNORM:
@@ -1090,6 +1092,8 @@ util_format_linear(enum pipe_format format)
       return PIPE_FORMAT_DXT3_RGBA;
    case PIPE_FORMAT_DXT5_SRGBA:
       return PIPE_FORMAT_DXT5_RGBA;
+   case PIPE_FORMAT_R5G6B5_SRGB:
+      return PIPE_FORMAT_R5G6B5_UNORM;
    case PIPE_FORMAT_B5G6R5_SRGB:
       return PIPE_FORMAT_B5G6R5_UNORM;
    case PIPE_FORMAT_BPTC_SRGBA:
