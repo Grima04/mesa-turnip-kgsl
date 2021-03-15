@@ -1,2 +1,3 @@
 zink supports GL_ARB_texture_filter_minmax, GL_ARB_shader_clock
 VK_EXT_provoking_vertex on RADV.
+VK_EXT_extended_dynamic_state2 on RADV.
