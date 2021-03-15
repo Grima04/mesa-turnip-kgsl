@@ -131,8 +131,8 @@ are required:
 OpenGL 4.2
 ^^^^^^^^^^
 
-For OpenGL 4.2 support, the following additional
-requirements needs to be supported:
+For OpenGL 4.2 support, the following additional requirements needs to be
+supported:
 
 * For Vulkan 1.2 and above:
   
