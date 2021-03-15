@@ -153,6 +153,27 @@ supported:
    * ``VK_FORMAT_BC6H_SFLOAT_BLOCK``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
    * ``VK_FORMAT_BC6H_UFLOAT_BLOCK``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
 
+OpenGL 4.3
+^^^^^^^^^^
+
+For OpenGL 4.3 support, the following additional requirements needs to be
+supported:
+
+* ``VkPhysicalDeviceFeatures``:
+
+  * ``robustBufferAccess``
+  * ``multiViewport``
+
+* Formats features:
+
+   * ``VK_FORMAT_R8G8B8A8_UNORM``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+   * ``VK_FORMAT_R8G8B8A8_SRGB``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+   * ``VK_FORMAT_R16_UNORM``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+   * ``VK_FORMAT_R16G16_UNORM``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+   * ``VK_FORMAT_R16_SNORM``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+   * ``VK_FORMAT_R16G16_SNORM``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+   * ``VK_FORMAT_D32_SFLOAT_S8_UINT``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
+
 Debugging
 ---------
 
