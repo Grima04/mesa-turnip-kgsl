@@ -3768,23 +3768,23 @@
   </register>
 
   <register name="L3CNTLREG2" length="1" num="0xb020">
-    <field name="SLM Enable" start="0" end="0" type="uint"/>
+    <field name="SLM Enable" start="0" end="0" type="bool"/>
     <field name="URB Allocation" start="1" end="6" type="uint"/>
-    <field name="URB Low Bandwidth" start="7" end="7" type="uint"/>
+    <field name="URB Low Bandwidth" start="7" end="7" type="bool"/>
     <field name="ALL Allocation" start="8" end="13" type="uint"/>
     <field name="RO Allocation" start="14" end="19" type="uint"/>
-    <field name="RO Low Bandwidth" start="20" end="20" type="uint"/>
+    <field name="RO Low Bandwidth" start="20" end="20" type="bool"/>
     <field name="DC Allocation" start="21" end="26" type="uint"/>
-    <field name="DC Low Bandwidth" start="27" end="27" type="uint"/>
+    <field name="DC Low Bandwidth" start="27" end="27" type="bool"/>
   </register>
 
   <register name="L3CNTLREG3" length="1" num="0xb024">
     <field name="IS Allocation" start="1" end="6" type="uint"/>
-    <field name="IS Low Bandwidth" start="7" end="7" type="uint"/>
+    <field name="IS Low Bandwidth" start="7" end="7" type="bool"/>
     <field name="C Allocation" start="8" end="13" type="uint"/>
-    <field name="C Low Bandwidth" start="14" end="14" type="uint"/>
+    <field name="C Low Bandwidth" start="14" end="14" type="bool"/>
     <field name="T Allocation" start="15" end="20" type="uint"/>
-    <field name="T Low Bandwidth" start="21" end="21" type="uint"/>
+    <field name="T Low Bandwidth" start="21" end="21" type="bool"/>
   </register>
 
   <register name="L3SQCREG1" length="1" num="0xb010">
