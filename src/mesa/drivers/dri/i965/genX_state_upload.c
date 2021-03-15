@@ -1679,7 +1679,7 @@ genX(upload_sf)(struct brw_context *brw)
          sf.SmoothPointEnable = false;
 #endif
 
-#if GEN_VERSIONx10 == 45 || GEN_GEN >= 5
+#if GEN_VERSIONx10 >= 45
       sf.AALineDistanceMode = AALINEDISTANCE_TRUE;
 #endif
 

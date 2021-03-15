@@ -492,7 +492,7 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
       pc.InstructionCacheInvalidateEnable =
          flags & PIPE_CONTROL_INSTRUCTION_INVALIDATE;
       pc.NotifyEnable = flags & PIPE_CONTROL_NOTIFY_ENABLE;
-   #if GEN_GEN >= 5 || GEN_VERSIONx10 == 45
+   #if GEN_GEN >= 45
       pc.IndirectStatePointersDisable =
          flags & PIPE_CONTROL_INDIRECT_STATE_POINTERS_DISABLE;
    #endif

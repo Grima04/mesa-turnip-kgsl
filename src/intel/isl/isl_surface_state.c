@@ -547,7 +547,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.MOCS = info->mocs;
 #endif
 
-#if GEN_GEN > 4 || GEN_VERSIONx10 == 45
+#if GEN_VERSIONx10 >= 45
    if (info->x_offset_sa != 0 || info->y_offset_sa != 0) {
       /* There are fairly strict rules about when the offsets can be used.
        * These are mostly taken from the Sky Lake PRM documentation for
