@@ -2329,10 +2329,15 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    surf->u.gfx9.dcc_retile_num_elements = 0;
    surf->u.gfx9.dcc_retile_map = NULL;
 
+   const bool only_stencil =
+      (surf->flags & RADEON_SURF_SBUFFER) && !(surf->flags & RADEON_SURF_ZBUFFER);
+
    /* Calculate texture layout information. */
-   r = gfx9_compute_miptree(addrlib, info, config, surf, compressed, &AddrSurfInfoIn);
-   if (r)
-      return r;
+   if (!only_stencil) {
+      r = gfx9_compute_miptree(addrlib, info, config, surf, compressed, &AddrSurfInfoIn);
+      if (r)
+         return r;
+   }
 
    /* Calculate texture layout information for stencil. */
    if (surf->flags & RADEON_SURF_SBUFFER) {
