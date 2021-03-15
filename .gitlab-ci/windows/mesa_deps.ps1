@@ -1,3 +1,14 @@
+# Download new TLS certs from Windows Update
+Get-Date
+Write-Host "Updating TLS certificate store"
+$certdir = (New-Item -ItemType Directory -Name "_tlscerts")
+certutil -syncwithWU "$certdir"
+Foreach ($file in (Get-ChildItem -Path "$certdir\*" -Include "*.crt")) {
+  Import-Certificate -FilePath $file -CertStoreLocation Cert:\LocalMachine\Root
+}
+Remove-Item -Recurse -Path $certdir
+
+
 Get-Date
 Write-Host "Installing Chocolatey"
 Invoke-Expression ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
@@ -41,7 +52,7 @@ if (!$?) {
 
 # we want more secure TLS 1.2 for most things, but it breaks SourceForge
 # downloads so must be done after Chocolatey use
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12;
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13;
 
 Get-Date
 Write-Host "Cloning LLVM master"
