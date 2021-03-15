@@ -1290,7 +1290,7 @@ anv_queue_submit_post_and_alloc_new(struct anv_queue *queue,
       return result;
 
    *submit = anv_queue_submit_alloc(queue->device, perf_pass);
-   if (!submit)
+   if (!*submit)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
    return VK_SUCCESS;
 }
