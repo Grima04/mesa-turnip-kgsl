@@ -110,15 +110,7 @@ struct fd_batch {
 	 * color_logic_Op (since those functions are disabled when by-
 	 * passing GMEM.
 	 */
-	enum {
-		FD_GMEM_CLEARS_DEPTH_STENCIL = 0x01,
-		FD_GMEM_DEPTH_ENABLED        = 0x02,
-		FD_GMEM_STENCIL_ENABLED      = 0x04,
-
-		FD_GMEM_BLEND_ENABLED        = 0x10,
-		FD_GMEM_LOGICOP_ENABLED      = 0x20,
-		FD_GMEM_FB_READ              = 0x40,
-	} gmem_reason;
+	enum fd_gmem_reason gmem_reason;
 
 	/* At submit time, once we've decided that this batch will use GMEM
 	 * rendering, the appropriate gmem state is looked up:

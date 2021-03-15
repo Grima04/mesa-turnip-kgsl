@@ -46,6 +46,18 @@
 
 struct fd_bo;
 
+/* Potential reasons for needing to skip bypass path and use GMEM, the
+ * generation backend can override this with screen->gmem_reason_mask
+ */
+enum fd_gmem_reason {
+	FD_GMEM_CLEARS_DEPTH_STENCIL = BIT(0),
+	FD_GMEM_DEPTH_ENABLED        = BIT(1),
+	FD_GMEM_STENCIL_ENABLED      = BIT(2),
+	FD_GMEM_BLEND_ENABLED        = BIT(3),
+	FD_GMEM_LOGICOP_ENABLED      = BIT(4),
+	FD_GMEM_FB_READ              = BIT(5),
+};
+
 struct fd_screen {
 	struct pipe_screen base;
 
@@ -79,6 +91,11 @@ struct fd_screen {
 	bool has_syncobj;
 
 	struct freedreno_dev_info info;
+
+	/* Bitmask of gmem_reasons that do not force GMEM path over bypass
+	 * for current generation.
+	 */
+	enum fd_gmem_reason gmem_reason_mask;
 
 	unsigned num_perfcntr_groups;
 	const struct fd_perfcntr_group *perfcntr_groups;
