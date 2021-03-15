@@ -865,7 +865,7 @@ static void print_stage(Stage stage, FILE *output)
    fprintf(output, "\n");
 }
 
-void aco_print_block(const Block* block, FILE *output, unsigned flags)
+void aco_print_block(const Block* block, FILE *output, unsigned flags, const live& live_vars)
 {
    fprintf(output, "BB%d\n", block->index);
    fprintf(output, "/* logical preds: ");
@@ -877,22 +877,39 @@ void aco_print_block(const Block* block, FILE *output, unsigned flags)
    fprintf(output, "/ kind: ");
    print_block_kind(block->kind, output);
    fprintf(output, "*/\n");
+
+   if (flags & print_live_vars) {
+      fprintf(output, "\tlive out:");
+      for (unsigned id : live_vars.live_out[block->index])
+         fprintf(output, " %%%d", id);
+      fprintf(output, "\n");
+
+      RegisterDemand demand = block->register_demand;
+      fprintf(output, "\tdemand: %u vgpr, %u sgpr\n", demand.vgpr, demand.sgpr);
+   }
+
+   unsigned index = 0;
    for (auto const& instr : block->instructions) {
       fprintf(output, "\t");
+      if (flags & print_live_vars) {
+         RegisterDemand demand = live_vars.register_demand[block->index][index];
+         fprintf(output, "(%3u vgpr, %3u sgpr)   ", demand.vgpr, demand.sgpr);
+      }
       if (flags & print_perf_info)
          fprintf(output, "(%3u clk)   ", instr->pass_flags);
 
       aco_print_instr(instr.get(), output, flags);
       fprintf(output, "\n");
+      index++;
    }
 }
 
-void aco_print_program(const Program *program, FILE *output, unsigned flags)
+void aco_print_program(const Program *program, FILE *output, const live& live_vars, unsigned flags)
 {
    print_stage(program->stage, output);
 
    for (Block const& block : program->blocks)
-      aco_print_block(&block, output, flags);
+      aco_print_block(&block, output, flags, live_vars);
 
    if (program->constant_data.size()) {
       fprintf(output, "\n/* constant data */\n");
@@ -910,6 +927,11 @@ void aco_print_program(const Program *program, FILE *output, unsigned flags)
    }
 
    fprintf(output, "\n");
+}
+
+void aco_print_program(const Program *program, FILE *output, unsigned flags)
+{
+   aco_print_program(program, output, live(), flags);
 }
 
 }

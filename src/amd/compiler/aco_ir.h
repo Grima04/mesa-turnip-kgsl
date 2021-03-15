@@ -2015,11 +2015,13 @@ enum print_flags {
    print_no_ssa = 0x1,
    print_perf_info = 0x2,
    print_kill = 0x4,
+   print_live_vars = 0x8,
 };
 
 void aco_print_operand(const Operand *operand, FILE *output, unsigned flags=0);
 void aco_print_instr(const Instruction *instr, FILE *output, unsigned flags=0);
 void aco_print_program(const Program *program, FILE *output, unsigned flags=0);
+void aco_print_program(const Program *program, FILE *output, const live& live_vars, unsigned flags=0);
 
 void _aco_perfwarn(Program *program, const char *file, unsigned line,
                    const char *fmt, ...);
