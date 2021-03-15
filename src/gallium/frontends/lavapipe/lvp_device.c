@@ -516,6 +516,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *features =
             (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT *)ext;
          features->scalarBlockLayout = true;
+         break;
       }
       default:
          break;
