@@ -1643,7 +1643,10 @@ fs_visitor::assign_curb_setup()
        * stateless messages.
        */
       for (unsigned i = 0; i < uniform_push_length;) {
-         unsigned num_regs = MIN2(uniform_push_length - i, 8);
+         /* Limit ourselves to HW limit of 8 Owords (8 * 16bytes = 128 bytes
+          * or 4 registers).
+          */
+         unsigned num_regs = MIN2(uniform_push_length - i, 4);
          assert(num_regs > 0);
          num_regs = 1 << util_logbase2(num_regs);
 
