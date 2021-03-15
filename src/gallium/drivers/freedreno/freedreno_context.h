@@ -358,6 +358,7 @@ struct fd_context {
 	struct fd_texture_stateobj tex[PIPE_SHADER_TYPES] dt;
 
 	struct fd_program_stateobj prog dt;
+	uint32_t bound_shader_stages dt;
 
 	struct fd_vertex_state vtx dt;
 
