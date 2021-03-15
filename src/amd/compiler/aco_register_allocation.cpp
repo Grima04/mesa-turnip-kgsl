@@ -1938,6 +1938,22 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
    return;
 }
 
+RegisterFile init_reg_file(ra_ctx& ctx, IDSet& live_in, Block& block)
+{
+   assert(block.index != 0 || live_in.empty());
+   RegisterFile register_file;
+
+   for (unsigned t : live_in) {
+      Temp renamed = handle_live_in(ctx, Temp(t, ctx.program->temp_rc[t]), &block);
+      assignment& var = ctx.assignments[renamed.id()];
+      /* due to live-range splits, the live-in might be a phi, now */
+      if (var.assigned)
+         register_file.fill(Definition(renamed.id(), var.reg, var.rc));
+   }
+
+   return register_file;
+}
+
 void get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
 {
    std::vector<std::vector<Temp>> phi_ressources;
@@ -2043,17 +2059,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
    for (Block& block : program->blocks) {
       IDSet& live = live_out_per_block[block.index];
       /* initialize register file */
-      assert(block.index != 0 || live.empty());
-      RegisterFile register_file;
+      RegisterFile register_file = init_reg_file(ctx, live, block);
       ctx.war_hint.reset();
-
-      for (unsigned t : live) {
-         Temp renamed = handle_live_in(ctx, Temp(t, program->temp_rc[t]), &block);
-         assignment& var = ctx.assignments[renamed.id()];
-         /* due to live-range splits, the live-in might be a phi, now */
-         if (var.assigned)
-            register_file.fill(Definition(renamed.id(), var.reg, var.rc));
-      }
 
       std::vector<aco_ptr<Instruction>> instructions;
       std::vector<aco_ptr<Instruction>>::iterator instr_it;
