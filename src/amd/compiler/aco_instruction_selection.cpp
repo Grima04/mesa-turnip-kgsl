@@ -1721,21 +1721,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          }
          add_instr->vop3().clamp = 1;
       } else if (dst.regClass() == v1) {
-         if (ctx->options->chip_class >= GFX9) {
-            aco_ptr<VOP3_instruction> add{create_instruction<VOP3_instruction>(aco_opcode::v_add_u32, asVOP3(Format::VOP2), 2, 1)};
-            add->operands[0] = Operand(src0);
-            add->operands[1] = Operand(src1);
-            add->definitions[0] = Definition(dst);
-            add->clamp = 1;
-            ctx->block->instructions.emplace_back(std::move(add));
-         } else {
-            if (src1.regClass() != v1)
-               std::swap(src0, src1);
-            assert(src1.regClass() == v1);
-            Temp tmp = bld.tmp(v1);
-            Temp carry = bld.vadd32(Definition(tmp), src0, src1, true).def(1).getTemp();
-            bld.vop2_e64(aco_opcode::v_cndmask_b32, Definition(dst), tmp, Operand((uint32_t) -1), carry);
-         }
+         uadd32_sat(bld, Definition(dst), src0, src1);
       } else {
          isel_err(&instr->instr, "Unimplemented NIR instr bit size");
       }
