@@ -1938,16 +1938,12 @@ void try_remove_trivial_phi(ra_ctx& ctx, Temp temp)
    return;
 }
 
-} /* end namespace */
-
-
-void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block, ra_test_policy policy)
+void get_affinities(ra_ctx& ctx, std::vector<IDSet>& live_out_per_block)
 {
-   ra_ctx ctx(program, policy);
    std::vector<std::vector<Temp>> phi_ressources;
    std::unordered_map<unsigned, unsigned> temp_to_phi_ressources;
 
-   for (auto block_rit = program->blocks.rbegin(); block_rit != program->blocks.rend(); block_rit++) {
+   for (auto block_rit = ctx.program->blocks.rbegin(); block_rit != ctx.program->blocks.rend(); block_rit++) {
       Block& block = *block_rit;
 
       /* first, compute the death points of all live vars within the block */
@@ -2010,10 +2006,10 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                if (!def.isFixed() && instr->opcode == aco_opcode::p_parallelcopy)
                   op = instr->operands[i];
                else if ((instr->opcode == aco_opcode::v_mad_f32 ||
-                        (instr->opcode == aco_opcode::v_fma_f32 && program->chip_class >= GFX10) ||
+                        (instr->opcode == aco_opcode::v_fma_f32 && ctx.program->chip_class >= GFX10) ||
                         instr->opcode == aco_opcode::v_mad_f16 ||
                         instr->opcode == aco_opcode::v_mad_legacy_f16 ||
-                        (instr->opcode == aco_opcode::v_fma_f16 && program->chip_class >= GFX10)) && !instr->usesModifiers())
+                        (instr->opcode == aco_opcode::v_fma_f16 && ctx.program->chip_class >= GFX10)) && !instr->usesModifiers())
                   op = instr->operands[2];
 
                if (op.isTemp() && op.isFirstKillBeforeDef() && def.regClass() == op.regClass()) {
@@ -2031,6 +2027,15 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
          if (vec[i].id() != vec[0].id())
             ctx.affinities[vec[i].id()] = vec[0].id();
    }
+}
+
+} /* end namespace */
+
+
+void register_allocation(Program *program, std::vector<IDSet>& live_out_per_block, ra_test_policy policy)
+{
+   ra_ctx ctx(program, policy);
+   get_affinities(ctx, live_out_per_block);
 
    /* state of register file after phis */
    std::vector<std::bitset<128>> sgpr_live_in(program->blocks.size());
