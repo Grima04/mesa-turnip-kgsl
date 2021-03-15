@@ -182,6 +182,14 @@ be supported:
 
 * ``VK_FORMAT_B10G11R11_UFLOAT_PACK32``: ``VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT``
 
+OpenGL 4.5
+^^^^^^^^^^
+
+For OpenGL 4.5 support, the following additional ``VkPhysicalDeviceFeatures``
+are required to be supported
+
+* ``shaderCullDistance``
+
 Debugging
 ---------
 
