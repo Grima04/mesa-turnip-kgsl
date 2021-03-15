@@ -86,31 +86,3 @@ tu_GetImageSparseMemoryRequirements(VkDevice device,
    for (uint32_t i = 0; i < *count; i++)
       reqs[i] = reqs2[i].memoryRequirements;
 }
-
-void
-tu_CmdBeginRenderPass(VkCommandBuffer cmd, const VkRenderPassBeginInfo *info, VkSubpassContents contents)
-{
-   return tu_CmdBeginRenderPass2(cmd, info, &(VkSubpassBeginInfo) {
-      .sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
-      .contents = contents
-   });
-}
-
-void
-tu_CmdNextSubpass(VkCommandBuffer cmd, VkSubpassContents contents)
-{
-   return tu_CmdNextSubpass2(cmd, &(VkSubpassBeginInfo) {
-      .sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
-      .contents = contents
-   }, &(VkSubpassEndInfoKHR) {
-      .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
-   });
-}
-
-void
-tu_CmdEndRenderPass(VkCommandBuffer cmd)
-{
-   return tu_CmdEndRenderPass2(cmd, &(VkSubpassEndInfoKHR) {
-      .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
-   });
-}
