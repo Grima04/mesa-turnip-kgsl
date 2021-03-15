@@ -1382,10 +1382,12 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
 
    /* If rasterization is disabled we do not care about any of the
     * dynamic states, since they are all rasterization related only,
-    * except primitive topology and vertex binding stride.
+    * except primitive topology, primitive restart enable and vertex
+    * binding stride.
     */
    if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
-      return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
+      return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
+             RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 
    if (!pCreateInfo->pRasterizationState->depthBiasEnable &&
        !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT))
@@ -1515,7 +1517,6 @@ radv_pipeline_init_input_assembly_state(struct radv_pipeline *pipeline,
    struct radv_shader_variant *tes = pipeline->shaders[MESA_SHADER_TESS_EVAL];
    struct radv_shader_variant *gs = pipeline->shaders[MESA_SHADER_GEOMETRY];
 
-   pipeline->graphics.prim_restart_enable = !!ia_state->primitiveRestartEnable;
    pipeline->graphics.can_use_guardband = radv_prim_can_use_guardband(ia_state->topology);
 
    if (radv_pipeline_has_gs(pipeline)) {
@@ -1733,6 +1734,11 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 
    if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
       dynamic->depth_bias_enable = pCreateInfo->pRasterizationState->depthBiasEnable;
+   }
+
+   if (states & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
+      dynamic->primitive_restart_enable =
+         !!pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
    }
 
    pipeline->dynamic_state.mask = states;

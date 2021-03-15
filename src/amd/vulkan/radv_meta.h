@@ -92,6 +92,7 @@ struct radv_meta_saved_state {
    } fragment_shading_rate;
 
    bool depth_bias_enable;
+   bool primitive_restart_enable;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);

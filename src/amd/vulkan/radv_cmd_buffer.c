@@ -107,6 +107,7 @@ const struct radv_dynamic_state default_dynamic_state = {
                           VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR},
       },
    .depth_bias_enable = 0u,
+   .primitive_restart_enable = 0u,
 };
 
 static void
@@ -302,6 +303,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
       if (dest->depth_bias_enable != src->depth_bias_enable) {
          dest->depth_bias_enable = src->depth_bias_enable;
          dest_mask |= RADV_DYNAMIC_DEPTH_BIAS_ENABLE;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE) {
+      if (dest->primitive_restart_enable != src->primitive_restart_enable) {
+         dest->primitive_restart_enable = src->primitive_restart_enable;
+         dest_mask |= RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
       }
    }
 
@@ -1273,7 +1281,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->state.emitted_pipeline)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
-                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS;
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
+                                 RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 
    if (!cmd_buffer->state.emitted_pipeline ||
        cmd_buffer->state.emitted_pipeline->graphics.db_depth_control !=
@@ -1582,6 +1591,20 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    pa_cl_vrs_cntl |= S_028848_HTILE_RATE_COMBINER_MODE(htile_comb_mode);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028848_PA_CL_VRS_CNTL, pa_cl_vrs_cntl);
+}
+
+static void
+radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
+      radeon_set_uconfig_reg(cmd_buffer->cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN,
+                             d->primitive_restart_enable);
+   } else {
+      radeon_set_context_reg(cmd_buffer->cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN,
+                             d->primitive_restart_enable);
+   }
 }
 
 static void
@@ -2581,6 +2604,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
    if (states & RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE)
       radv_emit_fragment_shading_rate(cmd_buffer);
 
+   if (states & RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)
+      radv_emit_primitive_restart_enable(cmd_buffer);
+
    cmd_buffer->state.dirty &= ~states;
 }
 
@@ -3070,12 +3096,13 @@ si_emit_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_dr
    struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
    struct radv_cmd_state *state = &cmd_buffer->state;
    unsigned topology = state->dynamic.primitive_topology;
+   bool prim_restart_enable = state->dynamic.primitive_restart_enable;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
    unsigned ia_multi_vgt_param;
 
    ia_multi_vgt_param =
       si_get_ia_multi_vgt_param(cmd_buffer, instanced_draw, indirect_draw, count_from_stream_output,
-                                draw_vertex_count, topology);
+                                draw_vertex_count, topology, prim_restart_enable);
 
    if (state->last_ia_multi_vgt_param != ia_multi_vgt_param) {
       if (info->chip_class == GFX9) {
@@ -3096,7 +3123,6 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
    struct radeon_info *info = &cmd_buffer->device->physical_device->rad_info;
    struct radv_cmd_state *state = &cmd_buffer->state;
    struct radeon_cmdbuf *cs = cmd_buffer->cs;
-   int32_t primitive_reset_en;
 
    /* Draw state. */
    if (info->chip_class < GFX10) {
@@ -3105,19 +3131,7 @@ radv_emit_draw_registers(struct radv_cmd_buffer *cmd_buffer, const struct radv_d
                                  draw_info->indirect ? 0 : draw_info->count);
    }
 
-   /* Primitive restart. */
-   primitive_reset_en = draw_info->indexed && state->pipeline->graphics.prim_restart_enable;
-
-   if (primitive_reset_en != state->last_primitive_reset_en) {
-      state->last_primitive_reset_en = primitive_reset_en;
-      if (info->chip_class >= GFX9) {
-         radeon_set_uconfig_reg(cs, R_03092C_VGT_MULTI_PRIM_IB_RESET_EN, primitive_reset_en);
-      } else {
-         radeon_set_context_reg(cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN, primitive_reset_en);
-      }
-   }
-
-   if (primitive_reset_en) {
+   if (state->dynamic.primitive_restart_enable) {
       uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
 
       if (primitive_reset_index != state->last_primitive_reset_index) {
@@ -4763,6 +4777,20 @@ radv_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthBiasE
 }
 
 void
+radv_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer, VkBool32 primitiveRestartEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   if (state->dynamic.primitive_restart_enable == primitiveRestartEnable)
+      return;
+
+   state->dynamic.primitive_restart_enable = primitiveRestartEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+}
+
+void
 radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCount,
                         const VkCommandBuffer *pCmdBuffers)
 {
@@ -5373,7 +5401,7 @@ radv_need_late_scissor_emission(struct radv_cmd_buffer *cmd_buffer,
 
    uint32_t primitive_reset_index = radv_get_primitive_reset_index(cmd_buffer);
 
-   if (info->indexed && state->pipeline->graphics.prim_restart_enable &&
+   if (info->indexed && state->dynamic.primitive_restart_enable &&
        primitive_reset_index != state->last_primitive_reset_index)
       return true;
 

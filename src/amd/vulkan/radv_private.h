@@ -1214,6 +1214,7 @@ struct radv_dynamic_state {
    } fragment_shading_rate;
 
    bool depth_bias_enable;
+   bool primitive_restart_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;
@@ -1490,7 +1491,8 @@ void si_write_scissors(struct radeon_cmdbuf *cs, int first, int count, const VkR
                        const VkViewport *viewports, bool can_use_guardband);
 uint32_t si_get_ia_multi_vgt_param(struct radv_cmd_buffer *cmd_buffer, bool instanced_draw,
                                    bool indirect_draw, bool count_from_stream_output,
-                                   uint32_t draw_vertex_count, unsigned topology);
+                                   uint32_t draw_vertex_count, unsigned topology,
+                                   bool prim_restart_enable);
 void si_cs_emit_write_event_eop(struct radeon_cmdbuf *cs, enum chip_class chip_class, bool is_mec,
                                 unsigned event, unsigned event_flags, unsigned dst_sel,
                                 unsigned data_sel, uint64_t va, uint32_t new_fence,
@@ -1706,7 +1708,6 @@ struct radv_pipeline {
          struct radv_binning_state binning;
          struct radv_vrs_state vrs;
          uint32_t spi_baryc_cntl;
-         bool prim_restart_enable;
          unsigned esgs_ring_size;
          unsigned gsvs_ring_size;
          uint32_t vtx_base_sgpr;
