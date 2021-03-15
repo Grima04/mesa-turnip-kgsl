@@ -82,10 +82,25 @@ struct radv_dsa_order_invariance {
    bool pass_set;
 };
 
+static bool
+radv_is_state_dynamic(const VkGraphicsPipelineCreateInfo *pCreateInfo, VkDynamicState state)
+{
+   if (pCreateInfo->pDynamicState) {
+      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
+      for (uint32_t i = 0; i < count; i++) {
+         if (pCreateInfo->pDynamicState->pDynamicStates[i] == state)
+            return true;
+      }
+   }
+
+   return false;
+}
+
 static const VkPipelineMultisampleStateCreateInfo *
 radv_pipeline_get_multisample_state(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
-   if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
+   if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
+       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
       return pCreateInfo->pMultisampleState;
    return NULL;
 }
@@ -108,8 +123,9 @@ radv_pipeline_get_depth_stencil_state(const VkGraphicsPipelineCreateInfo *pCreat
    RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
    struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 
-   if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
-       subpass->depth_stencil_attachment)
+   if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
+        subpass->depth_stencil_attachment) ||
+       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
       return pCreateInfo->pDepthStencilState;
    return NULL;
 }
@@ -120,7 +136,8 @@ radv_pipeline_get_color_blend_state(const VkGraphicsPipelineCreateInfo *pCreateI
    RADV_FROM_HANDLE(radv_render_pass, pass, pCreateInfo->renderPass);
    struct radv_subpass *subpass = pass->subpasses + pCreateInfo->subpass;
 
-   if (!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && subpass->has_color_att)
+   if ((!pCreateInfo->pRasterizationState->rasterizerDiscardEnable && subpass->has_color_att) ||
+       radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
       return pCreateInfo->pColorBlendState;
    return NULL;
 }
@@ -928,20 +945,6 @@ radv_order_invariant_stencil_state(const VkStencilOpState *state)
 }
 
 static bool
-radv_is_state_dynamic(const VkGraphicsPipelineCreateInfo *pCreateInfo, VkDynamicState state)
-{
-   if (pCreateInfo->pDynamicState) {
-      uint32_t count = pCreateInfo->pDynamicState->dynamicStateCount;
-      for (uint32_t i = 0; i < count; i++) {
-         if (pCreateInfo->pDynamicState->pDynamicStates[i] == state)
-            return true;
-      }
-   }
-
-   return false;
-}
-
-static bool
 radv_pipeline_has_dynamic_ds_states(const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    VkDynamicState ds_states[] = {
@@ -1385,7 +1388,8 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
     * except primitive topology, primitive restart enable and vertex
     * binding stride.
     */
-   if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
+   if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable &&
+       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT))
       return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE |
              RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
 
@@ -1741,6 +1745,11 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
          !!pCreateInfo->pInputAssemblyState->primitiveRestartEnable;
    }
 
+   if (states & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
+      dynamic->rasterizer_discard_enable =
+         pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+   }
+
    pipeline->dynamic_state.mask = states;
 }
 
@@ -1776,6 +1785,21 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
       pipeline->graphics.pa_su_sc_mode_cntl |=
          S_028814_KEEP_TOGETHER_ENABLE(raster_info->polygonMode != VK_POLYGON_MODE_FILL);
    }
+
+   bool depth_clip_disable = raster_info->depthClampEnable;
+   const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
+      vk_find_struct_const(raster_info->pNext,
+                           PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
+   if (depth_clip_state) {
+      depth_clip_disable = !depth_clip_state->depthClipEnable;
+   }
+
+   pipeline->graphics.pa_cl_clip_cntl =
+      S_028810_DX_CLIP_SPACE_DEF(1) | // vulkan uses DX conventions.
+      S_028810_ZCLIP_NEAR_DISABLE(depth_clip_disable ? 1 : 0) |
+      S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
+      S_028810_DX_RASTERIZATION_KILL(raster_info->rasterizerDiscardEnable ? 1 : 0) |
+      S_028810_DX_LINEAR_ATTR_CLIP_ENA(1);
 }
 
 static void
@@ -4228,22 +4252,6 @@ radv_pipeline_generate_raster_state(struct radeon_cmdbuf *ctx_cs,
    const VkPipelineRasterizationStateCreateInfo *vkraster = pCreateInfo->pRasterizationState;
    const VkConservativeRasterizationModeEXT mode = radv_get_conservative_raster_mode(vkraster);
    uint32_t pa_sc_conservative_rast = S_028C4C_NULL_SQUAD_AA_MASK_ENABLE(1);
-   bool depth_clip_disable = vkraster->depthClampEnable;
-
-   const VkPipelineRasterizationDepthClipStateCreateInfoEXT *depth_clip_state =
-      vk_find_struct_const(vkraster->pNext,
-                           PIPELINE_RASTERIZATION_DEPTH_CLIP_STATE_CREATE_INFO_EXT);
-   if (depth_clip_state) {
-      depth_clip_disable = !depth_clip_state->depthClipEnable;
-   }
-
-   radeon_set_context_reg(
-      ctx_cs, R_028810_PA_CL_CLIP_CNTL,
-      S_028810_DX_CLIP_SPACE_DEF(1) | // vulkan uses DX conventions.
-         S_028810_ZCLIP_NEAR_DISABLE(depth_clip_disable ? 1 : 0) |
-         S_028810_ZCLIP_FAR_DISABLE(depth_clip_disable ? 1 : 0) |
-         S_028810_DX_RASTERIZATION_KILL(vkraster->rasterizerDiscardEnable ? 1 : 0) |
-         S_028810_DX_LINEAR_ATTR_CLIP_ENA(1));
 
    radeon_set_context_reg(ctx_cs, R_028BDC_PA_SC_LINE_CNTL, S_028BDC_DX10_DIAMOND_TEST_ENA(1));
 

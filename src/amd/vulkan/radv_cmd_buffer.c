@@ -108,6 +108,7 @@ const struct radv_dynamic_state default_dynamic_state = {
       },
    .depth_bias_enable = 0u,
    .primitive_restart_enable = 0u,
+   .rasterizer_discard_enable = 0u,
 };
 
 static void
@@ -310,6 +311,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
       if (dest->primitive_restart_enable != src->primitive_restart_enable) {
          dest->primitive_restart_enable = src->primitive_restart_enable;
          dest_mask |= RADV_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE) {
+      if (dest->rasterizer_discard_enable != src->rasterizer_discard_enable) {
+         dest->rasterizer_discard_enable = src->rasterizer_discard_enable;
+         dest_mask |= RADV_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
       }
    }
 
@@ -1278,6 +1286,11 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
                                  RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 
+   if (!cmd_buffer->state.emitted_pipeline ||
+       cmd_buffer->state.emitted_pipeline->graphics.pa_cl_clip_cntl !=
+          pipeline->graphics.pa_cl_clip_cntl)
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
+
    if (!cmd_buffer->state.emitted_pipeline)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
                                  RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS |
@@ -1605,6 +1618,18 @@ radv_emit_primitive_restart_enable(struct radv_cmd_buffer *cmd_buffer)
       radeon_set_context_reg(cmd_buffer->cs, R_028A94_VGT_MULTI_PRIM_IB_RESET_EN,
                              d->primitive_restart_enable);
    }
+}
+
+static void
+radv_emit_rasterizer_discard_enable(struct radv_cmd_buffer *cmd_buffer)
+{
+   unsigned pa_cl_clip_cntl = cmd_buffer->state.pipeline->graphics.pa_cl_clip_cntl;
+   struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
+
+   pa_cl_clip_cntl &= C_028810_DX_RASTERIZATION_KILL;
+   pa_cl_clip_cntl |= S_028810_DX_RASTERIZATION_KILL(d->rasterizer_discard_enable);
+
+   radeon_set_context_reg(cmd_buffer->cs, R_028810_PA_CL_CLIP_CNTL, pa_cl_clip_cntl);
 }
 
 static void
@@ -2606,6 +2631,9 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE)
       radv_emit_primitive_restart_enable(cmd_buffer);
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE)
+      radv_emit_rasterizer_discard_enable(cmd_buffer);
 
    cmd_buffer->state.dirty &= ~states;
 }
@@ -4788,6 +4816,21 @@ radv_CmdSetPrimitiveRestartEnableEXT(VkCommandBuffer commandBuffer, VkBool32 pri
    state->dynamic.primitive_restart_enable = primitiveRestartEnable;
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_RESTART_ENABLE;
+}
+
+void
+radv_CmdSetRasterizerDiscardEnableEXT(VkCommandBuffer commandBuffer,
+                                      VkBool32 rasterizerDiscardEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   if (state->dynamic.rasterizer_discard_enable == rasterizerDiscardEnable)
+      return;
+
+   state->dynamic.rasterizer_discard_enable = rasterizerDiscardEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_RASTERIZER_DISCARD_ENABLE;
 }
 
 void
