@@ -157,7 +157,7 @@ SOFTWARE.
 		 -->
 		<map name="SRC1">extract_cat5_SRC(src, 1)</map>
 		<map name="SRC2">extract_cat5_SRC(src, 2)</map>
-		<map name="SRC3">src->regs[1]</map>
+		<map name="SRC3">(src->regs_count > 1) ? src->regs[1] : NULL</map>
 	</encode>
 </bitset>
 
