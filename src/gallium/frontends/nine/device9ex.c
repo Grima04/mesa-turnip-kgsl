@@ -65,27 +65,27 @@ NineDevice9Ex_dtor( struct NineDevice9Ex *This )
 }
 
 HRESULT NINE_WINAPI
-NineDevice9Ex_SetConvolutionMonoKernel( struct NineDevice9Ex *This,
-                                        UINT width,
-                                        UINT height,
-                                        float *rows,
-                                        float *columns )
+NineDevice9Ex_SetConvolutionMonoKernel( UNUSED struct NineDevice9Ex *This,
+                                        UNUSED UINT width,
+                                        UNUSED UINT height,
+                                        UNUSED float *rows,
+                                        UNUSED float *columns )
 {
-    STUB(D3DERR_INVALIDCALL);
+    STUB(D3D_OK);
 }
 
 HRESULT NINE_WINAPI
-NineDevice9Ex_ComposeRects( struct NineDevice9Ex *This,
-                            IDirect3DSurface9 *pSrc,
-                            IDirect3DSurface9 *pDst,
-                            IDirect3DVertexBuffer9 *pSrcRectDescs,
-                            UINT NumRects,
-                            IDirect3DVertexBuffer9 *pDstRectDescs,
-                            D3DCOMPOSERECTSOP Operation,
-                            int Xoffset,
-                            int Yoffset )
+NineDevice9Ex_ComposeRects( UNUSED struct NineDevice9Ex *This,
+                            UNUSED IDirect3DSurface9 *pSrc,
+                            UNUSED IDirect3DSurface9 *pDst,
+                            UNUSED IDirect3DVertexBuffer9 *pSrcRectDescs,
+                            UNUSED UINT NumRects,
+                            UNUSED IDirect3DVertexBuffer9 *pDstRectDescs,
+                            UNUSED D3DCOMPOSERECTSOP Operation,
+                            UNUSED int Xoffset,
+                            UNUSED int Yoffset )
 {
-    STUB(D3DERR_INVALIDCALL);
+    STUB(D3D_OK);
 }
 
 HRESULT NINE_WINAPI
@@ -117,43 +117,50 @@ HRESULT NINE_WINAPI
 NineDevice9Ex_GetGPUThreadPriority( struct NineDevice9Ex *This,
                                     INT *pPriority )
 {
-    STUB(D3DERR_INVALIDCALL);
+    user_assert(pPriority != NULL, D3DERR_INVALIDCALL);
+    *pPriority = This->base.gpu_priority;
+    return D3D_OK;
 }
 
 HRESULT NINE_WINAPI
 NineDevice9Ex_SetGPUThreadPriority( struct NineDevice9Ex *This,
                                     INT Priority )
 {
-    STUB(D3DERR_INVALIDCALL);
+    user_assert(Priority >= -7 && Priority <= 7, D3DERR_INVALIDCALL);
+    This->base.gpu_priority = Priority;
+    return D3D_OK;
 }
 
 HRESULT NINE_WINAPI
-NineDevice9Ex_WaitForVBlank( struct NineDevice9Ex *This,
-                             UINT iSwapChain )
+NineDevice9Ex_WaitForVBlank( UNUSED struct NineDevice9Ex *This,
+                             UNUSED UINT iSwapChain )
 {
-    STUB(D3DERR_INVALIDCALL);
+    STUB(D3D_OK);
 }
 
 HRESULT NINE_WINAPI
-NineDevice9Ex_CheckResourceResidency( struct NineDevice9Ex *This,
-                                      IDirect3DResource9 **pResourceArray,
-                                      UINT32 NumResources )
+NineDevice9Ex_CheckResourceResidency( UNUSED struct NineDevice9Ex *This,
+                                      UNUSED IDirect3DResource9 **pResourceArray,
+                                      UNUSED UINT32 NumResources )
 {
-    STUB(D3DERR_INVALIDCALL);
+    STUB(D3D_OK);
 }
 
 HRESULT NINE_WINAPI
 NineDevice9Ex_SetMaximumFrameLatency( struct NineDevice9Ex *This,
                                       UINT MaxLatency )
 {
-    STUB(D3DERR_INVALIDCALL);
+    This->base.max_frame_latency = MaxLatency;
+    return D3D_OK;
 }
 
 HRESULT NINE_WINAPI
 NineDevice9Ex_GetMaximumFrameLatency( struct NineDevice9Ex *This,
                                       UINT *pMaxLatency )
 {
-    STUB(D3DERR_INVALIDCALL);
+    user_assert(pMaxLatency != NULL, D3DERR_INVALIDCALL);
+    *pMaxLatency = This->base.max_frame_latency;
+    return D3D_OK;
 }
 
 HRESULT NINE_WINAPI
@@ -343,7 +350,7 @@ NineDevice9Ex_GetDisplayModeEx( struct NineDevice9Ex *This,
 }
 
 HRESULT NINE_WINAPI
-NineDevice9Ex_TestCooperativeLevel( struct NineDevice9Ex *This )
+NineDevice9Ex_TestCooperativeLevel( UNUSED struct NineDevice9Ex *This )
 {
     return D3D_OK;
 }

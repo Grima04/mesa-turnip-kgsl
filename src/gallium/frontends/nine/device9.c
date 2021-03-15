@@ -210,6 +210,10 @@ NineDevice9_ctor( struct NineDevice9 *This,
     This->present = pPresentationGroup;
     This->minor_version_num = minorVersionNum;
 
+    /* Ex */
+    This->gpu_priority = 0;
+    This->max_frame_latency = 3;
+
     IDirect3D9_AddRef(This->d3d9);
     ID3DPresentGroup_AddRef(This->present);
 
