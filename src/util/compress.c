@@ -23,6 +23,11 @@
 
 #include <assert.h>
 
+/* Ensure that zlib uses 'const' in 'z_const' declarations. */
+#ifndef ZLIB_CONST
+#define ZLIB_CONST
+#endif
+
 #include "zlib.h"
 
 #ifdef HAVE_ZSTD
@@ -59,7 +64,7 @@ util_compress_max_compressed_len(size_t in_data_size)
 
 /* Compress data and return the size of the compressed data */
 size_t
-util_compress_deflate(uint8_t *in_data, size_t in_data_size,
+util_compress_deflate(const uint8_t *in_data, size_t in_data_size,
                       uint8_t *out_data, size_t out_buff_size)
 {
 #ifdef HAVE_ZSTD
@@ -107,7 +112,7 @@ util_compress_deflate(uint8_t *in_data, size_t in_data_size,
  * Decompresses data, returns true if successful.
  */
 bool
-util_compress_inflate(uint8_t *in_data, size_t in_data_size,
+util_compress_inflate(const uint8_t *in_data, size_t in_data_size,
                       uint8_t *out_data, size_t out_data_size)
 {
 #ifdef HAVE_ZSTD
