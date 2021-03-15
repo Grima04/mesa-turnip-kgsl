@@ -5979,25 +5979,25 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.pass->subpass_flushes[subpass_id + 1];
 }
 
-void genX(CmdBeginRenderPass)(
+void genX(CmdBeginRenderPass2)(
     VkCommandBuffer                             commandBuffer,
-    const VkRenderPassBeginInfo*                pRenderPassBegin,
-    VkSubpassContents                           contents)
+    const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
+    const VkSubpassBeginInfoKHR*                pSubpassBeginInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
-   ANV_FROM_HANDLE(anv_render_pass, pass, pRenderPassBegin->renderPass);
-   ANV_FROM_HANDLE(anv_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
+   ANV_FROM_HANDLE(anv_render_pass, pass, pRenderPassBeginInfo->renderPass);
+   ANV_FROM_HANDLE(anv_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
    VkResult result;
 
    cmd_buffer->state.framebuffer = framebuffer;
    cmd_buffer->state.pass = pass;
-   cmd_buffer->state.render_area = pRenderPassBegin->renderArea;
+   cmd_buffer->state.render_area = pRenderPassBeginInfo->renderArea;
 
    anv_measure_beginrenderpass(cmd_buffer);
 
    result = genX(cmd_buffer_setup_attachments)(cmd_buffer, pass,
                                                framebuffer,
-                                               pRenderPassBegin);
+                                               pRenderPassBeginInfo);
    if (result != VK_SUCCESS) {
       assert(anv_batch_has_error(&cmd_buffer->batch));
       return;
@@ -6008,18 +6008,10 @@ void genX(CmdBeginRenderPass)(
    cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
 
-void genX(CmdBeginRenderPass2)(
+void genX(CmdNextSubpass2)(
     VkCommandBuffer                             commandBuffer,
-    const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
-    const VkSubpassBeginInfoKHR*                pSubpassBeginInfo)
-{
-   genX(CmdBeginRenderPass)(commandBuffer, pRenderPassBeginInfo,
-                            pSubpassBeginInfo->contents);
-}
-
-void genX(CmdNextSubpass)(
-    VkCommandBuffer                             commandBuffer,
-    VkSubpassContents                           contents)
+    const VkSubpassBeginInfoKHR*                pSubpassBeginInfo,
+    const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -6033,16 +6025,9 @@ void genX(CmdNextSubpass)(
    cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
 }
 
-void genX(CmdNextSubpass2)(
+void genX(CmdEndRenderPass2)(
     VkCommandBuffer                             commandBuffer,
-    const VkSubpassBeginInfoKHR*                pSubpassBeginInfo,
     const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
-{
-   genX(CmdNextSubpass)(commandBuffer, pSubpassBeginInfo->contents);
-}
-
-void genX(CmdEndRenderPass)(
-    VkCommandBuffer                             commandBuffer)
 {
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -6059,13 +6044,6 @@ void genX(CmdEndRenderPass)(
    cmd_buffer->state.framebuffer = NULL;
    cmd_buffer->state.pass = NULL;
    cmd_buffer->state.subpass = NULL;
-}
-
-void genX(CmdEndRenderPass2)(
-    VkCommandBuffer                             commandBuffer,
-    const VkSubpassEndInfoKHR*                  pSubpassEndInfo)
-{
-   genX(CmdEndRenderPass)(commandBuffer);
 }
 
 void
