@@ -1354,8 +1354,6 @@ v3dv_shader_variant_create(struct v3dv_device *device,
                            gl_shader_stage stage,
                            bool is_coord,
                            const unsigned char *variant_sha1,
-                           const struct v3d_key *key,
-                           uint32_t key_size,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
                            const uint64_t *qpu_insts,
@@ -1374,8 +1372,6 @@ v3dv_shader_variant_create(struct v3dv_device *device,
    variant->ref_cnt = 1;
    variant->stage = stage;
    variant->is_coord = is_coord;
-   memcpy(&variant->key, key, key_size);
-   variant->v3d_key_size = key_size;
    memcpy(variant->variant_sha1, variant_sha1, sizeof(variant->variant_sha1));
    variant->prog_data_size = prog_data_size;
    variant->prog_data.base = prog_data;
@@ -1414,16 +1410,6 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                         const VkAllocationCallbacks *pAllocator,
                         VkResult *out_vk_result)
 {
-   /* First we check if the current pipeline variant is such variant. For this
-    * we can just use the v3d_key
-    */
-
-   if (p_stage->current_variant &&
-       memcmp(key, &p_stage->current_variant->key, key_size) == 0) {
-      *out_vk_result = VK_SUCCESS;
-      return p_stage->current_variant;
-   }
-
    /* We search on the pipeline cache if provided by the user, or the default
     * one
     */
@@ -1480,7 +1466,6 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
 
    variant = v3dv_shader_variant_create(device, p_stage->stage, p_stage->is_coord,
                                         variant_sha1,
-                                        key, key_size,
                                         prog_data, v3d_prog_data_size(p_stage->stage),
                                         qpu_insts, qpu_insts_size,
                                         out_vk_result);
@@ -1736,19 +1721,18 @@ pipeline_compile_vertex_shader(struct v3dv_pipeline *pipeline,
    if (pipeline->vs_bin == NULL)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   struct v3d_vs_key *key = &pipeline->vs->key.vs;
-   pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs);
+   struct v3d_vs_key key;
+   pipeline_populate_v3d_vs_key(&key, pCreateInfo, pipeline->vs);
    VkResult vk_result;
    pipeline->vs->current_variant =
-      v3dv_get_shader_variant(pipeline->vs, cache, &key->base, sizeof(*key),
+      v3dv_get_shader_variant(pipeline->vs, cache, &key.base, sizeof(key),
                               pAllocator, &vk_result);
    if (vk_result != VK_SUCCESS)
       return vk_result;
 
-   key = &pipeline->vs_bin->key.vs;
-   pipeline_populate_v3d_vs_key(key, pCreateInfo, pipeline->vs_bin);
+   pipeline_populate_v3d_vs_key(&key, pCreateInfo, pipeline->vs_bin);
    pipeline->vs_bin->current_variant =
-      v3dv_get_shader_variant(pipeline->vs_bin, cache, &key->base, sizeof(*key),
+      v3dv_get_shader_variant(pipeline->vs_bin, cache, &key.base, sizeof(key),
                               pAllocator, &vk_result);
 
    return vk_result;
@@ -1765,16 +1749,16 @@ pipeline_compile_fragment_shader(struct v3dv_pipeline *pipeline,
    p_stage = pipeline->fs;
    pipeline_lower_nir(pipeline, p_stage, pipeline->layout);
 
-   struct v3d_fs_key *key = &p_stage->key.fs;
+   struct v3d_fs_key key;
 
-   pipeline_populate_v3d_fs_key(key, pCreateInfo, p_stage,
+   pipeline_populate_v3d_fs_key(&key, pCreateInfo, p_stage,
                                 get_ucp_enable_mask(pipeline->vs));
 
    lower_fs_io(p_stage->nir);
 
    VkResult vk_result;
    p_stage->current_variant =
-      v3dv_get_shader_variant(p_stage, cache, &key->base, sizeof(*key),
+      v3dv_get_shader_variant(p_stage, cache, &key.base, sizeof(key),
                               pAllocator, &vk_result);
 
    return vk_result;
@@ -2974,14 +2958,14 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    pipeline->cs = p_stage;
 
-   struct v3d_key *key = &p_stage->key.base;
-   memset(key, 0, sizeof(*key));
-   pipeline_populate_v3d_key(key, p_stage, 0,
+   struct v3d_key key;
+   memset(&key, 0, sizeof(key));
+   pipeline_populate_v3d_key(&key, p_stage, 0,
                              pipeline->device->features.robustBufferAccess);
 
    VkResult result;
    p_stage->current_variant =
-      v3dv_get_shader_variant(p_stage, cache, key, sizeof(*key), alloc, &result);
+      v3dv_get_shader_variant(p_stage, cache, &key, sizeof(key), alloc, &result);
    return result;
 }
 

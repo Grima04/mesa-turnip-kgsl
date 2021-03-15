@@ -1300,16 +1300,6 @@ struct v3dv_shader_variant {
    gl_shader_stage stage;
    bool is_coord;
 
-   /* v3d_key used to compile the variant. Sometimes we can just skip the
-    * pipeline caches, and look using this.
-    */
-   union {
-      struct v3d_key base;
-      struct v3d_vs_key vs;
-      struct v3d_fs_key fs;
-   } key;
-   uint32_t v3d_key_size;
-
    /* key for the pipeline cache, it is p_stage shader_sha1 + v3d compiler
     * sha1
     */
@@ -1363,17 +1353,6 @@ struct v3dv_pipeline_stage {
 
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
-
-   /* The following are the default v3d_key populated using
-    * VkCreateGraphicsPipelineCreateInfo. Variants will be created tweaking
-    * them, so we don't need to maintain a copy of that create info struct
-    * around
-    */
-   union {
-      struct v3d_key base;
-      struct v3d_vs_key vs;
-      struct v3d_fs_key fs;
-   } key;
 
    struct v3dv_shader_variant*current_variant;
 };
@@ -1847,8 +1826,6 @@ v3dv_shader_variant_create(struct v3dv_device *device,
                            gl_shader_stage stage,
                            bool is_coord,
                            const unsigned char *variant_sha1,
-                           const struct v3d_key *key,
-                           uint32_t key_size,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
                            const uint64_t *qpu_insts,
