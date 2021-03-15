@@ -1230,13 +1230,18 @@ Temp emit_floor_f64(isel_context *ctx, Builder& bld, Definition dst, Temp val)
 
 Temp uadd32_sat(Builder& bld, Definition dst, Temp src0, Temp src1)
 {
-   if (bld.program->chip_class >= GFX9) {
-      Builder::Result add = bld.vop2_e64(aco_opcode::v_add_u32, dst, src0, src1);
-      add.instr->vop3().clamp = 1;
-   } else {
+   if (bld.program->chip_class < GFX8) {
       Builder::Result add = bld.vadd32(bld.def(v1), src0, src1, true);
-      bld.vop2_e64(aco_opcode::v_cndmask_b32, dst, add.def(0).getTemp(), Operand((uint32_t) -1), add.def(1).getTemp());
+      return bld.vop2_e64(aco_opcode::v_cndmask_b32, dst, add.def(0).getTemp(), Operand((uint32_t) -1), add.def(1).getTemp());
    }
+
+   Builder::Result add(NULL);
+   if (bld.program->chip_class >= GFX9) {
+      add = bld.vop2_e64(aco_opcode::v_add_u32, dst, src0, src1);
+   } else {
+      add = bld.vop2_e64(aco_opcode::v_add_co_u32, dst, bld.hint_vcc(bld.def(bld.lm)), src0, src1);
+   }
+   add.instr->vop3().clamp = 1;
    return dst.getTemp();
 }
 
