@@ -181,6 +181,8 @@ void aco_print_operand(const Operand *operand, FILE *output, unsigned flags)
          fprintf(output, "(is16bit)");
       if (operand->is24bit())
          fprintf(output, "(is24bit)");
+      if ((flags & print_kill) && operand->isKill())
+         fprintf(output, "(kill)");
 
       if (!(flags & print_no_ssa))
          fprintf(output, "%%%d%s", operand->tempId(), operand->isFixed() ? ":" : "");
@@ -200,6 +202,8 @@ static void print_definition(const Definition *definition, FILE *output, unsigne
       fprintf(output, "(nuw)");
    if (definition->isNoCSE())
       fprintf(output, "(noCSE)");
+   if ((flags & print_kill) && definition->isKill())
+      fprintf(output, "(kill)");
    if (!(flags & print_no_ssa))
       fprintf(output, "%%%d%s", definition->tempId(), definition->isFixed() ? ":" : "");
 

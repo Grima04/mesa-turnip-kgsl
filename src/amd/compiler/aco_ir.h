@@ -2014,6 +2014,7 @@ void collect_postasm_stats(Program *program, const std::vector<uint32_t>& code);
 enum print_flags {
    print_no_ssa = 0x1,
    print_perf_info = 0x2,
+   print_kill = 0x4,
 };
 
 void aco_print_operand(const Operand *operand, FILE *output, unsigned flags=0);
