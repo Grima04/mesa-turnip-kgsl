@@ -276,6 +276,8 @@ NineDevice9_ctor( struct NineDevice9 *This,
      * instance. This is the Win 7 behavior.
      * Win XP shares this counter across multiple devices. */
     This->available_texture_mem = This->screen->get_param(This->screen, PIPE_CAP_VIDEO_MEMORY);
+    This->available_texture_mem =  (pCTX->override_vram_size >= 0) ?
+        (long long)pCTX->override_vram_size : This->available_texture_mem;
     This->available_texture_mem <<= 20;
 
     /* We cap texture memory usage to 95% of what is reported free initially
