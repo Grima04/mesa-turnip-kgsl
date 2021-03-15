@@ -146,7 +146,6 @@ requirements needs to be supported:
 
     * `VK_KHR_shader_draw_parameters`_
 
-
 * Formats features:
 
    * ```VK_FORMAT_BC7_UNORM_BLOCK```: ```VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT```
