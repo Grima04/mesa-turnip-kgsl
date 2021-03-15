@@ -668,58 +668,6 @@ resolve_image(struct radv_cmd_buffer *cmd_buffer,
 	}
 }
 
-void radv_CmdResolveImage(
-	VkCommandBuffer                             cmd_buffer_h,
-	VkImage                                     src_image_h,
-	VkImageLayout                               src_image_layout,
-	VkImage                                     dest_image_h,
-	VkImageLayout                               dest_image_layout,
-	uint32_t                                    region_count,
-	const VkImageResolve*                       regions)
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, cmd_buffer_h);
-	RADV_FROM_HANDLE(radv_image, src_image, src_image_h);
-	RADV_FROM_HANDLE(radv_image, dest_image, dest_image_h);
-	enum radv_resolve_method resolve_method = RESOLVE_HW;
-	/* we can use the hw resolve only for single full resolves */
-	if (region_count == 1) {
-		if (regions[0].srcOffset.x ||
-		    regions[0].srcOffset.y ||
-		    regions[0].srcOffset.z)
-			resolve_method = RESOLVE_COMPUTE;
-		if (regions[0].dstOffset.x ||
-		    regions[0].dstOffset.y ||
-		    regions[0].dstOffset.z)
-			resolve_method = RESOLVE_COMPUTE;
-
-		if (regions[0].extent.width != src_image->info.width ||
-		    regions[0].extent.height != src_image->info.height ||
-		    regions[0].extent.depth != src_image->info.depth)
-			resolve_method = RESOLVE_COMPUTE;
-	} else
-		resolve_method = RESOLVE_COMPUTE;
-
-	radv_pick_resolve_method_images(cmd_buffer->device, src_image,
-					src_image->vk_format, dest_image,
-					dest_image_layout, false, cmd_buffer,
-					&resolve_method);
-
-	for (uint32_t r = 0; r < region_count; r++) {
-		VkImageResolve2KHR region = {
-			.sType = VK_STRUCTURE_TYPE_IMAGE_RESOLVE_2_KHR,
-			.srcSubresource = regions[r].srcSubresource,
-			.srcOffset      = regions[r].srcOffset,
-			.dstSubresource = regions[r].dstSubresource,
-			.dstOffset      = regions[r].dstOffset,
-			.extent         = regions[r].extent,
-		};
-
-		resolve_image(cmd_buffer, src_image, src_image_layout,
-			      dest_image, dest_image_layout,
-			      &region, resolve_method);
-	}
-}
-
 void radv_CmdResolveImage2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkResolveImageInfo2KHR*               pResolveImageInfo)

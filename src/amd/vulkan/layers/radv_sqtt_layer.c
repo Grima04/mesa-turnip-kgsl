@@ -531,17 +531,6 @@ void sqtt_CmdDispatchIndirect(
 	EVENT_MARKER(DispatchIndirect, commandBuffer, buffer, offset);
 }
 
-void sqtt_CmdCopyBuffer(
-	VkCommandBuffer                             commandBuffer,
-	VkBuffer                                    srcBuffer,
-	VkBuffer                                    destBuffer,
-	uint32_t                                    regionCount,
-	const VkBufferCopy*                         pRegions)
-{
-	EVENT_MARKER(CopyBuffer, commandBuffer, srcBuffer, destBuffer,
-		     regionCount, pRegions);
-}
-
 void sqtt_CmdCopyBuffer2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkCopyBufferInfo2KHR*                 pCopyBufferInfo)
@@ -572,37 +561,12 @@ void sqtt_CmdUpdateBuffer(
 		     dataSize, pData);
 }
 
-void sqtt_CmdCopyImage(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     srcImage,
-	VkImageLayout                               srcImageLayout,
-	VkImage                                     destImage,
-	VkImageLayout                               destImageLayout,
-	uint32_t                                    regionCount,
-	const VkImageCopy*                          pRegions)
-{
-	EVENT_MARKER(CopyImage, commandBuffer, srcImage, srcImageLayout,
-		     destImage, destImageLayout, regionCount, pRegions);
-}
-
 void sqtt_CmdCopyImage2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkCopyImageInfo2KHR*                  pCopyImageInfo)
 {
 	EVENT_MARKER_ALIAS(CopyImage2KHR, CopyImage, commandBuffer,
 			   pCopyImageInfo);
-}
-
-void sqtt_CmdCopyBufferToImage(
-	VkCommandBuffer                             commandBuffer,
-	VkBuffer                                    srcBuffer,
-	VkImage                                     destImage,
-	VkImageLayout                               destImageLayout,
-	uint32_t                                    regionCount,
-	const VkBufferImageCopy*                    pRegions)
-{
-	EVENT_MARKER(CopyBufferToImage, commandBuffer, srcBuffer, destImage,
-		     destImageLayout, regionCount, pRegions);
 }
 
 void sqtt_CmdCopyBufferToImage2KHR(
@@ -613,38 +577,12 @@ void sqtt_CmdCopyBufferToImage2KHR(
 			   commandBuffer, pCopyBufferToImageInfo);
 }
 
-void sqtt_CmdCopyImageToBuffer(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     srcImage,
-	VkImageLayout                               srcImageLayout,
-	VkBuffer                                    destBuffer,
-	uint32_t                                    regionCount,
-	const VkBufferImageCopy*                    pRegions)
-{
-	EVENT_MARKER(CopyImageToBuffer, commandBuffer, srcImage, srcImageLayout,
-		     destBuffer, regionCount, pRegions);
-}
-
 void sqtt_CmdCopyImageToBuffer2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkCopyImageToBufferInfo2KHR*          pCopyImageToBufferInfo)
 {
 	EVENT_MARKER_ALIAS(CopyImageToBuffer2KHR, CopyImageToBuffer,
 			   commandBuffer, pCopyImageToBufferInfo);
-}
-
-void sqtt_CmdBlitImage(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     srcImage,
-	VkImageLayout                               srcImageLayout,
-	VkImage                                     destImage,
-	VkImageLayout                               destImageLayout,
-	uint32_t                                    regionCount,
-	const VkImageBlit*                          pRegions,
-	VkFilter                                    filter)
-{
-	EVENT_MARKER(BlitImage, commandBuffer, srcImage, srcImageLayout,
-		     destImage, destImageLayout, regionCount, pRegions, filter);
 }
 
 void sqtt_CmdBlitImage2KHR(
@@ -688,19 +626,6 @@ void sqtt_CmdClearAttachments(
 {
 	EVENT_MARKER(ClearAttachments, commandBuffer, attachmentCount,
 		     pAttachments, rectCount, pRects);
-}
-
-void sqtt_CmdResolveImage(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     src_image_h,
-	VkImageLayout                               src_image_layout,
-	VkImage                                     dest_image_h,
-	VkImageLayout                               dest_image_layout,
-	uint32_t                                    region_count,
-	const VkImageResolve*                       regions)
-{
-	EVENT_MARKER(ResolveImage, commandBuffer, src_image_h, src_image_layout,
-		     dest_image_h, dest_image_layout, region_count, regions);
 }
 
 void sqtt_CmdResolveImage2KHR(

@@ -253,34 +253,6 @@ copy_buffer_to_image(struct radv_cmd_buffer *cmd_buffer,
 	radv_meta_restore(&saved_state, cmd_buffer);
 }
 
-void radv_CmdCopyBufferToImage(
-	VkCommandBuffer                             commandBuffer,
-	VkBuffer                                    srcBuffer,
-	VkImage                                     dstImage,
-	VkImageLayout                               dstImageLayout,
-	uint32_t                                    regionCount,
-	const VkBufferImageCopy*                    pRegions)
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-	RADV_FROM_HANDLE(radv_image, dst_image, dstImage);
-	RADV_FROM_HANDLE(radv_buffer, src_buffer, srcBuffer);
-
-	for (unsigned r = 0; r < regionCount; r++) {
-		VkBufferImageCopy2KHR copy = {
-		         .sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR,
-		         .bufferOffset      = pRegions[r].bufferOffset,
-		         .bufferRowLength   = pRegions[r].bufferRowLength,
-		         .bufferImageHeight = pRegions[r].bufferImageHeight,
-		         .imageSubresource  = pRegions[r].imageSubresource,
-		         .imageOffset       = pRegions[r].imageOffset,
-		         .imageExtent       = pRegions[r].imageExtent,
-		      };
-
-	      copy_buffer_to_image(cmd_buffer, src_buffer, dst_image,
-				   dstImageLayout, &copy);
-	}
-}
-
 void radv_CmdCopyBufferToImage2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkCopyBufferToImageInfo2KHR*          pCopyBufferToImageInfo)
@@ -408,34 +380,6 @@ copy_image_to_buffer(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.predicating = old_predicating;
 
 	radv_meta_restore(&saved_state, cmd_buffer);
-}
-
-void radv_CmdCopyImageToBuffer(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     srcImage,
-	VkImageLayout                               srcImageLayout,
-	VkBuffer                                    destBuffer,
-	uint32_t                                    regionCount,
-	const VkBufferImageCopy*                    pRegions)
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-	RADV_FROM_HANDLE(radv_image, src_image, srcImage);
-	RADV_FROM_HANDLE(radv_buffer, dst_buffer, destBuffer);
-
-	for (unsigned r = 0; r < regionCount; r++) {
-		VkBufferImageCopy2KHR copy = {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_IMAGE_COPY_2_KHR,
-			.bufferOffset      = pRegions[r].bufferOffset,
-			.bufferRowLength   = pRegions[r].bufferRowLength,
-			.bufferImageHeight = pRegions[r].bufferImageHeight,
-			.imageSubresource  = pRegions[r].imageSubresource,
-			.imageOffset       = pRegions[r].imageOffset,
-			.imageExtent       = pRegions[r].imageExtent,
-		};
-
-		copy_image_to_buffer(cmd_buffer, dst_buffer, src_image,
-				     srcImageLayout, &copy);
-	}
 }
 
 void radv_CmdCopyImageToBuffer2KHR(
@@ -606,36 +550,6 @@ copy_image(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.predicating = old_predicating;
 
 	radv_meta_restore(&saved_state, cmd_buffer);
-}
-
-void radv_CmdCopyImage(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     srcImage,
-	VkImageLayout                               srcImageLayout,
-	VkImage                                     dstImage,
-	VkImageLayout                               dstImageLayout,
-	uint32_t                                    regionCount,
-	const VkImageCopy*                          pRegions)
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-	RADV_FROM_HANDLE(radv_image, src_image, srcImage);
-	RADV_FROM_HANDLE(radv_image, dst_image, dstImage);
-
-	for (unsigned r = 0; r < regionCount; r++) {
-		VkImageCopy2KHR copy = {
-			.sType = VK_STRUCTURE_TYPE_IMAGE_COPY_2_KHR,
-			.srcSubresource = pRegions[r].srcSubresource,
-			.srcOffset      = pRegions[r].srcOffset,
-			.dstSubresource = pRegions[r].dstSubresource,
-			.dstOffset      = pRegions[r].dstOffset,
-			.extent         = pRegions[r].extent,
-		};
-
-		copy_image(cmd_buffer,
-			   src_image, srcImageLayout,
-			   dst_image, dstImageLayout,
-			   &copy);
-	}
 }
 
 void radv_CmdCopyImage2KHR(

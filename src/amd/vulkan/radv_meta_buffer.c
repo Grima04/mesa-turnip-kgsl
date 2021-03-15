@@ -466,29 +466,6 @@ copy_buffer(struct radv_cmd_buffer *cmd_buffer,
 	cmd_buffer->state.predicating = old_predicating;
 }
 
-void radv_CmdCopyBuffer(
-	VkCommandBuffer                             commandBuffer,
-	VkBuffer                                    srcBuffer,
-	VkBuffer                                    destBuffer,
-	uint32_t                                    regionCount,
-	const VkBufferCopy*                         pRegions)
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-	RADV_FROM_HANDLE(radv_buffer, src_buffer, srcBuffer);
-	RADV_FROM_HANDLE(radv_buffer, dst_buffer, destBuffer);
-
-	for (unsigned r = 0; r < regionCount; r++) {
-		VkBufferCopy2KHR copy = {
-			.sType = VK_STRUCTURE_TYPE_BUFFER_COPY_2_KHR,
-			.srcOffset = pRegions[r].srcOffset,
-			.dstOffset = pRegions[r].dstOffset,
-			.size = pRegions[r].size,
-		};
-
-		copy_buffer(cmd_buffer, src_buffer, dst_buffer, &copy);
-	}
-}
-
 void radv_CmdCopyBuffer2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkCopyBufferInfo2KHR*                 pCopyBufferInfo)

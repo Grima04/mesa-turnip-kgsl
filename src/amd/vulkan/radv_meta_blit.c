@@ -659,43 +659,6 @@ blit_image(struct radv_cmd_buffer *cmd_buffer,
 			    &cmd_buffer->pool->alloc);
 }
 
-void radv_CmdBlitImage(
-	VkCommandBuffer                             commandBuffer,
-	VkImage                                     srcImage,
-	VkImageLayout                               srcImageLayout,
-	VkImage                                     dstImage,
-	VkImageLayout                               dstImageLayout,
-	uint32_t                                    regionCount,
-	const VkImageBlit*                          pRegions,
-	VkFilter                                    filter)
-
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-	RADV_FROM_HANDLE(radv_image, src_image, srcImage);
-	RADV_FROM_HANDLE(radv_image, dst_image, dstImage);
-
-	for (unsigned r = 0; r < regionCount; r++) {
-		VkImageBlit2KHR blit = {
-			.sType          = VK_STRUCTURE_TYPE_IMAGE_BLIT_2_KHR,
-			.srcSubresource = pRegions[r].srcSubresource,
-			.srcOffsets     = {
-				pRegions[r].srcOffsets[0],
-				pRegions[r].srcOffsets[1],
-			},
-			.dstSubresource = pRegions[r].dstSubresource,
-			.dstOffsets     = {
-				pRegions[r].dstOffsets[0],
-				pRegions[r].dstOffsets[1],
-			},
-		};
-
-		blit_image(cmd_buffer,
-			   src_image, srcImageLayout,
-			   dst_image, dstImageLayout,
-			   &blit, filter);
-	}
-}
-
 void radv_CmdBlitImage2KHR(
 	VkCommandBuffer                             commandBuffer,
 	const VkBlitImageInfo2KHR*                  pBlitImageInfo)
