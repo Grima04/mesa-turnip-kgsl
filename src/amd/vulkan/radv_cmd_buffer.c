@@ -5209,36 +5209,16 @@ radv_cmd_buffer_begin_render_pass(struct radv_cmd_buffer *cmd_buffer,
 		return;
 }
 
-void radv_CmdBeginRenderPass(
-	VkCommandBuffer                             commandBuffer,
-	const VkRenderPassBeginInfo*                pRenderPassBegin,
-	VkSubpassContents                           contents)
-{
-	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
-
-	radv_cmd_buffer_begin_render_pass(cmd_buffer, pRenderPassBegin, NULL);
-
-	radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
-}
-
 void radv_CmdBeginRenderPass2(
     VkCommandBuffer                             commandBuffer,
     const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
     const VkSubpassBeginInfo*                   pSubpassBeginInfo)
 {
-	radv_CmdBeginRenderPass(commandBuffer, pRenderPassBeginInfo,
-				pSubpassBeginInfo->contents);
-}
-
-void radv_CmdNextSubpass(
-    VkCommandBuffer                             commandBuffer,
-    VkSubpassContents                           contents)
-{
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
-	uint32_t prev_subpass = radv_get_subpass_id(cmd_buffer);
-	radv_cmd_buffer_end_subpass(cmd_buffer);
-	radv_cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
+	radv_cmd_buffer_begin_render_pass(cmd_buffer, pRenderPassBeginInfo, NULL);
+
+	radv_cmd_buffer_begin_subpass(cmd_buffer, 0);
 }
 
 void radv_CmdNextSubpass2(
@@ -5246,7 +5226,11 @@ void radv_CmdNextSubpass2(
     const VkSubpassBeginInfo*                   pSubpassBeginInfo,
     const VkSubpassEndInfo*                     pSubpassEndInfo)
 {
-	radv_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
+	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+
+	uint32_t prev_subpass = radv_get_subpass_id(cmd_buffer);
+	radv_cmd_buffer_end_subpass(cmd_buffer);
+	radv_cmd_buffer_begin_subpass(cmd_buffer, prev_subpass + 1);
 }
 
 static void radv_emit_view_index(struct radv_cmd_buffer *cmd_buffer, unsigned index)
@@ -6095,8 +6079,9 @@ radv_cmd_buffer_end_render_pass(struct radv_cmd_buffer *cmd_buffer)
 	cmd_buffer->state.subpass_sample_locs = NULL;
 }
 
-void radv_CmdEndRenderPass(
-	VkCommandBuffer                             commandBuffer)
+void radv_CmdEndRenderPass2(
+    VkCommandBuffer                             commandBuffer,
+    const VkSubpassEndInfo*                     pSubpassEndInfo)
 {
 	RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
 
@@ -6105,13 +6090,6 @@ void radv_CmdEndRenderPass(
 	radv_cmd_buffer_end_subpass(cmd_buffer);
 
 	radv_cmd_buffer_end_render_pass(cmd_buffer);
-}
-
-void radv_CmdEndRenderPass2(
-    VkCommandBuffer                             commandBuffer,
-    const VkSubpassEndInfo*                     pSubpassEndInfo)
-{
-	radv_CmdEndRenderPass(commandBuffer);
 }
 
 /*

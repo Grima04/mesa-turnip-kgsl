@@ -801,14 +801,6 @@ void sqtt_CmdPushConstants(
 		   size, pValues);
 }
 
-void sqtt_CmdBeginRenderPass(
-	VkCommandBuffer                             commandBuffer,
-	const VkRenderPassBeginInfo*                pRenderPassBegin,
-	VkSubpassContents                           contents)
-{
-	API_MARKER(BeginRenderPass, commandBuffer, pRenderPassBegin, contents);
-}
-
 void sqtt_CmdBeginRenderPass2(
 	VkCommandBuffer                             commandBuffer,
 	const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
@@ -818,13 +810,6 @@ void sqtt_CmdBeginRenderPass2(
 			 pRenderPassBeginInfo, pSubpassBeginInfo);
 }
 
-void sqtt_CmdNextSubpass(
-	VkCommandBuffer                             commandBuffer,
-	VkSubpassContents                           contents)
-{
-	API_MARKER(NextSubpass, commandBuffer, contents);
-}
-
 void sqtt_CmdNextSubpass2(
 	VkCommandBuffer                             commandBuffer,
 	const VkSubpassBeginInfo*                   pSubpassBeginInfo,
@@ -832,12 +817,6 @@ void sqtt_CmdNextSubpass2(
 {
 	API_MARKER_ALIAS(NextSubpass2, NextSubpass, commandBuffer,
 			 pSubpassBeginInfo, pSubpassEndInfo);
-}
-
-void sqtt_CmdEndRenderPass(
-	VkCommandBuffer                             commandBuffer)
-{
-	API_MARKER(EndRenderPass, commandBuffer);
 }
 
 void sqtt_CmdEndRenderPass2(
