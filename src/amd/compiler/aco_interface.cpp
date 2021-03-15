@@ -131,6 +131,9 @@ void aco_compile_shader(unsigned shader_count,
    if (program->collect_statistics)
       aco::collect_presched_stats(program.get());
 
+   if ((aco::debug_flags & aco::DEBUG_LIVE_INFO) && args->options->dump_shader)
+      aco_print_program(program.get(), stderr, live_vars, aco::print_live_vars | aco::print_kill);
+
    if (!args->is_trap_handler_shader) {
       if (!args->options->disable_optimizations &&
           !(aco::debug_flags & aco::DEBUG_NO_SCHED))

@@ -667,6 +667,8 @@ RADV driver environment variables
       disable instructions scheduling
    ``perfinfo``
       print information used to calculate some pipeline statistics
+   ``liveinfo``
+      print liveness and register demand information before scheduling
 
 radeonsi driver environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

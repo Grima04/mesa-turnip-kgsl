@@ -39,6 +39,7 @@ static const struct debug_control aco_debug_options[] = {
    {"noopt", DEBUG_NO_OPT},
    {"nosched", DEBUG_NO_SCHED},
    {"perfinfo", DEBUG_PERF_INFO},
+   {"liveinfo", DEBUG_LIVE_INFO},
    {NULL, 0}
 };
 

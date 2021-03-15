@@ -56,6 +56,7 @@ enum {
    DEBUG_NO_OPT = 0x20,
    DEBUG_NO_SCHED = 0x40,
    DEBUG_PERF_INFO = 0x80,
+   DEBUG_LIVE_INFO = 0x100,
 };
 
 /**
