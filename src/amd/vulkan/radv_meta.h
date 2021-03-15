@@ -90,6 +90,8 @@ struct radv_meta_saved_state {
       VkExtent2D size;
       VkFragmentShadingRateCombinerOpKHR combiner_ops[2];
    } fragment_shading_rate;
+
+   bool depth_bias_enable;
 };
 
 VkResult radv_device_init_meta_clear_state(struct radv_device *device, bool on_demand);

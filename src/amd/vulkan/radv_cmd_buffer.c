@@ -106,6 +106,7 @@ const struct radv_dynamic_state default_dynamic_state = {
          .combiner_ops = {VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR,
                           VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR},
       },
+   .depth_bias_enable = 0u,
 };
 
 static void
@@ -294,6 +295,13 @@ radv_bind_dynamic_state(struct radv_cmd_buffer *cmd_buffer, const struct radv_dy
                  sizeof(src->fragment_shading_rate))) {
          dest->fragment_shading_rate = src->fragment_shading_rate;
          dest_mask |= RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
+      }
+   }
+
+   if (copy_mask & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
+      if (dest->depth_bias_enable != src->depth_bias_enable) {
+         dest->depth_bias_enable = src->depth_bias_enable;
+         dest_mask |= RADV_DYNAMIC_DEPTH_BIAS_ENABLE;
       }
    }
 
@@ -1258,8 +1266,9 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
    if (!cmd_buffer->state.emitted_pipeline ||
        cmd_buffer->state.emitted_pipeline->graphics.pa_su_sc_mode_cntl !=
           pipeline->graphics.pa_su_sc_mode_cntl)
-      cmd_buffer->state.dirty |=
-         RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_CULL_MODE |
+                                 RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 
    if (!cmd_buffer->state.emitted_pipeline)
       cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
@@ -1432,6 +1441,14 @@ radv_emit_culling(struct radv_cmd_buffer *cmd_buffer, uint32_t states)
    if (states & RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE) {
       pa_su_sc_mode_cntl &= C_028814_FACE;
       pa_su_sc_mode_cntl |= S_028814_FACE(d->front_face);
+   }
+
+   if (states & RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE) {
+      pa_su_sc_mode_cntl &= C_028814_POLY_OFFSET_FRONT_ENABLE & C_028814_POLY_OFFSET_BACK_ENABLE &
+                            C_028814_POLY_OFFSET_PARA_ENABLE;
+      pa_su_sc_mode_cntl |= S_028814_POLY_OFFSET_FRONT_ENABLE(d->depth_bias_enable) |
+                            S_028814_POLY_OFFSET_BACK_ENABLE(d->depth_bias_enable) |
+                            S_028814_POLY_OFFSET_PARA_ENABLE(d->depth_bias_enable);
    }
 
    radeon_set_context_reg(cmd_buffer->cs, R_028814_PA_SU_SC_MODE_CNTL, pa_su_sc_mode_cntl);
@@ -2545,7 +2562,8 @@ radv_cmd_buffer_flush_dynamic_state(struct radv_cmd_buffer *cmd_buffer)
    if (states & RADV_CMD_DIRTY_DYNAMIC_LINE_STIPPLE)
       radv_emit_line_stipple(cmd_buffer);
 
-   if (states & (RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE))
+   if (states & (RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
+                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE))
       radv_emit_culling(cmd_buffer, states);
 
    if (states & RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY)
@@ -4728,6 +4746,20 @@ radv_CmdSetFragmentShadingRateKHR(VkCommandBuffer commandBuffer, const VkExtent2
       state->dynamic.fragment_shading_rate.combiner_ops[i] = combinerOps[i];
 
    state->dirty |= RADV_CMD_DIRTY_DYNAMIC_FRAGMENT_SHADING_RATE;
+}
+
+void
+radv_CmdSetDepthBiasEnableEXT(VkCommandBuffer commandBuffer, VkBool32 depthBiasEnable)
+{
+   RADV_FROM_HANDLE(radv_cmd_buffer, cmd_buffer, commandBuffer);
+   struct radv_cmd_state *state = &cmd_buffer->state;
+
+   if (state->dynamic.depth_bias_enable == depthBiasEnable)
+      return;
+
+   state->dynamic.depth_bias_enable = depthBiasEnable;
+
+   state->dirty |= RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS_ENABLE;
 }
 
 void

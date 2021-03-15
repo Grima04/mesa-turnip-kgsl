@@ -1212,6 +1212,8 @@ struct radv_dynamic_state {
       VkExtent2D size;
       VkFragmentShadingRateCombinerOpKHR combiner_ops[2];
    } fragment_shading_rate;
+
+   bool depth_bias_enable;
 };
 
 extern const struct radv_dynamic_state default_dynamic_state;

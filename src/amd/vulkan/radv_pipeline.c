@@ -1387,7 +1387,8 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
    if (pCreateInfo->pRasterizationState->rasterizerDiscardEnable)
       return RADV_DYNAMIC_PRIMITIVE_TOPOLOGY | RADV_DYNAMIC_VERTEX_INPUT_BINDING_STRIDE;
 
-   if (!pCreateInfo->pRasterizationState->depthBiasEnable)
+   if (!pCreateInfo->pRasterizationState->depthBiasEnable &&
+       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT))
       states &= ~RADV_DYNAMIC_DEPTH_BIAS;
 
    if (!pCreateInfo->pDepthStencilState ||
@@ -1728,6 +1729,10 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
       dynamic->fragment_shading_rate.size = shading_rate->fragmentSize;
       for (int i = 0; i < 2; i++)
          dynamic->fragment_shading_rate.combiner_ops[i] = shading_rate->combinerOps[i];
+   }
+
+   if (states & RADV_DYNAMIC_DEPTH_BIAS_ENABLE) {
+      dynamic->depth_bias_enable = pCreateInfo->pRasterizationState->depthBiasEnable;
    }
 
    pipeline->dynamic_state.mask = states;
