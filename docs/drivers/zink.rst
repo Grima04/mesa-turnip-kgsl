@@ -174,6 +174,14 @@ supported:
    * ``VK_FORMAT_R16G16_SNORM``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
    * ``VK_FORMAT_D32_SFLOAT_S8_UINT``: ``VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT``
 
+OpenGL 4.4
+^^^^^^^^^^
+
+For OpenGL 4.4 support, the following additional format features needs to
+be supported:
+
+* ``VK_FORMAT_B10G11R11_UFLOAT_PACK32``: ``VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT``
+
 Debugging
 ---------
 
