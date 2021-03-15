@@ -138,8 +138,12 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetQueryPoolResults(
                *(uint64_t *)dptr = result.u64;
                dptr += 8;
             }
-         } else
-            dptr += stride;
+         } else {
+            if (pool->type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
+               dptr += 16;
+            else
+               dptr += 8;
+         }
 
       } else {
          if (ready || (flags & VK_QUERY_RESULT_PARTIAL_BIT)) {
@@ -174,7 +178,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_GetQueryPoolResults(
                dptr += 4;
             }
          } else
-            dptr += stride;
+            if (pool->type == VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
+               dptr += 8;
+            else
+               dptr += 4;
       }
 
       if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
