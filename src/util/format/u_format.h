@@ -1625,6 +1625,13 @@ util_copy_rect(ubyte * dst, enum pipe_format format,
                unsigned width, unsigned height, const ubyte * src,
                int src_stride, unsigned src_x, unsigned src_y);
 
+/**
+ * If the format is RGB, return BGR. If the format is BGR, return RGB.
+ * This may fail by returning PIPE_FORMAT_NONE.
+ */
+enum pipe_format
+util_format_rgb_to_bgr(enum pipe_format format);
+
 #ifdef __cplusplus
 } // extern "C" {
 #endif
