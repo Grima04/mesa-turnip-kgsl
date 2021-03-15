@@ -319,14 +319,13 @@ shader_variant_create_from_blob(struct v3dv_device *device,
 {
    VkResult result;
 
-   gl_shader_stage stage = blob_read_uint32(blob);
-   bool is_coord = blob_read_uint8(blob);
+   broadcom_shader_stage stage = blob_read_uint32(blob);
 
    const unsigned char *variant_sha1 = blob_read_bytes(blob, 20);
 
    uint32_t prog_data_size = blob_read_uint32(blob);
    /* FIXME: as we include the stage perhaps we can avoid prog_data_size? */
-   assert(prog_data_size == v3d_prog_data_size(stage));
+   assert(prog_data_size == v3d_prog_data_size(broadcom_shader_stage_to_gl(stage)));
 
    const void *prog_data = blob_read_bytes(blob, prog_data_size);
    if (blob->overrun)
@@ -362,7 +361,7 @@ shader_variant_create_from_blob(struct v3dv_device *device,
    ulist->data = ralloc_array(new_prog_data, uint32_t, ulist->count);
    memcpy(ulist->data, ulist_data_data, ulist_data_size);
 
-   return v3dv_shader_variant_create(device, stage, is_coord,
+   return v3dv_shader_variant_create(device, stage,
                                      variant_sha1,
                                      new_prog_data, prog_data_size,
                                      qpu_insts, qpu_insts_size,
@@ -592,7 +591,6 @@ shader_variant_write_to_blob(const struct v3dv_shader_variant *variant,
                              struct blob *blob)
 {
    blob_write_uint32(blob, variant->stage);
-   blob_write_uint8(blob, variant->is_coord);
 
    blob_write_bytes(blob, variant->variant_sha1, sizeof(variant->variant_sha1));
 

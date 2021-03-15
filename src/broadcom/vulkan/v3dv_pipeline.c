@@ -429,7 +429,8 @@ shader_module_compile_to_nir(struct v3dv_device *device,
       const struct spirv_to_nir_options spirv_options = default_spirv_options;
       nir = spirv_to_nir(spirv, stage->module->size / 4,
                          spec_entries, num_spec_entries,
-                         stage->stage, stage->entrypoint,
+                         broadcom_shader_stage_to_gl(stage->stage),
+                         stage->entrypoint,
                          &spirv_options, nir_options);
       nir_validate_shader(nir, "after spirv_to_nir");
       free(spec_entries);
@@ -443,7 +444,7 @@ shader_module_compile_to_nir(struct v3dv_device *device,
       nir = nir_shader_clone(NULL, stage->module->nir);
       nir_validate_shader(nir, "nir module");
    }
-   assert(nir->info.stage == stage->stage);
+   assert(nir->info.stage == broadcom_shader_stage_to_gl(stage->stage));
 
    if (V3D_DEBUG & (V3D_DEBUG_NIR |
                     v3d_debug_flag_for_shader_stage(stage->stage))) {
@@ -1162,8 +1163,8 @@ pipeline_populate_v3d_vs_key(struct v3d_vs_key *key,
     * PIPE_PRIM_POINTS && v3d->rasterizer->base.point_size_per_vertex */
    key->per_vertex_point_size = (topology == PIPE_PRIM_POINTS);
 
-   key->is_coord = p_stage->is_coord;
-   if (p_stage->is_coord) {
+   key->is_coord = p_stage->stage == BROADCOM_SHADER_VERTEX_BIN;
+   if (key->is_coord) {
       /* The only output varying on coord shaders are for transform
        * feedback. Set to 0 as VK_EXT_transform_feedback is not supported.
        */
@@ -1212,15 +1213,13 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
       return NULL;
 
    p_stage->pipeline = src->pipeline;
-   assert(src->stage == MESA_SHADER_VERTEX);
-   p_stage->stage = src->stage;
+   assert(src->stage == BROADCOM_SHADER_VERTEX);
+   p_stage->stage = BROADCOM_SHADER_VERTEX_BIN;
    p_stage->entrypoint = src->entrypoint;
    p_stage->module = src->module;
    p_stage->nir = nir_shader_clone(NULL, src->nir);
    p_stage->spec_info = src->spec_info;
    memcpy(p_stage->shader_sha1, src->shader_sha1, 20);
-
-   p_stage->is_coord = true;
 
    return p_stage;
 }
@@ -1240,8 +1239,7 @@ pipeline_stage_create_vs_bin(const struct v3dv_pipeline_stage *src,
 static bool
 upload_assembly(struct v3dv_device *device,
                 struct v3dv_shader_variant *variant,
-                gl_shader_stage stage,
-                bool is_coord,
+                broadcom_shader_stage stage,
                 const void *data,
                 uint32_t size)
 {
@@ -1252,14 +1250,16 @@ upload_assembly(struct v3dv_device *device,
    assert(variant->assembly_bo == NULL);
 
    switch (stage) {
-   case MESA_SHADER_VERTEX:
-      name = (is_coord == true) ? "coord_shader_assembly" :
-         "vertex_shader_assembly";
+   case BROADCOM_SHADER_VERTEX:
+      name = "vertex_shader_assembly";
       break;
-   case MESA_SHADER_FRAGMENT:
+   case BROADCOM_SHADER_VERTEX_BIN:
+      name = "vs_bin_shader_assembly";
+      break;
+   case BROADCOM_SHADER_FRAGMENT:
       name = "fragment_shader_assembly";
       break;
-   case MESA_SHADER_COMPUTE:
+   case BROADCOM_SHADER_COMPUTE:
       name = "compute_shader_assembly";
       break;
    default:
@@ -1299,7 +1299,7 @@ pipeline_hash_variant(const struct v3dv_pipeline_stage *p_stage,
    struct v3dv_pipeline *pipeline = p_stage->pipeline;
    _mesa_sha1_init(&ctx);
 
-   if (p_stage->stage == MESA_SHADER_COMPUTE) {
+   if (p_stage->stage == BROADCOM_SHADER_COMPUTE) {
       _mesa_sha1_update(&ctx, p_stage->shader_sha1, sizeof(p_stage->shader_sha1));
    } else {
       /* We need to include both on the sha1 key as one could affect the other
@@ -1351,8 +1351,7 @@ pipeline_check_spill_size(struct v3dv_pipeline *pipeline,
  */
 struct v3dv_shader_variant *
 v3dv_shader_variant_create(struct v3dv_device *device,
-                           gl_shader_stage stage,
-                           bool is_coord,
+                           broadcom_shader_stage stage,
                            const unsigned char *variant_sha1,
                            struct v3d_prog_data *prog_data,
                            uint32_t prog_data_size,
@@ -1371,13 +1370,12 @@ v3dv_shader_variant_create(struct v3dv_device *device,
 
    variant->ref_cnt = 1;
    variant->stage = stage;
-   variant->is_coord = is_coord;
    memcpy(variant->variant_sha1, variant_sha1, sizeof(variant->variant_sha1));
    variant->prog_data_size = prog_data_size;
    variant->prog_data.base = prog_data;
 
    if (qpu_insts) {
-      if (!upload_assembly(device, variant, stage, is_coord,
+      if (!upload_assembly(device, variant, stage,
                            qpu_insts, qpu_insts_size)) {
          ralloc_free(variant->prog_data.base);
          vk_free(&device->vk.alloc, variant);
@@ -1464,7 +1462,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
               p_stage->program_id);
    }
 
-   variant = v3dv_shader_variant_create(device, p_stage->stage, p_stage->is_coord,
+   variant = v3dv_shader_variant_create(device, p_stage->stage,
                                         variant_sha1,
                                         prog_data, v3d_prog_data_size(p_stage->stage),
                                         qpu_insts, qpu_insts_size,
@@ -1619,7 +1617,7 @@ pipeline_lower_nir(struct v3dv_pipeline *pipeline,
 static uint32_t
 get_ucp_enable_mask(struct v3dv_pipeline_stage *p_stage)
 {
-   assert(p_stage->stage == MESA_SHADER_VERTEX);
+   assert(p_stage->stage == BROADCOM_SHADER_VERTEX);
    const nir_shader *shader = p_stage->nir;
    assert(shader);
 
@@ -1644,7 +1642,7 @@ pipeline_stage_get_nir(struct v3dv_pipeline_stage *p_stage,
                                             p_stage->shader_sha1);
 
    if (nir) {
-      assert(nir->info.stage == p_stage->stage);
+      assert(nir->info.stage == broadcom_shader_stage_to_gl(p_stage->stage));
       return nir;
    }
 
@@ -1808,9 +1806,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          p_atomic_inc_return(&physical_device->next_program_id);
 
       p_stage->pipeline = pipeline;
-      p_stage->stage = stage;
-      if (stage == MESA_SHADER_VERTEX)
-         p_stage->is_coord = false;
+      p_stage->stage = gl_shader_stage_to_broadcom(stage);
       p_stage->entrypoint = sinfo->pName;
       p_stage->module = vk_shader_module_from_handle(sinfo->module);
       p_stage->spec_info = sinfo->pSpecializationInfo;
@@ -1851,7 +1847,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
          return VK_ERROR_OUT_OF_HOST_MEMORY;
 
       p_stage->pipeline = pipeline;
-      p_stage->stage = MESA_SHADER_FRAGMENT;
+      p_stage->stage = BROADCOM_SHADER_FRAGMENT;
       p_stage->entrypoint = "main";
       p_stage->module = 0;
       p_stage->nir = b.shader;
@@ -2938,7 +2934,7 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
 
    p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
    p_stage->pipeline = pipeline;
-   p_stage->stage = stage;
+   p_stage->stage = gl_shader_stage_to_broadcom(stage);
    p_stage->entrypoint = sinfo->pName;
    p_stage->module = vk_shader_module_from_handle(sinfo->module);
    p_stage->spec_info = sinfo->pSpecializationInfo;
