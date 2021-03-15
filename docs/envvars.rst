@@ -665,6 +665,8 @@ RADV driver environment variables
       disable various optimizations
    ``noscheduling``
       disable instructions scheduling
+   ``perfinfo``
+      print information used to calculate some pipeline statistics
 
 radeonsi driver environment variables
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
