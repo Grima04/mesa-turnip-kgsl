@@ -465,3 +465,9 @@ option(
   value : true,
   description : 'use msse2 flag for mingw x86. Default: true',
 )
+option(
+  'perfetto',
+  type : 'boolean',
+  value : false,
+  description : 'Enable performance analysis with Perfetto. Default: false'
+)

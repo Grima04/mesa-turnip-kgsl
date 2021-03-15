@@ -2046,6 +2046,11 @@ endif
 # as GCC LTO drops them. See: https://bugs.freedesktop.org/show_bug.cgi?id=109391
 gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
 
+with_perfetto = get_option('perfetto')
+if with_perfetto
+  dep_perfetto = dependency('perfetto', fallback: ['perfetto', 'dep_perfetto'])
+endif
+
 subdir('include')
 subdir('bin')
 subdir('src')
@@ -2171,6 +2176,7 @@ lines += 'HUD lmsensors:   ' + (dep_lmsensors.found() ? 'yes' : 'no')
 
 lines += ''
 lines += 'Shared-glapi:    ' + (with_shared_glapi ? 'yes' : 'no')
+lines += 'Perfetto:        ' + (with_perfetto ? 'yes' : 'no')
 
 
 indent = '        '
