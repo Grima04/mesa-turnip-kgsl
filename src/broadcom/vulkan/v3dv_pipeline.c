@@ -1452,14 +1452,11 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
       &pipeline->device->instance->physicalDevice;
    const struct v3d_compiler *compiler = physical_device->compiler;
 
-   uint32_t variant_id = p_atomic_inc_return(&p_stage->compiled_variant_count);
-
    if (V3D_DEBUG & (V3D_DEBUG_NIR |
                     v3d_debug_flag_for_shader_stage(p_stage->stage))) {
-      fprintf(stderr, "Just before v3d_compile: %s prog %d variant %d NIR:\n",
+      fprintf(stderr, "Just before v3d_compile: %s prog %d NIR:\n",
               gl_shader_stage_name(p_stage->stage),
-              p_stage->program_id,
-              variant_id);
+              p_stage->program_id);
       nir_print_shader(p_stage->nir, stderr);
       fprintf(stderr, "\n");
    }
@@ -1472,8 +1469,7 @@ v3dv_get_shader_variant(struct v3dv_pipeline_stage *p_stage,
                            key, &prog_data,
                            p_stage->nir,
                            shader_debug_output, NULL,
-                           p_stage->program_id,
-                           variant_id,
+                           p_stage->program_id, 0,
                            &qpu_insts_size);
 
    if (!qpu_insts) {
@@ -1826,7 +1822,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
        */
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
-      p_stage->compiled_variant_count = 0;
 
       p_stage->pipeline = pipeline;
       p_stage->stage = stage;
@@ -1884,7 +1879,6 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
 
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
-      p_stage->compiled_variant_count = 0;
 
       pipeline->fs = p_stage;
       pipeline->active_stages |= MESA_SHADER_FRAGMENT;
@@ -2959,7 +2953,6 @@ pipeline_compile_compute(struct v3dv_pipeline *pipeline,
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    p_stage->program_id = p_atomic_inc_return(&physical_device->next_program_id);
-   p_stage->compiled_variant_count = 0;
    p_stage->pipeline = pipeline;
    p_stage->stage = stage;
    p_stage->entrypoint = sinfo->pName;

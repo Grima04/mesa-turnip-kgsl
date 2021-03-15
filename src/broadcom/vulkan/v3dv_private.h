@@ -1363,8 +1363,6 @@ struct v3dv_pipeline_stage {
 
    /** A name for this program, so you can track it in shader-db output. */
    uint32_t program_id;
-   /** How many variants of this program were compiled, for shader-db. */
-   uint32_t compiled_variant_count;
 
    /* The following are the default v3d_key populated using
     * VkCreateGraphicsPipelineCreateInfo. Variants will be created tweaking
