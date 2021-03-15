@@ -629,6 +629,9 @@ struct ir3_shader_variant {
 
 	bool need_fine_derivatives;
 
+	/* do we need VS driver params? */
+	bool need_driver_params;
+
 	/* do we have image write, etc (which prevents early-z): */
 	bool no_earlyz;
 

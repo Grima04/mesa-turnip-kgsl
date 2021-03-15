@@ -359,7 +359,7 @@ fd6_emit_consts(struct fd6_emit *emit)
 
 	/* if driver-params are needed, emit each time: */
 	const struct ir3_shader_variant *vs = emit->vs;
-	if (ir3_needs_vs_driver_params(vs)) {
+	if (vs->need_driver_params) {
 		struct fd_ringbuffer *dpconstobj = fd_submit_new_ringbuffer(
 				ctx->batch->submit, IR3_DP_VS_COUNT * 4, FD_RINGBUFFER_STREAMING);
 		ir3_emit_vs_driver_params(vs, dpconstobj, ctx, emit->info, emit->indirect, emit->draw);

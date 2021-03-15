@@ -504,15 +504,6 @@ emit_common_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	}
 }
 
-static inline bool
-ir3_needs_vs_driver_params(const struct ir3_shader_variant *v)
-{
-	const struct ir3_const_state *const_state = ir3_const_state(v);
-	uint32_t offset = const_state->offsets.driver_param;
-
-	return v->constlen > offset;
-}
-
 static inline void
 ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
                           struct fd_ringbuffer *ring, struct fd_context *ctx,
@@ -520,7 +511,7 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
                           const struct pipe_draw_indirect_info *indirect,
                           const struct pipe_draw_start_count *draw)
 {
-	debug_assert(ir3_needs_vs_driver_params(v));
+	assert(v->need_driver_params);
 
 	const struct ir3_const_state *const_state = ir3_const_state(v);
 	uint32_t offset = const_state->offsets.driver_param;
@@ -609,7 +600,7 @@ ir3_emit_vs_consts(const struct ir3_shader_variant *v, struct fd_ringbuffer *rin
 	emit_common_consts(v, ring, ctx, PIPE_SHADER_VERTEX);
 
 	/* emit driver params every time: */
-	if (info && ir3_needs_vs_driver_params(v)) {
+	if (info && v->need_driver_params) {
 		ring_wfi(ctx->batch, ring);
 		ir3_emit_vs_driver_params(v, ring, ctx, info, indirect, draw);
 	}

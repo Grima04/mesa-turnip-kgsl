@@ -166,6 +166,9 @@ void * ir3_shader_assemble(struct ir3_shader_variant *v)
 	 */
 	v->constlen = MAX2(v->constlen, info->max_const + 1);
 
+	if (v->constlen > ir3_const_state(v)->offsets.driver_param)
+		v->need_driver_params = true;
+
 	/* On a4xx and newer, constlen must be a multiple of 16 dwords even though
 	 * uploads are in units of 4 dwords. Round it up here to make calculations
 	 * regarding the shared constlen simpler.
