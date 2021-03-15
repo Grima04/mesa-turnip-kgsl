@@ -1745,6 +1745,33 @@ emit_geom_end(struct v3d_compile *c)
                 vir_VPMWT(c);
 }
 
+static bool
+mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
+                       unsigned bit_size,
+                       unsigned num_components,
+                       nir_intrinsic_instr *low,
+                       nir_intrinsic_instr *high,
+                       void *data)
+{
+        /* Our backend is 32-bit only at present */
+        if (bit_size != 32)
+                return false;
+
+        if (align_mul % 4 != 0 || align_offset % 4 != 0)
+                return false;
+
+        /* Vector accesses wrap at 16-byte boundaries so we can't vectorize
+         * if the resulting vector crosses a 16-byte boundary.
+         */
+        assert(util_is_power_of_two_nonzero(align_mul));
+        align_mul = MIN2(align_mul, 16);
+        align_offset &= 0xf;
+        if (16 - align_mul + align_offset + num_components * 4 > 16)
+                return false;
+
+        return true;
+}
+
 void
 v3d_optimize_nir(struct nir_shader *s)
 {
@@ -1768,6 +1795,15 @@ v3d_optimize_nir(struct nir_shader *s)
                 NIR_PASS(progress, s, nir_opt_peephole_select, 8, true, true);
                 NIR_PASS(progress, s, nir_opt_algebraic);
                 NIR_PASS(progress, s, nir_opt_constant_folding);
+
+                nir_load_store_vectorize_options vectorize_opts = {
+                        .modes = nir_var_mem_ssbo | nir_var_mem_ubo |
+                                 nir_var_mem_push_const | nir_var_mem_shared |
+                                 nir_var_mem_global,
+                        .callback = mem_vectorize_callback,
+                        .robust_modes = 0,
+                };
+                NIR_PASS(progress, s, nir_opt_load_store_vectorize, &vectorize_opts);
 
                 if (lower_flrp != 0) {
                         bool lower_flrp_progress = false;
