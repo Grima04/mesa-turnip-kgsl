@@ -27,6 +27,7 @@
 
 #include "util/u_dump.h"
 #include "util/half_float.h"
+#include "util/format_srgb.h"
 
 #include "freedreno_blitter.h"
 #include "freedreno_fence.h"
@@ -720,10 +721,18 @@ emit_clear_color(struct fd_ringbuffer *ring,
 	switch (fd6_ifmt(fd6_pipe2color(pfmt))) {
 	case R2D_UNORM8:
 	case R2D_UNORM8_SRGB:
-		OUT_RING(ring, float_to_ubyte(color->f[0]));
-		OUT_RING(ring, float_to_ubyte(color->f[1]));
-		OUT_RING(ring, float_to_ubyte(color->f[2]));
-		OUT_RING(ring, float_to_ubyte(color->f[3]));
+		/* The r2d ifmt is badly named, it also covers the signed case: */
+		if (util_format_is_snorm(pfmt)) {
+			OUT_RING(ring, float_to_byte_tex(color->f[0]));
+			OUT_RING(ring, float_to_byte_tex(color->f[1]));
+			OUT_RING(ring, float_to_byte_tex(color->f[2]));
+			OUT_RING(ring, float_to_byte_tex(color->f[3]));
+		} else {
+			OUT_RING(ring, float_to_ubyte(color->f[0]));
+			OUT_RING(ring, float_to_ubyte(color->f[1]));
+			OUT_RING(ring, float_to_ubyte(color->f[2]));
+			OUT_RING(ring, float_to_ubyte(color->f[3]));
+		}
 		break;
 	case R2D_FLOAT16:
 		OUT_RING(ring, _mesa_float_to_half(color->f[0]));
@@ -744,6 +753,32 @@ emit_clear_color(struct fd_ringbuffer *ring,
 	}
 }
 
+/**
+ * Handle conversion of clear color
+ */
+static union pipe_color_union
+convert_color(enum pipe_format format, union pipe_color_union *pcolor)
+{
+	union pipe_color_union color = *pcolor;
+
+	/* For solid-fill blits, the hw isn't going to convert from
+	 * linear to srgb for us:
+	 */
+	if (util_format_is_srgb(format)) {
+		for (int i = 0; i < 3; i++)
+			color.f[i] = util_format_linear_to_srgb_float(color.f[i]);
+	}
+
+	if (util_format_is_snorm(format)) {
+		for (int i = 0; i < 3; i++)
+			color.f[i] = CLAMP(color.f[i], -1.0f, 1.0f);
+	}
+
+	/* Note that float_to_ubyte() already clamps, for the unorm case */
+
+	return color;
+}
+
 void
 fd6_clear_surface(struct fd_context *ctx,
 		struct fd_ringbuffer *ring, struct pipe_surface *psurf,
@@ -761,8 +796,10 @@ fd6_clear_surface(struct fd_context *ctx,
 	OUT_RING(ring, A6XX_GRAS_2D_DST_BR_X(width * nr_samples - 1) |
 			A6XX_GRAS_2D_DST_BR_Y(height - 1));
 
-	emit_clear_color(ring, psurf->format, color);
-	emit_blit_setup(ring, psurf->format, false, color);
+	union pipe_color_union clear_color = convert_color(psurf->format, color);
+
+	emit_clear_color(ring, psurf->format, &clear_color);
+	emit_blit_setup(ring, psurf->format, false, &clear_color);
 
 	for (unsigned i = psurf->u.tex.first_layer; i <= psurf->u.tex.last_layer; i++) {
 		emit_blit_dst(ring, psurf->texture, psurf->format, psurf->u.tex.level, i);

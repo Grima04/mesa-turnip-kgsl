@@ -1344,7 +1344,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 
 	if (buffers & PIPE_CLEAR_COLOR) {
 		for (int i = 0; i < pfb->nr_cbufs; i++) {
-			union pipe_color_union *color = &batch->clear_color[i];
+			union pipe_color_union color = batch->clear_color[i];
 
 			if (!pfb->cbufs[i])
 				continue;
@@ -1353,7 +1353,7 @@ emit_sysmem_clears(struct fd_batch *batch, struct fd_ringbuffer *ring)
 				continue;
 
 			fd6_clear_surface(ctx, ring,
-					pfb->cbufs[i], pfb->width, pfb->height, color);
+					pfb->cbufs[i], pfb->width, pfb->height, &color);
 		}
 	}
 	if (buffers & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL)) {
