@@ -344,14 +344,14 @@ state_setup_attachments(struct lvp_attachment_state *attachments,
    }
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRenderPass(
-   VkCommandBuffer                             commandBuffer,
-   const VkRenderPassBeginInfo*                pRenderPassBegin,
-   VkSubpassContents                           contents)
+VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRenderPass2(
+    VkCommandBuffer                             commandBuffer,
+    const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
+    const VkSubpassBeginInfo*                   pSubpassBeginInfo)
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
-   LVP_FROM_HANDLE(lvp_render_pass, pass, pRenderPassBegin->renderPass);
-   LVP_FROM_HANDLE(lvp_framebuffer, framebuffer, pRenderPassBegin->framebuffer);
+   LVP_FROM_HANDLE(lvp_render_pass, pass, pRenderPassBeginInfo->renderPass);
+   LVP_FROM_HANDLE(lvp_framebuffer, framebuffer, pRenderPassBeginInfo->framebuffer);
    struct lvp_cmd_buffer_entry *cmd;
    uint32_t cmd_size = pass->attachment_count * sizeof(struct lvp_attachment_state);
 
@@ -361,35 +361,10 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRenderPass(
 
    cmd->u.begin_render_pass.render_pass = pass;
    cmd->u.begin_render_pass.framebuffer = framebuffer;
-   cmd->u.begin_render_pass.render_area = pRenderPassBegin->renderArea;
+   cmd->u.begin_render_pass.render_area = pRenderPassBeginInfo->renderArea;
 
    cmd->u.begin_render_pass.attachments = (struct lvp_attachment_state *)(cmd + 1);
-   state_setup_attachments(cmd->u.begin_render_pass.attachments, pass, pRenderPassBegin->pClearValues);
-
-   cmd_buf_queue(cmd_buffer, cmd);
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_CmdBeginRenderPass2(
-    VkCommandBuffer                             commandBuffer,
-    const VkRenderPassBeginInfo*                pRenderPassBeginInfo,
-    const VkSubpassBeginInfo*                   pSubpassBeginInfo)
-{
-   lvp_CmdBeginRenderPass(commandBuffer, pRenderPassBeginInfo,
-                          pSubpassBeginInfo->contents);
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_CmdNextSubpass(
-   VkCommandBuffer                             commandBuffer,
-   VkSubpassContents                           contents)
-{
-   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
-   struct lvp_cmd_buffer_entry *cmd;
-
-   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_NEXT_SUBPASS);
-   if (!cmd)
-      return;
-
-   cmd->u.next_subpass.contents = contents;
+   state_setup_attachments(cmd->u.begin_render_pass.attachments, pass, pRenderPassBeginInfo->pClearValues);
 
    cmd_buf_queue(cmd_buffer, cmd);
 }
@@ -399,7 +374,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdNextSubpass2(
     const VkSubpassBeginInfo*                   pSubpassBeginInfo,
     const VkSubpassEndInfo*                     pSubpassEndInfo)
 {
-   lvp_CmdNextSubpass(commandBuffer, pSubpassBeginInfo->contents);
+   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
+   struct lvp_cmd_buffer_entry *cmd;
+
+   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_NEXT_SUBPASS);
+   if (!cmd)
+      return;
+
+   cmd->u.next_subpass.contents = pSubpassBeginInfo->contents;
+
+   cmd_buf_queue(cmd_buffer, cmd);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_CmdBindVertexBuffers(
@@ -521,8 +505,9 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDraw(
    cmd_buf_queue(cmd_buffer, cmd);
 }
 
-VKAPI_ATTR void VKAPI_CALL lvp_CmdEndRenderPass(
-   VkCommandBuffer                             commandBuffer)
+VKAPI_ATTR void VKAPI_CALL lvp_CmdEndRenderPass2(
+   VkCommandBuffer                             commandBuffer,
+   const VkSubpassEndInfo*                     pSubpassEndInfo)
 {
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    struct lvp_cmd_buffer_entry *cmd;
@@ -532,13 +517,6 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdEndRenderPass(
       return;
 
    cmd_buf_queue(cmd_buffer, cmd);
-}
-
-VKAPI_ATTR void VKAPI_CALL lvp_CmdEndRenderPass2(
-   VkCommandBuffer                             commandBuffer,
-   const VkSubpassEndInfo*                     pSubpassEndInfo)
-{
-   lvp_CmdEndRenderPass(commandBuffer);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_CmdSetViewport(
