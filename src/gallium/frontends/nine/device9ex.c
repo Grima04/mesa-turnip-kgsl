@@ -27,6 +27,8 @@
 
 #include "nine_helpers.h"
 
+#include "util/macros.h"
+
 #define DBG_CHANNEL DBG_DEVICE
 
 static HRESULT
@@ -183,9 +185,23 @@ NineDevice9Ex_CreateRenderTargetEx( struct NineDevice9Ex *This,
                                     BOOL Lockable,
                                     IDirect3DSurface9 **ppSurface,
                                     HANDLE *pSharedHandle,
-                                    DWORD Usage )
+                                    UNUSED DWORD Usage )
 {
-    STUB(D3DERR_INVALIDCALL);
+    /* The Create*Ex functions only purpose seem to introduce the
+     * Usage field, to pass the new d3d9ex flags on secure/restricted
+     * content.
+     * TODO: Return error on invalid Usage.
+     * TODO: Store Usage in the surface descriptor, in case the
+     * app checks */
+    return NineDevice9_CreateRenderTarget(&This->base,
+                                          Width,
+                                          Height,
+                                          Format,
+                                          MultiSample,
+                                          MultisampleQuality,
+                                          Lockable,
+                                          ppSurface,
+                                          pSharedHandle);
 }
 
 HRESULT NINE_WINAPI
@@ -196,9 +212,21 @@ NineDevice9Ex_CreateOffscreenPlainSurfaceEx( struct NineDevice9Ex *This,
                                              D3DPOOL Pool,
                                              IDirect3DSurface9 **ppSurface,
                                              HANDLE *pSharedHandle,
-                                             DWORD Usage )
+                                             UNUSED DWORD Usage )
 {
-    STUB(D3DERR_INVALIDCALL);
+    /* The Create*Ex functions only purpose seem to introduce the
+     * Usage field, to pass the new d3d9ex flags on secure/restricted
+     * content.
+     * TODO: Return error on invalid Usage.
+     * TODO: Store Usage in the surface descriptor, in case the
+     * app checks */
+    return NineDevice9_CreateOffscreenPlainSurface(&This->base,
+                                                   Width,
+                                                   Height,
+                                                   Format,
+                                                   Pool,
+                                                   ppSurface,
+                                                   pSharedHandle);
 }
 
 HRESULT NINE_WINAPI
@@ -211,9 +239,23 @@ NineDevice9Ex_CreateDepthStencilSurfaceEx( struct NineDevice9Ex *This,
                                            BOOL Discard,
                                            IDirect3DSurface9 **ppSurface,
                                            HANDLE *pSharedHandle,
-                                           DWORD Usage )
+                                           UNUSED DWORD Usage )
 {
-    STUB(D3DERR_INVALIDCALL);
+    /* The Create*Ex functions only purpose seem to introduce the
+     * Usage field, to pass the new d3d9ex flags on secure/restricted
+     * content.
+     * TODO: Return error on invalid Usage.
+     * TODO: Store Usage in the surface descriptor, in case the
+     * app checks */
+    return NineDevice9_CreateDepthStencilSurface(&This->base,
+                                                 Width,
+                                                 Height,
+                                                 Format,
+                                                 MultiSample,
+                                                 MultisampleQuality,
+                                                 Discard,
+                                                 ppSurface,
+                                                 pSharedHandle);
 }
 
 HRESULT NINE_WINAPI
