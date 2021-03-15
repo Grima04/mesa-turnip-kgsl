@@ -283,7 +283,8 @@ _mesa_add_parameter(struct gl_program_parameter_list *paramList,
    else if (_mesa_gl_datatype_is_64bit(datatype))
       oldValNum = align(oldValNum, 2); /* pad start to 64-bit */
 
-   _mesa_reserve_parameter_storage(paramList, 1, DIV_ROUND_UP(padded_size, 4));
+   unsigned elements = (oldValNum - paramList->NumParameterValues) + padded_size;
+   _mesa_reserve_parameter_storage(paramList, 1, DIV_ROUND_UP(elements, 4));
 
    if (!paramList->Parameters ||
        !paramList->ParameterValues) {
