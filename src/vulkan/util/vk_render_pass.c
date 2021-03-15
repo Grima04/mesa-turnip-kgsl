@@ -233,3 +233,59 @@ vk_common_CreateRenderPass(VkDevice _device,
 
    return result;
 }
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdBeginRenderPass(VkCommandBuffer commandBuffer,
+                             const VkRenderPassBeginInfo* pRenderPassBegin,
+                             VkSubpassContents contents)
+{
+   /* We don't have a vk_command_buffer object but we can assume, since we're
+    * using common dispatch, that it's a vk_object of some sort.
+    */
+   struct vk_object_base *disp = (struct vk_object_base *)commandBuffer;
+
+   VkSubpassBeginInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+      .contents = contents,
+   };
+
+   disp->device->dispatch_table.CmdBeginRenderPass2(commandBuffer,
+                                                    pRenderPassBegin, &info);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdEndRenderPass(VkCommandBuffer commandBuffer)
+{
+   /* We don't have a vk_command_buffer object but we can assume, since we're
+    * using common dispatch, that it's a vk_object of some sort.
+    */
+   struct vk_object_base *disp = (struct vk_object_base *)commandBuffer;
+
+   VkSubpassEndInfo info = {
+      .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
+   };
+
+   disp->device->dispatch_table.CmdEndRenderPass2(commandBuffer, &info);
+}
+
+VKAPI_ATTR void VKAPI_CALL
+vk_common_CmdNextSubpass(VkCommandBuffer commandBuffer,
+                         VkSubpassContents contents)
+{
+   /* We don't have a vk_command_buffer object but we can assume, since we're
+    * using common dispatch, that it's a vk_object of some sort.
+    */
+   struct vk_object_base *disp = (struct vk_object_base *)commandBuffer;
+
+   VkSubpassBeginInfo begin_info = {
+      .sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO,
+      .contents = contents,
+   };
+
+   VkSubpassEndInfo end_info = {
+      .sType = VK_STRUCTURE_TYPE_SUBPASS_END_INFO,
+   };
+
+   disp->device->dispatch_table.CmdNextSubpass2(commandBuffer, &begin_info,
+                                                &end_info);
+}
