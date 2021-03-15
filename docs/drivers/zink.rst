@@ -190,6 +190,20 @@ are required to be supported
 
 * ``shaderCullDistance``
 
+OpenGL 4.6
+^^^^^^^^^^
+
+For OpenGL 4.6 support, the following additional ``VkPhysicalDeviceFeatures``
+are required to be supported
+
+* ``VkPhysicalDeviceFeatures``:
+
+  * ``samplerAnisotropy``
+
+* Device extensions:
+
+  * `VK_KHR_draw_indirect_count`_
+
 Debugging
 ---------
 
@@ -239,3 +253,4 @@ questions, don't hesitate to visit `#zink on FreeNode
 .. _VK_KHR_maintenance2: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_maintenance2.html
 .. _VK_KHR_vulkan_memory_model: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_vulkan_memory_model.html
 .. _VK_KHR_shader_draw_parameters: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_shader_draw_parameters.html
+.. _VK_KHR_draw_indirect_count: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_draw_indirect_count.html
