@@ -1421,13 +1421,19 @@ v3dv_shader_variant_create(struct v3dv_device *device,
    return variant;
 }
 
-/* For a given key, it returns the compiled version of the shader.
+/* For a given key, it returns the compiled version of the shader.  Returns a
+ * new reference to the shader_variant to the caller, or NULL.
  *
- * If the method returns NULL it means that it was not able to allocate the
- * resources for the variant. out_vk_result would return the corresponding OOM
- * error.
- *
- * Returns a new reference to the shader_variant to the caller.
+ * If the method returns NULL it means that something wrong happened:
+ *   * Not enough memory: this is one of the possible outcomes defined by
+ *     vkCreateXXXPipelines. out_vk_result will return the proper oom error.
+ *   * Compilation error: hypothetically this shouldn't happen, as the spec
+ *     states that vkShaderModule needs to be created with a valid SPIR-V, so
+ *     any compilation failure is a driver bug. In the practice, something as
+ *     common as failing to register allocate can lead to a compilation
+ *     failure. In that case the only option (for any driver) is
+ *     VK_ERROR_UNKNOWN, even if we know that the problem was a compiler
+ *     error.
  */
 static struct v3dv_shader_variant*
 pipeline_compile_shader_variant(struct v3dv_pipeline_stage *p_stage,
@@ -1463,19 +1469,21 @@ pipeline_compile_shader_variant(struct v3dv_pipeline_stage *p_stage,
                            p_stage->program_id, 0,
                            &qpu_insts_size);
 
+   struct v3dv_shader_variant *variant = NULL;
+
    if (!qpu_insts) {
       fprintf(stderr, "Failed to compile %s prog %d NIR to VIR\n",
               gl_shader_stage_name(p_stage->stage),
               p_stage->program_id);
+      *out_vk_result = VK_ERROR_UNKNOWN;
+   } else {
+      variant =
+         v3dv_shader_variant_create(pipeline->device, p_stage->stage,
+                                    prog_data, prog_data_size,
+                                    0, /* assembly_offset, no final value yet */
+                                    qpu_insts, qpu_insts_size,
+                                    out_vk_result);
    }
-
-   struct v3dv_shader_variant *variant =
-      v3dv_shader_variant_create(pipeline->device, p_stage->stage,
-                                 prog_data, prog_data_size,
-                                 0, /* assembly_offset, no final value yet */
-                                 qpu_insts, qpu_insts_size,
-                                 out_vk_result);
-
    /* At this point we don't need anymore the nir shader, but we are freeing
     * all the temporary p_stage structs used during the pipeline creation when
     * we finish it, so let's not worry about freeing the nir here.
