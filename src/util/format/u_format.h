@@ -1153,6 +1153,7 @@ util_format_linear(enum pipe_format format)
    case PIPE_FORMAT_ASTC_6x6x6_SRGB:
       return PIPE_FORMAT_ASTC_6x6x6;
    default:
+      assert(!util_format_is_srgb(format));
       return format;
    }
 }
