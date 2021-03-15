@@ -874,7 +874,7 @@ gfx10_make_texture_descriptor(struct radv_device *device,
 
 	if (radv_dcc_enabled(image, first_level)) {
 		state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
-			    S_00A018_MAX_COMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_128B) |
+			    S_00A018_MAX_COMPRESSED_BLOCK_SIZE(image->planes[0].surface.u.gfx9.dcc.max_compressed_block_size) |
 			    S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
 	}
 
