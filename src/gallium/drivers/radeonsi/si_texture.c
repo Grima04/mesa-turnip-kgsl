@@ -202,7 +202,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
        (ptex->flags & SI_RESOURCE_FLAG_DISABLE_DCC ||
         (sscreen->info.chip_class < GFX10_3 &&
          ptex->format == PIPE_FORMAT_R9G9B9E5_FLOAT) ||
-        (ptex->nr_samples >= 2 && !sscreen->dcc_msaa_allowed)))
+        (ptex->nr_samples >= 2 && sscreen->debug_flags & DBG(NO_DCC_MSAA))))
       flags |= RADEON_SURF_DISABLE_DCC;
 
    /* Stoney: 128bpp MSAA textures randomly fail piglit tests with DCC. */
