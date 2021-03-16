@@ -46,18 +46,22 @@ static bool
 is_end_of_tmu_sequence(const struct v3d_device_info *devinfo,
                        struct qinst *inst, struct qblock *block)
 {
-        if (!inst->qpu.sig.ldtmu &&
-            !(inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
-              inst->qpu.alu.add.op != V3D_QPU_A_TMUWT)) {
-                return false;
+        if (inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+            inst->qpu.alu.add.op == V3D_QPU_A_TMUWT) {
+                return true;
         }
+
+        if (!inst->qpu.sig.ldtmu)
+                return false;
 
         list_for_each_entry_from(struct qinst, scan_inst, inst->link.next,
                                  &block->instructions, link) {
-                if (scan_inst->qpu.sig.ldtmu ||
-                    (inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
-                     inst->qpu.alu.add.op == V3D_QPU_A_TMUWT)) {
+                if (scan_inst->qpu.sig.ldtmu)
                         return false;
+
+                if (inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+                    inst->qpu.alu.add.op == V3D_QPU_A_TMUWT) {
+                        return true;
                 }
 
                 if (qinst_writes_tmu(devinfo, scan_inst))
