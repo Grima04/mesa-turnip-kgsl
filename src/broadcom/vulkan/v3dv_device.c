@@ -251,6 +251,7 @@ create_display_fd_xcb(VkIcdSurfaceBase *surface)
    int fd = -1;
 
    xcb_connection_t *conn;
+   xcb_dri3_open_reply_t *reply = NULL;
    if (surface) {
       if (surface->platform == VK_ICD_WSI_PLATFORM_XLIB)
          conn = XGetXCBConnection(((VkIcdSurfaceXlib *)surface)->dpy);
@@ -268,7 +269,6 @@ create_display_fd_xcb(VkIcdSurfaceBase *surface)
    xcb_screen_t *screen = iter.data;
 
    xcb_dri3_open_cookie_t cookie;
-   xcb_dri3_open_reply_t *reply;
    cookie = xcb_dri3_open(conn, screen->root, None);
    reply = xcb_dri3_open_reply(conn, cookie, NULL);
    if (!reply)
