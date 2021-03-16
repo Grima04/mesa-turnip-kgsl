@@ -280,7 +280,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                         entry_size, entries, start, deref_block_size,
                         &constrained);
 
-#if GEN_VERSIONx10 == 70
+#if GFX_VERx10 == 70
    /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
     *
     *    "A PIPE_CONTROL with Post-Sync Operation set to 1h and a depth stall
@@ -611,7 +611,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    sf.VertexSubPixelPrecisionSelect = _8Bit;
    sf.AALineDistanceMode = true;
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
    sf.LineStippleEnable = line_info && line_info->stippledLineEnable;
 #endif
 
@@ -2076,7 +2076,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
       ps.DualSourceBlendEnable      = dual_src_blend;
 #endif
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       /* Haswell requires the sample mask to be set in this packet as well
        * as in 3DSTATE_SAMPLE_MASK; the values should match.
        */
@@ -2365,7 +2365,7 @@ genX(graphics_pipeline_create)(
    return pipeline->base.batch.status;
 }
 
-#if GEN_VERSIONx10 >= 125
+#if GFX_VERx10 >= 125
 
 static void
 emit_compute_state(struct anv_compute_pipeline *pipeline,
@@ -2390,7 +2390,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    }
 }
 
-#else /* #if GEN_VERSIONx10 >= 125 */
+#else /* #if GFX_VERx10 >= 125 */
 
 static void
 emit_compute_state(struct anv_compute_pipeline *pipeline,
@@ -2438,7 +2438,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
              */
             vfe.PerThreadScratchSpace =
                ffs(cs_bin->prog_data->total_scratch) - 11;
-         } else if (GEN_VERSIONx10 == 75) {
+         } else if (GFX_VERx10 == 75) {
             /* Haswell's Per Thread Scratch Space is in the range [0, 10]
              * where 0 = 2k, 1 = 4k, 2 = 8k, ..., 10 = 2M.
              */
@@ -2471,11 +2471,11 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
       .SharedLocalMemorySize  =
          encode_slm_size(GEN_GEN, cs_prog_data->base.total_shared),
 
-#if GEN_VERSIONx10 != 75
+#if GFX_VERx10 != 75
       .ConstantURBEntryReadOffset = 0,
 #endif
       .ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs,
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
       .CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs,
 #endif
@@ -2499,7 +2499,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
                                         &desc);
 }
 
-#endif /* #if GEN_VERSIONx10 >= 125 */
+#endif /* #if GFX_VERx10 >= 125 */
 
 static VkResult
 compute_pipeline_create(

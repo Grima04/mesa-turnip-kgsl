@@ -1294,7 +1294,7 @@ void genX(CmdWriteTimestamp)(
    }
 }
 
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
 
 #define MI_PREDICATE_SRC0    0x2400
 #define MI_PREDICATE_SRC1    0x2408

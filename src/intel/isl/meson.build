@@ -71,7 +71,7 @@ foreach g : [['40', isl_gen4_files], ['50', []], ['60', isl_gen6_files],
     dependencies : idep_mesautil,
     c_args : [
       no_override_init_args,
-      '-DGEN_VERSIONx10=@0@'.format(_gen)
+      '-DGFX_VERx10=@0@'.format(_gen)
     ],
     gnu_symbol_visibility : 'hidden',
   )

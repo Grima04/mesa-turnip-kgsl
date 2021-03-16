@@ -33,7 +33,7 @@
 #include "genxml/gen_macros.h"
 #include "genxml/genX_pack.h"
 
-#if GEN_VERSIONx10 == 70
+#if GFX_VERx10 == 70
 static int64_t
 clamp_int64(int64_t x, int64_t min, int64_t max)
 {
@@ -163,7 +163,7 @@ void genX(CmdBindIndexBuffer)(
    ANV_FROM_HANDLE(anv_buffer, buffer, _buffer);
 
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
-   if (GEN_VERSIONx10 == 75)
+   if (GFX_VERx10 == 75)
       cmd_buffer->state.restart_index = restart_index_for_type(indexType);
    cmd_buffer->state.gfx.gen7.index_buffer = buffer;
    cmd_buffer->state.gfx.gen7.index_type = vk_to_gen_index_type(indexType);
@@ -312,7 +312,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       struct anv_buffer *buffer = cmd_buffer->state.gfx.gen7.index_buffer;
       uint32_t offset = cmd_buffer->state.gfx.gen7.index_offset;
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       anv_batch_emit(&cmd_buffer->batch, GEN75_3DSTATE_VF, vf) {
          vf.IndexedDrawCutIndexEnable  = pipeline->primitive_restart;
          vf.CutIndex                   = cmd_buffer->state.restart_index;
@@ -320,7 +320,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #endif
 
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-#if GEN_VERSIONx10 != 75
+#if GFX_VERx10 != 75
          ib.CutIndexEnable        = pipeline->primitive_restart;
 #endif
          ib.IndexFormat           = cmd_buffer->state.gfx.gen7.index_type;

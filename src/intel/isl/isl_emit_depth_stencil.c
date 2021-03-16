@@ -169,7 +169,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
       sb.StencilCompressionEnable =
          info->stencil_aux_usage == ISL_AUX_USAGE_STC_CCS;
       sb.ControlSurfaceEnable = sb.StencilCompressionEnable;
-#elif GEN_VERSIONx10 >= 75
+#elif GFX_VERx10 >= 75
       sb.StencilBufferEnable = true;
 #endif
       sb.SurfaceBaseAddress = info->stencil_address;

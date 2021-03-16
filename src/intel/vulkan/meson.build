@@ -70,7 +70,7 @@ foreach g : [['70', ['gen7_cmd_buffer.c']], ['75', ['gen7_cmd_buffer.c']],
     ],
     c_args : [
       no_override_init_args, c_sse2_args,
-      '-DGEN_VERSIONx10=@0@'.format(_gen),
+      '-DGFX_VERx10=@0@'.format(_gen),
     ],
     gnu_symbol_visibility : 'hidden',
     dependencies : [

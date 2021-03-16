@@ -870,7 +870,7 @@ gen11_upload_pixel_hashing_tables(struct iris_batch *batch)
       mode.SliceHashingTableEnable = true;
    }
 }
-#elif GEN_VERSIONx10 == 120
+#elif GFX_VERx10 == 120
 static void
 gen12_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
@@ -1036,7 +1036,7 @@ iris_init_render_context(struct iris_batch *batch)
    gen11_upload_pixel_hashing_tables(batch);
 #endif
 
-#if GEN_VERSIONx10 == 120
+#if GFX_VERx10 == 120
    gen12_upload_pixel_hashing_tables(batch);
 #endif
 
@@ -4567,7 +4567,7 @@ iris_store_cs_state(const struct gen_device_info *devinfo,
    void *map = shader->derived_data;
 
    iris_pack_state(GENX(INTERFACE_DESCRIPTOR_DATA), map, desc) {
-#if GEN_VERSIONx10 < 125
+#if GFX_VERx10 < 125
       desc.ConstantURBEntryReadLength = cs_prog_data->push.per_thread.regs;
       desc.CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs;
@@ -5283,7 +5283,7 @@ iris_restore_compute_saved_bos(struct iris_context *ice,
          struct iris_bo *bo = iris_resource_bo(shader->assembly.res);
          iris_use_pinned_bo(batch, bo, false, IRIS_DOMAIN_NONE);
 
-         if (GEN_VERSIONx10 < 125) {
+         if (GFX_VERx10 < 125) {
             struct iris_bo *curbe_bo =
                iris_resource_bo(ice->state.last_res.cs_thread_ids);
             iris_use_pinned_bo(batch, curbe_bo, false, IRIS_DOMAIN_NONE);
@@ -6801,7 +6801,7 @@ iris_load_indirect_location(struct iris_context *ice,
    }
 }
 
-#if GEN_VERSIONx10 >= 125
+#if GFX_VERx10 >= 125
 
 static void
 iris_upload_compute_walker(struct iris_context *ice,
@@ -6863,7 +6863,7 @@ iris_upload_compute_walker(struct iris_context *ice,
 
 }
 
-#else /* #if GEN_VERSIONx10 >= 125 */
+#else /* #if GFX_VERx10 >= 125 */
 
 static void
 iris_upload_gpgpu_walker(struct iris_context *ice,
@@ -7012,7 +7012,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    iris_emit_cmd(batch, GENX(MEDIA_STATE_FLUSH), msf);
 }
 
-#endif /* #if GEN_VERSIONx10 >= 125 */
+#endif /* #if GFX_VERx10 >= 125 */
 
 static void
 iris_upload_compute_state(struct iris_context *ice,
@@ -7057,7 +7057,7 @@ iris_upload_compute_state(struct iris_context *ice,
    genX(invalidate_aux_map_state)(batch);
 #endif
 
-#if GEN_VERSIONx10 >= 125
+#if GFX_VERx10 >= 125
    iris_upload_compute_walker(ice, batch, grid);
 #else
    iris_upload_gpgpu_walker(ice, batch, grid);
@@ -7988,7 +7988,7 @@ iris_set_frontend_noop(struct pipe_context *ctx, bool enable)
 void
 genX(init_screen_state)(struct iris_screen *screen)
 {
-   assert(screen->devinfo.genx10 == GEN_VERSIONx10);
+   assert(screen->devinfo.genx10 == GFX_VERx10);
    screen->vtbl.destroy_state = iris_destroy_state;
    screen->vtbl.init_render_context = iris_init_render_context;
    screen->vtbl.init_compute_context = iris_init_compute_context;

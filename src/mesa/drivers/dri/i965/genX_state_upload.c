@@ -583,7 +583,7 @@ genX(emit_vertices)(struct brw_context *brw)
           * vertex element may poke over the end of the buffer by 2 bytes.
           */
          const unsigned padding =
-            (GEN_VERSIONx10 < 75 && !devinfo->is_baytrail) * 2;
+            (GFX_VERx10 < 75 && !devinfo->is_baytrail) * 2;
          const unsigned end = buffer->offset + buffer->size + padding;
          dw = genX(emit_vertex_buffer_state)(brw, dw, i, buffer->bo,
                                              buffer->offset,
@@ -864,7 +864,7 @@ genX(emit_index_buffer)(struct brw_context *brw)
    vf_invalidate_for_ib_48bit_transition(brw);
 
    brw_batch_emit(brw, GENX(3DSTATE_INDEX_BUFFER), ib) {
-#if GEN_VERSIONx10 < 75
+#if GFX_VERx10 < 75
       assert(brw->ib.enable_cut_index == brw->prim_restart.enable_cut_index);
       ib.CutIndexEnable = brw->ib.enable_cut_index;
 #endif
@@ -897,7 +897,7 @@ static const struct brw_tracked_state genX(index_buffer) = {
    .emit = genX(emit_index_buffer),
 };
 
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
 static void
 genX(upload_cut_index)(struct brw_context *brw)
 {
@@ -1332,7 +1332,7 @@ genX(upload_clip_state)(struct brw_context *brw)
                                        ctx->Transform.DepthClampFar);
 
       /* _NEW_TRANSFORM */
-      if (GEN_GEN == 5 || GEN_VERSIONx10 == 45) {
+      if (GEN_GEN == 5 || GFX_VERx10 == 45) {
          clip.UserClipDistanceClipTestEnableBitmask =
             ctx->Transform.ClipPlanesEnabled;
       } else {
@@ -1352,7 +1352,7 @@ genX(upload_clip_state)(struct brw_context *brw)
 
       clip.ClipMode = brw->clip.prog_data->clip_mode;
 
-#if GEN_VERSIONx10 == 45
+#if GFX_VERx10 == 45
       clip.NegativeWClipTestEnable = true;
 #endif
    }
@@ -1628,7 +1628,7 @@ genX(upload_sf)(struct brw_context *brw)
          sf.CullMode = CULLMODE_NONE;
       }
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       sf.LineStippleEnable = ctx->Line.StippleFlag;
 #endif
 
@@ -1679,7 +1679,7 @@ genX(upload_sf)(struct brw_context *brw)
          sf.SmoothPointEnable = false;
 #endif
 
-#if GEN_VERSIONx10 >= 45
+#if GFX_VERx10 >= 45
       sf.AALineDistanceMode = AALINEDISTANCE_TRUE;
 #endif
 
@@ -2032,7 +2032,7 @@ genX(upload_wm)(struct brw_context *brw)
        * BRW_NEW_FRAGMENT_PROGRAM | BRW_NEW_FS_PROG_DATA | _NEW_BUFFERS |
        * _NEW_COLOR
        */
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       if (!(brw_color_buffer_write_enabled(brw) || writes_depth) &&
           wm_prog_data->has_side_effects)
          wm.PSUAVonly = ON;
@@ -2579,7 +2579,7 @@ genX(upload_gs_state)(struct brw_context *brw)
    }
 #endif
 
-#if GEN_VERSIONx10 == 70
+#if GFX_VERx10 == 70
    /**
     * From Graphics BSpec: 3D-Media-GPGPU Engine > 3D Pipeline Stages >
     * Geometry > Geometry Shader > State:
@@ -3092,7 +3092,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
       &brw->wm.base,
    };
 
-   if (GEN_VERSIONx10 == 70 && !devinfo->is_baytrail &&
+   if (GFX_VERx10 == 70 && !devinfo->is_baytrail &&
        stage_states[MESA_SHADER_VERTEX]->push_constants_dirty)
       gen7_emit_vs_workaround_flush(brw);
 
@@ -3106,7 +3106,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
       brw_batch_emit(brw, GENX(3DSTATE_CONSTANT_VS), pkt) {
          pkt._3DCommandSubOpcode = push_constant_opcodes[stage];
          if (stage_state->prog_data) {
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
             /* The Skylake PRM contains the following restriction:
              *
              *    "The driver must ensure The following case does not occur
@@ -3431,7 +3431,7 @@ UNUSED static const struct brw_tracked_state genX(color_calc_state) = {
 
 /* ---------------------------------------------------------------------- */
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
 static void
 genX(upload_color_calc_and_blend_state)(struct brw_context *brw)
 {
@@ -3886,7 +3886,7 @@ genX(upload_ps)(struct brw_context *brw)
        */
 
       /* _NEW_BUFFERS, _NEW_MULTISAMPLE */
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       ps.SampleMask = genX(determine_sample_mask(brw));
 #endif
 
@@ -4305,7 +4305,7 @@ genX(upload_cs_state)(struct brw_context *brw)
              * where 0 = 1k, 1 = 2k, 2 = 4k, ..., 11 = 2M.
              */
             per_thread_scratch_value = ffs(stage_state->per_thread_scratch) - 11;
-         } else if (GEN_VERSIONx10 == 75) {
+         } else if (GFX_VERx10 == 75) {
             /* Haswell's Per Thread Scratch Space is in the range [0, 10]
              * where 0 = 2k, 1 = 4k, 2 = 8k, ..., 10 = 2M.
              */
@@ -4394,7 +4394,7 @@ genX(upload_cs_state)(struct brw_context *brw)
       .SharedLocalMemorySize = encode_slm_size(GEN_GEN,
                                                prog_data->total_shared),
       .BarrierEnable = cs_prog_data->uses_barrier,
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
       .CrossThreadConstantDataReadLength =
          cs_prog_data->push.cross_thread.regs,
 #endif
@@ -4925,7 +4925,7 @@ genX(emit_sampler_state_pointers_xs)(UNUSED struct brw_context *brw,
    };
 
    /* Ivybridge requires a workaround flush before VS packets. */
-   if (GEN_VERSIONx10 == 70 &&
+   if (GFX_VERx10 == 70 &&
        stage_state->stage == MESA_SHADER_VERTEX) {
       gen7_emit_vs_workaround_flush(brw);
    }
@@ -5013,7 +5013,7 @@ genX(upload_default_color)(struct brw_context *brw,
    int alignment = 32;
    if (GEN_GEN >= 8) {
       alignment = 64;
-   } else if (GEN_VERSIONx10 == 75 && (is_integer_format || is_stencil_sampling)) {
+   } else if (GFX_VERx10 == 75 && (is_integer_format || is_stencil_sampling)) {
       alignment = 512;
    }
 
@@ -5051,7 +5051,7 @@ genX(upload_default_color)(struct brw_context *brw,
     * memcpy the values.
     */
    BORDER_COLOR_ATTR(ASSIGN, 32bit, color.ui);
-#elif GEN_VERSIONx10 == 75
+#elif GFX_VERx10 == 75
    if (is_integer_format || is_stencil_sampling) {
       bool stencil = format == MESA_FORMAT_S_UINT8 || is_stencil_sampling;
       const int bits_per_channel =
@@ -5276,7 +5276,7 @@ genX(update_sampler_state)(struct brw_context *brw,
        * integer formats.  Fall back to CLAMP for now.
        */
       if ((tex_cube_map_seamless || sampler->Attrib.CubeMapSeamless) &&
-          !(GEN_VERSIONx10 == 70 && texObj->_IsIntegerFormat)) {
+          !(GFX_VERx10 == 70 && texObj->_IsIntegerFormat)) {
          wrap_s = TCM_CUBE;
          wrap_t = TCM_CUBE;
          wrap_r = TCM_CUBE;
@@ -5719,7 +5719,7 @@ genX(init_atoms)(struct brw_context *brw)
       &gen7_l3_state,
       &gen7_push_constant_space,
       &gen7_urb,
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       &genX(cc_and_blend_state),
 #else
       &genX(blend_state),         /* must do before cc unit */
@@ -5798,7 +5798,7 @@ genX(init_atoms)(struct brw_context *brw)
       &genX(index_buffer),
       &genX(vertices),
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
       &genX(cut_index),
 #endif
    };
@@ -5924,5 +5924,5 @@ genX(init_atoms)(struct brw_context *brw)
    brw->vtbl.emit_compute_walker = genX(emit_gpgpu_walker);
 #endif
 
-   assert(brw->screen->devinfo.genx10 == GEN_VERSIONx10);
+   assert(brw->screen->devinfo.genx10 == GFX_VERx10);
 }

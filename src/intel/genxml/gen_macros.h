@@ -31,7 +31,7 @@
  *
  * You can do pseudo-runtime checks in your function such as
  *
- * if (GEN_VERSIONx10 == 75) {
+ * if (GFX_VERx10 == 75) {
  *    // Do something
  * }
  *
@@ -41,7 +41,7 @@
  * For places where you really do have a compile-time conflict, you can
  * use preprocessor logic:
  *
- * #if (GEN_VERSIONx10 == 75)
+ * #if (GFX_VERx10 == 75)
  *    // Do something
  * #endif
  *
@@ -52,44 +52,44 @@
 /* Base macro defined on the command line.  If we don't have this, we can't
  * do anything.
  */
-#ifndef GEN_VERSIONx10
-#  error "The GEN_VERSIONx10 macro must be defined"
+#ifndef GFX_VERx10
+#  error "The GFX_VERx10 macro must be defined"
 #endif
 
-#define GEN_GEN ((GEN_VERSIONx10) / 10)
+#define GEN_GEN ((GFX_VERx10) / 10)
 
 /* Prefixing macros */
-#if (GEN_VERSIONx10 == 40)
+#if (GFX_VERx10 == 40)
 #  define GENX(X) GEN4_##X
 #  define genX(x) gen4_##x
-#elif (GEN_VERSIONx10 == 45)
+#elif (GFX_VERx10 == 45)
 #  define GENX(X) GEN45_##X
 #  define genX(x) gen45_##x
-#elif (GEN_VERSIONx10 == 50)
+#elif (GFX_VERx10 == 50)
 #  define GENX(X) GEN5_##X
 #  define genX(x) gen5_##x
-#elif (GEN_VERSIONx10 == 60)
+#elif (GFX_VERx10 == 60)
 #  define GENX(X) GEN6_##X
 #  define genX(x) gen6_##x
-#elif (GEN_VERSIONx10 == 70)
+#elif (GFX_VERx10 == 70)
 #  define GENX(X) GEN7_##X
 #  define genX(x) gen7_##x
-#elif (GEN_VERSIONx10 == 75)
+#elif (GFX_VERx10 == 75)
 #  define GENX(X) GEN75_##X
 #  define genX(x) gen75_##x
-#elif (GEN_VERSIONx10 == 80)
+#elif (GFX_VERx10 == 80)
 #  define GENX(X) GEN8_##X
 #  define genX(x) gen8_##x
-#elif (GEN_VERSIONx10 == 90)
+#elif (GFX_VERx10 == 90)
 #  define GENX(X) GEN9_##X
 #  define genX(x) gen9_##x
-#elif (GEN_VERSIONx10 == 110)
+#elif (GFX_VERx10 == 110)
 #  define GENX(X) GEN11_##X
 #  define genX(x) gen11_##x
-#elif (GEN_VERSIONx10 == 120)
+#elif (GFX_VERx10 == 120)
 #  define GENX(X) GEN12_##X
 #  define genX(x) gen12_##x
-#elif (GEN_VERSIONx10 == 125)
+#elif (GFX_VERx10 == 125)
 #  define GENX(X) GEN125_##X
 #  define genX(x) gen125_##x
 #else

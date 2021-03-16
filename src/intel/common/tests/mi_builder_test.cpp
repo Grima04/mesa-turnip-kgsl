@@ -55,7 +55,7 @@ __gen_address_offset(address addr, uint64_t offset)
    return addr;
 }
 
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
 #define RSVD_TEMP_REG 0x2678 /* MI_ALU_REG15 */
 #else
 #define RSVD_TEMP_REG 0x2430 /* GEN7_3DPRIM_START_VERTEX */
@@ -194,7 +194,7 @@ mi_builder_test::SetUp()
                             (void *)&getparam), 0) << strerror(errno);
 
          ASSERT_TRUE(gen_get_device_info_from_pci_id(device_id, &devinfo));
-         if (devinfo.gen != GEN_GEN || devinfo.is_haswell != (GEN_VERSIONx10 == 75)) {
+         if (devinfo.gen != GEN_GEN || devinfo.is_haswell != (GFX_VERx10 == 75)) {
             close(fd);
             fd = -1;
             continue;
@@ -412,7 +412,7 @@ TEST_F(mi_builder_test, imm_mem)
 }
 
 /* mem -> mem copies are only supported on HSW+ */
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
 TEST_F(mi_builder_test, mem_mem)
 {
    const uint64_t value = 0x0123456789abcdef;
@@ -532,7 +532,7 @@ TEST_F(mi_builder_test, memcpy)
 }
 
 /* Start of MI_MATH section */
-#if GEN_VERSIONx10 >= 75
+#if GFX_VERx10 >= 75
 
 #define EXPECT_EQ_IMM(x, imm) EXPECT_EQ(x, mi_value_to_u64(imm))
 
@@ -708,7 +708,7 @@ TEST_F(mi_builder_test, iand)
                                                   mi_imm(values[1])));
 }
 
-#if GEN_VERSIONx10 >= 125
+#if GFX_VERx10 >= 125
 TEST_F(mi_builder_test, ishl)
 {
    const uint64_t value = 0x0123456789abcdef;
@@ -814,7 +814,7 @@ TEST_F(mi_builder_test, ishr_imm)
                     mi_ishr_imm(&b, mi_imm(value), i));
    }
 }
-#endif /* if GEN_VERSIONx10 >= 125 */
+#endif /* if GFX_VERx10 >= 125 */
 
 TEST_F(mi_builder_test, imul_imm)
 {
@@ -953,9 +953,9 @@ TEST_F(mi_builder_test, store_if)
    EXPECT_EQ(*(uint32_t *)(output + 12), (uint32_t)canary);
 }
 
-#endif /* GEN_VERSIONx10 >= 75 */
+#endif /* GFX_VERx10 >= 75 */
 
-#if GEN_VERSIONx10 >= 125
+#if GFX_VERx10 >= 125
 
 /*
  * Indirect load/store tests.  Only available on GFX 12.5+
@@ -1180,4 +1180,4 @@ TEST_F(mi_builder_test, loop_continue_if)
    EXPECT_EQ(*(uint64_t *)(output + 0), loop_count);
    EXPECT_EQ(*(uint64_t *)(output + 8), 10);
 }
-#endif /* GEN_VERSIONx10 >= 125 */
+#endif /* GFX_VERx10 >= 125 */

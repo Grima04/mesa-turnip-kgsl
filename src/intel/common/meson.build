@@ -84,7 +84,7 @@ if install_intel_gpu_tests
       files('tests/mi_builder_test.cpp'),
       cpp_args : [
         cpp_msvc_compat_args,
-        '-DGEN_VERSIONx10=@0@'.format(g[0])
+        '-DGFX_VERx10=@0@'.format(g[0])
       ],
       gnu_symbol_visibility : 'hidden',
       include_directories : [inc_include, inc_src, inc_intel],

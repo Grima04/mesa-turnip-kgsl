@@ -324,7 +324,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    assert(info->write_disables == 0);
 #endif
 
-#if GEN_VERSIONx10 == 75
+#if GFX_VERx10 == 75
    s.IntegerSurfaceFormat =
       isl_format_has_int_channel((enum isl_format) s.SurfaceFormat);
 #endif
@@ -363,7 +363,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
        *
        * This restriction appears to exist only on Ivy Bridge.
        */
-      if (GEN_VERSIONx10 == 70 && !ISL_DEV_IS_BAYTRAIL(dev) &&
+      if (GFX_VERx10 == 70 && !ISL_DEV_IS_BAYTRAIL(dev) &&
           (info->view->usage & ISL_SURF_USAGE_TEXTURE_BIT) &&
           info->surf->samples > 1)
          assert(info->view->base_array_layer == 0);
@@ -529,7 +529,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #endif
 #endif
 
-#if (GEN_VERSIONx10 >= 75)
+#if (GFX_VERx10 >= 75)
    if (info->view->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT)
       assert(isl_swizzle_supports_rendering(dev->info, info->view->swizzle));
 
@@ -547,7 +547,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.MOCS = info->mocs;
 #endif
 
-#if GEN_VERSIONx10 >= 45
+#if GFX_VERx10 >= 45
    if (info->x_offset_sa != 0 || info->y_offset_sa != 0) {
       /* There are fairly strict rules about when the offsets can be used.
        * These are mostly taken from the Sky Lake PRM documentation for
@@ -917,7 +917,7 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
    s.MOCS = info->mocs;
 #endif
 
-#if (GEN_VERSIONx10 >= 75)
+#if (GFX_VERx10 >= 75)
    s.ShaderChannelSelectRed = (enum GENX(ShaderChannelSelect)) info->swizzle.r;
    s.ShaderChannelSelectGreen = (enum GENX(ShaderChannelSelect)) info->swizzle.g;
    s.ShaderChannelSelectBlue = (enum GENX(ShaderChannelSelect)) info->swizzle.b;
