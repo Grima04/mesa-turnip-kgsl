@@ -829,7 +829,6 @@ descriptor_set_create(struct v3dv_device *device,
                  sizeof(pool->entries[0]) * (pool->entry_count - index));
       } else {
          assert(pool->host_memory_base);
-         vk_object_free(&device->vk, NULL, set);
          return out_of_pool_memory(device, pool);
       }
 
