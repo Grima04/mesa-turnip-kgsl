@@ -74,7 +74,7 @@ struct pipe_fence_handle {
 };
 
 static bool
-fence_flush(struct pipe_fence_handle *fence, uint64_t timeout)
+fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence, uint64_t timeout)
 	/* NOTE: in the !fence_is_signalled() case we may be called from non-driver
 	 * thread, but we don't call fd_batch_flush() in that case
 	 */
@@ -82,7 +82,7 @@ fence_flush(struct pipe_fence_handle *fence, uint64_t timeout)
 {
 	if (!util_queue_fence_is_signalled(&fence->ready)) {
 		if (fence->tc_token) {
-			threaded_context_flush(&fence->ctx->base, fence->tc_token,
+			threaded_context_flush(pctx, fence->tc_token,
 					timeout == 0);
 		}
 
@@ -153,7 +153,7 @@ bool fd_fence_finish(struct pipe_screen *pscreen,
 		struct pipe_fence_handle *fence,
 		uint64_t timeout)
 {
-	if (!fence_flush(fence, timeout))
+	if (!fence_flush(pctx, fence, timeout))
 		return false;
 
 	if (fence->fence_fd != -1) {
@@ -225,7 +225,7 @@ void fd_fence_server_sync(struct pipe_context *pctx,
 	/* NOTE: we don't expect the combination of fence-fd + async-flush-fence,
 	 * so timeout==0 is ok here:
 	 */
-	fence_flush(fence, 0);
+	fence_flush(pctx, fence, 0);
 
 	/* if not an external fence, then nothing more to do without preemption: */
 	if (fence->fence_fd == -1)
@@ -249,7 +249,11 @@ void fd_fence_server_signal(struct pipe_context *pctx,
 int fd_fence_get_fd(struct pipe_screen *pscreen,
 		struct pipe_fence_handle *fence)
 {
-	fence_flush(fence, PIPE_TIMEOUT_INFINITE);
+	/* NOTE: in the deferred fence case, the pctx we want is the threaded-ctx
+	 * but if TC is not used, this will be null.  Which is fine, we won't call
+	 * threaded_context_flush() in that case
+	 */
+	fence_flush(&fence->ctx->tc->base, fence, PIPE_TIMEOUT_INFINITE);
 	return os_dupfd_cloexec(fence->fence_fd);
 }
 
