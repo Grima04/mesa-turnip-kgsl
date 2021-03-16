@@ -693,7 +693,7 @@ bi_emit_acmpxchg_to(bi_builder *b, bi_index dst, bi_index addr, nir_src *arg_1, 
 /* Extracts an atomic opcode */
 
 static enum bi_atom_opc
-bi_atom_opc_for_nir(nir_op op)
+bi_atom_opc_for_nir(nir_intrinsic_op op)
 {
         switch (op) {
         case nir_intrinsic_global_atomic_add:
@@ -840,7 +840,7 @@ bi_emit_image_store(bi_builder *b, nir_intrinsic_instr *instr)
 
 static void
 bi_emit_atomic_i32_to(bi_builder *b, bi_index dst,
-                bi_index addr, bi_index arg, nir_op intrinsic)
+                bi_index addr, bi_index arg, nir_intrinsic_op intrinsic)
 {
         /* ATOM_C.i32 takes a vector with {arg, coalesced}, ATOM_C1.i32 doesn't
          * take any vector but can still output in RETURN mode */
