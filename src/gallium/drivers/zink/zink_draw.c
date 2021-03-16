@@ -262,6 +262,7 @@ get_gfx_program(struct zink_context *ctx)
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_TESS_EVAL);
       else
          ctx->dirty_shader_stages |= BITFIELD_BIT(PIPE_SHADER_VERTEX);
+      ctx->last_vertex_stage_dirty = false;
    }
    if (ctx->dirty_shader_stages) {
       struct hash_entry *entry = _mesa_hash_table_search(ctx->program_cache,
