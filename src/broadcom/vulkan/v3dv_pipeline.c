@@ -57,6 +57,21 @@ v3dv_print_v3d_key(struct v3d_key *key,
    fprintf(stderr, "key %p: %s\n", key, sha1buf);
 }
 
+static void
+pipeline_compute_sha1_from_nir(nir_shader *nir,
+                               unsigned char sha1[20])
+{
+   assert(nir);
+   struct blob blob;
+   blob_init(&blob);
+
+   nir_serialize(&blob, nir, false);
+   if (!blob.out_of_memory)
+      _mesa_sha1_compute(blob.data, blob.size, sha1);
+
+   blob_finish(&blob);
+}
+
 void
 v3dv_shader_module_internal_init(struct v3dv_device *device,
                                  struct vk_shader_module *module,
@@ -67,16 +82,7 @@ v3dv_shader_module_internal_init(struct v3dv_device *device,
    module->nir = nir;
    module->size = 0;
 
-   if (nir != NULL) {
-      struct blob blob;
-      blob_init(&blob);
-
-      nir_serialize(&blob, nir, false);
-      if (!blob.out_of_memory)
-         _mesa_sha1_compute(blob.data, blob.size, module->sha1);
-
-      blob_finish(&blob);
-   }
+   pipeline_compute_sha1_from_nir(nir, module->sha1);
 }
 
 void
@@ -1970,12 +1976,7 @@ pipeline_compile_graphics(struct v3dv_pipeline *pipeline,
       p_stage->entrypoint = "main";
       p_stage->module = 0;
       p_stage->nir = b.shader;
-      /* The no-op shader is always the same, so we can just create the sha1
-       * using the name
-       */
-      _mesa_sha1_compute(b.shader->info.name, strlen(b.shader->info.name),
-                         p_stage->shader_sha1);
-
+      pipeline_compute_sha1_from_nir(p_stage->nir, p_stage->shader_sha1);
       p_stage->program_id =
          p_atomic_inc_return(&physical_device->next_program_id);
 
