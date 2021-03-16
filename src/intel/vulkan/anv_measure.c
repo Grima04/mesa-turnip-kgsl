@@ -113,7 +113,7 @@ anv_measure_init(struct anv_cmd_buffer *cmd_buffer)
                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
 
    memset(measure, 0, batch_bytes);
-   VkResult result =
+   ASSERTED VkResult result =
       anv_device_alloc_bo(device, "measure data",
                           config->batch_size * sizeof(uint64_t),
                           ANV_BO_ALLOC_MAPPED,
@@ -326,7 +326,7 @@ anv_measure_reset(struct anv_cmd_buffer *cmd_buffer)
    list_inithead(&measure->base.link);
 
    anv_device_release_bo(device, measure->bo);
-   VkResult result =
+   ASSERTED VkResult result =
       anv_device_alloc_bo(device, "measure data",
                           config->batch_size * sizeof(uint64_t),
                           ANV_BO_ALLOC_MAPPED,

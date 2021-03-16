@@ -938,7 +938,7 @@ anv_queue_submit_add_in_semaphores(struct anv_queue_submit *submit,
                                    const uint64_t *in_values,
                                    uint32_t num_in_semaphores)
 {
-   struct anv_physical_device *pdevice = device->physical;
+   ASSERTED struct anv_physical_device *pdevice = device->physical;
    VkResult result;
 
    for (uint32_t i = 0; i < num_in_semaphores; i++) {
@@ -1035,7 +1035,7 @@ anv_queue_submit_add_out_semaphores(struct anv_queue_submit *submit,
                                     const uint64_t *out_values,
                                     uint32_t num_out_semaphores)
 {
-   struct anv_physical_device *pdevice = device->physical;
+   ASSERTED struct anv_physical_device *pdevice = device->physical;
    VkResult result;
 
    for (uint32_t i = 0; i < num_out_semaphores; i++) {
