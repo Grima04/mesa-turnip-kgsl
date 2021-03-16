@@ -4552,7 +4552,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
       genX_thing = &gen125_##thing;             \
       break;                                    \
    default:                                     \
-      assert(!"Unknown hardware generation");   \
+      unreachable("Unknown hardware generation"); \
    }                                            \
    genX_thing;                                  \
 })
