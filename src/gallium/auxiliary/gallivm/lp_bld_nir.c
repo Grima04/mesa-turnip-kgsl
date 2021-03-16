@@ -877,7 +877,7 @@ static LLVMValueRef do_alu_action(struct lp_build_nir_context *bld_base,
       break;
    case nir_op_pack_64_2x32_split: {
       LLVMValueRef tmp = merge_64bit(bld_base, src[0], src[1]);
-      result = LLVMBuildBitCast(builder, tmp, bld_base->dbl_bld.vec_type, "");
+      result = LLVMBuildBitCast(builder, tmp, bld_base->uint64_bld.vec_type, "");
       break;
    }
    case nir_op_u2f32:
