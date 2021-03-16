@@ -445,7 +445,7 @@ SOFTWARE.
 		<display>
 			, s#{SAMP}
 		</display>
-		<field name="SAMP" low="0" high="8" type="uint"/>
+		<field name="SAMP" low="0" high="7" type="uint"/>
 	</override>
 	<display/>
 	<assert low="0" high="7">00000000</assert>
@@ -631,7 +631,9 @@ SOFTWARE.
 		<display>
 			{SAMP}
 		</display>
-		<field name="SAMP" low="0" high="7" type="#cat5-samp-s2en-bindless-a1"/>
+		<field name="SAMP" low="0" high="7" type="#cat5-samp-s2en-bindless-a1">
+			<param name="HAS_SAMP"/>
+		</field>
 	</override>
 	<display>
 		{SAMP}{TEX}
