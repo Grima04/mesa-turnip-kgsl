@@ -2185,7 +2185,7 @@ static bool si_is_format_supported(struct pipe_screen *screen, enum pipe_format 
 
    if ((target == PIPE_TEXTURE_3D || target == PIPE_TEXTURE_CUBE) &&
         !sscreen->info.has_3d_cube_border_color_mipmap)
-      return NULL;
+      return false;
 
    if (MAX2(1, sample_count) < MAX2(1, storage_sample_count))
       return false;
