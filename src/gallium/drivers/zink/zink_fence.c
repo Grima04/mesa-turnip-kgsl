@@ -70,8 +70,9 @@ fail:
 }
 
 void
-zink_fence_init(struct zink_fence *fence, struct zink_batch *batch)
+zink_fence_init(struct zink_context *ctx, struct zink_batch *batch)
 {
+   struct zink_fence *fence = batch->fence;
    set_foreach(batch->resources, entry) {
       /* the fence needs its own reference to ensure it can safely access lifetime-dependent
        * resource members
@@ -80,6 +81,7 @@ zink_fence_init(struct zink_fence *fence, struct zink_batch *batch)
       pipe_reference(NULL, &obj->reference);
       util_dynarray_append(&fence->resources, struct zink_resource_object*, obj);
    }
+   vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &fence->fence);
    fence->deferred_ctx = NULL;
    fence->submitted = true;
 }

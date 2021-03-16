@@ -185,8 +185,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       return;
    }
 
-   vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &batch->fence->fence);
-   zink_fence_init(batch->fence, batch);
+   zink_fence_init(ctx, batch);
 
    util_dynarray_foreach(&batch->persistent_resources, struct zink_resource*, res) {
        struct zink_screen *screen = zink_screen(ctx->base.screen);
