@@ -43,28 +43,6 @@ ppir_liveness_propagate(ppir_compiler *comp,
    }
 }
 
-/* Clone a liveness set (without propagation) */
-static void
-ppir_liveness_set_clone(ppir_compiler *comp,
-                        struct ppir_liveness *dest, struct ppir_liveness *src,
-                        struct set *dest_set, struct set *src_set)
-{
-   _mesa_set_clear(dest_set, NULL);
-   memset(dest, 0, comp->reg_num * sizeof(struct ppir_liveness));
-   memcpy(dest, src,
-          comp->reg_num * sizeof(struct ppir_liveness));
-
-   set_foreach(src_set, entry_src) {
-      const struct ppir_liveness *s = entry_src->key;
-      assert(s);
-
-      unsigned int regalloc_index = s->reg->regalloc_index;
-      dest[regalloc_index].reg = src[regalloc_index].reg;
-      dest[regalloc_index].mask = src[regalloc_index].mask;
-      _mesa_set_add(dest_set, &dest[regalloc_index]);
-   }
-}
-
 /* Check whether two liveness sets are equal. */
 static bool
 ppir_liveness_set_equal(ppir_compiler *comp,
@@ -237,6 +215,15 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
       assert(last);
 
       list_for_each_entry_rev(ppir_instr, instr, &block->instr_list, list) {
+         /* initial copy to check for changes */
+         struct ppir_liveness temp_live_in[comp->reg_num];
+         memset(temp_live_in, 0, sizeof(temp_live_in));
+         struct set *temp_live_in_set = _mesa_set_create(comp,
+                                                         _mesa_hash_pointer,
+                                                         _mesa_key_pointer_equal);
+         ppir_liveness_propagate(comp, temp_live_in, instr->live_in,
+                                 temp_live_in_set, instr->live_in_set);
+
          /* inherit (or-) live variables from next instr or block */
          if (instr == last) {
             ppir_instr *next_instr;
@@ -256,28 +243,16 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
                next_instr = list_first_entry(&succ->instr_list, ppir_instr, list);
                assert(next_instr);
 
-               ppir_liveness_propagate(comp, instr->live_out, next_instr->live_in,
-                     instr->live_out_set, next_instr->live_in_set);
+               ppir_liveness_propagate(comp, instr->live_in, next_instr->live_in,
+                                       instr->live_in_set, next_instr->live_in_set);
             }
          }
          else {
             ppir_instr *next_instr = LIST_ENTRY(ppir_instr, instr->list.next, list);
-            ppir_liveness_set_clone(comp,
-                                    instr->live_out, next_instr->live_in,
-                                    instr->live_out_set, next_instr->live_in_set);
+            ppir_liveness_propagate(comp,
+                                    instr->live_in, next_instr->live_in,
+                                    instr->live_in_set, next_instr->live_in_set);
          }
-         /* initial copy to check for changes */
-         struct set *temp_live_in_set = _mesa_set_create(comp,
-                                                         _mesa_hash_pointer,
-                                                         _mesa_key_pointer_equal);
-         struct ppir_liveness temp_live_in[comp->reg_num];
-         ppir_liveness_set_clone(comp,
-               temp_live_in, instr->live_in,
-               temp_live_in_set, instr->live_in_set);
-
-         /* initialize live_in for potential changes */
-         ppir_liveness_propagate(comp, instr->live_in, instr->live_out,
-                                 instr->live_in_set, instr->live_out_set);
 
          ppir_liveness_instr_dest(comp, instr);
          ppir_liveness_instr_srcs(comp, instr);
@@ -292,17 +267,17 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
 
 /*
  * Liveness analysis is based on https://en.wikipedia.org/wiki/Live_variable_analysis
- * This implementation calculates liveness before/after each
+ * This implementation calculates liveness before each
  * instruction.
  * Blocks/instructions/ops are iterated backwards so register reads are
  * propagated up to the instruction that writes it.
  *
- * 1) Before computing liveness for each instruction, propagate live_out
+ * 1) Before computing liveness for each instruction, propagate liveness
  *    from the next instruction. If it is the last instruction in a
  *    block, propagate liveness from all possible next instructions
  * 2) Calculate live_in for the each instruction. The initial live_in is
- *    a copy of its live_out so registers who aren't touched by this
- *    instruction are kept intact.
+ *    a copy of the liveness from the next instructions so registers who
+ *    aren't touched by this instruction are kept intact.
  *    - If a register is written by this instruction, it no longer needs
  *    to be live before the instruction, so it is removed from live_in.
  *    - If a register is read by this instruction, it needs to be live
@@ -315,7 +290,7 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
  *    instruction, it stays in live_in.
  *    - Another special case is a ssa register that is written by an
  *    early op in the instruction, and read by a later op. In this case,
- *    the algorithm adds it to the live_out set so that the register
+ *    the algorithm adds it to the live_internal set so that the register
  *    allocator properly assigns an interference for it.
  * 3) The algorithm must run over the entire program until it converges,
  *    i.e. a full run happens without changes. This is because blocks
