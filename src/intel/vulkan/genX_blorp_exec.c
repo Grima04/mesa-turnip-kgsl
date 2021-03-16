@@ -87,7 +87,7 @@ blorp_get_surface_address(struct blorp_batch *blorp_batch,
    return 0ull;
 }
 
-#if GEN_GEN >= 7 && GEN_GEN < 10
+#if GFX_VER >= 7 && GFX_VER < 10
 static struct blorp_address
 blorp_get_surface_base_address(struct blorp_batch *batch)
 {
@@ -229,7 +229,7 @@ genX(blorp_exec)(struct blorp_batch *batch,
    genX(cmd_buffer_emit_hashing_mode)(cmd_buffer, params->x1 - params->x0,
                                       params->y1 - params->y0, scale);
 
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
    /* The PIPE_CONTROL command description says:
     *
     *    "Whenever a Binding Table Index (BTI) used by a Render Taget Message
@@ -243,7 +243,7 @@ genX(blorp_exec)(struct blorp_batch *batch,
       ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 #endif
 
-#if GEN_GEN == 7
+#if GFX_VER == 7
    /* The MI_LOAD/STORE_REGISTER_MEM commands which BLORP uses to implement
     * indirect fast-clear colors can cause GPU hangs if we don't stall first.
     * See genX(cmd_buffer_mi_memcpy) for more details.
@@ -266,7 +266,7 @@ genX(blorp_exec)(struct blorp_batch *batch,
 
    blorp_exec(batch, params);
 
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
    /* The PIPE_CONTROL command description says:
     *
     *    "Whenever a Binding Table Index (BTI) used by a Render Taget Message

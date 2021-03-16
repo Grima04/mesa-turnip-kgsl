@@ -55,12 +55,12 @@ intel_get_sample_positions(int samples)
 }
 
 /* Examples:
- * in case of GEN_GEN < 8:
+ * in case of GFX_VER < 8:
  * INTEL_SAMPLE_POS_ELEM(ms.Sample, info->pSampleLocations, 0); expands to:
  *    ms.Sample0XOffset = info->pSampleLocations[0].x;
  *    ms.Sample0YOffset = info->pSampleLocations[0].y;
  *
- * in case of GEN_GEN >= 8:
+ * in case of GFX_VER >= 8:
  * INTEL_SAMPLE_POS_ELEM(sp._16xSample, info->pSampleLocations, 0); expands to:
  *    sp._16xSample0XOffset = info->pSampleLocations[0].x;
  *    sp._16xSample0YOffset = info->pSampleLocations[0].y;

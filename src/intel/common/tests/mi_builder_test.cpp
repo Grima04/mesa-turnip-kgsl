@@ -131,18 +131,18 @@ public:
    gen_device_info devinfo;
 
    uint32_t batch_bo_handle;
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    uint64_t batch_bo_addr;
 #endif
    uint32_t batch_offset;
    void *batch_map;
 
-#if GEN_GEN < 8
+#if GFX_VER < 8
    std::vector<drm_i915_gem_relocation_entry> relocs;
 #endif
 
    uint32_t data_bo_handle;
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    uint64_t data_bo_addr;
 #endif
    void *data_map;
@@ -194,7 +194,7 @@ mi_builder_test::SetUp()
                             (void *)&getparam), 0) << strerror(errno);
 
          ASSERT_TRUE(gen_get_device_info_from_pci_id(device_id, &devinfo));
-         if (devinfo.gen != GEN_GEN || devinfo.is_haswell != (GFX_VERx10 == 75)) {
+         if (devinfo.gen != GFX_VER || devinfo.is_haswell != (GFX_VERx10 == 75)) {
             close(fd);
             fd = -1;
             continue;
@@ -212,7 +212,7 @@ mi_builder_test::SetUp()
                       (void *)&ctx_create), 0) << strerror(errno);
    ctx_id = ctx_create.ctx_id;
 
-   if (GEN_GEN >= 8) {
+   if (GFX_VER >= 8) {
       /* On gen8+, we require softpin */
       int has_softpin;
       drm_i915_getparam getparam = drm_i915_getparam();
@@ -229,7 +229,7 @@ mi_builder_test::SetUp()
    ASSERT_EQ(drmIoctl(fd, DRM_IOCTL_I915_GEM_CREATE,
                       (void *)&gem_create), 0) << strerror(errno);
    batch_bo_handle = gem_create.handle;
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    batch_bo_addr = 0xffffffffdff70000ULL;
 #endif
 
@@ -257,7 +257,7 @@ mi_builder_test::SetUp()
    ASSERT_EQ(drmIoctl(fd, DRM_IOCTL_I915_GEM_CREATE,
                       (void *)&gem_create), 0) << strerror(errno);
    data_bo_handle = gem_create.handle;
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    data_bo_addr = 0xffffffffefff0000ULL;
 #endif
 
@@ -309,7 +309,7 @@ mi_builder_test::submit_batch()
    objects[0].handle = data_bo_handle;
    objects[0].relocation_count = 0;
    objects[0].relocs_ptr = 0;
-#if GEN_GEN >= 8 /* On gen8+, we pin everything */
+#if GFX_VER >= 8 /* On gen8+, we pin everything */
    objects[0].flags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
                       EXEC_OBJECT_PINNED |
                       EXEC_OBJECT_WRITE;
@@ -320,7 +320,7 @@ mi_builder_test::submit_batch()
 #endif
 
    objects[1].handle = batch_bo_handle;
-#if GEN_GEN >= 8 /* On gen8+, we don't use relocations */
+#if GFX_VER >= 8 /* On gen8+, we don't use relocations */
    objects[1].relocation_count = 0;
    objects[1].relocs_ptr = 0;
    objects[1].flags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
@@ -355,7 +355,7 @@ uint64_t
 __gen_combine_address(mi_builder_test *test, void *location,
                       address addr, uint32_t delta)
 {
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    uint64_t addr_u64 = addr.gem_handle == test->data_bo_handle ?
                        test->data_bo_addr : test->batch_bo_addr;
    return addr_u64 + addr.offset + delta;

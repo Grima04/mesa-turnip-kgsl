@@ -56,7 +56,7 @@
 #  error "The GFX_VERx10 macro must be defined"
 #endif
 
-#define GEN_GEN ((GFX_VERx10) / 10)
+#define GFX_VER ((GFX_VERx10) / 10)
 
 /* Prefixing macros */
 #if (GFX_VERx10 == 40)

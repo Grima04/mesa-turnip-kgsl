@@ -71,10 +71,10 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       pc.DCFlushEnable = true;
       pc.RenderTargetCacheFlushEnable = true;
       pc.CommandStreamerStallEnable = true;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 #endif
-#if GEN_GEN == 12
+#if GFX_VER == 12
       /* GEN:BUG:1606662791:
        *
        *   Software must program PIPE_CONTROL command with "HDC Pipeline
@@ -87,7 +87,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #endif
    }
 
-#if GEN_GEN == 12
+#if GFX_VER == 12
    /* GEN:BUG:1607854226:
     *
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
@@ -123,7 +123,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.InstructionMOCS = mocs;
       sba.InstructionBaseAddressModifyEnable = true;
 
-#  if (GEN_GEN >= 8)
+#  if (GFX_VER >= 8)
       /* Broadwell requires that we specify a buffer size for a bunch of
        * these fields.  However, since we will be growing the BO's live, we
        * just set them all to the maximum.
@@ -162,7 +162,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
          (struct anv_address) { .bo = NULL, .offset = 0xfffff000 };
       sba.InstructionAccessUpperBoundModifyEnable = true;
 #  endif
-#  if (GEN_GEN >= 9)
+#  if (GFX_VER >= 9)
       if (cmd_buffer->device->physical->use_softpin) {
          sba.BindlessSurfaceStateBaseAddress = (struct anv_address) {
             .bo = device->surface_state_pool.block_pool.bo,
@@ -176,7 +176,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.BindlessSurfaceStateMOCS = mocs;
       sba.BindlessSurfaceStateBaseAddressModifyEnable = true;
 #  endif
-#  if (GEN_GEN >= 10)
+#  if (GFX_VER >= 10)
       sba.BindlessSamplerStateBaseAddress = (struct anv_address) { NULL, 0 };
       sba.BindlessSamplerStateMOCS = mocs;
       sba.BindlessSamplerStateBaseAddressModifyEnable = true;
@@ -184,7 +184,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 #  endif
    }
 
-#if GEN_GEN == 12
+#if GFX_VER == 12
    /* GEN:BUG:1607854226:
     *
     *  Put the pipeline back into its current mode.
@@ -348,7 +348,7 @@ anv_can_fast_clear_color_view(struct anv_device * device,
       return false;
 
    /* On Broadwell and earlier, we can only handle 0/1 clear colors */
-   if (GEN_GEN <= 8 &&
+   if (GFX_VER <= 8 &&
        !isl_color_value_is_zero_one(clear_color, iview->planes[0].isl.format))
       return false;
 
@@ -400,7 +400,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
                           VkRect2D render_area)
 {
    /* We don't do any HiZ or depth fast-clears on gen7 yet */
-   if (GEN_GEN == 7)
+   if (GFX_VER == 7)
       return false;
 
    /* If we're just clearing stencil, we can always HiZ clear */
@@ -436,7 +436,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
     * portion of a HiZ buffer. Testing has revealed that Gen8 only supports
     * returning 0.0f. Gens prior to gen8 do not support this feature at all.
     */
-   if (GEN_GEN == 8 && anv_can_sample_with_hiz(&device->info, iview->image))
+   if (GFX_VER == 8 && anv_can_sample_with_hiz(&device->info, iview->image))
       return false;
 
    /* If we got here, then we can fast clear */
@@ -445,7 +445,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
 
 #define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
 
-#if GEN_GEN == 12
+#if GFX_VER == 12
 static void
 anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
                       const struct anv_image *image,
@@ -540,7 +540,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
 
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_AUX_TABLE_INVALIDATE_BIT;
 }
-#endif /* GEN_GEN == 12 */
+#endif /* GFX_VER == 12 */
 
 /* Transitions a HiZ-enabled depth buffer from one layout to another. Unless
  * the initial layout is undefined, the HiZ buffer and depth buffer will
@@ -559,7 +559,7 @@ transition_depth_buffer(struct anv_cmd_buffer *cmd_buffer,
    if (image->planes[depth_plane].aux_usage == ISL_AUX_USAGE_NONE)
       return;
 
-#if GEN_GEN == 12
+#if GFX_VER == 12
    if ((initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
         initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) &&
        cmd_buffer->device->physical->has_implicit_ccs &&
@@ -633,7 +633,7 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                           VkImageLayout final_layout,
                           bool will_full_fast_clear)
 {
-#if GEN_GEN == 7
+#if GFX_VER == 7
    uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                               VK_IMAGE_ASPECT_STENCIL_BIT);
 
@@ -661,7 +661,7 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
                                base_level, level_count,
                                base_layer, layer_count);
    }
-#elif GEN_GEN == 12
+#elif GFX_VER == 12
    uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                               VK_IMAGE_ASPECT_STENCIL_BIT);
    if (image->planes[plane].aux_usage == ISL_AUX_USAGE_NONE)
@@ -842,7 +842,7 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
 }
 #endif /* GFX_VERx10 >= 75 */
 
-#if GEN_GEN <= 8
+#if GFX_VER <= 8
 static void
 anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                  const struct anv_image *image,
@@ -883,7 +883,7 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
       mip.CompareOperation = COMPARE_SRCS_EQUAL;
    }
 }
-#endif /* GEN_GEN <= 8 */
+#endif /* GFX_VER <= 8 */
 
 static void
 anv_cmd_predicated_ccs_resolve(struct anv_cmd_buffer *cmd_buffer,
@@ -897,11 +897,11 @@ anv_cmd_predicated_ccs_resolve(struct anv_cmd_buffer *cmd_buffer,
 {
    const uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
 
-#if GEN_GEN >= 9
+#if GFX_VER >= 9
    anv_cmd_compute_resolve_predicate(cmd_buffer, image,
                                      aspect, level, array_layer,
                                      resolve_op, fast_clear_supported);
-#else /* GEN_GEN <= 8 */
+#else /* GFX_VER <= 8 */
    anv_cmd_simple_resolve_predicate(cmd_buffer, image,
                                     aspect, level, array_layer,
                                     resolve_op, fast_clear_supported);
@@ -985,9 +985,9 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
    struct anv_address addr =
       anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
 
-   if (GEN_GEN >= 9) {
+   if (GFX_VER >= 9) {
       const struct isl_device *isl_dev = &cmd_buffer->device->isl_dev;
-      const unsigned num_dwords = GEN_GEN >= 10 ?
+      const unsigned num_dwords = GFX_VER >= 10 ?
                                   isl_dev->ss.clear_color_state_size / 4 :
                                   isl_dev->ss.clear_value_size / 4;
       for (unsigned i = 0; i < num_dwords; i++) {
@@ -1009,7 +1009,7 @@ init_fast_clear_color(struct anv_cmd_buffer *cmd_buffer,
                                 ISL_CHANNEL_SELECT_GREEN << 22 |
                                 ISL_CHANNEL_SELECT_BLUE  << 19 |
                                 ISL_CHANNEL_SELECT_ALPHA << 16;
-         } else if (GEN_GEN == 7) {
+         } else if (GFX_VER == 7) {
             /* On IVB, the dword containing the clear values also contains
              * other fields that must be zero or can be zero.
              */
@@ -1041,7 +1041,7 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
       anv_image_get_clear_color_addr(cmd_buffer->device, image, aspect);
    unsigned copy_size = cmd_buffer->device->isl_dev.ss.clear_value_size;
 
-#if GEN_GEN == 7
+#if GFX_VER == 7
    /* On gen7, the combination of commands used here(MI_LOAD_REGISTER_MEM
     * and MI_STORE_REGISTER_MEM) can cause GPU hangs if any rendering is
     * in-flight when they are issued even if the memory touched is not
@@ -1158,7 +1158,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
 
    if (initial_layout == VK_IMAGE_LAYOUT_UNDEFINED ||
        initial_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-#if GEN_GEN == 12
+#if GFX_VER == 12
       if (device->physical->has_implicit_ccs && devinfo->has_aux_map) {
          anv_image_init_aux_tt(cmd_buffer, image, aspect,
                                base_level, level_count,
@@ -1851,7 +1851,7 @@ genX(CmdExecuteCommands)(
    /* The secondary isn't counted in our VF cache tracking so we need to
     * invalidate the whole thing.
     */
-   if (GEN_GEN >= 8 && GEN_GEN <= 9) {
+   if (GFX_VER >= 8 && GFX_VER <= 9) {
       primary->state.pending_pipe_bits |=
          ANV_PIPE_CS_STALL_BIT | ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
    }
@@ -1883,11 +1883,11 @@ void
 genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
                            const struct intel_l3_config *cfg)
 {
-   assert(cfg || GEN_GEN >= 12);
+   assert(cfg || GFX_VER >= 12);
    if (cfg == cmd_buffer->state.current_l3_config)
       return;
 
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
    /* On Gen11+ we use only one config, so verify it remains the same and skip
     * the stalling programming entirely.
     */
@@ -1940,7 +1940,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
    }
 
    genX(emit_l3_config)(&cmd_buffer->batch, cmd_buffer->device, cfg);
-#endif /* GEN_GEN >= 11 */
+#endif /* GFX_VER >= 11 */
    cmd_buffer->state.current_l3_config = cfg;
 }
 
@@ -1992,7 +1992,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     *    add extra flushes in the case it knows that the engine is already
     *    IDLE."
     */
-   if (GEN_GEN == 12 && (bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT))
+   if (GFX_VER == 12 && (bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT))
       bits |= ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT;
 
    /* If we're going to do an invalidate and we have a pending end-of-pipe
@@ -2004,7 +2004,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
       bits &= ~ANV_PIPE_NEEDS_END_OF_PIPE_SYNC_BIT;
    }
 
-   if (GEN_GEN >= 12 &&
+   if (GFX_VER >= 12 &&
        ((bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT) ||
         (bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT))) {
       /* From the PIPE_CONTROL instruction table, bit 28 (Tile Cache Flush
@@ -2025,10 +2025,10 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    /* GEN:BUG:1409226450, Wait for EU to be idle before pipe control which
     * invalidates the instruction cache
     */
-   if (GEN_GEN == 12 && (bits & ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT))
+   if (GFX_VER == 12 && (bits & ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT))
       bits |= ANV_PIPE_CS_STALL_BIT | ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 
-   if ((GEN_GEN >= 8 && GEN_GEN <= 9) &&
+   if ((GFX_VER >= 8 && GFX_VER <= 9) &&
        (bits & ANV_PIPE_CS_STALL_BIT) &&
        (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT)) {
       /* If we are doing a VF cache invalidate AND a CS stall (it must be
@@ -2052,7 +2052,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     * On Gen12 this is GEN:BUG:1607156449.
     */
    if (bits & ANV_PIPE_POST_SYNC_BIT) {
-      if ((GEN_GEN == 9 || (GEN_GEN == 12 && devinfo->revision == 0 /* A0 */)) &&
+      if ((GFX_VER == 9 || (GFX_VER == 12 && devinfo->revision == 0 /* A0 */)) &&
           cmd_buffer->state.current_pipeline == GPGPU)
          bits |= ANV_PIPE_CS_STALL_BIT;
       bits &= ~ANV_PIPE_POST_SYNC_BIT;
@@ -2061,7 +2061,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
    if (bits & (ANV_PIPE_FLUSH_BITS | ANV_PIPE_CS_STALL_BIT |
                ANV_PIPE_END_OF_PIPE_SYNC_BIT)) {
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
          pipe.TileCacheFlushEnable = bits & ANV_PIPE_TILE_CACHE_FLUSH_BIT;
 #endif
          pipe.DepthCacheFlushEnable = bits & ANV_PIPE_DEPTH_CACHE_FLUSH_BIT;
@@ -2072,7 +2072,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
          /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
           * be set with any PIPE_CONTROL with Depth Flush Enable bit set.
           */
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
          pipe.DepthStallEnable =
             pipe.DepthCacheFlushEnable || (bits & ANV_PIPE_DEPTH_STALL_BIT);
 #else
@@ -2199,7 +2199,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
        *
        * This appears to hang Broadwell, so we restrict it to just gen9.
        */
-      if (GEN_GEN == 9 && (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT))
+      if (GFX_VER == 9 && (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT))
          anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe);
 
       anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
@@ -2220,13 +2220,13 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           *    enabled to “Write Immediate Data” or “Write PS Depth Count” or
           *    “Write Timestamp”.
           */
-         if (GEN_GEN == 9 && pipe.VFCacheInvalidationEnable) {
+         if (GFX_VER == 9 && pipe.VFCacheInvalidationEnable) {
             pipe.PostSyncOperation = WriteImmediateData;
             pipe.Address = cmd_buffer->device->workaround_address;
          }
       }
 
-#if GEN_GEN == 12
+#if GFX_VER == 12
       if ((bits & ANV_PIPE_AUX_TABLE_INVALIDATE_BIT) &&
           cmd_buffer->device->info.has_aux_map) {
          anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_IMM), lri) {
@@ -2343,7 +2343,7 @@ cmd_buffer_alloc_push_constants(struct anv_cmd_buffer *cmd_buffer)
    if (stages == cmd_buffer->state.gfx.push_constant_stages)
       return;
 
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    const unsigned push_constant_kb = 32;
 #elif GFX_VERx10 == 75
    const unsigned push_constant_kb = cmd_buffer->device->info.gt == 3 ? 32 : 16;
@@ -3035,7 +3035,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
          const struct anv_pipeline_bind_map *bind_map =
             &pipeline->shaders[stage]->bind_map;
 
-#if GEN_GEN >= 9
+#if GFX_VER >= 9
          /* This field exists since Gen8.  However, the Broadwell PRM says:
           *
           *    "Constant Buffer Object Control State must be always programmed
@@ -3104,7 +3104,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
    }
 }
 
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
 static void
 cmd_buffer_emit_push_constant_all(struct anv_cmd_buffer *cmd_buffer,
                                   uint32_t shader_mask,
@@ -3169,7 +3169,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
    struct anv_cmd_graphics_state *gfx_state = &cmd_buffer->state.gfx;
    const struct anv_graphics_pipeline *pipeline = gfx_state->pipeline;
 
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
    uint32_t nobuffer_stages = 0;
 #endif
 
@@ -3249,7 +3249,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
             assert(bind_map->push_ranges[i].length == 0);
       }
 
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       /* If this stage doesn't have any push constants, emit it later in a
        * single CONSTANT_ALL packet.
        */
@@ -3272,7 +3272,7 @@ cmd_buffer_flush_push_constants(struct anv_cmd_buffer *cmd_buffer,
       cmd_buffer_emit_push_constant(cmd_buffer, stage, buffers, buffer_count);
    }
 
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
    if (nobuffer_stages)
       cmd_buffer_emit_push_constant_all(cmd_buffer, nobuffer_stages, NULL, 0);
 #endif
@@ -3284,7 +3284,7 @@ static void
 cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 {
    const uint32_t clip_states =
-#if GEN_GEN <= 7
+#if GFX_VER <= 7
       ANV_CMD_DIRTY_DYNAMIC_FRONT_FACE |
       ANV_CMD_DIRTY_DYNAMIC_CULL_MODE |
 #endif
@@ -3294,12 +3294,12 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
    if ((cmd_buffer->state.gfx.dirty & clip_states) == 0)
       return;
 
-#if GEN_GEN <= 7
+#if GFX_VER <= 7
    const struct anv_dynamic_state *d = &cmd_buffer->state.gfx.dynamic;
 #endif
    struct GENX(3DSTATE_CLIP) clip = {
       GENX(3DSTATE_CLIP_header),
-#if GEN_GEN <= 7
+#if GFX_VER <= 7
       .FrontWinding = genX(vk_to_gen_front_face)[d->front_face],
       .CullMode     = genX(vk_to_gen_cullmode)[d->cull_mode],
 #endif
@@ -3379,7 +3379,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
 
                .MOCS = anv_mocs(cmd_buffer->device, buffer->address.bo,
                                 ISL_SURF_USAGE_VERTEX_BUFFER_BIT),
-#if GEN_GEN <= 7
+#if GFX_VER <= 7
                .BufferAccessType = pipeline->vb[vb].instanced ? INSTANCEDATA : VERTEXDATA,
                .InstanceDataStepRate = pipeline->vb[vb].instance_divisor,
 #endif
@@ -3388,7 +3388,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                .BufferStartingAddress = anv_address_add(buffer->address, offset),
                .NullVertexBuffer = offset >= buffer->size,
 
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
                .BufferSize = size,
 #else
                /* XXX: to handle dynamic offset for older gens we might want
@@ -3406,7 +3406,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
             };
          }
 
-#if GEN_GEN >= 8 && GEN_GEN <= 9
+#if GFX_VER >= 8 && GFX_VER <= 9
          genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer, vb,
                                                         state.BufferStartingAddress,
                                                         state.BufferSize);
@@ -3426,7 +3426,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       return;
 
    if ((cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_XFB_ENABLE) ||
-       (GEN_GEN == 7 && (cmd_buffer->state.gfx.dirty &
+       (GFX_VER == 7 && (cmd_buffer->state.gfx.dirty &
                          ANV_CMD_DIRTY_PIPELINE))) {
       /* We don't need any per-buffer dirty tracking because you're not
        * allowed to bind different XFB buffers while XFB is enabled.
@@ -3434,7 +3434,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       for (unsigned idx = 0; idx < MAX_XFB_BUFFERS; idx++) {
          struct anv_xfb_binding *xfb = &cmd_buffer->state.xfb_bindings[idx];
          anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_SO_BUFFER), sob) {
-#if GEN_GEN < 12
+#if GFX_VER < 12
             sob.SOBufferIndex = idx;
 #else
             sob._3DCommandOpcode = 0;
@@ -3445,7 +3445,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                sob.MOCS = anv_mocs(cmd_buffer->device, xfb->buffer->address.bo, 0);
                sob.SurfaceBaseAddress = anv_address_add(xfb->buffer->address,
                                                         xfb->offset);
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
                sob.SOBufferEnable = true;
                sob.StreamOffsetWriteEnable = false;
                /* Size is in DWords - 1 */
@@ -3464,7 +3464,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
       }
 
       /* CNL and later require a CS stall after 3DSTATE_SO_BUFFER */
-      if (GEN_GEN >= 10)
+      if (GFX_VER >= 10)
          cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_CS_STALL_BIT;
    }
 
@@ -3480,7 +3480,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE)
       cmd_buffer->state.gfx.primitive_topology = pipeline->topology;
 
-#if GEN_GEN <= 7
+#if GFX_VER <= 7
    if (cmd_buffer->state.descriptors_dirty & VK_SHADER_STAGE_VERTEX_BIT ||
        cmd_buffer->state.push_constants_dirty & VK_SHADER_STAGE_VERTEX_BIT) {
       /* From the IVB PRM Vol. 2, Part 1, Section 3.2.1:
@@ -3568,7 +3568,7 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
          .MOCS = addr.bo ? anv_mocs(cmd_buffer->device, addr.bo,
                                     ISL_SURF_USAGE_VERTEX_BUFFER_BIT) : 0,
          .NullVertexBuffer = size == 0,
-#if (GEN_GEN >= 8)
+#if (GFX_VER >= 8)
          .BufferStartingAddress = addr,
          .BufferSize = size
 #else
@@ -4043,7 +4043,7 @@ emit_draw_count_predicate_with_conditional_render(
    struct mi_value pred = mi_ult(b, mi_imm(draw_index), max);
    pred = mi_iand(b, pred, mi_reg64(ANV_PREDICATE_RESULT_REG));
 
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    mi_store(b, mi_reg32(MI_PREDICATE_RESULT), pred);
 #else
    /* MI_PREDICATE_RESULT is not whitelisted in i915 command parser
@@ -4398,7 +4398,7 @@ genX(cmd_buffer_flush_compute_state)(struct anv_cmd_buffer *cmd_buffer)
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 }
 
-#if GEN_GEN == 7
+#if GFX_VER == 7
 
 static VkResult
 verify_cmd_parser(const struct anv_device *device,
@@ -4483,7 +4483,7 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
          .BindingTablePointer =
             cmd_buffer->state.binding_tables[MESA_SHADER_COMPUTE].offset,
          .NumberofThreadsinGPGPUThreadGroup = cs_params.threads,
-         .SharedLocalMemorySize = encode_slm_size(GEN_GEN,
+         .SharedLocalMemorySize = encode_slm_size(GFX_VER,
                                                   prog_data->base.total_shared),
          .BarrierEnable = prog_data->uses_barrier,
       };
@@ -4499,7 +4499,7 @@ emit_gpgpu_walker(struct anv_cmd_buffer *cmd_buffer,
                   uint32_t groupCountX, uint32_t groupCountY,
                   uint32_t groupCountZ)
 {
-   bool predicate = (GEN_GEN <= 7 && indirect) ||
+   bool predicate = (GFX_VER <= 7 && indirect) ||
       cmd_buffer->state.conditional_render_enabled;
    const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
 
@@ -4607,7 +4607,7 @@ void genX(CmdDispatchIndirect)(
 
    anv_cmd_buffer_push_base_group_id(cmd_buffer, 0, 0, 0);
 
-#if GEN_GEN == 7
+#if GFX_VER == 7
    /* Linux 4.4 added command parser version 5 which allows the GPGPU
     * indirect dispatch registers to be written.
     */
@@ -4641,7 +4641,7 @@ void genX(CmdDispatchIndirect)(
    mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMY), size_y);
    mi_store(&b, mi_reg32(GPGPU_DISPATCHDIMZ), size_z);
 
-#if GEN_GEN <= 7
+#if GFX_VER <= 7
    /* predicate = (compute_dispatch_indirect_x_size == 0); */
    mi_store(&b, mi_reg64(MI_PREDICATE_SRC0), size_x);
    mi_store(&b, mi_reg64(MI_PREDICATE_SRC1), mi_imm(0));
@@ -4687,7 +4687,7 @@ void genX(CmdDispatchIndirect)(
    }
 #endif
 
-#else /* GEN_GEN > 7 */
+#else /* GFX_VER > 7 */
    if (cmd_buffer->state.conditional_render_enabled)
       genX(cmd_emit_conditional_render_predicate)(cmd_buffer);
 #endif
@@ -4704,7 +4704,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->state.current_pipeline == pipeline)
       return;
 
-#if GEN_GEN >= 8 && GEN_GEN < 10
+#if GFX_VER >= 8 && GFX_VER < 10
    /* From the Broadwell PRM, Volume 2a: Instructions, PIPELINE_SELECT:
     *
     *   Software must clear the COLOR_CALC_STATE Valid field in
@@ -4718,7 +4718,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_CC_STATE_POINTERS), t);
 #endif
 
-#if GEN_GEN == 9
+#if GFX_VER == 9
    if (pipeline == _3D) {
       /* There is a mid-object preemption workaround which requires you to
        * re-emit MEDIA_VFE_STATE after switching from GPGPU to 3D.  However,
@@ -4760,7 +4760,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       pc.DCFlushEnable                 = true;
       pc.PostSyncOperation             = NoWrite;
       pc.CommandStreamerStallEnable    = true;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 
       /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must be
@@ -4776,20 +4776,20 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
       pc.StateCacheInvalidationEnable     = true;
       pc.InstructionCacheInvalidateEnable = true;
       pc.PostSyncOperation                = NoWrite;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 #endif
    }
 
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPELINE_SELECT), ps) {
-#if GEN_GEN >= 9
-      ps.MaskBits = GEN_GEN >= 12 ? 0x13 : 3;
-      ps.MediaSamplerDOPClockGateEnable = GEN_GEN >= 12;
+#if GFX_VER >= 9
+      ps.MaskBits = GFX_VER >= 12 ? 0x13 : 3;
+      ps.MediaSamplerDOPClockGateEnable = GFX_VER >= 12;
 #endif
       ps.PipelineSelection = pipeline;
    }
 
-#if GEN_GEN == 9
+#if GFX_VER == 9
    if (devinfo->is_geminilake) {
       /* Project: DevGLK
        *
@@ -4824,7 +4824,7 @@ genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer)
 void
 genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
 {
-   if (GEN_GEN >= 8)
+   if (GFX_VER >= 8)
       return;
 
    /* From the Haswell PRM, documentation for 3DSTATE_DEPTH_BUFFER:
@@ -4844,7 +4844,7 @@ genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
    }
    anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe) {
       pipe.DepthCacheFlushEnable = true;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       pipe.TileCacheFlushEnable = true;
 #endif
    }
@@ -4886,7 +4886,7 @@ genX(cmd_buffer_set_binding_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
                                                struct anv_address vb_address,
                                                uint32_t vb_size)
 {
-   if (GEN_GEN < 8 || GEN_GEN > 9 ||
+   if (GFX_VER < 8 || GFX_VER > 9 ||
        !cmd_buffer->device->physical->use_softpin)
       return;
 
@@ -4934,7 +4934,7 @@ genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_b
                                                     uint32_t access_type,
                                                     uint64_t vb_used)
 {
-   if (GEN_GEN < 8 || GEN_GEN > 9 ||
+   if (GFX_VER < 8 || GFX_VER > 9 ||
        !cmd_buffer->device->physical->use_softpin)
       return;
 
@@ -4989,7 +4989,7 @@ genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
                                    unsigned width, unsigned height,
                                    unsigned scale)
 {
-#if GEN_GEN == 9
+#if GFX_VER == 9
    const struct gen_device_info *devinfo = &cmd_buffer->device->info;
    const unsigned slice_hashing[] = {
       /* Because all Gen9 platforms with more than one slice require
@@ -5138,7 +5138,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
 
    isl_emit_depth_stencil_hiz_s(&device->isl_dev, dw, &info);
 
-   if (GEN_GEN >= 12) {
+   if (GFX_VER >= 12) {
       cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
@@ -5211,7 +5211,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
     * VERTEX_BUFFER_STATE on gen7, we need to dirty vertex buffers at the top
     * of each subpass.
     */
-   if (GEN_GEN == 7)
+   if (GFX_VER == 7)
       cmd_buffer->state.gfx.vb_dirty |= ~0;
 
    /* It is possible to start a render pass with an old pipeline.  Because the
@@ -5546,7 +5546,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
 
       add_surface_state_relocs(cmd_buffer, *surface_state);
 
-      if (GEN_GEN < 10 &&
+      if (GFX_VER < 10 &&
           pass_att->load_op == VK_ATTACHMENT_LOAD_OP_LOAD &&
           iview->image->planes[0].aux_usage != ISL_AUX_USAGE_NONE &&
           iview->planes[0].isl.base_level == 0 &&
@@ -5558,7 +5558,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       }
    }
 
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
    /* The PIPE_CONTROL command description says:
     *
     *    "Whenever a Binding Table Index (BTI) used by a Render Taget Message
@@ -5572,7 +5572,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
       ANV_PIPE_STALL_AT_SCOREBOARD_BIT;
 #endif
 
-#if GEN_GEN == 12
+#if GFX_VER == 12
    /* GEN:BUG:14010455700
     *
     * ISL will change some CHICKEN registers depending on the depth surface
@@ -5873,7 +5873,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-#if GEN_GEN == 7
+#if GFX_VER == 7
    /* On gen7, we have to store a texturable version of the stencil buffer in
     * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
     * forth at strategic points. Stencil writes are only allowed in following
@@ -5913,7 +5913,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
          }
       }
    }
-#endif /* GEN_GEN == 7 */
+#endif /* GFX_VER == 7 */
 
    for (uint32_t i = 0; i < subpass->attachment_count; ++i) {
       const uint32_t a = subpass->attachments[i].attachment;
@@ -6204,7 +6204,7 @@ void genX(CmdWaitEvents)(
     uint32_t                                    imageMemoryBarrierCount,
     const VkImageMemoryBarrier*                 pImageMemoryBarriers)
 {
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
    ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
 
    for (uint32_t i = 0; i < eventCount; i++) {
@@ -6239,7 +6239,7 @@ VkResult genX(CmdSetPerformanceOverrideINTEL)(
 
    switch (pOverrideInfo->type) {
    case VK_PERFORMANCE_OVERRIDE_TYPE_NULL_HARDWARE_INTEL: {
-#if GEN_GEN >= 9
+#if GFX_VER >= 9
       anv_batch_write_reg(&cmd_buffer->batch, GENX(CS_DEBUG_MODE2), csdm2) {
          csdm2._3DRenderingInstructionDisable = pOverrideInfo->enable;
          csdm2.MediaInstructionDisable = pOverrideInfo->enable;

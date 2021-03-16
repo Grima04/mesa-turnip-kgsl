@@ -55,7 +55,7 @@ blorp_emit_vs_state(struct blorp_batch *batch)
    blorp_emit_dynamic(batch, GENX(VS_STATE), vs, 64, &offset) {
       vs.Enable = false;
       vs.URBEntryAllocationSize = brw->urb.vsize - 1;
-#if GEN_GEN == 5
+#if GFX_VER == 5
       vs.NumberofURBEntries = brw->urb.nr_vs_entries >> 2;
 #else
       vs.NumberofURBEntries = brw->urb.nr_vs_entries;
@@ -75,7 +75,7 @@ blorp_emit_sf_state(struct blorp_batch *batch,
 
    uint32_t offset;
    blorp_emit_dynamic(batch, GENX(SF_STATE), sf, 64, &offset) {
-#if GEN_GEN == 4
+#if GFX_VER == 4
       sf.KernelStartPointer =
          instruction_state_address(batch, params->sf_prog_kernel);
 #else
@@ -89,7 +89,7 @@ blorp_emit_sf_state(struct blorp_batch *batch,
       sf.URBEntryAllocationSize = brw->urb.sfsize - 1;
       sf.NumberofURBEntries = brw->urb.nr_sf_entries;
 
-#if GEN_GEN == 5
+#if GFX_VER == 5
       sf.MaximumNumberofThreads = MIN2(48, brw->urb.nr_sf_entries) - 1;
 #else
       sf.MaximumNumberofThreads = MIN2(24, brw->urb.nr_sf_entries) - 1;
@@ -113,7 +113,7 @@ blorp_emit_wm_state(struct blorp_batch *batch,
    blorp_emit_dynamic(batch, GENX(WM_STATE), wm, 64, &offset) {
       if (params->src.enabled) {
          /* Iron Lake can't do sampler prefetch */
-         wm.SamplerCount = (GEN_GEN != 5);
+         wm.SamplerCount = (GFX_VER != 5);
          wm.BindingTableEntryCount = 2;
          uint32_t sampler = blorp_emit_sampler_state(batch);
          wm.SamplerStatePointer = dynamic_state_address(batch, sampler);
@@ -134,7 +134,7 @@ blorp_emit_wm_state(struct blorp_batch *batch,
          wm._16PixelDispatchEnable = prog_data->dispatch_16;
          wm._32PixelDispatchEnable = prog_data->dispatch_32;
 
-#if GEN_GEN == 4
+#if GFX_VER == 4
          wm.KernelStartPointer0 =
             instruction_state_address(batch, params->wm_prog_kernel);
          wm.GRFRegisterCount0 = brw_wm_prog_data_reg_blocks(prog_data, wm, 0);

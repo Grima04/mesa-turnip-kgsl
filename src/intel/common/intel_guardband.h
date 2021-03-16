@@ -65,12 +65,12 @@ intel_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
     *
     * So, limit the guardband to 16K on Gen7+ and 8K on Sandybridge.
     */
-   const float gb_size = GEN_GEN >= 7 ? 16384.0f : 8192.0f;
+   const float gb_size = GFX_VER >= 7 ? 16384.0f : 8192.0f;
 
    /* Workaround: prevent gpu hangs on SandyBridge
     * by disabling guardband clipping for odd dimensions.
     */
-   if (GEN_GEN == 6 && (fb_width & 1 || fb_height & 1)) {
+   if (GFX_VER == 6 && (fb_width & 1 || fb_height & 1)) {
       *xmin = -1.0f;
       *xmax =  1.0f;
       *ymin = -1.0f;

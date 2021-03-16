@@ -158,7 +158,7 @@ iris_pipelined_write(struct iris_batch *batch,
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    const unsigned optional_cs_stall =
-      GEN_GEN == 9 && devinfo->gt == 4 ?  PIPE_CONTROL_CS_STALL : 0;
+      GFX_VER == 9 && devinfo->gt == 4 ?  PIPE_CONTROL_CS_STALL : 0;
    struct iris_bo *bo = iris_resource_bo(q->query_state_ref.res);
 
    iris_emit_pipe_control_write(batch, "query: pipelined snapshot write",
@@ -184,7 +184,7 @@ write_value(struct iris_context *ice, struct iris_query *q, unsigned offset)
    case PIPE_QUERY_OCCLUSION_COUNTER:
    case PIPE_QUERY_OCCLUSION_PREDICATE:
    case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
-      if (GEN_GEN >= 10) {
+      if (GFX_VER >= 10) {
          /* "Driver must program PIPE_CONTROL with only Depth Stall Enable
           *  bit set prior to programming a PIPE_CONTROL with Write PS Depth
           *  Count sync operation."
@@ -317,7 +317,7 @@ calculate_result_on_cpu(const struct gen_device_info *devinfo,
       q->result = q->map->end - q->map->start;
 
       /* WaDividePSInvocationCountBy4:HSW,BDW */
-      if (GEN_GEN == 8 && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
+      if (GFX_VER == 8 && q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
          q->result /= 4;
       break;
    case PIPE_QUERY_OCCLUSION_COUNTER:
@@ -424,7 +424,7 @@ calculate_result_on_gpu(const struct gen_device_info *devinfo,
    }
 
    /* WaDividePSInvocationCountBy4:HSW,BDW */
-   if (GEN_GEN == 8 &&
+   if (GFX_VER == 8 &&
        q->type == PIPE_QUERY_PIPELINE_STATISTICS_SINGLE &&
        q->index == PIPE_STAT_QUERY_PS_INVOCATIONS)
       result = mi_ushr32_imm(b, result, 2);

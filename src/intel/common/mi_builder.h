@@ -103,7 +103,7 @@ struct mi_value {
 
 struct mi_reg_num {
    uint32_t num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
    bool cs;
 #endif
 };
@@ -111,7 +111,7 @@ struct mi_reg_num {
 static inline struct mi_reg_num
 mi_adjust_reg_num(uint32_t reg)
 {
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
    bool cs = reg >= 0x2000 && reg < 0x4000;
    return (struct mi_reg_num) {
       .num = reg - (cs ? 0x2000 : 0),
@@ -122,7 +122,7 @@ mi_adjust_reg_num(uint32_t reg)
 #endif
 }
 
-#if GEN_GEN >= 9
+#if GFX_VER >= 9
 #define MI_BUILDER_MAX_MATH_DWORDS 256
 #else
 #define MI_BUILDER_MAX_MATH_DWORDS 64
@@ -388,7 +388,7 @@ _mi_copy_no_unref(struct mi_builder *b,
             mi_builder_pack(b, GENX(MI_LOAD_REGISTER_IMM), dw, lri) {
                lri.DWordLength = GENX(MI_LOAD_REGISTER_IMM_length) + 2 -
                                  GENX(MI_LOAD_REGISTER_IMM_length_bias);
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
                lri.AddCSMMIOStartOffset = reg.cs;
 #endif
             }
@@ -397,7 +397,7 @@ _mi_copy_no_unref(struct mi_builder *b,
             dw[3] = reg.num + 4;
             dw[4] = src.imm >> 32;
          } else {
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
             assert(dst.type == MI_VALUE_TYPE_MEM64);
             uint32_t *dw = (uint32_t *)__gen_get_batch_dwords(b->user_data,
                                                               GENX(MI_STORE_DATA_IMM_length) + 1);
@@ -441,7 +441,7 @@ _mi_copy_no_unref(struct mi_builder *b,
       case MI_VALUE_TYPE_IMM:
          mi_builder_emit(b, GENX(MI_STORE_DATA_IMM), sdi) {
             sdi.Address = dst.addr;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
             sdi.ForceWriteCompletionCheck = true;
 #endif
             sdi.ImmediateData = src.imm;
@@ -450,7 +450,7 @@ _mi_copy_no_unref(struct mi_builder *b,
 
       case MI_VALUE_TYPE_MEM32:
       case MI_VALUE_TYPE_MEM64:
-#if GEN_GEN >= 8
+#if GFX_VER >= 8
          mi_builder_emit(b, GENX(MI_COPY_MEM_MEM), cmm) {
             cmm.DestinationMemoryAddress = dst.addr;
             cmm.SourceMemoryAddress = src.addr;
@@ -472,7 +472,7 @@ _mi_copy_no_unref(struct mi_builder *b,
          mi_builder_emit(b, GENX(MI_STORE_REGISTER_MEM), srm) {
             struct mi_reg_num reg = mi_adjust_reg_num(src.reg);
             srm.RegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
             srm.AddCSMMIOStartOffset = reg.cs;
 #endif
             srm.MemoryAddress = dst.addr;
@@ -490,7 +490,7 @@ _mi_copy_no_unref(struct mi_builder *b,
          mi_builder_emit(b, GENX(MI_LOAD_REGISTER_IMM), lri) {
             struct mi_reg_num reg = mi_adjust_reg_num(dst.reg);
             lri.RegisterOffset = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
             lri.AddCSMMIOStartOffset = reg.cs;
 #endif
             lri.DataDWord = src.imm;
@@ -502,7 +502,7 @@ _mi_copy_no_unref(struct mi_builder *b,
          mi_builder_emit(b, GENX(MI_LOAD_REGISTER_MEM), lrm) {
             struct mi_reg_num reg = mi_adjust_reg_num(dst.reg);
             lrm.RegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
             lrm.AddCSMMIOStartOffset = reg.cs;
 #endif
             lrm.MemoryAddress = src.addr;
@@ -516,12 +516,12 @@ _mi_copy_no_unref(struct mi_builder *b,
             mi_builder_emit(b, GENX(MI_LOAD_REGISTER_REG), lrr) {
                struct mi_reg_num reg = mi_adjust_reg_num(src.reg);
                lrr.SourceRegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
                lrr.AddCSMMIOStartOffsetSource = reg.cs;
 #endif
                reg = mi_adjust_reg_num(dst.reg);
                lrr.DestinationRegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
                lrr.AddCSMMIOStartOffsetDestination = reg.cs;
 #endif
             }
@@ -648,7 +648,7 @@ mi_store_if(struct mi_builder *b, struct mi_value dst, struct mi_value src)
       mi_builder_emit(b, GENX(MI_STORE_REGISTER_MEM), srm) {
          struct mi_reg_num reg = mi_adjust_reg_num(src.reg);
          srm.RegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
          srm.AddCSMMIOStartOffset = reg.cs;
 #endif
          srm.MemoryAddress = dst.addr;
@@ -657,7 +657,7 @@ mi_store_if(struct mi_builder *b, struct mi_value dst, struct mi_value src)
       mi_builder_emit(b, GENX(MI_STORE_REGISTER_MEM), srm) {
          struct mi_reg_num reg = mi_adjust_reg_num(src.reg + 4);
          srm.RegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
          srm.AddCSMMIOStartOffset = reg.cs;
 #endif
          srm.MemoryAddress = __gen_address_offset(dst.addr, 4);
@@ -667,7 +667,7 @@ mi_store_if(struct mi_builder *b, struct mi_value dst, struct mi_value src)
       mi_builder_emit(b, GENX(MI_STORE_REGISTER_MEM), srm) {
          struct mi_reg_num reg = mi_adjust_reg_num(src.reg);
          srm.RegisterAddress = reg.num;
-#if GEN_GEN >= 11
+#if GFX_VER >= 11
          srm.AddCSMMIOStartOffset = reg.cs;
 #endif
          srm.MemoryAddress = dst.addr;

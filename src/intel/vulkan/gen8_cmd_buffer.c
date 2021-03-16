@@ -33,7 +33,7 @@
 #include "genxml/genX_pack.h"
 #include "common/intel_guardband.h"
 
-#if GEN_GEN == 8
+#if GFX_VER == 8
 void
 gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
@@ -148,7 +148,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
       pc.DepthCacheFlushEnable = true;
       pc.CommandStreamerStallEnable = true;
       pc.RenderTargetCacheFlushEnable = true;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 
       /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
@@ -158,7 +158,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
 #endif
    }
 
-#if GEN_GEN == 9
+#if GFX_VER == 9
 
    uint32_t cache_mode;
    anv_pack_struct(&cache_mode, GENX(CACHE_MODE_0),
@@ -169,7 +169,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
       lri.DataDWord        = cache_mode;
    }
 
-#elif GEN_GEN == 8
+#elif GFX_VER == 8
 
    uint32_t cache_mode;
    anv_pack_struct(&cache_mode, GENX(CACHE_MODE_1),
@@ -182,7 +182,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
       lri.DataDWord        = cache_mode;
    }
 
-#endif /* GEN_GEN == 8 */
+#endif /* GFX_VER == 8 */
 
    /* After the LRI, a PIPE_CONTROL with both the Depth Stall and Depth Cache
     * Flush bits is often necessary.  We do it regardless because it's easier.
@@ -195,7 +195,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
       pc.DepthStallEnable = true;
       pc.DepthCacheFlushEnable = true;
       pc.RenderTargetCacheFlushEnable = true;
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 #endif
    }
@@ -204,7 +204,7 @@ genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer, bool enable)
 UNUSED static bool
 want_depth_pma_fix(struct anv_cmd_buffer *cmd_buffer)
 {
-   assert(GEN_GEN == 8);
+   assert(GFX_VER == 8);
 
    /* From the Broadwell PRM Vol. 2c CACHE_MODE_1::NP_PMA_FIX_ENABLE:
     *
@@ -293,9 +293,9 @@ want_depth_pma_fix(struct anv_cmd_buffer *cmd_buffer)
 UNUSED static bool
 want_stencil_pma_fix(struct anv_cmd_buffer *cmd_buffer)
 {
-   if (GEN_GEN > 9)
+   if (GFX_VER > 9)
       return false;
-   assert(GEN_GEN == 9);
+   assert(GFX_VER == 9);
 
    /* From the Skylake PRM Vol. 2c CACHE_MODE_1::STC PMA Optimization Enable:
     *
@@ -426,7 +426,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       struct GENX(3DSTATE_SF) sf = {
          GENX(3DSTATE_SF_header),
       };
-#if GEN_GEN == 8
+#if GFX_VER == 8
       if (cmd_buffer->device->info.is_cherryview) {
          sf.CHVLineWidth = d->line_width;
       } else {
@@ -462,7 +462,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
     * across different state packets for gen8 and gen9. We handle that by
     * using a big old #if switch here.
     */
-#if GEN_GEN == 8
+#if GFX_VER == 8
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |
                                       ANV_CMD_DIRTY_DYNAMIC_STENCIL_REFERENCE)) {
       struct anv_state cc_state =
@@ -602,7 +602,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    }
 #endif
 
-#if GEN_GEN >= 12
+#if GFX_VER >= 12
    if(cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS |
                                      ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE)) {

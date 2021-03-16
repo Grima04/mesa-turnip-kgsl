@@ -284,10 +284,10 @@ struct gen_device_info
    /** @} */
 };
 
-#ifdef GEN_GEN
+#ifdef GFX_VER
 
 #define gen_device_info_is_9lp(devinfo) \
-   (GEN_GEN == 9 && ((devinfo)->is_broxton || (devinfo)->is_geminilake))
+   (GFX_VER == 9 && ((devinfo)->is_broxton || (devinfo)->is_geminilake))
 
 #else
 
