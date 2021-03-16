@@ -339,36 +339,23 @@ zink_batch_reference_program(struct zink_batch *batch,
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds)
 {
-   bool found = false;
-   uint32_t bit = BITFIELD_BIT(batch->batch_id);
-   if (zds->batch_uses & bit)
+   if (!ptr_add_usage(batch, batch->desc_sets, zds, &zds->batch_uses))
       return false;
-   _mesa_set_search_and_add(batch->desc_sets, zds, &found);
-   assert(!found);
-   zds->batch_uses |= bit;
    pipe_reference(NULL, &zds->reference);
-   return !found;
+   return true;
 }
 
 void
 zink_batch_reference_image_view(struct zink_batch *batch,
                                 struct zink_image_view *image_view)
 {
-   bool found = false;
-   uint32_t bit = BITFIELD64_BIT(batch->batch_id);
    if (image_view->base.resource->target == PIPE_BUFFER) {
-      if (image_view->buffer_view->batch_uses & bit)
+      if (!ptr_add_usage(batch, batch->bufferviews, image_view->buffer_view, &image_view->buffer_view->batch_uses))
          return;
-      _mesa_set_search_and_add(batch->bufferviews, image_view->buffer_view, &found);
-      assert(!found);
-      image_view->buffer_view->batch_uses |= bit;
       pipe_reference(NULL, &image_view->buffer_view->reference);
    } else {
-      if (image_view->surface->batch_uses & bit)
+      if (!ptr_add_usage(batch, batch->surfaces, image_view->surface, &image_view->surface->batch_uses))
          return;
-      _mesa_set_search_and_add(batch->surfaces, image_view->surface, &found);
-      assert(!found);
-      image_view->surface->batch_uses |= bit;
       pipe_reference(NULL, &image_view->surface->base.reference);
    }
    batch->has_work = true;
