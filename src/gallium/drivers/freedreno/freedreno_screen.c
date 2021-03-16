@@ -285,8 +285,12 @@ fd_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 		 */
 		if (is_a3xx(screen)) return 8192;
 		if (is_a4xx(screen)) return 16384;
-		if (is_a5xx(screen)) return 16384;
-		if (is_a6xx(screen)) return 1 << 27;
+
+		/* Note that the Vulkan blob on a540 and 640 report a
+		 * maxTexelBufferElements of just 65536 (the GLES3.2 and Vulkan
+		 * minimum).
+		 */
+		if (is_a5xx(screen) || is_a6xx(screen)) return 1 << 27;
 		return 0;
 
 	case PIPE_CAP_TEXTURE_FLOAT_LINEAR:
