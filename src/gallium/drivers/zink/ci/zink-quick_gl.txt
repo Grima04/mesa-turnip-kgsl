@@ -735,9 +735,6 @@ spec/!opengl 3.0/clearbuffer-depth-cs-probe: skip
 spec/!opengl 3.0/clearbuffer-stencil: fail
 spec/!opengl 3.0/sampler-cube-shadow: fail
 spec/!opengl 3.1/draw-buffers-errors: skip
-spec/!opengl 3.1/primitive-restart-xfb flush: fail
-spec/!opengl 3.1/primitive-restart-xfb generated: fail
-spec/!opengl 3.1/primitive-restart-xfb written: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-first: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-back pv-last: fail
 spec/!opengl 3.2/gl-3.2-adj-prims cull-front pv-first: fail
@@ -2585,7 +2582,6 @@ spec/ext_window_rectangles/render_gles3: skip
 spec/glsl-1.50/built-in constants compatibility: skip
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_loop other: fail
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip_adjacency ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_line_strip_adjacency other: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines ffs: fail
@@ -2594,8 +2590,6 @@ spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines_adjacency ffs: f
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_lines_adjacency other: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_points ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_points other: fail
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_fan ffs: fail
-spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip_adjacency ffs: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangle_strip_adjacency other: fail
 spec/glsl-1.50/execution/geometry/primitive-id-restart gl_triangles ffs: fail
@@ -2708,9 +2702,6 @@ spec/nv_fragment_program_option/fp-set-02: skip
 spec/nv_fragment_program_option/fp-unpack-01: skip
 spec/nv_image_formats/nv_image_formats-gles3: skip
 spec/nv_primitive_restart/primitive-restart-disable_vbo: fail
-spec/nv_primitive_restart/primitive-restart-draw-mode-line_strip: fail
-spec/nv_primitive_restart/primitive-restart-draw-mode-triangle_fan: fail
-spec/nv_primitive_restart/primitive-restart-draw-mode-triangle_strip: fail
 spec/nv_primitive_restart/primitive-restart-vbo_combined_vertex_and_index: fail
 spec/nv_primitive_restart/primitive-restart-vbo_index_only: fail
 spec/nv_primitive_restart/primitive-restart-vbo_separate_vertex_and_index: fail

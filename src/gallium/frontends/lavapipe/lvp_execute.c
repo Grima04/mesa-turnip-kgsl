@@ -38,6 +38,7 @@
 #include "util/u_sampler.h"
 #include "util/u_box.h"
 #include "util/u_inlines.h"
+#include "util/u_prim_restart.h"
 #include "util/format/u_format_zs.h"
 
 #include "vk_util.h"
@@ -2114,12 +2115,9 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
    state->info.index_bias = cmd->u.draw_indexed.vertex_offset;
    state->info.view_mask = subpass->view_mask;
 
-   if (state->info.primitive_restart) {
-      if (state->info.index_size == 4)
-         state->info.restart_index = 0xffffffff;
-      else
-         state->info.restart_index = 0xffff;
-   }
+   if (state->info.primitive_restart)
+      state->info.restart_index = util_prim_restart_index_from_size(state->info.index_size);
+
    state->pctx->draw_vbo(state->pctx, &state->info, NULL, &state->draw, 1);
 }
 

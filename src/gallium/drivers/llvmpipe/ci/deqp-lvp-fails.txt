@@ -11,7 +11,6 @@ dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler1dshadow_fragment,Fa
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darray_fixed_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2darrayshadow_fragment,Fail
 dEQP-VK.glsl.texture_functions.query.texturequerylod.sampler2dshadow_fragment,Fail
-dEQP-VK.pipeline.input_assembly.primitive_restart.index_type_uint8.line_strip_with_adjacency,Fail
 dEQP-VK.rasterization.primitives_multisample_4_bit.no_stipple.points,Fail
 dEQP-VK.tessellation.invariance.outer_triangle_set.quads_fractional_odd_spacing,Timeout
 dEQP-VK.texture.filtering.2d.combinations.linear_mipmap_linear.linear.clamp_to_edge.repeat,Fail
