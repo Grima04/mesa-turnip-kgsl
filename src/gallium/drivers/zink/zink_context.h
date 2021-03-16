@@ -89,7 +89,6 @@ struct zink_sampler_view {
       struct zink_surface *image_view;
       struct zink_buffer_view *buffer_view;
    };
-   uint32_t batch_uses;
 };
 
 struct zink_image_view {

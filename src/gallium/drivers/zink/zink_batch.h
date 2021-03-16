@@ -56,7 +56,6 @@ struct zink_batch {
    struct set *programs;
 
    struct set *resources;
-   struct set *sampler_views;
    struct set *surfaces;
    struct set *bufferviews;
    struct set *desc_sets;
