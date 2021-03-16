@@ -221,6 +221,30 @@ void st_init_limits(struct pipe_screen *screen,
       pc->MaxUniformComponents =
          screen->get_shader_param(screen, sh,
                                   PIPE_SHADER_CAP_MAX_CONST_BUFFER_SIZE) / 4;
+
+      /* reserve space in the default-uniform for lowered state */
+      if (sh == PIPE_SHADER_VERTEX ||
+          sh == PIPE_SHADER_TESS_EVAL ||
+          sh == PIPE_SHADER_GEOMETRY) {
+
+         if (!screen->get_param(screen, PIPE_CAP_CLIP_PLANES))
+            pc->MaxUniformComponents -= 4 * MAX_CLIP_PLANES;
+
+         if (!screen->get_param(screen, PIPE_CAP_POINT_SIZE_FIXED))
+            pc->MaxUniformComponents -= 4;
+
+         if (screen->get_param(screen, PIPE_CAP_DEPTH_CLIP_DISABLE) == 2)
+            pc->MaxUniformComponents -= 4;
+
+      } else if (sh == PIPE_SHADER_FRAGMENT) {
+         if (screen->get_param(screen, PIPE_CAP_DEPTH_CLIP_DISABLE) == 2)
+            pc->MaxUniformComponents -= 4;
+
+         if (!screen->get_param(screen, PIPE_CAP_ALPHA_TEST))
+            pc->MaxUniformComponents -= 4;
+      }
+
+
       pc->MaxUniformComponents = MIN2(pc->MaxUniformComponents,
                                       MAX_UNIFORMS * 4);
 

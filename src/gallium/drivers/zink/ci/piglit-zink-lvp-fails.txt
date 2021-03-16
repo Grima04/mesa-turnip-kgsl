@@ -25,8 +25,6 @@ glx@glx_ext_import_context@query context info,Fail
 shaders@glsl-bug-110796,Fail
 shaders@glsl-fs-flat-color,Fail
 shaders@glsl-fs-pointcoord,Fail
-shaders@glsl-uniform-interstage-limits@subdivide 5,Crash
-shaders@glsl-uniform-interstage-limits@subdivide 5- statechanges,Crash
 shaders@point-vertex-id divisor,Fail
 shaders@point-vertex-id gl_instanceid,Fail
 shaders@point-vertex-id gl_instanceid divisor,Fail
