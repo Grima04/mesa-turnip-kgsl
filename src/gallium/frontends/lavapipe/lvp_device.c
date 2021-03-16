@@ -90,6 +90,7 @@ static const struct vk_instance_extension_table lvp_instance_extensions_supporte
 
 static const struct vk_device_extension_table lvp_device_extensions_supported = {
    .KHR_bind_memory2                      = true,
+   .KHR_buffer_device_address             = true,
    .KHR_create_renderpass2                = true,
    .KHR_dedicated_allocation              = true,
    .KHR_descriptor_update_template        = true,
@@ -523,6 +524,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          VkPhysicalDeviceHostQueryResetFeaturesEXT *features =
             (VkPhysicalDeviceHostQueryResetFeaturesEXT *)ext;
          features->hostQueryReset = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES_KHR: {
+         VkPhysicalDeviceBufferDeviceAddressFeaturesKHR *features = (void *)ext;
+         features->bufferDeviceAddress = true;
+         features->bufferDeviceAddressCaptureReplay = false;
+         features->bufferDeviceAddressMultiDevice = false;
          break;
       }
       default:
@@ -1378,6 +1386,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindBufferMemory2(VkDevice _device,
       LVP_FROM_HANDLE(lvp_device_memory, mem, pBindInfos[i].memory);
       LVP_FROM_HANDLE(lvp_buffer, buffer, pBindInfos[i].buffer);
 
+      buffer->pmem = mem->pmem;
       device->pscreen->resource_bind_backing(device->pscreen,
                                              buffer->bo,
                                              mem->pmem,

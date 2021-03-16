@@ -505,12 +505,13 @@ struct lvp_semaphore {
 
 struct lvp_buffer {
    struct vk_object_base base;
-   struct lvp_device *                          device;
+
    VkDeviceSize                                 size;
 
    VkBufferUsageFlags                           usage;
    VkDeviceSize                                 offset;
 
+   struct pipe_memory_allocation *pmem;
    struct pipe_resource *bo;
    uint64_t total_size;
 };

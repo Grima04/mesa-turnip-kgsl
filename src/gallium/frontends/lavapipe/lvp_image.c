@@ -308,6 +308,29 @@ VKAPI_ATTR void VKAPI_CALL lvp_DestroyBuffer(
    vk_free2(&device->vk.alloc, pAllocator, buffer);
 }
 
+VKAPI_ATTR VkDeviceAddress VKAPI_CALL lvp_GetBufferDeviceAddress(
+   VkDevice                                    device,
+   const VkBufferDeviceAddressInfoKHR*         pInfo)
+{
+   LVP_FROM_HANDLE(lvp_buffer, buffer, pInfo->buffer);
+
+   return (VkDeviceAddress)(unsigned long)buffer->pmem;
+}
+
+VKAPI_ATTR uint64_t VKAPI_CALL lvp_GetBufferOpaqueCaptureAddress(
+    VkDevice                                    device,
+    const VkBufferDeviceAddressInfoKHR*         pInfo)
+{
+   return 0;
+}
+
+VKAPI_ATTR uint64_t VKAPI_CALL lvp_GetDeviceMemoryOpaqueCaptureAddress(
+    VkDevice                                    device,
+    const VkDeviceMemoryOpaqueCaptureAddressInfoKHR* pInfo)
+{
+   return 0;
+}
+
 VKAPI_ATTR VkResult VKAPI_CALL
 lvp_CreateBufferView(VkDevice _device,
                      const VkBufferViewCreateInfo *pCreateInfo,
