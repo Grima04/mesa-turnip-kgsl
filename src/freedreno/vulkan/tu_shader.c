@@ -69,6 +69,10 @@ tu_spirv_to_nir(struct tu_device *dev,
          .shader_viewport_index_layer = true,
          .geometry_streams = true,
          .device_group = true,
+         .descriptor_indexing = true,
+         .descriptor_array_dynamic_indexing = true,
+         .descriptor_array_non_uniform_indexing = true,
+         .runtime_descriptor_array = true,
       },
    };
    const nir_shader_compiler_options *nir_options =

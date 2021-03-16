@@ -105,6 +105,7 @@ EXTENSIONS = [
     Extension('VK_EXT_memory_budget',                     1, True),
     Extension('VK_KHR_device_group',                      4, True),
     Extension('VK_KHR_device_group_creation',             1, True),
+    Extension('VK_EXT_descriptor_indexing',               2, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)
