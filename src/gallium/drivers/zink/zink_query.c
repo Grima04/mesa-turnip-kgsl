@@ -532,9 +532,6 @@ begin_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_quer
    }
    if (q->vkqtype != VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT)
       vkCmdBeginQuery(batch->cmdbuf, q->query_pool, q->curr_query, flags);
-   if (!batch->active_queries)
-      batch->active_queries = _mesa_set_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
-   assert(batch->active_queries);
    if (needs_stats_list(q))
       list_addtail(&q->stats_list, &ctx->primitives_generated_queries);
    p_atomic_inc(&q->fences);
