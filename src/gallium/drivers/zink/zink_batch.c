@@ -138,20 +138,21 @@ init_batch(struct zink_context *ctx, struct zink_batch *batch)
    if (vkAllocateCommandBuffers(screen->dev, &cbai, &batch->cmdbuf) != VK_SUCCESS)
       return;
 
-   batch->fbs = _mesa_pointer_set_create(NULL);
-   batch->active_queries = _mesa_pointer_set_create(NULL);
-   batch->resources = _mesa_pointer_set_create(NULL);
-   batch->surfaces = _mesa_pointer_set_create(NULL);
-   batch->bufferviews = _mesa_pointer_set_create(NULL);
-   batch->programs = _mesa_pointer_set_create(NULL);
-   batch->desc_sets = _mesa_pointer_set_create(ctx);
+#define SET_CREATE_OR_FAIL(ptr) do { \
+      ptr = _mesa_pointer_set_create(NULL); \
+      if (!ptr) \
+         return; \
+   } while (0)
+
+   SET_CREATE_OR_FAIL(batch->fbs);
+   SET_CREATE_OR_FAIL(batch->resources);
+   SET_CREATE_OR_FAIL(batch->surfaces);
+   SET_CREATE_OR_FAIL(batch->bufferviews);
+   SET_CREATE_OR_FAIL(batch->programs);
+   SET_CREATE_OR_FAIL(batch->desc_sets);
+   SET_CREATE_OR_FAIL(batch->active_queries);
    util_dynarray_init(&batch->zombie_samplers, NULL);
    util_dynarray_init(&batch->persistent_resources, NULL);
-
-   if (!batch->resources || !batch->desc_sets ||
-       !batch->programs || !batch->surfaces || !batch->bufferviews ||
-       !batch->active_queries)
-      return;
 
    batch->fence = zink_create_fence(ctx->base.screen, batch);
 }
