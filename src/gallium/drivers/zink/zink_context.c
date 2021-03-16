@@ -63,7 +63,7 @@ get_resource_for_descriptor(struct zink_context *ctx, enum zink_descriptor_type 
    case ZINK_DESCRIPTOR_TYPE_SSBO:
       return zink_resource(ctx->ssbos[shader][idx].buffer);
    case ZINK_DESCRIPTOR_TYPE_SAMPLER_VIEW:
-      return zink_resource(ctx->sampler_views[shader][idx]->texture);
+      return ctx->sampler_views[shader][idx] ? zink_resource(ctx->sampler_views[shader][idx]->texture) : NULL;
    case ZINK_DESCRIPTOR_TYPE_IMAGE:
       return zink_resource(ctx->image_views[shader][idx].base.resource);
    default:
