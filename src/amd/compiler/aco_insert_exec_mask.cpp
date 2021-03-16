@@ -234,7 +234,7 @@ void handle_exact_loops(wqm_ctx& ctx, exec_ctx& exec_ctx, unsigned preheader)
    }
    assert(parent_branch >= 0);
 
-   Block& branch = exec_ctx.program->blocks[parent_branch];
+   ASSERTED Block& branch = exec_ctx.program->blocks[parent_branch];
    assert(branch.kind & block_kind_branch);
    if (ctx.branch_wqm[parent_branch]) {
       /* The branch can't be done in Exact because some other blocks in it
