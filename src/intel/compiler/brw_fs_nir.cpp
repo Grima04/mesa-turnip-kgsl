@@ -5962,7 +5962,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (instr->op == nir_texop_tg4 && devinfo->gen == 6)
       emit_gen6_gather_wa(key_tex->gen6_gather_wa[texture], dst);
 
-   fs_reg nir_dest[4];
+   fs_reg nir_dest[5];
    for (unsigned i = 0; i < dest_size; i++)
       nir_dest[i] = offset(dst, bld, i);
 
