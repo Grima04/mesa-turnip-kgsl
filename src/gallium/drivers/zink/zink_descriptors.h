@@ -92,6 +92,7 @@ struct zink_descriptor_set {
    VkDescriptorSet desc_set;
    uint32_t hash;
    bool invalid;
+   bool punted;
    bool recycled;
    struct zink_descriptor_state_key key;
    struct util_dynarray barriers;

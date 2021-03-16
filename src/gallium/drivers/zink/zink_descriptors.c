@@ -234,7 +234,7 @@ allocate_desc_set(struct zink_screen *screen, struct zink_program *pg, enum zink
       zds->hash = 0;
       zds->batch_uses = 0;
       zds->invalid = true;
-      zds->recycled = false;
+      zds->punted = zds->recycled = false;
       if (num_resources) {
          util_dynarray_init(&zds->barriers, alloc);
          if (!util_dynarray_grow(&zds->barriers, struct zink_descriptor_barrier, num_resources)) {
@@ -274,6 +274,17 @@ populate_zds_key(struct zink_context *ctx, enum zink_descriptor_type type, bool 
    }
 }
 
+static void
+punt_invalid_set(struct zink_descriptor_set *zds, struct hash_entry *he)
+{
+   /* this is no longer usable, so we punt it for now until it gets recycled */
+   assert(!zds->recycled);
+   if (!he)
+      he = _mesa_hash_table_search_pre_hashed(zds->pool->desc_sets, zds->hash, &zds->key);
+   _mesa_hash_table_remove(zds->pool->desc_sets, he);
+   zds->punted = true;
+}
+
 struct zink_descriptor_set *
 zink_descriptor_set_get(struct zink_context *ctx,
                                enum zink_descriptor_type type,
@@ -296,29 +307,42 @@ zink_descriptor_set_get(struct zink_context *ctx,
        desc_state_equal(&pg->last_set[type]->key, &key)) {
       zds = pg->last_set[type];
       *cache_hit = !zds->invalid;
-      if (pool->key.num_descriptors && zds->recycled) {
-         struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->free_desc_sets, hash, &key);
-         if (he)
-            _mesa_hash_table_remove(pool->free_desc_sets, he);
+      if (pool->key.num_descriptors) {
+         if (zds->recycled) {
+            struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->free_desc_sets, hash, &key);
+            if (he)
+               _mesa_hash_table_remove(pool->free_desc_sets, he);
+            zds->recycled = false;
+         }
+         if (zds->invalid) {
+             if (zds->batch_uses)
+                punt_invalid_set(zds, NULL);
+             else
+                /* this set is guaranteed to be in pool->alloc_desc_sets */
+                goto skip_hash_tables;
+             zds = NULL;
+         }
       }
-      goto out;
+      if (zds)
+         goto out;
    }
 
    if (pool->key.num_descriptors) {
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->desc_sets, hash, &key);
-      bool recycled = false;
+      bool recycled = false, punted = false;
       if (he) {
           zds = (void*)he->data;
-          /* this shouldn't happen, but if we somehow get a cache hit on an invalidated, active desc set then
-           * we probably should just crash here rather than later
-           */
-          assert(!zds->invalid);
+          if (zds->invalid && zds->batch_uses) {
+             punt_invalid_set(zds, he);
+             zds = NULL;
+             punted = true;
+          }
       }
       if (!he) {
          he = _mesa_hash_table_search_pre_hashed(pool->free_desc_sets, hash, &key);
          recycled = true;
       }
-      if (he) {
+      if (he && !punted) {
          zds = (void*)he->data;
          *cache_hit = !zds->invalid;
          if (recycled) {
@@ -328,7 +352,7 @@ zink_descriptor_set_get(struct zink_context *ctx,
          }
          goto quick_out;
       }
-
+skip_hash_tables:
       if (util_dynarray_num_elements(&pool->alloc_desc_sets, struct zink_descriptor_set *)) {
          /* grab one off the allocated array */
          zds = util_dynarray_pop(&pool->alloc_desc_sets, struct zink_descriptor_set *);
@@ -380,7 +404,7 @@ out:
 quick_out:
    if (pool->key.num_descriptors && !*cache_hit)
       util_dynarray_clear(&zds->barriers);
-   zds->invalid = false;
+   zds->punted = zds->invalid = false;
    *need_resource_refs = false;
    if (zink_batch_add_desc_set(batch, zds)) {
       batch->descs_used += pool->key.num_descriptors;
@@ -402,14 +426,18 @@ zink_descriptor_set_recycle(struct zink_descriptor_set *zds)
    if (!pool->key.num_descriptors)
       return;
 
-   struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->desc_sets, zds->hash, &zds->key);
-   if (!he)
-      /* desc sets can be used multiple times in the same batch */
-      return;
+   if (zds->punted)
+      zds->invalid = true;
+   else {
+      /* if we've previously punted this set, then it won't have a hash or be in either of the tables */
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(pool->desc_sets, zds->hash, &zds->key);
+      if (!he)
+         /* desc sets can be used multiple times in the same batch */
+         return;
+      _mesa_hash_table_remove(pool->desc_sets, he);
+   }
 
-   _mesa_hash_table_remove(pool->desc_sets, he);
    if (zds->invalid) {
-      zink_descriptor_set_invalidate(zds);
       util_dynarray_append(&pool->alloc_desc_sets, struct zink_descriptor_set *, zds);
    } else {
       zds->recycled = true;
