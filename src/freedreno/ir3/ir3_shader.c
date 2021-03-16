@@ -444,9 +444,13 @@ ir3_setup_used_key(struct ir3_shader *shader)
 		}
 
 		/* Only used for deciding on behavior of
-		 * nir_intrinsic_load_barycentric_sample
+		 * nir_intrinsic_load_barycentric_sample, or the centroid demotion
+		 * on older HW.
 		 */
-		key->msaa = info->fs.uses_sample_qualifier;
+		key->msaa = info->fs.uses_sample_qualifier ||
+					(shader->compiler->gpu_id < 600 &&
+					 (BITSET_TEST(info->system_values_read, SYSTEM_VALUE_BARYCENTRIC_PERSP_CENTROID) ||
+					  BITSET_TEST(info->system_values_read, SYSTEM_VALUE_BARYCENTRIC_LINEAR_CENTROID)));
 	} else {
 		key->tessellation = ~0;
 		key->has_gs = true;

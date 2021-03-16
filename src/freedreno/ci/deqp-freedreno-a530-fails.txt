@@ -17,19 +17,6 @@ dEQP-GLES31.functional.layout_binding.image.image2d.fragment_binding_array,Crash
 dEQP-GLES31.functional.layout_binding.image.image2d.fragment_binding_max,Crash
 dEQP-GLES31.functional.layout_binding.image.image3d.fragment_binding_array,Crash
 dEQP-GLES31.functional.layout_binding.image.image3d.fragment_binding_max,Crash
-dEQP-GLES31.functional.separate_shader.random.105,Fail
-dEQP-GLES31.functional.separate_shader.random.113,Fail
-dEQP-GLES31.functional.separate_shader.random.121,Fail
-dEQP-GLES31.functional.separate_shader.random.123,Fail
-dEQP-GLES31.functional.separate_shader.random.35,Fail
-dEQP-GLES31.functional.separate_shader.random.3,Fail
-dEQP-GLES31.functional.separate_shader.random.51,Fail
-dEQP-GLES31.functional.separate_shader.random.59,Fail
-dEQP-GLES31.functional.separate_shader.random.63,Fail
-dEQP-GLES31.functional.separate_shader.random.67,Fail
-dEQP-GLES31.functional.separate_shader.random.73,Fail
-dEQP-GLES31.functional.separate_shader.random.79,Fail
-dEQP-GLES31.functional.separate_shader.random.81,Fail
 dEQP-GLES31.functional.texture.border_clamp.depth_compare_mode.depth24_stencil8.gather_size_pot,Fail
 dEQP-GLES31.functional.texture.border_clamp.depth_compare_mode.depth32f_stencil8.gather_size_pot,Fail
 dEQP-GLES31.functional.texture.border_clamp.depth_compare_mode.depth32f_stencil8.linear_size_pot,Fail
@@ -501,13 +488,10 @@ dEQP-GLES3.functional.transform_feedback.basic_types.separate.points.mediump_vec
 dEQP-GLES3.functional.transform_feedback.basic_types.separate.points.mediump_vec4,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.centroid.highp_vec4_lines_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.centroid.highp_vec4_points_separate,Fail
-dEQP-GLES3.functional.transform_feedback.interpolation.centroid.highp_vec4_triangles_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.centroid.lowp_vec4_lines_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.centroid.lowp_vec4_points_separate,Fail
-dEQP-GLES3.functional.transform_feedback.interpolation.centroid.lowp_vec4_triangles_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.centroid.mediump_vec4_lines_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.centroid.mediump_vec4_points_separate,Fail
-dEQP-GLES3.functional.transform_feedback.interpolation.centroid.mediump_vec4_triangles_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.flat.highp_vec4_lines_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.flat.highp_vec4_points_separate,Fail
 dEQP-GLES3.functional.transform_feedback.interpolation.flat.lowp_vec4_lines_separate,Fail
@@ -534,8 +518,6 @@ dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.p
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.points.5,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.points.7,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.points.9,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.triangles.1,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.triangles.3,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.lines.1,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.lines.3,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.lines.5,Fail
@@ -546,11 +528,6 @@ dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.poin
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.5,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.7,Fail
 dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.points.9,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.1,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.3,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.5,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.7,Fail
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.9,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.1,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.3,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.lines.5,Fail
@@ -561,8 +538,6 @@ dEQP-GLES3.functional.transform_feedback.random.interleaved.points.3,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.points.5,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.points.7,Fail
 dEQP-GLES3.functional.transform_feedback.random.interleaved.points.9,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.1,Fail
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.3,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.1,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.3,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.lines.5,Fail
@@ -573,11 +548,6 @@ dEQP-GLES3.functional.transform_feedback.random.separate.points.3,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.points.5,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.points.7,Fail
 dEQP-GLES3.functional.transform_feedback.random.separate.points.9,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.1,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.3,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.5,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.7,Fail
-dEQP-GLES3.functional.transform_feedback.random.separate.triangles.9,Fail
 
 # Flaky since running more of GLES31
 dEQP-GLES31.functional.texture.border_clamp.*

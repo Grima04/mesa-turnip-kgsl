@@ -3,7 +3,4 @@
 # delete lines from the test list.  Be careful.
 dEQP-GLES3.functional.shaders.texture_functions.texture.*gradoffset.*
 dEQP-GLES3.functional.texture.units.4_units.only_3d.*
-dEQP-GLES3.functional.transform_feedback.random.interleaved.triangles.8
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.interleaved.triangles.8
-dEQP-GLES3.functional.transform_feedback.random_full_array_capture.separate.triangles.4
 dEQP-GLES3.functional.vertex_arrays.single_attribute.*
