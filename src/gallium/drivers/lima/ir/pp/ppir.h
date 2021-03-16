@@ -349,12 +349,6 @@ typedef struct ppir_block {
    int sched_instr_index;
    int sched_instr_base;
    int index;
-
-   /* for liveness analysis */
-   struct ppir_liveness *live_in;
-   struct ppir_liveness *live_out;
-   struct set *live_in_set;
-   struct set *live_out_set;
 } ppir_block;
 
 typedef struct {

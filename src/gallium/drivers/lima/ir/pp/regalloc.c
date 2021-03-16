@@ -565,29 +565,6 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
    }
 
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
-
-      if (block->live_in)
-         ralloc_free(block->live_in);
-      block->live_in = rzalloc_array(comp,
-            struct ppir_liveness, comp->reg_num);
-
-      if (block->live_in_set)
-         _mesa_set_destroy(block->live_in_set, NULL);
-      block->live_in_set = _mesa_set_create(comp,
-                                            _mesa_hash_pointer,
-                                            _mesa_key_pointer_equal);
-
-      if (block->live_out)
-         ralloc_free(block->live_out);
-      block->live_out = rzalloc_array(comp,
-            struct ppir_liveness, comp->reg_num);
-
-      if (block->live_out_set)
-         _mesa_set_destroy(block->live_out_set, NULL);
-      block->live_out_set = _mesa_set_create(comp,
-                                             _mesa_hash_pointer,
-                                             _mesa_key_pointer_equal);
-
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
 
          if (instr->live_in)

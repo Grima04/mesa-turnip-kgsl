@@ -230,25 +230,35 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
 {
    bool cont = false;
    list_for_each_entry_rev(ppir_block, block, &comp->block_list, list) {
-      ppir_instr *first = list_first_entry(&block->instr_list, ppir_instr, list);
+      if (list_is_empty(&block->instr_list))
+         continue;
+
       ppir_instr *last = list_last_entry(&block->instr_list, ppir_instr, list);
-
-      /* inherit live_out from the other blocks live_in */
-      for (int i = 0; i < 2; i++) {
-         ppir_block *succ = block->successors[i];
-         if (!succ)
-            continue;
-
-         ppir_liveness_propagate(comp, block->live_out, succ->live_in,
-                                 block->live_out_set, succ->live_in_set);
-      }
+      assert(last);
 
       list_for_each_entry_rev(ppir_instr, instr, &block->instr_list, list) {
          /* inherit (or-) live variables from next instr or block */
          if (instr == last) {
-            ppir_liveness_set_clone(comp,
-                                    instr->live_out, block->live_out,
-                                    instr->live_out_set, block->live_out_set);
+            ppir_instr *next_instr;
+            /* inherit liveness from the first instruction in the next block */
+            for (int i = 0; i < 2; i++) {
+               ppir_block *succ = block->successors[i];
+               if (!succ)
+                  continue;
+
+               /* if the block is empty, go for the next-next until a non-empty
+                * one is found */
+               while (list_is_empty(&succ->instr_list)) {
+                  assert(succ->successors[0] && !succ->successors[1]);
+                  succ = succ->successors[0];
+               }
+
+               next_instr = list_first_entry(&succ->instr_list, ppir_instr, list);
+               assert(next_instr);
+
+               ppir_liveness_propagate(comp, instr->live_out, next_instr->live_in,
+                     instr->live_out_set, next_instr->live_in_set);
+            }
          }
          else {
             ppir_instr *next_instr = LIST_ENTRY(ppir_instr, instr->list.next, list);
@@ -275,15 +285,6 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
          cont |= !ppir_liveness_set_equal(comp, temp_live_in, instr->live_in,
                temp_live_in_set, instr->live_in_set);
       }
-
-      /* inherit live_in from the first instruction in the block,
-       * or live_out if it is empty */
-      if (!list_is_empty(&block->instr_list) && first && first->scheduled)
-         ppir_liveness_set_clone(comp, block->live_in, first->live_in,
-               block->live_in_set, first->live_in_set);
-      else
-         ppir_liveness_set_clone(comp, block->live_in, block->live_out,
-               block->live_in_set, block->live_out_set);
    }
 
    return cont;
@@ -292,16 +293,13 @@ ppir_liveness_compute_live_sets(ppir_compiler *comp)
 /*
  * Liveness analysis is based on https://en.wikipedia.org/wiki/Live_variable_analysis
  * This implementation calculates liveness before/after each
- * instruction. Aggregated block liveness information is stored
- * before/after blocks for conveniency (handle e.g. empty blocks).
+ * instruction.
  * Blocks/instructions/ops are iterated backwards so register reads are
  * propagated up to the instruction that writes it.
  *
  * 1) Before computing liveness for each instruction, propagate live_out
  *    from the next instruction. If it is the last instruction in a
  *    block, propagate liveness from all possible next instructions
- *    (in this case, this information comes from the live_out of the
- *    block itself).
  * 2) Calculate live_in for the each instruction. The initial live_in is
  *    a copy of its live_out so registers who aren't touched by this
  *    instruction are kept intact.
