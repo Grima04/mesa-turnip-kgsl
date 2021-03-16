@@ -1072,6 +1072,21 @@ v3d_intrinsic_dependency_cb(nir_intrinsic_instr *intr,
         return false;
 }
 
+static bool
+should_split_wrmask(const nir_instr *instr, const void *data)
+{
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+        switch (intr->intrinsic) {
+        case nir_intrinsic_store_ssbo:
+        case nir_intrinsic_store_shared:
+        case nir_intrinsic_store_global:
+        case nir_intrinsic_store_scratch:
+                return true;
+        default:
+                return false;
+        }
+}
+
 static void
 v3d_attempt_compile(struct v3d_compile *c)
 {
@@ -1136,6 +1151,8 @@ v3d_attempt_compile(struct v3d_compile *c)
            NIR_PASS_V(c->s, nir_copy_prop);
            NIR_PASS_V(c->s, v3d_nir_lower_robust_buffer_access, c);
         }
+
+        NIR_PASS_V(c->s, nir_lower_wrmasks, should_split_wrmask, c->s);
 
         v3d_optimize_nir(c->s);
 

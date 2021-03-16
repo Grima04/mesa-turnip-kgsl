@@ -549,87 +549,88 @@ ntq_emit_tmu_general(struct v3d_compile *c, nir_intrinsic_instr *instr,
         const uint32_t dest_components = nir_intrinsic_dest_components(instr);
         uint32_t base_const_offset = const_offset;
         uint32_t writemask = is_store ? nir_intrinsic_write_mask(instr) : 0;
-        do {
-                uint32_t tmu_writes = 0;
-                for (enum emit_mode mode = MODE_COUNT; mode != MODE_LAST; mode++) {
-                        assert(mode == MODE_COUNT || tmu_writes > 0);
+        uint32_t tmu_writes = 0;
+        for (enum emit_mode mode = MODE_COUNT; mode != MODE_LAST; mode++) {
+                assert(mode == MODE_COUNT || tmu_writes > 0);
 
-                        if (is_store) {
-                                emit_tmu_general_store_writes(c, mode, instr,
-                                                              base_const_offset,
-                                                              &writemask,
-                                                              &const_offset,
-                                                              &tmu_writes);
-                        } else if (!is_load && !atomic_add_replaced) {
-                                 emit_tmu_general_atomic_writes(c, mode, instr,
-                                                                tmu_op,
-                                                                has_index,
-                                                                &tmu_writes);
-                        }
+                if (is_store) {
+                        emit_tmu_general_store_writes(c, mode, instr,
+                                                      base_const_offset,
+                                                      &writemask,
+                                                      &const_offset,
+                                                      &tmu_writes);
+                } else if (!is_load && !atomic_add_replaced) {
+                         emit_tmu_general_atomic_writes(c, mode, instr,
+                                                        tmu_op, has_index,
+                                                        &tmu_writes);
+                }
 
-                        /* The spec says that for atomics, the TYPE field is
-                         * ignored, but that doesn't seem to be the case for
-                         * CMPXCHG.  Just use the number of tmud writes we did
-                         * to decide the type (or choose "32bit" for atomic
-                         * reads, which has been fine).
-                         */
-                        uint32_t config = 0;
-                        if (mode == MODE_EMIT) {
-                                uint32_t num_components;
-                                if (is_load || atomic_add_replaced)
-                                        num_components = instr->num_components;
-                                else {
-                                        assert(tmu_writes > 0);
-                                        num_components = tmu_writes - 1;
-                                }
-
-                                uint32_t perquad =
-                                        is_load && !vir_in_nonuniform_control_flow(c)
-                                        ? GENERAL_TMU_LOOKUP_PER_QUAD
-                                        : GENERAL_TMU_LOOKUP_PER_PIXEL;
-                                config = 0xffffff00 | tmu_op << 3 | perquad;
-
-                                if (num_components == 1) {
-                                        config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
-                                } else {
-                                        config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 +
-                                                  num_components - 2;
-                                }
-                        }
-
-                        emit_tmu_general_address_write(c, mode, instr, config,
-                                                       dynamic_src,
-                                                       offset_src,
-                                                       base_offset,
-                                                       const_offset,
-                                                       &tmu_writes);
-
-                        assert(tmu_writes > 0);
-                        if (mode == MODE_COUNT) {
-                                /* Make sure we won't exceed the 16-entry TMU
-                                 * fifo if each thread is storing at the same
-                                 * time.
-                                 */
-                                while (tmu_writes > 16 / c->threads)
-                                        c->threads /= 2;
-
-                                /* If pipelining this TMU operation would
-                                 * overflow TMU fifos, we need to flush.
-                                 */
-                                if (ntq_tmu_fifo_overflow(c, dest_components))
-                                        ntq_flush_tmu(c);
+                /* The spec says that for atomics, the TYPE field is
+                 * ignored, but that doesn't seem to be the case for
+                 * CMPXCHG.  Just use the number of tmud writes we did
+                 * to decide the type (or choose "32bit" for atomic
+                 * reads, which has been fine).
+                 */
+                uint32_t config = 0;
+                if (mode == MODE_EMIT) {
+                        uint32_t num_components;
+                        if (is_load || atomic_add_replaced) {
+                                num_components = instr->num_components;
                         } else {
-                                /* Delay emission of the thread switch and
-                                 * LDTMU/TMUWT until we really need to do it to
-                                 * improve pipelining.
-                                 */
-                                const uint32_t component_mask =
-                                        (1 << dest_components) - 1;
-                                ntq_add_pending_tmu_flush(c, &instr->dest,
-                                                          component_mask);
+                                assert(tmu_writes > 0);
+                                num_components = tmu_writes - 1;
+                        }
+
+                        uint32_t perquad =
+                                is_load && !vir_in_nonuniform_control_flow(c)
+                                ? GENERAL_TMU_LOOKUP_PER_QUAD
+                                : GENERAL_TMU_LOOKUP_PER_PIXEL;
+                        config = 0xffffff00 | tmu_op << 3 | perquad;
+
+                        if (num_components == 1) {
+                                config |= GENERAL_TMU_LOOKUP_TYPE_32BIT_UI;
+                        } else {
+                                config |= GENERAL_TMU_LOOKUP_TYPE_VEC2 +
+                                          num_components - 2;
                         }
                 }
-        } while (is_store && writemask != 0);
+
+                emit_tmu_general_address_write(c, mode, instr, config,
+                                               dynamic_src, offset_src,
+                                               base_offset, const_offset,
+                                               &tmu_writes);
+
+                assert(tmu_writes > 0);
+                if (mode == MODE_COUNT) {
+                        /* Make sure we won't exceed the 16-entry TMU
+                         * fifo if each thread is storing at the same
+                         * time.
+                         */
+                        while (tmu_writes > 16 / c->threads)
+                                c->threads /= 2;
+
+                        /* If pipelining this TMU operation would
+                         * overflow TMU fifos, we need to flush.
+                         */
+                        if (ntq_tmu_fifo_overflow(c, dest_components))
+                                ntq_flush_tmu(c);
+                } else {
+                        /* Delay emission of the thread switch and
+                         * LDTMU/TMUWT until we really need to do it to
+                         * improve pipelining.
+                         */
+                        const uint32_t component_mask =
+                                (1 << dest_components) - 1;
+                        ntq_add_pending_tmu_flush(c, &instr->dest,
+                                                  component_mask);
+                }
+        }
+
+        /* nir_lower_wrmasks should've ensured that any writemask on a store
+         * operation only has consecutive bits set, in which case we should've
+         * processed the full writemask above.
+         */
+        assert(writemask == 0);
 }
 
 static struct qreg *
