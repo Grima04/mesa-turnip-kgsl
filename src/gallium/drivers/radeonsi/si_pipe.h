@@ -745,6 +745,7 @@ struct si_framebuffer {
    bool CB_has_shader_readable_metadata;
    bool DB_has_shader_readable_metadata;
    bool all_DCC_pipe_aligned;
+   bool has_dcc_msaa;
 };
 
 enum si_quant_mode

@@ -641,7 +641,7 @@ static void si_bind_blend_state(struct pipe_context *ctx, void *state)
    if (old_blend->cb_target_mask != blend->cb_target_mask ||
        old_blend->dual_src_blend != blend->dual_src_blend ||
        (old_blend->dcc_msaa_corruption_4bit != blend->dcc_msaa_corruption_4bit &&
-        sctx->framebuffer.nr_samples >= 2 && sctx->screen->dcc_msaa_allowed))
+        sctx->framebuffer.has_dcc_msaa))
       si_mark_atom_dirty(sctx, &sctx->atoms.s.cb_render_state);
 
    if (old_blend->cb_target_mask != blend->cb_target_mask ||
@@ -2782,6 +2782,7 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    sctx->framebuffer.CB_has_shader_readable_metadata = false;
    sctx->framebuffer.DB_has_shader_readable_metadata = false;
    sctx->framebuffer.all_DCC_pipe_aligned = true;
+   sctx->framebuffer.has_dcc_msaa = false;
    sctx->framebuffer.min_bytes_per_pixel = 0;
 
    for (i = 0; i < state->nr_cbufs; i++) {
@@ -2830,6 +2831,9 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
          if (sctx->chip_class >= GFX9 && !tex->surface.u.gfx9.dcc.pipe_aligned)
             sctx->framebuffer.all_DCC_pipe_aligned = false;
+
+         if (tex->buffer.b.b.nr_storage_samples >= 2)
+            sctx->framebuffer.has_dcc_msaa = true;
       }
 
       si_context_add_resource_size(sctx, surf->base.texture);
