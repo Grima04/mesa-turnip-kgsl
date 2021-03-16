@@ -302,7 +302,6 @@ dEQP-GLES3.functional.texture.vertex.2d.filtering.linear_nearest_clamp,Fail
 dEQP-GLES3.functional.texture.vertex.3d.filtering.linear_nearest_repeat,Fail
 dEQP-GLES3.functional.texture.vertex.3d.filtering.nearest_linear_clamp,Fail
 dEQP-GLES3.functional.texture.vertex.cube.filtering.nearest_linear_mirror,Fail
-dEQP-GLES3.functional.ubo.random.all_per_block_buffers.13,Crash
 KHR-GL32.glsl_noperspective.functionaltest,Fail
 KHR-GL32.gpu_shader5_gl.float_encoding,Fail
 KHR-GL32.packed_depth_stencil.blit.depth24_stencil8,Fail

@@ -917,9 +917,7 @@ spec/arb_get_program_binary/xfb-varyings: skip
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations: skip
 spec/arb_gpu_shader5/arb_gpu_shader5-xfb-streams-without-invocations spirv: skip
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-dlist-uniforms: skip
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-fs-non-uniform-control-flow-ssbo: crash
 spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-tf-separate: fail
-spec/arb_gpu_shader_fp64/execution/arb_gpu_shader_fp64-vs-non-uniform-control-flow-ssbo: crash
 spec/arb_internalformat_query/minmax: skip
 spec/arb_internalformat_query/misc. api error checks: skip
 spec/arb_pipeline_statistics_query/arb_pipeline_statistics_query-comp: skip
