@@ -168,12 +168,17 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
    pctx = threaded_context_unwrap_sync(pctx);
    struct zink_context *ctx = zink_context(pctx);
 
-   if (pctx && mfence->deferred_ctx == pctx && mfence->deferred_id == ctx->curr_batch) {
-      zink_context(pctx)->batch.has_work = true;
-      /* this must be the current batch */
-      pctx->flush(pctx, NULL, !timeout_ns ? PIPE_FLUSH_ASYNC : 0);
-      if (!timeout_ns)
-         return false;
+   if (pctx && mfence->deferred_ctx == pctx) {
+      if (mfence->deferred_id == ctx->curr_batch) {
+         zink_context(pctx)->batch.has_work = true;
+         /* this must be the current batch */
+         pctx->flush(pctx, NULL, !timeout_ns ? PIPE_FLUSH_ASYNC : 0);
+         if (!timeout_ns)
+            return false;
+      }
+      /* this batch is known to have finished */
+      if (mfence->deferred_id <= screen->last_finished)
+         return true;
    }
 
    /* need to ensure the tc mfence has been flushed before we wait */
