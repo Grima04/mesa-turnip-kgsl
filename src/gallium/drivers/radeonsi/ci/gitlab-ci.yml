@@ -22,7 +22,7 @@
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-gles31:amd64:
+.radeonsi-stoney-gles31:amd64:
   extends:
     - .radeonsi-stoney-gles2:amd64
   variables:
@@ -32,7 +32,7 @@ radeonsi-stoney-gles31:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-traces:amd64:
+.radeonsi-stoney-traces:amd64:
   extends:
     - .lava-piglit-traces:amd64
     - .radeonsi-rules

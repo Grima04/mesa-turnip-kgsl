@@ -52,14 +52,14 @@ panfrost-t720-gles2:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-panfrost-t860-gles2:arm64:
+.panfrost-t860-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-panfrost-t860-gles3:arm64:
+.panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -68,7 +68,7 @@ panfrost-t860-gles3:arm64:
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-panfrost-t860-traces:arm64:
+.panfrost-t860-traces:arm64:
   extends:
     - .lava-piglit-traces:arm64
     - .lava-rk3399-gru-kevin
