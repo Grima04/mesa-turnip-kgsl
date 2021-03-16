@@ -1731,8 +1731,12 @@ tu6_emit_viewport(struct tu_cs *cs, const VkViewport *viewports, uint32_t num_vi
       /* allow viewport->width = 0.0f for un-initialized viewports: */
       if (min.x == max.x)
          max.x++;
-      assert(min.x >= 0 && min.x < max.x);
-      assert(min.y >= 0 && min.y < max.y);
+
+      min.x = MAX2(min.x, 0);
+      min.y = MAX2(min.y, 0);
+
+      assert(min.x < max.x);
+      assert(min.y < max.y);
       tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(min.x) |
                      A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_Y(min.y));
       tu_cs_emit(cs, A6XX_GRAS_SC_VIEWPORT_SCISSOR_TL_X(max.x - 1) |
