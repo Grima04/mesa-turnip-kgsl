@@ -942,7 +942,7 @@ emit_restore_blit(struct fd_batch *batch,
 	OUT_REG(ring, A6XX_RB_BLIT_INFO(
 		.gmem = true, .unk0 = true,
 		.depth = (buffer == FD_BUFFER_DEPTH),
-		.integer = util_format_is_pure_integer(psurf->format)));
+		.sample_0 = util_format_is_pure_integer(psurf->format)));
 
 	emit_blit(batch, ring, base, psurf, stencil);
 }
@@ -1256,7 +1256,7 @@ emit_resolve_blit(struct fd_batch *batch,
 	}
 
 	if (util_format_is_pure_integer(psurf->format))
-		info |= A6XX_RB_BLIT_INFO_INTEGER;
+		info |= A6XX_RB_BLIT_INFO_SAMPLE_0;
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
 	OUT_RING(ring, info);

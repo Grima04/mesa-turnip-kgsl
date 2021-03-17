@@ -2126,7 +2126,7 @@ to upconvert to 32b float internally?
 	<reg32 offset="0x88e3" name="RB_BLIT_INFO">
 		<bitfield name="UNK0" pos="0" type="boolean"/> <!-- s8 stencil restore/clear?  But also color restore? -->
 		<bitfield name="GMEM" pos="1" type="boolean"/> <!-- set for restore and clear to gmem? -->
-		<bitfield name="INTEGER" pos="2" type="boolean"/> <!-- probably -->
+		<bitfield name="SAMPLE_0" pos="2" type="boolean"/> <!-- takes sample 0 instead of averaging -->
 		<bitfield name="DEPTH" pos="3" type="boolean"/> <!-- z16/z32/z24s8/x24x8 clear or resolve? -->
 		<doc>
 			For clearing depth/stencil
