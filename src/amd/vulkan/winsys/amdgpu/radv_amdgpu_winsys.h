@@ -71,6 +71,8 @@ struct radv_amdgpu_winsys {
 	/* BO log */
 	struct u_rwlock log_bo_list_lock;
 	struct list_head log_bo_list;
+
+	uint32_t refcount;
 };
 
 static inline struct radv_amdgpu_winsys *

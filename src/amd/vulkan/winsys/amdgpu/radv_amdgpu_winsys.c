@@ -154,9 +154,30 @@ static const char *radv_amdgpu_winsys_get_chip_name(struct radeon_winsys *rws)
 	return amdgpu_get_marketing_name(dev);
 }
 
+static simple_mtx_t winsys_creation_mutex = _SIMPLE_MTX_INITIALIZER_NP;
+static struct hash_table *winsyses = NULL;
+
 static void radv_amdgpu_winsys_destroy(struct radeon_winsys *rws)
 {
 	struct radv_amdgpu_winsys *ws = (struct radv_amdgpu_winsys*)rws;
+	bool destroy = false;
+
+	simple_mtx_lock(&winsys_creation_mutex);
+	if (!--ws->refcount) {
+		_mesa_hash_table_remove_key(winsyses, ws->dev);
+
+		/* Clean the hashtable up if empty, though there is no
+		 * empty function. */
+		if (_mesa_hash_table_num_entries(winsyses) == 0) {
+			_mesa_hash_table_destroy(winsyses, NULL);
+			winsyses = NULL;
+		}
+
+		destroy = true;
+	}
+	simple_mtx_unlock(&winsys_creation_mutex);
+	if (!destroy)
+		return;
 
 	for (unsigned i = 0; i < ws->syncobj_count; ++i)
 		amdgpu_cs_destroy_syncobj(ws->dev, ws->syncobj[i]);
@@ -177,16 +198,36 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags)
 {
 	uint32_t drm_major, drm_minor, r;
 	amdgpu_device_handle dev;
-	struct radv_amdgpu_winsys *ws;
+	struct radv_amdgpu_winsys *ws = NULL;
 
 	r = amdgpu_device_initialize(fd, &drm_major, &drm_minor, &dev);
 	if (r)
 		return NULL;
 
+	/* We have to keep this lock till insertion. */
+	simple_mtx_lock(&winsys_creation_mutex);
+	if (!winsyses)
+		winsyses = _mesa_pointer_hash_table_create(NULL);
+	if (!winsyses)
+		goto fail;
+
+	struct hash_entry *entry = _mesa_hash_table_search(winsyses, dev);
+	if (entry) {
+		ws = (struct radv_amdgpu_winsys *)entry->data;
+		++ws->refcount;
+	}
+
+	if (ws) {
+		simple_mtx_unlock(&winsys_creation_mutex);
+		amdgpu_device_deinitialize(dev);
+		return &ws->base;
+	}
+
 	ws = calloc(1, sizeof(struct radv_amdgpu_winsys));
 	if (!ws)
 		goto fail;
 
+	ws->refcount = 1;
 	ws->dev = dev;
 	ws->info.drm_major = drm_major;
 	ws->info.drm_minor = drm_minor;
@@ -215,11 +256,19 @@ radv_amdgpu_winsys_create(int fd, uint64_t debug_flags, uint64_t perftest_flags)
 	radv_amdgpu_cs_init_functions(ws);
 	radv_amdgpu_surface_init_functions(ws);
 
+	_mesa_hash_table_insert(winsyses, dev, ws);
+	simple_mtx_unlock(&winsys_creation_mutex);
+
 	return &ws->base;
 
 winsys_fail:
 	free(ws);
 fail:
+	if (winsyses && _mesa_hash_table_num_entries(winsyses) == 0) {
+		_mesa_hash_table_destroy(winsyses, NULL);
+		winsyses = NULL;
+	}
+	simple_mtx_unlock(&winsys_creation_mutex);
 	amdgpu_device_deinitialize(dev);
 	return NULL;
 }
