@@ -413,7 +413,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
    } else {
       sci.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
       sci.minLod = 0;
-      sci.maxLod = 0;
+      sci.maxLod = 0.25f;
    }
 
    sci.addressModeU = sampler_address_mode(state->wrap_s);
