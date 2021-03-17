@@ -46,15 +46,6 @@
     #include <assert.h>
 #endif
 
-#include "util/macros.h"
-#include "util/u_endian.h"
-
-#if UTIL_ARCH_LITTLE_ENDIAN
-#define LITTLEENDIAN_CPU
-#elif UTIL_ARCH_BIG_ENDIAN
-#define BIGENDIAN_CPU
-#endif
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Platform specific debug break defines
