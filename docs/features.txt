@@ -421,7 +421,7 @@ Vulkan 1.0 -- all DONE: anv, lvp, radv, tu, v3dv
 
 Vulkan 1.1 -- all DONE: anv, radv
 
-  VK_KHR_16bit_storage                                  DONE (anv/gen8+, radv)
+  VK_KHR_16bit_storage                                  DONE (anv/gen8+, lvp, radv)
   VK_KHR_bind_memory2                                   DONE (anv, lvp, radv, tu)
   VK_KHR_dedicated_allocation                           DONE (anv, lvp, radv, tu)
   VK_KHR_descriptor_update_template                     DONE (anv, lvp, radv)
@@ -447,7 +447,7 @@ Vulkan 1.1 -- all DONE: anv, radv
 
 Vulkan 1.2 -- all DONE: anv
 
-  VK_KHR_8bit_storage                                   DONE (anv/gen8+, radv)
+  VK_KHR_8bit_storage                                   DONE (anv/gen8+, lvp, radv)
   VK_KHR_buffer_device_address                          DONE (anv/gen8+, lvp, radv)
   VK_KHR_create_renderpass2                             DONE (anv, lvp, radv, tu)
   VK_KHR_depth_stencil_resolve                          DONE (anv, radv, tu)
