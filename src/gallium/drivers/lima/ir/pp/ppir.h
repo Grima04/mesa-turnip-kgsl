@@ -300,11 +300,6 @@ enum ppir_instr_slot {
    PPIR_INSTR_SLOT_ALU_END = PPIR_INSTR_SLOT_ALU_COMBINE,
 };
 
-struct ppir_liveness {
-   ppir_reg *reg;
-   unsigned mask : 4;
-};
-
 typedef struct ppir_instr {
    struct list_head list;
    int index;
@@ -326,12 +321,11 @@ typedef struct ppir_instr {
    int encode_size;
 
    /* for liveness analysis */
-   struct ppir_liveness *live_in;
+   BITSET_WORD *live_set;
+   uint8_t *live_mask; /* mask for non-ssa registers */
    /* live_internal is to mark registers only live within an
     * instruction, without propagation */
-   struct ppir_liveness *live_internal;
-   struct set *live_in_set;
-   struct set *live_internal_set;
+   BITSET_WORD *live_internal;
 } ppir_instr;
 
 typedef struct ppir_block {
@@ -692,5 +686,27 @@ bool ppir_schedule_prog(ppir_compiler *comp);
 bool ppir_regalloc_prog(ppir_compiler *comp);
 bool ppir_codegen_prog(ppir_compiler *comp);
 void ppir_liveness_analysis(ppir_compiler *comp);
+
+static inline unsigned int reg_mask_size(unsigned int num_reg)
+{
+   return (num_reg + 1) / 2;
+}
+
+static inline uint8_t get_reg_mask(uint8_t *set, unsigned index)
+{
+   unsigned int i = index / 2;
+   unsigned int shift = index % 2 ? 4 : 0;
+   uint8_t mask = 0x0f << shift;
+   return (set[i] & mask) >> shift;
+}
+
+static inline void set_reg_mask(uint8_t *set, unsigned int index, uint8_t bits)
+{
+   unsigned int i = index / 2;
+   unsigned int shift = index % 2 ? 4 : 0;
+   uint8_t mask = 0x0f << shift;
+   set[i] &= ~mask;
+   set[i] |= (bits << shift);
+}
 
 #endif

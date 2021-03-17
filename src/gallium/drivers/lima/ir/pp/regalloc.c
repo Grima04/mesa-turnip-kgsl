@@ -567,42 +567,31 @@ static void ppir_regalloc_reset_liveness_info(ppir_compiler *comp)
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
 
-         if (instr->live_in)
-            ralloc_free(instr->live_in);
-         instr->live_in = rzalloc_array(comp,
-               struct ppir_liveness, comp->reg_num);
+         if (instr->live_mask)
+            ralloc_free(instr->live_mask);
+         instr->live_mask = rzalloc_array(comp, uint8_t,
+                                          reg_mask_size(comp->reg_num));
 
-         if (instr->live_in_set)
-            _mesa_set_destroy(instr->live_in_set, NULL);
-         instr->live_in_set = _mesa_set_create(comp,
-                                               _mesa_hash_pointer,
-                                               _mesa_key_pointer_equal);
+         if (instr->live_set)
+            ralloc_free(instr->live_set);
+         instr->live_set = rzalloc_array(comp, BITSET_WORD, comp->reg_num);
 
          if (instr->live_internal)
             ralloc_free(instr->live_internal);
-         instr->live_internal = rzalloc_array(comp,
-               struct ppir_liveness, comp->reg_num);
-
-         if (instr->live_internal_set)
-            _mesa_set_destroy(instr->live_internal_set, NULL);
-         instr->live_internal_set = _mesa_set_create(comp,
-                                               _mesa_hash_pointer,
-                                               _mesa_key_pointer_equal);
+         instr->live_internal = rzalloc_array(comp, BITSET_WORD, comp->reg_num);
       }
    }
 }
 
 static void ppir_all_interference(ppir_compiler *comp, struct ra_graph *g,
-                                  struct set *liveness)
+                                  BITSET_WORD *liveness)
 {
-   set_foreach(liveness, entry1) {
-      set_foreach(liveness, entry2) {
-         const struct ppir_liveness *r1 = entry1->key;
-         const struct ppir_liveness *r2 = entry2->key;
-         ra_add_node_interference(g, r1->reg->regalloc_index,
-                                     r2->reg->regalloc_index);
+   int i, j;
+   BITSET_FOREACH_SET(i, liveness, comp->reg_num) {
+      BITSET_FOREACH_SET(j, liveness, comp->reg_num) {
+         ra_add_node_interference(g, i, j);
       }
-      _mesa_set_remove(liveness, entry1);
+      BITSET_CLEAR(liveness, i);
    }
 }
 
@@ -627,10 +616,11 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
 
    list_for_each_entry(ppir_block, block, &comp->block_list, list) {
       list_for_each_entry(ppir_instr, instr, &block->instr_list, list) {
-         set_foreach(instr->live_internal_set, entry) {
-            _mesa_set_add(instr->live_in_set, entry->key);
+         int i;
+         BITSET_FOREACH_SET(i, instr->live_internal, comp->reg_num) {
+            BITSET_SET(instr->live_set, i);
          }
-         ppir_all_interference(comp, g, instr->live_in_set);
+         ppir_all_interference(comp, g, instr->live_set);
       }
    }
 
