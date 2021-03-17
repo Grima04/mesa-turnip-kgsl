@@ -195,11 +195,16 @@ mir_pack_mask_alu(midgard_instruction *ins, midgard_vector_alu *alu)
 
 static unsigned
 mir_pack_swizzle(unsigned mask, unsigned *swizzle,
-                nir_alu_type T, midgard_reg_mode reg_mode,
-                bool op_channeled, bool *rep_low, bool *rep_high)
+                 unsigned sz, unsigned base_size,
+                 bool op_channeled, bool *rep_low, bool *rep_high, bool *half)
 {
         unsigned packed = 0;
-        unsigned sz = nir_alu_type_get_type_size(T);
+
+        *rep_low = false;
+        *rep_high = false;
+        *half = false;
+
+        midgard_reg_mode reg_mode = reg_mode_for_bitsize(base_size);
 
         if (reg_mode == midgard_reg_mode_64) {
                 assert(sz == 64 || sz == 32);
@@ -208,6 +213,8 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                 packed = mir_pack_swizzle_64(swizzle, components);
 
                 if (sz == 32) {
+                        *half = true;
+
                         bool lo = swizzle[0] >= COMPONENT_Z;
                         bool hi = swizzle[1] >= COMPONENT_Z;
 
@@ -264,11 +271,15 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                         *rep_low = !upper;
                         *rep_high = upper;
                 } else if (reg_mode == midgard_reg_mode_16 && sz == 8) {
+                        if (base_size == 16)
+                                *half = true;
+
                         *rep_low = upper;
                         *rep_high = upper;
-                } else if (reg_mode == midgard_reg_mode_32) {
+                } else if (reg_mode == midgard_reg_mode_32 && sz == 16) {
+                        *half = true;
                         *rep_low = upper;
-                } else {
+                } else if (reg_mode == midgard_reg_mode_8) {
                         unreachable("Unhandled reg mode");
                 }
         }
@@ -290,15 +301,13 @@ mir_pack_vector_srcs(midgard_instruction *ins, midgard_vector_alu *alu)
                 if (ins->src[i] == ~0)
                         continue;
 
-                bool rep_lo = false, rep_hi = false;
                 unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
-                bool half = (sz == (base_size >> 1));
+                assert((sz == base_size) || (sz == base_size / 2));
 
-                assert((sz == base_size) || half);
-
+                bool rep_lo = false, rep_hi = false, half = false;
                 unsigned swizzle = mir_pack_swizzle(ins->mask, ins->swizzle[i],
-                                ins->src_types[i], reg_mode_for_bitsize(base_size),
-                                channeled, &rep_lo, &rep_hi);
+                                                    sz, base_size, channeled,
+                                                    &rep_lo, &rep_hi, &half);
 
                 midgard_vector_alu_src pack = {
                         .mod = mir_pack_mod(ins, i, false),
