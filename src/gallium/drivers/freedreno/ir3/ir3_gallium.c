@@ -556,3 +556,50 @@ ir3_screen_fini(struct pipe_screen *pscreen)
 	ir3_compiler_destroy(screen->compiler);
 	screen->compiler = NULL;
 }
+
+uint32_t
+ir3_max_tf_vtx(struct fd_context *ctx, const struct ir3_shader_variant *v)
+{
+	struct fd_streamout_stateobj *so = &ctx->streamout;
+	struct ir3_stream_output_info *info = &v->shader->stream_output;
+	uint32_t maxvtxcnt = 0x7fffffff;
+
+	if (ctx->screen->gpu_id >= 500)
+		return 0;
+	if (v->binning_pass)
+		return 0;
+	if (v->shader->stream_output.num_outputs == 0)
+		return 0;
+	if (so->num_targets == 0)
+		return 0;
+
+	/* offset to write to is:
+	 *
+	 *   total_vtxcnt = vtxcnt + offsets[i]
+	 *   offset = total_vtxcnt * stride[i]
+	 *
+	 *   offset =   vtxcnt * stride[i]       ; calculated in shader
+	 *            + offsets[i] * stride[i]   ; calculated at emit_tfbos()
+	 *
+	 * assuming for each vtx, each target buffer will have data written
+	 * up to 'offset + stride[i]', that leaves maxvtxcnt as:
+	 *
+	 *   buffer_size = (maxvtxcnt * stride[i]) + stride[i]
+	 *   maxvtxcnt   = (buffer_size - stride[i]) / stride[i]
+	 *
+	 * but shader is actually doing a less-than (rather than less-than-
+	 * equal) check, so we can drop the -stride[i].
+	 *
+	 * TODO is assumption about `offset + stride[i]` legit?
+	 */
+	for (unsigned i = 0; i < so->num_targets; i++) {
+		struct pipe_stream_output_target *target = so->targets[i];
+		unsigned stride = info->stride[i] * 4;   /* convert dwords->bytes */
+		if (target) {
+			uint32_t max = target->buffer_size / stride;
+			maxvtxcnt = MIN2(maxvtxcnt, max);
+		}
+	}
+
+	return maxvtxcnt;
+}
