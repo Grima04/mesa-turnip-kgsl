@@ -2127,6 +2127,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
 
          surf->cmask_size = cout.cmaskBytes;
          surf->cmask_alignment = cout.baseAlign;
+         surf->cmask_slice_size = cout.sliceSize;
       }
    }
 
