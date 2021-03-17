@@ -250,8 +250,8 @@ struct util_format_pack_description {
     * Only defined for non-depth-stencil formats.
     */
    void
-   (*pack_rgba_8unorm)(uint8_t *dst, unsigned dst_stride,
-                       const uint8_t *src, unsigned src_stride,
+   (*pack_rgba_8unorm)(uint8_t *restrict dst, unsigned dst_stride,
+                       const uint8_t *restrict src, unsigned src_stride,
                        unsigned width, unsigned height);
 
    /**
@@ -261,8 +261,8 @@ struct util_format_pack_description {
     * Only defined for non-depth-stencil formats.
     */
    void
-   (*pack_rgba_float)(uint8_t *dst, unsigned dst_stride,
-                      const float *src, unsigned src_stride,
+   (*pack_rgba_float)(uint8_t *restrict dst, unsigned dst_stride,
+                      const float *restrict src, unsigned src_stride,
                       unsigned width, unsigned height);
 
    /**
@@ -272,8 +272,8 @@ struct util_format_pack_description {
     * Only defined for depth formats.
     */
    void
-   (*pack_z_32unorm)(uint8_t *dst, unsigned dst_stride,
-                     const uint32_t *src, unsigned src_stride,
+   (*pack_z_32unorm)(uint8_t *restrict dst, unsigned dst_stride,
+                     const uint32_t *restrict src, unsigned src_stride,
                      unsigned width, unsigned height);
 
    /**
@@ -283,8 +283,8 @@ struct util_format_pack_description {
     * Only defined for depth formats.
     */
    void
-   (*pack_z_float)(uint8_t *dst, unsigned dst_stride,
-                   const float *src, unsigned src_stride,
+   (*pack_z_float)(uint8_t *restrict dst, unsigned dst_stride,
+                   const float *restrict src, unsigned src_stride,
                    unsigned width, unsigned height);
 
    /**
@@ -294,18 +294,18 @@ struct util_format_pack_description {
     * Only defined for stencil formats.
     */
    void
-   (*pack_s_8uint)(uint8_t *dst, unsigned dst_stride,
-                   const uint8_t *src, unsigned src_stride,
+   (*pack_s_8uint)(uint8_t *restrict dst, unsigned dst_stride,
+                   const uint8_t *restrict src, unsigned src_stride,
                    unsigned width, unsigned height);
 
    void
-   (*pack_rgba_uint)(uint8_t *dst, unsigned dst_stride,
-                     const uint32_t *src, unsigned src_stride,
+   (*pack_rgba_uint)(uint8_t *restrict dst, unsigned dst_stride,
+                     const uint32_t *restrict src, unsigned src_stride,
                      unsigned width, unsigned height);
 
    void
-   (*pack_rgba_sint)(uint8_t *dst, unsigned dst_stride,
-                     const int32_t *src, unsigned src_stride,
+   (*pack_rgba_sint)(uint8_t *restrict dst, unsigned dst_stride,
+                     const int32_t *restrict src, unsigned src_stride,
                      unsigned width, unsigned height);
 };
 
@@ -318,8 +318,8 @@ struct util_format_unpack_description {
     * Only defined for non-depth-stencil formats.
     */
    void
-   (*unpack_rgba_8unorm)(uint8_t *dst, unsigned dst_stride,
-                         const uint8_t *src, unsigned src_stride,
+   (*unpack_rgba_8unorm)(uint8_t *restrict dst, unsigned dst_stride,
+                         const uint8_t *restrict src, unsigned src_stride,
                          unsigned width, unsigned height);
 
    /**
@@ -328,8 +328,8 @@ struct util_format_unpack_description {
     * XXX: Only defined for a very few select formats.
     */
    void
-   (*fetch_rgba_8unorm)(uint8_t *dst,
-                        const uint8_t *src,
+   (*fetch_rgba_8unorm)(uint8_t *restrict dst,
+                        const uint8_t *restrict src,
                         unsigned i, unsigned j);
 
    /**
@@ -341,8 +341,8 @@ struct util_format_unpack_description {
     * Only defined for non-depth-stencil formats.
     */
    void
-   (*unpack_rgba)(void *dst, unsigned dst_stride,
-                  const uint8_t *src, unsigned src_stride,
+   (*unpack_rgba)(void *restrict dst, unsigned dst_stride,
+                  const uint8_t *restrict src, unsigned src_stride,
                   unsigned width, unsigned height);
 
    /**
@@ -352,8 +352,8 @@ struct util_format_unpack_description {
     * Only defined for depth formats.
     */
    void
-   (*unpack_z_32unorm)(uint32_t *dst, unsigned dst_stride,
-                       const uint8_t *src, unsigned src_stride,
+   (*unpack_z_32unorm)(uint32_t *restrict dst, unsigned dst_stride,
+                       const uint8_t *restrict src, unsigned src_stride,
                        unsigned width, unsigned height);
 
    /**
@@ -363,8 +363,8 @@ struct util_format_unpack_description {
     * Only defined for depth formats.
     */
    void
-   (*unpack_z_float)(float *dst, unsigned dst_stride,
-                     const uint8_t *src, unsigned src_stride,
+   (*unpack_z_float)(float *restrict dst, unsigned dst_stride,
+                     const uint8_t *restrict src, unsigned src_stride,
                      unsigned width, unsigned height);
 
    /**
@@ -374,12 +374,12 @@ struct util_format_unpack_description {
     * Only defined for stencil formats.
     */
    void
-   (*unpack_s_8uint)(uint8_t *dst, unsigned dst_stride,
-                     const uint8_t *src, unsigned src_stride,
+   (*unpack_s_8uint)(uint8_t *restrict dst, unsigned dst_stride,
+                     const uint8_t *restrict src, unsigned src_stride,
                      unsigned width, unsigned height);
 };
 
-typedef void (*util_format_fetch_rgba_func_ptr)(void *dst, const uint8_t *src,
+typedef void (*util_format_fetch_rgba_func_ptr)(void *restrict dst, const uint8_t *restrict src,
                                                 unsigned i, unsigned j);
 
 /* Silence warnings triggered by sharing function/struct names */

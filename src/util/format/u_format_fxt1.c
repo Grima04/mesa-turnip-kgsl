@@ -1508,20 +1508,20 @@ fxt1_decode_1 (const void *texture, int32_t stride, /* in pixels */
  */
 
 void
-util_format_fxt1_rgb_fetch_rgba_8unorm(uint8_t *dst, const uint8_t *src, unsigned i, unsigned j)
+util_format_fxt1_rgb_fetch_rgba_8unorm(uint8_t *restrict dst, const uint8_t *restrict src, unsigned i, unsigned j)
 {
    fxt1_decode_1(src, 0, i, j, dst);
 }
 
 void
-util_format_fxt1_rgba_fetch_rgba_8unorm(uint8_t *dst, const uint8_t *src, unsigned i, unsigned j)
+util_format_fxt1_rgba_fetch_rgba_8unorm(uint8_t *restrict dst, const uint8_t *restrict src, unsigned i, unsigned j)
 {
    fxt1_decode_1(src, 0, i, j, dst);
    dst[3] = 0xff;
 }
 
 void
-util_format_fxt1_rgb_fetch_rgba(void *in_dst, const uint8_t *src, unsigned i, unsigned j)
+util_format_fxt1_rgb_fetch_rgba(void *restrict in_dst, const uint8_t *restrict src, unsigned i, unsigned j)
 {
    float *dst = in_dst;
    uint8_t tmp[4];
@@ -1533,7 +1533,7 @@ util_format_fxt1_rgb_fetch_rgba(void *in_dst, const uint8_t *src, unsigned i, un
 }
 
 void
-util_format_fxt1_rgba_fetch_rgba(void *in_dst, const uint8_t *src, unsigned i, unsigned j)
+util_format_fxt1_rgba_fetch_rgba(void *restrict in_dst, const uint8_t *restrict src, unsigned i, unsigned j)
 {
    float *dst = in_dst;
    uint8_t tmp[4];
@@ -1549,8 +1549,8 @@ util_format_fxt1_rgba_fetch_rgba(void *in_dst, const uint8_t *src, unsigned i, u
  */
 
 static inline void
-util_format_fxtn_rgb_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
-                                        const uint8_t *src_row, unsigned src_stride,
+util_format_fxtn_rgb_unpack_rgba_8unorm(uint8_t *restrict dst_row, unsigned dst_stride,
+                                        const uint8_t *restrict src_row, unsigned src_stride,
                                         unsigned width, unsigned height,
                                         boolean rgba)
 {
@@ -1574,8 +1574,8 @@ util_format_fxtn_rgb_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_fxt1_rgb_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
-                                        const uint8_t *src_row, unsigned src_stride,
+util_format_fxt1_rgb_unpack_rgba_8unorm(uint8_t *restrict dst_row, unsigned dst_stride,
+                                        const uint8_t *restrict src_row, unsigned src_stride,
                                         unsigned width, unsigned height)
 {
    util_format_fxtn_rgb_unpack_rgba_8unorm(dst_row, dst_stride,
@@ -1585,8 +1585,8 @@ util_format_fxt1_rgb_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_fxt1_rgba_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
-                                         const uint8_t *src_row, unsigned src_stride,
+util_format_fxt1_rgba_unpack_rgba_8unorm(uint8_t *restrict dst_row, unsigned dst_stride,
+                                         const uint8_t *restrict src_row, unsigned src_stride,
                                          unsigned width, unsigned height)
 {
    util_format_fxtn_rgb_unpack_rgba_8unorm(dst_row, dst_stride,
@@ -1597,7 +1597,7 @@ util_format_fxt1_rgba_unpack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
 
 static inline void
 util_format_fxtn_rgb_unpack_rgba_float(float *dst_row, unsigned dst_stride,
-                                       const uint8_t *src_row, unsigned src_stride,
+                                       const uint8_t *restrict src_row, unsigned src_stride,
                                        unsigned width, unsigned height,
                                        boolean rgba)
 {
@@ -1627,8 +1627,8 @@ util_format_fxtn_rgb_unpack_rgba_float(float *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_fxt1_rgb_unpack_rgba_float(void *dst_row, unsigned dst_stride,
-                                       const uint8_t *src_row, unsigned src_stride,
+util_format_fxt1_rgb_unpack_rgba_float(void *restrict dst_row, unsigned dst_stride,
+                                       const uint8_t *restrict src_row, unsigned src_stride,
                                        unsigned width, unsigned height)
 {
    util_format_fxtn_rgb_unpack_rgba_float(dst_row, dst_stride,
@@ -1638,8 +1638,8 @@ util_format_fxt1_rgb_unpack_rgba_float(void *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_fxt1_rgba_unpack_rgba_float(void *dst_row, unsigned dst_stride,
-                                        const uint8_t *src_row, unsigned src_stride,
+util_format_fxt1_rgba_unpack_rgba_float(void *restrict dst_row, unsigned dst_stride,
+                                        const uint8_t *restrict src_row, unsigned src_stride,
                                         unsigned width, unsigned height)
 {
    util_format_fxtn_rgb_unpack_rgba_float(dst_row, dst_stride,
@@ -1653,8 +1653,8 @@ util_format_fxt1_rgba_unpack_rgba_float(void *dst_row, unsigned dst_stride,
  */
 
 void
-util_format_fxt1_rgb_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
-                                      const uint8_t *src, unsigned src_stride,
+util_format_fxt1_rgb_pack_rgba_8unorm(uint8_t *restrict dst_row, unsigned dst_stride,
+                                      const uint8_t *restrict src, unsigned src_stride,
                                       unsigned width, unsigned height)
 {
    /* The encoder for FXT1_RGB wants 24bpp packed rgb, so make a temporary to do that.
@@ -1679,16 +1679,16 @@ util_format_fxt1_rgb_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_fxt1_rgba_pack_rgba_8unorm(uint8_t *dst_row, unsigned dst_stride,
-                                       const uint8_t *src, unsigned src_stride,
+util_format_fxt1_rgba_pack_rgba_8unorm(uint8_t *restrict dst_row, unsigned dst_stride,
+                                       const uint8_t *restrict src, unsigned src_stride,
                                        unsigned width, unsigned height)
 {
    fxt1_encode(width, height, 4, src, src_stride, dst_row, dst_stride);
 }
 
 void
-util_format_fxt1_rgb_pack_rgba_float(uint8_t *dst_row, unsigned dst_stride,
-                                     const float *src, unsigned src_stride,
+util_format_fxt1_rgb_pack_rgba_float(uint8_t *restrict dst_row, unsigned dst_stride,
+                                     const float *restrict src, unsigned src_stride,
                                      unsigned width, unsigned height)
 {
    int temp_stride = width * 4;
@@ -1708,8 +1708,8 @@ util_format_fxt1_rgb_pack_rgba_float(uint8_t *dst_row, unsigned dst_stride,
 }
 
 void
-util_format_fxt1_rgba_pack_rgba_float(uint8_t *dst_row, unsigned dst_stride,
-                                      const float *src, unsigned src_stride,
+util_format_fxt1_rgba_pack_rgba_float(uint8_t *restrict dst_row, unsigned dst_stride,
+                                      const float *restrict src, unsigned src_stride,
                                       unsigned width, unsigned height)
 {
    int temp_stride = width * 4;
