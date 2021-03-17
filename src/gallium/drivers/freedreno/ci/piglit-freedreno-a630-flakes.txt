@@ -1,5 +1,7 @@
 glx@glx_arb_sync_control@timing -divisor 1
+glx@glx_arb_sync_control@timing -divisor 2
 glx@glx_arb_sync_control@timing -msc-delta 1
+glx@glx_arb_sync_control@timing -msc-delta 2
 glx@glx_arb_sync_control@timing -fullscreen -divisor 1
 glx@glx_arb_sync_control@timing -fullscreen -divisor 2
 glx@glx_arb_sync_control@timing -fullscreen -msc-delta 1
