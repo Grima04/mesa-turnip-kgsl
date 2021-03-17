@@ -1461,7 +1461,7 @@ zink_drm_create_screen(int fd, const struct pipe_screen_config *config)
 
    if (ret && !ret->info.have_KHR_external_memory_fd) {
       debug_printf("ZINK: KHR_external_memory_fd required!\n");
-      free(ret);
+      zink_destroy_screen(&ret->base);
       return NULL;
    }
 
