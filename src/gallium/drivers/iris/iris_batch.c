@@ -133,10 +133,9 @@ decode_get_bo(void *v_batch, bool ppgtt, uint64_t address)
 
       if (address >= bo_address && address < bo_address + bo->size) {
          return (struct intel_batch_decode_bo) {
-            .addr = address,
+            .addr = bo_address,
             .size = bo->size,
-            .map = iris_bo_map(batch->dbg, bo, MAP_READ) +
-                   (address - bo_address),
+            .map = iris_bo_map(batch->dbg, bo, MAP_READ),
          };
       }
    }
