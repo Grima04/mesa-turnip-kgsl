@@ -765,6 +765,13 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          properties->maxMultiviewInstanceIndex = INT_MAX;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT: {
+         VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *properties =
+            (VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *)ext;
+         properties->filterMinmaxImageComponentMapping = true;
+         properties->filterMinmaxSingleComponentFormats = true;
+         break;
+      }
       default:
          break;
       }
