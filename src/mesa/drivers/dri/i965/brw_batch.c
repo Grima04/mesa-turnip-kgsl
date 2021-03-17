@@ -93,9 +93,9 @@ decode_get_bo(void *v_brw, bool ppgtt, uint64_t address)
 
       if (address >= bo_address && address < bo_address + bo->size) {
          return (struct intel_batch_decode_bo) {
-            .addr = address,
+            .addr = bo_address,
             .size = bo->size,
-            .map = brw_bo_map(brw, bo, MAP_READ) + (address - bo_address),
+            .map = brw_bo_map(brw, bo, MAP_READ),
          };
       }
    }
