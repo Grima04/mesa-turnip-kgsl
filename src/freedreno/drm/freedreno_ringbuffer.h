@@ -36,6 +36,10 @@
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct fd_submit;
 struct fd_ringbuffer;
 
@@ -168,7 +172,7 @@ struct fd_reloc {
 #define FD_RELOC_WRITE            0x0002
 #define FD_RELOC_DUMP             0x0004
 	uint32_t offset;
-	uint32_t or;
+	uint32_t orlo;
 	int32_t  shift;
 	uint32_t orhi;      /* used for a5xx+ */
 };
@@ -239,6 +243,7 @@ OUT_RING(struct fd_ringbuffer *ring, uint32_t data)
 /*
  * NOTE: OUT_RELOC() is 2 dwords (64b) on a5xx+
  */
+#ifndef __cplusplus
 static inline void
 OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo,
 		uint32_t offset, uint64_t or, int32_t shift)
@@ -262,11 +267,12 @@ OUT_RELOC(struct fd_ringbuffer *ring, struct fd_bo *bo,
 		.bo = bo,
 		.iova = iova,
 		.offset = offset,
-		.or = or,
+		.orlo = or,
 		.shift = shift,
 		.orhi = or >> 32,
 	});
 }
+#endif
 
 static inline void
 OUT_RB(struct fd_ringbuffer *ring, struct fd_ringbuffer *target)
@@ -350,5 +356,9 @@ OUT_WFI5(struct fd_ringbuffer *ring)
 {
 	OUT_PKT7(ring, CP_WAIT_FOR_IDLE, 0);
 }
+
+#ifdef __cplusplus
+} /* end of extern "C" */
+#endif
 
 #endif /* FREEDRENO_RINGBUFFER_H_ */

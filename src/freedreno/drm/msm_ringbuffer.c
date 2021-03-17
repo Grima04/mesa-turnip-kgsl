@@ -515,7 +515,7 @@ msm_ringbuffer_emit_reloc(struct fd_ringbuffer *ring,
 	APPEND(msm_ring->cmd, relocs, (struct drm_msm_gem_submit_reloc){
 		.reloc_idx = reloc_idx,
 		.reloc_offset = reloc->offset,
-		.or = reloc->or,
+		.or = reloc->orlo,
 		.shift = reloc->shift,
 		.submit_offset = offset_bytes(ring->cur, ring->start) + msm_ring->offset,
 	});
