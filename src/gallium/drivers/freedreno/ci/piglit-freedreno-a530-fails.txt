@@ -255,16 +255,13 @@ spec@ext_texture_snorm@fbo-blending-formats,Fail
 spec@ext_transform_feedback2@draw-auto,Fail
 spec@ext_transform_feedback@change-size base-shrink,Fail
 spec@ext_transform_feedback@change-size offset-shrink,Fail
-spec@ext_transform_feedback@change-size range-grow,Fail
 spec@ext_transform_feedback@change-size range-shrink,Fail
 spec@ext_transform_feedback@discard-copypixels,Fail
 spec@ext_transform_feedback@generatemipmap prims_generated,Fail
 spec@ext_transform_feedback@immediate-reuse,Fail
 spec@ext_transform_feedback@immediate-reuse-index-buffer,Fail
 spec@ext_transform_feedback@immediate-reuse-uniform-buffer,Fail
-spec@ext_transform_feedback@intervening-read prims_written,Fail
 spec@ext_transform_feedback@overflow-edge-cases,Fail
-spec@ext_transform_feedback@query-primitives_written-bufferrange,Fail
 spec@ext_transform_feedback@query-primitives_written-bufferrange-discard,Fail
 spec@ext_transform_feedback@tessellation line_loop flat_first,Fail
 spec@ext_transform_feedback@tessellation line_loop flat_last,Fail

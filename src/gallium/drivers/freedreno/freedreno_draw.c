@@ -245,17 +245,21 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 			}
 		}
 
-		/* TODO prims_emitted should be clipped when the stream-out buffer is
-		 * not large enough.  See max_tf_vtx().. probably need to move that
-		 * into common code.  Although a bit more annoying since a2xx doesn't
-		 * use ir3 so no common way to get at the pipe_stream_output_info
-		 * which is needed for this calculation.
-		 */
-		if (ctx->streamout.num_targets > 0) {
-			assert(ctx->active_queries);
-			ctx->stats.prims_emitted += prims;
-		}
 		ctx->stats.prims_generated += prims;
+
+		if (ctx->streamout.num_targets > 0) {
+			/* Clip the prims we're writing to the size of the SO buffers. */
+			enum pipe_prim_type tf_prim = u_decomposed_prim(info->mode);
+			unsigned verts_written = u_vertices_for_prims(tf_prim, prims);
+			unsigned remaining_vert_space = ctx->streamout.max_tf_vtx - ctx->streamout.verts_written;
+			if (verts_written > remaining_vert_space) {
+				verts_written = remaining_vert_space;
+				u_trim_pipe_prim(tf_prim, &remaining_vert_space);
+			}
+			ctx->streamout.verts_written += verts_written;
+
+			ctx->stats.prims_emitted += u_reduced_prims_for_vertices(tf_prim, verts_written);
+		}
 	}
 }
 

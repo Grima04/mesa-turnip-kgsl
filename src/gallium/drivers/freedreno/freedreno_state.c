@@ -600,8 +600,13 @@ fd_set_stream_output_targets(struct pipe_context *pctx,
 		if (!changed && !reset)
 			continue;
 
-		if (reset)
+		/* Note that all SO targets will be reset at once at a
+		 * BeginTransformFeedback().
+		 */
+		if (reset) {
 			so->offsets[i] = offsets[i];
+			ctx->streamout.verts_written = 0;
+		}
 
 		pipe_so_target_reference(&so->targets[i], targets[i]);
 	}

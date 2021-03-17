@@ -117,6 +117,11 @@ struct fd_streamout_stateobj {
 	 * queries are used.
 	 */
 	unsigned max_tf_vtx;
+
+	/* Pre-a6xx, the number of verts written to the buffers since the last
+	 * Begin.  Used for overflow checking for SW queries.
+	 */
+	unsigned verts_written;
 };
 
 #define MAX_GLOBAL_BUFFERS 16
