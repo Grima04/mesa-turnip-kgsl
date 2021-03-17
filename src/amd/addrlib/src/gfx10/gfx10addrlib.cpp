@@ -384,9 +384,10 @@ ADDR_E_RETURNCODE Gfx10Lib::HwlComputeDccInfo(
 {
     ADDR_E_RETURNCODE ret = ADDR_OK;
 
-    if (pIn->swizzleMode != ADDR_SW_64KB_Z_X && pIn->swizzleMode != ADDR_SW_64KB_R_X)
+    if (IsLinear(pIn->swizzleMode) || IsBlock256b(pIn->swizzleMode))
     {
-        // Hardware does not support DCC for this swizzle mode.
+        // Hardware support dcc for 256 swizzle mode, but address lib will not support it because we only
+        // select 256 swizzle mode for small surface, and it's not helpful to enable dcc for small surface.
         ret = ADDR_INVALIDPARAMS;
     }
     else if (m_settings.dccUnsup3DSwDis && IsTex3d(pIn->resourceType) && IsDisplaySwizzle(pIn->swizzleMode))
