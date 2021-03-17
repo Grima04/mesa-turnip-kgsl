@@ -35,57 +35,10 @@ vc4-rpi3-gles2:armhf:
     - .vc4-rpi3-test:armhf
     - .test-manual
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_POE_TIMEOUT: 180
     BM_START_XORG: 1
-    PIGLIT_OPTIONS: >-
-      --timeout 60
     PIGLIT_PLATFORM: mixed_glx_egl
-    PIGLIT_TESTS: >-
-      -x .tesc
-      -x .tese
-      -x arb_gpu_shader_fp64
-      -x arb_gpu_shader_gpu5
-      -x arb_gpu_shader_int64
-      -x arb_sync_control@timing
-      -x arb_tessellation_shader
-      -x arb_texture_cube_map
-      -x clipflat
-      -x copypixels-sync
-      -x copyteximage
-      -x depthstencil-default_fb
-      -x draw-sync
-      -x egl_ext_device_
-      -x egl_ext_platform_device
-      -x ext_framebuffer_multisample
-      -x ext_timer_query@time-elapsed
-      -x gl-1.0-blend-func
-      -x gl-1.3-texture-env
-      -x glsl-1.30
-      -x glsl-3.30
-      -x glsl-4.00
-      -x glsl-4.10
-      -x glsl-4.20
-      -x glsl-4.30
-      -x glsl-4.40
-      -x glsl-4.50
-      -x glsl-4.60
-      -x glsl-es-3.00
-      -x glsl-es-3.20
-      -x glsl-fs-convolution-2
-      -x glsl-vs-loop
-      -x glsl-vs-loop-nested
-      -x glsl-vs-mov-after-deref
-      -x glx-multithread-clearbuffer
-      -x glx-multithread-shader-compile
-      -x image_load_store
-      -x longprim
-      -x masked-clear
-      -x max-texture-size
-      -x maxsize
-      -x ppgtt_memory_alignment
-      -x streaming-texture-leak
-      -x texturesize
 
 vc4-rpi3-piglit-quick_gl:armhf:
   extends:
@@ -94,7 +47,6 @@ vc4-rpi3-piglit-quick_gl:armhf:
   variables:
     FDO_CI_CONCURRENT: 1
     PIGLIT_PROFILES: quick_gl
-    PIGLIT_RESULTS: "vc4-rpi3-quick_gl"
 
 vc4-rpi3-piglit-quick_shader:armhf:
   extends:
@@ -103,7 +55,6 @@ vc4-rpi3-piglit-quick_shader:armhf:
   variables:
     FDO_CI_CONCURRENT: 2
     PIGLIT_PROFILES: quick_shader
-    PIGLIT_RESULTS: "vc4-rpi3-quick_shader"
 
 .v3d-rpi4-test:armhf:
   extends:
@@ -154,41 +105,9 @@ v3d-rpi4-gles2:armhf:
     - .v3d-rpi4-test:armhf
     - .test-manual
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_START_XORG: 1
-    PIGLIT_OPTIONS: >-
-      --timeout 60
     PIGLIT_PLATFORM: mixed_glx_egl
-    PIGLIT_TESTS: >-
-      -x .tesc
-      -x .tese
-      -x arb_gpu_shader_fp64
-      -x arb_gpu_shader_gpu5
-      -x arb_gpu_shader_int64
-      -x arb_sync_control@timing
-      -x arb_tessellation_shader
-      -x depthstencil-default_fb
-      -x egl_ext_platform_device
-      -x ext_timer_query@time-elapsed
-      -x gl-1.3-texture-env
-      -x glsl-1.30
-      -x glsl-3.30
-      -x glsl-4.00
-      -x glsl-4.10
-      -x glsl-4.20
-      -x glsl-4.30
-      -x glsl-4.40
-      -x glsl-4.50
-      -x glsl-4.60
-      -x glsl-es-3.00
-      -x glsl-es-3.20
-      -x glx-multithread-clearbuffer
-      -x glx-multithread-shader-compile
-      -x image_load_store
-      -x max-texture-size
-      -x maxsize
-      -x streaming-texture-leak
-      -x tex-miplevel-selection
 
 v3d-rpi4-piglit-quick_gl:armhf:
   extends:
@@ -196,14 +115,12 @@ v3d-rpi4-piglit-quick_gl:armhf:
   parallel: 2
   variables:
     PIGLIT_PROFILES: quick_gl
-    PIGLIT_RESULTS: "v3d-rpi4-quick_gl"
 
 v3d-rpi4-piglit-quick_shader:armhf:
   extends:
     - .v3d-rpi4-piglit:armhf
   variables:
     PIGLIT_PROFILES: quick_shader
-    PIGLIT_RESULTS: "v3d-rpi4-shader_gl"
 
 v3dv-rpi4-vk:armhf:
   extends:
