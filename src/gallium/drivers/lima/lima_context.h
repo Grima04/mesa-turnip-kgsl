@@ -43,7 +43,7 @@ struct lima_depth_stencil_alpha_state {
    struct pipe_depth_stencil_alpha_state base;
 };
 
-struct lima_fs_shader_state {
+struct lima_fs_compiled_shader {
    void *shader;
    int shader_size;
    int stack_size;
@@ -70,7 +70,7 @@ struct lima_varying_info {
    int offset;
 };
 
-struct lima_vs_shader_state {
+struct lima_vs_compiled_shader {
    void *shader;
    int shader_size;
    int prefetch;
@@ -208,8 +208,8 @@ struct lima_context {
    struct lima_context_viewport_state viewport;
    struct pipe_scissor_state scissor;
    struct pipe_scissor_state clipped_scissor;
-   struct lima_vs_shader_state *vs;
-   struct lima_fs_shader_state *fs;
+   struct lima_vs_compiled_shader *vs;
+   struct lima_fs_compiled_shader *fs;
    struct lima_vs_bind_state *bind_vs;
    struct lima_fs_bind_state *bind_fs;
    struct lima_vertex_element_state *vertex_elements;

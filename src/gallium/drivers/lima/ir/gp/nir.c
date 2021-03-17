@@ -447,7 +447,7 @@ static void gpir_print_shader_db(struct nir_shader *nir, gpir_compiler *comp,
    free(shaderdb);
 }
 
-bool gpir_compile_nir(struct lima_vs_shader_state *prog, struct nir_shader *nir,
+bool gpir_compile_nir(struct lima_vs_compiled_shader *prog, struct nir_shader *nir,
                       struct pipe_debug_callback *debug)
 {
    nir_function_impl *func = nir_shader_get_entrypoint(nir);

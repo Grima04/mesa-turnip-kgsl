@@ -273,7 +273,7 @@ lima_program_optimize_fs_nir(struct nir_shader *s,
 static bool
 lima_fs_compile_shader(struct lima_context *ctx,
                        struct lima_fs_key *key,
-                       struct lima_fs_shader_state *fs)
+                       struct lima_fs_compiled_shader *fs)
 {
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    nir_shader *nir = nir_shader_clone(fs, key->shader_state->base.ir.nir);
@@ -314,7 +314,7 @@ lima_fs_compile_shader(struct lima_context *ctx,
    return true;
 }
 
-static struct lima_fs_shader_state *
+static struct lima_fs_compiled_shader *
 lima_get_compiled_fs(struct lima_context *ctx,
                      struct lima_fs_key *key)
 {
@@ -329,7 +329,7 @@ lima_get_compiled_fs(struct lima_context *ctx,
       return entry->data;
 
    /* not on cache, compile and insert into the cache */
-   struct lima_fs_shader_state *fs = rzalloc(NULL, struct lima_fs_shader_state);
+   struct lima_fs_compiled_shader *fs = rzalloc(NULL, struct lima_fs_compiled_shader);
    if (!fs)
       return NULL;
 
@@ -401,7 +401,7 @@ lima_delete_fs_state(struct pipe_context *pctx, void *hwcso)
    hash_table_foreach(ctx->fs_cache, entry) {
       const struct lima_fs_key *key = entry->key;
       if (key->shader_state == so) {
-         struct lima_fs_shader_state *fs = entry->data;
+         struct lima_fs_compiled_shader *fs = entry->data;
          _mesa_hash_table_remove(ctx->fs_cache, entry);
          if (fs->bo)
             lima_bo_unreference(fs->bo);
@@ -420,7 +420,7 @@ lima_delete_fs_state(struct pipe_context *pctx, void *hwcso)
 static bool
 lima_vs_compile_shader(struct lima_context *ctx,
                        struct lima_vs_key *key,
-                       struct lima_vs_shader_state *vs)
+                       struct lima_vs_compiled_shader *vs)
 {
    nir_shader *nir = nir_shader_clone(vs, key->shader_state->base.ir.nir);
 
@@ -450,7 +450,7 @@ lima_vs_compile_shader(struct lima_context *ctx,
    return true;
 }
 
-static struct lima_vs_shader_state *
+static struct lima_vs_compiled_shader *
 lima_get_compiled_vs(struct lima_context *ctx,
                      struct lima_vs_key *key)
 {
@@ -465,7 +465,7 @@ lima_get_compiled_vs(struct lima_context *ctx,
       return entry->data;
 
    /* not on cache, compile and insert into the cache */
-   struct lima_vs_shader_state *vs = rzalloc(NULL, struct lima_vs_shader_state);
+   struct lima_vs_compiled_shader *vs = rzalloc(NULL, struct lima_vs_compiled_shader);
    if (!vs)
       return NULL;
 
@@ -492,9 +492,9 @@ lima_update_vs_state(struct lima_context *ctx)
    memset(key, 0, sizeof(*key));
    key->shader_state = ctx->bind_vs;
 
-   struct lima_vs_shader_state *old_vs = ctx->vs;
+   struct lima_vs_compiled_shader *old_vs = ctx->vs;
 
-   struct lima_vs_shader_state *vs = lima_get_compiled_vs(ctx, key);
+   struct lima_vs_compiled_shader *vs = lima_get_compiled_vs(ctx, key);
    if (!vs)
       return false;
 
@@ -532,9 +532,9 @@ lima_update_fs_state(struct lima_context *ctx)
    for (int i = lima_tex->num_textures; i < ARRAY_SIZE(key->tex); i++)
       memcpy(key->tex[i].swizzle, identity, 4);
 
-   struct lima_fs_shader_state *old_fs = ctx->fs;
+   struct lima_fs_compiled_shader *old_fs = ctx->fs;
 
-   struct lima_fs_shader_state *fs = lima_get_compiled_fs(ctx, key);
+   struct lima_fs_compiled_shader *fs = lima_get_compiled_fs(ctx, key);
    if (!fs)
       return false;
 
@@ -599,7 +599,7 @@ lima_delete_vs_state(struct pipe_context *pctx, void *hwcso)
    hash_table_foreach(ctx->vs_cache, entry) {
       const struct lima_vs_key *key = entry->key;
       if (key->shader_state == so) {
-         struct lima_vs_shader_state *vs = entry->data;
+         struct lima_vs_compiled_shader *vs = entry->data;
          _mesa_hash_table_remove(ctx->vs_cache, entry);
          if (vs->bo)
             lima_bo_unreference(vs->bo);
@@ -660,7 +660,7 @@ void
 lima_program_fini(struct lima_context *ctx)
 {
    hash_table_foreach(ctx->vs_cache, entry) {
-      struct lima_vs_shader_state *vs = entry->data;
+      struct lima_vs_compiled_shader *vs = entry->data;
       if (vs->bo)
          lima_bo_unreference(vs->bo);
       ralloc_free(vs);
@@ -668,7 +668,7 @@ lima_program_fini(struct lima_context *ctx)
    }
 
    hash_table_foreach(ctx->fs_cache, entry) {
-      struct lima_fs_shader_state *fs = entry->data;
+      struct lima_fs_compiled_shader *fs = entry->data;
       if (fs->bo)
          lima_bo_unreference(fs->bo);
       ralloc_free(fs);

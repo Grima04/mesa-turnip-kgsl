@@ -270,7 +270,7 @@ lima_pack_vs_cmd(struct lima_context *ctx, const struct pipe_draw_info *info,
 {
    struct lima_context_constant_buffer *ccb =
       ctx->const_buffer + PIPE_SHADER_VERTEX;
-   struct lima_vs_shader_state *vs = ctx->vs;
+   struct lima_vs_compiled_shader *vs = ctx->vs;
    struct lima_job *job = lima_job_get(ctx);
 
    VS_CMD_BEGIN(&job->vs_cmd_array, 24);
@@ -317,7 +317,7 @@ static void
 lima_pack_plbu_cmd(struct lima_context *ctx, const struct pipe_draw_info *info,
                    const struct pipe_draw_start_count *draw)
 {
-   struct lima_vs_shader_state *vs = ctx->vs;
+   struct lima_vs_compiled_shader *vs = ctx->vs;
    struct pipe_scissor_state *cscissor = &ctx->clipped_scissor;
    struct lima_job *job = lima_job_get(ctx);
    PLBU_CMD_BEGIN(&job->plbu_cmd_array, 32);
@@ -602,7 +602,7 @@ lima_calculate_depth_test(struct pipe_depth_stencil_alpha_state *depth,
 static void
 lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *info)
 {
-   struct lima_fs_shader_state *fs = ctx->fs;
+   struct lima_fs_compiled_shader *fs = ctx->fs;
    struct lima_render_state *render =
       lima_ctx_buff_alloc(ctx, lima_ctx_buff_pp_plb_rsw,
                           sizeof(*render));
@@ -842,7 +842,7 @@ lima_update_gp_uniform(struct lima_context *ctx)
 {
    struct lima_context_constant_buffer *ccb =
       ctx->const_buffer + PIPE_SHADER_VERTEX;
-   struct lima_vs_shader_state *vs = ctx->vs;
+   struct lima_vs_compiled_shader *vs = ctx->vs;
    int uniform_size = MIN2(vs->uniform_size, ccb->size);
 
    int size = uniform_size + vs->constant_size + 32;
@@ -922,7 +922,7 @@ lima_update_varying(struct lima_context *ctx, const struct pipe_draw_info *info,
 {
    struct lima_job *job = lima_job_get(ctx);
    struct lima_screen *screen = lima_screen(ctx->base.screen);
-   struct lima_vs_shader_state *vs = ctx->vs;
+   struct lima_vs_compiled_shader *vs = ctx->vs;
    uint32_t gp_output_size;
    unsigned num = info->index_size ? (ctx->max_index - ctx->min_index + 1) : draw->count;
 

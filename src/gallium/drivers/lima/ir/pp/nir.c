@@ -874,7 +874,7 @@ static void ppir_add_write_after_read_deps(ppir_compiler *comp)
    }
 }
 
-bool ppir_compile_nir(struct lima_fs_shader_state *prog, struct nir_shader *nir,
+bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *nir,
                       struct ra_regs *ra,
                       struct pipe_debug_callback *debug)
 {

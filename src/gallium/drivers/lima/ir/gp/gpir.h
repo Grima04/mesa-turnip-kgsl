@@ -384,7 +384,7 @@ typedef struct {
    gpir_node *cond;
 } gpir_branch_node;
 
-struct lima_vs_shader_state;
+struct lima_vs_compiled_shader;
 
 #define GPIR_VECTOR_SSA_VIEWPORT_SCALE  0
 #define GPIR_VECTOR_SSA_VIEWPORT_OFFSET 1
@@ -419,7 +419,7 @@ typedef struct gpir_compiler {
       gpir_node *nodes[4];
    } vector_ssa[GPIR_VECTOR_SSA_NUM];
 
-   struct lima_vs_shader_state *prog;
+   struct lima_vs_compiled_shader *prog;
    int constant_base;
 
    /* shaderdb */

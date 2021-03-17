@@ -369,7 +369,7 @@ typedef struct {
 } ppir_branch_node;
 
 struct ra_regs;
-struct lima_fs_shader_state;
+struct lima_fs_compiled_shader;
 
 typedef struct ppir_compiler {
    struct list_head block_list;
@@ -385,7 +385,7 @@ typedef struct ppir_compiler {
    unsigned reg_base;
 
    struct ra_regs *ra;
-   struct lima_fs_shader_state *prog;
+   struct lima_fs_compiled_shader *prog;
    bool uses_discard;
 
    /* for scheduler */
