@@ -351,8 +351,26 @@ lima_resource_from_handle(struct pipe_screen *pscreen,
       stride = util_format_get_stride(pres->format, width);
       size = util_format_get_2d_size(pres->format, stride, height);
 
-      if (res->levels[0].stride != stride || res->bo->size < size) {
-         debug_error("import buffer not properly aligned\n");
+      if (res->tiled && res->levels[0].stride != stride) {
+         fprintf(stderr, "tiled imported buffer has mismatching stride: %d (BO) != %d (expected)",
+                     res->levels[0].stride, stride);
+         goto err_out;
+      }
+
+      if (!res->tiled && (res->levels[0].stride % 8)) {
+         fprintf(stderr, "linear imported buffer stride is not aligned to 8 bytes: %d\n",
+                 res->levels[0].stride);
+      }
+
+      if (!res->tiled && res->levels[0].stride < stride) {
+         fprintf(stderr, "linear imported buffer stride is smaller than minimal: %d (BO) < %d (min)",
+                 res->levels[0].stride, stride);
+         goto err_out;
+      }
+
+      if (res->bo->size < size) {
+         fprintf(stderr, "imported bo size is smaller than expected: %d (BO) < %d (expected)\n",
+                 res->bo->size, size);
          goto err_out;
       }
 
