@@ -271,7 +271,7 @@ static bool ppir_update_spilled_src(ppir_compiler *comp, ppir_block *block,
 
    ppir_load_node *load = ppir_node_to_load(load_node);
 
-   load->index = -comp->prog->stack_size; /* index sizes are negative */
+   load->index = -comp->prog->state.stack_size; /* index sizes are negative */
    load->num_components = num_components;
 
    ppir_dest *ld_dest = &load->dest;
@@ -356,7 +356,7 @@ static bool ppir_update_spilled_dest_load(ppir_compiler *comp, ppir_block *block
 
    ppir_load_node *load = ppir_node_to_load(load_node);
 
-   load->index = -comp->prog->stack_size; /* index sizes are negative */
+   load->index = -comp->prog->state.stack_size; /* index sizes are negative */
    load->num_components = num_components;
 
    load->dest.type = ppir_target_pipeline;
@@ -416,7 +416,7 @@ static bool ppir_update_spilled_dest(ppir_compiler *comp, ppir_block *block,
 
    ppir_store_node *store = ppir_node_to_store(store_node);
 
-   store->index = -comp->prog->stack_size; /* index sizes are negative */
+   store->index = -comp->prog->state.stack_size; /* index sizes are negative */
 
    ppir_node_target_assign(&store->src, node);
    store->num_components = reg->num_components;
@@ -678,7 +678,7 @@ static bool ppir_regalloc_prog_try(ppir_compiler *comp, bool *spilled)
          /* stack_size will be used to assemble the frame reg in lima_draw.
           * It is also be used in the spilling code, as negative indices
           * starting from -1, to create stack addresses. */
-         comp->prog->stack_size++;
+         comp->prog->state.stack_size++;
          if (!ppir_regalloc_spill_reg(comp, chosen))
             goto err_out;
          /* Ask the outer loop to call back in. */
@@ -715,7 +715,7 @@ err_out:
 bool ppir_regalloc_prog(ppir_compiler *comp)
 {
    bool spilled = false;
-   comp->prog->stack_size = 0;
+   comp->prog->state.stack_size = 0;
 
    /* Set from an environment variable to force spilling
     * for debugging purposes, see lima_screen.c */

@@ -39,6 +39,7 @@
 #include "lima_bo.h"
 #include "lima_fence.h"
 #include "lima_format.h"
+#include "lima_disk_cache.h"
 #include "ir/lima_ir.h"
 
 #include "xf86drm.h"
@@ -61,6 +62,7 @@ lima_screen_destroy(struct pipe_screen *pscreen)
 
    lima_bo_cache_fini(screen);
    lima_bo_table_fini(screen);
+   disk_cache_destroy(screen->disk_cache);
    ralloc_free(screen);
 }
 
@@ -570,6 +572,8 @@ static const struct debug_named_value lima_debug_options[] = {
           "disable multi job optimization" },
         { "precompile", LIMA_DEBUG_PRECOMPILE,
           "Precompile shaders for shader-db" },
+        { "diskcache", LIMA_DEBUG_DISK_CACHE,
+          "print debug info for shader disk cache" },
         { NULL }
 };
 
@@ -610,6 +614,14 @@ lima_screen_parse_env(void)
               "reset to default 0\n", lima_plb_pp_stream_cache_size);
       lima_plb_pp_stream_cache_size = 0;
    }
+}
+
+static struct disk_cache *
+lima_get_disk_shader_cache (struct pipe_screen *pscreen)
+{
+   struct lima_screen *screen = lima_screen(pscreen);
+
+   return screen->disk_cache;
 }
 
 struct pipe_screen *
@@ -707,9 +719,11 @@ lima_screen_create(int fd, struct renderonly *ro)
    screen->base.get_compiler_options = lima_screen_get_compiler_options;
    screen->base.query_dmabuf_modifiers = lima_screen_query_dmabuf_modifiers;
    screen->base.is_dmabuf_modifier_supported = lima_screen_is_dmabuf_modifier_supported;
+   screen->base.get_disk_shader_cache = lima_get_disk_shader_cache;
 
    lima_resource_screen_init(screen);
    lima_fence_screen_init(screen);
+   lima_disk_cache_init(screen);
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct lima_transfer), 16);
 

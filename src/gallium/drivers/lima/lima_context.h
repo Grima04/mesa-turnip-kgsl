@@ -44,19 +44,22 @@ struct lima_depth_stencil_alpha_state {
 };
 
 struct lima_fs_compiled_shader {
-   void *shader;
-   int shader_size;
-   int stack_size;
-   bool uses_discard;
    struct lima_bo *bo;
+   void *shader;
+   struct {
+      int shader_size;
+      int stack_size;
+      bool uses_discard;
+   } state;
 };
 
 struct lima_fs_uncompiled_shader {
    struct pipe_shader_state base;
+   unsigned char nir_sha1[20];
 };
 
 struct lima_fs_key {
-   struct lima_fs_uncompiled_shader *uncomp_shader;
+   unsigned char nir_sha1[20];
    struct {
       uint8_t swizzle[4];
    } tex[PIPE_MAX_SAMPLERS];
@@ -71,30 +74,30 @@ struct lima_varying_info {
 };
 
 struct lima_vs_compiled_shader {
-   void *shader;
-   int shader_size;
-   int prefetch;
-
-   int uniform_size;
-   void *constant;
-   int constant_size;
-
-   struct lima_varying_info varying[LIMA_MAX_VARYING_NUM];
-   int varying_stride;
-   int num_outputs;
-   int num_varyings;
-   int gl_pos_idx;
-   int point_size_idx;
-
    struct lima_bo *bo;
+   void *shader;
+   void *constant;
+   struct {
+      int shader_size;
+      int prefetch;
+      int uniform_size;
+      int constant_size;
+      struct lima_varying_info varying[LIMA_MAX_VARYING_NUM];
+      int varying_stride;
+      int num_outputs;
+      int num_varyings;
+      int gl_pos_idx;
+      int point_size_idx;
+   } state;
 };
 
 struct lima_vs_uncompiled_shader {
    struct pipe_shader_state base;
+   unsigned char nir_sha1[20];
 };
 
 struct lima_vs_key {
-   struct lima_vs_uncompiled_shader *uncomp_shader;
+   unsigned char nir_sha1[20];
 };
 
 struct lima_rasterizer_state {
