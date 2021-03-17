@@ -1040,6 +1040,26 @@ static inline bool instr_sat(instr_t *instr)
 	}
 }
 
+static inline bool is_sat_compatible(opc_t opc)
+{
+	/* TODO probably opc_cat==4 is ok too */
+	if (opc_cat(opc) != 2 && opc_cat(opc) != 3)
+		return false;
+
+	switch (opc) {
+	case OPC_BARY_F:
+	case OPC_SEL_B16:
+	case OPC_SEL_B32:
+	case OPC_SEL_S16:
+	case OPC_SEL_S32:
+	case OPC_SEL_F16:
+	case OPC_SEL_F32:
+		return false;
+	default:
+		return true;
+	}
+}
+
 /* We can probably drop the gpu_id arg, but keeping it for now so we can
  * assert if we see something we think should be new encoding on an older
  * gpu.
