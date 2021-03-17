@@ -415,6 +415,10 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          continue;
       }
 
+      /* We can change the micro tile mode before a full clear. */
+      /* This is only used for MSAA textures when clearing all layers. */
+      si_set_optimal_micro_tile_mode(sctx->screen, tex);
+
       /* only supported on tiled surfaces */
       if (tex->surface.is_linear) {
          continue;
@@ -526,9 +530,6 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          tex->dirty_level_mask |= 1 << level;
          p_atomic_inc(&sctx->screen->compressed_colortex_counter);
       }
-
-      /* We can change the micro tile mode before a full clear. */
-      si_set_optimal_micro_tile_mode(sctx->screen, tex);
 
       *buffers &= ~clear_bit;
 
