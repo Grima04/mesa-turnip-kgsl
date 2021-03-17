@@ -950,6 +950,37 @@ ADDR_E_RETURNCODE Lib::ComputeSubResourceOffsetForSwizzlePattern(
 
 /**
 ************************************************************************************************************************
+*   Lib::ComputeNonBlockCompressedView
+*
+*   @brief
+*       Interface function stub of Addr2ComputeNonBlockCompressedView.
+*
+*   @return
+*       ADDR_E_RETURNCODE
+************************************************************************************************************************
+*/
+ADDR_E_RETURNCODE Lib::ComputeNonBlockCompressedView(
+    const ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_INPUT* pIn,
+    ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_OUTPUT*      pOut)
+{
+    ADDR_E_RETURNCODE returnCode;
+
+    if ((GetFillSizeFieldsFlags() == TRUE) &&
+        ((pIn->size != sizeof(ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_INPUT)) ||
+         (pOut->size != sizeof(ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_OUTPUT))))
+    {
+        returnCode = ADDR_INVALIDPARAMS;
+    }
+    else
+    {
+        returnCode = HwlComputeNonBlockCompressedView(pIn, pOut);
+    }
+
+    return returnCode;
+}
+
+/**
+************************************************************************************************************************
 *   Lib::ExtractPipeBankXor
 *
 *   @brief
@@ -1979,7 +2010,7 @@ VOID Lib::FilterInvalidEqSwizzleMode(
         const UINT_32 rsrcTypeIdx         = static_cast<UINT_32>(resourceType) - 1;
         UINT_32       validSwModeSet      = allowedSwModeSetVal;
 
-        for (UINT_32 swModeIdx = 0; validSwModeSet != 0; swModeIdx++)
+        for (UINT_32 swModeIdx = 1; validSwModeSet != 0; swModeIdx++)
         {
             if (validSwModeSet & 1)
             {
@@ -1998,6 +2029,94 @@ VOID Lib::FilterInvalidEqSwizzleMode(
             allowedSwModeSet.value = allowedSwModeSetVal;
         }
     }
+}
+
+/**
+************************************************************************************************************************
+*   Lib::IsBlockTypeAvaiable
+*
+*   @brief
+*       Determine whether a block type is allowed in a given blockSet
+*
+*   @return
+*       N/A
+************************************************************************************************************************
+*/
+BOOL_32 Lib::IsBlockTypeAvaiable(
+    ADDR2_BLOCK_SET blockSet,
+    AddrBlockType   blockType)
+{
+    BOOL_32 avail;
+
+    if (blockType == AddrBlockLinear)
+    {
+        avail = blockSet.linear ? TRUE : FALSE;
+    }
+    else
+    {
+        avail = blockSet.value & (1 << (static_cast<UINT_32>(blockType) - 1)) ? TRUE : FALSE;
+    }
+
+    return avail;
+}
+
+/**
+************************************************************************************************************************
+*   Lib::BlockTypeWithinMemoryBudget
+*
+*   @brief
+*       Determine whether a new block type is acceptible based on memory waste ratio
+*
+*   @return
+*       N/A
+************************************************************************************************************************
+*/
+BOOL_32 Lib::BlockTypeWithinMemoryBudget(
+    UINT_64 minSize,
+    UINT_64 newBlockTypeSize,
+    UINT_32 ratioLow,
+    UINT_32 ratioHi,
+    DOUBLE  memoryBudget,
+    BOOL_32 newBlockTypeBigger)
+{
+    BOOL_32 accept = FALSE;
+
+    if (memoryBudget >= 1.0)
+    {
+        if (newBlockTypeBigger)
+        {
+            if ((static_cast<DOUBLE>(newBlockTypeSize) / minSize) <= memoryBudget)
+            {
+                accept = TRUE;
+            }
+        }
+        else
+        {
+            if ((static_cast<DOUBLE>(minSize) / newBlockTypeSize) > memoryBudget)
+            {
+                accept = TRUE;
+            }
+        }
+    }
+    else
+    {
+        if (newBlockTypeBigger)
+        {
+            if ((newBlockTypeSize * ratioHi) <= (minSize * ratioLow))
+            {
+                accept = TRUE;
+            }
+        }
+        else
+        {
+            if ((newBlockTypeSize * ratioLow) < (minSize * ratioHi))
+            {
+                accept = TRUE;
+            }
+        }
+    }
+
+    return accept;
 }
 
 #if DEBUG

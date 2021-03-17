@@ -2357,7 +2357,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
 
    /* Query whether the surface is displayable. */
    /* This is only useful for surfaces that are allocated without SCANOUT. */
-   bool displayable = false;
+   BOOL_32 displayable = false;
    if (!config->is_3d && !config->is_cube) {
       r = Addr2IsValidDisplaySwizzleMode(addrlib->handle, surf->u.gfx9.surf.swizzle_mode,
                                          surf->bpe * 8, &displayable);

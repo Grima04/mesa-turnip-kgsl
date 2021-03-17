@@ -2321,7 +2321,7 @@ ADDR_E_RETURNCODE ADDR_API AddrComputeDccInfo(
 *       Output structure of AddrGetMaxAlignments
 ****************************************************************************************************
 */
-typedef struct _ADDR_GET_MAX_ALIGNMENTS_OUTPUT
+typedef struct ADDR_GET_MAX_ALINGMENTS_OUTPUT
 {
     UINT_32 size;                   ///< Size of this structure in bytes
     UINT_32 baseAlign;              ///< Maximum base alignment in bytes
@@ -3629,6 +3629,62 @@ ADDR_E_RETURNCODE ADDR_API Addr2ComputeSubResourceOffsetForSwizzlePattern(
 
 /**
 ****************************************************************************************************
+*   ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_INPUT
+*
+*   @brief
+*       Input structure of Addr2ComputeNonBlockCompressedView
+****************************************************************************************************
+*/
+typedef struct _ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_INPUT
+{
+    UINT_32               size;              ///< Size of this structure in bytes
+    ADDR2_SURFACE_FLAGS   flags;             ///< Surface flags
+    AddrSwizzleMode       swizzleMode;       ///< Swizzle Mode for Gfx9
+    AddrResourceType      resourceType;      ///< Surface type
+    AddrFormat            format;            ///< Surface format
+    UINT_32               width;             ///< Width of mip0 in texels (not in compressed block)
+    UINT_32               height;            ///< Height of mip0 in texels (not in compressed block) 
+    UINT_32               numSlices;         ///< Number surface slice/depth of mip0
+    UINT_32               numMipLevels;      ///< Total mipmap levels.
+    UINT_32               pipeBankXor;       ///< Combined swizzle used to do bank/pipe rotation
+    UINT_32               slice;             ///< Index of slice to view
+    UINT_32               mipId;             ///< Id of mip to view
+} ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_INPUT;
+
+/**
+****************************************************************************************************
+*   ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_OUTPUT
+*
+*   @brief
+*       Output structure of Addr2ComputeNonBlockCompressedView
+****************************************************************************************************
+*/
+typedef struct _ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_OUTPUT
+{
+    UINT_32             size;               ///< Size of this structure in bytes
+    UINT_64             offset;             ///< Offset shifted from resource base for the view
+    UINT_32             pipeBankXor;        ///< Pipe bank xor for the view
+    UINT_32             unalignedWidth;     ///< Mip0 width (in element) for the view
+    UINT_32             unalignedHeight;    ///< Mip0 height (in element) for the view
+    UINT_32             numMipLevels;       ///< Total mipmap levels for the view
+    UINT_32             mipId;              ///< Mip ID for the view
+} ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_OUTPUT;
+
+/**
+****************************************************************************************************
+*   Addr2ComputeNonBlockCompressedView
+*
+*   @brief
+*       Compute non-block-compressed view for a given mipmap level/slice
+****************************************************************************************************
+*/
+ADDR_E_RETURNCODE ADDR_API Addr2ComputeNonBlockCompressedView(
+    ADDR_HANDLE                                       hLib,
+    const ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_INPUT* pIn,
+    ADDR2_COMPUTE_NONBLOCKCOMPRESSEDVIEW_OUTPUT*      pOut);
+
+/**
+****************************************************************************************************
 *   ADDR2_BLOCK_SET
 *
 *   @brief
@@ -3764,6 +3820,8 @@ typedef struct _ADDR2_GET_PREFERRED_SURF_SETTING_INPUT
     UINT_32               maxAlign;          ///< maximum base/size alignment requested by client
     UINT_32               minSizeAlign;      ///< memory allocated for surface in client driver will
                                              ///  be padded to multiple of this value (in bytes)
+    DOUBLE                memoryBudget;      ///< Memory consumption ratio based on minimum possible
+                                             ///  size.
 } ADDR2_GET_PREFERRED_SURF_SETTING_INPUT;
 
 /**
@@ -3806,14 +3864,14 @@ ADDR_E_RETURNCODE ADDR_API Addr2GetPreferredSurfaceSetting(
 *   Addr2IsValidDisplaySwizzleMode
 *
 *   @brief
-*       Return whether the swizzle mode is supported by DCE / DCN.
+*       Return whether the swizzle mode is supported by display engine
 ****************************************************************************************************
 */
 ADDR_E_RETURNCODE ADDR_API Addr2IsValidDisplaySwizzleMode(
     ADDR_HANDLE     hLib,
     AddrSwizzleMode swizzleMode,
     UINT_32         bpp,
-    bool            *result);
+    BOOL_32         *pResult);
 
 #if defined(__cplusplus)
 }
