@@ -12,9 +12,6 @@ dEQP-GLES3.functional.clipping.point.wide_point_clip_viewport_center,Fail
 dEQP-GLES3.functional.clipping.triangle_vertex.clip_two.clip_neg_y_neg_z_and_neg_x_neg_y_pos_z,Fail
 dEQP-GLES3.functional.draw.random.135,Fail
 dEQP-GLES3.functional.draw.random.31,Fail
-dEQP-GLES3.functional.fbo.blit.conversion.rgb8_to_rgba4,Fail
-dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_linear_out_of_bounds_blit_to_default,Fail
-dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_nearest_scale_blit_to_default,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
