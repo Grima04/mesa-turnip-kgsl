@@ -1255,7 +1255,7 @@ emit_resolve_blit(struct fd_batch *batch,
 		break;
 	}
 
-	if (util_format_is_pure_integer(psurf->format))
+	if (util_format_is_pure_integer(psurf->format) || util_format_is_depth_or_stencil(psurf->format))
 		info |= A6XX_RB_BLIT_INFO_SAMPLE_0;
 
 	OUT_PKT4(ring, REG_A6XX_RB_BLIT_INFO, 1);
