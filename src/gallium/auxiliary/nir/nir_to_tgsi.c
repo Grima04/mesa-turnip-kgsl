@@ -2646,9 +2646,12 @@ nir_to_tgsi_lower_64bit_to_vec2(nir_shader *s)
 }
 
 static void
-ntt_fix_nir_options(struct nir_shader *s)
+ntt_fix_nir_options(struct pipe_screen *screen, struct nir_shader *s)
 {
    const struct nir_shader_compiler_options *options = s->options;
+   bool lower_fsqrt =
+      !screen->get_shader_param(screen, pipe_shader_type_from_mesa(s->info.stage),
+                                PIPE_SHADER_CAP_TGSI_SQRT_SUPPORTED);
 
    if (!options->lower_extract_byte ||
        !options->lower_extract_word ||
@@ -2657,7 +2660,8 @@ ntt_fix_nir_options(struct nir_shader *s)
        !options->lower_fmod ||
        !options->lower_rotate ||
        !options->lower_uniforms_to_ubo ||
-       !options->lower_vector_cmp) {
+       !options->lower_vector_cmp ||
+       options->lower_fsqrt != lower_fsqrt) {
       nir_shader_compiler_options *new_options = ralloc(s, nir_shader_compiler_options);
       *new_options = *s->options;
 
@@ -2669,6 +2673,7 @@ ntt_fix_nir_options(struct nir_shader *s)
       new_options->lower_rotate = true;
       new_options->lower_uniforms_to_ubo = true,
       new_options->lower_vector_cmp = true;
+      new_options->lower_fsqrt = lower_fsqrt;
 
       s->options = new_options;
    }
@@ -2694,7 +2699,7 @@ nir_to_tgsi(struct nir_shader *s,
                                                    PIPE_SHADER_CAP_INTEGERS);
    const struct nir_shader_compiler_options *original_options = s->options;
 
-   ntt_fix_nir_options(s);
+   ntt_fix_nir_options(screen, s);
 
    NIR_PASS_V(s, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
               type_size, (nir_lower_io_options)0);
