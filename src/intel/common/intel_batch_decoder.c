@@ -345,7 +345,7 @@ dump_samplers(struct intel_batch_decode_ctx *ctx, uint32_t offset, int count)
       return;
    }
 
-   if (offset % 32 != 0 || state_addr - bo.addr >= bo.size) {
+   if (offset % 32 != 0) {
       fprintf(ctx->fp, "  invalid sampler state pointer\n");
       return;
    }
