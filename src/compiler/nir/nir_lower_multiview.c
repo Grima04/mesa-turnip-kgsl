@@ -89,6 +89,7 @@ shader_writes_to_memory(nir_shader *shader)
          case nir_intrinsic_shared_atomic_comp_swap:
          case nir_intrinsic_image_deref_store:
          case nir_intrinsic_image_deref_atomic_add:
+         case nir_intrinsic_image_deref_atomic_fadd:
          case nir_intrinsic_image_deref_atomic_umin:
          case nir_intrinsic_image_deref_atomic_umax:
          case nir_intrinsic_image_deref_atomic_imin:

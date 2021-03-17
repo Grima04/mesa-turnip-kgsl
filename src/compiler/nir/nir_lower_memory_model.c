@@ -45,6 +45,7 @@ get_intrinsic_info(nir_intrinsic_instr *intrin, nir_variable_mode *modes,
       *writes = true;
       break;
    case nir_intrinsic_image_deref_atomic_add:
+   case nir_intrinsic_image_deref_atomic_fadd:
    case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_image_deref_atomic_imin:
    case nir_intrinsic_image_deref_atomic_umax:
