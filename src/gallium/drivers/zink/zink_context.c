@@ -285,6 +285,7 @@ zink_context_destroy(struct pipe_context *pctx)
       debug_printf("vkQueueWaitIdle failed\n");
 
    util_blitter_destroy(ctx->blitter);
+   util_copy_framebuffer_state(&ctx->fb_state, NULL);
    zink_framebuffer_reference(screen, &ctx->framebuffer, NULL);
 
    pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
