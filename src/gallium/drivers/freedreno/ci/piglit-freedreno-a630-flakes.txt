@@ -12,3 +12,7 @@ glx@glx-copy-sub-buffer samples=2
 
 # async shader compile asserts in shader_io_get_unique_index (slot=VARYING_SLOT_FOGC)
 shaders@glsl-fs-fogscale
+
+# async shader compiler asserts in get_image_samp_tex_src()'s nir_src_comp_as_uint().
+# https://gitlab.freedesktop.org/mesa/mesa/-/issues/4474
+spec@arb_shader_image_load_store@invalid
