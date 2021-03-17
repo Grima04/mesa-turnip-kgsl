@@ -881,6 +881,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
          CORE_PROPERTY(1, 1, deviceLUIDValid);
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+         VkPhysicalDeviceProtectedMemoryProperties *properties =
+            (VkPhysicalDeviceProtectedMemoryProperties *)ext;
+         CORE_PROPERTY(1, 1, protectedNoFault);
+         break;
+      }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_FILTER_MINMAX_PROPERTIES_EXT: {
          VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *properties =
             (VkPhysicalDeviceSamplerFilterMinmaxPropertiesEXT *)ext;
