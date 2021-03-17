@@ -1365,18 +1365,11 @@ radv_clear_cmask(struct radv_cmd_buffer *cmd_buffer,
 		 const VkImageSubresourceRange *range, uint32_t value)
 {
 	uint64_t offset = image->offset + image->planes[0].surface.cmask_offset;
+	unsigned slice_size = image->planes[0].surface.cmask_slice_size;
 	uint64_t size;
 
-	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9) {
-		/* TODO: clear layers. */
-		size = image->planes[0].surface.cmask_size;
-	} else {
-		unsigned cmask_slice_size =
-			image->planes[0].surface.cmask_slice_size;
-
-		offset += cmask_slice_size * range->baseArrayLayer;
-		size = cmask_slice_size * radv_get_layerCount(image, range);
-	}
+	offset += slice_size * range->baseArrayLayer;
+	size = slice_size * radv_get_layerCount(image, range);
 
 	return radv_fill_buffer(cmd_buffer, image, image->bo, offset, size, value);
 }
