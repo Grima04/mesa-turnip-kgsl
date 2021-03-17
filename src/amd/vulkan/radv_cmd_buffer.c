@@ -6179,10 +6179,17 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 
 static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
 				  struct radv_image *image,
-				  const VkImageSubresourceRange *range,
-				  uint32_t value)
+				  const VkImageSubresourceRange *range)
 {
 	struct radv_cmd_state *state = &cmd_buffer->state;
+	static const uint32_t cmask_clear_values[4] = {
+		0xffffffff,
+		0xdddddddd,
+		0xeeeeeeee,
+		0xffffffff
+	};
+	uint32_t log2_samples = util_logbase2(image->info.samples);
+	uint32_t value = cmask_clear_values[log2_samples];
 	struct radv_barrier_data barrier = {0};
 
 	barrier.layout_transitions.init_mask_ram = 1;
@@ -6280,23 +6287,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 					   const VkImageSubresourceRange *range)
 {
 	if (radv_image_has_cmask(image)) {
-		uint32_t value = 0xffffffffu; /* Fully expanded mode. */
-
-		/*  TODO: clarify why 0xccccccccu is used. */
-
-		/* If CMASK isn't updated with the new layout, we should use the
-		 * fully expanded mode so that the image is read correctly if
-		 * CMASK is used (such as when transitioning to a compressed
-		 * layout).
-		 */
-		if (radv_image_is_tc_compat_cmask(image) ||
-		    (radv_image_has_fmask(image) &&
-		     radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
-					       dst_render_loop, dst_queue_mask))) {
-			value = 0xccccccccu;
-		}
-
-		radv_initialise_cmask(cmd_buffer, image, range, value);
+		radv_initialise_cmask(cmd_buffer, image, range);
 	}
 
 	if (radv_image_has_fmask(image)) {
