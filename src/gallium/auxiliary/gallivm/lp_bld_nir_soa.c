@@ -870,6 +870,7 @@ static void emit_store_global(struct lp_build_nir_context *bld_base,
 static void emit_atomic_global(struct lp_build_nir_context *bld_base,
                                nir_intrinsic_op nir_op,
                                unsigned addr_bit_size,
+                               unsigned val_bit_size,
                                LLVMValueRef addr,
                                LLVMValueRef val, LLVMValueRef val2,
                                LLVMValueRef *result)
@@ -877,7 +878,7 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
    struct gallivm_state *gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
    struct lp_build_context *uint_bld = &bld_base->uint_bld;
-
+   struct lp_build_context *atom_bld = get_int_bld(bld_base, true, val_bit_size);
    LLVMValueRef atom_res = lp_build_alloca(gallivm,
                                            LLVMTypeOf(val), "");
    LLVMValueRef exec_mask = mask_vec(bld_base);
@@ -897,10 +898,11 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
    cond = LLVMBuildExtractElement(gallivm->builder, cond, loop_state.counter, "");
    lp_build_if(&ifthen, gallivm, cond);
 
+   addr_ptr = LLVMBuildBitCast(gallivm->builder, addr_ptr, LLVMPointerType(LLVMTypeOf(value_ptr), 0), "");
    if (nir_op == nir_intrinsic_global_atomic_comp_swap) {
       LLVMValueRef cas_src_ptr = LLVMBuildExtractElement(gallivm->builder, val2,
                                                          loop_state.counter, "");
-      cas_src_ptr = LLVMBuildBitCast(gallivm->builder, cas_src_ptr, uint_bld->elem_type, "");
+      cas_src_ptr = LLVMBuildBitCast(gallivm->builder, cas_src_ptr, atom_bld->elem_type, "");
       scalar = LLVMBuildAtomicCmpXchg(builder, addr_ptr, value_ptr,
                                       cas_src_ptr,
                                       LLVMAtomicOrderingSequentiallyConsistent,
@@ -914,7 +916,7 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
          op = LLVMAtomicRMWBinOpAdd;
          break;
       case nir_intrinsic_global_atomic_exchange:
-         addr_ptr = LLVMBuildBitCast(gallivm->builder, addr_ptr, LLVMPointerType(LLVMTypeOf(value_ptr), 0), "");
+
          op = LLVMAtomicRMWBinOpXchg;
          break;
       case nir_intrinsic_global_atomic_and:
@@ -953,7 +955,19 @@ static void emit_atomic_global(struct lp_build_nir_context *bld_base,
    lp_build_else(&ifthen);
    temp_res = LLVMBuildLoad(builder, atom_res, "");
    bool is_float = LLVMTypeOf(val) == bld_base->base.vec_type;
-   LLVMValueRef zero_val = is_float ? lp_build_const_float(gallivm, 0) : lp_build_const_int32(gallivm, 0);
+   LLVMValueRef zero_val;
+   if (is_float) {
+      if (val_bit_size == 64)
+         zero_val = lp_build_const_double(gallivm, 0);
+      else
+         zero_val = lp_build_const_float(gallivm, 0);
+   } else {
+      if (val_bit_size == 64)
+         zero_val = lp_build_const_int64(gallivm, 0);
+      else
+         zero_val = lp_build_const_int32(gallivm, 0);
+   }
+
    temp_res = LLVMBuildInsertElement(builder, temp_res, zero_val, loop_state.counter, "");
    LLVMBuildStore(builder, temp_res, atom_res);
    lp_build_endif(&ifthen);

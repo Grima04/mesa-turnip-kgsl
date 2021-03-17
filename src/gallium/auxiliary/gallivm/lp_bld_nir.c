@@ -1572,10 +1572,12 @@ static void visit_global_atomic(struct lp_build_nir_context *bld_base,
    LLVMValueRef val = get_src(bld_base, instr->src[1]);
    LLVMValueRef val2 = NULL;
    int addr_bitsize = nir_src_bit_size(instr->src[0]);
+   int val_bitsize = nir_src_bit_size(instr->src[1]);
    if (instr->intrinsic == nir_intrinsic_global_atomic_comp_swap)
       val2 = get_src(bld_base, instr->src[2]);
 
-   bld_base->atomic_global(bld_base, instr->intrinsic, addr_bitsize, addr, val, val2, &result[0]);
+   bld_base->atomic_global(bld_base, instr->intrinsic, addr_bitsize,
+                           val_bitsize, addr, val, val2, &result[0]);
 }
 
 static void visit_interp(struct lp_build_nir_context *bld_base,
