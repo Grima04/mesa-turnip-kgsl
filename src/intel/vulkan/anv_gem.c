@@ -771,9 +771,7 @@ anv_gem_get_engine_info(int fd)
 {
    int32_t length = 0;
    int ret = anv_i915_query(fd, DRM_I915_QUERY_ENGINE_INFO, NULL, &length);
-   assert(ret == 0);
-
-   if (ret == -1 && errno == EINVAL)
+   if (ret == -1)
       return NULL;
 
    struct drm_i915_query_engine_info *info = calloc(1, length);
