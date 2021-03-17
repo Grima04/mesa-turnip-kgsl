@@ -350,11 +350,18 @@ dump_samplers(struct intel_batch_decode_ctx *ctx, uint32_t offset, int count)
       return;
    }
 
+   const unsigned sampler_state_size = strct->dw_length * 4;
+
+   if (count * sampler_state_size >= bo.size) {
+      fprintf(ctx->fp, "  sampler state ends after bo ends\n");
+      return;
+   }
+
    for (int i = 0; i < count; i++) {
       fprintf(ctx->fp, "sampler state %d\n", i);
       ctx_print_group(ctx, strct, state_addr, state_map);
-      state_addr += 16;
-      state_map += 16;
+      state_addr += sampler_state_size;
+      state_map += sampler_state_size;
    }
 }
 
