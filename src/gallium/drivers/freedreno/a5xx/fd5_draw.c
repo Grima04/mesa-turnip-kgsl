@@ -122,6 +122,8 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	const struct ir3_shader_variant *vp = fd5_emit_get_vp(&emit);
 	const struct ir3_shader_variant *fp = fd5_emit_get_fp(&emit);
 
+	ir3_update_max_tf_vtx(ctx, vp);
+
 	/* do regular pass first: */
 
 	if (unlikely(ctx->stats_users > 0)) {

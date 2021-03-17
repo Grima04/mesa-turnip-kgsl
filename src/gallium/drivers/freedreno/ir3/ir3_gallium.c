@@ -557,21 +557,17 @@ ir3_screen_fini(struct pipe_screen *pscreen)
 	screen->compiler = NULL;
 }
 
-uint32_t
-ir3_max_tf_vtx(struct fd_context *ctx, const struct ir3_shader_variant *v)
+void
+ir3_update_max_tf_vtx(struct fd_context *ctx, const struct ir3_shader_variant *v)
 {
 	struct fd_streamout_stateobj *so = &ctx->streamout;
 	struct ir3_stream_output_info *info = &v->shader->stream_output;
 	uint32_t maxvtxcnt = 0x7fffffff;
 
-	if (ctx->screen->gpu_id >= 500)
-		return 0;
-	if (v->binning_pass)
-		return 0;
 	if (v->shader->stream_output.num_outputs == 0)
-		return 0;
+		ctx->streamout.max_tf_vtx = 0;
 	if (so->num_targets == 0)
-		return 0;
+		ctx->streamout.max_tf_vtx = 0;
 
 	/* offset to write to is:
 	 *
@@ -601,5 +597,5 @@ ir3_max_tf_vtx(struct fd_context *ctx, const struct ir3_shader_variant *v)
 		}
 	}
 
-	return maxvtxcnt;
+	ctx->streamout.max_tf_vtx = maxvtxcnt;
 }

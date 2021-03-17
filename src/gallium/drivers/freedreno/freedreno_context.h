@@ -111,6 +111,12 @@ struct fd_streamout_stateobj {
 	 * something more clever.
 	 */
 	unsigned offsets[PIPE_MAX_SO_BUFFERS];
+
+	/* Pre-a6xx, the maximum number of vertices that could be recorded to this
+	 * set of targets with the current vertex shader.  a6xx and newer, hardware
+	 * queries are used.
+	 */
+	unsigned max_tf_vtx;
 };
 
 #define MAX_GLOBAL_BUFFERS 16
