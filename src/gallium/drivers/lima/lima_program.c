@@ -276,7 +276,7 @@ lima_fs_compile_shader(struct lima_context *ctx,
                        struct lima_fs_compiled_shader *fs)
 {
    struct lima_screen *screen = lima_screen(ctx->base.screen);
-   nir_shader *nir = nir_shader_clone(fs, key->shader_state->base.ir.nir);
+   nir_shader *nir = nir_shader_clone(fs, key->uncomp_shader->base.ir.nir);
 
    struct nir_lower_tex_options tex_options = {
       .lower_txp = ~0u,
@@ -349,7 +349,7 @@ lima_create_fs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *cso)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_fs_bind_state *so = rzalloc(NULL, struct lima_fs_bind_state);
+   struct lima_fs_uncompiled_shader *so = rzalloc(NULL, struct lima_fs_uncompiled_shader);
 
    if (!so)
       return NULL;
@@ -371,7 +371,7 @@ lima_create_fs_state(struct pipe_context *pctx,
    if (lima_debug & LIMA_DEBUG_PRECOMPILE) {
       /* Trigger initial compilation with default settings */
       struct lima_fs_key key = {
-         .shader_state = so,
+         .uncomp_shader = so,
       };
       for (int i = 0; i < ARRAY_SIZE(key.tex); i++) {
          for (int j = 0; j < 4; j++)
@@ -388,7 +388,7 @@ lima_bind_fs_state(struct pipe_context *pctx, void *hwcso)
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   ctx->bind_fs = hwcso;
+   ctx->uncomp_fs = hwcso;
    ctx->dirty |= LIMA_CONTEXT_DIRTY_UNCOMPILED_FS;
 }
 
@@ -396,11 +396,11 @@ static void
 lima_delete_fs_state(struct pipe_context *pctx, void *hwcso)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_fs_bind_state *so = hwcso;
+   struct lima_fs_uncompiled_shader *so = hwcso;
 
    hash_table_foreach(ctx->fs_cache, entry) {
       const struct lima_fs_key *key = entry->key;
-      if (key->shader_state == so) {
+      if (key->uncomp_shader == so) {
          struct lima_fs_compiled_shader *fs = entry->data;
          _mesa_hash_table_remove(ctx->fs_cache, entry);
          if (fs->bo)
@@ -422,7 +422,7 @@ lima_vs_compile_shader(struct lima_context *ctx,
                        struct lima_vs_key *key,
                        struct lima_vs_compiled_shader *vs)
 {
-   nir_shader *nir = nir_shader_clone(vs, key->shader_state->base.ir.nir);
+   nir_shader *nir = nir_shader_clone(vs, key->uncomp_shader->base.ir.nir);
 
    lima_program_optimize_vs_nir(nir);
 
@@ -490,7 +490,7 @@ lima_update_vs_state(struct lima_context *ctx)
    struct lima_vs_key local_key;
    struct lima_vs_key *key = &local_key;
    memset(key, 0, sizeof(*key));
-   key->shader_state = ctx->bind_vs;
+   key->uncomp_shader = ctx->uncomp_vs;
 
    struct lima_vs_compiled_shader *old_vs = ctx->vs;
 
@@ -518,7 +518,7 @@ lima_update_fs_state(struct lima_context *ctx)
    struct lima_fs_key local_key;
    struct lima_fs_key *key = &local_key;
    memset(key, 0, sizeof(*key));
-   key->shader_state = ctx->bind_fs;
+   key->uncomp_shader = ctx->uncomp_fs;
 
    for (int i = 0; i < lima_tex->num_textures; i++) {
       struct lima_sampler_view *sampler = lima_sampler_view(lima_tex->textures[i]);
@@ -551,7 +551,7 @@ lima_create_vs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *cso)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_vs_bind_state *so = rzalloc(NULL, struct lima_vs_bind_state);
+   struct lima_vs_uncompiled_shader *so = rzalloc(NULL, struct lima_vs_uncompiled_shader);
 
    if (!so)
       return NULL;
@@ -573,7 +573,7 @@ lima_create_vs_state(struct pipe_context *pctx,
    if (lima_debug & LIMA_DEBUG_PRECOMPILE) {
       /* Trigger initial compilation with default settings */
       struct lima_vs_key key = {
-         .shader_state = so,
+         .uncomp_shader = so,
       };
       lima_get_compiled_vs(ctx, &key);
    }
@@ -586,7 +586,7 @@ lima_bind_vs_state(struct pipe_context *pctx, void *hwcso)
 {
    struct lima_context *ctx = lima_context(pctx);
 
-   ctx->bind_vs = hwcso;
+   ctx->uncomp_vs = hwcso;
    ctx->dirty |= LIMA_CONTEXT_DIRTY_UNCOMPILED_VS;
 }
 
@@ -594,11 +594,11 @@ static void
 lima_delete_vs_state(struct pipe_context *pctx, void *hwcso)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_vs_bind_state *so = hwcso;
+   struct lima_vs_uncompiled_shader *so = hwcso;
 
    hash_table_foreach(ctx->vs_cache, entry) {
       const struct lima_vs_key *key = entry->key;
-      if (key->shader_state == so) {
+      if (key->uncomp_shader == so) {
          struct lima_vs_compiled_shader *vs = entry->data;
          _mesa_hash_table_remove(ctx->vs_cache, entry);
          if (vs->bo)

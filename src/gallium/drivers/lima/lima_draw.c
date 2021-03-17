@@ -1153,7 +1153,7 @@ lima_draw_vbo(struct pipe_context *pctx,
 
    struct lima_context *ctx = lima_context(pctx);
 
-   if (!ctx->bind_fs || !ctx->bind_vs) {
+   if (!ctx->uncomp_fs || !ctx->uncomp_vs) {
       debug_warn_once("no shader, skip draw\n");
       return;
    }

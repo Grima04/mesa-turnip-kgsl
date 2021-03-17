@@ -51,12 +51,12 @@ struct lima_fs_compiled_shader {
    struct lima_bo *bo;
 };
 
-struct lima_fs_bind_state {
+struct lima_fs_uncompiled_shader {
    struct pipe_shader_state base;
 };
 
 struct lima_fs_key {
-   struct lima_fs_bind_state *shader_state;
+   struct lima_fs_uncompiled_shader *uncomp_shader;
    struct {
       uint8_t swizzle[4];
    } tex[PIPE_MAX_SAMPLERS];
@@ -89,12 +89,12 @@ struct lima_vs_compiled_shader {
    struct lima_bo *bo;
 };
 
-struct lima_vs_bind_state {
+struct lima_vs_uncompiled_shader {
    struct pipe_shader_state base;
 };
 
 struct lima_vs_key {
-   struct lima_vs_bind_state *shader_state;
+   struct lima_vs_uncompiled_shader *uncomp_shader;
 };
 
 struct lima_rasterizer_state {
@@ -210,8 +210,8 @@ struct lima_context {
    struct pipe_scissor_state clipped_scissor;
    struct lima_vs_compiled_shader *vs;
    struct lima_fs_compiled_shader *fs;
-   struct lima_vs_bind_state *bind_vs;
-   struct lima_fs_bind_state *bind_fs;
+   struct lima_vs_uncompiled_shader *uncomp_vs;
+   struct lima_fs_uncompiled_shader *uncomp_fs;
    struct lima_vertex_element_state *vertex_elements;
    struct lima_context_vertex_buffer vertex_buffers;
    struct lima_rasterizer_state *rasterizer;
