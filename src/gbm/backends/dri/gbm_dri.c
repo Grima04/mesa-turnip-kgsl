@@ -1152,7 +1152,6 @@ gbm_dri_bo_create(struct gbm_device *gbm,
    if (modifiers) {
       if (!dri->image || dri->image->base.version < 14 ||
           !dri->image->createImageWithModifiers) {
-         fprintf(stderr, "Modifiers specified, but DRI is too old\n");
          errno = ENOSYS;
          goto failed;
       }
@@ -1171,7 +1170,6 @@ gbm_dri_bo_create(struct gbm_device *gbm,
          }
       }
       if (!has_valid_modifier) {
-         fprintf(stderr, "Only invalid modifier specified\n");
          errno = EINVAL;
          goto failed;
       }
