@@ -560,6 +560,7 @@ struct lvp_cmd_buffer {
    struct list_head                             pool_link;
 
    struct list_head                             cmds;
+   struct list_head                            *last_emit;
 
    uint8_t push_constants[MAX_PUSH_CONSTANTS_SIZE];
 };

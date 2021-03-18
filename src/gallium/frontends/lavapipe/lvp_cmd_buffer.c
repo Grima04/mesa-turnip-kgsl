@@ -42,6 +42,7 @@ static VkResult lvp_create_cmd_buffer(
    cmd_buffer->device = device;
    cmd_buffer->pool = pool;
    list_inithead(&cmd_buffer->cmds);
+   cmd_buffer->last_emit = &cmd_buffer->cmds;
    cmd_buffer->status = LVP_CMD_BUFFER_STATUS_INITIAL;
    if (pool) {
       list_addtail(&cmd_buffer->pool_link, &pool->cmd_buffers);
@@ -70,6 +71,7 @@ static VkResult lvp_reset_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer)
 {
    lvp_cmd_buffer_free_all_cmds(cmd_buffer);
    list_inithead(&cmd_buffer->cmds);
+   cmd_buffer->last_emit = &cmd_buffer->cmds;
    cmd_buffer->status = LVP_CMD_BUFFER_STATUS_INITIAL;
    return VK_SUCCESS;
 }
@@ -288,7 +290,24 @@ static struct lvp_cmd_buffer_entry *cmd_buf_entry_alloc(struct lvp_cmd_buffer *c
 static void cmd_buf_queue(struct lvp_cmd_buffer *cmd_buffer,
                           struct lvp_cmd_buffer_entry *cmd)
 {
-   list_addtail(&cmd->cmd_link, &cmd_buffer->cmds);
+   switch (cmd->cmd_type) {
+   case LVP_CMD_BIND_DESCRIPTOR_SETS:
+   case LVP_CMD_PUSH_DESCRIPTOR_SET:
+      list_add(&cmd->cmd_link, cmd_buffer->last_emit);
+      cmd_buffer->last_emit = &cmd->cmd_link;
+      break;
+   case LVP_CMD_NEXT_SUBPASS:
+   case LVP_CMD_DRAW:
+   case LVP_CMD_DRAW_INDEXED:
+   case LVP_CMD_DRAW_INDIRECT:
+   case LVP_CMD_DRAW_INDEXED_INDIRECT:
+   case LVP_CMD_DISPATCH:
+   case LVP_CMD_DISPATCH_INDIRECT:
+      cmd_buffer->last_emit = &cmd->cmd_link;
+      FALLTHROUGH;
+   default:
+      list_addtail(&cmd->cmd_link, &cmd_buffer->cmds);
+   }
 }
 
 static void
