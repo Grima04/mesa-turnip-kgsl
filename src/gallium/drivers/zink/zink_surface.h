@@ -65,9 +65,10 @@ zink_surface_clamp_viewtype(VkImageViewType viewType, unsigned first_layer, unsi
    if (viewType == VK_IMAGE_VIEW_TYPE_CUBE || viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
       if (first_layer == last_layer)
          return VK_IMAGE_VIEW_TYPE_2D;
-      if (viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY && first_layer % 6 == 0 && layerCount % 6 == 0)
-         return VK_IMAGE_VIEW_TYPE_CUBE;
-      if (first_layer || layerCount != array_size)
+      if (layerCount % 6 == 0) {
+         if (viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY && layerCount == 6)
+            return VK_IMAGE_VIEW_TYPE_CUBE;
+      } else if (first_layer || layerCount != array_size)
          return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
    } else if (viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
       if (first_layer == last_layer)
