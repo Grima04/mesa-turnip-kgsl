@@ -2967,9 +2967,9 @@ static LLVMValueRef visit_load_shared(struct ac_nir_context *ctx, const nir_intr
    LLVMTypeRef result_type = get_def_type(ctx, &instr->dest.ssa);
    int addr_space = LLVMGetPointerAddressSpace(LLVMTypeOf(ptr));
    LLVMValueRef derived_ptr = LLVMBuildBitCast(ctx->ac.builder, ptr, LLVMPointerType(result_type, addr_space), "");
-   LLVMSetAlignment(derived_ptr, alignment);
-
    LLVMValueRef ret = LLVMBuildLoad(ctx->ac.builder, derived_ptr, "");
+   LLVMSetAlignment(ret, alignment);
+
    return LLVMBuildBitCast(ctx->ac.builder, ret, get_def_type(ctx, &instr->dest.ssa), "");
 }
 
