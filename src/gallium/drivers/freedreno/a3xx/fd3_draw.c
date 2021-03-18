@@ -98,11 +98,13 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	struct fd3_emit emit = {
 		.debug = &ctx->debug,
 		.vtx  = &ctx->vtx,
-		.prog = &ctx->prog,
 		.info = info,
 		.indirect = indirect,
 		.draw = draw,
-		.key = { { { 0 } } },
+		.key = {
+			.vs = ctx->prog.vs,
+			.fs = ctx->prog.fs,
+		},
 		.rasterflat = ctx->rasterizer->flatshade,
 		.sprite_coord_enable = ctx->rasterizer->sprite_coord_enable,
 		.sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
@@ -115,18 +117,22 @@ fd3_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 		return false;
 
 	if (fd3_needs_manual_clipping(ir3_get_shader(ctx->prog.vs), ctx->rasterizer))
-		emit.key.ucp_enables = ctx->rasterizer->clip_plane_enable;
+		emit.key.key.ucp_enables = ctx->rasterizer->clip_plane_enable;
 
-	ir3_fixup_shader_state(&ctx->base, &emit.key);
+	ir3_fixup_shader_state(&ctx->base, &emit.key.key);
 
 	unsigned dirty = ctx->dirty;
+
+	emit.prog = fd3_program_state(ir3_cache_lookup(ctx->shader_cache, &emit.key, &ctx->debug));
+
+	/* bail if compile failed: */
+	if (!emit.prog)
+		return false;
+
 	const struct ir3_shader_variant *vp = fd3_emit_get_vp(&emit);
 	const struct ir3_shader_variant *fp = fd3_emit_get_fp(&emit);
 
-	/* do regular pass first, since that is more likely to fail compiling: */
-
-	if (!vp || !fp)
-		return false;
+	/* do regular pass first: */
 
 	if (unlikely(ctx->stats_users > 0)) {
 		ctx->stats.vs_regs += ir3_shader_halfregs(vp);

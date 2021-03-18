@@ -612,7 +612,7 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		val |= COND(fp->writes_pos, A3XX_GRAS_CL_CLIP_CNTL_ZCLIP_DISABLE);
 		val |= COND(fp->fragcoord_compmask != 0, A3XX_GRAS_CL_CLIP_CNTL_ZCOORD |
 				A3XX_GRAS_CL_CLIP_CNTL_WCOORD);
-		if (!emit->key.ucp_enables)
+		if (!emit->key.key.ucp_enables)
 			val |= A3XX_GRAS_CL_CLIP_CNTL_NUM_USER_CLIP_PLANES(
 					MIN2(util_bitcount(planes), 6));
 		OUT_PKT0(ring, REG_A3XX_GRAS_CL_CLIP_CNTL, 1);
@@ -623,7 +623,7 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		uint32_t planes = ctx->rasterizer->clip_plane_enable;
 		int count = 0;
 
-		if (emit->key.ucp_enables)
+		if (emit->key.key.ucp_enables)
 			planes = 0;
 
 		while (planes && count < 6) {
@@ -746,7 +746,7 @@ fd3_emit_state(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_PKT3(ring, CP_EVENT_WRITE, 1);
 	OUT_RING(ring, HLSQ_FLUSH);
 
-	if (emit->prog == &ctx->prog) { /* evil hack to deal sanely with clear path */
+	if (!emit->skip_consts) {
 		ir3_emit_vs_consts(vp, ring, ctx, emit->info, emit->indirect, emit->draw);
 		if (!emit->binning_pass)
 			ir3_emit_fs_consts(fp, ring, ctx);

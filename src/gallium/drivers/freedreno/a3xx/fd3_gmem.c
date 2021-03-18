@@ -42,6 +42,18 @@
 #include "fd3_zsa.h"
 
 static void
+fd3_gmem_emit_set_prog(struct fd_context *ctx, struct fd3_emit *emit, struct fd_program_stateobj *prog)
+{
+	emit->skip_consts = true;
+	emit->key.vs = prog->vs;
+	emit->key.fs = prog->fs;
+	emit->prog = fd3_program_state(ir3_cache_lookup(ctx->shader_cache, &emit->key, &ctx->debug));
+	/* reset the fd3_emit_get_*p cache */
+	emit->vs = NULL;
+	emit->fs = NULL;
+}
+
+static void
 emit_mrt(struct fd_ringbuffer *ring, unsigned nr_bufs,
 		 struct pipe_surface **bufs, const uint32_t *bases, uint32_t bin_w,
 		 bool decode_srgb)
@@ -167,8 +179,13 @@ emit_binning_workaround(struct fd_batch *batch)
 	struct fd3_emit emit = {
 			.debug = &ctx->debug,
 			.vtx = &ctx->solid_vbuf_state,
-			.prog = &ctx->solid_prog,
+			.key = {
+				.vs = ctx->solid_prog.vs,
+				.fs = ctx->solid_prog.fs,
+			},
 	};
+
+	fd3_gmem_emit_set_prog(ctx, &emit, &ctx->solid_prog);
 
 	OUT_PKT0(ring, REG_A3XX_RB_MODE_CONTROL, 2);
 	OUT_RING(ring, A3XX_RB_MODE_CONTROL_RENDER_MODE(RB_RESOLVE_PASS) |
@@ -363,9 +380,14 @@ fd3_emit_tile_gmem2mem(struct fd_batch *batch, const struct fd_tile *tile)
 	struct fd3_emit emit = {
 			.debug = &ctx->debug,
 			.vtx = &ctx->solid_vbuf_state,
-			.prog = &ctx->solid_prog,
+			.key = {
+				.vs = ctx->solid_prog.vs,
+				.fs = ctx->solid_prog.fs,
+			}
 	};
 	int i;
+
+	emit.prog = fd3_program_state(ir3_cache_lookup(ctx->shader_cache, &emit.key, &ctx->debug));
 
 	OUT_PKT0(ring, REG_A3XX_RB_DEPTH_CONTROL, 1);
 	OUT_RING(ring, A3XX_RB_DEPTH_CONTROL_ZFUNC(FUNC_NEVER));
@@ -544,9 +566,10 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 			.debug = &ctx->debug,
 			.vtx = &ctx->blit_vbuf_state,
 			.sprite_coord_enable = 1,
-			/* NOTE: They all use the same VP, this is for vtx bufs. */
-			.prog = &ctx->blit_prog[0],
 	};
+	/* NOTE: They all use the same VP, this is for vtx bufs. */
+	fd3_gmem_emit_set_prog(ctx, &emit, &ctx->blit_prog[0]);
+
 	float x0, y0, x1, y1;
 	unsigned bin_w = tile->bin_w;
 	unsigned bin_h = tile->bin_h;
@@ -659,8 +682,7 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 	bin_h = gmem->bin_h;
 
 	if (fd_gmem_needs_restore(batch, tile, FD_BUFFER_COLOR)) {
-		emit.prog = &ctx->blit_prog[pfb->nr_cbufs - 1];
-		emit.fs = NULL;      /* frag shader changed so clear cache */
+		fd3_gmem_emit_set_prog(ctx, &emit, &ctx->blit_prog[pfb->nr_cbufs - 1]);
 		fd3_program_emit(ring, &emit, pfb->nr_cbufs, pfb->cbufs);
 		emit_mem2gmem_surf(batch, gmem->cbuf_base, pfb->cbufs, pfb->nr_cbufs, bin_w);
 	}
@@ -671,15 +693,14 @@ fd3_emit_tile_mem2gmem(struct fd_batch *batch, const struct fd_tile *tile)
 			/* Non-float can use a regular color write. It's split over 8-bit
 			 * components, so half precision is always sufficient.
 			 */
-			emit.prog = &ctx->blit_prog[0];
+			fd3_gmem_emit_set_prog(ctx, &emit, &ctx->blit_prog[0]);
 		} else {
 			/* Float depth needs special blit shader that writes depth */
 			if (pfb->zsbuf->format == PIPE_FORMAT_Z32_FLOAT)
-				emit.prog = &ctx->blit_z;
+				fd3_gmem_emit_set_prog(ctx, &emit, &ctx->blit_z);
 			else
-				emit.prog = &ctx->blit_zs;
+				fd3_gmem_emit_set_prog(ctx, &emit, &ctx->blit_zs);
 		}
-		emit.fs = NULL;      /* frag shader changed so clear cache */
 		fd3_program_emit(ring, &emit, 1, &pfb->zsbuf);
 		emit_mem2gmem_surf(batch, gmem->zsbuf_base, &pfb->zsbuf, 1, bin_w);
 	}
