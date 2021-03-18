@@ -471,7 +471,7 @@ anv_image_init_aux_tt(struct anv_cmd_buffer *cmd_buffer,
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    for (uint32_t a = 0; a < layer_count; a++) {
       const uint32_t layer = base_layer + a;
@@ -769,7 +769,7 @@ anv_cmd_compute_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                   enum anv_fast_clear_type fast_clear_supported)
 {
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    const struct mi_value fast_clear_type =
       mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
@@ -852,7 +852,7 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
                                  enum anv_fast_clear_type fast_clear_supported)
 {
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    struct mi_value fast_clear_type_mem =
       mi_mem32(anv_image_get_fast_clear_type_addr(cmd_buffer->device,
@@ -1064,7 +1064,7 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
 #endif
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    if (copy_from_surface_state) {
       mi_memcpy(&b, entry_addr, ss_clear_addr, copy_size);
@@ -1809,7 +1809,7 @@ genX(CmdExecuteCommands)(
              * regardless of conditional rendering being enabled in primary.
              */
             struct mi_builder b;
-            mi_builder_init(&b, &primary->batch);
+            mi_builder_init(&b, &primary->device->info, &primary->batch);
             mi_store(&b, mi_reg64(ANV_PREDICATE_RESULT_REG),
                          mi_imm(UINT64_MAX));
          }
@@ -3817,7 +3817,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
       instanceCount *= anv_subpass_view_count(cmd_buffer->state.subpass);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
    struct mi_value count =
       mi_mem32(anv_address_add(counter_buffer->address,
                                    counterBufferOffset));
@@ -3847,7 +3847,7 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
                          bool indexed)
 {
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    mi_store(&b, mi_reg32(GEN7_3DPRIM_VERTEX_COUNT),
                 mi_mem32(anv_address_add(addr, 0)));
@@ -4084,7 +4084,7 @@ void genX(CmdDrawIndirectCount)(
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
    struct anv_address count_address =
       anv_address_add(count_buffer->address, countBufferOffset);
    struct mi_value max =
@@ -4155,7 +4155,7 @@ void genX(CmdDrawIndexedIndirectCount)(
    genX(cmd_buffer_flush_state)(cmd_buffer);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
    struct anv_address count_address =
       anv_address_add(count_buffer->address, countBufferOffset);
    struct mi_value max =
@@ -4631,7 +4631,7 @@ void genX(CmdDispatchIndirect)(
    genX(cmd_buffer_flush_compute_state)(cmd_buffer);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    struct mi_value size_x = mi_mem32(anv_address_add(addr, 0));
    struct mi_value size_y = mi_mem32(anv_address_add(addr, 4));
@@ -6073,7 +6073,7 @@ genX(cmd_emit_conditional_render_predicate)(struct anv_cmd_buffer *cmd_buffer)
 {
 #if GEN_VERSIONx10 >= 75
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    mi_store(&b, mi_reg64(MI_PREDICATE_SRC0),
                 mi_reg32(ANV_PREDICATE_RESULT_REG));
@@ -6106,7 +6106,7 @@ void genX(CmdBeginConditionalRenderingEXT)(
    genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    /* Section 19.4 of the Vulkan 1.1.85 spec says:
     *

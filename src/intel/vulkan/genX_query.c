@@ -225,7 +225,7 @@ VkResult genX(CreateQueryPool)(
          };
          batch.next = batch.start;
 
-         mi_builder_init(&b, &batch);
+         mi_builder_init(&b, &device->info, &batch);
          mi_store(&b, mi_reg64(ANV_PERF_QUERY_OFFSET_REG),
                       mi_imm(p * pool->pass_size));
          anv_batch_emit(&batch, GENX(MI_BATCH_BUFFER_END), bbe);
@@ -747,7 +747,7 @@ void genX(CmdResetQueryPool)(
    case VK_QUERY_TYPE_PIPELINE_STATISTICS:
    case VK_QUERY_TYPE_TRANSFORM_FEEDBACK_STREAM_EXT: {
       struct mi_builder b;
-      mi_builder_init(&b, &cmd_buffer->batch);
+      mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
       for (uint32_t i = 0; i < queryCount; i++)
          emit_query_mi_availability(&b, anv_query_address(pool, firstQuery + i), false);
@@ -757,7 +757,7 @@ void genX(CmdResetQueryPool)(
 #if GEN_GEN >= 8
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_KHR: {
       struct mi_builder b;
-      mi_builder_init(&b, &cmd_buffer->batch);
+      mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
       for (uint32_t i = 0; i < queryCount; i++) {
          for (uint32_t p = 0; p < pool->n_passes; p++) {
@@ -773,7 +773,7 @@ void genX(CmdResetQueryPool)(
 
    case VK_QUERY_TYPE_PERFORMANCE_QUERY_INTEL: {
       struct mi_builder b;
-      mi_builder_init(&b, &cmd_buffer->batch);
+      mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
       for (uint32_t i = 0; i < queryCount; i++)
          emit_query_mi_availability(&b, anv_query_address(pool, firstQuery + i), false);
@@ -911,7 +911,7 @@ void genX(CmdBeginQueryIndexedEXT)(
    struct anv_address query_addr = anv_query_address(pool, query);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
@@ -1088,7 +1088,7 @@ void genX(CmdEndQueryIndexedEXT)(
    struct anv_address query_addr = anv_query_address(pool, query);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    switch (pool->type) {
    case VK_QUERY_TYPE_OCCLUSION:
@@ -1252,7 +1252,7 @@ void genX(CmdWriteTimestamp)(
    assert(pool->type == VK_QUERY_TYPE_TIMESTAMP);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
    switch (pipelineStage) {
    case VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT:
@@ -1369,7 +1369,7 @@ void genX(CmdCopyQueryPoolResults)(
    ANV_FROM_HANDLE(anv_buffer, buffer, destBuffer);
 
    struct mi_builder b;
-   mi_builder_init(&b, &cmd_buffer->batch);
+   mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
    struct mi_value result;
 
    /* If render target writes are ongoing, request a render target cache flush

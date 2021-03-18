@@ -24,6 +24,7 @@
 #ifndef MI_BUILDER_H
 #define MI_BUILDER_H
 
+#include "dev/gen_device_info.h"
 #include "genxml/genX_bits.h"
 #include "util/bitscan.h"
 #include "util/fast_idiv_by_const.h"
@@ -128,6 +129,7 @@ mi_adjust_reg_num(uint32_t reg)
 #endif
 
 struct mi_builder {
+   const struct gen_device_info *devinfo;
    __gen_user_data *user_data;
 
 #if GEN_VERSIONx10 >= 75
@@ -140,9 +142,12 @@ struct mi_builder {
 };
 
 static inline void
-mi_builder_init(struct mi_builder *b, __gen_user_data *user_data)
+mi_builder_init(struct mi_builder *b,
+                const struct gen_device_info *devinfo,
+                __gen_user_data *user_data)
 {
    memset(b, 0, sizeof(*b));
+   b->devinfo = devinfo;
    b->user_data = user_data;
 
 #if GEN_VERSIONx10 >= 75
@@ -1168,7 +1173,7 @@ mi_self_mod_barrier(struct mi_builder *b)
     * but experiment show it doesn't work properly, so for now just get over
     * the CS prefetch.
     */
-   for (uint32_t i = 0; i < 128; i++)
+   for (uint32_t i = 0; i < (b->devinfo->cs_prefetch_size / 4); i++)
       mi_builder_emit(b, GENX(MI_NOOP), noop);
 }
 

@@ -282,7 +282,7 @@ mi_builder_test::SetUp()
    memset(data_map, 139, DATA_BO_SIZE);
    memset(&canary, 139, sizeof(canary));
 
-   mi_builder_init(&b, this);
+   mi_builder_init(&b, &devinfo, this);
 }
 
 void *

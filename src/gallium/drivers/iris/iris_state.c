@@ -6647,7 +6647,7 @@ iris_upload_render_state(struct iris_context *ice,
 
          if (ice->state.predicate == IRIS_PREDICATE_STATE_USE_BIT) {
             struct mi_builder b;
-            mi_builder_init(&b, batch);
+            mi_builder_init(&b, &batch->screen->devinfo, batch);
 
             /* comparison = draw id < draw count */
             struct mi_value comparison =
@@ -6733,7 +6733,7 @@ iris_upload_render_state(struct iris_context *ice,
                                    PIPE_CONTROL_CS_STALL);
 
       struct mi_builder b;
-      mi_builder_init(&b, batch);
+      mi_builder_init(&b, &batch->screen->devinfo, batch);
 
       struct iris_address addr =
          ro_bo(iris_resource_bo(so->offset.res), so->offset.offset);

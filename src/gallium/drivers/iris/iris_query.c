@@ -712,7 +712,7 @@ iris_get_query_result_resource(struct pipe_context *ctx,
    bool predicated = !wait && !q->stalled;
 
    struct mi_builder b;
-   mi_builder_init(&b, batch);
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
 
    iris_batch_sync_region_start(batch);
 
@@ -783,7 +783,7 @@ set_predicate_for_result(struct iris_context *ice,
    q->stalled = true;
 
    struct mi_builder b;
-   mi_builder_init(&b, batch);
+   mi_builder_init(&b, &batch->screen->devinfo, batch);
 
    struct mi_value result;
 
