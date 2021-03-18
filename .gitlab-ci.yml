@@ -29,6 +29,7 @@ include:
   - local: 'src/gallium/drivers/softpipe/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/virgl/ci/gitlab-ci.yml'
   - local: 'src/gallium/drivers/zink/ci/gitlab-ci.yml'
+  - local: 'src/gallium/frontends/lavapipe/ci/gitlab-ci.yml'
 
 stages:
   - sanity
