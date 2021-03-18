@@ -1094,6 +1094,10 @@ st_api_make_current(struct st_api *stapi, struct st_context_iface *stctxi,
             st_framebuffer_reference(&stread, stdraw);
       }
 
+      /* If framebuffers were asked for, we'd better have allocated them */
+      if ((stdrawi && !stdraw) || (streadi && !stread))
+         return false;
+
       if (stdraw && stread) {
          st_framebuffer_validate(stdraw, st);
          if (stread != stdraw)
