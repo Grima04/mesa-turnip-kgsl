@@ -1514,6 +1514,11 @@ void
 lp_setup_begin_query(struct lp_setup_context *setup,
                      struct llvmpipe_query *pq)
 {
+   struct llvmpipe_context *llvmpipe = llvmpipe_context(setup->pipe);
+   if (llvmpipe->dirty & LP_NEW_FS_CONSTANTS)
+      lp_setup_set_fs_constants(llvmpipe->setup,
+                                ARRAY_SIZE(llvmpipe->constants[PIPE_SHADER_FRAGMENT]),
+                                llvmpipe->constants[PIPE_SHADER_FRAGMENT]);
 
    set_scene_state(setup, SETUP_ACTIVE, "begin_query");
 
