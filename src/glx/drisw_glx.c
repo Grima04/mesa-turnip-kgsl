@@ -412,6 +412,18 @@ drisw_unbind_context(struct glx_context *context, struct glx_context *new)
 }
 
 static void
+drisw_wait_gl(struct glx_context *context)
+{
+   glFinish();
+}
+
+static void
+drisw_wait_x(struct glx_context *context)
+{
+   XSync(context->currentDpy, False);
+}
+
+static void
 drisw_bind_tex_image(Display * dpy,
 		    GLXDrawable drawable,
 		    int buffer, const int *attrib_list)
@@ -474,8 +486,8 @@ static const struct glx_context_vtable drisw_context_vtable = {
    .destroy             = drisw_destroy_context,
    .bind                = drisw_bind_context,
    .unbind              = drisw_unbind_context,
-   .wait_gl             = NULL,
-   .wait_x              = NULL,
+   .wait_gl             = drisw_wait_gl,
+   .wait_x              = drisw_wait_x,
    .bind_tex_image      = drisw_bind_tex_image,
    .release_tex_image   = drisw_release_tex_image,
 };
