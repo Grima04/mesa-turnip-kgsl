@@ -25,6 +25,8 @@ inc_gallium = include_directories('gallium/include')
 inc_gallium_aux = include_directories('gallium/auxiliary')
 inc_amd_common = include_directories('amd/common')
 inc_amd_common_llvm = include_directories('amd/llvm')
+inc_tool = include_directories('tool')
+pps_datasources = []
 
 libglsl_util = static_library(
   'glsl_util',
@@ -139,3 +141,5 @@ if with_glx != 'disabled' and not with_glvnd
     variables : ['glx_tls=@0@'.format(use_elf_tls ? 'yes' : 'no')],
   )
 endif
+
+subdir('tool')

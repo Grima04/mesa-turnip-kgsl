@@ -471,3 +471,10 @@ option(
   value : false,
   description : 'Enable performance analysis with Perfetto. Default: false'
 )
+option(
+  'datasources',
+  type : 'array',
+  value : ['auto'],
+  choices : ['auto', 'panfrost', 'intel'],
+  description: 'List of Perfetto datasources to build. If this is set to `auto`, datasources that can not be build are skipped. Default: [`auto`]'
+)

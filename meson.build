@@ -2047,6 +2047,8 @@ endif
 gcc_lto_quirk = (cc.get_id() == 'gcc') ? ['-fno-lto'] : []
 
 with_perfetto = get_option('perfetto')
+with_datasources = get_option('datasources')
+with_any_datasource = with_datasources.length() != 0
 if with_perfetto
   dep_perfetto = dependency('perfetto', fallback: ['perfetto', 'dep_perfetto'])
 endif
@@ -2176,7 +2178,12 @@ lines += 'HUD lmsensors:   ' + (dep_lmsensors.found() ? 'yes' : 'no')
 
 lines += ''
 lines += 'Shared-glapi:    ' + (with_shared_glapi ? 'yes' : 'no')
+
+lines += ''
 lines += 'Perfetto:        ' + (with_perfetto ? 'yes' : 'no')
+if with_any_datasource
+  lines += 'Perfetto ds:     ' + ' '.join(with_datasources)
+endif
 
 
 indent = '        '
