@@ -632,11 +632,7 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
       ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
       ivci.subresourceRange.layerCount = state->u.tex.last_layer - state->u.tex.first_layer + 1;
-      if (pres->target == PIPE_TEXTURE_CUBE ||
-          pres->target == PIPE_TEXTURE_CUBE_ARRAY) {
-         if (ivci.subresourceRange.layerCount != 6)
-            ivci.subresourceRange.layerCount = VK_REMAINING_ARRAY_LAYERS;
-      }
+      ivci.viewType = zink_surface_clamp_viewtype(ivci.viewType, state->u.tex.first_layer, state->u.tex.last_layer, pres->array_size);
 
       struct pipe_surface templ = {};
       templ.u.tex.level = state->u.tex.first_level;
