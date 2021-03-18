@@ -1049,7 +1049,6 @@ static const struct glx_context_vtable dri2_context_vtable = {
    .wait_x              = dri2_wait_x,
    .bind_tex_image      = dri2_bind_tex_image,
    .release_tex_image   = dri2_release_tex_image,
-   .get_proc_address    = NULL,
    .interop_query_device_info = dri2_interop_query_device_info,
    .interop_export_object = dri2_interop_export_object
 };

@@ -152,7 +152,6 @@ static const struct glx_context_vtable driwindows_context_vtable = {
    .wait_x              = NULL,
    .bind_tex_image      = driwindows_bind_tex_image,
    .release_tex_image   = driwindows_release_tex_image,
-   .get_proc_address    = NULL,
 };
 
 static struct glx_context *

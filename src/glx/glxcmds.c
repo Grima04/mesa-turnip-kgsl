@@ -2648,12 +2648,10 @@ _GLX_PUBLIC void (*glXGetProcAddressARB(const GLubyte * procName)) (void)
 #endif
       if (!f)
          f = (gl_function) _glapi_get_proc_address((const char *) procName);
-      if (!f) {
-         struct glx_context *gc = __glXGetCurrentContext();
-      
-         if (gc != NULL && gc->vtable->get_proc_address != NULL)
-            f = gc->vtable->get_proc_address((const char *) procName);
-      }
+#ifdef GLX_USE_APPLEGL
+      if (!f)
+         f = applegl_get_proc_address((const char *) procName);
+#endif
    }
    return f;
 }

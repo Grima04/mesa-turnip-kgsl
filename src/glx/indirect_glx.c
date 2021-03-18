@@ -320,7 +320,6 @@ static const struct glx_context_vtable indirect_context_vtable = {
    .wait_x              = indirect_wait_x,
    .bind_tex_image      = indirect_bind_tex_image,
    .release_tex_image   = indirect_release_tex_image,
-   .get_proc_address    = NULL,
 };
 
 _X_HIDDEN struct glx_context *
