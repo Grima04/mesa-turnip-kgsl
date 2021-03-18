@@ -374,7 +374,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	 */
 	const struct ir3_shader_variant *link_fs = s[FS].v;
 	if (do_streamout && emit->binning_pass)
-		link_fs = ir3_shader_variant(ir3_get_shader(emit->prog->fs), emit->key, false, emit->debug);
+		link_fs = emit->prog->fs;
 	struct ir3_shader_linkage l = {0};
 	ir3_link_shaders(&l, s[VS].v, link_fs, true);
 
@@ -638,9 +638,46 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	OUT_RING(ring, 0x00000000);   /* VFD_CONTROL_5 */
 }
 
+static struct ir3_program_state *
+fd5_program_create(void *data, struct ir3_shader_variant *bs,
+		struct ir3_shader_variant *vs,
+		struct ir3_shader_variant *hs,
+		struct ir3_shader_variant *ds,
+		struct ir3_shader_variant *gs,
+		struct ir3_shader_variant *fs,
+		const struct ir3_shader_key *key)
+	in_dt
+{
+	struct fd_context *ctx = fd_context(data);
+	struct fd5_program_state *state = CALLOC_STRUCT(fd5_program_state);
+
+	tc_assert_driver_thread(ctx->tc);
+
+	state->bs = bs;
+	state->vs = vs;
+	state->fs = fs;
+
+	return &state->base;
+}
+
+static void
+fd5_program_destroy(void *data, struct ir3_program_state *state)
+{
+	struct fd5_program_state *so = fd5_program_state(state);
+	free(so);
+}
+
+static const struct ir3_cache_funcs cache_funcs = {
+	.create_state = fd5_program_create,
+	.destroy_state = fd5_program_destroy,
+};
+
 void
 fd5_prog_init(struct pipe_context *pctx)
 {
+	struct fd_context *ctx = fd_context(pctx);
+
+	ctx->shader_cache = ir3_cache_create(&cache_funcs, ctx);
 	ir3_prog_init(pctx);
 	fd_prog_init(pctx);
 }

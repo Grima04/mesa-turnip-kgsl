@@ -35,9 +35,7 @@ glx@glx_ext_import_context@query context info,Fail
 shaders@glsl-bug-110796,Fail
 shaders@glsl-kwin-blur-1,Fail
 shaders@glsl-kwin-blur-2,Fail
-shaders@glsl-uniform-interstage-limits@300 vs- 300 fs,Fail
 shaders@glsl-uniform-interstage-limits@350 vs- 350 fs,Fail
-shaders@glsl-uniform-interstage-limits@400 vs- 400 fs,Fail
 shaders@point-vertex-id divisor,Crash
 shaders@point-vertex-id gl_instanceid,Crash
 shaders@point-vertex-id gl_instanceid divisor,Crash
