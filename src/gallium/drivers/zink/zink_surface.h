@@ -58,5 +58,21 @@ zink_get_surface(struct zink_context *ctx,
             const struct pipe_surface *templ,
             VkImageViewCreateInfo *ivci);
 
-
+static inline VkImageViewType
+zink_surface_clamp_viewtype(VkImageViewType viewType, unsigned first_layer, unsigned last_layer, unsigned array_size)
+{
+   unsigned layerCount = 1 + last_layer - first_layer;
+   if (viewType == VK_IMAGE_VIEW_TYPE_CUBE || viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
+      if (first_layer == last_layer)
+         return VK_IMAGE_VIEW_TYPE_2D;
+      if (viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY && first_layer % 6 == 0 && layerCount % 6 == 0)
+         return VK_IMAGE_VIEW_TYPE_CUBE;
+      if (first_layer || layerCount != array_size)
+         return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+   } else if (viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
+      if (first_layer == last_layer)
+         return VK_IMAGE_VIEW_TYPE_2D;
+   }
+   return viewType;
+}
 #endif

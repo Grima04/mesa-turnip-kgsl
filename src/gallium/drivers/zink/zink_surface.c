@@ -87,19 +87,7 @@ create_ivci(struct zink_screen *screen,
    ivci.subresourceRange.levelCount = 1;
    ivci.subresourceRange.baseArrayLayer = templ->u.tex.first_layer;
    ivci.subresourceRange.layerCount = 1 + templ->u.tex.last_layer - templ->u.tex.first_layer;
-   if (ivci.viewType == VK_IMAGE_VIEW_TYPE_CUBE || ivci.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY) {
-      if (templ->u.tex.first_layer == templ->u.tex.last_layer)
-         ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-      else if (ivci.viewType == VK_IMAGE_VIEW_TYPE_CUBE_ARRAY &&
-               templ->u.tex.first_layer % 6 == 0 &&
-               ivci.subresourceRange.layerCount % 6 == 0)
-         ivci.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-      else if (templ->u.tex.first_layer || ivci.subresourceRange.layerCount != res->base.array_size)
-         ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-   } else if (ivci.viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) {
-      if (templ->u.tex.first_layer == templ->u.tex.last_layer)
-         ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
-   }
+   ivci.viewType = zink_surface_clamp_viewtype(ivci.viewType, templ->u.tex.first_layer, templ->u.tex.last_layer, res->base.array_size);
 
    return ivci;
 }
