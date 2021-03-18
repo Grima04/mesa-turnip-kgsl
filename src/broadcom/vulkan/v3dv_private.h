@@ -131,9 +131,12 @@ struct v3dv_physical_device {
    int32_t display_fd;
    int32_t master_fd;
 
+   uint8_t driver_build_sha1[20];
    uint8_t pipeline_cache_uuid[VK_UUID_SIZE];
    uint8_t device_uuid[VK_UUID_SIZE];
    uint8_t driver_uuid[VK_UUID_SIZE];
+
+   struct disk_cache *disk_cache;
 
    mtx_t mutex;
 

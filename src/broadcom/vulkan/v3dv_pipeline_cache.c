@@ -209,6 +209,19 @@ v3dv_pipeline_cache_init(struct v3dv_pipeline_cache *cache,
 
 }
 
+static struct v3dv_pipeline_shared_data *
+v3dv_pipeline_shared_data_create_from_blob(struct v3dv_pipeline_cache *cache,
+                                           struct blob_reader *blob);
+
+static void
+pipeline_cache_upload_shared_data(struct v3dv_pipeline_cache *cache,
+                                  struct v3dv_pipeline_shared_data *shared_data,
+                                  bool from_disk_cache);
+
+static bool
+v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *cache_entry,
+                                        struct blob *blob);
+
 /**
  * It searchs for pipeline cached data, and returns a v3dv_pipeline_shared_data with
  * it, or NULL if doesn't have it cached. On the former, it will increases the
@@ -261,6 +274,44 @@ v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
    }
 
    pthread_mutex_unlock(&cache->mutex);
+
+#ifdef ENABLE_SHADER_CACHE
+   struct v3dv_device *device = cache->device;
+   struct disk_cache *disk_cache = device->pdevice->disk_cache;
+   /* Note that the on-disk-cache can be independently disabled, while keeping
+    * the pipeline cache working, by using the environment variable
+    * MESA_GLSL_CACHE_DISABLE.  In that case the calls to disk_cache_put/get
+    * will not do anything.
+    */
+   if (disk_cache && device->instance->pipeline_cache_enabled) {
+      cache_key cache_key;
+      disk_cache_compute_key(disk_cache, sha1_key, 20, cache_key);
+
+      size_t buffer_size;
+      uint8_t *buffer = disk_cache_get(disk_cache, cache_key, &buffer_size);
+      if (buffer) {
+         struct blob_reader blob;
+         struct v3dv_pipeline_shared_data *shared_data;
+
+         if (debug_cache)
+            fprintf(stderr, "\ton-disk-cache hit\n");
+
+         blob_reader_init(&blob, buffer, buffer_size);
+         shared_data = v3dv_pipeline_shared_data_create_from_blob(cache, &blob);
+         free(buffer);
+
+         if (shared_data) {
+            if (cache)
+               pipeline_cache_upload_shared_data(cache, shared_data, true);
+            return shared_data;
+         }
+      } else {
+         if (debug_cache)
+            fprintf(stderr, "\ton-disk-cache miss\n");
+      }
+   }
+#endif
+
    return NULL;
 }
 
@@ -338,11 +389,13 @@ v3dv_pipeline_shared_data_new(struct v3dv_pipeline_cache *cache,
    return new_entry;
 }
 
-/* Uploads all the "cacheable" or shared data from the pipeline */
-void
-v3dv_pipeline_cache_upload_pipeline(struct v3dv_pipeline *pipeline,
-                                    struct v3dv_pipeline_cache *cache)
+static void
+pipeline_cache_upload_shared_data(struct v3dv_pipeline_cache *cache,
+                                  struct v3dv_pipeline_shared_data *shared_data,
+                                  bool from_disk_cache)
 {
+   assert(shared_data);
+
    if (!cache || !cache->cache)
       return;
 
@@ -351,28 +404,65 @@ v3dv_pipeline_cache_upload_pipeline(struct v3dv_pipeline *pipeline,
 
    pthread_mutex_lock(&cache->mutex);
    struct hash_entry *entry =
-      _mesa_hash_table_search(cache->cache, pipeline->shared_data->sha1_key);
+      _mesa_hash_table_search(cache->cache, shared_data->sha1_key);
 
    if (entry) {
       pthread_mutex_unlock(&cache->mutex);
       return;
    }
 
-   v3dv_pipeline_shared_data_ref(pipeline->shared_data);
-   _mesa_hash_table_insert(cache->cache, pipeline->shared_data->sha1_key,
-                           pipeline->shared_data);
+   v3dv_pipeline_shared_data_ref(shared_data);
+   _mesa_hash_table_insert(cache->cache, shared_data->sha1_key, shared_data);
    cache->stats.count++;
    if (debug_cache) {
       char sha1buf[41];
-      _mesa_sha1_format(sha1buf, pipeline->shared_data->sha1_key);
+      _mesa_sha1_format(sha1buf, shared_data->sha1_key);
 
       fprintf(stderr, "pipeline cache %p, new cache entry with sha1 key %s:%p\n\n",
-              cache, sha1buf, pipeline->shared_data);
+              cache, sha1buf, shared_data);
       if (dump_stats)
          cache_dump_stats(cache);
    }
 
    pthread_mutex_unlock(&cache->mutex);
+
+#ifdef ENABLE_SHADER_CACHE
+   /* If we are being called from a on-disk-cache hit, we can skip writing to
+    * the disk cache
+    */
+   if (from_disk_cache)
+      return;
+
+   struct v3dv_device *device = cache->device;
+   struct disk_cache *disk_cache = device->pdevice->disk_cache;
+   if (disk_cache) {
+      struct blob binary;
+      blob_init(&binary);
+      if (v3dv_pipeline_shared_data_write_to_blob(shared_data, &binary)) {
+         cache_key cache_key;
+         disk_cache_compute_key(disk_cache, shared_data->sha1_key, 20, cache_key);
+
+         disk_cache_put(disk_cache, cache_key, binary.data, binary.size, NULL);
+         if (debug_cache) {
+            char sha1buf[41];
+            _mesa_sha1_format(sha1buf, shared_data->sha1_key);
+
+            fprintf(stderr, "on-disk-cache, new cache entry with sha1 key %s:%p\n\n",
+                    sha1buf, shared_data);
+         }
+      }
+
+      blob_finish(&binary);
+   }
+#endif
+}
+
+/* Uploads all the "cacheable" or shared data from the pipeline */
+void
+v3dv_pipeline_cache_upload_pipeline(struct v3dv_pipeline *pipeline,
+                                    struct v3dv_pipeline_cache *cache)
+{
+   pipeline_cache_upload_shared_data(cache, pipeline->shared_data, false);
 }
 
 static struct serialized_nir*
