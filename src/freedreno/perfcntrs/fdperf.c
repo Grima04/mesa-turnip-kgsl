@@ -46,6 +46,8 @@
 #include "drm/freedreno_drmif.h"
 #include "drm/freedreno_ringbuffer.h"
 
+#include "util/os_file.h"
+
 #include "freedreno_perfcntr.h"
 
 #define MAX_CNTR_PER_GROUP 24
@@ -106,39 +108,6 @@ static void restore_counter_groups(void);
  * helpers
  */
 
-#define CHUNKSIZE 32
-
-static void *
-readfile(const char *path, int *sz)
-{
-	char *buf = NULL;
-	int fd, ret, n = 0;
-
-	fd = open(path, O_RDONLY);
-	if (fd < 0) {
-		*sz = 0;
-		return NULL;
-	}
-
-	while (1) {
-		buf = realloc(buf, n + CHUNKSIZE);
-		ret = read(fd, buf + n, CHUNKSIZE);
-		if (ret < 0) {
-			free(buf);
-			*sz = 0;
-			close(fd);
-			return NULL;
-		} else if (ret < CHUNKSIZE) {
-			n += ret;
-			*sz = n;
-			close(fd);
-			return buf;
-		} else {
-			n += CHUNKSIZE;
-		}
-	}
-}
-
 static uint32_t
 gettime_us(void)
 {
@@ -170,10 +139,10 @@ readdt(const char *node)
 {
 	char *path;
 	void *buf;
-	int sz;
+	size_t sz;
 
 	(void) asprintf(&path, "%s/%s", dev.dtnode, node);
-	buf = readfile(path, &sz);
+	buf = os_read_file(path, &sz);
 	free(path);
 
 	return buf;
@@ -183,10 +152,10 @@ static int
 find_freqs_fn(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
 	const char *fname = fpath + ftwbuf->base;
-	int sz;
+	size_t sz;
 
 	if (strcmp(fname, "qcom,gpu-freq") == 0) {
-		uint32_t *buf = readfile(fpath, &sz);
+		uint32_t *buf = (uint32_t *)os_read_file(fpath, &sz);
 		uint32_t freq = ntohl(buf[0]);
 		free(buf);
 		dev.max_freq = MAX2(dev.max_freq, freq);
@@ -249,10 +218,10 @@ static int
 find_device_fn(const char *fpath, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
 {
 	const char *fname = fpath + ftwbuf->base;
-	int sz;
+	size_t sz;
 
 	if (strcmp(fname, "compatible") == 0) {
-		char *str = readfile(fpath, &sz);
+		char *str = os_read_file(fpath, &sz);
 		if (match_compatible(str, sz)) {
 			int dlen = strlen(fpath) - strlen("/compatible");
 			dev.dtnode = malloc(dlen + 1);
@@ -260,15 +229,16 @@ find_device_fn(const char *fpath, const struct stat *sb, int typeflag, struct FT
 			printf("found dt node: %s\n", dev.dtnode);
 
 			char buf[dlen + sizeof("/../#address-cells") + 1];
-			int sz, *val;
+			size_t sz;
+			int *val;
 
 			sprintf(buf, "%s/../#address-cells", dev.dtnode);
-			val = readfile(buf, &sz);
+			val = (int *)os_read_file(buf, &sz);
 			dev.address_cells = ntohl(*val);
 			free(val);
 
 			sprintf(buf, "%s/../#size-cells", dev.dtnode);
-			val = readfile(buf, &sz);
+			val = (int *)os_read_file(buf, &sz);
 			dev.size_cells = ntohl(*val);
 			free(val);
 
