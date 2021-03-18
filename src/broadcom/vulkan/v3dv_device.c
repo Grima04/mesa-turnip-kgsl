@@ -666,8 +666,10 @@ physical_device_init(struct v3dv_physical_device *device,
    device->compiler = v3d_compiler_init(&device->devinfo);
    device->next_program_id = 0;
 
-   asprintf(&device->name, "V3D %d.%d",
-            device->devinfo.ver / 10, device->devinfo.ver % 10);
+   ASSERTED int len =
+      asprintf(&device->name, "V3D %d.%d",
+               device->devinfo.ver / 10, device->devinfo.ver % 10);
+   assert(len != -1);
 
    /* Setup available memory heaps and types */
    VkPhysicalDeviceMemoryProperties *mem = &device->memory;
