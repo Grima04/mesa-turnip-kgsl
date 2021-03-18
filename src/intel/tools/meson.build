@@ -190,15 +190,15 @@ i965_asm = executable(
 )
 
 asm_testcases = [
-  ['brw', 'gen4'],
-  ['g4x', 'gen4.5'],
-  ['ilk', 'gen5'],
-  ['snb', 'gen6'],
-  ['ivb', 'gen7'],
-  ['hsw', 'gen7.5'],
-  ['bdw', 'gen8'],
-  ['skl', 'gen9'],
-  ['icl', 'gen11'],
+  ['brw', 'gfx4'],
+  ['g4x', 'gfx4.5'],
+  ['ilk', 'gfx5'],
+  ['snb', 'gfx6'],
+  ['ivb', 'gfx7'],
+  ['hsw', 'gfx7.5'],
+  ['bdw', 'gfx8'],
+  ['skl', 'gfx9'],
+  ['icl', 'gfx11'],
 ]
 
 test_runner = find_program('tests/run-test.py')

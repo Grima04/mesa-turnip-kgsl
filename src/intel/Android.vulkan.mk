@@ -63,11 +63,11 @@ ANV_SHARED_LIBRARIES += libnativewindow
 endif
 
 #
-# libanv for gen7
+# libanv for gfx7
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen7
+LOCAL_MODULE := libmesa_anv_gfx7
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX7_FILES)
@@ -84,11 +84,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libanv for gen75
+# libanv for gfx75
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen75
+LOCAL_MODULE := libmesa_anv_gfx75
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX75_FILES)
@@ -105,11 +105,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libanv for gen8
+# libanv for gfx8
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen8
+LOCAL_MODULE := libmesa_anv_gfx8
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX8_FILES)
@@ -126,11 +126,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libanv for gen9
+# libanv for gfx9
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen9
+LOCAL_MODULE := libmesa_anv_gfx9
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX9_FILES)
@@ -147,11 +147,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libanv for gen11
+# libanv for gfx11
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen11
+LOCAL_MODULE := libmesa_anv_gfx11
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX11_FILES)
@@ -168,11 +168,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libanv for gen12
+# libanv for gfx12
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen12
+LOCAL_MODULE := libmesa_anv_gfx12
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX12_FILES)
@@ -189,11 +189,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libanv for gen125
+# libanv for gfx125
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_anv_gen125
+LOCAL_MODULE := libmesa_anv_gfx125
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(VULKAN_GFX125_FILES)
@@ -293,13 +293,13 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_intel_perf \
 	libmesa_vulkan_common \
 	libmesa_vulkan_util \
-	libmesa_anv_gen7 \
-	libmesa_anv_gen75 \
-	libmesa_anv_gen8 \
-	libmesa_anv_gen9 \
-	libmesa_anv_gen11 \
-	libmesa_anv_gen12 \
-	libmesa_anv_gen125 \
+	libmesa_anv_gfx7 \
+	libmesa_anv_gfx75 \
+	libmesa_anv_gfx8 \
+	libmesa_anv_gfx9 \
+	libmesa_anv_gfx11 \
+	libmesa_anv_gfx12 \
+	libmesa_anv_gfx125 \
 	libmesa_intel_compiler
 
 LOCAL_SHARED_LIBRARIES := $(ANV_SHARED_LIBRARIES) libz libsync liblog libcutils

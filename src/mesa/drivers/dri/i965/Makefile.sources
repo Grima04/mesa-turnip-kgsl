@@ -110,55 +110,55 @@ i965_FILES = \
 	brw_upload.c \
 	libdrm_macros.h
 
-i965_gen4_FILES = \
+i965_gfx4_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen45_FILES = \
+i965_gfx45_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen5_FILES = \
+i965_gfx5_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen6_FILES = \
+i965_gfx6_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen7_FILES = \
+i965_gfx7_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen75_FILES = \
+i965_gfx75_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen8_FILES = \
+i965_gfx8_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen9_FILES = \
+i965_gfx9_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \
 	genX_state_upload.c
 
-i965_gen11_FILES = \
+i965_gfx11_FILES = \
 	genX_blorp_exec.c \
 	genX_boilerplate.h \
 	genX_pipe_control.c \

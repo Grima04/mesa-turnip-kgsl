@@ -42,11 +42,11 @@ IRIS_COMMON_INCLUDES := \
 	$(MESA_TOP)/src/gallium/auxiliary
 
 #
-# libiris for gen8
+# libiris for gfx8
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_iris_gen8
+LOCAL_MODULE := libmesa_iris_gfx8
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
@@ -62,11 +62,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libiris for gen9
+# libiris for gfx9
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_iris_gen9
+LOCAL_MODULE := libmesa_iris_gfx9
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
@@ -82,11 +82,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libiris for gen11
+# libiris for gfx11
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_iris_gen11
+LOCAL_MODULE := libmesa_iris_gfx11
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
@@ -102,11 +102,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libiris for gen12
+# libiris for gfx12
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_iris_gen12
+LOCAL_MODULE := libmesa_iris_gfx12
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
@@ -122,11 +122,11 @@ include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
 
 #
-# libiris for gen125
+# libiris for gfx125
 #
 
 include $(CLEAR_VARS)
-LOCAL_MODULE := libmesa_iris_gen125
+LOCAL_MODULE := libmesa_iris_gfx125
 LOCAL_MODULE_CLASS := STATIC_LIBRARIES
 
 LOCAL_SRC_FILES := $(LIBIRIS_SRC_FILES)
@@ -167,11 +167,11 @@ LOCAL_WHOLE_STATIC_LIBRARIES := \
 	libmesa_intel_common \
 	libmesa_intel_compiler \
 	libmesa_intel_perf \
-	libmesa_iris_gen8 \
-	libmesa_iris_gen9 \
-	libmesa_iris_gen11 \
-	libmesa_iris_gen12 \
-	libmesa_iris_gen125
+	libmesa_iris_gfx8 \
+	libmesa_iris_gfx9 \
+	libmesa_iris_gfx11 \
+	libmesa_iris_gfx12 \
+	libmesa_iris_gfx125
 
 include $(GALLIUM_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)
