@@ -5995,6 +5995,37 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    emit_split_vector(ctx, dst, instr->dest.ssa.num_components);
 }
 
+void get_image_samples(isel_context *ctx, Definition dst, Temp resource)
+{
+   Builder bld(ctx->program, ctx->block);
+
+   Temp dword3 = emit_extract_vector(ctx, resource, 3, s1);
+   Temp samples_log2 = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3, Operand(16u | 4u<<16));
+   Temp samples = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), Operand(1u), samples_log2);
+   Temp type = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3, Operand(28u | 4u<<16 /* offset=28, width=4 */));
+
+   Operand default_sample = Operand(1u);
+   if (ctx->options->robust_buffer_access) {
+      /* Extract the second dword of the descriptor, if it's
+       * all zero, then it's a null descriptor.
+       */
+      Temp dword1 = emit_extract_vector(ctx, resource, 1, s1);
+      Temp is_non_null_descriptor = bld.sopc(aco_opcode::s_cmp_gt_u32, bld.def(s1, scc), dword1, Operand(0u));
+      default_sample = Operand(is_non_null_descriptor);
+   }
+
+   Temp is_msaa = bld.sopc(aco_opcode::s_cmp_ge_u32, bld.def(s1, scc), type, Operand(14u));
+   bld.sop2(aco_opcode::s_cselect_b32, dst, samples, default_sample, bld.scc(is_msaa));
+}
+
+void visit_image_samples(isel_context *ctx, nir_intrinsic_instr *instr)
+{
+   Builder bld(ctx->program, ctx->block);
+   Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
+   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, NULL, true, false);
+   get_image_samples(ctx, Definition(dst), resource);
+}
+
 void visit_load_ssbo(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
@@ -7640,6 +7671,9 @@ void visit_intrinsic(isel_context *ctx, nir_intrinsic_instr *instr)
    case nir_intrinsic_image_deref_size:
       visit_image_size(ctx, instr);
       break;
+   case nir_intrinsic_image_deref_samples:
+      visit_image_samples(ctx, instr);
+      break;
    case nir_intrinsic_load_ssbo:
       visit_load_ssbo(ctx, instr);
       break;
@@ -8636,25 +8670,7 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
       return get_buffer_size(ctx, resource, get_ssa_temp(ctx, &instr->dest.ssa));
 
    if (instr->op == nir_texop_texture_samples) {
-      Temp dword3 = emit_extract_vector(ctx, resource, 3, s1);
-
-      Temp samples_log2 = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3, Operand(16u | 4u<<16));
-      Temp samples = bld.sop2(aco_opcode::s_lshl_b32, bld.def(s1), bld.def(s1, scc), Operand(1u), samples_log2);
-      Temp type = bld.sop2(aco_opcode::s_bfe_u32, bld.def(s1), bld.def(s1, scc), dword3, Operand(28u | 4u<<16 /* offset=28, width=4 */));
-
-      Operand default_sample = Operand(1u);
-      if (ctx->options->robust_buffer_access) {
-         /* Extract the second dword of the descriptor, if it's
-	  * all zero, then it's a null descriptor.
-	  */
-         Temp dword1 = emit_extract_vector(ctx, resource, 1, s1);
-         Temp is_non_null_descriptor = bld.sopc(aco_opcode::s_cmp_gt_u32, bld.def(s1, scc), dword1, Operand(0u));
-         default_sample = Operand(is_non_null_descriptor);
-      }
-
-      Temp is_msaa = bld.sopc(aco_opcode::s_cmp_ge_u32, bld.def(s1, scc), type, Operand(14u));
-      bld.sop2(aco_opcode::s_cselect_b32, Definition(get_ssa_temp(ctx, &instr->dest.ssa)),
-               samples, default_sample, bld.scc(is_msaa));
+      get_image_samples(ctx, Definition(get_ssa_temp(ctx, &instr->dest.ssa)), resource);
       return;
    }
 

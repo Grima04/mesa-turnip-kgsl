@@ -738,6 +738,7 @@ void init_context(isel_context *ctx, nir_shader *shader)
                   case nir_intrinsic_load_ring_tess_offchip_offset_amd:
                   case nir_intrinsic_load_ring_esgs_amd:
                   case nir_intrinsic_load_ring_es2gs_offset_amd:
+                  case nir_intrinsic_image_deref_samples:
                      type = RegType::sgpr;
                      break;
                   case nir_intrinsic_load_sample_id:
