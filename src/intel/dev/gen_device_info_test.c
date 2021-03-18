@@ -27,6 +27,7 @@ main(int argc, char *argv[])
       assert(devinfo.num_eu_per_subslice != 0);
       assert(devinfo.num_thread_per_eu != 0);
       assert(devinfo.timestamp_frequency != 0);
+      assert(devinfo.cs_prefetch_size > 0);
    }
 
    return 0;

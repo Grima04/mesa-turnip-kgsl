@@ -237,6 +237,12 @@ struct gen_device_info
    } urb;
 
    /**
+    * Size of the command streamer prefetch. This is important to know for
+    * self modifying batches.
+    */
+   unsigned cs_prefetch_size;
+
+   /**
     * For the longest time the timestamp frequency for Gen's timestamp counter
     * could be assumed to be 12.5MHz, where the least significant bit neatly
     * corresponded to 80 nanoseconds.

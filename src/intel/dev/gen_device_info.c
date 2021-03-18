@@ -86,6 +86,7 @@ gen_device_name_to_pci_device_id(const char *name)
 static const struct gen_device_info gen_device_info_gen3 = {
    .gen = 3,
    .simulator_id = -1,
+   .cs_prefetch_size = 512,
 };
 
 static const struct gen_device_info gen_device_info_i965 = {
@@ -103,6 +104,7 @@ static const struct gen_device_info gen_device_info_i965 = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
+   .cs_prefetch_size = 512,
 };
 
 static const struct gen_device_info gen_device_info_g4x = {
@@ -124,6 +126,7 @@ static const struct gen_device_info gen_device_info_g4x = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
+   .cs_prefetch_size = 512,
 };
 
 static const struct gen_device_info gen_device_info_ilk = {
@@ -143,6 +146,7 @@ static const struct gen_device_info gen_device_info_ilk = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
+   .cs_prefetch_size = 512,
 };
 
 static const struct gen_device_info gen_device_info_snb_gt1 = {
@@ -172,6 +176,7 @@ static const struct gen_device_info gen_device_info_snb_gt1 = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
+   .cs_prefetch_size = 512,
 };
 
 static const struct gen_device_info gen_device_info_snb_gt2 = {
@@ -201,6 +206,7 @@ static const struct gen_device_info gen_device_info_snb_gt2 = {
    },
    .timestamp_frequency = 12500000,
    .simulator_id = -1,
+   .cs_prefetch_size = 512,
 };
 
 #define GEN7_FEATURES                               \
@@ -211,7 +217,8 @@ static const struct gen_device_info gen_device_info_snb_gt2 = {
    .has_pln = true,                                 \
    .has_64bit_float = true,                         \
    .has_surface_tile_offset = true,                 \
-   .timestamp_frequency = 12500000
+   .timestamp_frequency = 12500000,                 \
+   .cs_prefetch_size = 512
 
 static const struct gen_device_info gen_device_info_ivb_gt1 = {
    GEN7_FEATURES, .is_ivybridge = true, .gt = 1,
@@ -412,7 +419,8 @@ static const struct gen_device_info gen_device_info_hsw_gt3 = {
    .max_tes_threads = 504,                          \
    .max_gs_threads = 504,                           \
    .max_wm_threads = 384,                           \
-   .timestamp_frequency = 12500000
+   .timestamp_frequency = 12500000,                 \
+   .cs_prefetch_size = 512
 
 static const struct gen_device_info gen_device_info_bdw_gt1 = {
    GEN8_FEATURES, .gt = 1,
@@ -521,6 +529,7 @@ static const struct gen_device_info gen_device_info_chv = {
    .max_tes_threads = 336,                          \
    .max_cs_threads = 56,                            \
    .timestamp_frequency = 12000000,                 \
+   .cs_prefetch_size = 512,                         \
    .urb = {                                         \
       .min_entries = {                              \
          [MESA_SHADER_VERTEX]    = 64,              \
@@ -804,7 +813,8 @@ static const struct gen_device_info gen_device_info_cfl_gt3 = {
    .max_gs_threads = 224,                           \
    .max_tcs_threads = 224,                          \
    .max_tes_threads = 364,                          \
-   .max_cs_threads = 56
+   .max_cs_threads = 56,                            \
+   .cs_prefetch_size = 512
 
 #define GEN11_FEATURES(_gt, _slices, _subslices, _l3) \
    GEN8_FEATURES,                                     \
@@ -937,7 +947,8 @@ static const struct gen_device_info gen_device_info_ehl_2x4 = {
    .has_integer_dword_mul = false,                              \
    .gt = _gt, .num_slices = _slices, .l3_banks = _l3,           \
    .simulator_id = 22,                                          \
-   .num_eu_per_subslice = 16
+   .num_eu_per_subslice = 16,                                   \
+   .cs_prefetch_size = 512
 
 #define dual_subslices(args...) { args, }
 
