@@ -2772,6 +2772,15 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       store_dest(ctx, &intr->dest, result, nir_type_uint);
       break;
    }
+   case nir_intrinsic_image_deref_samples: {
+      SpvId img_var = get_src(ctx, &intr->src[0]);
+      nir_variable *var = get_var_from_image(ctx, img_var);
+      SpvId img_type = ctx->image_types[var->data.driver_location];
+      SpvId img = spirv_builder_emit_load(&ctx->builder, img_type, img_var);
+      SpvId result = spirv_builder_emit_unop(&ctx->builder, SpvOpImageQuerySamples, get_dest_type(ctx, &intr->dest, nir_type_uint), img);
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
    case nir_intrinsic_image_deref_atomic_add:
    case nir_intrinsic_image_deref_atomic_umin:
    case nir_intrinsic_image_deref_atomic_imin:
