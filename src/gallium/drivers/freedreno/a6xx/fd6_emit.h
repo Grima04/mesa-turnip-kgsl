@@ -118,9 +118,8 @@ static inline const struct fd6_program_state *
 fd6_emit_get_prog(struct fd6_emit *emit)
 {
 	if (!emit->prog) {
-		struct fd6_context *fd6_ctx = fd6_context(emit->ctx);
 		struct ir3_program_state *s =
-				ir3_cache_lookup(fd6_ctx->shader_cache, &emit->key, &emit->ctx->debug);
+				ir3_cache_lookup(emit->ctx->shader_cache, &emit->key, &emit->ctx->debug);
 		emit->prog = fd6_program_state(s);
 	}
 	return emit->prog;

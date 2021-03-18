@@ -416,6 +416,11 @@ struct fd_context {
 		uint32_t per_fiber_size;
 	} pvtmem[2] dt;
 
+	/* maps per-shader-stage state plus variant key to hw
+	 * program stateobj:
+	 */
+	struct ir3_cache *shader_cache;
+
 	struct pipe_debug_callback debug;
 
 	struct u_trace_context trace_context dt;

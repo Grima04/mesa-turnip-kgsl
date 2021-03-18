@@ -36,6 +36,7 @@
 #include "freedreno_query.h"
 #include "freedreno_query_hw.h"
 #include "freedreno_util.h"
+#include "ir3/ir3_cache.h"
 #include "util/u_upload_mgr.h"
 
 static void
@@ -372,6 +373,8 @@ fd_context_destroy(struct pipe_context *pctx)
 	u_trace_context_fini(&ctx->trace_context);
 
 	fd_autotune_fini(&ctx->autotune);
+
+	ir3_cache_destroy(ctx->shader_cache);
 
 	if (FD_DBG(BSTAT) || FD_DBG(MSGS)) {
 		mesa_logi("batch_total=%u, batch_sysmem=%u, batch_gmem=%u, batch_nondraw=%u, batch_restore=%u\n",

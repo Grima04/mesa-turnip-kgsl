@@ -1119,44 +1119,14 @@ static const struct ir3_cache_funcs cache_funcs = {
 	.destroy_state = fd6_program_destroy,
 };
 
-static void *
-fd6_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_state *cso)
-{
-	return ir3_shader_state_create(pctx, cso);
-}
-
-static void
-fd6_shader_state_delete(struct pipe_context *pctx, void *hwcso)
-{
-	struct fd_context *ctx = fd_context(pctx);
-	ir3_cache_invalidate(fd6_context(ctx)->shader_cache, hwcso);
-	ir3_shader_state_delete(pctx, hwcso);
-}
-
 void
 fd6_prog_init(struct pipe_context *pctx)
 {
 	struct fd_context *ctx = fd_context(pctx);
 
-	fd6_context(ctx)->shader_cache = ir3_cache_create(&cache_funcs, ctx);
+	ctx->shader_cache = ir3_cache_create(&cache_funcs, ctx);
 
-	pctx->create_vs_state = fd6_shader_state_create;
-	pctx->delete_vs_state = fd6_shader_state_delete;
-
-	pctx->create_tcs_state = fd6_shader_state_create;
-	pctx->delete_tcs_state = fd6_shader_state_delete;
-
-	pctx->create_tes_state = fd6_shader_state_create;
-	pctx->delete_tes_state = fd6_shader_state_delete;
-
-	pctx->create_gs_state = fd6_shader_state_create;
-	pctx->delete_gs_state = fd6_shader_state_delete;
-
-	pctx->create_gs_state = fd6_shader_state_create;
-	pctx->delete_gs_state = fd6_shader_state_delete;
-
-	pctx->create_fs_state = fd6_shader_state_create;
-	pctx->delete_fs_state = fd6_shader_state_delete;
+	ir3_prog_init(pctx);
 
 	fd_prog_init(pctx);
 }

@@ -38,6 +38,7 @@
 #include "freedreno_context.h"
 #include "freedreno_util.h"
 
+#include "ir3/ir3_cache.h"
 #include "ir3/ir3_shader.h"
 #include "ir3/ir3_gallium.h"
 #include "ir3/ir3_compiler.h"
@@ -389,9 +390,12 @@ ir3_shader_state_create(struct pipe_context *pctx, const struct pipe_shader_stat
 void
 ir3_shader_state_delete(struct pipe_context *pctx, void *_hwcso)
 {
-	struct fd_screen *screen = fd_context(pctx)->screen;
+	struct fd_context *ctx = fd_context(pctx);
+	struct fd_screen *screen = ctx->screen;
 	struct ir3_shader_state *hwcso = _hwcso;
 	struct ir3_shader *so = hwcso->shader;
+
+	ir3_cache_invalidate(ctx->shader_cache, hwcso);
 
 	/* util_queue_drop_job() guarantees that either:
 	 *  1) job did not execute

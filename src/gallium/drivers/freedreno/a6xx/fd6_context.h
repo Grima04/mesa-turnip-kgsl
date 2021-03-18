@@ -79,11 +79,6 @@ struct fd6_context {
 	/* number of active samples-passed queries: */
 	int samples_passed_queries;
 
-	/* maps per-shader-stage state plus variant key to hw
-	 * program stateobj:
-	 */
-	struct ir3_cache *shader_cache;
-
 	/* cached stateobjs to avoid hashtable lookup when not dirty: */
 	const struct fd6_program_state *prog;
 
