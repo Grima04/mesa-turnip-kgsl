@@ -996,10 +996,13 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
           * prefetch.
           */
          if (cmd_buffer->batch_bos.next == cmd_buffer->batch_bos.prev) {
+            const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+            /* Careful to have everything in signed integer. */
+            int32_t prefetch_len = devinfo->cs_prefetch_size;
             int32_t batch_len =
                cmd_buffer->batch.next - cmd_buffer->batch.start;
 
-            for (int32_t i = 0; i < (512 - batch_len); i += 4)
+            for (int32_t i = 0; i < (prefetch_len - batch_len); i += 4)
                anv_batch_emit(&cmd_buffer->batch, GEN8_MI_NOOP, noop);
          }
 
