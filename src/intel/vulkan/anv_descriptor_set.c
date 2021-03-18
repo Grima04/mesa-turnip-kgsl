@@ -607,9 +607,9 @@ set_layout_buffer_view_count(const struct anv_descriptor_set_layout *set_layout,
    return set_layout->buffer_view_count - shrink;
 }
 
-static uint32_t
-set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_layout,
-                                  uint32_t var_desc_count)
+uint32_t
+anv_descriptor_set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_layout,
+                                                 uint32_t var_desc_count)
 {
    const struct anv_descriptor_set_binding_layout *dynamic_binding =
       set_layout_dynamic_binding(set_layout);
@@ -1070,7 +1070,7 @@ anv_descriptor_set_create(struct anv_device *device,
       return result;
 
    uint32_t descriptor_buffer_size =
-      set_layout_descriptor_buffer_size(layout, var_desc_count);
+      anv_descriptor_set_layout_descriptor_buffer_size(layout, var_desc_count);
    if (descriptor_buffer_size) {
       uint64_t pool_vma_offset =
          util_vma_heap_alloc(&pool->bo_heap, descriptor_buffer_size,

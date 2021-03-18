@@ -1269,7 +1269,8 @@ anv_cmd_buffer_push_descriptor_set(struct anv_cmd_buffer *cmd_buffer,
        */
       struct anv_state desc_mem =
          anv_state_stream_alloc(&cmd_buffer->dynamic_state_stream,
-                                layout->descriptor_buffer_size, 32);
+                                anv_descriptor_set_layout_descriptor_buffer_size(layout, 0),
+                                ANV_UBO_ALIGNMENT);
       if (set->desc_mem.alloc_size) {
          /* TODO: Do we really need to copy all the time? */
          memcpy(desc_mem.map, set->desc_mem.map,

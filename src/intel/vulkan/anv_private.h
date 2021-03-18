@@ -2059,6 +2059,10 @@ size_t
 anv_descriptor_set_layout_size(const struct anv_descriptor_set_layout *layout,
                                uint32_t var_desc_count);
 
+uint32_t
+anv_descriptor_set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_layout,
+                                                 uint32_t var_desc_count);
+
 void
 anv_descriptor_set_write_image_view(struct anv_device *device,
                                     struct anv_descriptor_set *set,
