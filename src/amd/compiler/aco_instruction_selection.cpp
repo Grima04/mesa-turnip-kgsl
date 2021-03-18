@@ -3517,14 +3517,16 @@ Temp lds_load_callback(Builder& bld, const LoadEmitInfo &info,
       op = aco_opcode::ds_read_u8;
    }
 
-   unsigned max_offset_plus_one = read2 ? 254 * (size / 2u) + 1 : 65536;
-   if (const_offset >= max_offset_plus_one) {
-      offset = bld.vadd32(bld.def(v1), offset, Operand(const_offset / max_offset_plus_one));
-      const_offset %= max_offset_plus_one;
+   unsigned const_offset_unit = read2 ? size / 2u : 1u;
+   unsigned const_offset_range = read2 ? 255 * const_offset_unit : 65536;
+
+   if (const_offset > (const_offset_range - const_offset_unit)) {
+      unsigned excess = const_offset - (const_offset % const_offset_range);
+      offset = bld.vadd32(bld.def(v1), offset, Operand(excess));
+      const_offset -= excess;
    }
 
-   if (read2)
-      const_offset /= (size / 2u);
+   const_offset /= const_offset_unit;
 
    RegClass rc = RegClass(RegType::vgpr, DIV_ROUND_UP(size, 4));
    Temp val = rc == info.dst.regClass() && dst_hint.id() ? dst_hint : bld.tmp(rc);
