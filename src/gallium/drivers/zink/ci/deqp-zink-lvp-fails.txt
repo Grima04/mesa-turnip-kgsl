@@ -15,8 +15,6 @@ dEQP-GLES3.functional.draw.random.31,Fail
 dEQP-GLES3.functional.fbo.blit.conversion.rgb8_to_rgba4,Fail
 dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_linear_out_of_bounds_blit_to_default,Fail
 dEQP-GLES3.functional.fbo.blit.default_framebuffer.rgb8_nearest_scale_blit_to_default,Fail
-dEQP-GLES3.functional.fbo.blit.depth_stencil.depth24_stencil8_stencil_only,Fail
-dEQP-GLES3.functional.fbo.blit.depth_stencil.depth32f_stencil8_stencil_only,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail

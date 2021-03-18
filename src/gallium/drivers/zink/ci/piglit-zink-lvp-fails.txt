@@ -43,9 +43,6 @@ spec@!opengl 1.0@gl-1.0-swapbuffers-behavior,Fail
 spec@!opengl 1.1@clipflat,Fail
 spec@!opengl 1.1@copyteximage 1d,Fail
 spec@!opengl 1.1@copyteximage 2d,Fail
-spec@!opengl 1.1@depthstencil-default_fb-copypixels,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev,Fail
 spec@!opengl 1.1@line-flat-clip-color,Fail
 spec@!opengl 1.1@linestipple,Fail
 spec@!opengl 1.1@max-texture-size,Crash
@@ -93,14 +90,8 @@ spec@!opengl 3.2@glsl-resource-not-bound buffer,Crash
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_clear_texture@arb_clear_texture-multisample,Fail
-spec@arb_depth_buffer_float@fbo-clear-formats stencil,Fail
 spec@arb_depth_buffer_float@fbo-depth-gl_depth32f_stencil8-blit,Fail
 spec@arb_depth_buffer_float@fbo-depth-gl_depth32f_stencil8-copypixels,Fail
-spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-copypixels,Fail
-spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-drawpixels-24_8,Fail
-spec@arb_depth_buffer_float@fbo-depthstencil-gl_depth32f_stencil8-drawpixels-32f_24_8_rev,Fail
-spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-blit,Fail
-spec@arb_depth_buffer_float@fbo-stencil-gl_depth32f_stencil8-copypixels,Fail
 spec@arb_depth_buffer_float@texwrap formats bordercolor,Fail
 spec@arb_depth_buffer_float@texwrap formats bordercolor-swizzled,Fail
 spec@arb_depth_texture@depth-tex-modes,Fail
@@ -111,12 +102,8 @@ spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_fragment_program@fp-abs-01,Crash
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit depth gl_depth24_stencil8,Fail
 spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit depth gl_depth32f_stencil8,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_depth24_stencil8,Fail
-spec@arb_framebuffer_object@arb_framebuffer_object-depth-stencil-blit stencil gl_depth32f_stencil8,Fail
 spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
 spec@arb_framebuffer_object@fbo-gl_pointcoord,Fail
-spec@arb_framebuffer_object@framebuffer-blit-levels draw stencil,Fail
-spec@arb_framebuffer_object@framebuffer-blit-levels read stencil,Fail
 spec@arb_get_program_binary@restore-sso-program,Fail
 spec@arb_gpu_shader_fp64@execution@arb_gpu_shader_fp64-tf-separate,Fail
 spec@arb_pipeline_statistics_query@arb_pipeline_statistics_query-frag,Fail
@@ -138,7 +125,6 @@ spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
 spec@arb_shader_storage_buffer_object@array-ssbo-binding,Crash
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
 spec@arb_shading_language_420pack@active sampler conflict,Crash
-spec@arb_stencil_texturing@draw,Fail
 spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output -small -scan 1 50,Crash
 spec@arb_texture_buffer_object@indexed,Fail
 spec@arb_texture_buffer_object@render-no-bo,Crash
@@ -179,16 +165,10 @@ spec@egl_mesa_configless_context@basic,Fail
 spec@ext_framebuffer_blit@fbo-blit-check-limits,Fail
 spec@ext_framebuffer_multisample@accuracy 2 depth_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy 2 depth_resolve small depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy 2 stencil_resolve depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy 2 stencil_resolve small depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy 4 depth_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy 4 depth_resolve small depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy 4 stencil_resolve depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy 4 stencil_resolve small depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples depth_resolve depthstencil,Fail
 spec@ext_framebuffer_multisample@accuracy all_samples depth_resolve small depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve depthstencil,Fail
-spec@ext_framebuffer_multisample@accuracy all_samples stencil_resolve small depthstencil,Fail
 spec@ext_framebuffer_multisample@blit-mismatched-formats,Fail
 spec@ext_framebuffer_multisample@clip-and-scissor-blit 2 msaa,Fail
 spec@ext_framebuffer_multisample@clip-and-scissor-blit 2 upsample,Fail
@@ -206,45 +186,26 @@ spec@ext_framebuffer_multisample@interpolation 4 centroid-edges,Fail
 spec@ext_framebuffer_multisample@interpolation 4 non-centroid-deriv-disabled,Fail
 spec@ext_framebuffer_multisample@interpolation 4 non-centroid-disabled,Fail
 spec@ext_framebuffer_multisample@multisample-blit 2 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 2 stencil,Fail
 spec@ext_framebuffer_multisample@multisample-blit 4 depth,Fail
-spec@ext_framebuffer_multisample@multisample-blit 4 stencil,Fail
 spec@ext_framebuffer_multisample@no-color 2 depth combined,Fail
 spec@ext_framebuffer_multisample@no-color 2 depth single,Fail
 spec@ext_framebuffer_multisample@no-color 2 depth-computed combined,Fail
 spec@ext_framebuffer_multisample@no-color 2 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 2 stencil combined,Fail
 spec@ext_framebuffer_multisample@no-color 4 depth combined,Fail
 spec@ext_framebuffer_multisample@no-color 4 depth single,Fail
 spec@ext_framebuffer_multisample@no-color 4 depth-computed combined,Fail
 spec@ext_framebuffer_multisample@no-color 4 depth-computed single,Fail
-spec@ext_framebuffer_multisample@no-color 4 stencil combined,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 2 depth,Fail
 spec@ext_framebuffer_multisample@sample-alpha-to-coverage 4 depth,Fail
 spec@ext_framebuffer_multisample@sample-coverage 2 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 non-inverted,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 stencil downsample,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 stencil msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 2 stencil upsample,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 stencil downsample,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 stencil msaa,Fail
-spec@ext_framebuffer_multisample@unaligned-blit 4 stencil upsample,Fail
 spec@ext_framebuffer_multisample@upsample 2 depth,Fail
-spec@ext_framebuffer_multisample@upsample 2 stencil,Fail
 spec@ext_framebuffer_multisample@upsample 4 depth,Fail
-spec@ext_framebuffer_multisample@upsample 4 stencil,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
 spec@ext_packed_depth_stencil@fbo-blit-d24s8,Fail
-spec@ext_packed_depth_stencil@fbo-clear-formats stencil,Fail
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit,Fail
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-copypixels,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-copypixels,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-24_8,Fail
-spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-32f_24_8_rev,Fail
-spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-blit,Fail
-spec@ext_packed_depth_stencil@fbo-stencil-gl_depth24_stencil8-copypixels,Fail
-spec@ext_packed_depth_stencil@readdrawpixels,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
@@ -253,10 +214,6 @@ spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_provoking_vertex@provoking-vertex,Fail
 spec@ext_texture_array@copyteximage 1d_array,Fail
 spec@ext_texture_array@copyteximage 2d_array,Fail
-spec@ext_texture_array@fbo-depth-array fs-writes-stencil,Fail
-spec@ext_texture_array@fbo-depth-array stencil-clear,Fail
-spec@ext_texture_array@fbo-depth-array stencil-draw,Fail
-spec@ext_texture_array@fbo-depth-array stencil-layered-clear,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor,Fail
@@ -319,11 +276,6 @@ spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb,Fail
 spec@khr_texture_compression_astc@sliced-3d-miptree-gles srgb-fp,Fail
 spec@nv_conditional_render@copytexsubimage,Fail
 spec@nv_conditional_render@generatemipmap,Fail
-spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Fail
-spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x223344ff,Fail
-spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Fail
-spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Fail
-spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Fail
 spec@nv_primitive_restart@primitive-restart-disable_vbo,Fail
 spec@nv_primitive_restart@primitive-restart-vbo_combined_vertex_and_index,Fail
 spec@nv_primitive_restart@primitive-restart-vbo_index_only,Fail
