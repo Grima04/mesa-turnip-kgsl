@@ -490,7 +490,8 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
 
                 /* Reasons to disable early-Z from a shader perspective */
                 bool late_z = fs->info.fs.can_discard || fs->info.writes_global ||
-                              fs->info.fs.writes_depth || fs->info.fs.writes_stencil;
+                              fs->info.fs.writes_depth || fs->info.fs.writes_stencil ||
+                              (zsa->alpha_func != MALI_FUNC_ALWAYS);
 
                 /* If either depth or stencil is enabled, discard matters */
                 bool zs_enabled =
