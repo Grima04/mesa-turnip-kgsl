@@ -821,6 +821,50 @@ qpu_merge_raddrs(struct v3d_qpu_instr *result,
 }
 
 static bool
+can_do_add_as_mul(enum v3d_qpu_add_op op)
+{
+        switch (op) {
+        case V3D_QPU_A_ADD:
+        case V3D_QPU_A_SUB:
+                return true;
+        default:
+                return false;
+        }
+}
+
+static enum v3d_qpu_mul_op
+add_op_as_mul_op(enum v3d_qpu_add_op op)
+{
+        switch (op) {
+        case V3D_QPU_A_ADD:
+                return V3D_QPU_M_ADD;
+        case V3D_QPU_A_SUB:
+                return V3D_QPU_M_SUB;
+        default:
+                unreachable("unexpected add opcode");
+        }
+}
+
+static void
+qpu_convert_add_to_mul(struct v3d_qpu_instr *inst)
+{
+        STATIC_ASSERT(sizeof(inst->alu.mul) == sizeof(inst->alu.add));
+        assert(inst->alu.add.op != V3D_QPU_A_NOP);
+        assert(inst->alu.mul.op == V3D_QPU_M_NOP);
+
+        memcpy(&inst->alu.mul, &inst->alu.add, sizeof(inst->alu.mul));
+        inst->alu.mul.op = add_op_as_mul_op(inst->alu.add.op);
+        inst->alu.add.op = V3D_QPU_A_NOP;
+
+        inst->flags.mc = inst->flags.ac;
+        inst->flags.mpf = inst->flags.apf;
+        inst->flags.muf = inst->flags.auf;
+        inst->flags.ac = V3D_QPU_PF_NONE;
+        inst->flags.apf = V3D_QPU_PF_NONE;
+        inst->flags.auf = V3D_QPU_PF_NONE;
+}
+
+static bool
 qpu_merge_inst(const struct v3d_device_info *devinfo,
                struct v3d_qpu_instr *result,
                const struct v3d_qpu_instr *a,
@@ -837,17 +881,52 @@ qpu_merge_inst(const struct v3d_device_info *devinfo,
         struct v3d_qpu_instr merge = *a;
         const struct v3d_qpu_instr *add_instr = NULL, *mul_instr = NULL;
 
+        struct v3d_qpu_instr mul_inst;
         if (b->alu.add.op != V3D_QPU_A_NOP) {
-                if (a->alu.add.op != V3D_QPU_A_NOP)
+                if (a->alu.add.op == V3D_QPU_A_NOP) {
+                        merge.alu.add = b->alu.add;
+
+                        merge.flags.ac = b->flags.ac;
+                        merge.flags.apf = b->flags.apf;
+                        merge.flags.auf = b->flags.auf;
+
+                        add_instr = b;
+                        mul_instr = a;
+                }
+                /* If a's add op is used but its mul op is not, then see if we
+                 * can convert either a's add op or b's add op to a mul op
+                 * so we can merge.
+                 */
+                else if (a->alu.mul.op == V3D_QPU_M_NOP &&
+                         can_do_add_as_mul(b->alu.add.op)) {
+                        mul_inst = *b;
+                        qpu_convert_add_to_mul(&mul_inst);
+
+                        merge.alu.mul = mul_inst.alu.mul;
+
+                        merge.flags.mc = b->flags.ac;
+                        merge.flags.mpf = b->flags.apf;
+                        merge.flags.muf = b->flags.auf;
+
+                        add_instr = a;
+                        mul_instr = &mul_inst;
+                } else if (a->alu.mul.op == V3D_QPU_M_NOP &&
+                           can_do_add_as_mul(a->alu.add.op)) {
+                        mul_inst = *a;
+                        qpu_convert_add_to_mul(&mul_inst);
+
+                        merge = mul_inst;
+                        merge.alu.add = b->alu.add;
+
+                        merge.flags.ac = b->flags.ac;
+                        merge.flags.apf = b->flags.apf;
+                        merge.flags.auf = b->flags.auf;
+
+                        add_instr = b;
+                        mul_instr = &mul_inst;
+                } else {
                         return false;
-                merge.alu.add = b->alu.add;
-
-                merge.flags.ac = b->flags.ac;
-                merge.flags.apf = b->flags.apf;
-                merge.flags.auf = b->flags.auf;
-
-                add_instr = b;
-                mul_instr = a;
+                }
         }
 
         if (b->alu.mul.op != V3D_QPU_M_NOP) {
