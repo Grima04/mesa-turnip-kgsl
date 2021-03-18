@@ -198,39 +198,57 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
          flags |= RADEON_SURF_SBUFFER;
    }
 
-   if (sscreen->info.chip_class >= GFX8 &&
-       (ptex->flags & SI_RESOURCE_FLAG_DISABLE_DCC ||
-        (sscreen->info.chip_class < GFX10_3 &&
-         ptex->format == PIPE_FORMAT_R9G9B9E5_FLOAT) ||
-        (ptex->nr_samples >= 2 && sscreen->debug_flags & DBG(NO_DCC_MSAA))))
-      flags |= RADEON_SURF_DISABLE_DCC;
+   /* Disable DCC? */
+   if (sscreen->info.chip_class >= GFX8) {
+      /* Global options that disable DCC. */
+      if (ptex->flags & SI_RESOURCE_FLAG_DISABLE_DCC)
+         flags |= RADEON_SURF_DISABLE_DCC;
 
-   /* Stoney: 128bpp MSAA textures randomly fail piglit tests with DCC. */
-   if (sscreen->info.family == CHIP_STONEY && bpe == 16 && ptex->nr_samples >= 2)
-      flags |= RADEON_SURF_DISABLE_DCC;
+      if (ptex->nr_samples >= 2 && sscreen->debug_flags & DBG(NO_DCC_MSAA))
+         flags |= RADEON_SURF_DISABLE_DCC;
 
-   /* GFX8: DCC clear for 4x and 8x MSAA array textures unimplemented. */
-   if (sscreen->info.chip_class == GFX8 && ptex->nr_storage_samples >= 4 && ptex->array_size > 1)
-      flags |= RADEON_SURF_DISABLE_DCC;
+      /* Shared textures must always set up DCC. If it's not present, it will be disabled by
+       * si_get_opaque_metadata later.
+       */
+      if (!is_imported &&
+          (sscreen->debug_flags & DBG(NO_DCC) ||
+           (ptex->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_DCC))))
+         flags |= RADEON_SURF_DISABLE_DCC;
 
-   /* GFX9: DCC clear for 4x and 8x MSAA textures unimplemented. */
-   if (sscreen->info.chip_class == GFX9 &&
-       (ptex->nr_storage_samples >= 4 ||
-        (sscreen->info.family == CHIP_RAVEN && ptex->nr_storage_samples >= 2 && bpe < 4)))
-      flags |= RADEON_SURF_DISABLE_DCC;
+      /* R9G9B9E5 isn't supported for rendering by older generations. */
+      if (sscreen->info.chip_class < GFX10_3 &&
+          ptex->format == PIPE_FORMAT_R9G9B9E5_FLOAT)
+         flags |= RADEON_SURF_DISABLE_DCC;
 
-   /* TODO: GFX10: DCC causes corruption with MSAA. */
-   if (sscreen->info.chip_class >= GFX10 && ptex->nr_storage_samples >= 2)
-      flags |= RADEON_SURF_DISABLE_DCC;
+      switch (sscreen->info.chip_class) {
+      case GFX8:
+         /* Stoney: 128bpp MSAA textures randomly fail piglit tests with DCC. */
+         if (sscreen->info.family == CHIP_STONEY && bpe == 16 && ptex->nr_samples >= 2)
+            flags |= RADEON_SURF_DISABLE_DCC;
 
-   /* Shared textures must always set up DCC.
-    * If it's not present, it will be disabled by
-    * si_get_opaque_metadata later.
-    */
-   if (!is_imported &&
-       (sscreen->debug_flags & DBG(NO_DCC) ||
-	(ptex->bind & PIPE_BIND_SCANOUT && sscreen->debug_flags & DBG(NO_DISPLAY_DCC))))
-      flags |= RADEON_SURF_DISABLE_DCC;
+         /* DCC clear for 4x and 8x MSAA array textures unimplemented. */
+         if (ptex->nr_storage_samples >= 4 && ptex->array_size > 1)
+            flags |= RADEON_SURF_DISABLE_DCC;
+         break;
+
+      case GFX9:
+         /* DCC clear for 4x and 8x MSAA textures unimplemented. */
+         if (ptex->nr_storage_samples >= 4 ||
+             (sscreen->info.family == CHIP_RAVEN && ptex->nr_storage_samples >= 2 && bpe < 4))
+            flags |= RADEON_SURF_DISABLE_DCC;
+         break;
+
+      case GFX10:
+      case GFX10_3:
+         /* DCC causes corruption with MSAA. */
+         if (ptex->nr_storage_samples >= 2)
+            flags |= RADEON_SURF_DISABLE_DCC;
+         break;
+
+      default:
+         assert(0);
+      }
+   }
 
    if (is_scanout) {
       /* This should catch bugs in gallium users setting incorrect flags. */
