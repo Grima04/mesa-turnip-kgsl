@@ -2258,6 +2258,18 @@ static void handle_pipeline_barrier(struct lvp_cmd_buffer_entry *cmd,
    state->pctx->flush(state->pctx, NULL, 0);
 }
 
+static void maybe_emit_state_for_begin_query(struct lvp_cmd_buffer_entry *cmd,
+                                             struct rendering_state *state)
+{
+   struct lvp_cmd_query_cmd *qcmd = &cmd->u.query;
+   struct lvp_query_pool *pool = qcmd->pool;
+
+   if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS &&
+       pool->pipeline_stats & VK_QUERY_PIPELINE_STATISTIC_COMPUTE_SHADER_INVOCATIONS_BIT)
+      emit_compute_state(state);
+   emit_state(state);
+}
+
 static void handle_begin_query(struct lvp_cmd_buffer_entry *cmd,
                                struct rendering_state *state)
 {
@@ -2963,6 +2975,7 @@ static void lvp_execute_cmd_buffer(struct lvp_cmd_buffer *cmd_buffer,
          handle_pipeline_barrier(cmd, state);
          break;
       case LVP_CMD_BEGIN_QUERY:
+         maybe_emit_state_for_begin_query(cmd, state);
          handle_begin_query(cmd, state);
          break;
       case LVP_CMD_END_QUERY:
