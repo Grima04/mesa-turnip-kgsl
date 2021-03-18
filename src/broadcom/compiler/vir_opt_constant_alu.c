@@ -71,10 +71,12 @@ opt_constant_add(struct v3d_compile *c, struct qinst *inst, uint32_t *values)
         }
 
         /* Remove the original ALU instruction and replace it with a uniform
-         * load.
+         * load. If the original instruction loaded an implicit uniform we
+         * need to replicate that in the new instruction.
          */
         struct qreg dst = inst->dst;
         struct qinst *mov = vir_MOV_dest(c, dst, unif);
+        mov->uniform = inst->uniform;
         vir_remove_instruction(c, inst);
         if (dst.file == QFILE_TEMP)
                 c->defs[dst.index] = mov;
