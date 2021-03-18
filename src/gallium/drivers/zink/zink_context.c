@@ -1247,16 +1247,7 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
             continue;
       }
       /* we now know there's one clear that can be done here */
-      if (clear->color.srgb) {
-         clears[i].color.float32[0] = util_format_srgb_to_linear_float(clear->color.color.f[0]);
-         clears[i].color.float32[1] = util_format_srgb_to_linear_float(clear->color.color.f[1]);
-         clears[i].color.float32[2] = util_format_srgb_to_linear_float(clear->color.color.f[2]);
-      } else {
-         clears[i].color.float32[0] = clear->color.color.f[0];
-         clears[i].color.float32[1] = clear->color.color.f[1];
-         clears[i].color.float32[2] = clear->color.color.f[2];
-      }
-      clears[i].color.float32[3] = clear->color.color.f[3];
+      zink_fb_clear_util_unpack_clear_color(clear, fb_state->cbufs[i]->format, (void*)&clears[i].color);
       rpbi.clearValueCount = i + 1;
       clear_validate |= BITFIELD_BIT(i);
       assert(ctx->framebuffer->rp->state.clears);

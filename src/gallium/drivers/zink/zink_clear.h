@@ -115,3 +115,6 @@ zink_fb_clears_apply_or_discard(struct zink_context *ctx, struct pipe_resource *
 
 void
 zink_fb_clears_apply_region(struct zink_context *ctx, struct pipe_resource *pres, struct u_rect region);
+
+void
+zink_fb_clear_util_unpack_clear_color(struct zink_framebuffer_clear_data *clear, enum pipe_format format, union pipe_color_union *color);

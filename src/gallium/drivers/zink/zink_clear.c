@@ -424,6 +424,25 @@ zink_fb_clear_first_needs_explicit(struct zink_framebuffer_clear *fb_clear)
    return zink_fb_clear_element_needs_explicit(zink_fb_clear_element(fb_clear, 0));
 }
 
+void
+zink_fb_clear_util_unpack_clear_color(struct zink_framebuffer_clear_data *clear, enum pipe_format format, union pipe_color_union *color)
+{
+   const struct util_format_description *desc = util_format_description(format);
+   if (clear->color.srgb) {
+      /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
+       * convert this to srgb color
+       */
+      for (unsigned j = 0; j < MIN2(3, desc->nr_channels); j++) {
+         assert(desc->channel[j].normalized);
+         color->f[j] = util_format_srgb_to_linear_float(clear->color.color.f[j]);
+      }
+      color->f[3] = clear->color.color.f[3];
+   } else {
+      for (unsigned i = 0; i < 4; i++)
+         color->f[i] = clear->color.color.f[i];
+   }
+}
+
 static void
 fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, int i)
 {
@@ -439,15 +458,8 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
       else {
          struct pipe_surface *psurf = ctx->fb_state.cbufs[i];
          struct zink_framebuffer_clear_data *clear = zink_fb_clear_element(fb_clear, 0);
-         union pipe_color_union color = clear->color.color;
-         if (clear->color.srgb) {
-            /* if SRGB mode is disabled for the fb with a backing srgb image then we have to
-             * convert this to srgb color
-             */
-            color.f[0] = util_format_srgb_to_linear_float(clear->color.color.f[0]);
-            color.f[1] = util_format_srgb_to_linear_float(clear->color.color.f[1]);
-            color.f[2] = util_format_srgb_to_linear_float(clear->color.color.f[2]);
-         }
+         union pipe_color_union color;
+         zink_fb_clear_util_unpack_clear_color(clear, psurf->format, &color);
 
          clear_color_no_rp(ctx, zink_resource(pres), &color,
                                 psurf->u.tex.level, psurf->u.tex.first_layer,
