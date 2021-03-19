@@ -296,7 +296,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2021-03-25-no-scons"
+    MESA_IMAGE_TAG: &x86_build-base "2021-03-31-llvm11"
 
 .use-x86_build-base:
   extends:
@@ -313,7 +313,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-04-08-libdrm"
+    MESA_IMAGE_TAG: &x86_build "2021-04-13-llvm11"
 
 .use-x86_build:
   extends:
@@ -397,7 +397,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2021-02-17-gfxreconstruct-master"
+    MESA_IMAGE_TAG: &x86_test-base "2021-03-22-llvm11"
 
 .use-x86_test-base:
   extends:
@@ -413,7 +413,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-13-vkglcts-1.2.6.0"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-llvm11"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
@@ -448,7 +448,7 @@ kernel+rootfs_arm64-baremetal:
   variables:
     DEBIAN_ARCH: "arm64"
     KERNEL_URL: "https://github.com/anholt/linux/archive/mesa-ci-2021-04-01-5.11.tar.gz"
-    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-13-vkglcts-1.2.6.0"
+    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-14-llvm11"
     MINIO_SUFFIX: "baremetal"
 
 # Kernel & rootfs for armhf baremetal testing
@@ -621,7 +621,7 @@ sanity:
     - .use-x86_build
   stage: meson-x86_64
   variables:
-    LLVM_VERSION: 10
+    LLVM_VERSION: 11
   script:
     - .gitlab-ci/meson/build.sh
 
@@ -665,7 +665,7 @@ meson-clover-testing:
     - .ci-deqp-artifacts
   variables:
     UNWIND: "enabled"
-    LLVM_VERSION: 10
+    LLVM_VERSION: 11
     DRI_LOADERS: >
       -D glx=disabled
       -D egl=disabled
@@ -873,8 +873,8 @@ meson-clang:
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
-    CC: "ccache clang-10"
-    CXX: "ccache clang++-10"
+    CC: "ccache clang-11"
+    CXX: "ccache clang++-11"
 
 meson-windows-vs2019:
   extends:
@@ -972,6 +972,7 @@ meson-i386:
     - .use-i386_build
   variables:
     CROSS: i386
+    LLVM_VERSION: 11
     VULKAN_DRIVERS: intel,amd,swrast,virtio-experimental
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink"
     DRI_DRIVERS: "i915,i965,r100,r200,nouveau"

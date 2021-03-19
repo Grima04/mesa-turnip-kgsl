@@ -28,9 +28,10 @@ apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       libasan5 \
       libarchive-dev \
-      libclang-cpp10-dev \
+      libclang-cpp11-dev \
       liblua5.3-dev \
       libxml2-dev \
+      llvm-11-dev \
       ocl-icd-opencl-dev \
       procps \
       strace \
@@ -106,7 +107,7 @@ rm -rf libglvnd-v$GLVND_VERSION
 
 . .gitlab-ci/container/build-spirv-tools.sh
 
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_100 --depth 1
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --depth 1
 pushd SPIRV-LLVM-Translator
 cmake -S . -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
 ninja

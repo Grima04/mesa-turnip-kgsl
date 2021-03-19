@@ -2,11 +2,11 @@
 
 set -ex
 
-export LLVM_CONFIG="llvm-config-10"
+export LLVM_CONFIG="llvm-config-11"
 
 $LLVM_CONFIG --version
 
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_100 --depth 1 /SPIRV-LLVM-Translator
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --depth 1 /SPIRV-LLVM-Translator
 pushd /SPIRV-LLVM-Translator
 cmake -S . -B . -G Ninja -DLLVM_BUILD_TOOLS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_INSTALL_PREFIX=`$LLVM_CONFIG --prefix`
 ninja

@@ -12,7 +12,7 @@ apt-get install -y \
 # Upstream LLVM package repository
 apt-key add .gitlab-ci/container/llvm-snapshot.gpg.key
 echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-9 main" >/etc/apt/sources.list.d/llvm9.list
-echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-10 main" >/etc/apt/sources.list.d/llvm10.list
+echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-11 main" >/etc/apt/sources.list.d/llvm11.list
 
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
 echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
@@ -31,7 +31,7 @@ apt-get install -y --no-remove \
         $STABLE_EPHEMERAL \
         bison \
         ccache \
-        clang-10 \
+        clang-11 \
         dpkg-cross \
         flex \
         g++ \
@@ -39,13 +39,14 @@ apt-get install -y --no-remove \
         gcc \
         git \
         kmod \
-        libclang-10-dev \
+        libclang-11-dev \
         libclang-9-dev \
         libclc-dev \
         libelf-dev \
         libepoxy-dev \
         libexpat1-dev \
         libgtk-3-dev \
+        libllvm11 \
         libomxil-bellagio-dev \
         libpciaccess-dev \
         libunwind-dev \
@@ -62,7 +63,6 @@ apt-get install -y --no-remove \
         libxvmc-dev \
         libxxf86vm-dev \
         libz-mingw-w64-dev \
-        llvm-10-dev \
         llvm-9-dev \
         pkg-config \
         python-mako \

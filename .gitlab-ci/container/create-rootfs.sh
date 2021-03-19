@@ -8,12 +8,12 @@ elif [ $DEBIAN_ARCH = amd64 ]; then
     # Upstream LLVM package repository
     apt-get -y install --no-install-recommends gnupg ca-certificates
     apt-key add /llvm-snapshot.gpg.key
-    echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-10 main" >/etc/apt/sources.list.d/llvm10.list
+    echo "deb https://apt.llvm.org/buster/ llvm-toolchain-buster-11 main" >/etc/apt/sources.list.d/llvm11.list
     apt-get update
 
     ARCH_PACKAGES="firmware-amd-graphics
                    libelf1
-                   libllvm10
+                   libllvm11
                   "
 fi
 

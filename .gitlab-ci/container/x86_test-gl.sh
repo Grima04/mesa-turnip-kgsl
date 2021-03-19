@@ -10,10 +10,10 @@ STABLE_EPHEMERAL=" \
       autoconf \
       automake \
       ccache \
-      clang-10 \
+      clang-11 \
       cmake \
       g++ \
-      libclang-cpp10-dev \
+      libclang-cpp11-dev \
       libgbm-dev \
       libgles2-mesa-dev \
       libpcre3-dev \
@@ -24,7 +24,7 @@ STABLE_EPHEMERAL=" \
       libxcb-keysyms1-dev \
       libxkbcommon-dev \
       libxrender-dev \
-      llvm-10-dev \
+      llvm-11-dev \
       make \
       meson \
       ocl-icd-opencl-dev \
@@ -39,8 +39,8 @@ STABLE_EPHEMERAL=" \
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
       clinfo \
-      libclang-common-10-dev \
-      libclang-cpp10 \
+      libclang-common-11-dev \
+      libclang-cpp11 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
       python3-lxml \
