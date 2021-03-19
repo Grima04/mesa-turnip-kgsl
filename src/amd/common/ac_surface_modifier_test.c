@@ -10,108 +10,19 @@
 #include "drm-uapi/amdgpu_drm.h"
 #include "drm-uapi/drm_fourcc.h"
 
-#include "ac_gpu_info.h"
 #include "ac_surface.h"
 #include "util/macros.h"
 #include "util/u_math.h"
 #include "util/u_vector.h"
 #include "util/mesa-sha1.h"
 #include "addrlib/inc/addrinterface.h"
-#include "amdgfxregs.h"
+
+#include "ac_surface_test_common.h"
 
 /*
  * The main goal of this test is making sure that we do
  * not change the meaning of existing modifiers.
  */
-
-
-typedef void (*gpu_init_func)(struct radeon_info *info);
-
-static void init_vega10(struct radeon_info *info)
-{
-   info->family = CHIP_VEGA10;
-   info->chip_class = GFX9;
-   info->family_id = AMDGPU_FAMILY_AI;
-   info->chip_external_rev = 0x01;
-   info->use_display_dcc_unaligned = false;
-   info->use_display_dcc_with_retile_blit = false;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 64;
-
-   info->gb_addr_config = 0x2a114042;
-}
-
-static void init_vega20(struct radeon_info *info)
-{
-   info->family = CHIP_VEGA20;
-   info->chip_class = GFX9;
-   info->family_id = AMDGPU_FAMILY_AI;
-   info->chip_external_rev = 0x30;
-   info->use_display_dcc_unaligned = false;
-   info->use_display_dcc_with_retile_blit = false;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 64;
-
-   info->gb_addr_config = 0x2a114042;
-}
-
-
-static void init_raven(struct radeon_info *info)
-{
-   info->family = CHIP_RAVEN;
-   info->chip_class = GFX9;
-   info->family_id = AMDGPU_FAMILY_RV;
-   info->chip_external_rev = 0x01;
-   info->use_display_dcc_unaligned = false;
-   info->use_display_dcc_with_retile_blit = true;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 64;
-
-   info->gb_addr_config = 0x24000042;
-}
-
-static void init_raven2(struct radeon_info *info)
-{
-   info->family = CHIP_RAVEN2;
-   info->chip_class = GFX9;
-   info->family_id = AMDGPU_FAMILY_RV;
-   info->chip_external_rev = 0x82;
-   info->use_display_dcc_unaligned = true;
-   info->use_display_dcc_with_retile_blit = false;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 64;
-
-   info->gb_addr_config = 0x26013041;
-}
-
-static void init_navi10(struct radeon_info *info)
-{
-   info->family = CHIP_NAVI10;
-   info->chip_class = GFX10;
-   info->family_id = AMDGPU_FAMILY_NV;
-   info->chip_external_rev = 3;
-   info->use_display_dcc_unaligned = false;
-   info->use_display_dcc_with_retile_blit = false;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 128;
-
-   info->gb_addr_config = 0x00100044;
-}
-
-static void init_navi14(struct radeon_info *info)
-{
-   info->family = CHIP_NAVI14;
-   info->chip_class = GFX10;
-   info->family_id = AMDGPU_FAMILY_NV;
-   info->chip_external_rev = 0x15;
-   info->use_display_dcc_unaligned = false;
-   info->use_display_dcc_with_retile_blit = false;
-   info->has_graphics = true;
-   info->tcc_cache_line_size = 128;
-
-   info->gb_addr_config = 0x00000043;
-}
-
 
 struct test_entry {
    /* key part */
@@ -425,7 +336,8 @@ static void test_modifier(const struct radeon_info *info,
 
 }
 
-static void run_gpu_test(struct u_vector *test_entries, const char *name, const struct radeon_info *info)
+static void run_modifier_test(struct u_vector *test_entries, const char *name,
+                                  const struct radeon_info *info)
 {
    struct ac_addrlib *addrlib = ac_addrlib_create(info, NULL);
    assert(addrlib);
@@ -486,62 +398,10 @@ int main()
    struct u_vector test_entries;
    u_vector_init(&test_entries,  util_next_power_of_two(sizeof(struct test_entry)), 4096);
 
-   struct testcase {
-      const char *name;
-      gpu_init_func init;
-      int banks_or_pkrs;
-      int pipes;
-      int se;
-      int rb_per_se;
-   } testcases[] = {
-      {"vega10", init_vega10, 4, 2, 2, 2},
-      {"vega10_diff_bank", init_vega10, 3, 2, 2, 2},
-      {"vega10_diff_rb", init_vega10, 4, 2, 2, 0},
-      {"vega10_diff_pipe", init_vega10, 4, 0, 2, 2},
-      {"vega10_diff_se", init_vega10, 4, 2, 1, 2},
-      {"vega20", init_vega20, 4, 2, 2, 2},
-      {"raven", init_raven, 0, 2, 0, 1},
-      {"raven2", init_raven2, 3, 1, 0, 1},
-      {"navi10", init_navi10, 0, 4, 1, 0},
-      {"navi10_diff_pipe", init_navi10, 0, 3, 1, 0},
-      {"navi10_diff_pkr", init_navi10, 1, 4, 1, 0},
-      {"navi14", init_navi14, 1, 3, 1, 0}
-   };
-
    for (unsigned i = 0; i < ARRAY_SIZE(testcases); ++i) {
-      struct radeon_info info = {
-         .drm_major = 3,
-         .drm_minor = 30,
-      };
+      struct radeon_info info = get_radeon_info(&testcases[i]);
 
-      testcases[i].init(&info);
-
-      info.max_render_backends = 1u << (testcases[i].se +
-                                        testcases[i].rb_per_se);
-      switch(info.chip_class) {
-      case GFX10:
-      case GFX10_3:
-         info.gb_addr_config = (info.gb_addr_config &
-                                C_0098F8_NUM_PIPES &
-                                C_0098F8_NUM_PKRS) |
-                                S_0098F8_NUM_PIPES(testcases[i].pipes) |
-                                S_0098F8_NUM_PKRS(testcases[i].banks_or_pkrs);
-         break;
-      case GFX9:
-         info.gb_addr_config = (info.gb_addr_config &
-                                C_0098F8_NUM_PIPES &
-                                C_0098F8_NUM_BANKS &
-                                C_0098F8_NUM_SHADER_ENGINES_GFX9 &
-                                C_0098F8_NUM_RB_PER_SE) |
-                                S_0098F8_NUM_PIPES(testcases[i].pipes) |
-                                S_0098F8_NUM_BANKS(testcases[i].banks_or_pkrs) |
-                                S_0098F8_NUM_SHADER_ENGINES_GFX9(testcases[i].se) |
-                                S_0098F8_NUM_RB_PER_SE(testcases[i].rb_per_se);
-         break;
-      default:
-         unreachable("Unhandled generation");
-      }
-      run_gpu_test(&test_entries, testcases[i].name, &info);
+      run_modifier_test(&test_entries, testcases[i].name, &info);
    }
 
    qsort(u_vector_tail(&test_entries),
