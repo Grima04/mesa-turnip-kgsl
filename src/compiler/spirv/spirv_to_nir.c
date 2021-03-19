@@ -3056,28 +3056,28 @@ fill_common_atomic_sources(struct vtn_builder *b, SpvOp opcode,
 }
 
 static nir_ssa_def *
-get_image_coord(struct vtn_builder *b, uint32_t value)
-{
-   nir_ssa_def *coord = vtn_get_nir_ssa(b, value);
-
-   /* The image_load_store intrinsics assume a 4-dim coordinate */
-   unsigned swizzle[4];
-   for (unsigned i = 0; i < 4; i++)
-      swizzle[i] = MIN2(i, coord->num_components - 1);
-
-   return nir_swizzle(&b->nb, coord, swizzle, 4);
-}
-
-static nir_ssa_def *
 expand_to_vec4(nir_builder *b, nir_ssa_def *value)
 {
+   nir_ssa_def *components[4];
    if (value->num_components == 4)
       return value;
 
-   unsigned swiz[4];
-   for (unsigned i = 0; i < 4; i++)
-      swiz[i] = i < value->num_components ? i : 0;
-   return nir_swizzle(b, value, swiz, 4);
+   nir_ssa_def *undef = nir_ssa_undef(b, 1, value->bit_size);
+   for (unsigned i = 0; i < 4; i++) {
+      if (i < value->num_components)
+         components[i] = nir_channel(b, value, i);
+      else
+         components[i] = undef;
+   }
+   return nir_vec(b, components, 4);
+}
+
+static nir_ssa_def *
+get_image_coord(struct vtn_builder *b, uint32_t value)
+{
+   nir_ssa_def *coord = vtn_get_nir_ssa(b, value);
+   /* The image_load_store intrinsics assume a 4-dim coordinate */
+   return expand_to_vec4(&b->nb, coord);
 }
 
 static void
