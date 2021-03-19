@@ -481,14 +481,6 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          continue;
       }
 
-      /* shared textures can't use fast clear without an explicit flush,
-       * because there is no way to communicate the clear color among
-       * all clients
-       */
-      if (tex->buffer.b.is_shared &&
-          !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH))
-         continue;
-
       if (sctx->chip_class <= GFX8 && tex->surface.u.legacy.level[0].mode == RADEON_SURF_MODE_1D &&
           !sctx->screen->info.htile_cmask_support_1d_tiling)
          continue;
@@ -531,6 +523,17 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
                                            &eliminate_needed))
             continue;
 
+         /* Shared textures can't use fast clear without an explicit flush
+          * because the clear color is not exported.
+          *
+          * Chips without DCC constant encoding must set the clear color registers
+          * correctly even if the fast clear eliminate pass is not needed.
+          */
+         if ((eliminate_needed || !sctx->screen->info.has_dcc_constant_encode) &&
+             tex->buffer.b.is_shared &&
+             !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH))
+            continue;
+
          if (eliminate_needed && too_small)
             continue;
 
@@ -558,6 +561,13 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
             fmask_decompress_needed = true;
          }
       } else {
+         /* Shared textures can't use fast clear without an explicit flush
+          * because the clear color is not exported.
+          */
+         if (tex->buffer.b.is_shared &&
+             !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH))
+            continue;
+
          if (too_small)
             continue;
 
