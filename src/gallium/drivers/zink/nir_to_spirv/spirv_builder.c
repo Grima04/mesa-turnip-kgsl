@@ -744,33 +744,30 @@ spirv_builder_emit_image_sample(struct spirv_builder *b,
 
    SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[5];
-   int num_extra_operands = 0;
+   int num_extra_operands = 1;
    if (bias) {
-      extra_operands[++num_extra_operands] = bias;
+      extra_operands[num_extra_operands++] = bias;
       operand_mask |= SpvImageOperandsBiasMask;
    }
    if (lod) {
-      extra_operands[++num_extra_operands] = lod;
+      extra_operands[num_extra_operands++] = lod;
       operand_mask |= SpvImageOperandsLodMask;
    } else if (dx && dy) {
-      extra_operands[++num_extra_operands] = dx;
-      extra_operands[++num_extra_operands] = dy;
+      extra_operands[num_extra_operands++] = dx;
+      extra_operands[num_extra_operands++] = dy;
       operand_mask |= SpvImageOperandsGradMask;
    }
    assert(!(const_offset && offset));
    if (const_offset) {
-      extra_operands[++num_extra_operands] = const_offset;
+      extra_operands[num_extra_operands++] = const_offset;
       operand_mask |= SpvImageOperandsConstOffsetMask;
    } else if (offset) {
-      extra_operands[++num_extra_operands] = offset;
+      extra_operands[num_extra_operands++] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
    }
 
    /* finalize num_extra_operands / extra_operands */
-   if (num_extra_operands > 0) {
-      extra_operands[0] = operand_mask;
-      num_extra_operands++;
-   }
+   extra_operands[0] = operand_mask;
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, operands + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, opcode | ((operands + num_extra_operands) << 16));
@@ -825,22 +822,21 @@ spirv_builder_emit_image_read(struct spirv_builder *b,
    SpvImageOperandsMask operand_mask = SpvImageOperandsMakeTexelVisibleMask | SpvImageOperandsNonPrivateTexelMask;
    SpvId extra_operands[5];
    int num_extra_operands = 1;
-   extra_operands[1] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
    if (lod) {
-      extra_operands[++num_extra_operands] = lod;
+      extra_operands[num_extra_operands++] = lod;
       operand_mask |= SpvImageOperandsLodMask;
    }
    if (sample) {
-      extra_operands[++num_extra_operands] = sample;
+      extra_operands[num_extra_operands++] = sample;
       operand_mask |= SpvImageOperandsSampleMask;
    }
    if (offset) {
-      extra_operands[++num_extra_operands] = offset;
+      extra_operands[num_extra_operands++] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
    }
    /* finalize num_extra_operands / extra_operands */
    extra_operands[0] = operand_mask;
-   num_extra_operands++;
+   extra_operands[num_extra_operands++] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 5 + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, SpvOpImageRead |
@@ -866,22 +862,21 @@ spirv_builder_emit_image_write(struct spirv_builder *b,
    SpvImageOperandsMask operand_mask = SpvImageOperandsMakeTexelAvailableMask | SpvImageOperandsNonPrivateTexelMask;
    SpvId extra_operands[5];
    int num_extra_operands = 1;
-   extra_operands[1] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
    if (lod) {
-      extra_operands[++num_extra_operands] = lod;
+      extra_operands[num_extra_operands++] = lod;
       operand_mask |= SpvImageOperandsLodMask;
    }
    if (sample) {
-      extra_operands[++num_extra_operands] = sample;
+      extra_operands[num_extra_operands++] = sample;
       operand_mask |= SpvImageOperandsSampleMask;
    }
    if (offset) {
-      extra_operands[++num_extra_operands] = offset;
+      extra_operands[num_extra_operands++] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
    }
    /* finalize num_extra_operands / extra_operands */
    extra_operands[0] = operand_mask;
-   num_extra_operands++;
+   extra_operands[num_extra_operands++] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 4 + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, SpvOpImageWrite |
@@ -910,30 +905,27 @@ spirv_builder_emit_image_gather(struct spirv_builder *b,
 
    SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[4];
-   int num_extra_operands = 0;
+   int num_extra_operands = 1;
    if (lod) {
-      extra_operands[++num_extra_operands] = lod;
+      extra_operands[num_extra_operands++] = lod;
       operand_mask |= SpvImageOperandsLodMask;
    }
    if (sample) {
-      extra_operands[++num_extra_operands] = sample;
+      extra_operands[num_extra_operands++] = sample;
       operand_mask |= SpvImageOperandsSampleMask;
    }
    assert(!(const_offset && offset));
    if (const_offset) {
-      extra_operands[++num_extra_operands] = const_offset;
+      extra_operands[num_extra_operands++] = const_offset;
       operand_mask |= SpvImageOperandsConstOffsetMask;
    } else if (offset) {
-      extra_operands[++num_extra_operands] = offset;
+      extra_operands[num_extra_operands++] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
    }
    if (dref)
       op = SpvOpImageDrefGather;
    /* finalize num_extra_operands / extra_operands */
-   if (num_extra_operands > 0) {
-      extra_operands[0] = operand_mask;
-      num_extra_operands++;
-   }
+   extra_operands[0] = operand_mask;
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 6 + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, op |
@@ -965,29 +957,26 @@ spirv_builder_emit_image_fetch(struct spirv_builder *b,
 
    SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[4];
-   int num_extra_operands = 0;
+   int num_extra_operands = 1;
    if (lod) {
-      extra_operands[++num_extra_operands] = lod;
+      extra_operands[num_extra_operands++] = lod;
       operand_mask |= SpvImageOperandsLodMask;
    }
    if (sample) {
-      extra_operands[++num_extra_operands] = sample;
+      extra_operands[num_extra_operands++] = sample;
       operand_mask |= SpvImageOperandsSampleMask;
    }
    assert(!(const_offset && offset));
    if (const_offset) {
-      extra_operands[++num_extra_operands] = const_offset;
+      extra_operands[num_extra_operands++] = const_offset;
       operand_mask |= SpvImageOperandsConstOffsetMask;
    } else if (offset) {
-      extra_operands[++num_extra_operands] = offset;
+      extra_operands[num_extra_operands++] = offset;
       operand_mask |= SpvImageOperandsOffsetMask;
    }
 
    /* finalize num_extra_operands / extra_operands */
-   if (num_extra_operands > 0) {
-      extra_operands[0] = operand_mask;
-      num_extra_operands++;
-   }
+   extra_operands[0] = operand_mask;
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 5 + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, SpvOpImageFetch |
