@@ -796,7 +796,7 @@ zink_is_format_supported(struct pipe_screen *pscreen,
             return false;
       }
       if (bind & PIPE_BIND_SHADER_IMAGE) {
-          if (!screen->info.feats.features.shaderStorageImageMultisample)
+          if (!(screen->info.props.limits.storageImageSampleCounts & sample_mask))
              return false;
       }
    }
