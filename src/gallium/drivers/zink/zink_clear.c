@@ -404,6 +404,7 @@ zink_clear_texture(struct pipe_context *pctx,
          util_blitter_clear_depth_stencil(ctx->blitter, surf, flags, depth, stencil, box->x, box->y, box->width, box->height);
       }
    }
+   /* this will never destroy the surface */
    pipe_surface_reference(&surf, NULL);
 }
 

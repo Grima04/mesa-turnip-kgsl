@@ -47,6 +47,19 @@ zink_surface(struct pipe_surface *pipe)
 void
 zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface);
 
+static inline void
+zink_surface_reference(struct zink_screen *screen, struct zink_surface **dst, struct zink_surface *src)
+{
+   struct zink_surface *old_dst = *dst;
+
+   if (pipe_reference_described(old_dst ? &old_dst->base.reference : NULL,
+                                src ? &src->base.reference : NULL,
+                                (debug_reference_descriptor)
+                                debug_describe_surface))
+      zink_destroy_surface(screen, &old_dst->base);
+   *dst = src;
+}
+
 void
 zink_context_surface_init(struct pipe_context *context);
 

@@ -74,7 +74,7 @@ zink_destroy_framebuffer(struct zink_screen *screen,
    for (int i = 0; i < ARRAY_SIZE(fb->surfaces); ++i)
       pipe_surface_reference(fb->surfaces + i, NULL);
 
-   pipe_surface_reference(&fb->null_surface, NULL);
+   zink_surface_reference(screen, (struct zink_surface**)&fb->null_surface, NULL);
 
    ralloc_free(fb);
 }

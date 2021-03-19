@@ -693,8 +693,7 @@ zink_sampler_view_destroy(struct pipe_context *pctx,
    if (pview->texture->target == PIPE_BUFFER)
       zink_buffer_view_reference(zink_screen(pctx->screen), &view->buffer_view, NULL);
    else {
-      struct pipe_surface *psurf = &view->image_view->base;
-      pipe_surface_reference(&psurf, NULL);
+      zink_surface_reference(zink_screen(pctx->screen), &view->image_view, NULL);
    }
    pipe_resource_reference(&pview->texture, NULL);
    FREE(view);
@@ -924,7 +923,7 @@ unbind_shader_image(struct zink_context *ctx, enum pipe_shader_type stage, unsig
    if (image_view->base.resource->target == PIPE_BUFFER)
       zink_buffer_view_reference(zink_screen(ctx->base.screen), &image_view->buffer_view, NULL);
    else
-      pipe_surface_reference((struct pipe_surface**)&image_view->surface, NULL);
+      zink_surface_reference(zink_screen(ctx->base.screen), &image_view->surface, NULL);
    pipe_resource_reference(&image_view->base.resource, NULL);
    image_view->base.resource = NULL;
    image_view->surface = NULL;

@@ -51,7 +51,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    set_foreach(bs->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
       batch_usage_unset(&surf->batch_uses, !!bs->is_compute, bs->batch_id);
-      pipe_surface_reference((struct pipe_surface**)&surf, NULL);
+      zink_surface_reference(screen, &surf, NULL);
       _mesa_set_remove(bs->surfaces, entry);
    }
    set_foreach(bs->bufferviews, entry) {
