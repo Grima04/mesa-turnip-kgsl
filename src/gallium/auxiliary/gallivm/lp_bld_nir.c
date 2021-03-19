@@ -2317,6 +2317,15 @@ void lp_build_opt_nir(struct nir_shader *nir)
 
       nir_lower_tex_options options = { .lower_tex_without_implicit_lod = true };
       NIR_PASS_V(nir, nir_lower_tex, &options);
+
+      const nir_lower_subgroups_options subgroups_options = {
+	.subgroup_size = lp_native_vector_width / 32,
+	.ballot_bit_size = 32,
+	.lower_to_scalar = true,
+	.lower_subgroup_masks = true,
+      };
+      NIR_PASS_V(nir, nir_lower_subgroups, &subgroups_options);
+
    } while (progress);
    nir_lower_bool_to_int32(nir);
 }
