@@ -557,6 +557,7 @@ struct si_screen {
    bool use_ngg;
    bool use_ngg_culling;
    bool use_ngg_streamout;
+   bool allow_dcc_msaa_clear_to_reg_for_bpp[5]; /* indexed by log2(Bpp) */
 
    struct {
 #define OPT_BOOL(name, dflt, description) bool name : 1;

@@ -644,8 +644,8 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
          if (level > 0 && (eliminate_needed || !sctx->screen->info.has_dcc_constant_encode))
             continue;
 
-         /* TODO: This DCC+CMASK clear doesn't work with MSAA. */
-         if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer && eliminate_needed)
+         if (tex->buffer.b.b.nr_samples >= 2 && eliminate_needed &&
+             !sctx->screen->allow_dcc_msaa_clear_to_reg_for_bpp[util_logbase2(tex->surface.bpe)])
             continue;
 
          assert(num_clears < ARRAY_SIZE(info));

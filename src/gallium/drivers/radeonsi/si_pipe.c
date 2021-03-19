@@ -1204,6 +1204,14 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
    sscreen->use_ngg_culling = sscreen->use_ngg && !(sscreen->debug_flags & DBG(NO_NGG_CULLING));
    sscreen->use_ngg_streamout = false;
 
+   /* Only set this for the cases that are known to work, which are:
+    * - GFX9 if bpp >= 4 (in bytes)
+    */
+   if (sscreen->info.chip_class == GFX9) {
+      for (unsigned bpp_log2 = util_logbase2(4); bpp_log2 <= util_logbase2(16); bpp_log2++)
+         sscreen->allow_dcc_msaa_clear_to_reg_for_bpp[bpp_log2] = true;
+   }
+
    /* Only enable primitive binning on APUs by default. */
    if (sscreen->info.chip_class >= GFX10) {
       sscreen->dpbb_allowed = true;

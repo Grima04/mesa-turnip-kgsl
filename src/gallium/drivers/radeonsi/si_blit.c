@@ -488,6 +488,22 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
              custom_blend == sctx->custom_blend_dcc_decompress)
             sctx->flags |= SI_CONTEXT_FLUSH_AND_INV_CB;
 
+         /* When running FMASK decompresion with DCC, we need to run the "eliminate fast clear" pass
+          * separately because FMASK decompression doesn't eliminate DCC fast clear. This makes
+          * render->texture transitions more expensive. It can be disabled by
+          * allow_dcc_msaa_clear_to_reg_for_bpp.
+          *
+          * TODO: When we get here, change the compression to TC-compatible on the next clear
+          *       to disable both the FMASK decompression and fast clear elimination passes.
+          */
+         if (sctx->screen->allow_dcc_msaa_clear_to_reg_for_bpp[util_logbase2(tex->surface.bpe)] &&
+             custom_blend == sctx->custom_blend_fmask_decompress &&
+             vi_dcc_enabled(tex, level)) {
+            si_blitter_begin(sctx, SI_DECOMPRESS);
+            util_blitter_custom_color(sctx->blitter, cbsurf, sctx->custom_blend_eliminate_fastclear);
+            si_blitter_end(sctx);
+         }
+
          pipe_surface_reference(&cbsurf, NULL);
       }
 
