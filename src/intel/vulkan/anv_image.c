@@ -681,6 +681,40 @@ memory_range_is_aligned(struct anv_image_memory_range memory_range)
 }
 #endif
 
+struct check_memory_range_params {
+   struct anv_image_memory_range *accum_ranges;
+   const struct anv_surface *test_surface;
+   const struct anv_image_memory_range *test_range;
+   enum anv_image_memory_binding expect_binding;
+};
+
+#define check_memory_range(...) \
+   check_memory_range_s(&(struct check_memory_range_params) { __VA_ARGS__ })
+
+static void
+check_memory_range_s(const struct check_memory_range_params *p)
+{
+   assert((p->test_surface == NULL) != (p->test_range == NULL));
+
+   const struct anv_image_memory_range *test_range =
+      p->test_range ?: &p->test_surface->memory_range;
+
+   struct anv_image_memory_range *accum_range =
+      &p->accum_ranges[p->expect_binding];
+
+   assert(test_range->binding == p->expect_binding);
+   assert(test_range->offset >= memory_range_end(*accum_range));
+   assert(memory_range_is_aligned(*test_range));
+
+   if (p->test_surface) {
+      assert(anv_surface_is_valid(p->test_surface));
+      assert(p->test_surface->memory_range.alignment ==
+             p->test_surface->isl.alignment_B);
+   }
+
+   memory_range_merge(accum_range, *test_range);
+}
+
 /**
  * Validate the image's memory bindings *after* all its surfaces and memory
  * ranges are final.
@@ -704,64 +738,36 @@ check_memory_bindings(const struct anv_device *device,
       };
    }
 
-   const struct anv_image_memory_range *prev_range = NULL;
-
    for (uint32_t p = 0; p < image->n_planes; ++p) {
       const struct anv_image_plane *plane = &image->planes[p];
 
-      /* The memory range to which the plane's primary surface belongs.
-       * If the image is non-disjoint, then this accumulates over all planes.
-       */
-      struct anv_image_memory_range *primary_range;
-
-      if (image->disjoint) {
-         prev_range = NULL;
-         primary_range = &accum_ranges[ANV_IMAGE_MEMORY_BINDING_PLANE_0 + p];
-      } else {
-         primary_range = &accum_ranges[ANV_IMAGE_MEMORY_BINDING_MAIN];
-      }
+      /* The binding that must contain the plane's primary surface. */
+      const enum anv_image_memory_binding primary_binding = image->disjoint
+         ? ANV_IMAGE_MEMORY_BINDING_PLANE_0 + p
+         : ANV_IMAGE_MEMORY_BINDING_MAIN;
 
       /* Check primary surface */
-      assert(anv_surface_is_valid(&plane->primary_surface));
-      assert(plane->primary_surface.memory_range.binding ==
-             primary_range->binding);
-      assert(memory_range_is_aligned(plane->primary_surface.memory_range));
-      assert(plane->primary_surface.memory_range.alignment ==
-             plane->primary_surface.isl.alignment_B);
-      memory_range_merge(primary_range, plane->primary_surface.memory_range);
-      prev_range = &plane->primary_surface.memory_range;
+      check_memory_range(accum_ranges,
+                         .test_surface = &plane->primary_surface,
+                         .expect_binding = primary_binding);
 
       /* Check shadow surface */
       if (anv_surface_is_valid(&plane->shadow_surface)) {
-         assert(plane->shadow_surface.memory_range.binding ==
-                primary_range->binding);
-         assert(plane->shadow_surface.memory_range.offset >=
-                memory_range_end(*prev_range));
-         assert(plane->shadow_surface.memory_range.alignment ==
-                plane->shadow_surface.isl.alignment_B);
-         assert(memory_range_is_aligned(plane->shadow_surface.memory_range));
-         memory_range_merge(primary_range, plane->shadow_surface.memory_range);
-         prev_range = &plane->shadow_surface.memory_range;
+         check_memory_range(accum_ranges,
+                            .test_surface = &plane->shadow_surface,
+                            .expect_binding = primary_binding);
       }
 
       /* Check aux_surface */
       if (anv_surface_is_valid(&plane->aux_surface)) {
-         assert(plane->aux_surface.memory_range.binding ==
-                primary_range->binding);
-         assert(plane->aux_surface.memory_range.alignment ==
-                plane->aux_surface.isl.alignment_B);
-         assert(memory_range_is_aligned(plane->aux_surface.memory_range));
-
          /* Display hardware requires that the aux surface start at
           * a higher address than the primary surface. The 3D hardware
           * doesn't care, but we enforce the display requirement in case
           * the image is sent to display.
           */
-         assert(plane->aux_surface.memory_range.offset >=
-                memory_range_end(*prev_range));
-         memory_range_merge(primary_range, plane->aux_surface.memory_range);
-
-         prev_range = &plane->aux_surface.memory_range;
+         check_memory_range(accum_ranges,
+                            .test_surface = &plane->aux_surface,
+                            .expect_binding = primary_binding);
       }
 
       /* Check fast clear state */
@@ -774,14 +780,10 @@ check_memory_bindings(const struct anv_device *device,
           * due to lack of testing.  And MI_LOAD/STORE operations require
           * dword-alignment.
           */
-         assert(plane->fast_clear_memory_range.binding ==
-                primary_range->binding);
-         assert(plane->fast_clear_memory_range.offset >=
-                memory_range_end(*prev_range));
-         assert(memory_range_is_aligned(plane->fast_clear_memory_range));
          assert(plane->fast_clear_memory_range.alignment == 4096);
-         memory_range_merge(primary_range, plane->fast_clear_memory_range);
-         prev_range = &plane->fast_clear_memory_range;
+         check_memory_range(accum_ranges,
+                            .test_range = &plane->fast_clear_memory_range,
+                            .expect_binding = primary_binding);
       }
    }
 #endif
