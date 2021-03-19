@@ -1884,6 +1884,42 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src,
    result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildLoad(builder, res_store, ""));
 }
 
+static void emit_elect(struct lp_build_nir_context *bld_base, LLVMValueRef result[4])
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef exec_mask = mask_vec(bld_base);
+   struct lp_build_loop_state loop_state;
+
+   LLVMValueRef idx_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   LLVMValueRef found_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+   LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, exec_mask,
+                                                    loop_state.counter, "");
+   LLVMValueRef cond = LLVMBuildICmp(gallivm->builder,
+                                     LLVMIntEQ,
+                                     value_ptr,
+                                     lp_build_const_int32(gallivm, -1), "");
+   LLVMValueRef cond2 = LLVMBuildICmp(gallivm->builder,
+                                      LLVMIntEQ,
+                                      LLVMBuildLoad(builder, found_store, ""),
+                                      lp_build_const_int32(gallivm, 0), "");
+
+   cond = LLVMBuildAnd(builder, cond, cond2, "");
+   struct lp_build_if_state ifthen;
+   lp_build_if(&ifthen, gallivm, cond);
+   LLVMBuildStore(builder, lp_build_const_int32(gallivm, 1), found_store);
+   LLVMBuildStore(builder, loop_state.counter, idx_store);
+   lp_build_endif(&ifthen);
+   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
+                          NULL, LLVMIntUGE);
+
+   result[0] = LLVMBuildInsertElement(builder, bld_base->uint_bld.zero,
+                                      lp_build_const_int32(gallivm, -1),
+                                      LLVMBuildLoad(builder, idx_store, ""),
+                                      "");
+}
+
 static void
 emit_interp_at(struct lp_build_nir_context *bld_base,
                unsigned num_components,
@@ -2129,6 +2165,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.image_op = emit_image_op;
    bld.bld_base.image_size = emit_image_size;
    bld.bld_base.vote = emit_vote;
+   bld.bld_base.elect = emit_elect;
    bld.bld_base.helper_invocation = emit_helper_invocation;
    bld.bld_base.interp_at = emit_interp_at;
    bld.bld_base.load_scratch = emit_load_scratch;
