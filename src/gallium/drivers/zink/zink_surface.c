@@ -177,11 +177,9 @@ zink_create_surface(struct pipe_context *pctx,
    return zink_get_surface(zink_context(pctx), pres, templ, &ivci);
 }
 
-static void
-zink_surface_destroy(struct pipe_context *pctx,
-                     struct pipe_surface *psurface)
+void
+zink_destroy_surface(struct zink_screen *screen, struct pipe_surface *psurface)
 {
-   struct zink_screen *screen = zink_screen(pctx->screen);
    struct zink_surface *surface = zink_surface(psurface);
    simple_mtx_lock(&screen->surface_mtx);
    struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&screen->surface_cache, surface->hash, &surface->ivci);
@@ -191,6 +189,13 @@ zink_surface_destroy(struct pipe_context *pctx,
    pipe_resource_reference(&psurface->texture, NULL);
    vkDestroyImageView(screen->dev, surface->image_view, NULL);
    FREE(surface);
+}
+
+static void
+zink_surface_destroy(struct pipe_context *pctx,
+                     struct pipe_surface *psurface)
+{
+   zink_destroy_surface(zink_screen(pctx->screen), psurface);
 }
 
 void
