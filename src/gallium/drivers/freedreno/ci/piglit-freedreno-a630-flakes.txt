@@ -11,6 +11,7 @@ glx@glx_arb_sync_control@timing -waitformsc -divisor 2
 glx@glx_arb_sync_control@timing -waitformsc -msc-delta 1
 glx@glx_arb_sync_control@timing -waitformsc -msc-delta 2
 glx@glx-copy-sub-buffer samples=2
+glx@glx-swap-copy
 
 # async shader compile asserts in shader_io_get_unique_index (slot=VARYING_SLOT_FOGC)
 shaders@glsl-fs-fogscale
