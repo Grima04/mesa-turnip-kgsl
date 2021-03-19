@@ -2093,6 +2093,44 @@ static void emit_reduce(struct lp_build_nir_context *bld_base, LLVMValueRef src,
       result[0] = LLVMBuildLoad(builder, res_store, "");
 }
 
+static void emit_read_invocation(struct lp_build_nir_context *bld_base,
+                                 LLVMValueRef src,
+                                 unsigned bit_size,
+                                 LLVMValueRef invoc,
+                                 LLVMValueRef result[4])
+{
+   struct gallivm_state *gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef idx;
+   struct lp_build_context *uint_bld = get_int_bld(bld_base, true, bit_size);
+   if (invoc) {
+      idx = invoc;
+      idx = LLVMBuildExtractElement(gallivm->builder, idx, lp_build_const_int32(gallivm, 0), "");
+   } else {
+      /* have to find the first active invocation */
+      LLVMValueRef exec_mask = mask_vec(bld_base);
+      struct lp_build_loop_state loop_state;
+      LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+      LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
+      lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length));
+
+      LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
+      struct lp_build_if_state ifthen;
+
+      lp_build_if(&ifthen, gallivm, if_cond);
+      LLVMBuildStore(builder, loop_state.counter, res_store);
+      lp_build_endif(&ifthen);
+
+      lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, -1),
+                             lp_build_const_int32(gallivm, -1), LLVMIntEQ);
+      idx = LLVMBuildLoad(builder, res_store, "");
+   }
+
+   LLVMValueRef value = LLVMBuildExtractElement(gallivm->builder,
+                                                src, idx, "");
+   result[0] = lp_build_broadcast_scalar(uint_bld, value);
+}
+
 static void
 emit_interp_at(struct lp_build_nir_context *bld_base,
                unsigned num_components,
@@ -2341,6 +2379,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.elect = emit_elect;
    bld.bld_base.reduce = emit_reduce;
    bld.bld_base.ballot = emit_ballot;
+   bld.bld_base.read_invocation = emit_read_invocation;
    bld.bld_base.helper_invocation = emit_helper_invocation;
    bld.bld_base.interp_at = emit_interp_at;
    bld.bld_base.load_scratch = emit_load_scratch;
