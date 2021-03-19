@@ -1684,6 +1684,19 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
                struct brw_compile_stats *stats,
                char **error_str);
 
+/**
+ * Compile a fixed function geometry shader.
+ *
+ * Returns the final assembly and the program's size.
+ */
+const unsigned *
+brw_compile_ff_gs_prog(struct brw_compiler *compiler,
+		       void *mem_ctx,
+		       const struct brw_ff_gs_prog_key *key,
+		       struct brw_ff_gs_prog_data *prog_data,
+		       struct brw_vue_map *vue_map,
+		       unsigned *final_assembly_size);
+
 void brw_debug_key_recompile(const struct brw_compiler *c, void *log,
                              gl_shader_stage stage,
                              const struct brw_base_prog_key *old_key,

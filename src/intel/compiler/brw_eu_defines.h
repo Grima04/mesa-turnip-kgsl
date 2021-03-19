@@ -1635,6 +1635,9 @@ enum brw_message_target {
 #define GFX7_MAX_HS_URB_ENTRY_SIZE_BYTES                (512*64)
 #define GFX7_MAX_VS_URB_ENTRY_SIZE_BYTES                (512*64)
 
+#define BRW_GS_EDGE_INDICATOR_0			(1 << 8)
+#define BRW_GS_EDGE_INDICATOR_1			(1 << 9)
+
 /* Gfx6 "GS URB Entry Allocation Size" is defined as a number of 1024-bit
  * (128 bytes) URB rows and the maximum allowed value is 5 rows.
  */
