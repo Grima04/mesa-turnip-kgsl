@@ -2354,6 +2354,10 @@ struct radv_subpass {
 	VkSampleCountFlagBits                        color_sample_count;
 	VkSampleCountFlagBits                        depth_sample_count;
 	VkSampleCountFlagBits                        max_sample_count;
+
+	/* Whether the subpass has ingoing/outgoing external dependencies. */
+	bool                                         has_ingoing_dep;
+	bool                                         has_outgoing_dep;
 };
 
 uint32_t
