@@ -6,8 +6,10 @@ export LLVM_CONFIG="llvm-config-11"
 
 $LLVM_CONFIG --version
 
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --depth 1 /SPIRV-LLVM-Translator
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --single-branch --shallow-since=2020-11-12 /SPIRV-LLVM-Translator
 pushd /SPIRV-LLVM-Translator
+# Last commit before bumping required LLVM version to 11.1.0
+git checkout 93032d36d2fe17befb7994714c07c67ea68efbea
 cmake -S . -B . -G Ninja -DLLVM_BUILD_TOOLS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC -DCMAKE_INSTALL_PREFIX=`$LLVM_CONFIG --prefix`
 ninja
 ninja install

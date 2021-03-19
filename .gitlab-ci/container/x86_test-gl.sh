@@ -18,9 +18,11 @@ STABLE_EPHEMERAL=" \
       libgles2-mesa-dev \
       libpcre3-dev \
       libpciaccess-dev \
-      libpng-dev \
+      libudev-dev \
       libvulkan-dev \
       libwaffle-dev \
+      libwayland-dev \
+      libx11-xcb-dev \
       libxcb-keysyms1-dev \
       libxkbcommon-dev \
       libxrender-dev \
@@ -31,13 +33,14 @@ STABLE_EPHEMERAL=" \
       patch \
       pkg-config \
       python3-distutils \
-      python3.7-dev \
+      python3-dev \
       wget \
       xz-utils \
       "
 
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
+      apitrace \
       clinfo \
       libclang-common-11-dev \
       libclang-cpp11 \
@@ -49,6 +52,10 @@ apt-get install -y --no-remove \
 
 . .gitlab-ci/container/container_pre_build.sh
 
+
+############### Build libdrm
+
+. .gitlab-ci/container/build-libdrm.sh
 
 ############### Build spirv-tools (debian too old)
 
@@ -75,17 +82,9 @@ rm -rf /root/.rustup /root/.cargo
 
 DEQP_TARGET=surfaceless . .gitlab-ci/container/build-deqp.sh
 
-############### Build apitrace
-
-. .gitlab-ci/container/build-apitrace.sh
-
 ############### Build renderdoc
 
 . .gitlab-ci/container/build-renderdoc.sh
-
-############### Build libdrm
-
-. .gitlab-ci/container/build-libdrm.sh
 
 ############### Uninstall the build software
 

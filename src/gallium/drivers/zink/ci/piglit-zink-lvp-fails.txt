@@ -1,8 +1,9 @@
 glx@extension string sanity,Fail
 glx@glx-copy-sub-buffer,Fail
+glx@glx-copy-sub-buffer samples=2,Fail
+glx@glx-copy-sub-buffer samples=4,Fail
 glx@glx-multithread-buffer,Fail
 glx@glx-multithread-texture,Fail
-glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-copy,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-tfp,Crash
@@ -47,6 +48,10 @@ spec@!opengl 1.1@polygon-offset,Fail
 spec@!opengl 1.1@ppgtt_memory_alignment,Crash
 spec@!opengl 1.1@read-front,Fail
 spec@!opengl 1.1@read-front clear-front-first,Fail
+spec@!opengl 1.1@read-front clear-front-first samples=2,Fail
+spec@!opengl 1.1@read-front clear-front-first samples=4,Fail
+spec@!opengl 1.1@read-front samples=2,Fail
+spec@!opengl 1.1@read-front samples=4,Fail
 spec@!opengl 1.1@texwrap 1d bordercolor,Fail
 spec@!opengl 1.1@texwrap 1d proj bordercolor,Fail
 spec@!opengl 1.1@texwrap 2d bordercolor,Fail
@@ -164,6 +169,28 @@ spec@ext_framebuffer_multisample@sample-coverage 2 non-inverted,Fail
 spec@ext_framebuffer_multisample@sample-coverage 4 non-inverted,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@fbo-blending-formats,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export-tex,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-intel_external_sampler_only,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-invalid_attributes,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-invalid_hints,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-missing_attributes,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-ownership_transfer,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-refcount,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_argb8888,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p016,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xrgb8888,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xyuv,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-transcode-nv12-as-r8-gr88,Fail
+spec@ext_image_dma_buf_import@ext_image_dma_buf_import-unsupported_format,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail

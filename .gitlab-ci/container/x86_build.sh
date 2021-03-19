@@ -12,12 +12,9 @@ STABLE_EPHEMERAL=" \
       autotools-dev \
       bzip2 \
       cmake \
-      gnupg \
       libgbm-dev \
       libtool \
-      make \
       unzip \
-      wget \
       "
 
 # We need multiarch for Wine
@@ -26,21 +23,29 @@ apt-get update
 
 apt-get install -y --no-remove \
       $STABLE_EPHEMERAL \
-      libasan5 \
+      clang \
+      libasan6 \
       libarchive-dev \
       libclang-cpp11-dev \
       liblua5.3-dev \
+      libxcb-dri2-0-dev \
+      libxcb-dri3-dev \
+      libxcb-glx0-dev \
+      libxcb-present-dev \
+      libxcb-randr0-dev \
+      libxcb-shm0-dev \
+      libxcb-sync-dev \
+      libxcb-xfixes0-dev \
+      libxcb1-dev \
       libxml2-dev \
       llvm-11-dev \
+      llvm-9-dev \
       ocl-icd-opencl-dev \
       procps \
       strace \
       time \
-      wine-development \
-      wine32-development
-
-apt-get install -y --no-remove -t buster-backports \
-      llvm-8-dev
+      wine \
+      wine32
 
 
 . .gitlab-ci/container/container_pre_build.sh
@@ -59,29 +64,15 @@ chmod +x /usr/local/bin/x86_64-w64-mingw32-pkg-config
 
 # dependencies where we want a specific version
 export              XORG_RELEASES=https://xorg.freedesktop.org/releases/individual
-export               XCB_RELEASES=https://xcb.freedesktop.org/dist
 export           WAYLAND_RELEASES=https://wayland.freedesktop.org/releases
 
 export         XORGMACROS_VERSION=util-macros-1.19.0
-export           XCBPROTO_VERSION=xcb-proto-1.13
-export             LIBXCB_VERSION=libxcb-1.13
 export         LIBWAYLAND_VERSION=wayland-1.18.0
-export  WAYLAND_PROTOCOLS_VERSION=wayland-protocols-1.12
 
 wget $XORG_RELEASES/util/$XORGMACROS_VERSION.tar.bz2
 tar -xvf $XORGMACROS_VERSION.tar.bz2 && rm $XORGMACROS_VERSION.tar.bz2
 cd $XORGMACROS_VERSION; ./configure; make install; cd ..
 rm -rf $XORGMACROS_VERSION
-
-wget $XCB_RELEASES/$XCBPROTO_VERSION.tar.bz2
-tar -xvf $XCBPROTO_VERSION.tar.bz2 && rm $XCBPROTO_VERSION.tar.bz2
-cd $XCBPROTO_VERSION; ./configure; make install; cd ..
-rm -rf $XCBPROTO_VERSION
-
-wget $XCB_RELEASES/$LIBXCB_VERSION.tar.bz2
-tar -xvf $LIBXCB_VERSION.tar.bz2 && rm $LIBXCB_VERSION.tar.bz2
-cd $LIBXCB_VERSION; ./configure; make install; cd ..
-rm -rf $LIBXCB_VERSION
 
 . .gitlab-ci/container/build-libdrm.sh
 
@@ -89,11 +80,6 @@ wget $WAYLAND_RELEASES/$LIBWAYLAND_VERSION.tar.xz
 tar -xvf $LIBWAYLAND_VERSION.tar.xz && rm $LIBWAYLAND_VERSION.tar.xz
 cd $LIBWAYLAND_VERSION; ./configure --enable-libraries --without-host-scanner --disable-documentation --disable-dtd-validation; make install; cd ..
 rm -rf $LIBWAYLAND_VERSION
-
-wget $WAYLAND_RELEASES/$WAYLAND_PROTOCOLS_VERSION.tar.xz
-tar -xvf $WAYLAND_PROTOCOLS_VERSION.tar.xz && rm $WAYLAND_PROTOCOLS_VERSION.tar.xz
-cd $WAYLAND_PROTOCOLS_VERSION; ./configure; make install; cd ..
-rm -rf $WAYLAND_PROTOCOLS_VERSION
 
 
 # The version of libglvnd-dev in debian is too old
@@ -107,8 +93,10 @@ rm -rf libglvnd-v$GLVND_VERSION
 
 . .gitlab-ci/container/build-spirv-tools.sh
 
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --depth 1
+git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --single-branch --shallow-since=2020-11-12
 pushd SPIRV-LLVM-Translator
+# Last commit before bumping required LLVM version to 11.1.0
+git checkout 93032d36d2fe17befb7994714c07c67ea68efbea
 cmake -S . -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
 ninja
 ninja install

@@ -276,7 +276,7 @@ success:
     # Otherwise, container jobs won't run
     - when: never
   variables:
-    FDO_DISTRIBUTION_VERSION: buster-slim
+    FDO_DISTRIBUTION_VERSION: bullseye-slim
     FDO_REPO_SUFFIX: "debian/$CI_JOB_NAME"
     FDO_DISTRIBUTION_EXEC: 'env FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     # no need to pull the whole repo to build the container image
@@ -290,13 +290,13 @@ success:
     - .ci-run-policy
   stage: container-2
 
-# Debian 10 based x86 build image base
+# Debian 11 based x86 build image base
 x86_build-base:
   extends:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2021-03-31-llvm11"
+    MESA_IMAGE_TAG: &x86_build-base "2021-03-31-bullseye"
 
 .use-x86_build-base:
   extends:
@@ -308,12 +308,12 @@ x86_build-base:
   needs:
     - x86_build-base
 
-# Debian 10 based x86 main build image
+# Debian 11 based x86 main build image
 x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-04-13-llvm11"
+    MESA_IMAGE_TAG: &x86_build "2021-04-13-bullseye"
 
 .use-x86_build:
   extends:
@@ -325,12 +325,12 @@ x86_build:
   needs:
     - x86_build
 
-# Debian 10 based i386 cross-build image
+# Debian 11 based i386 cross-build image
 i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2021-04-13-armhf-no-llvm"
+    MESA_IMAGE_TAG: &i386_build "2021-04-13-bullseye"
 
 .use-i386_build:
   extends:
@@ -342,12 +342,12 @@ i386_build:
   needs:
     - i386_build
 
-# Debian 10 based ppc64el cross-build image
+# Debian 11 based ppc64el cross-build image
 ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2021-04-13-armhf-no-llvm"
+    MESA_IMAGE_TAG: &ppc64el_build "2021-04-13-bullseye"
 
 .use-ppc64el_build:
   extends:
@@ -359,12 +359,12 @@ ppc64el_build:
   needs:
     - ppc64el_build
 
-# Debian 10 based s390x cross-build image
+# Debian 11 based s390x cross-build image
 s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2021-04-13-armhf-no-llvm"
+    MESA_IMAGE_TAG: &s390x_build "2021-04-13-bullseye"
 
 .use-s390x_build:
   extends:
@@ -393,11 +393,11 @@ android_build:
   needs:
     - android_build
 
-# Debian 10 based x86 test image base
+# Debian 11 based x86 test image base
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2021-03-22-llvm11"
+    MESA_IMAGE_TAG: &x86_test-base "2021-03-22-bullseye"
 
 .use-x86_test-base:
   extends:
@@ -409,25 +409,25 @@ x86_test-base:
   needs:
     - x86_test-base
 
-# Debian 10 based x86 test image for GL
+# Debian 11 based x86 test image for GL
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-llvm11"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-bullseye"
 
-# Debian 10 based x86 test image for VK
+# Debian 11 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-04-13-vkglcts-1.2.6.0"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-04-14-bullseye"
 
-# Debian 10 based ARM build image
+# Debian 11 based ARM build image
 arm_build:
   extends:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2021-04-13-armhf-no-llvm"
+    MESA_IMAGE_TAG: &arm_build "2021-04-13-bullseye"
 
 .use-arm_build:
   extends:
@@ -448,7 +448,7 @@ kernel+rootfs_arm64-baremetal:
   variables:
     DEBIAN_ARCH: "arm64"
     KERNEL_URL: "https://github.com/anholt/linux/archive/mesa-ci-2021-04-01-5.11.tar.gz"
-    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-14-llvm11"
+    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-14-bullseye"
     MINIO_SUFFIX: "baremetal"
 
 # Kernel & rootfs for armhf baremetal testing
@@ -474,7 +474,7 @@ arm_test:
     FDO_DISTRIBUTION_EXEC: 'env ARTIFACTS_PREFIX=https://${MINIO_HOST}/mesa-lava ARTIFACTS_SUFFIX=baremetal/${MESA_ROOTFS_TAG}--${MESA_ARM_BUILD_TAG}--${MESA_TEMPLATES_COMMIT} CI_PROJECT_PATH=${CI_PROJECT_PATH} FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_ROOTFS_TAG}--${MESA_ARM_BUILD_TAG}--${MESA_TEMPLATES_COMMIT}"
     MESA_ARM_BUILD_TAG: *arm_build
-    MESA_IMAGE_TAG: &arm_test "2021-04-06-snmp"
+    MESA_IMAGE_TAG: &arm_test "2021-04-14-bullseye"
     MESA_ROOTFS_TAG: *arm-baremetal
 
 .use-arm_test:
@@ -665,7 +665,6 @@ meson-clover-testing:
     - .ci-deqp-artifacts
   variables:
     UNWIND: "enabled"
-    LLVM_VERSION: 11
     DRI_LOADERS: >
       -D glx=disabled
       -D egl=disabled
@@ -797,7 +796,6 @@ meson-android:
       -D gallium-va=disabled
       -D gallium-xa=disabled
       -D gallium-nine=false
-    LLVM_VERSION: "8"
 
 .meson-arm:
   extends:
@@ -873,8 +871,8 @@ meson-clang:
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
-    CC: "ccache clang-11"
-    CXX: "ccache clang++-11"
+    CC: clang
+    CXX: clang++
 
 meson-windows-vs2019:
   extends:
@@ -933,7 +931,6 @@ meson-clover:
       -D valgrind=false
       -D werror=true
   script:
-    - LLVM_VERSION=8 .gitlab-ci/meson/build.sh
     - LLVM_VERSION=9 .gitlab-ci/meson/build.sh
     - .gitlab-ci/meson/build.sh
 
@@ -972,7 +969,6 @@ meson-i386:
     - .use-i386_build
   variables:
     CROSS: i386
-    LLVM_VERSION: 11
     VULKAN_DRIVERS: intel,amd,swrast,virtio-experimental
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink"
     DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
@@ -982,7 +978,7 @@ meson-i386:
 
 meson-s390x:
   extends:
-    - .meson-cross
+    - meson-ppc64el
     - .use-s390x_build
   tags:
     - kvm
@@ -991,11 +987,13 @@ meson-s390x:
     EXTRA_OPTION: >
       -D werror=true
     GALLIUM_DRIVERS: "swrast,zink"
+    # The lp_test_blend test times out with LLVM 11
+    LLVM_VERSION: 9
     VULKAN_DRIVERS: "swrast"
 
 meson-ppc64el:
   extends:
-    - meson-s390x
+    - .meson-cross
     - .use-ppc64el_build
   variables:
     CROSS: ppc64el
@@ -1175,7 +1173,7 @@ meson-mingw32-x86_64:
 
 .baremetal-arm64-asan-test:
   variables:
-    TEST_LD_PRELOAD: libasan.so.5
+    TEST_LD_PRELOAD: libasan.so.6
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
   needs:
     - arm_test

@@ -4,9 +4,9 @@ glx/glx-buffer-age: skip
 glx/glx-buffer-age vblank_mode=0: skip
 glx/glx-copy-sub-buffer: fail
 glx/glx-copy-sub-buffer samples=16: skip
-glx/glx-copy-sub-buffer samples=2: skip
+glx/glx-copy-sub-buffer samples=2: fail
 glx/glx-copy-sub-buffer samples=32: skip
-glx/glx-copy-sub-buffer samples=4: skip
+glx/glx-copy-sub-buffer samples=4: fail
 glx/glx-copy-sub-buffer samples=6: skip
 glx/glx-copy-sub-buffer samples=8: skip
 glx/glx-multithread-makecurrent-1: skip
@@ -14,7 +14,6 @@ glx/glx-multithread-makecurrent-2: skip
 glx/glx-multithread-makecurrent-3: skip
 glx/glx-multithread-makecurrent-4: skip
 glx/glx-multithread-texture: fail
-glx/glx-query-drawable-glx_fbconfig_id-window: fail
 glx/glx-swap-copy: fail
 glx/glx-swap-event_async: skip
 glx/glx-swap-event_event: skip
@@ -98,57 +97,39 @@ spec/!opengl 1.0/rasterpos/glsl_vs_ssbo: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_tes_linked: skip
 spec/!opengl 1.0/rasterpos/glsl_vs_tes_sso: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-blit samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-blit samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-blit samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-clear samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-clear samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-clear samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-clear samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-clear samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-clear samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-copypixels samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-24_8 samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-32f_24_8_rev samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-drawpixels-float-and-ushort samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-24_8 samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-32f_24_8_rev samples=8: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=16: skip
-spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=2: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=32: skip
-spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=4: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=6: skip
 spec/!opengl 1.1/depthstencil-default_fb-readpixels-float-and-ushort samples=8: skip
 spec/!opengl 1.1/draw-pixels samples=16: skip
@@ -174,15 +155,15 @@ spec/!opengl 1.1/polygon-mode-offset/config 4: expected white pixel on top edge:
 spec/!opengl 1.1/read-front: fail
 spec/!opengl 1.1/read-front clear-front-first: fail
 spec/!opengl 1.1/read-front clear-front-first samples=16: skip
-spec/!opengl 1.1/read-front clear-front-first samples=2: skip
+spec/!opengl 1.1/read-front clear-front-first samples=2: fail
 spec/!opengl 1.1/read-front clear-front-first samples=32: skip
-spec/!opengl 1.1/read-front clear-front-first samples=4: skip
+spec/!opengl 1.1/read-front clear-front-first samples=4: fail
 spec/!opengl 1.1/read-front clear-front-first samples=6: skip
 spec/!opengl 1.1/read-front clear-front-first samples=8: skip
 spec/!opengl 1.1/read-front samples=16: skip
-spec/!opengl 1.1/read-front samples=2: skip
+spec/!opengl 1.1/read-front samples=2: fail
 spec/!opengl 1.1/read-front samples=32: skip
-spec/!opengl 1.1/read-front samples=4: skip
+spec/!opengl 1.1/read-front samples=4: fail
 spec/!opengl 1.1/read-front samples=6: skip
 spec/!opengl 1.1/read-front samples=8: skip
 spec/!opengl 1.1/teximage-colors gl_alpha12/exact upload-download of gl_alpha12: skip
@@ -734,9 +715,9 @@ spec/arb_sparse_buffer/minmax: skip
 spec/arb_tessellation_shader/arb_tessellation_shader-immediate-mode-draw-patches: skip
 spec/arb_texture_buffer_object/negative-unsupported: skip
 spec/arb_texture_cube_map/copyteximage cube samples=16: skip
-spec/arb_texture_cube_map/copyteximage cube samples=2: skip
+spec/arb_texture_cube_map/copyteximage cube samples=2: fail
 spec/arb_texture_cube_map/copyteximage cube samples=32: skip
-spec/arb_texture_cube_map/copyteximage cube samples=4: skip
+spec/arb_texture_cube_map/copyteximage cube samples=4: fail
 spec/arb_texture_cube_map/copyteximage cube samples=6: skip
 spec/arb_texture_cube_map/copyteximage cube samples=8: skip
 spec/arb_texture_float/multisample-formats 16 gl_arb_texture_float: skip
@@ -830,9 +811,9 @@ spec/arb_texture_multisample/texelfetch/8-vs-sampler2dmsarray: skip
 spec/arb_texture_multisample/texelfetch/8-vs-usampler2dms: skip
 spec/arb_texture_multisample/texelfetch/8-vs-usampler2dmsarray: skip
 spec/arb_texture_rectangle/copyteximage rect samples=16: skip
-spec/arb_texture_rectangle/copyteximage rect samples=2: skip
+spec/arb_texture_rectangle/copyteximage rect samples=2: fail
 spec/arb_texture_rectangle/copyteximage rect samples=32: skip
-spec/arb_texture_rectangle/copyteximage rect samples=4: skip
+spec/arb_texture_rectangle/copyteximage rect samples=4: fail
 spec/arb_texture_rectangle/copyteximage rect samples=6: skip
 spec/arb_texture_rectangle/copyteximage rect samples=8: skip
 spec/arb_texture_rg/multisample-formats 16 gl_arb_texture_rg: skip
@@ -1448,15 +1429,15 @@ spec/ext_shader_samples_identical/ext_shader_samples_identical-simple-fs 4: skip
 spec/ext_shader_samples_identical/ext_shader_samples_identical-simple-fs 6: skip
 spec/ext_shader_samples_identical/ext_shader_samples_identical-simple-fs 8: skip
 spec/ext_texture_array/copyteximage 1d_array samples=16: skip
-spec/ext_texture_array/copyteximage 1d_array samples=2: skip
+spec/ext_texture_array/copyteximage 1d_array samples=2: fail
 spec/ext_texture_array/copyteximage 1d_array samples=32: skip
-spec/ext_texture_array/copyteximage 1d_array samples=4: skip
+spec/ext_texture_array/copyteximage 1d_array samples=4: fail
 spec/ext_texture_array/copyteximage 1d_array samples=6: skip
 spec/ext_texture_array/copyteximage 1d_array samples=8: skip
 spec/ext_texture_array/copyteximage 2d_array samples=16: skip
-spec/ext_texture_array/copyteximage 2d_array samples=2: skip
+spec/ext_texture_array/copyteximage 2d_array samples=2: fail
 spec/ext_texture_array/copyteximage 2d_array samples=32: skip
-spec/ext_texture_array/copyteximage 2d_array samples=4: skip
+spec/ext_texture_array/copyteximage 2d_array samples=4: fail
 spec/ext_texture_array/copyteximage 2d_array samples=6: skip
 spec/ext_texture_array/copyteximage 2d_array samples=8: skip
 spec/ext_texture_integer/fbo-integer: fail

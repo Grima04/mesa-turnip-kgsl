@@ -74,12 +74,6 @@ else
 
     # Set up the platform windowing system.
 
-    # Set environment for the waffle library.
-    export __LD_LIBRARY_PATH="/waffle/build/lib:$__LD_LIBRARY_PATH"
-
-    # Set environment for wflinfo executable.
-    export PATH="/waffle/build/bin:$PATH"
-
     if [ "x$EGL_PLATFORM" = "xsurfaceless" ]; then
 
         # Use the surfaceless EGL platform.

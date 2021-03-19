@@ -6,7 +6,6 @@ glx@glx-copy-sub-buffer samples=2,Crash
 glx@glx-copy-sub-buffer samples=4,Crash
 glx@glx-multithread-buffer,Fail
 glx@glx-multithread-texture,Timeout
-glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-depth,Crash

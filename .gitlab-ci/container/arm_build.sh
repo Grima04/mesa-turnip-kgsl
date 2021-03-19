@@ -5,7 +5,7 @@ set -o xtrace
 
 apt-get -y install ca-certificates
 sed -i -e 's/http:\/\/deb/https:\/\/deb/g' /etc/apt/sources.list
-echo 'deb https://deb.debian.org/debian buster-backports main' >/etc/apt/sources.list.d/backports.list
+echo 'deb https://deb.debian.org/debian buster main' >/etc/apt/sources.list.d/buster.list
 apt-get update
 
 EPHEMERAL="
@@ -15,7 +15,6 @@ EPHEMERAL="
 
 apt-get -y install \
 	abootimg \
-	android-sdk-ext4-utils \
 	autoconf \
 	automake \
 	bc \
@@ -28,7 +27,7 @@ apt-get -y install \
 	g++ \
 	git \
 	kmod \
-	libasan5 \
+	libasan6 \
 	libdrm-dev \
 	libelf-dev \
 	libexpat1-dev \
@@ -46,9 +45,10 @@ apt-get -y install \
 	libxrandr-dev \
 	libxshmfence-dev \
 	libxxf86vm-dev \
-	llvm-8-dev \
+	llvm-11-dev \
+	meson \
 	pkg-config \
-	python \
+	python-is-python3 \
 	python3-aiohttp \
 	python3-jinja2 \
 	python3-mako \
@@ -68,10 +68,11 @@ apt-get -y install \
 # Update lavacli to v1.1+
 pip3 install git+https://git.lavasoftware.org/lava/lavacli@3db3ddc45e5358908bc6a17448059ea2340492b7
 
-pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366
+# Not available anymore in bullseye
+apt-get install -y --no-remove -t buster \
+        android-sdk-ext4-utils
 
-apt install -y --no-remove -t buster-backports \
-    meson
+pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@6f5af7e5574509726c79109e3c147cee95e81366
 
 apt-get purge -y $EPHEMERAL
 

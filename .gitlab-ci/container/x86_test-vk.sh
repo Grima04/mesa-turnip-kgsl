@@ -14,9 +14,11 @@ STABLE_EPHEMERAL=" \
       libgles2-mesa-dev \
       liblz4-dev \
       libpciaccess-dev \
-      libpng-dev \
+      libudev-dev \
       libvulkan-dev \
       libwaffle-dev \
+      libwayland-dev \
+      libx11-xcb-dev \
       libxcb-ewmh-dev \
       libxcb-keysyms1-dev \
       libxkbcommon-dev \
@@ -77,7 +79,7 @@ rm crashdialog.reg
 # system.reg file, which fails.
 # Just giving it a bit more of time for it to be created solves the
 # problem ...
-test -f  "${WINEPREFIX}/system.reg" || sleep 2
+while ! test -f  "${WINEPREFIX}/system.reg"; do sleep 1; done
 
 wget "https://github.com/doitsujin/dxvk/releases/download/v${DXVK_VERSION}/dxvk-${DXVK_VERSION}.tar.gz"
 tar xzpf dxvk-"${DXVK_VERSION}".tar.gz
