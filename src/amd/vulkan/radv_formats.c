@@ -30,7 +30,7 @@
 
 #include "vk_util.h"
 
-#include "drm-uapi/drm_fourcc.h"
+#include "ac_drm_fourcc.h"
 #include "util/format_r11g11b10f.h"
 #include "util/format_rgb9e5.h"
 #include "util/format_srgb.h"

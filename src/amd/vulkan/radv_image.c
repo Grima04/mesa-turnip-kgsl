@@ -25,7 +25,7 @@
  * IN THE SOFTWARE.
  */
 
-#include "drm-uapi/drm_fourcc.h"
+#include "ac_drm_fourcc.h"
 #include "util/debug.h"
 #include "util/u_atomic.h"
 #include "vulkan/util/vk_format.h"
