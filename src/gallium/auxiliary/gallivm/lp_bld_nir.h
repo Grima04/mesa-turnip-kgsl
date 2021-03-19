@@ -187,6 +187,7 @@ struct lp_build_nir_context
    void (*vote)(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef dst[4]);
    void (*elect)(struct lp_build_nir_context *bld_base, LLVMValueRef dst[4]);
    void (*reduce)(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef dst[4]);
+   void (*ballot)(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef dst[4]);
    void (*helper_invocation)(struct lp_build_nir_context *bld_base, LLVMValueRef *dst);
 
    void (*interp_at)(struct lp_build_nir_context *bld_base,

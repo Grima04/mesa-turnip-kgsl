@@ -1880,7 +1880,30 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src,
    LLVMBuildStore(builder, res, res_store);
    lp_build_endif(&ifthen);
    lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
-			  NULL, LLVMIntUGE);
+                          NULL, LLVMIntUGE);
+   result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildLoad(builder, res_store, ""));
+}
+
+static void emit_ballot(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef result[4])
+{
+   struct gallivm_state * gallivm = bld_base->base.gallivm;
+   LLVMBuilderRef builder = gallivm->builder;
+   LLVMValueRef exec_mask = mask_vec(bld_base);
+   struct lp_build_loop_state loop_state;
+   src = LLVMBuildAnd(builder, src, exec_mask, "");
+   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   LLVMValueRef res;
+   lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
+   LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, src,
+                                                    loop_state.counter, "");
+   res = LLVMBuildLoad(builder, res_store, "");
+   res = LLVMBuildOr(builder,
+                     res,
+                     LLVMBuildAnd(builder, value_ptr, LLVMBuildShl(builder, lp_build_const_int32(gallivm, 1), loop_state.counter, ""), ""), "");
+   LLVMBuildStore(builder, res, res_store);
+
+   lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
+                          NULL, LLVMIntUGE);
    result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, LLVMBuildLoad(builder, res_store, ""));
 }
 
@@ -2317,6 +2340,7 @@ void lp_build_nir_soa(struct gallivm_state *gallivm,
    bld.bld_base.vote = emit_vote;
    bld.bld_base.elect = emit_elect;
    bld.bld_base.reduce = emit_reduce;
+   bld.bld_base.ballot = emit_ballot;
    bld.bld_base.helper_invocation = emit_helper_invocation;
    bld.bld_base.interp_at = emit_interp_at;
    bld.bld_base.load_scratch = emit_load_scratch;
