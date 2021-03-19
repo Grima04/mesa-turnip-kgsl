@@ -39,7 +39,6 @@ files_i965 = files(
   'brw_draw.h',
   'brw_draw_upload.c',
   'brw_ff_gs.c',
-  'brw_ff_gs_emit.c',
   'brw_ff_gs.h',
   'brw_formatquery.c',
   'brw_generate_mipmap.c',

@@ -33,52 +33,8 @@
 #ifndef BRW_GS_H
 #define BRW_GS_H
 
-
 #include "brw_context.h"
 #include "compiler/brw_eu.h"
-
-#define MAX_GS_VERTS (4)
-
-struct brw_ff_gs_compile {
-   struct brw_codegen func;
-   struct brw_ff_gs_prog_key key;
-   struct brw_ff_gs_prog_data prog_data;
-
-   struct {
-      struct brw_reg R0;
-
-      /**
-       * Register holding streamed vertex buffer pointers -- see the Sandy
-       * Bridge PRM, volume 2 part 1, section 4.4.2 (GS Thread Payload
-       * [DevSNB]).  These pointers are delivered in GRF 1.
-       */
-      struct brw_reg SVBI;
-
-      struct brw_reg vertex[MAX_GS_VERTS];
-      struct brw_reg header;
-      struct brw_reg temp;
-
-      /**
-       * Register holding destination indices for streamed buffer writes.
-       * Only used for SOL programs.
-       */
-      struct brw_reg destination_indices;
-   } reg;
-
-   /* Number of registers used to store vertex data */
-   GLuint nr_regs;
-
-   struct brw_vue_map vue_map;
-};
-
-void brw_ff_gs_quads(struct brw_ff_gs_compile *c,
-                     struct brw_ff_gs_prog_key *key);
-void brw_ff_gs_quad_strip(struct brw_ff_gs_compile *c,
-                          struct brw_ff_gs_prog_key *key);
-void brw_ff_gs_lines(struct brw_ff_gs_compile *c);
-void gfx6_sol_program(struct brw_ff_gs_compile *c,
-                      struct brw_ff_gs_prog_key *key,
-                      unsigned num_verts, bool check_edge_flag);
 
 void
 brw_upload_ff_gs_prog(struct brw_context *brw);
