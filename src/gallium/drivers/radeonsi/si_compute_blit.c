@@ -37,7 +37,7 @@ static enum si_cache_policy get_cache_policy(struct si_context *sctx, enum si_co
                                      coher == SI_COHERENCY_DB_META ||
                                      coher == SI_COHERENCY_CP)) ||
        (sctx->chip_class >= GFX7 && coher == SI_COHERENCY_SHADER))
-      return size <= 256 * 1024 ? L2_LRU : L2_STREAM;
+      return size <= sctx->screen->info.l2_cache_size / 8 ? L2_LRU : L2_STREAM;
 
    return L2_BYPASS;
 }
