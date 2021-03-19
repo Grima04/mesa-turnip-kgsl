@@ -474,8 +474,13 @@ virgl_drm_winsys_resource_create_handle(struct virgl_winsys *qws,
    }
 
    if (res) {
-      struct virgl_hw_res *r = NULL;
-      virgl_drm_resource_reference(&qdws->base, &r, res);
+      /* qdws->bo_{names,handles} hold weak pointers to virgl_hw_res. Because
+       * virgl_drm_resource_reference does not take qdws->bo_handles_mutex
+       * until it enters virgl_hw_res_destroy, there is a small window that
+       * the refcount can drop to zero. Call p_atomic_inc directly instead of
+       * virgl_drm_resource_reference to avoid hitting assert failures.
+       */
+      p_atomic_inc(&res->reference.count);
       goto done;
    }
 
