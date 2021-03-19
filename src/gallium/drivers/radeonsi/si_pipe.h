@@ -975,6 +975,7 @@ struct si_context {
    bool gfx_flush_in_progress : 1;
    bool gfx_last_ib_is_busy : 1;
    bool compute_is_busy : 1;
+   int8_t pipeline_stats_enabled; /* -1 = unknown, 0 = disabled, 1 = enabled */
 
    unsigned num_gfx_cs_flushes;
    unsigned initial_gfx_cs_size;

@@ -388,6 +388,7 @@ void si_begin_new_gfx_cs(struct si_context *ctx, bool first_cs)
     */
    ctx->flags |= SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE |
                  SI_CONTEXT_INV_L2 | SI_CONTEXT_START_PIPELINE_STATS;
+   ctx->pipeline_stats_enabled = -1;
 
    /* We don't know if the last draw call used GS fast launch, so assume it didn't. */
    if (ctx->chip_class == GFX10 && ctx->ngg_culling & SI_NGG_CULL_GS_FAST_LAUNCH_ALL)
@@ -767,12 +768,14 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
       radeon_emit(cs, 0);
    }
 
-   if (flags & SI_CONTEXT_START_PIPELINE_STATS) {
+   if (flags & SI_CONTEXT_START_PIPELINE_STATS && ctx->pipeline_stats_enabled != 1) {
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_START) | EVENT_INDEX(0));
-   } else if (flags & SI_CONTEXT_STOP_PIPELINE_STATS) {
+      ctx->pipeline_stats_enabled = 1;
+   } else if (flags & SI_CONTEXT_STOP_PIPELINE_STATS && ctx->pipeline_stats_enabled != 0) {
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_STOP) | EVENT_INDEX(0));
+      ctx->pipeline_stats_enabled = 0;
    }
    radeon_end();
 
@@ -1011,16 +1014,18 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
    if (is_barrier)
       si_prim_discard_signal_next_compute_ib_start(sctx);
 
-   if (flags & SI_CONTEXT_START_PIPELINE_STATS) {
+   if (flags & SI_CONTEXT_START_PIPELINE_STATS && sctx->pipeline_stats_enabled != 1) {
       radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_START) | EVENT_INDEX(0));
       radeon_end();
-   } else if (flags & SI_CONTEXT_STOP_PIPELINE_STATS) {
+      sctx->pipeline_stats_enabled = 1;
+   } else if (flags & SI_CONTEXT_STOP_PIPELINE_STATS && sctx->pipeline_stats_enabled != 0) {
       radeon_begin(cs);
       radeon_emit(cs, PKT3(PKT3_EVENT_WRITE, 0, 0));
       radeon_emit(cs, EVENT_TYPE(V_028A90_PIPELINESTAT_STOP) | EVENT_INDEX(0));
       radeon_end();
+      sctx->pipeline_stats_enabled = 0;
    }
 
    sctx->flags = 0;
