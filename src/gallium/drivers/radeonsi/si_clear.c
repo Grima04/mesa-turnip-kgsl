@@ -34,6 +34,49 @@ enum
    SI_CLEAR_SURFACE = SI_SAVE_FRAMEBUFFER | SI_SAVE_FRAGMENT_STATE,
 };
 
+static void si_init_buffer_clear(struct si_clear_info *info,
+                                 struct pipe_resource *resource, uint64_t offset,
+                                 uint32_t size, uint32_t clear_value)
+{
+   info->resource = resource;
+   info->offset = offset;
+   info->size = size;
+   info->clear_value = clear_value;
+}
+
+void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
+                       unsigned num_clears, unsigned types)
+{
+   if (!num_clears)
+      return;
+
+   /* Flush caches and wait for idle. */
+   if (types & (SI_CLEAR_TYPE_CMASK | SI_CLEAR_TYPE_DCC))
+      sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_STREAM);
+
+   /* Flush caches in case we use compute. */
+   sctx->flags |= SI_CONTEXT_INV_VCACHE;
+
+   /* GFX6-8: CB and DB don't use L2. */
+   if (sctx->chip_class <= GFX8)
+      sctx->flags |= SI_CONTEXT_INV_L2;
+
+   /* Execute clears. */
+   for (unsigned i = 0; i < num_clears; i++) {
+      /* Compute shaders are much faster on both dGPUs and APUs. Don't use CP DMA. */
+      si_clear_buffer(sctx, info[i].resource, info[i].offset, info[i].size,
+                      &info[i].clear_value, 4, SI_OP_SKIP_CACHE_INV_BEFORE,
+                      SI_COHERENCY_CP, SI_COMPUTE_CLEAR_METHOD);
+   }
+
+   /* Wait for idle. */
+   sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+
+   /* GFX6-8: CB and DB don't use L2. */
+   if (sctx->chip_class <= GFX8)
+      sctx->flags |= SI_CONTEXT_WB_L2;
+}
+
 static void si_alloc_separate_cmask(struct si_screen *sscreen, struct si_texture *tex)
 {
    /* CMASK for MSAA is allocated in advance or always disabled
@@ -216,8 +259,8 @@ static bool vi_get_fast_clear_parameters(struct si_screen *sscreen, enum pipe_fo
    return true;
 }
 
-bool vi_dcc_clear_level(struct si_context *sctx, struct si_texture *tex, unsigned level,
-                        unsigned clear_value)
+bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsigned level,
+                           unsigned clear_value, struct si_clear_info *out)
 {
    struct pipe_resource *dcc_buffer;
    uint64_t dcc_offset, clear_size;
@@ -261,8 +304,7 @@ bool vi_dcc_clear_level(struct si_context *sctx, struct si_texture *tex, unsigne
       clear_size = tex->surface.u.legacy.level[level].dcc_fast_clear_size * num_layers;
    }
 
-   si_clear_buffer(sctx, dcc_buffer, dcc_offset, clear_size, &clear_value, 4,
-                   SI_OP_SYNC_BEFORE_AFTER, SI_COHERENCY_CB_META, SI_AUTO_SELECT_CLEAR_METHOD);
+   si_init_buffer_clear(out, dcc_buffer, dcc_offset, clear_size, clear_value);
    return true;
 }
 
@@ -377,7 +419,9 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
                                    const union pipe_color_union *color)
 {
    struct pipe_framebuffer_state *fb = &sctx->framebuffer.state;
-   int i;
+   struct si_clear_info info[8 * 2 + 1]; /* MRTs * (CMASK + DCC) + ZS */
+   unsigned num_clears = 0;
+   unsigned clear_types = 0;
 
    /* This function is broken in BE, so just disable this path for now */
 #if UTIL_ARCH_BIG_ENDIAN
@@ -387,7 +431,8 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
    if (sctx->render_cond)
       return;
 
-   for (i = 0; i < fb->nr_cbufs; i++) {
+   /* Gather information about what to clear. */
+   for (int i = 0; i < fb->nr_cbufs; i++) {
       struct si_texture *tex;
       unsigned clear_bit = PIPE_CLEAR_COLOR0 << i;
 
@@ -494,18 +539,23 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer && eliminate_needed)
             continue;
 
-         if (!vi_dcc_clear_level(sctx, tex, 0, reset_value))
+         assert(num_clears < ARRAY_SIZE(info));
+
+         if (!vi_dcc_get_clear_info(sctx, tex, 0, reset_value, &info[num_clears]))
             continue;
+
+         num_clears++;
+         clear_types |= SI_CLEAR_TYPE_DCC;
 
          tex->separate_dcc_dirty = true;
          tex->displayable_dcc_dirty = true;
 
          /* DCC fast clear with MSAA should clear CMASK to 0xC. */
          if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer) {
-            uint32_t clear_value = 0xCCCCCCCC;
-            si_clear_buffer(sctx, &tex->cmask_buffer->b.b, tex->surface.cmask_offset,
-                            tex->surface.cmask_size, &clear_value, 4, SI_OP_SYNC_BEFORE_AFTER,
-                            SI_COHERENCY_CB_META, SI_AUTO_SELECT_CLEAR_METHOD);
+            assert(num_clears < ARRAY_SIZE(info));
+            si_init_buffer_clear(&info[num_clears++], &tex->cmask_buffer->b.b,
+                                 tex->surface.cmask_offset, tex->surface.cmask_size, 0xCCCCCCCC);
+            clear_types |= SI_CLEAR_TYPE_CMASK;
             fmask_decompress_needed = true;
          }
       } else {
@@ -531,10 +581,10 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
             continue;
 
          /* Do the fast clear. */
-         uint32_t clear_value = 0;
-         si_clear_buffer(sctx, &tex->cmask_buffer->b.b, tex->surface.cmask_offset,
-                         tex->surface.cmask_size, &clear_value, 4, SI_OP_SYNC_BEFORE_AFTER,
-                         SI_COHERENCY_CB_META, SI_AUTO_SELECT_CLEAR_METHOD);
+         assert(num_clears < ARRAY_SIZE(info));
+         si_init_buffer_clear(&info[num_clears++], &tex->cmask_buffer->b.b,
+                              tex->surface.cmask_offset, tex->surface.cmask_size, 0);
+         clear_types |= SI_CLEAR_TYPE_CMASK;
          eliminate_needed = true;
       }
 
@@ -557,6 +607,8 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
       }
    }
+
+   si_execute_clears(sctx, info, num_clears, clear_types);
 }
 
 static void si_clear(struct pipe_context *ctx, unsigned buffers,

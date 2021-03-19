@@ -1359,10 +1359,22 @@ void si_init_screen_buffer_functions(struct si_screen *sscreen);
 void si_init_buffer_functions(struct si_context *sctx);
 
 /* si_clear.c */
+#define SI_CLEAR_TYPE_CMASK  (1 << 0)
+#define SI_CLEAR_TYPE_DCC    (1 << 1)
+
+struct si_clear_info {
+   struct pipe_resource *resource;
+   uint64_t offset;
+   uint32_t size;
+   uint32_t clear_value;
+};
+
 enum pipe_format si_simplify_cb_format(enum pipe_format format);
 bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format);
-bool vi_dcc_clear_level(struct si_context *sctx, struct si_texture *tex, unsigned level,
-                        unsigned clear_value);
+bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsigned level,
+                           unsigned clear_value, struct si_clear_info *out);
+void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
+                       unsigned num_clears, unsigned types);
 void si_init_clear_functions(struct si_context *sctx);
 
 /* si_compute_blit.c */

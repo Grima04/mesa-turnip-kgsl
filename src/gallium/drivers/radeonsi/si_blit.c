@@ -1120,9 +1120,12 @@ static bool do_hardware_msaa_resolve(struct pipe_context *ctx, const struct pipe
        * This is still the fastest codepath even with this clear.
        */
       if (vi_dcc_enabled(dst, info->dst.level)) {
-         if (!vi_dcc_clear_level(sctx, dst, info->dst.level, DCC_UNCOMPRESSED))
+         struct si_clear_info clear_info;
+
+         if (!vi_dcc_get_clear_info(sctx, dst, info->dst.level, DCC_UNCOMPRESSED, &clear_info))
             goto resolve_to_temp;
 
+         si_execute_clears(sctx, &clear_info, 1, SI_CLEAR_TYPE_DCC);
          dst->dirty_level_mask &= ~(1 << info->dst.level);
       }
 
