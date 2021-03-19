@@ -496,6 +496,53 @@ ADDR_E_RETURNCODE Gfx10Lib::HwlComputeDccInfo(
                     pOut->pMipInfo[0].sliceSize = pOut->dccRamSliceSize;
                 }
             }
+
+            // Get the DCC address equation (copied from DccAddrFromCoord)
+            const UINT_32 elemLog2    = Log2(pIn->bpp >> 3);
+            const UINT_32 numPipeLog2 = m_pipesLog2;
+            UINT_32       index       = m_dccBaseIndex + elemLog2;
+            const UINT_8* patIdxTable;
+
+            if (m_settings.supportRbPlus)
+            {
+                patIdxTable = GFX10_DCC_64K_R_X_RBPLUS_PATIDX;
+
+                if (pIn->dccKeyFlags.pipeAligned)
+                {
+                    index += MaxNumOfBpp;
+
+                    if (m_numPkrLog2 < 2)
+                    {
+                        index += m_pipesLog2 * MaxNumOfBpp;
+                    }
+                    else
+                    {
+                        // 4 groups for "m_numPkrLog2 < 2" case
+                        index += 4 * MaxNumOfBpp;
+
+                        const UINT_32 dccPipePerPkr = 3;
+
+                        index += (m_numPkrLog2 - 2) * dccPipePerPkr * MaxNumOfBpp +
+                                 (m_pipesLog2 - m_numPkrLog2) * MaxNumOfBpp;
+                    }
+                }
+            }
+            else
+            {
+                patIdxTable = GFX10_DCC_64K_R_X_PATIDX;
+
+                if (pIn->dccKeyFlags.pipeAligned)
+                {
+                    index += (numPipeLog2 + UnalignedDccType) * MaxNumOfBpp;
+                }
+                else
+                {
+                    index += Min(numPipeLog2, UnalignedDccType - 1) * MaxNumOfBpp;
+                }
+            }
+
+            ADDR_C_ASSERT(sizeof(GFX10_DCC_64K_R_X_SW_PATTERN[patIdxTable[index]]) == 68 * 2);
+            pOut->equation.gfx10_bits = (UINT_16*)GFX10_DCC_64K_R_X_SW_PATTERN[patIdxTable[index]];
         }
     }
 
