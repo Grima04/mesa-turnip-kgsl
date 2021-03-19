@@ -70,12 +70,6 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
    /* Sync flags. */
    if (flags & CP_DMA_SYNC)
       header |= S_411_CP_SYNC(1);
-   else {
-      if (sctx->chip_class >= GFX9)
-         command |= S_414_DISABLE_WR_CONFIRM_GFX9(1);
-      else
-         command |= S_414_DISABLE_WR_CONFIRM_GFX6(1);
-   }
 
    if (flags & CP_DMA_RAW_WAIT)
       command |= S_414_RAW_WAIT(1);
