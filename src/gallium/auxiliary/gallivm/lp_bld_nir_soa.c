@@ -1805,19 +1805,21 @@ emit_prologue(struct lp_build_nir_soa_context *bld)
    }
 }
 
-static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, nir_intrinsic_instr *instr, LLVMValueRef result[4])
+static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src,
+                      nir_intrinsic_instr *instr, LLVMValueRef result[4])
 {
    struct gallivm_state * gallivm = bld_base->base.gallivm;
    LLVMBuilderRef builder = gallivm->builder;
-
+   uint32_t bit_size = nir_src_bit_size(instr->src[0]);
    LLVMValueRef exec_mask = mask_vec(bld_base);
    struct lp_build_loop_state loop_state;
-
    LLVMValueRef outer_cond = LLVMBuildICmp(builder, LLVMIntNE, exec_mask, bld_base->uint_bld.zero, "");
 
-   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->int_bld.elem_type, "");
+   LLVMValueRef res_store = lp_build_alloca(gallivm, bld_base->uint_bld.elem_type, "");
+   LLVMValueRef eq_store = lp_build_alloca(gallivm, get_int_bld(bld_base, true, bit_size)->elem_type, "");
    LLVMValueRef init_val = NULL;
-   if (instr->intrinsic == nir_intrinsic_vote_ieq) {
+   if (instr->intrinsic == nir_intrinsic_vote_ieq ||
+       instr->intrinsic == nir_intrinsic_vote_feq) {
       /* for equal we unfortunately have to loop and find the first valid one. */
       lp_build_loop_begin(&loop_state, gallivm, lp_build_const_int32(gallivm, 0));
       LLVMValueRef if_cond = LLVMBuildExtractElement(gallivm->builder, outer_cond, loop_state.counter, "");
@@ -1826,11 +1828,12 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, n
       lp_build_if(&ifthen, gallivm, if_cond);
       LLVMValueRef value_ptr = LLVMBuildExtractElement(gallivm->builder, src,
                                                        loop_state.counter, "");
-      LLVMBuildStore(builder, value_ptr, res_store);
+      LLVMBuildStore(builder, value_ptr, eq_store);
+      LLVMBuildStore(builder, lp_build_const_int32(gallivm, -1), res_store);
       lp_build_endif(&ifthen);
       lp_build_loop_end_cond(&loop_state, lp_build_const_int32(gallivm, bld_base->uint_bld.type.length),
-			     NULL, LLVMIntUGE);
-      init_val = LLVMBuildLoad(builder, res_store, "");
+                             NULL, LLVMIntUGE);
+      init_val = LLVMBuildLoad(builder, eq_store, "");
    } else {
       LLVMBuildStore(builder, lp_build_const_int32(gallivm, instr->intrinsic == nir_intrinsic_vote_any ? 0 : -1), res_store);
    }
@@ -1846,10 +1849,17 @@ static void emit_vote(struct lp_build_nir_context *bld_base, LLVMValueRef src, n
    lp_build_if(&ifthen, gallivm, if_cond);
    res = LLVMBuildLoad(builder, res_store, "");
 
-   if (instr->intrinsic == nir_intrinsic_vote_ieq) {
+   if (instr->intrinsic == nir_intrinsic_vote_feq) {
+      struct lp_build_context *flt_bld = get_flt_bld(bld_base, bit_size);
+      LLVMValueRef tmp = LLVMBuildFCmp(builder, LLVMRealUEQ,
+                                       LLVMBuildBitCast(builder, init_val, flt_bld->elem_type, ""),
+                                       LLVMBuildBitCast(builder, value_ptr, flt_bld->elem_type, ""), "");
+      tmp = LLVMBuildSExt(builder, tmp, bld_base->uint_bld.elem_type, "");
+      res = LLVMBuildAnd(builder, res, tmp, "");
+   } else if (instr->intrinsic == nir_intrinsic_vote_ieq) {
       LLVMValueRef tmp = LLVMBuildICmp(builder, LLVMIntEQ, init_val, value_ptr, "");
       tmp = LLVMBuildSExt(builder, tmp, bld_base->uint_bld.elem_type, "");
-      res = LLVMBuildOr(builder, res, tmp, "");
+      res = LLVMBuildAnd(builder, res, tmp, "");
    } else if (instr->intrinsic == nir_intrinsic_vote_any)
       res = LLVMBuildOr(builder, res, value_ptr, "");
    else
