@@ -31,6 +31,7 @@
 
 struct pipe_context;
 struct pipe_screen;
+struct zink_batch_state;
 struct zink_context;
 struct zink_screen;
 
@@ -51,8 +52,8 @@ zink_fence(struct pipe_fence_handle *pfence)
 
 void
 zink_fence_init(struct zink_context *ctx, struct zink_batch *batch);
-struct zink_fence *
-zink_create_fence(struct pipe_screen *pscreen, struct zink_batch *batch);
+bool
+zink_create_fence(struct zink_screen *screen, struct zink_batch_state *bs);
 
 void
 zink_fence_reference(struct zink_screen *screen,

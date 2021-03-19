@@ -49,7 +49,7 @@ enum zink_queue {
    ZINK_QUEUE_ANY,
 };
 
-struct zink_batch {
+struct zink_batch_state {
    unsigned batch_id : 3;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
@@ -74,10 +74,27 @@ struct zink_batch {
 
    VkDeviceSize resource_size;
 
+   bool is_compute;
+};
+
+struct zink_batch {
+   unsigned batch_id : 3;
+   struct zink_batch_state *state;
+   enum zink_queue queue;
+
    bool has_work;
-   bool submitted;
    bool in_rp; //renderpass is currently active
 };
+
+
+void
+zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs);
+
+void
+zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs);
+
+void
+zink_batch_state_clear_resources(struct zink_screen *screen, struct zink_batch_state *bs);
 
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch);
@@ -89,9 +106,6 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch);
 
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch);
-
-void
-zink_batch_destroy(struct zink_context* ctx, struct zink_batch *batch);
 
 enum zink_queue
 zink_batch_reference_resource_rw(struct zink_batch *batch,
@@ -113,6 +127,4 @@ zink_batch_reference_image_view(struct zink_batch *batch,
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);
 
-void
-zink_batch_clear_resources(struct zink_screen *screen, struct zink_batch *batch);
 #endif

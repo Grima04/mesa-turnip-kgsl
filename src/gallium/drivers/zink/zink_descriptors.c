@@ -407,7 +407,7 @@ quick_out:
    zds->punted = zds->invalid = false;
    *need_resource_refs = false;
    if (zink_batch_add_desc_set(batch, zds)) {
-      batch->descs_used += pool->key.num_descriptors;
+      batch->state->descs_used += pool->key.num_descriptors;
       *need_resource_refs = true;
    }
    pg->last_set[type] = zds;

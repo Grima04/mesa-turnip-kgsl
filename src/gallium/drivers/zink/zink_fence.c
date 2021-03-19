@@ -40,40 +40,39 @@ destroy_fence(struct zink_screen *screen, struct zink_fence *fence)
    FREE(fence);
 }
 
-struct zink_fence *
-zink_create_fence(struct pipe_screen *pscreen, struct zink_batch *batch)
+bool
+zink_create_fence(struct zink_screen *screen, struct zink_batch_state *bs)
 {
-   struct zink_screen *screen = zink_screen(pscreen);
-
    VkFenceCreateInfo fci = {};
    fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
 
    struct zink_fence *ret = CALLOC_STRUCT(zink_fence);
    if (!ret) {
       debug_printf("CALLOC_STRUCT failed\n");
-      return NULL;
+      return false;
    }
 
    if (vkCreateFence(screen->dev, &fci, NULL, &ret->fence) != VK_SUCCESS) {
       debug_printf("vkCreateFence failed\n");
       goto fail;
    }
-   ret->batch_id = batch->batch_id;
+   ret->batch_id = bs->batch_id;
    util_dynarray_init(&ret->resources, NULL);
 
    pipe_reference_init(&ret->reference, 1);
-   return ret;
+   bs->fence = ret;
+   return true;
 
 fail:
    destroy_fence(screen, ret);
-   return NULL;
+   return false;
 }
 
 void
 zink_fence_init(struct zink_context *ctx, struct zink_batch *batch)
 {
-   struct zink_fence *fence = batch->fence;
-   set_foreach(batch->resources, entry) {
+   struct zink_fence *fence = batch->state->fence;
+   set_foreach(batch->state->resources, entry) {
       /* the fence needs its own reference to ensure it can safely access lifetime-dependent
        * resource members
        */
