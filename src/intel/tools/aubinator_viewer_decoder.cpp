@@ -265,7 +265,7 @@ dump_samplers(struct aub_viewer_decode_ctx *ctx, uint32_t offset, int count)
       return;
    }
 
-   if (offset % 32 != 0 || state_addr - bo.addr >= bo.size) {
+   if (offset % 32 != 0) {
       ImGui::TextColored(ctx->cfg->missing_color, "invalid sampler state pointer");
       return;
    }
