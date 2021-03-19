@@ -146,32 +146,22 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
                               uint64_t remaining_size, unsigned user_flags, enum si_coherency coher,
                               bool *is_first, unsigned *packet_flags)
 {
-   /* Fast exit for a CPDMA prefetch. */
-   if ((user_flags & SI_CPDMA_SKIP_ALL) == SI_CPDMA_SKIP_ALL) {
-      *is_first = false;
-      return;
-   }
-
-   if (!(user_flags & SI_CPDMA_SKIP_BO_LIST_UPDATE)) {
-      /* Count memory usage in so that need_cs_space can take it into account. */
-      if (dst)
-         si_context_add_resource_size(sctx, dst);
-      if (src)
-         si_context_add_resource_size(sctx, src);
-   }
+   /* Count memory usage in so that need_cs_space can take it into account. */
+   if (dst)
+      si_context_add_resource_size(sctx, dst);
+   if (src)
+      si_context_add_resource_size(sctx, src);
 
    if (!(user_flags & SI_CPDMA_SKIP_CHECK_CS_SPACE))
       si_need_gfx_cs_space(sctx, 0);
 
    /* This must be done after need_cs_space. */
-   if (!(user_flags & SI_CPDMA_SKIP_BO_LIST_UPDATE)) {
-      if (dst)
-         radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(dst), RADEON_USAGE_WRITE,
-                                   RADEON_PRIO_CP_DMA);
-      if (src)
-         radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(src), RADEON_USAGE_READ,
-                                   RADEON_PRIO_CP_DMA);
-   }
+   if (dst)
+      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(dst), RADEON_USAGE_WRITE,
+                                RADEON_PRIO_CP_DMA);
+   if (src)
+      radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, si_resource(src), RADEON_USAGE_READ,
+                                RADEON_PRIO_CP_DMA);
 
    /* Flush the caches for the first copy only.
     * Also wait for the previous CP DMA operations.
@@ -336,8 +326,7 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    }
 
    /* TMZ handling */
-   if (unlikely(radeon_uses_secure_bos(sctx->ws) &&
-                !(user_flags & SI_CPDMA_SKIP_TMZ))) {
+   if (unlikely(radeon_uses_secure_bos(sctx->ws))) {
       bool secure = src && (si_resource(src)->flags & RADEON_FLAG_ENCRYPTED);
       assert(!secure || (!dst || (si_resource(dst)->flags & RADEON_FLAG_ENCRYPTED)));
       if (secure != sctx->ws->cs_is_secure(&sctx->gfx_cs)) {

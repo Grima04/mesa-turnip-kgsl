@@ -916,7 +916,7 @@ static void si_test_gds_memory_management(struct si_context *sctx, unsigned allo
           */
          si_cp_dma_clear_buffer(
             sctx, &cs[i], NULL, 0, alloc_size, 0,
-            SI_CPDMA_SKIP_BO_LIST_UPDATE | SI_CPDMA_SKIP_CHECK_CS_SPACE | SI_CPDMA_SKIP_GFX_SYNC, 0,
+            SI_CPDMA_SKIP_CHECK_CS_SPACE | SI_CPDMA_SKIP_GFX_SYNC, 0,
             0);
 
          ws->cs_add_buffer(&cs[i], gds_bo[i], RADEON_USAGE_READWRITE, domain, 0);
