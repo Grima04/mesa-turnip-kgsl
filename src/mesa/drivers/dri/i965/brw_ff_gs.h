@@ -83,8 +83,4 @@ void gfx6_sol_program(struct brw_ff_gs_compile *c,
 void
 brw_upload_ff_gs_prog(struct brw_context *brw);
 
-void
-brw_codegen_ff_gs_prog(struct brw_context *brw,
-                       struct brw_ff_gs_prog_key *key);
-
 #endif
