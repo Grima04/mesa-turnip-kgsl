@@ -432,7 +432,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   const VkSpecializationInfo *spec_info,
 			   const VkPipelineCreateFlags flags,
 			   const struct radv_pipeline_layout *layout,
-			   unsigned subgroup_size, unsigned ballot_bit_size);
+			   const struct radv_pipeline_key *key);
 
 void
 radv_destroy_shader_slabs(struct radv_device *device);

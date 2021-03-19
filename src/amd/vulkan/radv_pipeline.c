@@ -3338,27 +3338,17 @@ VkResult radv_create_shaders(struct radv_pipeline *pipeline,
 
 	for (unsigned i = 0; i < MESA_SHADER_STAGES; ++i) {
 		const VkPipelineShaderStageCreateInfo *stage = pStages[i];
-		unsigned subgroup_size = 64, ballot_bit_size = 64;
 
 		if (!modules[i])
 			continue;
 
 		radv_start_feedback(stage_feedbacks[i]);
 
-		if (pipeline_key->compute_subgroup_size) {
-			/* Only compute shaders currently support requiring a
-			 * specific subgroup size.
-                         */
-			assert(i == MESA_SHADER_COMPUTE);
-			subgroup_size = pipeline_key->compute_subgroup_size;
-			ballot_bit_size = pipeline_key->compute_subgroup_size;
-		}
-
 		nir[i] = radv_shader_compile_to_nir(device, modules[i],
 						    stage ? stage->pName : "main", i,
 						    stage ? stage->pSpecializationInfo : NULL,
 						    flags, pipeline->layout,
-						    subgroup_size, ballot_bit_size);
+						    pipeline_key);
 
 		/* We don't want to alter meta shaders IR directly so clone it
 		 * first.

@@ -288,7 +288,7 @@ mark_geom_invariant(nir_shader *nir)
 }
 
 static bool
-lower_intrinsics(nir_shader *nir)
+lower_intrinsics(nir_shader *nir, const struct radv_pipeline_key *key)
 {
 	nir_function_impl *entry = nir_shader_get_entrypoint(nir);
 	bool progress = false;
@@ -312,6 +312,9 @@ lower_intrinsics(nir_shader *nir)
 				def = nir_ieq_imm(&b, intrin->src[0].ssa, 0);
 			} else if (intrin->intrinsic == nir_intrinsic_sparse_residency_code_and) {
 				def = nir_ior(&b, intrin->src[0].ssa, intrin->src[1].ssa);
+			} else if (intrin->intrinsic == nir_intrinsic_load_view_index &&
+				   !key->has_multiview_view_index) {
+				def = nir_imm_zero(&b, 1, 32);
 			} else {
 				continue;
 			}
@@ -335,8 +338,18 @@ radv_shader_compile_to_nir(struct radv_device *device,
 			   const VkSpecializationInfo *spec_info,
 			   const VkPipelineCreateFlags flags,
 			   const struct radv_pipeline_layout *layout,
-			   unsigned subgroup_size, unsigned ballot_bit_size)
+			   const struct radv_pipeline_key *key)
 {
+	unsigned subgroup_size = 64, ballot_bit_size = 64;
+	if (key->compute_subgroup_size) {
+		/* Only compute shaders currently support requiring a
+		 * specific subgroup size.
+		 */
+		assert(stage == MESA_SHADER_COMPUTE);
+		subgroup_size = key->compute_subgroup_size;
+		ballot_bit_size = key->compute_subgroup_size;
+	}
+
 	nir_shader *nir;
 
 	if (module->nir) {
@@ -632,7 +645,7 @@ radv_shader_compile_to_nir(struct radv_device *device,
 		   nir_var_mem_ubo | nir_var_mem_ssbo,
 		   nir_address_format_32bit_index_offset);
 
-	NIR_PASS_V(nir, lower_intrinsics);
+	NIR_PASS_V(nir, lower_intrinsics, key);
 
 	/* Lower deref operations for compute shared memory. */
 	if (nir->info.stage == MESA_SHADER_COMPUTE) {
