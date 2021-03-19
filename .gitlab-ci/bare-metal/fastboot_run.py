@@ -74,6 +74,12 @@ class FastbootRun:
                 self.print_error("Detected spontaneous reboot, restarting run...")
                 return 2
 
+            # db820c sometimes wedges around iommu fault recovery
+            if re.search("watchdog: BUG: soft lockup - CPU.* stuck", line):
+                self.print_error(
+                    "Detected kernel soft lockup, restarting run...")
+                return 2
+
             result = re.search("bare-metal result: (\S*)", line)
             if result:
                 if result.group(1) == "pass":
