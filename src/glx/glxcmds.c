@@ -2436,23 +2436,103 @@ _X_HIDDEN void
 glXBindTexImageEXT(Display *dpy, GLXDrawable drawable, int buffer,
                    const int *attrib_list)
 {
+   xGLXVendorPrivateReq *req;
    struct glx_context *gc = __glXGetCurrentContext();
+   CARD32 *drawable_ptr;
+   INT32 *buffer_ptr;
+   CARD32 *num_attrib_ptr;
+   CARD32 *attrib_ptr;
+   CARD8 opcode;
+   unsigned int i = 0;
 
-   if (gc->vtable->bind_tex_image == NULL)
+#ifdef GLX_DIRECT_RENDERING
+   __GLXDRIdrawable *pdraw = GetGLXDRIDrawable(dpy, drawable);
+   if (pdraw != NULL) {
+      struct glx_screen *psc = pdraw->psc;
+      if (psc->driScreen->bindTexImage != NULL)
+         (*psc->driScreen->bindTexImage) (pdraw, buffer, attrib_list);
+
+      return;
+   }
+#endif
+
+   if (attrib_list) {
+      while (attrib_list[i * 2] != None)
+         i++;
+   }
+
+   opcode = __glXSetupForCommand(dpy);
+   if (!opcode)
       return;
 
-   gc->vtable->bind_tex_image(dpy, drawable, buffer, attrib_list);
+   LockDisplay(dpy);
+   GetReqExtra(GLXVendorPrivate, 12 + 8 * i, req);
+   req->reqType = opcode;
+   req->glxCode = X_GLXVendorPrivate;
+   req->vendorCode = X_GLXvop_BindTexImageEXT;
+   req->contextTag = gc->currentContextTag;
+
+   drawable_ptr = (CARD32 *) (req + 1);
+   buffer_ptr = (INT32 *) (drawable_ptr + 1);
+   num_attrib_ptr = (CARD32 *) (buffer_ptr + 1);
+   attrib_ptr = (CARD32 *) (num_attrib_ptr + 1);
+
+   *drawable_ptr = drawable;
+   *buffer_ptr = buffer;
+   *num_attrib_ptr = (CARD32) i;
+
+   i = 0;
+   if (attrib_list) {
+      while (attrib_list[i * 2] != None) {
+         *attrib_ptr++ = (CARD32) attrib_list[i * 2 + 0];
+         *attrib_ptr++ = (CARD32) attrib_list[i * 2 + 1];
+         i++;
+      }
+   }
+
+   UnlockDisplay(dpy);
+   SyncHandle();
 }
 
 _X_HIDDEN void
 glXReleaseTexImageEXT(Display * dpy, GLXDrawable drawable, int buffer)
 {
+   xGLXVendorPrivateReq *req;
    struct glx_context *gc = __glXGetCurrentContext();
+   CARD32 *drawable_ptr;
+   INT32 *buffer_ptr;
+   CARD8 opcode;
 
-   if (gc->vtable->release_tex_image == NULL)
+#ifdef GLX_DIRECT_RENDERING
+   __GLXDRIdrawable *pdraw = GetGLXDRIDrawable(dpy, drawable);
+   if (pdraw != NULL) {
+      struct glx_screen *psc = pdraw->psc;
+      if (psc->driScreen->releaseTexImage != NULL)
+         (*psc->driScreen->releaseTexImage) (pdraw, buffer);
+
+      return;
+   }
+#endif
+
+   opcode = __glXSetupForCommand(dpy);
+   if (!opcode)
       return;
 
-   gc->vtable->release_tex_image(dpy, drawable, buffer);
+   LockDisplay(dpy);
+   GetReqExtra(GLXVendorPrivate, sizeof(CARD32) + sizeof(INT32), req);
+   req->reqType = opcode;
+   req->glxCode = X_GLXVendorPrivate;
+   req->vendorCode = X_GLXvop_ReleaseTexImageEXT;
+   req->contextTag = gc->currentContextTag;
+
+   drawable_ptr = (CARD32 *) (req + 1);
+   buffer_ptr = (INT32 *) (drawable_ptr + 1);
+
+   *drawable_ptr = drawable;
+   *buffer_ptr = buffer;
+
+   UnlockDisplay(dpy);
+   SyncHandle();
 }
 
 /*@}*/

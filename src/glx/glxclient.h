@@ -127,6 +127,8 @@ struct __GLXDRIscreenRec {
    int (*setSwapInterval)(__GLXDRIdrawable *pdraw, int interval);
    int (*getSwapInterval)(__GLXDRIdrawable *pdraw);
    int (*getBufferAge)(__GLXDRIdrawable *pdraw);
+   void (*bindTexImage)(__GLXDRIdrawable *pdraw, int buffer, const int *attribs);
+   void (*releaseTexImage)(__GLXDRIdrawable *pdraw, int buffer);
 };
 
 struct __GLXDRIdrawableRec
@@ -227,10 +229,6 @@ struct glx_context_vtable {
    void (*unbind)(struct glx_context *context, struct glx_context *new_ctx);
    void (*wait_gl)(struct glx_context *ctx);
    void (*wait_x)(struct glx_context *ctx);
-   void (*bind_tex_image)(Display * dpy,
-			  GLXDrawable drawable,
-			  int buffer, const int *attrib_list);
-   void (*release_tex_image)(Display * dpy, GLXDrawable drawable, int buffer);
    int (*interop_query_device_info)(struct glx_context *ctx,
                                     struct mesa_glinterop_device_info *out);
    int (*interop_export_object)(struct glx_context *ctx,

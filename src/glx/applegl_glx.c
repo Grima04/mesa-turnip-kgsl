@@ -114,8 +114,6 @@ static const struct glx_context_vtable applegl_context_vtable = {
    .unbind              = applegl_unbind_context,
    .wait_gl             = applegl_wait_gl,
    .wait_x              = applegl_wait_x,
-   .bind_tex_image      = NULL,
-   .release_tex_image   = NULL,
 };
 
 struct glx_context *
