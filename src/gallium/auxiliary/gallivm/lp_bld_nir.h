@@ -272,6 +272,17 @@ lp_nir_array_build_gather_values(LLVMBuilderRef builder,
    return arr;
 }
 
+static inline struct lp_build_context *get_flt_bld(struct lp_build_nir_context *bld_base,
+                                                   unsigned op_bit_size)
+{
+   switch (op_bit_size) {
+   case 64:
+      return &bld_base->dbl_bld;
+   default:
+   case 32:
+      return &bld_base->base;
+   }
+}
 
 static inline struct lp_build_context *get_int_bld(struct lp_build_nir_context *bld_base,
                                                    bool is_unsigned,

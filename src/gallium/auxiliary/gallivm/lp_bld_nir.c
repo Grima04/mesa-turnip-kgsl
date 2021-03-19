@@ -97,15 +97,6 @@ static LLVMValueRef cast_type(struct lp_build_nir_context *bld_base, LLVMValueRe
 }
 
 
-static struct lp_build_context *get_flt_bld(struct lp_build_nir_context *bld_base,
-                                            unsigned op_bit_size)
-{
-   if (op_bit_size == 64)
-      return &bld_base->dbl_bld;
-   else
-      return &bld_base->base;
-}
-
 static unsigned glsl_sampler_to_pipe(int sampler_dim, bool is_array)
 {
    unsigned pipe_target = PIPE_BUFFER;
