@@ -366,7 +366,8 @@ print_vector_constants(FILE *fp, unsigned src_binary,
                        midgard_vector_alu *alu)
 {
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
-        unsigned bits = bits_for_mode_halved(alu->reg_mode, src->half);
+        bool expands = INPUT_EXPANDS(src->expand_mode);
+        unsigned bits = bits_for_mode_halved(alu->reg_mode, expands);
         unsigned max_comp = (sizeof(*consts) * 8) / bits;
         unsigned comp_mask, num_comp = 0;
 
@@ -384,29 +385,58 @@ print_vector_constants(FILE *fp, unsigned src_binary,
 
                 unsigned c = (src->swizzle >> (i * 2)) & 3;
 
-                if (bits == 16 && !src->half) {
-                        if (i < 4)
-                                c += (src->rep_high * 4);
-                        else
-                                c += (!src->rep_low * 4);
-                } else if (bits == 32 && !src->half) {
+                if (bits == 16 && !expands) {
+                        bool upper = i >= 4;
+
+                        switch (src->expand_mode) {
+                        case midgard_src_passthrough:
+                                c += upper * 4;
+                                break;
+                        case midgard_src_rep_low:
+                                break;
+                        case midgard_src_rep_high:
+                                c += 4;
+                                break;
+                        case midgard_src_swap:
+                                c += !upper * 4;
+                                break;
+                        default:
+                                unreachable("invalid expand mode");
+                                break;
+                        }
+                } else if (bits == 32 && !expands) {
                         /* Implicitly ok */
-                } else if (bits == 8) {
-                        assert (!src->half);
+                } else if (bits == 64 && !expands) {
+                        /* Implicitly ok */
+                } else if (bits == 8 && !expands) {
+                        bool upper = i >= 8;
+
                         unsigned index = (i >> 1) & 3;
                         unsigned base = (src->swizzle >> (index * 2)) & 3;
                         c = base * 2;
 
-                        if (i < 8)
-                                c += (src->rep_high) * 8;
-                        else
-                                c += (!src->rep_low) * 8;
+                        switch (src->expand_mode) {
+                        case midgard_src_passthrough:
+                                c += upper * 8;
+                                break;
+                        case midgard_src_rep_low:
+                                break;
+                        case midgard_src_rep_high:
+                                c += 8;
+                                break;
+                        case midgard_src_swap:
+                                c += !upper * 8;
+                                break;
+                        default:
+                                unreachable("invalid expand mode");
+                                break;
+                        }
 
                         /* We work on twos, actually */
                         if (i & 1)
                                 c++;
                 } else {
-                        printf(" (%d%d%d)", src->rep_low, src->rep_high, src->half);
+                        printf(" (%u)", src->expand_mode);
                 }
 
                 if (first)
@@ -415,7 +445,7 @@ print_vector_constants(FILE *fp, unsigned src_binary,
                         fprintf(fp, ", ");
 
                 mir_print_constant_component(fp, consts, c, alu->reg_mode,
-                                             src->half, src->mod, alu->op);
+                                             expands, src->mod, alu->op);
         }
 
         if (num_comp > 1)
@@ -464,23 +494,27 @@ print_vector_src(FILE *fp, unsigned src_binary,
         midgard_vector_alu_src *src = (midgard_vector_alu_src *)&src_binary;
         print_srcmod(fp, is_int, src->mod, false);
 
+        bool half = INPUT_EXPANDS(src->expand_mode);
+
         //register
-        unsigned bits = bits_for_mode_halved(mode, src->half);
+        unsigned bits = bits_for_mode_halved(mode, half);
         print_reg(fp, reg, bits);
 
         /* When the source was stepped down via `half`, rep_low means "higher
          * half" and rep_high is never seen. When it's not native,
          * rep_low/rep_high are for, well, replication */
 
+        bool rep_lo = src->expand_mode & 1;
+        bool rep_hi = src->expand_mode & (1 << 1);
         if (mode == midgard_reg_mode_8) {
-                assert(!src->half);
-                print_swizzle_vec16(fp, src->swizzle, src->rep_high, src->rep_low, shrink_mode);
+                assert(!half);
+                print_swizzle_vec16(fp, src->swizzle, rep_hi, rep_lo, shrink_mode);
         } else if (mode == midgard_reg_mode_16) {
-                print_swizzle_vec8(fp, src->swizzle, src->rep_high, src->rep_low, src->half);
+                print_swizzle_vec8(fp, src->swizzle, rep_hi, rep_lo, half);
         } else if (mode == midgard_reg_mode_32) {
-                print_swizzle_vec4(fp, src->swizzle, src->rep_high, src->rep_low, src->half);
+                print_swizzle_vec4(fp, src->swizzle, rep_hi, rep_lo, half);
         } else if (mode == midgard_reg_mode_64) {
-                print_swizzle_vec2(fp, src->swizzle, src->rep_high, src->rep_low, src->half);
+                print_swizzle_vec2(fp, src->swizzle, rep_hi, rep_lo, half);
         }
 
         print_srcmod_end(fp, is_int, src->mod, bits);

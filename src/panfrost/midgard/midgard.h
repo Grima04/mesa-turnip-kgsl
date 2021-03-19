@@ -273,13 +273,7 @@ __attribute__((__packed__))
         /* Either midgard_int_mod or from midgard_float_mod_*, depending on the
          * type of op */
         unsigned mod : 2;
-
-        /* replicate lower half if dest = half, or low/high half selection if
-         * dest = full
-         */
-        bool rep_low     : 1;
-        bool rep_high    : 1; /* unused if dest = full */
-        bool half        : 1; /* only matters if dest = full */
+        midgard_src_expand_mode expand_mode : 3;
         unsigned swizzle : 8;
 }
 midgard_vector_alu_src;

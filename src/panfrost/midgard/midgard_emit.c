@@ -196,13 +196,11 @@ mir_pack_mask_alu(midgard_instruction *ins, midgard_vector_alu *alu)
 static unsigned
 mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                  unsigned sz, unsigned base_size,
-                 bool op_channeled, bool *rep_low, bool *rep_high, bool *half)
+                 bool op_channeled, midgard_src_expand_mode *expand_mode)
 {
         unsigned packed = 0;
 
-        *rep_low = false;
-        *rep_high = false;
-        *half = false;
+        *expand_mode = midgard_src_passthrough;
 
         midgard_reg_mode reg_mode = reg_mode_for_bitsize(base_size);
 
@@ -213,8 +211,6 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                 packed = mir_pack_swizzle_64(swizzle, components);
 
                 if (sz == 32) {
-                        *half = true;
-
                         bool lo = swizzle[0] >= COMPONENT_Z;
                         bool hi = swizzle[1] >= COMPONENT_Z;
 
@@ -223,9 +219,11 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                                 if (mask & 2)
                                         assert(lo == hi);
 
-                                *rep_low = lo;
+                                *expand_mode = lo ? midgard_src_expand_high :
+                                                    midgard_src_expand_low;
                         } else {
-                                *rep_low = hi;
+                                *expand_mode = hi ? midgard_src_expand_high :
+                                                    midgard_src_expand_low;
                         }
                 } else if (sz < 32) {
                         unreachable("Cannot encode 8/16 swizzle in 64-bit");
@@ -268,17 +266,18 @@ mir_pack_swizzle(unsigned mask, unsigned *swizzle,
                  * dot products */
 
                 if (reg_mode == midgard_reg_mode_16 && sz == 16) {
-                        *rep_low = !upper;
-                        *rep_high = upper;
+                        *expand_mode = upper ? midgard_src_rep_high :
+                                               midgard_src_rep_low;
                 } else if (reg_mode == midgard_reg_mode_16 && sz == 8) {
-                        if (base_size == 16)
-                                *half = true;
-
-                        *rep_low = upper;
-                        *rep_high = upper;
+                        if (base_size == 16) {
+                                *expand_mode = upper ? midgard_src_expand_high :
+                                                       midgard_src_expand_low;
+                        } else if (upper) {
+                                *expand_mode = midgard_src_swap;
+                        }
                 } else if (reg_mode == midgard_reg_mode_32 && sz == 16) {
-                        *half = true;
-                        *rep_low = upper;
+                        *expand_mode = upper ? midgard_src_expand_high :
+                                               midgard_src_expand_low;
                 } else if (reg_mode == midgard_reg_mode_8) {
                         unreachable("Unhandled reg mode");
                 }
@@ -304,16 +303,14 @@ mir_pack_vector_srcs(midgard_instruction *ins, midgard_vector_alu *alu)
                 unsigned sz = nir_alu_type_get_type_size(ins->src_types[i]);
                 assert((sz == base_size) || (sz == base_size / 2));
 
-                bool rep_lo = false, rep_hi = false, half = false;
+                midgard_src_expand_mode expand_mode = midgard_src_passthrough;
                 unsigned swizzle = mir_pack_swizzle(ins->mask, ins->swizzle[i],
                                                     sz, base_size, channeled,
-                                                    &rep_lo, &rep_hi, &half);
+                                                    &expand_mode);
 
                 midgard_vector_alu_src pack = {
                         .mod = mir_pack_mod(ins, i, false),
-                        .rep_low = rep_lo,
-                        .rep_high = rep_hi,
-                        .half = half,
+                        .expand_mode = expand_mode,
                         .swizzle = swizzle
                 };
 
