@@ -332,10 +332,7 @@ dump_samplers(struct intel_batch_decode_ctx *ctx, uint32_t offset, int count)
    struct intel_group *strct = intel_spec_find_struct(ctx->spec, "SAMPLER_STATE");
    uint64_t state_addr = ctx->dynamic_base + offset;
 
-   if (count < 0) {
-      count = update_count(ctx, state_addr, ctx->dynamic_base,
-                           strct->dw_length, 4);
-   }
+   assert(count > 0);
 
    struct intel_batch_decode_bo bo = ctx_get_bo(ctx, true, state_addr);
    const void *state_map = bo.map;
@@ -775,16 +772,16 @@ static void
 decode_3dstate_sampler_state_pointers(struct intel_batch_decode_ctx *ctx,
                                       const uint32_t *p)
 {
-   dump_samplers(ctx, p[1], -1);
+   dump_samplers(ctx, p[1], 1);
 }
 
 static void
 decode_3dstate_sampler_state_pointers_gen6(struct intel_batch_decode_ctx *ctx,
                                            const uint32_t *p)
 {
-   dump_samplers(ctx, p[1], -1);
-   dump_samplers(ctx, p[2], -1);
-   dump_samplers(ctx, p[3], -1);
+   dump_samplers(ctx, p[1], 1);
+   dump_samplers(ctx, p[2], 1);
+   dump_samplers(ctx, p[3], 1);
 }
 
 static bool
