@@ -1590,6 +1590,19 @@ static void emit_sysval_intrin(struct lp_build_nir_context *bld_base,
    case nir_intrinsic_load_view_index:
       result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.view_index);
       break;
+   case nir_intrinsic_load_subgroup_invocation: {
+      LLVMValueRef elems[LP_MAX_VECTOR_LENGTH];
+      for(unsigned i = 0; i < bld->bld_base.base.type.length; ++i)
+         elems[i] = lp_build_const_int32(gallivm, i);
+      result[0] = LLVMConstVector(elems, bld->bld_base.base.type.length);
+      break;
+   }
+   case nir_intrinsic_load_subgroup_id:
+      result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.subgroup_id);
+      break;
+   case nir_intrinsic_load_num_subgroups:
+      result[0] = lp_build_broadcast_scalar(&bld_base->uint_bld, bld->system_values.num_subgroups);
+      break;
    }
 }
 
