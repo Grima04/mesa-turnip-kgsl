@@ -273,15 +273,15 @@ struct {
    void (*func)(struct brw_codegen *p);
    int gens;
 } tests[] = {
-   { gen_MOV_GRF_GRF,          GEN_ALL      },
-   { gen_ADD_GRF_GRF_GRF,      GEN_ALL      },
-   { gen_ADD_GRF_GRF_IMM,      GEN_ALL      },
-   { gen_ADD_GRF_GRF_IMM_d,    GEN_ALL      },
-   { gen_ADD_MRF_GRF_GRF,      GEN_LE(GFX6) },
-   { gen_ADD_vec1_GRF_GRF_GRF, GEN_ALL      },
-   { gen_PLN_MRF_GRF_GRF,      GEN_LE(GFX6) },
-   { gen_f0_0_MOV_GRF_GRF,     GEN_ALL      },
-   { gen_f0_1_MOV_GRF_GRF,     GEN_ALL      },
+   { gen_MOV_GRF_GRF,          GFX_ALL      },
+   { gen_ADD_GRF_GRF_GRF,      GFX_ALL      },
+   { gen_ADD_GRF_GRF_IMM,      GFX_ALL      },
+   { gen_ADD_GRF_GRF_IMM_d,    GFX_ALL      },
+   { gen_ADD_MRF_GRF_GRF,      GFX_LE(GFX6) },
+   { gen_ADD_vec1_GRF_GRF_GRF, GFX_ALL      },
+   { gen_PLN_MRF_GRF_GRF,      GFX_LE(GFX6) },
+   { gen_f0_0_MOV_GRF_GRF,     GFX_ALL      },
+   { gen_f0_1_MOV_GRF_GRF,     GFX_ALL      },
 };
 
 static bool

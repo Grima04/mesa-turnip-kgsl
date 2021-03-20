@@ -37,12 +37,12 @@ enum gen {
    GFX11   = (1 << 9),
    GFX12   = (1 << 10),
    GFX125  = (1 << 11),
-   GEN_ALL = ~0
+   GFX_ALL = ~0
 };
 
-#define GEN_LT(gen) ((gen) - 1)
-#define GEN_GE(gen) (~GEN_LT(gen))
-#define GEN_LE(gen) (GEN_LT(gen) | (gen))
+#define GFX_LT(gen) ((gen) - 1)
+#define GFX_GE(gen) (~GFX_LT(gen))
+#define GFX_LE(gen) (GFX_LT(gen) | (gen))
 
 static enum gen
 gen_from_devinfo(const struct gen_device_info *devinfo)
