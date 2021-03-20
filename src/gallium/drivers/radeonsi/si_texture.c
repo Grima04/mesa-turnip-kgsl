@@ -918,6 +918,11 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    tex->is_depth = util_format_has_depth(util_format_description(tex->buffer.b.b.format));
    tex->surface = *surface;
 
+   /* Use 1.0 as the default clear value to get optimal ZRANGE_PRECISION if we don't
+    * get a fast clear.
+    */
+   tex->depth_clear_value = 1.0;
+
    /* On GFX8, HTILE uses different tiling depending on the TC_COMPATIBLE_HTILE
     * setting, so we have to enable it if we enabled it at allocation.
     *
