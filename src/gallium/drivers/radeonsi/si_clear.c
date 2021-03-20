@@ -279,8 +279,32 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
       dcc_offset = tex->surface.meta_offset;
    }
 
-   if (sctx->chip_class >= GFX9) {
-      /* Mipmap level clears aren't implemented. */
+   if (sctx->chip_class >= GFX10) {
+      /* 4x and 8x MSAA needs a sophisticated compute shader for
+       * the clear. */
+      if (tex->buffer.b.b.nr_storage_samples >= 4)
+         return false;
+
+      unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
+
+      if (num_layers == 1) {
+         /* Clear a specific level. */
+         dcc_offset += tex->surface.u.gfx9.meta_levels[level].offset;
+         clear_size = tex->surface.u.gfx9.meta_levels[level].size;
+      } else if (tex->buffer.b.b.last_level == 0) {
+         /* Clear all layers having only 1 level. */
+         clear_size = tex->surface.meta_size;
+      } else {
+         /* Clearing DCC with both multiple levels and multiple layers is not
+          * implemented.
+          */
+         return false;
+      }
+   } else if (sctx->chip_class == GFX9) {
+      /* TODO: Implement DCC fast clear for level 0 of mipmapped textures. Mipmapped
+       * DCC has to clear a rectangular area of DCC for level 0 (because the whole miptree
+       * is organized in a 2D plane).
+       */
       if (tex->buffer.b.b.last_level > 0)
          return false;
 
@@ -445,15 +469,6 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          continue;
 
       struct si_texture *tex = (struct si_texture *)fb->cbufs[i]->texture;
-
-      /* TODO: GFX9: Implement DCC fast clear for level 0 of
-       * mipmapped textures. Mipmapped DCC has to clear a rectangular
-       * area of DCC for level 0 (because the whole miptree is
-       * organized in a 2D plane).
-       */
-      if (sctx->chip_class >= GFX9 && tex->buffer.b.b.last_level > 0)
-         continue;
-
       unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
 
       /* the clear is allowed if all layers are bound */
@@ -584,14 +599,58 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          if (tex->buffer.flags & RADEON_FLAG_ENCRYPTED)
             continue;
 
-         /* ensure CMASK is enabled */
-         if (!si_alloc_separate_cmask(sctx->screen, tex))
-            continue;
+         uint64_t cmask_offset = 0;
+         unsigned clear_size = 0;
+
+         if (sctx->chip_class >= GFX10) {
+            assert(level == 0);
+
+            /* Clearing CMASK with both multiple levels and multiple layers is not
+             * implemented.
+             */
+            if (num_layers > 1 && tex->buffer.b.b.last_level > 0)
+               continue;
+
+            if (!si_alloc_separate_cmask(sctx->screen, tex))
+               continue;
+
+            if (num_layers == 1) {
+               /* Clear level 0. */
+               cmask_offset = tex->surface.cmask_offset + tex->surface.u.gfx9.color.cmask_level0.offset;
+               clear_size = tex->surface.u.gfx9.color.cmask_level0.size;
+            } else if (tex->buffer.b.b.last_level == 0) {
+               /* Clear all layers having only 1 level. */
+               cmask_offset = tex->surface.cmask_offset;
+               clear_size = tex->surface.cmask_size;
+            } else {
+               assert(0); /* this is prevented above */
+            }
+         } else if (sctx->chip_class == GFX9) {
+            /* TODO: Implement CMASK fast clear for level 0 of mipmapped textures. Mipmapped
+             * CMASK has to clear a rectangular area of CMASK for level 0 (because the whole
+             * miptree is organized in a 2D plane).
+             */
+            if (tex->buffer.b.b.last_level > 0)
+               continue;
+
+            if (!si_alloc_separate_cmask(sctx->screen, tex))
+               continue;
+
+            cmask_offset = tex->surface.cmask_offset;
+            clear_size = tex->surface.cmask_size;
+         } else {
+            if (!si_alloc_separate_cmask(sctx->screen, tex))
+               continue;
+
+            /* GFX6-8: This only covers mipmap level 0. */
+            cmask_offset = tex->surface.cmask_offset;
+            clear_size = tex->surface.cmask_size;
+         }
 
          /* Do the fast clear. */
          assert(num_clears < ARRAY_SIZE(info));
          si_init_buffer_clear(&info[num_clears++], &tex->cmask_buffer->b.b,
-                              tex->surface.cmask_offset, tex->surface.cmask_size, 0);
+                              cmask_offset, clear_size, 0);
          clear_types |= SI_CLEAR_TYPE_CMASK;
          eliminate_needed = true;
       }
