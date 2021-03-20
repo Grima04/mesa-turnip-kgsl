@@ -328,7 +328,11 @@ NineAdapter9_CheckDeviceFormat( struct NineAdapter9 *This,
     }
 
     bind = 0;
-    if (Usage & D3DUSAGE_RENDERTARGET) bind |= PIPE_BIND_RENDER_TARGET;
+    if (Usage & D3DUSAGE_RENDERTARGET) {
+        if (depth_stencil_format(CheckFormat))
+            return D3DERR_NOTAVAILABLE;
+        bind |= PIPE_BIND_RENDER_TARGET;
+    }
     if (Usage & D3DUSAGE_DEPTHSTENCIL) {
         if (!depth_stencil_format(CheckFormat))
             return D3DERR_NOTAVAILABLE;
