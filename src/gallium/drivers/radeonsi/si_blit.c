@@ -1333,8 +1333,10 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
          u_box_3d(0, 0, 0, u_minify(ptex->width0, level),
                   u_minify(ptex->height0, level),
                   util_num_layers(ptex, level), &box);
-         si_compute_copy_image(sctx, ptex, level, ptex, level, 0, 0, 0, &box,
-                               true, SI_OP_SYNC_BEFORE_AFTER);
+         si_compute_copy_image(sctx, ptex, level, ptex, level, 0, 0, 0, &box, true,
+                               /* Sync before the first copy and after the last copy */
+                               (level == 0 ? SI_OP_SYNC_BEFORE : 0) |
+                               (level == tex->surface.num_dcc_levels - 1 ? SI_OP_SYNC_AFTER : 0));
       }
 
       /* Now clear DCC metadata to uncompressed.
@@ -1346,7 +1348,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
        */
       uint32_t clear_value = DCC_UNCOMPRESSED;
       si_clear_buffer(sctx, ptex, tex->surface.dcc_offset,
-                      tex->surface.dcc_size, &clear_value, 4, SI_OP_SYNC_BEFORE_AFTER,
+                      tex->surface.dcc_size, &clear_value, 4, SI_OP_SYNC_AFTER,
                       SI_COHERENCY_CB_META, SI_COMPUTE_CLEAR_METHOD);
    }
 }

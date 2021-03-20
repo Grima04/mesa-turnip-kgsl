@@ -108,8 +108,6 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
          /* Make sure buffer stores are visible to all CUs. */
          sctx->flags |= SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE;
       }
-   } else {
-      assert(!(flags & SI_OP_CS_IMAGE));
    }
 }
 
