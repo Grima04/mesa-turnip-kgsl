@@ -262,7 +262,9 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
    si_launch_grid_internal(sctx, &info, saved_cs, flags);
 
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
-   sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
+
+   if (flags & SI_OP_SYNC_AFTER)
+      sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
 
    if (cache_policy != L2_BYPASS)
       si_resource(dst)->TC_L2_dirty = true;
