@@ -276,46 +276,6 @@ nv50_compute_validate_constbufs(struct nv50_context *nv50)
 }
 
 static void
-nv50_compute_validate_buffers(struct nv50_context *nv50)
-{
-   struct nouveau_pushbuf *push = nv50->base.pushbuf;
-   int i;
-
-   for (i = 0; i < 7; i++) {
-      BEGIN_NV04(push, NV50_CP(GLOBAL(i)), 5);
-      unsigned width;
-      if (nv50->buffers[i].buffer) {
-         struct nv04_resource *res =
-            nv04_resource(nv50->buffers[i].buffer);
-         PUSH_DATAh(push, res->address + nv50->buffers[i].buffer_offset);
-         PUSH_DATA (push, res->address + nv50->buffers[i].buffer_offset);
-         PUSH_DATA (push, 0); /* pitch? */
-         PUSH_DATA (push, ALIGN(nv50->buffers[i].buffer_size, 256) - 1);
-         PUSH_DATA (push, NV50_COMPUTE_GLOBAL_MODE_LINEAR);
-         BCTX_REFN(nv50->bufctx_cp, CP_BUF, res, RDWR);
-         util_range_add(&res->base, &res->valid_buffer_range,
-                        nv50->buffers[i].buffer_offset,
-                        nv50->buffers[i].buffer_offset +
-                        nv50->buffers[i].buffer_size);
-         width = nv50->buffers[i].buffer_size;
-      } else {
-         PUSH_DATA (push, 0);
-         PUSH_DATA (push, 0);
-         PUSH_DATA (push, 0);
-         PUSH_DATA (push, 0);
-         PUSH_DATA (push, 0);
-         width = 0;
-      }
-
-      PUSH_SPACE(push, 1 + 3);
-      BEGIN_NV04(push, NV50_CP(CB_ADDR), 1);
-      PUSH_DATA (push, NV50_CB_AUX_BUF_INFO(i) << (8 - 2) | NV50_CB_AUX);
-      BEGIN_NI04(push, NV50_CP(CB_DATA(0)), 1);
-      PUSH_DATA (push, width);
-   }
-}
-
-static void
 nv50_get_surface_dims(const struct pipe_image_view *view,
                       int *width, int *height, int *depth)
 {
@@ -416,13 +376,34 @@ nv50_compute_validate_surfaces(struct nv50_context *nv50)
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
    int i;
 
-   for (i = 0; i < 8; i++) {
-      struct pipe_image_view *view = &nv50->images[i];
+   for (i = 0; i < NV50_MAX_GLOBALS - 1; i++) {
+      struct nv50_gmem_state *gmem = &nv50->compprog->cp.gmem[i];
       int width, height, depth;
       uint64_t address = 0;
 
-      BEGIN_NV04(push, NV50_CP(GLOBAL(7 + i)), 5);
-      if (view->resource) {
+      BEGIN_NV04(push, NV50_CP(GLOBAL(i)), 5);
+
+      if (gmem->valid && !gmem->image && nv50->buffers[gmem->slot].buffer) {
+         struct pipe_shader_buffer *buffer = &nv50->buffers[gmem->slot];
+         struct nv04_resource *res = nv04_resource(buffer->buffer);
+         PUSH_DATAh(push, res->address + buffer->buffer_offset);
+         PUSH_DATA (push, res->address + buffer->buffer_offset);
+         PUSH_DATA (push, 0); /* pitch? */
+         PUSH_DATA (push, ALIGN(buffer->buffer_size, 256) - 1);
+         PUSH_DATA (push, NV50_COMPUTE_GLOBAL_MODE_LINEAR);
+         BCTX_REFN(nv50->bufctx_cp, CP_BUF, res, RDWR);
+         util_range_add(&res->base, &res->valid_buffer_range,
+                        buffer->buffer_offset,
+                        buffer->buffer_offset +
+                        buffer->buffer_size);
+
+         PUSH_SPACE(push, 1 + 3);
+         BEGIN_NV04(push, NV50_CP(CB_ADDR), 1);
+         PUSH_DATA (push, NV50_CB_AUX_BUF_INFO(i) << (8 - 2) | NV50_CB_AUX);
+         BEGIN_NI04(push, NV50_CP(CB_DATA(0)), 1);
+         PUSH_DATA (push, buffer->buffer_size);
+      } else if (gmem->valid && gmem->image && nv50->images[gmem->slot].resource) {
+         struct pipe_image_view *view = &nv50->images[gmem->slot];
          struct nv04_resource *res = nv04_resource(view->resource);
 
          /* get surface dimensions based on the target. */
@@ -483,6 +464,12 @@ nv50_compute_validate_surfaces(struct nv50_context *nv50)
          }
 
          BCTX_REFN(nv50->bufctx_cp, CP_SUF, res, RDWR);
+
+         PUSH_SPACE(push, 12 + 3);
+         BEGIN_NV04(push, NV50_CP(CB_ADDR), 1);
+         PUSH_DATA (push, NV50_CB_AUX_BUF_INFO(i) << (8 - 2) | NV50_CB_AUX);
+         BEGIN_NI04(push, NV50_CP(CB_DATA(0)), 12);
+         nv50_set_surface_info(push, view, width, height, depth);
       } else {
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
@@ -490,12 +477,6 @@ nv50_compute_validate_surfaces(struct nv50_context *nv50)
          PUSH_DATA (push, 0);
          PUSH_DATA (push, 0);
       }
-
-      PUSH_SPACE(push, 12 + 3);
-      BEGIN_NV04(push, NV50_CP(CB_ADDR), 1);
-      PUSH_DATA (push, NV50_CB_AUX_BUF_INFO(7 + i) << (8 - 2) | NV50_CB_AUX);
-      BEGIN_NI04(push, NV50_CP(CB_DATA(0)), 12);
-      nv50_set_surface_info(push, view, width, height, depth);
    }
 }
 
@@ -518,8 +499,9 @@ static struct nv50_state_validate
 validate_list_cp[] = {
    { nv50_compprog_validate,              NV50_NEW_CP_PROGRAM     },
    { nv50_compute_validate_constbufs,     NV50_NEW_CP_CONSTBUF    },
-   { nv50_compute_validate_buffers,       NV50_NEW_CP_BUFFERS     },
-   { nv50_compute_validate_surfaces,      NV50_NEW_CP_SURFACES    },
+   { nv50_compute_validate_surfaces,      NV50_NEW_CP_SURFACES |
+                                          NV50_NEW_CP_BUFFERS  |
+                                          NV50_NEW_CP_PROGRAM     },
    { nv50_compute_validate_textures,      NV50_NEW_CP_TEXTURES    },
    { nv50_compute_validate_samplers,      NV50_NEW_CP_SAMPLERS    },
    { nv50_compute_validate_globals,       NV50_NEW_CP_GLOBALS     },

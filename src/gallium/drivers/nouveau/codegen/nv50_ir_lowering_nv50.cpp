@@ -1117,7 +1117,7 @@ NV50LoweringPreSSA::handleSUQ(TexInstruction *suq)
    const int dim = suq->tex.target.getDim();
    const int arg = dim + (suq->tex.target.isArray() || suq->tex.target.isCube());
    int mask = suq->tex.mask;
-   int slot = suq->tex.r + 7;
+   int slot = suq->tex.r;
    int c, d;
 
    for (c = 0, d = 0; c < 3; ++c, mask >>= 1) {
@@ -1661,7 +1661,7 @@ getShaderType(const ImgType type) {
 Value *
 NV50LoweringPreSSA::processSurfaceCoords(TexInstruction *su)
 {
-   const int slot = su->tex.r + 7;
+   const int slot = su->tex.r;
    const int dim = su->tex.target.getDim();
    const int arg = dim + (su->tex.target.isArray() || su->tex.target.isCube());
 
@@ -1796,7 +1796,7 @@ NV50LoweringPreSSA::processSurfaceCoords(TexInstruction *su)
 bool
 NV50LoweringPreSSA::handleSULDP(TexInstruction *su)
 {
-   const int slot = su->tex.r + 7;
+   const int slot = su->tex.r;
    assert(!su->getIndirectR());
 
    bld.setPosition(su, false);
@@ -1917,7 +1917,7 @@ NV50LoweringPreSSA::handleSULDP(TexInstruction *su)
 bool
 NV50LoweringPreSSA::handleSUREDP(TexInstruction *su)
 {
-   const int slot = su->tex.r + 7;
+   const int slot = su->tex.r;
    const int dim = su->tex.target.getDim();
    const int arg = dim + (su->tex.target.isArray() || su->tex.target.isCube());
    assert(!su->getIndirectR());
@@ -1943,7 +1943,7 @@ NV50LoweringPreSSA::handleSUREDP(TexInstruction *su)
 bool
 NV50LoweringPreSSA::handleSUSTP(TexInstruction *su)
 {
-   const int slot = su->tex.r + 7;
+   const int slot = su->tex.r;
    const int dim = su->tex.target.getDim();
    const int arg = dim + (su->tex.target.isArray() || su->tex.target.isCube());
    assert(!su->getIndirectR());

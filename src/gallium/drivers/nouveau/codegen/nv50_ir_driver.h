@@ -184,6 +184,13 @@ struct nv50_ir_prog_info_out
          bool readsSampleLocations  : 1;
          bool separateFragData      : 1;
       } fp;
+      struct {
+         struct {
+            unsigned valid : 1;
+            unsigned image : 1;
+            unsigned slot  : 6;
+         } gmem[16]; /* nv50 only */
+      } cp;
    } prop;
 
    struct {

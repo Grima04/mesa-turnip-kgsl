@@ -26,7 +26,6 @@
 
 extern "C" {
 #include "nouveau_debug.h"
-#include "nv50/nv50_program.h"
 }
 
 namespace nv50_ir {
