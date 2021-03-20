@@ -2102,9 +2102,11 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
            (surf->fmask_size && in->numSamples >= 2))) {
          ADDR2_COMPUTE_CMASK_INFO_INPUT cin = {0};
          ADDR2_COMPUTE_CMASK_INFO_OUTPUT cout = {0};
+         ADDR2_META_MIP_INFO meta_mip_info[RADEON_SURF_MAX_LEVELS] = {0};
 
          cin.size = sizeof(ADDR2_COMPUTE_CMASK_INFO_INPUT);
          cout.size = sizeof(ADDR2_COMPUTE_CMASK_INFO_OUTPUT);
+         cout.pMipInfo = meta_mip_info;
 
          assert(in->flags.metaPipeUnaligned == 0);
          assert(in->flags.metaRbUnaligned == 0);
@@ -2115,6 +2117,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          cin.unalignedWidth = in->width;
          cin.unalignedHeight = in->height;
          cin.numSlices = in->numSlices;
+         cin.numMipLevels = in->numMipLevels;
+         cin.firstMipIdInTail = out.firstMipIdInTail;
 
          if (in->numSamples > 1)
             cin.swizzleMode = surf->u.gfx9.fmask.swizzle_mode;
@@ -2128,6 +2132,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->cmask_size = cout.cmaskBytes;
          surf->cmask_alignment = cout.baseAlign;
          surf->cmask_slice_size = cout.sliceSize;
+         surf->u.gfx9.cmask_level0.offset = meta_mip_info[0].offset;
+         surf->u.gfx9.cmask_level0.size = meta_mip_info[0].sliceSize;
       }
    }
 

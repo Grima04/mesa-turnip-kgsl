@@ -151,7 +151,8 @@ struct gfx9_surf_meta_flags {
 
 struct gfx9_surf_level {
    unsigned offset;
-   unsigned size;
+   unsigned size; /* the size of one level in one layer (the image is an array of layers
+                   * where each layer has an array of levels) */
 };
 
 struct gfx9_surf_layout {
@@ -205,6 +206,9 @@ struct gfx9_surf_layout {
 
    /* HTILE level info */
    struct gfx9_surf_level htile_levels[RADEON_SURF_MAX_LEVELS];
+
+   /* CMASK level info (only level 0) */
+   struct gfx9_surf_level cmask_level0;
 };
 
 struct radeon_surf {
