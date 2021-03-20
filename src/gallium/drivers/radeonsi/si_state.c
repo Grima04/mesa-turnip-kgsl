@@ -3217,6 +3217,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          }
       }
 
+      unsigned level = zb->base.u.tex.level;
+
       if (sctx->chip_class >= GFX10) {
          radeon_set_context_reg(cs, R_028014_DB_HTILE_DATA_BASE, zb->db_htile_data_base);
          radeon_set_context_reg(cs, R_02801C_DB_DEPTH_SIZE_XY, zb->db_depth_size);
@@ -3224,7 +3226,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_set_context_reg_seq(cs, R_02803C_DB_DEPTH_INFO, 7);
          radeon_emit(cs, S_02803C_RESOURCE_LEVEL(1)); /* DB_DEPTH_INFO */
          radeon_emit(cs, db_z_info |                  /* DB_Z_INFO */
-                            S_028038_ZRANGE_PRECISION(tex->depth_clear_value != 0));
+                            S_028038_ZRANGE_PRECISION(tex->depth_clear_value[level] != 0));
          radeon_emit(cs, db_stencil_info);     /* DB_STENCIL_INFO */
          radeon_emit(cs, zb->db_depth_base);   /* DB_Z_READ_BASE */
          radeon_emit(cs, zb->db_stencil_base); /* DB_STENCIL_READ_BASE */
@@ -3246,7 +3248,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
 
          radeon_set_context_reg_seq(cs, R_028038_DB_Z_INFO, 10);
          radeon_emit(cs, db_z_info |                                   /* DB_Z_INFO */
-                            S_028038_ZRANGE_PRECISION(tex->depth_clear_value != 0));
+                            S_028038_ZRANGE_PRECISION(tex->depth_clear_value[level] != 0));
          radeon_emit(cs, db_stencil_info);                             /* DB_STENCIL_INFO */
          radeon_emit(cs, zb->db_depth_base);                           /* DB_Z_READ_BASE */
          radeon_emit(cs, S_028044_BASE_HI(zb->db_depth_base >> 32));   /* DB_Z_READ_BASE_HI */
@@ -3292,7 +3294,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_emit(cs, zb->db_depth_info |   /* DB_DEPTH_INFO */
                      S_02803C_ADDR5_SWIZZLE_MASK(!tex->tc_compatible_htile));
          radeon_emit(cs, db_z_info |           /* DB_Z_INFO */
-                            S_028040_ZRANGE_PRECISION(tex->depth_clear_value != 0));
+                            S_028040_ZRANGE_PRECISION(tex->depth_clear_value[level] != 0));
          radeon_emit(cs, db_stencil_info);     /* DB_STENCIL_INFO */
          radeon_emit(cs, zb->db_depth_base);   /* DB_Z_READ_BASE */
          radeon_emit(cs, zb->db_stencil_base); /* DB_STENCIL_READ_BASE */
@@ -3303,8 +3305,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
       }
 
       radeon_set_context_reg_seq(cs, R_028028_DB_STENCIL_CLEAR, 2);
-      radeon_emit(cs, tex->stencil_clear_value);    /* R_028028_DB_STENCIL_CLEAR */
-      radeon_emit(cs, fui(tex->depth_clear_value)); /* R_02802C_DB_DEPTH_CLEAR */
+      radeon_emit(cs, tex->stencil_clear_value[level]);    /* R_028028_DB_STENCIL_CLEAR */
+      radeon_emit(cs, fui(tex->depth_clear_value[level])); /* R_02802C_DB_DEPTH_CLEAR */
 
       radeon_set_context_reg(cs, R_028008_DB_DEPTH_VIEW, zb->db_depth_view);
       radeon_set_context_reg(cs, R_028ABC_DB_HTILE_SURFACE, db_htile_surface);

@@ -482,14 +482,14 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    memcpy(tex->color_clear_value, new_tex->color_clear_value, sizeof(tex->color_clear_value));
    tex->last_msaa_resolve_target_micro_mode = new_tex->last_msaa_resolve_target_micro_mode;
 
-   tex->depth_clear_value = new_tex->depth_clear_value;
+   memcpy(tex->depth_clear_value, new_tex->depth_clear_value, sizeof(tex->depth_clear_value));
    tex->dirty_level_mask = new_tex->dirty_level_mask;
    tex->stencil_dirty_level_mask = new_tex->stencil_dirty_level_mask;
    tex->db_render_format = new_tex->db_render_format;
-   tex->stencil_clear_value = new_tex->stencil_clear_value;
+   memcpy(tex->stencil_clear_value, new_tex->stencil_clear_value, sizeof(tex->stencil_clear_value));
    tex->tc_compatible_htile = new_tex->tc_compatible_htile;
-   tex->depth_cleared = new_tex->depth_cleared;
-   tex->stencil_cleared = new_tex->stencil_cleared;
+   tex->depth_cleared_level_mask = new_tex->depth_cleared_level_mask;
+   tex->stencil_cleared_level_mask = new_tex->stencil_cleared_level_mask;
    tex->upgraded_depth = new_tex->upgraded_depth;
    tex->db_compatible = new_tex->db_compatible;
    tex->can_sample_z = new_tex->can_sample_z;
@@ -938,7 +938,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    /* Use 1.0 as the default clear value to get optimal ZRANGE_PRECISION if we don't
     * get a fast clear.
     */
-   tex->depth_clear_value = 1.0;
+   for (unsigned i = 0; i < ARRAY_SIZE(tex->depth_clear_value); i++)
+      tex->depth_clear_value[i] = 1.0;
 
    /* On GFX8, HTILE uses different tiling depending on the TC_COMPATIBLE_HTILE
     * setting, so we have to enable it if we enabled it at allocation.

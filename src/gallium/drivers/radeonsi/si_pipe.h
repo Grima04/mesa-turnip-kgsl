@@ -367,17 +367,17 @@ struct si_texture {
    unsigned num_planes;
 
    /* Depth buffer compression and fast clear. */
-   float depth_clear_value;
+   float depth_clear_value[RADEON_SURF_MAX_LEVELS];
+   uint8_t stencil_clear_value[RADEON_SURF_MAX_LEVELS];
+   uint16_t depth_cleared_level_mask;   /* if it was cleared at least once */
+   uint16_t stencil_cleared_level_mask; /* if it was cleared at least once */
    uint16_t dirty_level_mask;         /* each bit says if that mipmap is compressed */
    uint16_t stencil_dirty_level_mask; /* each bit says if that mipmap is compressed */
    enum pipe_format db_render_format : 16;
-   uint8_t stencil_clear_value;
    bool fmask_is_identity : 1;
    bool tc_compatible_htile : 1;
    bool enable_tc_compatible_htile_next_clear : 1;
    bool htile_stencil_disabled : 1;
-   bool depth_cleared : 1;   /* if it was cleared at least once */
-   bool stencil_cleared : 1; /* if it was cleared at least once */
    bool upgraded_depth : 1;  /* upgraded from unorm to Z32_FLOAT */
    bool is_depth : 1;
    bool db_compatible : 1;

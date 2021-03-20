@@ -714,13 +714,13 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
    }
 
    if (zstex && zsbuf->u.tex.first_layer == 0 &&
-       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0) &&
-       /* TODO: enable fast clear for other mipmap levels */
-       zsbuf->u.tex.level == 0) {
+       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0)) {
+      unsigned level = zsbuf->u.tex.level;
+
       /* See whether we should enable TC-compatible HTILE. */
       if (zstex->enable_tc_compatible_htile_next_clear &&
           !zstex->tc_compatible_htile &&
-          si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_ZS) &&
+          si_htile_enabled(zstex, level, PIPE_MASK_ZS) &&
           /* If both depth and stencil are present, they must be cleared together. */
           ((buffers & PIPE_CLEAR_DEPTHSTENCIL) == PIPE_CLEAR_DEPTHSTENCIL ||
            (buffers & PIPE_CLEAR_DEPTH && (!zstex->surface.has_stencil ||
@@ -758,22 +758,23 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
       }
 
       /* TC-compatible HTILE only supports depth clears to 0 or 1. */
-      if (buffers & PIPE_CLEAR_DEPTH && si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_Z) &&
+      if (buffers & PIPE_CLEAR_DEPTH && si_htile_enabled(zstex, level, PIPE_MASK_Z) &&
           (!zstex->tc_compatible_htile || depth == 0 || depth == 1)) {
          /* Need to disable EXPCLEAR temporarily if clearing
           * to a new value. */
-         if (!zstex->depth_cleared || zstex->depth_clear_value != depth) {
+         if (!(zstex->depth_cleared_level_mask & BITFIELD_BIT(level)) ||
+             zstex->depth_clear_value[level] != depth) {
             sctx->db_depth_disable_expclear = true;
          }
 
-         if (zstex->depth_clear_value != (float)depth) {
-            if ((zstex->depth_clear_value != 0) != (depth != 0)) {
+         if (zstex->depth_clear_value[level] != (float)depth) {
+            if ((zstex->depth_clear_value[level] != 0) != (depth != 0)) {
                /* ZRANGE_PRECISION register of a bound surface will change so we
                 * must flush the DB caches. */
                needs_db_flush = true;
             }
             /* Update DB_DEPTH_CLEAR. */
-            zstex->depth_clear_value = depth;
+            zstex->depth_clear_value[level] = depth;
             sctx->framebuffer.dirty_zsbuf = true;
             si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
          }
@@ -783,19 +784,20 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
 
       /* TC-compatible HTILE only supports stencil clears to 0. */
       if (buffers & PIPE_CLEAR_STENCIL &&
-          si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_S) &&
+          si_htile_enabled(zstex, level, PIPE_MASK_S) &&
           (!zstex->tc_compatible_htile || stencil == 0)) {
          stencil &= 0xff;
 
          /* Need to disable EXPCLEAR temporarily if clearing
           * to a new value. */
-         if (!zstex->stencil_cleared || zstex->stencil_clear_value != stencil) {
+         if (!(zstex->stencil_cleared_level_mask & BITFIELD_BIT(level)) ||
+             zstex->stencil_clear_value[level] != stencil) {
             sctx->db_stencil_disable_expclear = true;
          }
 
-         if (zstex->stencil_clear_value != (uint8_t)stencil) {
+         if (zstex->stencil_clear_value[level] != (uint8_t)stencil) {
             /* Update DB_STENCIL_CLEAR. */
-            zstex->stencil_clear_value = stencil;
+            zstex->stencil_clear_value[level] = stencil;
             sctx->framebuffer.dirty_zsbuf = true;
             si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
          }
@@ -822,14 +824,14 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
    if (sctx->db_depth_clear) {
       sctx->db_depth_clear = false;
       sctx->db_depth_disable_expclear = false;
-      zstex->depth_cleared = true;
+      zstex->depth_cleared_level_mask |= BITFIELD_BIT(zsbuf->u.tex.level);
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
    }
 
    if (sctx->db_stencil_clear) {
       sctx->db_stencil_clear = false;
       sctx->db_stencil_disable_expclear = false;
-      zstex->stencil_cleared = true;
+      zstex->stencil_cleared_level_mask |= BITFIELD_BIT(zsbuf->u.tex.level);
       si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
    }
 }
