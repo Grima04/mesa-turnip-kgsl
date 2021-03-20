@@ -1035,6 +1035,7 @@ meson-mingw32-x86_64:
     GALLIUM_DRIVERS: "swrast"
     EXTRA_OPTION: >
       -Dllvm=disabled
+      -Dzlib=disabled
       -Dosmesa=true
       --cross-file=.gitlab-ci/x86_64-w64-mingw32
 
