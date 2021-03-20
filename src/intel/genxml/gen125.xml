@@ -1409,7 +1409,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Pointer to DS Binding Table" start="37" end="47" type="offset"/>
+    <field name="Pointer to DS Binding Table" start="37" end="52" type="offset"/>
   </instruction>
 
   <instruction name="3DSTATE_BINDING_TABLE_POINTERS_GS" bias="2" length="2" engine="render">
@@ -1418,7 +1418,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Pointer to GS Binding Table" start="37" end="47" type="offset"/>
+    <field name="Pointer to GS Binding Table" start="37" end="52" type="offset"/>
   </instruction>
 
   <instruction name="3DSTATE_BINDING_TABLE_POINTERS_HS" bias="2" length="2" engine="render">
@@ -1427,7 +1427,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Pointer to HS Binding Table" start="37" end="47" type="offset"/>
+    <field name="Pointer to HS Binding Table" start="37" end="52" type="offset"/>
   </instruction>
 
   <instruction name="3DSTATE_BINDING_TABLE_POINTERS_PS" bias="2" length="2" engine="render">
@@ -1436,7 +1436,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Pointer to PS Binding Table" start="37" end="47" type="offset"/>
+    <field name="Pointer to PS Binding Table" start="37" end="52" type="offset"/>
   </instruction>
 
   <instruction name="3DSTATE_BINDING_TABLE_POINTERS_VS" bias="2" length="2" engine="render">
@@ -1445,7 +1445,7 @@
     <field name="3D Command Opcode" start="24" end="26" type="uint" default="0"/>
     <field name="Command SubType" start="27" end="28" type="uint" default="3"/>
     <field name="Command Type" start="29" end="31" type="uint" default="3"/>
-    <field name="Pointer to VS Binding Table" start="37" end="47" type="offset"/>
+    <field name="Pointer to VS Binding Table" start="37" end="52" type="offset"/>
   </instruction>
 
   <instruction name="3DSTATE_BINDING_TABLE_POOL_ALLOC" bias="2" length="4" engine="render">
