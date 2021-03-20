@@ -734,7 +734,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
        */
       uint32_t clear_value = 0;
       si_clear_buffer(sctx, sctx->null_const_buf.buffer, 0, sctx->null_const_buf.buffer->width0,
-                      &clear_value, 4, SI_OP_SYNC_BEFORE_AFTER, SI_COHERENCY_SHADER,
+                      &clear_value, 4, SI_OP_SYNC_AFTER, SI_COHERENCY_SHADER,
                       SI_CP_DMA_CLEAR_METHOD);
    }
 
