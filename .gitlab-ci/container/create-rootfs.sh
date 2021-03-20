@@ -57,6 +57,7 @@ apt-get -y install --no-install-recommends \
     python3-numpy \
     python3-packaging \
     python3-pil \
+    python3-renderdoc \
     python3-requests \
     python3-simplejson \
     python3-yaml \

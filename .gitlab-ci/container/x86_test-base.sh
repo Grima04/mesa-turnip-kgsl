@@ -29,14 +29,12 @@ apt-get install -y --no-remove \
       libllvm11 \
       libllvm9 \
       liblz4-1 \
-      libpcre32-3 \
       libpng16-16 \
       libpython3.9 \
       libvulkan1 \
       libwayland-client0 \
       libwayland-server0 \
       libxcb-ewmh2 \
-      libxcb-keysyms1 \
       libxcb-randr0 \
       libxcb-xfixes0 \
       libxkbcommon0 \
@@ -50,8 +48,6 @@ apt-get install -y --no-remove \
       python3-requests \
       python3-six \
       python3-yaml \
-      qtbase5-dev \
-      qt5-qmake \
       vulkan-tools \
       waffle-utils \
       xauth \

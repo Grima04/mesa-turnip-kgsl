@@ -16,14 +16,12 @@ STABLE_EPHEMERAL=" \
       libclang-cpp11-dev \
       libgbm-dev \
       libgles2-mesa-dev \
-      libpcre3-dev \
       libpciaccess-dev \
       libudev-dev \
       libvulkan-dev \
       libwaffle-dev \
       libwayland-dev \
       libx11-xcb-dev \
-      libxcb-keysyms1-dev \
       libxkbcommon-dev \
       libxrender-dev \
       llvm-11-dev \
@@ -33,7 +31,6 @@ STABLE_EPHEMERAL=" \
       patch \
       pkg-config \
       python3-distutils \
-      python3-dev \
       wget \
       xz-utils \
       "
@@ -44,9 +41,11 @@ apt-get install -y --no-remove \
       clinfo \
       libclang-common-11-dev \
       libclang-cpp11 \
+      libegl1 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
       python3-lxml \
+      python3-renderdoc \
       python3-simplejson
 
 
@@ -82,9 +81,6 @@ rm -rf /root/.rustup /root/.cargo
 
 DEQP_TARGET=surfaceless . .gitlab-ci/container/build-deqp.sh
 
-############### Build renderdoc
-
-. .gitlab-ci/container/build-renderdoc.sh
 
 ############### Uninstall the build software
 

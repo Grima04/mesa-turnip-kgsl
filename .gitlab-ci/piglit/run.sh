@@ -57,10 +57,6 @@ else
     ### GL/ES ###
 
     if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
-        # Set environment for renderdoc libraries.
-        export PYTHONPATH="$PYTHONPATH:/renderdoc/build/lib"
-        export __LD_LIBRARY_PATH="$__LD_LIBRARY_PATH:/renderdoc/build/lib"
-
         # Set environment for apitrace executable.
         export PATH="/apitrace/build:$PATH"
 

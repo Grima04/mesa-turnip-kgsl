@@ -397,7 +397,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2021-03-22-bullseye"
+    MESA_IMAGE_TAG: &x86_test-base "2021-03-31-librenderdoc"
 
 .use-x86_test-base:
   extends:
@@ -413,13 +413,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-bullseye"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-librenderdoc"
 
 # Debian 11 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-04-14-bullseye"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-04-14-librenderdoc"
 
 # Debian 11 based ARM build image
 arm_build:
@@ -448,7 +448,7 @@ kernel+rootfs_arm64-baremetal:
   variables:
     DEBIAN_ARCH: "arm64"
     KERNEL_URL: "https://github.com/anholt/linux/archive/mesa-ci-2021-04-01-5.11.tar.gz"
-    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-14-bullseye"
+    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-14-librenderdoc"
     MINIO_SUFFIX: "baremetal"
 
 # Kernel & rootfs for armhf baremetal testing
@@ -474,7 +474,7 @@ arm_test:
     FDO_DISTRIBUTION_EXEC: 'env ARTIFACTS_PREFIX=https://${MINIO_HOST}/mesa-lava ARTIFACTS_SUFFIX=baremetal/${MESA_ROOTFS_TAG}--${MESA_ARM_BUILD_TAG}--${MESA_TEMPLATES_COMMIT} CI_PROJECT_PATH=${CI_PROJECT_PATH} FDO_CI_CONCURRENT=${FDO_CI_CONCURRENT} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} bash .gitlab-ci/container/${CI_JOB_NAME}.sh'
     FDO_DISTRIBUTION_TAG: "${MESA_IMAGE_TAG}--${MESA_ROOTFS_TAG}--${MESA_ARM_BUILD_TAG}--${MESA_TEMPLATES_COMMIT}"
     MESA_ARM_BUILD_TAG: *arm_build
-    MESA_IMAGE_TAG: &arm_test "2021-04-14-bullseye"
+    MESA_IMAGE_TAG: &arm_test "2021-04-14-librenderdoc"
     MESA_ROOTFS_TAG: *arm-baremetal
 
 .use-arm_test:
