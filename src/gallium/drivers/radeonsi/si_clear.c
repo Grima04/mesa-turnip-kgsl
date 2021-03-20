@@ -77,24 +77,28 @@ void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
       sctx->flags |= SI_CONTEXT_WB_L2;
 }
 
-static void si_alloc_separate_cmask(struct si_screen *sscreen, struct si_texture *tex)
+static bool si_alloc_separate_cmask(struct si_screen *sscreen, struct si_texture *tex)
 {
    /* CMASK for MSAA is allocated in advance or always disabled
     * by "nofmask" option.
     */
-   if (tex->cmask_buffer || !tex->surface.cmask_size || tex->buffer.b.b.nr_samples >= 2)
-      return;
+   if (tex->cmask_buffer)
+      return true;
+
+   if (!tex->surface.cmask_size)
+      return false;
 
    tex->cmask_buffer =
       si_aligned_buffer_create(&sscreen->b, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT,
                                tex->surface.cmask_size, tex->surface.cmask_alignment);
    if (tex->cmask_buffer == NULL)
-      return;
+      return false;
 
    tex->cmask_base_address_reg = tex->cmask_buffer->gpu_address >> 8;
    tex->cb_color_info |= S_028C70_FAST_CLEAR(1);
 
    p_atomic_inc(&sscreen->compressed_colortex_counter);
+   return true;
 }
 
 static bool si_set_clear_color(struct si_texture *tex, enum pipe_format surface_format,
@@ -576,8 +580,7 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
             continue;
 
          /* ensure CMASK is enabled */
-         si_alloc_separate_cmask(sctx->screen, tex);
-         if (!tex->cmask_buffer)
+         if (!si_alloc_separate_cmask(sctx->screen, tex))
             continue;
 
          /* Do the fast clear. */
