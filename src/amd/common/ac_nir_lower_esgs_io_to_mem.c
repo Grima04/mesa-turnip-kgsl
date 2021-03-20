@@ -95,7 +95,7 @@ emit_split_buffer_store(nir_builder *b, nir_ssa_def *d, nir_ssa_def *desc, nir_s
          unsigned store_bytes = MIN2(bytes, 4u);
          if ((start_byte % 4) == 1 || (start_byte % 4) == 3)
             store_bytes = MIN2(store_bytes, 1);
-         else if ((start_byte % 2) == 2)
+         else if ((start_byte % 4) == 2)
             store_bytes = MIN2(store_bytes, 2);
 
          nir_ssa_def *store_val = nir_extract_bits(b, &d, 1, start_byte * 8u, 1, store_bytes * 8u);
