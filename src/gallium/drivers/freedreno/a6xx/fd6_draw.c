@@ -224,6 +224,10 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 	if (emit.vs->need_driver_params || fd6_ctx->has_dp_state)
 		emit.dirty_groups |= BIT(FD6_GROUP_VS_DRIVER_PARAMS);
 
+	/* If we are doing xfb, we need to emit the xfb state on every draw: */
+	if (emit.prog->stream_output)
+		emit.dirty_groups |= BIT(FD6_GROUP_SO);
+
 	if (unlikely(ctx->stats_users > 0)) {
 		ctx->stats.vs_regs += ir3_shader_halfregs(emit.vs);
 		ctx->stats.hs_regs += COND(emit.hs, ir3_shader_halfregs(emit.hs));

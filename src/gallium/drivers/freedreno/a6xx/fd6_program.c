@@ -1094,6 +1094,11 @@ fd6_program_create(void *data, struct ir3_shader_variant *bs,
 	setup_stateobj(state->stateobj, ctx, state, key, false);
 	state->interp_stateobj = create_interp_stateobj(ctx, state);
 
+	struct ir3_stream_output_info *stream_output =
+			&fd6_last_shader(state)->shader->stream_output;
+	if (stream_output->num_outputs > 0)
+		state->stream_output = stream_output;
+
 	return &state->base;
 }
 

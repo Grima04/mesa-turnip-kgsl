@@ -890,12 +890,12 @@ fd6_emit_streamout(struct fd_ringbuffer *ring, struct fd6_emit *emit)
 {
 	struct fd_context *ctx = emit->ctx;
 	const struct fd6_program_state *prog = fd6_emit_get_prog(emit);
-	struct ir3_stream_output_info *info = &fd6_last_shader(prog)->shader->stream_output;
+	struct ir3_stream_output_info *info = prog->stream_output;;
 	struct fd_streamout_stateobj *so = &ctx->streamout;
 
 	emit->streamout_mask = 0;
 
-	if (!info->num_outputs)
+	if (!info)
 		return;
 
 	for (unsigned i = 0; i < so->num_targets; i++) {
