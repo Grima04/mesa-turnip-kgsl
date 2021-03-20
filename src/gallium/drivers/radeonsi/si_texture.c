@@ -1009,10 +1009,17 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
          resource->flags = sscreen->ws->buffer_get_flags(resource->buf);
    }
 
+   /* Prepare metadata clears.  */
+   struct si_clear_info clears[4];
+   unsigned num_clears = 0;
+   bool aux_ctx_locked_with_copy = false;
+
    if (tex->cmask_buffer) {
       /* Initialize the cmask to 0xCC (= compressed state). */
-      si_screen_clear_buffer(sscreen, &tex->cmask_buffer->b.b, tex->surface.cmask_offset,
-                             tex->surface.cmask_size, 0xCCCCCCCC, SI_OP_SYNC_AFTER);
+      assert(num_clears < ARRAY_SIZE(clears));
+      si_init_buffer_clear(&clears[num_clears++], &tex->cmask_buffer->b.b,
+                           tex->surface.cmask_offset, tex->surface.cmask_size,
+                           0xCCCCCCCC);
    }
    if (tex->surface.htile_offset) {
       uint32_t clear_value = 0;
@@ -1020,8 +1027,9 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       if (sscreen->info.chip_class >= GFX9 || tex->tc_compatible_htile)
          clear_value = 0x0000030F;
 
-      si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.htile_offset,
-                             tex->surface.htile_size, clear_value, SI_OP_SYNC_AFTER);
+      assert(num_clears < ARRAY_SIZE(clears));
+      si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.htile_offset,
+                           tex->surface.htile_size, clear_value);
    }
 
    /* Initialize DCC only if the texture is not being imported. */
@@ -1034,18 +1042,21 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       if (tex->surface.num_dcc_levels == tex->buffer.b.b.last_level + 1 &&
           tex->buffer.b.b.nr_samples <= 2) {
          /* Simple case - all tiles have DCC enabled. */
-         si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.dcc_offset,
-                                tex->surface.dcc_size, DCC_CLEAR_COLOR_0000, SI_OP_SYNC_AFTER);
+         assert(num_clears < ARRAY_SIZE(clears));
+         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset,
+                              tex->surface.dcc_size, DCC_CLEAR_COLOR_0000);
       } else if (sscreen->info.chip_class >= GFX9) {
          /* Clear to uncompressed. Clearing this to black is complicated. */
-         si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.dcc_offset,
-                                tex->surface.dcc_size, DCC_UNCOMPRESSED, SI_OP_SYNC_AFTER);
+         assert(num_clears < ARRAY_SIZE(clears));
+         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset,
+                              tex->surface.dcc_size, DCC_UNCOMPRESSED);
       } else {
          /* GFX8: Initialize mipmap levels and multisamples separately. */
          if (tex->buffer.b.b.nr_samples >= 2) {
             /* Clearing this to black is complicated. */
-            si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.dcc_offset,
-                                   tex->surface.dcc_size, DCC_UNCOMPRESSED, SI_OP_SYNC_AFTER);
+            assert(num_clears < ARRAY_SIZE(clears));
+            si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset,
+                                 tex->surface.dcc_size, DCC_UNCOMPRESSED);
          } else {
             /* Clear the enabled mipmap levels to black. */
             unsigned size = 0;
@@ -1060,13 +1071,15 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
 
             /* Mipmap levels with DCC. */
             if (size) {
-               si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.dcc_offset, size,
-                                      DCC_CLEAR_COLOR_0000, SI_OP_SYNC_AFTER);
+               assert(num_clears < ARRAY_SIZE(clears));
+               si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset, size,
+                                    DCC_CLEAR_COLOR_0000);
             }
             /* Mipmap levels without DCC. */
             if (size != tex->surface.dcc_size) {
-               si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.dcc_offset + size,
-                                      tex->surface.dcc_size - size, DCC_UNCOMPRESSED, SI_OP_SYNC_AFTER);
+               assert(num_clears < ARRAY_SIZE(clears));
+               si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset + size,
+                                    tex->surface.dcc_size - size, DCC_UNCOMPRESSED);
             }
          }
       }
@@ -1077,8 +1090,9 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       if (!(surface->flags & RADEON_SURF_IMPORTED)) {
          /* Uninitialized DCC can hang the display hw.
           * Clear to white to indicate that. */
-         si_screen_clear_buffer(sscreen, &tex->buffer.b.b, tex->surface.display_dcc_offset,
-                                tex->surface.u.gfx9.display_dcc_size, DCC_CLEAR_COLOR_1111, SI_OP_SYNC_AFTER);
+         assert(num_clears < ARRAY_SIZE(clears));
+         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.display_dcc_offset,
+                              tex->surface.u.gfx9.display_dcc_size, DCC_CLEAR_COLOR_1111);
       }
 
       /* Upload the DCC retile map.
@@ -1106,10 +1120,23 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       simple_mtx_lock(&sscreen->aux_context_lock);
       si_copy_buffer(sctx, &tex->dcc_retile_buffer->b.b, &buf->b.b, 0,
                      0, buf->b.b.width0, SI_OP_SYNC_AFTER);
-      sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
-      simple_mtx_unlock(&sscreen->aux_context_lock);
+      aux_ctx_locked_with_copy = true;
 
       si_resource_reference(&buf, NULL);
+   }
+
+   /* Execute the clears. */
+   if (num_clears) {
+      if (!aux_ctx_locked_with_copy)
+         simple_mtx_lock(&sscreen->aux_context_lock);
+
+      si_execute_clears((struct si_context *)sscreen->aux_context,
+                        clears, num_clears, 0);
+   }
+
+   if (num_clears || aux_ctx_locked_with_copy) {
+      sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
+      simple_mtx_unlock(&sscreen->aux_context_lock);
    }
 
    /* Initialize the CMASK base register value. */

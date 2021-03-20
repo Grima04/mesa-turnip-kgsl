@@ -34,9 +34,9 @@ enum
    SI_CLEAR_SURFACE = SI_SAVE_FRAMEBUFFER | SI_SAVE_FRAGMENT_STATE,
 };
 
-static void si_init_buffer_clear(struct si_clear_info *info,
-                                 struct pipe_resource *resource, uint64_t offset,
-                                 uint32_t size, uint32_t clear_value)
+void si_init_buffer_clear(struct si_clear_info *info,
+                          struct pipe_resource *resource, uint64_t offset,
+                          uint32_t size, uint32_t clear_value)
 {
    info->resource = resource;
    info->offset = offset;

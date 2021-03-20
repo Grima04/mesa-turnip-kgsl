@@ -1373,6 +1373,9 @@ enum pipe_format si_simplify_cb_format(enum pipe_format format);
 bool vi_alpha_is_on_msb(struct si_screen *sscreen, enum pipe_format format);
 bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsigned level,
                            unsigned clear_value, struct si_clear_info *out);
+void si_init_buffer_clear(struct si_clear_info *info,
+                          struct pipe_resource *resource, uint64_t offset,
+                          uint32_t size, uint32_t clear_value);
 void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
                        unsigned num_clears, unsigned types);
 void si_init_clear_functions(struct si_context *sctx);
