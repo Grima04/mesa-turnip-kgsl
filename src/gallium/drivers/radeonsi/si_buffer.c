@@ -213,7 +213,7 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
    }
 
    if (res->b.b.flags & SI_RESOURCE_FLAG_CLEAR)
-      si_screen_clear_buffer(sscreen, &res->b.b, 0, res->bo_size, 0);
+      si_screen_clear_buffer(sscreen, &res->b.b, 0, res->bo_size, 0, SI_OP_SYNC_BEFORE_AFTER);
 
    return true;
 }
@@ -447,7 +447,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
       if (staging) {
          /* Copy the VRAM buffer to the staging buffer. */
          si_copy_buffer(sctx, &staging->b.b, resource, box->x % SI_MAP_BUFFER_ALIGNMENT,
-                        box->x, box->width);
+                        box->x, box->width, SI_OP_SYNC_BEFORE_AFTER);
 
          data = si_buffer_map(sctx, staging, usage & ~PIPE_MAP_UNSYNCHRONIZED);
          if (!data) {
@@ -484,7 +484,7 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx, struct pipe_tran
 
       /* Copy the staging buffer into the original one. */
       si_copy_buffer(sctx, transfer->resource, &stransfer->staging->b.b, box->x, src_offset,
-                     box->width);
+                     box->width, SI_OP_SYNC_BEFORE_AFTER);
    }
 
    util_range_add(&buf->b.b, &buf->valid_buffer_range, box->x, box->x + box->width);

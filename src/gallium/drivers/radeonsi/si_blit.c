@@ -876,7 +876,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
 
    /* Handle buffers first. */
    if (dst->target == PIPE_BUFFER && src->target == PIPE_BUFFER) {
-      si_copy_buffer(sctx, dst, src, dstx, src_box->x, src_box->width);
+      si_copy_buffer(sctx, dst, src, dstx, src_box->x, src_box->width, SI_OP_SYNC_BEFORE_AFTER);
       return;
    }
 
@@ -889,7 +889,7 @@ void si_resource_copy_region(struct pipe_context *ctx, struct pipe_resource *dst
        !(dst->target != src->target &&
          (src->target == PIPE_TEXTURE_1D_ARRAY || dst->target == PIPE_TEXTURE_1D_ARRAY))) {
       si_compute_copy_image(sctx, dst, dst_level, src, src_level, dstx, dsty, dstz,
-                            src_box, false);
+                            src_box, false, SI_OP_SYNC_BEFORE_AFTER);
       return;
    }
 
@@ -1334,7 +1334,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
                   u_minify(ptex->height0, level),
                   util_num_layers(ptex, level), &box);
          si_compute_copy_image(sctx, ptex, level, ptex, level, 0, 0, 0, &box,
-                               true);
+                               true, SI_OP_SYNC_BEFORE_AFTER);
       }
 
       /* Now clear DCC metadata to uncompressed.
@@ -1346,7 +1346,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
        */
       uint32_t clear_value = DCC_UNCOMPRESSED;
       si_clear_buffer(sctx, ptex, tex->surface.dcc_offset,
-                      tex->surface.dcc_size, &clear_value, 4,
+                      tex->surface.dcc_size, &clear_value, 4, SI_OP_SYNC_BEFORE_AFTER,
                       SI_COHERENCY_CB_META, SI_COMPUTE_CLEAR_METHOD);
    }
 }

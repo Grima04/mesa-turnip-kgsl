@@ -115,7 +115,8 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
 
 static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe_resource *dst,
                                             unsigned dst_offset, unsigned size,
-                                            const uint32_t *clear_value, enum si_coherency coher)
+                                            const uint32_t *clear_value, unsigned flags,
+                                            enum si_coherency coher)
 {
    struct pipe_context *ctx = &sctx->b;
 
@@ -166,7 +167,7 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    info.grid[1] = 1;
    info.grid[2] = 1;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER);
+   si_launch_grid_internal(sctx, &info, saved_cs, flags);
 
    ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
    ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, true, &saved_cb);
@@ -178,7 +179,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
                                         unsigned dst_offset, struct pipe_resource *src,
                                         unsigned src_offset, unsigned size,
                                         const uint32_t *clear_value, unsigned clear_value_size,
-                                        enum si_coherency coher)
+                                        unsigned flags, enum si_coherency coher)
 {
    struct pipe_context *ctx = &sctx->b;
 
@@ -260,7 +261,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
       ctx->bind_compute_state(ctx, sctx->cs_clear_buffer);
    }
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER);
+   si_launch_grid_internal(sctx, &info, saved_cs, flags);
 
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
    sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
@@ -274,8 +275,9 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
       pipe_resource_reference(&saved_sb[i].buffer, NULL);
 }
 
-void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_t offset,
-                     uint64_t size, uint32_t *clear_value, uint32_t clear_value_size,
+void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
+                     uint64_t offset, uint64_t size, uint32_t *clear_value,
+                     uint32_t clear_value_size, unsigned flags,
                      enum si_coherency coher, enum si_clear_method method)
 {
    if (!size)
@@ -319,7 +321,7 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_
    }
 
    if (clear_value_size == 12) {
-      si_compute_clear_12bytes_buffer(sctx, dst, offset, size, clear_value, coher);
+      si_compute_clear_12bytes_buffer(sctx, dst, offset, size, clear_value, flags, coher);
       return;
    }
 
@@ -355,12 +357,11 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_
       }
       if (method == SI_COMPUTE_CLEAR_METHOD) {
          si_compute_do_clear_or_copy(sctx, dst, offset, NULL, 0, aligned_size, clear_value,
-                                     clear_value_size, coher);
+                                     clear_value_size, flags, coher);
       } else {
          assert(clear_value_size == 4);
          si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, dst, offset, aligned_size, *clear_value,
-                                SI_OP_SYNC_BEFORE_AFTER, coher,
-                                get_cache_policy(sctx, coher, size));
+                                flags, coher, get_cache_policy(sctx, coher, size));
       }
 
       offset += aligned_size;
@@ -378,13 +379,13 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_
 }
 
 void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
-                            uint64_t size, unsigned value)
+                            uint64_t size, unsigned value, unsigned flags)
 {
    struct si_context *ctx = (struct si_context *)sscreen->aux_context;
 
    simple_mtx_lock(&sscreen->aux_context_lock);
-   si_clear_buffer(ctx, dst, offset, size, &value, 4, SI_COHERENCY_SHADER,
-                   SI_AUTO_SELECT_CLEAR_METHOD);
+   si_clear_buffer(ctx, dst, offset, size, &value, 4, flags,
+                   SI_COHERENCY_SHADER, SI_AUTO_SELECT_CLEAR_METHOD);
    sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
    simple_mtx_unlock(&sscreen->aux_context_lock);
 }
@@ -394,11 +395,12 @@ static void si_pipe_clear_buffer(struct pipe_context *ctx, struct pipe_resource 
                                  int clear_value_size)
 {
    si_clear_buffer((struct si_context *)ctx, dst, offset, size, (uint32_t *)clear_value,
-                   clear_value_size, SI_COHERENCY_SHADER, SI_AUTO_SELECT_CLEAR_METHOD);
+                   clear_value_size, SI_OP_SYNC_BEFORE_AFTER, SI_COHERENCY_SHADER,
+                   SI_AUTO_SELECT_CLEAR_METHOD);
 }
 
 void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct pipe_resource *src,
-                    uint64_t dst_offset, uint64_t src_offset, unsigned size)
+                    uint64_t dst_offset, uint64_t src_offset, unsigned size, unsigned flags)
 {
    if (!size)
       return;
@@ -428,17 +430,18 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
    if (sctx->screen->info.has_dedicated_vram && si_resource(dst)->domains & RADEON_DOMAIN_VRAM &&
        si_resource(src)->domains & RADEON_DOMAIN_VRAM && size > compute_min_size &&
        dst_offset % 4 == 0 && src_offset % 4 == 0 && size % 4 == 0) {
-      si_compute_do_clear_or_copy(sctx, dst, dst_offset, src, src_offset, size, NULL, 0, coher);
+      si_compute_do_clear_or_copy(sctx, dst, dst_offset, src, src_offset, size, NULL, 0,
+                                  flags, coher);
    } else {
       si_cp_dma_copy_buffer(sctx, dst, src, dst_offset, src_offset, size,
-                            SI_OP_SYNC_BEFORE_AFTER, coher, cache_policy);
+                            flags, coher, cache_policy);
    }
 }
 
 void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, unsigned dst_level,
                            struct pipe_resource *src, unsigned src_level, unsigned dstx,
                            unsigned dsty, unsigned dstz, const struct pipe_box *src_box,
-                           bool is_dcc_decompress)
+                           bool is_dcc_decompress, unsigned flags)
 {
    struct pipe_context *ctx = &sctx->b;
    unsigned width = src_box->width;
@@ -612,7 +615,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       info.grid[2] = depth;
    }
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER | SI_OP_CS_IMAGE);
+   si_launch_grid_internal(sctx, &info, saved_cs, flags | SI_OP_CS_IMAGE);
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, saved_image);
    for (int i = 0; i < 2; i++)
@@ -768,7 +771,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    struct si_texture *stex = (struct si_texture *)tex;
    si_clear_buffer(sctx, tex, stex->surface.fmask_offset, stex->surface.fmask_size,
                    (uint32_t *)&fmask_expand_values[log_fragments][log_samples - 1],
-                   log_fragments >= 2 && log_samples == 4 ? 8 : 4,
+                   log_fragments >= 2 && log_samples == 4 ? 8 : 4, SI_OP_SYNC_BEFORE_AFTER,
                    SI_COHERENCY_SHADER, SI_AUTO_SELECT_CLEAR_METHOD);
 }
 
