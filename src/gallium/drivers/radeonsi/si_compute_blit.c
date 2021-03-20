@@ -358,8 +358,9 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst, uint64_
                                      clear_value_size, coher);
       } else {
          assert(clear_value_size == 4);
-         si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, dst, offset, aligned_size, *clear_value, 0,
-                                coher, get_cache_policy(sctx, coher, size));
+         si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, dst, offset, aligned_size, *clear_value,
+                                SI_OP_SYNC_BEFORE_AFTER, coher,
+                                get_cache_policy(sctx, coher, size));
       }
 
       offset += aligned_size;
@@ -428,7 +429,8 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
        dst_offset % 4 == 0 && src_offset % 4 == 0 && size % 4 == 0) {
       si_compute_do_clear_or_copy(sctx, dst, dst_offset, src, src_offset, size, NULL, 0, coher);
    } else {
-      si_cp_dma_copy_buffer(sctx, dst, src, dst_offset, src_offset, size, 0, coher, cache_policy);
+      si_cp_dma_copy_buffer(sctx, dst, src, dst_offset, src_offset, size,
+                            SI_OP_SYNC_BEFORE_AFTER, coher, cache_policy);
    }
 }
 

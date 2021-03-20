@@ -1541,8 +1541,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
             unsigned offset = gds_offset + gds_size;
             si_cp_dma_clear_buffer(
                sctx, cs, NULL, offset, GDS_SIZE_UNORDERED - offset, 0,
-               SI_CPDMA_SKIP_CHECK_CS_SPACE | SI_CPDMA_SKIP_GFX_SYNC | SI_CPDMA_SKIP_SYNC_BEFORE,
-               SI_COHERENCY_NONE, L2_BYPASS);
+               SI_OP_CPDMA_SKIP_CHECK_CS_SPACE, SI_COHERENCY_NONE, L2_BYPASS);
          }
       }
       first_dispatch = false;

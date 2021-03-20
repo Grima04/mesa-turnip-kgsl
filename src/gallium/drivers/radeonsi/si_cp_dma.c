@@ -152,7 +152,7 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
    if (src)
       si_context_add_resource_size(sctx, src);
 
-   if (!(user_flags & SI_CPDMA_SKIP_CHECK_CS_SPACE))
+   if (!(user_flags & SI_OP_CPDMA_SKIP_CHECK_CS_SPACE))
       si_need_gfx_cs_space(sctx, 0);
 
    /* This must be done after need_cs_space. */
@@ -166,10 +166,10 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
    /* Flush the caches for the first copy only.
     * Also wait for the previous CP DMA operations.
     */
-   if (!(user_flags & SI_CPDMA_SKIP_GFX_SYNC) && sctx->flags)
+   if (*is_first && sctx->flags)
       sctx->emit_cache_flush(sctx, &sctx->gfx_cs);
 
-   if (!(user_flags & SI_CPDMA_SKIP_SYNC_BEFORE) && *is_first && !(*packet_flags & CP_DMA_CLEAR))
+   if (user_flags & SI_OP_SYNC_CPDMA_BEFORE && *is_first && !(*packet_flags & CP_DMA_CLEAR))
       *packet_flags |= CP_DMA_RAW_WAIT;
 
    *is_first = false;
@@ -177,7 +177,7 @@ static void si_cp_dma_prepare(struct si_context *sctx, struct pipe_resource *dst
    /* Do the synchronization after the last dma, so that all data
     * is written to memory.
     */
-   if (!(user_flags & SI_CPDMA_SKIP_SYNC_AFTER) && byte_count == remaining_size) {
+   if (user_flags & SI_OP_SYNC_AFTER && byte_count == remaining_size) {
       *packet_flags |= CP_DMA_SYNC;
 
       if (coher == SI_COHERENCY_SHADER)
@@ -196,16 +196,20 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
 
    assert(size && size % 4 == 0);
 
+   if (user_flags & SI_OP_SYNC_CS_BEFORE)
+      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+
+   if (user_flags & SI_OP_SYNC_PS_BEFORE)
+      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+
    /* Mark the buffer range of destination as valid (initialized),
     * so that transfer_map knows it should wait for the GPU when mapping
     * that range. */
-   if (sdst)
+   if (sdst) {
       util_range_add(dst, &sdst->valid_buffer_range, offset, offset + size);
 
-   /* Flush the caches. */
-   if (sdst && !(user_flags & SI_CPDMA_SKIP_GFX_SYNC)) {
-      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
-                     si_get_flush_flags(sctx, coher, cache_policy);
+      if (!(user_flags & SI_OP_CPDMA_SKIP_CACHE_FLUSH))
+         sctx->flags |= si_get_flush_flags(sctx, coher, cache_policy);
    }
 
    while (size) {
@@ -335,11 +339,14 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
       }
    }
 
-   /* Flush the caches. */
-   if ((dst || src) && !(user_flags & SI_CPDMA_SKIP_GFX_SYNC)) {
-      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
-                     si_get_flush_flags(sctx, coher, cache_policy);
-   }
+   if (user_flags & SI_OP_SYNC_CS_BEFORE)
+      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+
+   if (user_flags & SI_OP_SYNC_PS_BEFORE)
+      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+
+   if ((dst || src) && !(user_flags & SI_OP_CPDMA_SKIP_CACHE_FLUSH))
+         sctx->flags |= si_get_flush_flags(sctx, coher, cache_policy);
 
    /* This is the main part doing the copying. Src is always aligned. */
    main_dst_offset = dst_offset + skipped_size;
@@ -435,19 +442,21 @@ void si_test_gds(struct si_context *sctx)
 
    src = pipe_buffer_create(ctx->screen, 0, PIPE_USAGE_DEFAULT, 16);
    dst = pipe_buffer_create(ctx->screen, 0, PIPE_USAGE_DEFAULT, 16);
-   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 0, 4, 0xabcdef01, 0, SI_COHERENCY_SHADER,
-                          L2_BYPASS);
-   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 4, 4, 0x23456789, 0, SI_COHERENCY_SHADER,
-                          L2_BYPASS);
-   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 8, 4, 0x87654321, 0, SI_COHERENCY_SHADER,
-                          L2_BYPASS);
-   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 12, 4, 0xfedcba98, 0, SI_COHERENCY_SHADER,
-                          L2_BYPASS);
-   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, dst, 0, 16, 0xdeadbeef, 0, SI_COHERENCY_SHADER,
-                          L2_BYPASS);
+   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 0, 4, 0xabcdef01, SI_OP_SYNC_BEFORE_AFTER,
+                          SI_COHERENCY_SHADER, L2_BYPASS);
+   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 4, 4, 0x23456789, SI_OP_SYNC_BEFORE_AFTER,
+                          SI_COHERENCY_SHADER, L2_BYPASS);
+   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 8, 4, 0x87654321, SI_OP_SYNC_BEFORE_AFTER,
+                          SI_COHERENCY_SHADER, L2_BYPASS);
+   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, src, 12, 4, 0xfedcba98, SI_OP_SYNC_BEFORE_AFTER,
+                          SI_COHERENCY_SHADER, L2_BYPASS);
+   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, dst, 0, 16, 0xdeadbeef, SI_OP_SYNC_BEFORE_AFTER,
+                          SI_COHERENCY_SHADER, L2_BYPASS);
 
-   si_cp_dma_copy_buffer(sctx, NULL, src, offset, 0, 16, 0, SI_COHERENCY_NONE, L2_BYPASS);
-   si_cp_dma_copy_buffer(sctx, dst, NULL, 0, offset, 16, 0, SI_COHERENCY_NONE, L2_BYPASS);
+   si_cp_dma_copy_buffer(sctx, NULL, src, offset, 0, 16, SI_OP_SYNC_BEFORE_AFTER,
+                         SI_COHERENCY_NONE, L2_BYPASS);
+   si_cp_dma_copy_buffer(sctx, dst, NULL, 0, offset, 16, SI_OP_SYNC_BEFORE_AFTER,
+                         SI_COHERENCY_NONE, L2_BYPASS);
 
    pipe_buffer_read(ctx, dst, 0, sizeof(r), r);
    printf("GDS copy  = %08x %08x %08x %08x -> %s\n", r[0], r[1], r[2], r[3],
@@ -455,9 +464,10 @@ void si_test_gds(struct si_context *sctx)
              ? "pass"
              : "fail");
 
-   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, NULL, offset, 16, 0xc1ea4146, 0, SI_COHERENCY_NONE,
-                          L2_BYPASS);
-   si_cp_dma_copy_buffer(sctx, dst, NULL, 0, offset, 16, 0, SI_COHERENCY_NONE, L2_BYPASS);
+   si_cp_dma_clear_buffer(sctx, &sctx->gfx_cs, NULL, offset, 16, 0xc1ea4146,
+                          SI_OP_SYNC_BEFORE_AFTER, SI_COHERENCY_NONE, L2_BYPASS);
+   si_cp_dma_copy_buffer(sctx, dst, NULL, 0, offset, 16, SI_OP_SYNC_BEFORE_AFTER,
+                         SI_COHERENCY_NONE, L2_BYPASS);
 
    pipe_buffer_read(ctx, dst, 0, sizeof(r), r);
    printf("GDS clear = %08x %08x %08x %08x -> %s\n", r[0], r[1], r[2], r[3],

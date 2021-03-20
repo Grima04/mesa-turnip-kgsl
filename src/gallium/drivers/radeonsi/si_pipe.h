@@ -1363,11 +1363,14 @@ void si_init_clear_functions(struct si_context *sctx);
 /* si_compute_blit.c */
 #define SI_OP_SYNC_CS_BEFORE              (1 << 0)
 #define SI_OP_SYNC_PS_BEFORE              (1 << 1)
-#define SI_OP_SYNC_BEFORE                 (SI_OP_SYNC_CS_BEFORE | SI_OP_SYNC_PS_BEFORE)
-#define SI_OP_SYNC_AFTER                  (1 << 2)
+#define SI_OP_SYNC_CPDMA_BEFORE           (1 << 2) /* only affects CP DMA calls */
+#define SI_OP_SYNC_BEFORE                 (SI_OP_SYNC_CS_BEFORE | SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_CPDMA_BEFORE)
+#define SI_OP_SYNC_AFTER                  (1 << 3)
 #define SI_OP_SYNC_BEFORE_AFTER           (SI_OP_SYNC_BEFORE | SI_OP_SYNC_AFTER)
-#define SI_OP_CS_IMAGE                    (1 << 3)
-#define SI_OP_CS_RENDER_COND_ENABLE       (1 << 4)
+#define SI_OP_CS_IMAGE                    (1 << 4)
+#define SI_OP_CS_RENDER_COND_ENABLE       (1 << 5)
+#define SI_OP_CPDMA_SKIP_CHECK_CS_SPACE   (1 << 6) /* don't call need_cs_space */
+#define SI_OP_CPDMA_SKIP_CACHE_FLUSH      (1 << 7) /* don't flush caches */
 
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);
@@ -1398,11 +1401,6 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
 void si_init_compute_blit_functions(struct si_context *sctx);
 
 /* si_cp_dma.c */
-#define SI_CPDMA_SKIP_CHECK_CS_SPACE (1 << 0) /* don't call need_cs_space */
-#define SI_CPDMA_SKIP_SYNC_AFTER     (1 << 1) /* don't wait for DMA after the copy */
-#define SI_CPDMA_SKIP_SYNC_BEFORE    (1 << 2) /* don't wait for DMA before the copy (RAW hazards) */
-#define SI_CPDMA_SKIP_GFX_SYNC       (1 << 3) /* don't flush caches and don't wait for PS/CS */
-
 void si_cp_dma_wait_for_idle(struct si_context *sctx, struct radeon_cmdbuf *cs);
 void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
                             struct pipe_resource *dst, uint64_t offset, uint64_t size,
