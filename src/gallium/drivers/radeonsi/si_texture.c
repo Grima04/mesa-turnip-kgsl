@@ -929,8 +929,12 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
     * GFX9 and later use the same tiling for both, so TC-compatible HTILE can be
     * enabled on demand.
     */
-   tex->tc_compatible_htile = sscreen->info.chip_class == GFX8 &&
-                              tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE;
+   tex->tc_compatible_htile = (sscreen->info.chip_class == GFX8 &&
+                               tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE) ||
+                              /* Mipmapping always starts TC-compatible. */
+                              (sscreen->info.chip_class >= GFX8 &&
+                               tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE &&
+                               tex->buffer.b.b.last_level > 0);
 
    /* TC-compatible HTILE:
     * - GFX8 only supports Z32_FLOAT.

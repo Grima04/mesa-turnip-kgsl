@@ -1840,7 +1840,7 @@ static inline bool si_htile_enabled(struct si_texture *tex, unsigned level, unsi
    if (zs_mask == PIPE_MASK_S && tex->htile_stencil_disabled)
       return false;
 
-   return tex->surface.htile_offset && level == 0;
+   return tex->surface.htile_offset && level < tex->surface.num_htile_levels;
 }
 
 static inline bool vi_tc_compat_htile_enabled(struct si_texture *tex, unsigned level,

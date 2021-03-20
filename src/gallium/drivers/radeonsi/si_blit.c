@@ -374,6 +374,8 @@ static void si_decompress_depth(struct si_context *sctx, struct si_texture *tex,
        * the decompression is much worse.
        */
       if (has_htile && !tc_compat_htile &&
+          /* We can only transition the whole buffer in one clear, so no mipmapping: */
+          tex->buffer.b.b.last_level == 0 &&
           tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE &&
           (inplace_planes & PIPE_MASK_Z || !tex->htile_stencil_disabled))
          tex->enable_tc_compatible_htile_next_clear = true;

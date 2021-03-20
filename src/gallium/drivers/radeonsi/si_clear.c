@@ -646,7 +646,9 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
    }
 
    if (zstex && zsbuf->u.tex.first_layer == 0 &&
-       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0)) {
+       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0) &&
+       /* TODO: enable fast clear for other mipmap levels */
+       zsbuf->u.tex.level == 0) {
       /* See whether we should enable TC-compatible HTILE. */
       if (zstex->enable_tc_compatible_htile_next_clear &&
           !zstex->tc_compatible_htile &&
@@ -655,6 +657,9 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
           ((buffers & PIPE_CLEAR_DEPTHSTENCIL) == PIPE_CLEAR_DEPTHSTENCIL ||
            (buffers & PIPE_CLEAR_DEPTH && (!zstex->surface.has_stencil ||
                                            zstex->htile_stencil_disabled)))) {
+         /* The conversion from TC-incompatible to TC-compatible can only be done in one clear. */
+         assert(zstex->buffer.b.b.last_level == 0);
+
          /* Enable TC-compatible HTILE. */
          zstex->enable_tc_compatible_htile_next_clear = false;
          zstex->tc_compatible_htile = true;
