@@ -407,7 +407,7 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
 
       void *saved_cs = sctx->cs_shader_state.program;
       si_launch_grid_internal((struct si_context *)&sctx->b, &grid, saved_cs,
-                              SI_CS_WAIT_FOR_IDLE | SI_CS_PARTIAL_FLUSH_DISABLE);
+                              SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_AFTER);
 
       if (qbuf == query->last)
          break;

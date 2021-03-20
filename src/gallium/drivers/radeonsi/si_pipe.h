@@ -1361,10 +1361,13 @@ bool vi_dcc_clear_level(struct si_context *sctx, struct si_texture *tex, unsigne
 void si_init_clear_functions(struct si_context *sctx);
 
 /* si_compute_blit.c */
-#define SI_CS_IMAGE_OP              (1 << 0)
-#define SI_CS_WAIT_FOR_IDLE         (1 << 1)
-#define SI_CS_RENDER_COND_ENABLE    (1 << 2)
-#define SI_CS_PARTIAL_FLUSH_DISABLE (1 << 3)
+#define SI_OP_SYNC_CS_BEFORE              (1 << 0)
+#define SI_OP_SYNC_PS_BEFORE              (1 << 1)
+#define SI_OP_SYNC_BEFORE                 (SI_OP_SYNC_CS_BEFORE | SI_OP_SYNC_PS_BEFORE)
+#define SI_OP_SYNC_AFTER                  (1 << 2)
+#define SI_OP_SYNC_BEFORE_AFTER           (SI_OP_SYNC_BEFORE | SI_OP_SYNC_AFTER)
+#define SI_OP_CS_IMAGE                    (1 << 3)
+#define SI_OP_CS_RENDER_COND_ENABLE       (1 << 4)
 
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);

@@ -64,9 +64,12 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
                                     void *restore_cs, unsigned flags)
 {
    /* Wait for previous shaders to finish. */
-   sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
-   if (!(flags & SI_CS_PARTIAL_FLUSH_DISABLE))
+   if (flags & SI_OP_SYNC_PS_BEFORE)
+      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+
+   if (flags & SI_OP_SYNC_CS_BEFORE)
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+
    /* Invalidate L0-L1 caches. */
    /* sL0 is never invalidated, because src resources don't use it. */
    sctx->flags |= SI_CONTEXT_INV_VCACHE;
@@ -75,7 +78,7 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
    sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
    sctx->flags |= SI_CONTEXT_STOP_PIPELINE_STATS;
 
-   if (!(flags & SI_CS_RENDER_COND_ENABLE))
+   if (!(flags & SI_OP_CS_RENDER_COND_ENABLE))
       sctx->render_cond_enabled = false;
 
    /* Skip decompression to prevent infinite recursion. */
@@ -93,10 +96,10 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
    /* Restore the original compute shader. */
    sctx->b.bind_compute_state(&sctx->b, restore_cs);
 
-   if (flags & SI_CS_WAIT_FOR_IDLE) {
+   if (flags & SI_OP_SYNC_AFTER) {
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
 
-      if (flags & SI_CS_IMAGE_OP) {
+      if (flags & SI_OP_CS_IMAGE) {
          /* Make sure image stores are visible to CB, which doesn't use L2 on GFX6-8. */
          sctx->flags |= sctx->chip_class <= GFX8 ? SI_CONTEXT_WB_L2 : 0;
          /* Make sure image stores are visible to all CUs. */
@@ -106,7 +109,7 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
          sctx->flags |= SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE;
       }
    } else {
-      assert(!(flags & SI_CS_IMAGE_OP));
+      assert(!(flags & SI_OP_CS_IMAGE));
    }
 }
 
@@ -163,7 +166,7 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    info.grid[1] = 1;
    info.grid[2] = 1;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_CS_WAIT_FOR_IDLE);
+   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER);
 
    ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
    ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, true, &saved_cb);
@@ -257,7 +260,7 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
       ctx->bind_compute_state(ctx, sctx->cs_clear_buffer);
    }
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_CS_WAIT_FOR_IDLE);
+   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER);
 
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
    sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
@@ -606,8 +609,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       info.grid[2] = depth;
    }
 
-   si_launch_grid_internal(sctx, &info, saved_cs,
-                           SI_CS_WAIT_FOR_IDLE | SI_CS_IMAGE_OP);
+   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER | SI_OP_CS_IMAGE);
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, saved_image);
    for (int i = 0; i < 2; i++)
@@ -678,7 +680,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    info.grid[2] = 1;
    info.last_block[0] = num_threads % 64;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, 0);
+   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE);
 
    /* Don't flush caches or wait. The driver will wait at the end of this IB,
     * and L2 will be flushed by the kernel fence.
@@ -742,8 +744,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    info.grid[1] = DIV_ROUND_UP(tex->height0, 8);
    info.grid[2] = is_array ? tex->array_size : 1;
 
-   si_launch_grid_internal(sctx, &info, saved_cs,
-                           SI_CS_WAIT_FOR_IDLE | SI_CS_IMAGE_OP);
+   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER);
 
    /* Restore previous states. */
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, 0, &saved_image);
@@ -854,9 +855,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
       info.grid[2] = 1;
    }
 
-   si_launch_grid_internal(sctx, &info, saved_cs,
-                           SI_CS_WAIT_FOR_IDLE | SI_CS_IMAGE_OP |
-                           (render_condition_enabled ? SI_CS_RENDER_COND_ENABLE : 0));
+   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER | SI_OP_CS_IMAGE |
+                           (render_condition_enabled ? SI_OP_CS_RENDER_COND_ENABLE : 0));
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, 0, &saved_image);
    ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, true, &saved_cb);
