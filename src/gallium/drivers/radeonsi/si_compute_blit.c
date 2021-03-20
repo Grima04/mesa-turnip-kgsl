@@ -383,7 +383,8 @@ void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst
    struct si_context *ctx = (struct si_context *)sscreen->aux_context;
 
    simple_mtx_lock(&sscreen->aux_context_lock);
-   ctx->b.clear_buffer(&ctx->b, dst, offset, size, &value, 4);
+   si_clear_buffer(ctx, dst, offset, size, &value, 4, SI_COHERENCY_SHADER,
+                   SI_AUTO_SELECT_CLEAR_METHOD);
    sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
    simple_mtx_unlock(&sscreen->aux_context_lock);
 }
