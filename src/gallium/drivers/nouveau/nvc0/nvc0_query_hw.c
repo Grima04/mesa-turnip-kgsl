@@ -435,7 +435,7 @@ nvc0_hw_get_query_result_resource(struct nvc0_context *nvc0,
    if (wait && hq->state != NVC0_HW_QUERY_STATE_READY)
       nvc0_hw_query_fifo_wait(nvc0, q);
 
-   nouveau_pushbuf_space(push, 32, 2, 0);
+   nouveau_pushbuf_space(push, 32, 2, 3);
    PUSH_REFN (push, hq->bo, NOUVEAU_BO_GART | NOUVEAU_BO_RD);
    PUSH_REFN (push, buf->bo, buf->domain | NOUVEAU_BO_WR);
    BEGIN_1IC0(push, NVC0_3D(MACRO_QUERY_BUFFER_WRITE), 9);
