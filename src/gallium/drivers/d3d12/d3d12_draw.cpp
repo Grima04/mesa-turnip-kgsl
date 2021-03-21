@@ -453,7 +453,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
 
       ctx->initial_api_prim = dinfo->mode;
       util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->gfx_pipeline_state.rast->base);
-      util_primconvert_draw_vbo(ctx->primconvert, dinfo, &draws[0]);
+      util_primconvert_draw_vbo(ctx->primconvert, dinfo, indirect, draws, num_draws);
       return;
    }
 

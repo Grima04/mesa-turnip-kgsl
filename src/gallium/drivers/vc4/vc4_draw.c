@@ -318,7 +318,7 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                         info = &local_info;
                 } else {
                         util_primconvert_save_rasterizer_state(vc4->primconvert, &vc4->rasterizer->base);
-                        util_primconvert_draw_vbo(vc4->primconvert, info, &draws[0]);
+                        util_primconvert_draw_vbo(vc4->primconvert, info, indirect, draws, num_draws);
                         perf_debug("Fallback conversion for %d %s vertices\n",
                                    draws[0].count, u_prim_name(info->mode));
                         return;

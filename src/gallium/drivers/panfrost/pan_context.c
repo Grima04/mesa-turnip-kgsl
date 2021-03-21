@@ -491,7 +491,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
                 }
 
                 util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->rasterizer->base);
-                util_primconvert_draw_vbo(ctx->primconvert, info, draw);
+                util_primconvert_draw_vbo(ctx->primconvert, info, NULL, draw, 1);
                 return;
         }
 

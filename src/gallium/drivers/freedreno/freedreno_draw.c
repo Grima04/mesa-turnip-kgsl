@@ -289,19 +289,10 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
 	/* emulate unsupported primitives: */
 	if (!fd_supported_prim(ctx, info->mode)) {
-		if (num_draws > 1) {
-			util_draw_multi(pctx, info, indirect, draws, num_draws);
-			return;
-		}
-
-		if (!indirect && !info->primitive_restart &&
-				!u_trim_pipe_prim(info->mode, (unsigned*)&draws[0].count))
-			return;
-
 		if (ctx->streamout.num_targets > 0)
 			mesa_loge("stream-out with emulated prims");
 		util_primconvert_save_rasterizer_state(ctx->primconvert, ctx->rasterizer);
-		util_primconvert_draw_vbo(ctx->primconvert, info, &draws[0]);
+		util_primconvert_draw_vbo(ctx->primconvert, info, indirect, draws, num_draws);
 		return;
 	}
 

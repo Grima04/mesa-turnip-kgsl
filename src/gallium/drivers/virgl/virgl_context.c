@@ -884,7 +884,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
 
    if (!(rs->caps.caps.v1.prim_mask & (1 << dinfo->mode))) {
       util_primconvert_save_rasterizer_state(vctx->primconvert, &vctx->rs_state.rs);
-      util_primconvert_draw_vbo(vctx->primconvert, dinfo, &draws[0]);
+      util_primconvert_draw_vbo(vctx->primconvert, dinfo, indirect, draws, num_draws);
       return;
    }
    if (info.index_size) {

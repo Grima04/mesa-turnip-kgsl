@@ -860,12 +860,7 @@ zink_draw_vbo(struct pipe_context *pctx,
        (dinfo->mode == PIPE_PRIM_TRIANGLE_FAN && !screen->have_triangle_fans) ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP) {
       util_primconvert_save_rasterizer_state(ctx->primconvert, &rast_state->base);
-      for (unsigned i = 0; i < num_draws; i++) {
-         /* TODO: is there actually a way to correctly handle this? no other driver does... */
-         if (!u_trim_pipe_prim(dinfo->mode, (unsigned *)&draws[i].count))
-            continue;
-         util_primconvert_draw_vbo(ctx->primconvert, dinfo, &draws[i]);
-      }
+      util_primconvert_draw_vbo(ctx->primconvert, dinfo, dindirect, draws, num_draws);
       return;
    }
    if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
