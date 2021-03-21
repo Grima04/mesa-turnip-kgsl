@@ -115,6 +115,80 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
    }
 }
 
+/**
+ * Clear a buffer using read-modify-write with a 32-bit write bitmask.
+ * The clear value has 32 bits.
+ */
+void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *dst,
+                                 unsigned dst_offset, unsigned size,
+                                 uint32_t clear_value, uint32_t writebitmask,
+                                 unsigned flags, enum si_coherency coher)
+{
+   struct pipe_context *ctx = &sctx->b;
+
+   assert(dst_offset % 4 == 0);
+   assert(size % 4 == 0);
+
+   assert(dst->target != PIPE_BUFFER || dst_offset + size <= dst->width0);
+
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
+
+   /* Save states. */
+   void *saved_cs = sctx->cs_shader_state.program;
+   struct pipe_shader_buffer saved_sb = {};
+   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
+
+   unsigned saved_writable_mask = 0;
+   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
+       (1u << si_get_shaderbuf_slot(0)))
+      saved_writable_mask |= 1 << 0;
+
+   /* Use buffer_load_dwordx4 and buffer_store_dwordx4 per thread. */
+   unsigned dwords_per_instruction = 4;
+   unsigned wave_size = sctx->screen->compute_wave_size;
+   unsigned dwords_per_wave = dwords_per_instruction * wave_size;
+
+   unsigned num_dwords = size / 4;
+   unsigned num_instructions = DIV_ROUND_UP(num_dwords, dwords_per_instruction);
+
+   struct pipe_grid_info info = {};
+   info.block[0] = MIN2(wave_size, num_instructions);
+   info.block[1] = 1;
+   info.block[2] = 1;
+   info.grid[0] = DIV_ROUND_UP(num_dwords, dwords_per_wave);
+   info.grid[1] = 1;
+   info.grid[2] = 1;
+
+   struct pipe_shader_buffer sb = {};
+   sb.buffer = dst;
+   sb.buffer_offset = dst_offset;
+   sb.buffer_size = size;
+   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
+
+   sctx->cs_user_data[0] = clear_value & writebitmask;
+   sctx->cs_user_data[1] = ~writebitmask;
+
+   if (!sctx->cs_clear_buffer_rmw)
+      sctx->cs_clear_buffer_rmw = si_create_clear_buffer_rmw_cs(&sctx->b);
+
+   ctx->bind_compute_state(ctx, sctx->cs_clear_buffer_rmw);
+
+   si_launch_grid_internal(sctx, &info, saved_cs, flags);
+
+   enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
+
+   if (flags & SI_OP_SYNC_AFTER)
+      sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
+
+   if (cache_policy != L2_BYPASS)
+      si_resource(dst)->TC_L2_dirty = true;
+
+   /* Restore states. */
+   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
+   pipe_resource_reference(&saved_sb.buffer, NULL);
+}
+
 static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe_resource *dst,
                                             unsigned dst_offset, unsigned size,
                                             const uint32_t *clear_value, unsigned flags,

@@ -955,6 +955,7 @@ struct si_context {
    void *vs_blit_color_layered;
    void *vs_blit_texcoord;
    void *cs_clear_buffer;
+   void *cs_clear_buffer_rmw;
    void *cs_copy_buffer;
    void *cs_copy_image;
    void *cs_copy_image_1d_array;
@@ -1368,6 +1369,7 @@ struct si_clear_info {
    uint64_t offset;
    uint32_t size;
    uint32_t clear_value;
+   uint32_t writemask;
 };
 
 enum pipe_format si_simplify_cb_format(enum pipe_format format);
@@ -1406,6 +1408,10 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
                      uint64_t offset, uint64_t size, uint32_t *clear_value,
                      uint32_t clear_value_size, unsigned flags,
                      enum si_coherency coher, enum si_clear_method method);
+void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *dst,
+                                 unsigned dst_offset, unsigned size,
+                                 uint32_t clear_value, uint32_t writebitmask,
+                                 unsigned flags, enum si_coherency coher);
 void si_screen_clear_buffer(struct si_screen *sscreen, struct pipe_resource *dst, uint64_t offset,
                             uint64_t size, unsigned value, unsigned flags);
 void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct pipe_resource *src,
@@ -1539,6 +1545,7 @@ void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type,
 void *si_create_fixed_func_tcs(struct si_context *sctx);
 void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords_per_thread,
                                    bool dst_stream_cache_policy, bool is_copy);
+void *si_create_clear_buffer_rmw_cs(struct pipe_context *ctx);
 void *si_create_copy_image_compute_shader(struct pipe_context *ctx);
 void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx);
 void *si_create_dcc_decompress_cs(struct pipe_context *ctx);

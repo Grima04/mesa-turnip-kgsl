@@ -212,6 +212,49 @@ void *si_create_dma_compute_shader(struct pipe_context *ctx, unsigned num_dwords
    return cs;
 }
 
+/* Create a compute shader implementing clear_buffer or copy_buffer. */
+void *si_create_clear_buffer_rmw_cs(struct pipe_context *ctx)
+{
+   const char *text = "COMP\n"
+                      "PROPERTY CS_FIXED_BLOCK_WIDTH 64\n"
+                      "PROPERTY CS_FIXED_BLOCK_HEIGHT 1\n"
+                      "PROPERTY CS_FIXED_BLOCK_DEPTH 1\n"
+                      "PROPERTY CS_USER_DATA_COMPONENTS_AMD 2\n"
+                      "DCL SV[0], THREAD_ID\n"
+                      "DCL SV[1], BLOCK_ID\n"
+                      "DCL SV[2], CS_USER_DATA_AMD\n"
+                      "DCL BUFFER[0]\n"
+                      "DCL TEMP[0..1]\n"
+                      "IMM[0] UINT32 {64, 16, 0, 0}\n"
+                      /* ADDRESS = BLOCK_ID * 64 + THREAD_ID; */
+                      "UMAD TEMP[0].x, SV[1].xxxx, IMM[0].xxxx, SV[0].xxxx\n"
+                      /* ADDRESS = ADDRESS * 16; (byte offset, loading one vec4 per thread) */
+                      "UMUL TEMP[0].x, TEMP[0].xxxx, IMM[0].yyyy\n"
+                      "LOAD TEMP[1], BUFFER[0], TEMP[0].xxxx\n"
+                      /* DATA &= inverted_writemask; */
+                      "AND TEMP[1], TEMP[1], SV[2].yyyy\n"
+                      /* DATA |= clear_value_masked; */
+                      "OR TEMP[1], TEMP[1], SV[2].xxxx\n"
+                      "STORE BUFFER[0].xyzw, TEMP[0], TEMP[1]%s\n"
+                      "END\n";
+   char final_text[2048];
+   struct tgsi_token tokens[1024];
+   struct pipe_compute_state state = {0};
+
+   snprintf(final_text, sizeof(final_text), text,
+            SI_COMPUTE_DST_CACHE_POLICY != L2_LRU ? ", STREAM_CACHE_POLICY" : "");
+
+   if (!tgsi_text_translate(final_text, tokens, ARRAY_SIZE(tokens))) {
+      assert(false);
+      return NULL;
+   }
+
+   state.ir_type = PIPE_SHADER_IR_TGSI;
+   state.prog = tokens;
+
+   return ctx->create_compute_state(ctx, &state);
+}
+
 /* Create a compute shader that copies DCC from one buffer to another
  * where each DCC buffer has a different layout.
  *

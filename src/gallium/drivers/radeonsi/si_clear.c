@@ -42,6 +42,15 @@ void si_init_buffer_clear(struct si_clear_info *info,
    info->offset = offset;
    info->size = size;
    info->clear_value = clear_value;
+   info->writemask = 0xffffffff;
+}
+
+static void si_init_buffer_clear_rmw(struct si_clear_info *info,
+                                     struct pipe_resource *resource, uint64_t offset,
+                                     uint32_t size, uint32_t clear_value, uint32_t writemask)
+{
+   si_init_buffer_clear(info, resource, offset, size, clear_value);
+   info->writemask = writemask;
 }
 
 void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
@@ -66,10 +75,18 @@ void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
 
    /* Execute clears. */
    for (unsigned i = 0; i < num_clears; i++) {
-      /* Compute shaders are much faster on both dGPUs and APUs. Don't use CP DMA. */
-      si_clear_buffer(sctx, info[i].resource, info[i].offset, info[i].size,
-                      &info[i].clear_value, 4, SI_OP_SKIP_CACHE_INV_BEFORE,
-                      SI_COHERENCY_CP, SI_COMPUTE_CLEAR_METHOD);
+      assert(info[i].size > 0);
+
+      if (info[i].writemask != 0xffffffff) {
+         si_compute_clear_buffer_rmw(sctx, info[i].resource, info[i].offset, info[i].size,
+                                     info[i].clear_value, info[i].writemask,
+                                     SI_OP_SKIP_CACHE_INV_BEFORE, SI_COHERENCY_CP);
+      } else {
+         /* Compute shaders are much faster on both dGPUs and APUs. Don't use CP DMA. */
+         si_clear_buffer(sctx, info[i].resource, info[i].offset, info[i].size,
+                         &info[i].clear_value, 4, SI_OP_SKIP_CACHE_INV_BEFORE,
+                         SI_COHERENCY_CP, SI_COMPUTE_CLEAR_METHOD);
+      }
    }
 
    /* Wait for idle. */
@@ -883,6 +900,41 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
                zstex->stencil_cleared_level_mask |= BITFIELD_BIT(level);
                update_db_depth_clear = true;
+               update_db_stencil_clear = true;
+            }
+         } else {
+            /* Z-only or S-only clear when both Z/S are present using a read-modify-write
+             * compute shader.
+             *
+             * If we get both clears but only one of them can be fast-cleared, we use
+             * the draw-based fast clear to do both at the same time.
+             */
+            const uint32_t htile_depth_writemask = 0xfffffc0f;
+            const uint32_t htile_stencil_writemask = 0x000003f0;
+
+            if (htile_size &&
+                !(*buffers & PIPE_CLEAR_STENCIL) &&
+                si_can_fast_clear_depth(zstex, level, depth, *buffers)) {
+               /* Z-only clear with stencil left intact. */
+               assert(num_clears < ARRAY_SIZE(info));
+               si_init_buffer_clear_rmw(&info[num_clears++], &zstex->buffer.b.b, htile_offset,
+                                        htile_size, si_get_htile_clear_value(zstex, depth),
+                                        htile_depth_writemask);
+               clear_types |= SI_CLEAR_TYPE_HTILE;
+               *buffers &= ~PIPE_CLEAR_DEPTH;
+               zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
+               update_db_depth_clear = true;
+            } else if (htile_size &&
+                       !(*buffers & PIPE_CLEAR_DEPTH) &&
+                       si_can_fast_clear_stencil(zstex, level, stencil, *buffers)) {
+               /* Stencil-only clear with depth left intact. */
+               assert(num_clears < ARRAY_SIZE(info));
+               si_init_buffer_clear_rmw(&info[num_clears++], &zstex->buffer.b.b, htile_offset,
+                                        htile_size, si_get_htile_clear_value(zstex, depth),
+                                        htile_stencil_writemask);
+               clear_types |= SI_CLEAR_TYPE_HTILE;
+               *buffers &= ~PIPE_CLEAR_STENCIL;
+               zstex->stencil_cleared_level_mask |= BITFIELD_BIT(level);
                update_db_stencil_clear = true;
             }
          }

@@ -239,6 +239,8 @@ static void si_destroy_context(struct pipe_context *context)
       sctx->b.delete_vs_state(&sctx->b, sctx->vs_blit_texcoord);
    if (sctx->cs_clear_buffer)
       sctx->b.delete_compute_state(&sctx->b, sctx->cs_clear_buffer);
+   if (sctx->cs_clear_buffer_rmw)
+      sctx->b.delete_compute_state(&sctx->b, sctx->cs_clear_buffer_rmw);
    if (sctx->cs_copy_buffer)
       sctx->b.delete_compute_state(&sctx->b, sctx->cs_copy_buffer);
    if (sctx->cs_copy_image)
