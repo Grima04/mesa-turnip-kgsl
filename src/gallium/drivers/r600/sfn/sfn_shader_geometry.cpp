@@ -318,14 +318,13 @@ void GeometryShaderFromNir::emit_adj_fix()
    PValue adjhelp0(new  GPRValue(m_export_base[0]->sel(), 1));
    emit_instruction(op2_and_int, adjhelp0, {m_primitive_id, Value::one_i}, {alu_write, alu_last_instr});
 
-   int help2 = allocate_temp_register();
    int reg_indices[6];
-   int reg_chanels[6] = {0, 1, 2, 3, 2, 3};
+   int reg_chanels[6] = {1, 2, 3, 1, 2, 3};
 
    int rotate_indices[6] = {4, 5, 0, 1, 2, 3};
 
-   reg_indices[0] = reg_indices[1] = reg_indices[2] = reg_indices[3] = help2;
-   reg_indices[4] = reg_indices[5] = m_export_base[0]->sel();
+   reg_indices[0] = reg_indices[1] = reg_indices[2] = m_export_base[1]->sel();
+   reg_indices[3] = reg_indices[4] = reg_indices[5] = m_export_base[2]->sel();
 
    std::array<PValue, 6> adjhelp;
 

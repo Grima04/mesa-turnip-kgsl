@@ -88,8 +88,7 @@ bool ComputeShaderFromNir::emit_load_3vec(nir_intrinsic_instr* instr,
 
 bool ComputeShaderFromNir::emit_load_num_work_groups(nir_intrinsic_instr* instr)
 {
-   int temp = allocate_temp_register();
-   PValue a_zero(new GPRValue(temp, 1));
+   PValue a_zero = get_temp_register(1);
    emit_instruction(new AluInstruction(op1_mov, a_zero, Value::zero, EmitInstruction::last_write));
    GPRVector dest;
    for (int i = 0; i < 3; ++i)

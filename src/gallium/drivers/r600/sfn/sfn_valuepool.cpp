@@ -163,10 +163,10 @@ PGPRValue ValuePool::get_temp_register(int channel)
    return std::make_shared<GPRValue>(current_temp_reg_index, next_temp_reg_comp++);
 }
 
-GPRVector ValuePool::get_temp_vec4()
+GPRVector ValuePool::get_temp_vec4(const GPRVector::Swizzle& swizzle)
 {
    int sel = allocate_temp_register();
-   return GPRVector(sel, {0,1,2,3});
+   return GPRVector(sel, swizzle);
 }
 
 PValue ValuePool::create_register_from_nir_src(const nir_src& src, int comp)
@@ -209,12 +209,6 @@ int ValuePool::lookup_register_index(const nir_src& src) const
    return static_cast<int>(r->second.index);
 }
 
-
-int ValuePool::allocate_component(unsigned index, unsigned comp, bool pre_alloc)
-{
-   assert(comp < 8);
-   return allocate_with_mask(index, 1 << comp, pre_alloc);
-}
 
 int ValuePool::allocate_temp_register()
 {

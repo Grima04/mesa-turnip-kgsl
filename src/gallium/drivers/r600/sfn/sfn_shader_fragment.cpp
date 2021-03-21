@@ -583,9 +583,8 @@ bool FragmentShaderFromNir::emit_load_interpolated_input(nir_intrinsic_instr* in
       auto & color_input  = static_cast<ShaderInputColor&> (io);
       auto& bgio = m_shaderio.input(color_input.back_color_input_index());
 
-      bgio.set_gpr(allocate_temp_register());
-
-      GPRVector bgcol(bgio.gpr(), {0,1,2,3});
+      GPRVector bgcol = get_temp_vec4();
+      bgio.set_gpr(bgcol.sel());
       load_interpolated(bgcol, bgio, ip, nir_dest_num_components(instr->dest), 0);
 
       load_front_face();
@@ -737,9 +736,8 @@ bool FragmentShaderFromNir::emit_load_input(nir_intrinsic_instr* instr)
       auto & color_input  = static_cast<ShaderInputColor&> (io);
       auto& bgio = m_shaderio.input(color_input.back_color_input_index());
 
-      bgio.set_gpr(allocate_temp_register());
-
-      GPRVector bgcol(bgio.gpr(), {0,1,2,3});
+      GPRVector bgcol = get_temp_vec4();
+      bgio.set_gpr(bgcol.sel());
       load_interpolated(bgcol, bgio, ip, num_components, 0);
 
       load_front_face();
