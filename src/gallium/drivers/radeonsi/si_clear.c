@@ -436,22 +436,15 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
       return;
 
    /* Gather information about what to clear. */
-   for (int i = 0; i < fb->nr_cbufs; i++) {
-      struct si_texture *tex;
-      unsigned clear_bit = PIPE_CLEAR_COLOR0 << i;
-
-      if (!fb->cbufs[i])
-         continue;
-
-      /* if this colorbuffer is not being cleared */
-      if (!(*buffers & clear_bit))
-         continue;
+   unsigned color_buffer_mask = (*buffers & PIPE_CLEAR_COLOR) >> util_logbase2(PIPE_CLEAR_COLOR0);
+   while (color_buffer_mask) {
+      unsigned i = u_bit_scan(&color_buffer_mask);
 
       unsigned level = fb->cbufs[i]->u.tex.level;
       if (level > 0)
          continue;
 
-      tex = (struct si_texture *)fb->cbufs[i]->texture;
+      struct si_texture *tex = (struct si_texture *)fb->cbufs[i]->texture;
 
       /* TODO: GFX9: Implement DCC fast clear for level 0 of
        * mipmapped textures. Mipmapped DCC has to clear a rectangular
@@ -599,7 +592,7 @@ static void si_do_fast_color_clear(struct si_context *sctx, unsigned *buffers,
          p_atomic_inc(&sctx->screen->compressed_colortex_counter);
       }
 
-      *buffers &= ~clear_bit;
+      *buffers &= ~(PIPE_CLEAR_COLOR0 << i);
 
       /* Chips with DCC constant encoding don't need to set the clear
        * color registers for DCC clear values 0 and 1.
@@ -642,14 +635,10 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
          return; /* all buffers have been fast cleared */
 
       /* These buffers cannot use fast clear, make sure to disable expansion. */
-      for (unsigned i = 0; i < fb->nr_cbufs; i++) {
-         struct si_texture *tex;
-
-         /* If not clearing this buffer, skip. */
-         if (!(buffers & (PIPE_CLEAR_COLOR0 << i)) || !fb->cbufs[i])
-            continue;
-
-         tex = (struct si_texture *)fb->cbufs[i]->texture;
+      unsigned color_buffer_mask = (buffers & PIPE_CLEAR_COLOR) >> util_logbase2(PIPE_CLEAR_COLOR0);
+      while (color_buffer_mask) {
+         unsigned i = u_bit_scan(&color_buffer_mask);
+         struct si_texture *tex = (struct si_texture *)fb->cbufs[i]->texture;
          if (tex->surface.fmask_size == 0)
             tex->dirty_level_mask &= ~(1 << fb->cbufs[i]->u.tex.level);
       }
