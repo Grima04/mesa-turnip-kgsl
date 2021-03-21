@@ -40,6 +40,7 @@ struct zink_fence {
    VkFence fence;
    struct pipe_context *deferred_ctx;
    uint32_t batch_id;
+   struct set *resources; /* resources need access removed asap, so they're on the fence */
    bool submitted;
    bool is_compute;
 };
@@ -70,4 +71,6 @@ zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfen
 void
 zink_screen_fence_init(struct pipe_screen *pscreen);
 
+void
+zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence);
 #endif
