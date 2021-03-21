@@ -1647,8 +1647,8 @@ si_emit_set_predication_state(struct radv_cmd_buffer *cmd_buffer,
 static inline unsigned cp_dma_max_byte_count(struct radv_cmd_buffer *cmd_buffer)
 {
 	unsigned max = cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 ?
-			       S_414_BYTE_COUNT_GFX9(~0u) :
-			       S_414_BYTE_COUNT_GFX6(~0u);
+			       S_415_BYTE_COUNT_GFX9(~0u) :
+			       S_415_BYTE_COUNT_GFX6(~0u);
 
 	/* make it aligned for optimal performance */
 	return max & ~(SI_CPDMA_ALIGNMENT - 1);
@@ -1669,22 +1669,22 @@ static void si_emit_cp_dma(struct radv_cmd_buffer *cmd_buffer,
 
 	radeon_check_space(cmd_buffer->device->ws, cmd_buffer->cs, 9);
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9)
-		command |= S_414_BYTE_COUNT_GFX9(size);
+		command |= S_415_BYTE_COUNT_GFX9(size);
 	else
-		command |= S_414_BYTE_COUNT_GFX6(size);
+		command |= S_415_BYTE_COUNT_GFX6(size);
 
 	/* Sync flags. */
 	if (flags & CP_DMA_SYNC)
 		header |= S_411_CP_SYNC(1);
 	else {
 		if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9)
-			command |= S_414_DISABLE_WR_CONFIRM_GFX9(1);
+			command |= S_415_DISABLE_WR_CONFIRM_GFX9(1);
 		else
-			command |= S_414_DISABLE_WR_CONFIRM_GFX6(1);
+			command |= S_415_DISABLE_WR_CONFIRM_GFX6(1);
 	}
 
 	if (flags & CP_DMA_RAW_WAIT)
-		command |= S_414_RAW_WAIT(1);
+		command |= S_415_RAW_WAIT(1);
 
 	/* Src and dst flags. */
 	if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX9 &&

@@ -247,7 +247,7 @@ static void gfx10_emit_streamout_begin(struct si_context *sctx)
       radeon_emit(cs, va >> 32);
       radeon_emit(cs, 4 * i); /* destination in GDS */
       radeon_emit(cs, 0);
-      radeon_emit(cs, S_414_BYTE_COUNT_GFX9(4) | S_414_DISABLE_WR_CONFIRM_GFX9(i != last_target));
+      radeon_emit(cs, S_415_BYTE_COUNT_GFX9(4) | S_415_DISABLE_WR_CONFIRM_GFX9(i != last_target));
    }
    radeon_end();
 

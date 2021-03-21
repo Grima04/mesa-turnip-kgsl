@@ -43,7 +43,7 @@
 static inline unsigned cp_dma_max_byte_count(struct si_context *sctx)
 {
    unsigned max =
-      sctx->chip_class >= GFX9 ? S_414_BYTE_COUNT_GFX9(~0u) : S_414_BYTE_COUNT_GFX6(~0u);
+      sctx->chip_class >= GFX9 ? S_415_BYTE_COUNT_GFX9(~0u) : S_415_BYTE_COUNT_GFX6(~0u);
 
    /* make it aligned for optimal performance */
    return max & ~(SI_CPDMA_ALIGNMENT - 1);
@@ -63,16 +63,16 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
    assert(sctx->chip_class != GFX6 || cache_policy == L2_BYPASS);
 
    if (sctx->chip_class >= GFX9)
-      command |= S_414_BYTE_COUNT_GFX9(size);
+      command |= S_415_BYTE_COUNT_GFX9(size);
    else
-      command |= S_414_BYTE_COUNT_GFX6(size);
+      command |= S_415_BYTE_COUNT_GFX6(size);
 
    /* Sync flags. */
    if (flags & CP_DMA_SYNC)
       header |= S_411_CP_SYNC(1);
 
    if (flags & CP_DMA_RAW_WAIT)
-      command |= S_414_RAW_WAIT(1);
+      command |= S_415_RAW_WAIT(1);
 
    /* Src and dst flags. */
    if (sctx->chip_class >= GFX9 && !(flags & CP_DMA_CLEAR) && src_va == dst_va) {
@@ -80,7 +80,7 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
    } else if (flags & CP_DMA_DST_IS_GDS) {
       header |= S_411_DST_SEL(V_411_GDS);
       /* GDS increments the address, not CP. */
-      command |= S_414_DAS(V_414_REGISTER) | S_414_DAIC(V_414_NO_INCREMENT);
+      command |= S_415_DAS(V_415_REGISTER) | S_415_DAIC(V_415_NO_INCREMENT);
    } else if (sctx->chip_class >= GFX7 && cache_policy != L2_BYPASS) {
       header |=
          S_411_DST_SEL(V_411_DST_ADDR_TC_L2) | S_500_DST_CACHE_POLICY(cache_policy == L2_STREAM);
@@ -91,7 +91,7 @@ static void si_emit_cp_dma(struct si_context *sctx, struct radeon_cmdbuf *cs, ui
    } else if (flags & CP_DMA_SRC_IS_GDS) {
       header |= S_411_SRC_SEL(V_411_GDS);
       /* Both of these are required for GDS. It does increment the address. */
-      command |= S_414_SAS(V_414_REGISTER) | S_414_SAIC(V_414_NO_INCREMENT);
+      command |= S_415_SAS(V_415_REGISTER) | S_415_SAIC(V_415_NO_INCREMENT);
    } else if (sctx->chip_class >= GFX7 && cache_policy != L2_BYPASS) {
       header |=
          S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2) | S_500_SRC_CACHE_POLICY(cache_policy == L2_STREAM);
@@ -408,16 +408,16 @@ void si_cp_dma_prefetch(struct si_context *sctx, struct pipe_resource *buf,
     */
    assert(size % SI_CPDMA_ALIGNMENT == 0);
    assert(address % SI_CPDMA_ALIGNMENT == 0);
-   assert(size < S_414_BYTE_COUNT_GFX6(~0u));
+   assert(size < S_415_BYTE_COUNT_GFX6(~0u));
 
    uint32_t header = S_411_SRC_SEL(V_411_SRC_ADDR_TC_L2);
-   uint32_t command = S_414_BYTE_COUNT_GFX6(size);
+   uint32_t command = S_415_BYTE_COUNT_GFX6(size);
 
    if (sctx->chip_class >= GFX9) {
-      command |= S_414_DISABLE_WR_CONFIRM_GFX9(1);
+      command |= S_415_DISABLE_WR_CONFIRM_GFX9(1);
       header |= S_411_DST_SEL(V_411_NOWHERE);
    } else {
-      command |= S_414_DISABLE_WR_CONFIRM_GFX6(1);
+      command |= S_415_DISABLE_WR_CONFIRM_GFX6(1);
       header |= S_411_DST_SEL(V_411_DST_ADDR_TC_L2);
    }
 
