@@ -296,7 +296,7 @@ x86_build-base:
     - .fdo.container-build@debian
     - .container
   variables:
-    MESA_IMAGE_TAG: &x86_build-base "2021-02-08-container-reorg"
+    MESA_IMAGE_TAG: &x86_build-base "2021-03-25-no-scons"
 
 .use-x86_build-base:
   extends:
@@ -492,7 +492,7 @@ armhf_test:
 
 # Native Windows docker builds
 #
-# Unlike the above Linux-based builds - including MinGW/SCons builds which
+# Unlike the above Linux-based builds - including MinGW builds which
 # cross-compile for Windows - which use the freedesktop ci-templates, we
 # cannot use the same scheme here. As Windows lacks support for
 # Docker-in-Docker, and Podman does not run natively on Windows, we have
@@ -589,8 +589,6 @@ sanity:
     paths:
       - _build/meson-logs/*.txt
       - _build/meson-logs/strace
-      # scons:
-      - build/*/config.log
       - shader-db
 
 # Just Linux
@@ -629,14 +627,6 @@ sanity:
     LLVM_VERSION: 10
   script:
     - .gitlab-ci/meson/build.sh
-
-.scons-build:
-  extends:
-    - .build-linux
-    - .use-x86_build
-  stage: build-misc
-  script:
-    - env SCONSFLAGS="-j${FDO_CI_CONCURRENT:-4}" .gitlab-ci/scons-build.sh
 
 meson-testing:
   extends:
@@ -924,13 +914,6 @@ test-d3d12-windows:
     name: "mesa_${CI_JOB_NAME}"
     paths:
       - summary/
-
-.scons-win64:
-  extends: .scons-build
-  variables:
-    SCONS_TARGET: platform=windows machine=x86_64 debug=1
-    SCONS_CHECK_COMMAND: "true"
-  allow_failure: true
 
 meson-clover:
   extends: .meson-build
