@@ -271,6 +271,9 @@ bool FragmentShaderFromNir::scan_sysvalue_access(nir_instr *instr)
       case nir_intrinsic_load_interpolated_input: {
          return process_load_input(ii, true);
       }
+      case nir_intrinsic_store_output:
+         return process_store_output(ii);
+
       default:
          ;
       }
@@ -444,6 +447,48 @@ bool FragmentShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir
    return false;
 }
 
+bool FragmentShaderFromNir::process_store_output(nir_intrinsic_instr *instr)
+{
+
+   auto semantic = nir_intrinsic_io_semantics(instr);
+   unsigned driver_loc = nir_intrinsic_base(instr);
+
+   if (sh_info().noutput <= driver_loc)
+      sh_info().noutput = driver_loc + 1;
+
+   r600_shader_io& io = sh_info().output[driver_loc];
+   tgsi_get_gl_frag_result_semantic(static_cast<gl_frag_result>(semantic.location),
+                                    &io.name, &io.sid);
+
+   unsigned component = nir_intrinsic_component(instr);
+   io.write_mask |= nir_intrinsic_write_mask(instr) << component;
+
+   if (semantic.location == FRAG_RESULT_COLOR && !m_dual_source_blend) {
+      sh_info().fs_write_all = true;
+   }
+
+   if (semantic.location == FRAG_RESULT_COLOR ||
+       (semantic.location >= FRAG_RESULT_DATA0 &&
+        semantic.location <= FRAG_RESULT_DATA7))  {
+      ++m_max_counted_color_exports;
+
+      if (m_max_counted_color_exports > 1)
+         sh_info().fs_write_all = false;
+      return true;
+   }
+
+   if (semantic.location == FRAG_RESULT_DEPTH ||
+       semantic.location == FRAG_RESULT_STENCIL ||
+       semantic.location == FRAG_RESULT_SAMPLE_MASK) {
+      io.write_mask = 15;
+      return true;
+   }
+
+   return false;
+
+
+}
+
 bool FragmentShaderFromNir::do_process_outputs(nir_variable *output)
 {
    sfn_log << SfnLog::io << "Parse output variable "
@@ -537,9 +582,31 @@ bool FragmentShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_in
    case nir_intrinsic_load_interpolated_input: {
       return emit_load_interpolated_input(instr);
    }
+   case nir_intrinsic_store_output:
+      return emit_store_output(instr);
+
    default:
       return false;
    }
+}
+
+bool FragmentShaderFromNir::emit_store_output(nir_intrinsic_instr* instr)
+{
+   auto location = nir_intrinsic_io_semantics(instr).location;
+
+   if (location == FRAG_RESULT_COLOR)
+      return emit_export_pixel(instr, m_dual_source_blend ? 1 : m_max_color_exports);
+
+   if ((location >= FRAG_RESULT_DATA0 &&
+        location <= FRAG_RESULT_DATA7) ||
+       location == FRAG_RESULT_DEPTH ||
+       location == FRAG_RESULT_STENCIL ||
+       location == FRAG_RESULT_SAMPLE_MASK)
+      return emit_export_pixel(instr, 1);
+
+   sfn_log << SfnLog::err << "r600-NIR: Unimplemented store_output for " << location << ")\n";
+   return false;
+
 }
 
 bool FragmentShaderFromNir::emit_load_interpolated_input(nir_intrinsic_instr* instr)
@@ -903,6 +970,77 @@ bool FragmentShaderFromNir::load_interpolated_two_comp_for_one(GPRVector &dest,
       emit_instruction(ir);
    }
    ir->set_flag(alu_last_instr);
+   return true;
+}
+
+
+bool FragmentShaderFromNir::emit_export_pixel(nir_intrinsic_instr* instr, int outputs)
+{
+   std::array<uint32_t,4> swizzle;
+   unsigned writemask = nir_intrinsic_write_mask(instr);
+   auto semantics = nir_intrinsic_io_semantics(instr);
+   unsigned driver_location = nir_intrinsic_base(instr);
+
+   switch (semantics.location) {
+   case FRAG_RESULT_DEPTH:
+      writemask = 1;
+      swizzle = {0,7,7,7};
+      break;
+   case FRAG_RESULT_STENCIL:
+      writemask = 2;
+      swizzle = {7,0,7,7};
+      break;
+   case FRAG_RESULT_SAMPLE_MASK:
+      writemask = 4;
+      swizzle = {7,7,0,7};
+      break;
+   default:
+      for (int i = 0; i < 4; ++i) {
+         swizzle[i] = (i < instr->num_components) ? i : 7;
+      }
+   }
+
+   auto value = vec_from_nir_with_fetch_constant(instr->src[0], writemask, swizzle);
+
+   set_output(driver_location, value.sel());
+
+   if (semantics.location == FRAG_RESULT_COLOR ||
+       (semantics.location >= FRAG_RESULT_DATA0 &&
+        semantics.location <= FRAG_RESULT_DATA7)) {
+      for (int k = 0 ; k < outputs; ++k) {
+
+         unsigned location = (m_dual_source_blend && (semantics.location == FRAG_RESULT_COLOR)
+                             ? semantics.dual_source_blend_index : driver_location) + k - m_depth_exports;
+
+         sfn_log << SfnLog::io << "Pixel output at loc:" << location << "\n";
+
+         if (location >= m_max_color_exports) {
+            sfn_log << SfnLog::io << "Pixel output loc:" << location
+                    << " dl:" << driver_location
+                    << " skipped  because  we have only "   << m_max_color_exports << " CBs\n";
+            continue;
+         }
+
+         m_last_pixel_export = new ExportInstruction(location, value, ExportInstruction::et_pixel);
+
+         if (sh_info().ps_export_highest < location)
+            sh_info().ps_export_highest = location;
+
+         sh_info().nr_ps_color_exports++;
+
+         unsigned mask = (0xfu << (location * 4));
+         sh_info().ps_color_export_mask |= mask;
+
+         emit_export_instruction(m_last_pixel_export);
+      };
+   } else if (semantics.location == FRAG_RESULT_DEPTH ||
+              semantics.location == FRAG_RESULT_STENCIL ||
+              semantics.location == FRAG_RESULT_SAMPLE_MASK) {
+      m_depth_exports++;
+      emit_export_instruction(new ExportInstruction(61, value, ExportInstruction::et_pixel));
+   } else {
+      return false;
+   }
    return true;
 }
 

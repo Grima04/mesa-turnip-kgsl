@@ -895,9 +895,16 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    NIR_PASS_V(sel->nir, r600_nir_lower_pack_unpack_2x16);
 
+   if (sel->nir->info.stage == MESA_SHADER_VERTEX)
+      NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
+
+   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
+      NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
+   }
+
    nir_variable_mode io_modes = nir_var_uniform | nir_var_shader_in;
 
-   if (sel->nir->info.stage != MESA_SHADER_FRAGMENT)
+   //if (sel->nir->info.stage != MESA_SHADER_FRAGMENT)
       io_modes |= nir_var_shader_out;
 
    if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
@@ -921,6 +928,9 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_lower_io, io_modes, r600_glsl_type_size,
                  nir_lower_io_lower_64bit_to_32);
 
+   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT)
+      NIR_PASS_V(sel->nir, r600_lower_fs_pos_input);
+
    /**/
    if (lower_64bit)
       NIR_PASS_V(sel->nir, nir_lower_indirect_derefs, nir_var_function_temp, 10);
@@ -938,15 +948,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
    NIR_PASS_V(sel->nir, nir_copy_prop);
    NIR_PASS_V(sel->nir, nir_opt_dce);
 
-   if (sel->nir->info.stage == MESA_SHADER_VERTEX)
-      NIR_PASS_V(sel->nir, r600_vectorize_vs_inputs);
-
-   if (sel->nir->info.stage == MESA_SHADER_FRAGMENT) {
-      NIR_PASS_V(sel->nir, r600_lower_fs_pos_input);
-      NIR_PASS_V(sel->nir, r600_lower_fs_out_to_vector);
-   }
-
-	auto sh = nir_shader_clone(sel->nir, sel->nir);
+   auto sh = nir_shader_clone(sel->nir, sel->nir);
 
    if (sh->info.stage == MESA_SHADER_TESS_CTRL ||
        sh->info.stage == MESA_SHADER_TESS_EVAL ||
