@@ -714,13 +714,8 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
           *
           * 0xfffff30f = uncompressed Z + S
           * 0xfffc000f = uncompressed Z only
-          *
-          * GFX8 always uses the Z+S HTILE format for TC-compatible HTILE even
-          * when stencil is not present.
           */
-         uint32_t clear_value = (zstex->surface.has_stencil &&
-                                 !zstex->htile_stencil_disabled) ||
-                                sctx->chip_class == GFX8 ? 0xfffff30f : 0xfffc000f;
+         uint32_t clear_value = !zstex->htile_stencil_disabled ? 0xfffff30f : 0xfffc000f;
          assert(num_clears < ARRAY_SIZE(info));
          si_init_buffer_clear(&info[num_clears++], &zstex->buffer.b.b,
                               zstex->surface.meta_offset, zstex->surface.meta_size, clear_value);

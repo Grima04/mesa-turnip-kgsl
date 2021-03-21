@@ -2481,15 +2481,13 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
 
       if (si_htile_enabled(tex, level, PIPE_MASK_ZS)) {
          z_info |= S_028038_TILE_SURFACE_ENABLE(1) | S_028038_ALLOW_EXPCLEAR(1);
+         s_info |= S_02803C_TILE_STENCIL_DISABLE(tex->htile_stencil_disabled);
 
          if (tex->surface.has_stencil && !tex->htile_stencil_disabled) {
             /* Stencil buffer workaround ported from the GFX6-GFX8 code.
              * See that for explanation.
              */
             s_info |= S_02803C_ALLOW_EXPCLEAR(tex->buffer.b.b.nr_samples <= 1);
-         } else {
-            /* Use all HTILE for depth if there's no stencil. */
-            s_info |= S_02803C_TILE_STENCIL_DISABLE(1);
          }
 
          surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
@@ -2546,6 +2544,7 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
 
       if (si_htile_enabled(tex, level, PIPE_MASK_ZS)) {
          z_info |= S_028040_TILE_SURFACE_ENABLE(1) | S_028040_ALLOW_EXPCLEAR(1);
+         s_info |= S_028044_TILE_STENCIL_DISABLE(tex->htile_stencil_disabled);
 
          if (tex->surface.has_stencil) {
             /* Workaround: For a not yet understood reason, the
@@ -3267,14 +3266,6 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          /* GFX6-GFX8 */
          /* Set fields dependent on tc_compatile_htile. */
          if (si_htile_enabled(tex, zb->base.u.tex.level, PIPE_MASK_ZS)) {
-            if (!tex->surface.has_stencil && !tex->tc_compatible_htile) {
-               /* Use all of the htile_buffer for depth if there's no stencil.
-                * This must not be set when TC-compatible HTILE is enabled
-                * due to a hw bug.
-                */
-               db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
-            }
-
             if (tex->tc_compatible_htile) {
                db_htile_surface |= S_028ABC_TC_COMPATIBLE(1);
 

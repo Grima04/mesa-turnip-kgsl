@@ -984,6 +984,8 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       goto error;
 
    if (tex->is_depth) {
+      tex->htile_stencil_disabled = !tex->surface.has_stencil;
+
       if (sscreen->info.chip_class >= GFX9) {
          tex->can_sample_z = true;
          tex->can_sample_s = true;
@@ -995,6 +997,15 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       } else {
          tex->can_sample_z = !tex->surface.u.legacy.depth_adjusted;
          tex->can_sample_s = !tex->surface.u.legacy.stencil_adjusted;
+
+         /* GFX8 must keep stencil enabled because it can't use Z-only TC-compatible
+          * HTILE because of a hw bug. This has only a small effect on performance
+          * because we lose a little bit of Z precision in order to make space for
+          * stencil in HTILE.
+          */
+         if (sscreen->info.chip_class == GFX8 &&
+             tex->surface.flags & RADEON_SURF_TC_COMPATIBLE_HTILE)
+            tex->htile_stencil_disabled = false;
       }
 
       tex->db_compatible = surface->flags & RADEON_SURF_ZBUFFER;

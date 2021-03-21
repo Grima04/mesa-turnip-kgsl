@@ -1842,7 +1842,7 @@ static inline bool si_can_sample_zs(struct si_texture *tex, bool stencil_sampler
 
 static inline bool si_htile_enabled(struct si_texture *tex, unsigned level, unsigned zs_mask)
 {
-   if (zs_mask == PIPE_MASK_S && tex->htile_stencil_disabled)
+   if (zs_mask == PIPE_MASK_S && (tex->htile_stencil_disabled || !tex->surface.has_stencil))
       return false;
 
    return tex->is_depth && tex->surface.meta_offset && level < tex->surface.num_meta_levels;
