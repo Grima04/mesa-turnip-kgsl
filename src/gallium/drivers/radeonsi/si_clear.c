@@ -446,6 +446,24 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
    p_atomic_inc(&sscreen->dirty_tex_counter);
 }
 
+static bool si_can_fast_clear_depth(struct si_texture *zstex, unsigned level, float depth,
+                                    unsigned buffers)
+{
+   /* TC-compatible HTILE only supports depth clears to 0 or 1. */
+   return buffers & PIPE_CLEAR_DEPTH &&
+          si_htile_enabled(zstex, level, PIPE_MASK_Z) &&
+          (!zstex->tc_compatible_htile || depth == 0 || depth == 1);
+}
+
+static bool si_can_fast_clear_stencil(struct si_texture *zstex, unsigned level, uint8_t stencil,
+                                      unsigned buffers)
+{
+   /* TC-compatible HTILE only supports stencil clears to 0. */
+   return buffers & PIPE_CLEAR_STENCIL &&
+          si_htile_enabled(zstex, level, PIPE_MASK_S) &&
+          (!zstex->tc_compatible_htile || stencil == 0);
+}
+
 static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                           const union pipe_color_union *color)
 {
@@ -765,9 +783,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
        zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0)) {
       unsigned level = zsbuf->u.tex.level;
 
-      /* TC-compatible HTILE only supports depth clears to 0 or 1. */
-      if (buffers & PIPE_CLEAR_DEPTH && si_htile_enabled(zstex, level, PIPE_MASK_Z) &&
-          (!zstex->tc_compatible_htile || depth == 0 || depth == 1)) {
+      if (si_can_fast_clear_depth(zstex, level, depth, buffers)) {
          /* Need to disable EXPCLEAR temporarily if clearing
           * to a new value. */
          if (!(zstex->depth_cleared_level_mask & BITFIELD_BIT(level)) ||
@@ -790,10 +806,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
          si_mark_atom_dirty(sctx, &sctx->atoms.s.db_render_state);
       }
 
-      /* TC-compatible HTILE only supports stencil clears to 0. */
-      if (buffers & PIPE_CLEAR_STENCIL &&
-          si_htile_enabled(zstex, level, PIPE_MASK_S) &&
-          (!zstex->tc_compatible_htile || stencil == 0)) {
+      if (si_can_fast_clear_stencil(zstex, level, stencil, buffers)) {
          stencil &= 0xff;
 
          /* Need to disable EXPCLEAR temporarily if clearing
