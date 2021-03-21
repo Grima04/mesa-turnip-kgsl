@@ -365,19 +365,22 @@ unsigned ValuePool::get_ssa_register_index(const nir_ssa_def& ssa) const
 
 unsigned ValuePool::get_local_register_index(const nir_register& reg)
 {
-   auto pos = m_local_register_map.find(reg.index);
-   if (pos == m_local_register_map.end()) {
+   unsigned index = reg.index | 0x80000000;
+
+   auto pos = m_ssa_register_map.find(index);
+   if (pos == m_ssa_register_map.end()) {
       allocate_local_register(reg);
-      pos = m_local_register_map.find(reg.index);
-      assert(pos != m_local_register_map.end());
+      pos = m_ssa_register_map.find(index);
+      assert(pos != m_ssa_register_map.end());
    }
    return pos->second;
 }
 
 unsigned ValuePool::get_local_register_index(const nir_register& reg) const
 {
-   auto pos = m_local_register_map.find(reg.index);
-   if (pos == m_local_register_map.end()) {
+   unsigned index = reg.index | 0x80000000;
+   auto pos = m_ssa_register_map.find(index);
+   if (pos == m_ssa_register_map.end()) {
       sfn_log << SfnLog::err << __func__ << ": local register "
               << reg.index << " lookup failed";
       return -1;
@@ -427,7 +430,7 @@ void ValuePool::allocate_arrays(array_list& arrays)
               << " of size " << a.length << " with " << a.ncomponents
               << " components, mask " << mask << "\n";
 
-      m_local_register_map[a.index] = current_index + instance;
+      m_ssa_register_map[a.index | 0x80000000] = current_index + instance;
 
       for (unsigned  i = 0; i < a.ncomponents; ++i)
          m_registers[((current_index  + instance) << 3) + i] = array;
@@ -443,13 +446,13 @@ void ValuePool::allocate_arrays(array_list& arrays)
 void ValuePool::allocate_local_register(const nir_register& reg)
 {
    int index = m_next_register_index++;
-   m_local_register_map[reg.index] = index;
+   m_ssa_register_map[reg.index | 0x80000000] = index;
    allocate_with_mask(index, 0xf, true);
 
    /* Create actual register and map it */;
    for (int i = 0; i < 4; ++i) {
       int k = (index << 3) + i;
-      m_registers[k] = PValue(new GPRValue(index, i));
+      m_registers[k] = std::make_shared<GPRValue>(index, i);
    }
 }
 

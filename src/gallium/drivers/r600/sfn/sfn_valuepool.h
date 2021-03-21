@@ -214,7 +214,6 @@ private:
 
    std::set<unsigned> m_ssa_undef;
 
-   std::map<unsigned, unsigned> m_local_register_map;
    std::map<unsigned, unsigned> m_ssa_register_map;
 
    std::map<unsigned, PValue> m_registers;
