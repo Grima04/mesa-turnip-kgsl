@@ -25,6 +25,7 @@
 
 #include "util/format/u_format.h"
 #include "util/u_debug.h"
+#include "util/u_draw.h"
 #include "util/half_float.h"
 #include "util/u_helpers.h"
 #include "util/u_inlines.h"
@@ -1134,13 +1135,7 @@ lima_draw_vbo(struct pipe_context *pctx,
               unsigned num_draws)
 {
    if (num_draws > 1) {
-      struct pipe_draw_info tmp_info = *info;
-
-      for (unsigned i = 0; i < num_draws; i++) {
-         lima_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
-         if (tmp_info.increment_draw_id)
-            tmp_info.drawid++;
-      }
+      util_draw_multi(pctx, info, indirect, draws, num_draws);
       return;
    }
 
