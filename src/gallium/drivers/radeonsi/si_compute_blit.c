@@ -496,8 +496,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
                               /* Only src can have DCC.*/
                               ((struct si_texture *)src)->surface.u.gfx9.dcc.pipe_aligned);
 
-   struct pipe_constant_buffer saved_cb = {};
-
    struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
    struct pipe_image_view saved_image[2] = {0};
    util_copy_image_view(&saved_image[0], &images->views[0]);
@@ -506,14 +504,9 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    void *saved_cs = sctx->cs_shader_state.program;
 
    if (!is_dcc_decompress) {
-      unsigned data[] = {src_box->x, src_box->y, src_box->z, 0, dstx, dsty, dstz, 0};
-
-      si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
-
-      struct pipe_constant_buffer cb = {};
-      cb.buffer_size = sizeof(data);
-      cb.user_buffer = data;
-      ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, false, &cb);
+      sctx->cs_user_data[0] = src_box->x | (dstx << 16);
+      sctx->cs_user_data[1] = src_box->y | (dsty << 16);
+      sctx->cs_user_data[2] = src_box->z | (dstz << 16);
    }
 
    struct pipe_image_view image[2] = {0};
@@ -615,9 +608,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, saved_image);
    for (int i = 0; i < 2; i++)
       pipe_resource_reference(&saved_image[i].resource, NULL);
-   if (!is_dcc_decompress) {
-      ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, true, &saved_cb);
-   }
 }
 
 void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)

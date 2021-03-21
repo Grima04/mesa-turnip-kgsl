@@ -504,21 +504,23 @@ void *si_create_copy_image_compute_shader(struct pipe_context *ctx)
 {
    static const char text[] =
       "COMP\n"
+      "PROPERTY CS_USER_DATA_COMPONENTS_AMD 3\n"
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
       "DCL SV[2], BLOCK_SIZE\n"
+      "DCL SV[3], CS_USER_DATA_AMD\n"
       "DCL IMAGE[0], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
       "DCL IMAGE[1], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
-      "DCL CONST[0][0..1]\n" // 0:xyzw 1:xyzw
-      "DCL TEMP[0..4], LOCAL\n"
+      "DCL TEMP[0..3], LOCAL\n"
+      "IMM[0] UINT32 {65535, 16, 0, 0}\n"
 
-      "MOV TEMP[0].xyz, CONST[0][0].xyzw\n"
-      "UMAD TEMP[1].xyz, SV[1].xyzz, SV[2].xyzz, SV[0].xyzz\n"
-      "UADD TEMP[2].xyz, TEMP[1].xyzx, TEMP[0].xyzx\n"
-      "LOAD TEMP[3], IMAGE[0], TEMP[2].xyzx, 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
-      "MOV TEMP[4].xyz, CONST[0][1].xyzw\n"
-      "UADD TEMP[2].xyz, TEMP[1].xyzx, TEMP[4].xyzx\n"
-      "STORE IMAGE[1], TEMP[2].xyzz, TEMP[3], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
+      "UMAD TEMP[0].xyz, SV[1], SV[2], SV[0]\n" /* threadID.xyz */
+      "AND TEMP[1].xyz, SV[3], IMM[0].xxxx\n"    /* src.xyz */
+      "UADD TEMP[1].xyz, TEMP[1], TEMP[0]\n" /* src.xyz + threadID.xyz */
+      "LOAD TEMP[3], IMAGE[0], TEMP[1], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
+      "USHR TEMP[2].xyz, SV[3], IMM[0].yyyy\n"   /* dst.xyz */
+      "UADD TEMP[2].xyz, TEMP[2], TEMP[0]\n" /* dst.xyz + threadID.xyz */
+      "STORE IMAGE[1], TEMP[2], TEMP[3], 2D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
       "END\n";
 
    struct tgsi_token tokens[1024];
@@ -542,20 +544,22 @@ void *si_create_copy_image_compute_shader_1d_array(struct pipe_context *ctx)
       "PROPERTY CS_FIXED_BLOCK_WIDTH 64\n"
       "PROPERTY CS_FIXED_BLOCK_HEIGHT 1\n"
       "PROPERTY CS_FIXED_BLOCK_DEPTH 1\n"
+      "PROPERTY CS_USER_DATA_COMPONENTS_AMD 3\n"
       "DCL SV[0], THREAD_ID\n"
       "DCL SV[1], BLOCK_ID\n"
+      "DCL SV[2], CS_USER_DATA_AMD\n"
       "DCL IMAGE[0], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
       "DCL IMAGE[1], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT, WR\n"
-      "DCL CONST[0][0..1]\n" // 0:xyzw 1:xyzw
       "DCL TEMP[0..4], LOCAL\n"
-      "IMM[0] UINT32 {64, 1, 0, 0}\n"
-      "MOV TEMP[0].xy, CONST[0][0].xzzw\n"
-      "UMAD TEMP[1].xy, SV[1].xyzz, IMM[0].xyyy, SV[0].xyzz\n"
-      "UADD TEMP[2].xy, TEMP[1].xyzx, TEMP[0].xyzx\n"
-      "LOAD TEMP[3], IMAGE[0], TEMP[2].xyzx, 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
-      "MOV TEMP[4].xy, CONST[0][1].xzzw\n"
-      "UADD TEMP[2].xy, TEMP[1].xyzx, TEMP[4].xyzx\n"
-      "STORE IMAGE[1], TEMP[2].xyzz, TEMP[3], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
+      "IMM[0] UINT32 {64, 1, 65535, 16}\n"
+
+      "UMAD TEMP[0].xz, SV[1].xyyy, IMM[0].xyyy, SV[0].xyyy\n" /* threadID.xz */
+      "AND TEMP[1].xz, SV[2], IMM[0].zzzz\n"    /* src.xz */
+      "UADD TEMP[1].xz, TEMP[1], TEMP[0]\n"     /* src.xz + threadID.xz */
+      "LOAD TEMP[3], IMAGE[0], TEMP[1].xzzz, 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
+      "USHR TEMP[2].xz, SV[2], IMM[0].wwww\n"   /* dst.xz */
+      "UADD TEMP[2].xz, TEMP[2], TEMP[0]\n" /* dst.xz + threadID.xz */
+      "STORE IMAGE[1], TEMP[2].xzzz, TEMP[3], 1D_ARRAY, PIPE_FORMAT_R32G32B32A32_FLOAT\n"
       "END\n";
 
    struct tgsi_token tokens[1024];
