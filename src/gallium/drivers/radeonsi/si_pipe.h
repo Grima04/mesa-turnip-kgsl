@@ -113,7 +113,9 @@ extern "C" {
 #define SI_MAX_VIEWPORTS                  16
 #define SIX_BITS                          0x3F
 #define SI_MAP_BUFFER_ALIGNMENT           64
-#define SI_MAX_VARIABLE_THREADS_PER_BLOCK 1024
+/* We only support the minimum allowed value (512), so that we can pack a 3D block size
+ * in 1 SGPR. */
+#define SI_MAX_VARIABLE_THREADS_PER_BLOCK 512
 
 #define SI_CONTEXT_FLAG_AUX               (1u << 31)
 
