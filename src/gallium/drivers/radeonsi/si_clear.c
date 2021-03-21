@@ -626,6 +626,16 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
    struct si_texture *zstex = zsbuf ? (struct si_texture *)zsbuf->texture : NULL;
    bool needs_db_flush = false;
 
+   /* Unset clear flags for non-existent buffers. */
+   for (unsigned i = 0; i < 8; i++) {
+      if (i >= fb->nr_cbufs || !fb->cbufs[i])
+         buffers &= ~(PIPE_CLEAR_COLOR0 << i);
+   }
+   if (!zsbuf)
+      buffers &= ~PIPE_CLEAR_DEPTHSTENCIL;
+   else if (!util_format_has_stencil(util_format_description(zsbuf->format)))
+      buffers &= ~PIPE_CLEAR_STENCIL;
+
    if (buffers & PIPE_CLEAR_COLOR) {
       si_do_fast_color_clear(sctx, &buffers, color);
       if (!buffers)
