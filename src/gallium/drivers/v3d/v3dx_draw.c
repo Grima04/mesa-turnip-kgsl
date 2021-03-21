@@ -22,6 +22,7 @@
  */
 
 #include "util/u_blitter.h"
+#include "util/u_draw.h"
 #include "util/u_prim.h"
 #include "util/format/u_format.h"
 #include "util/u_pack_color.h"
@@ -1097,16 +1098,10 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              const struct pipe_draw_start_count *draws,
              unsigned num_draws)
 {
-	if (num_draws > 1) {
-           struct pipe_draw_info tmp_info = *info;
-
-           for (unsigned i = 0; i < num_draws; i++) {
-              v3d_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
-              if (tmp_info.increment_draw_id)
-                 tmp_info.drawid++;
-           }
-           return;
-	}
+        if (num_draws > 1) {
+                util_draw_multi(pctx, info, indirect, draws, num_draws);
+                return;
+        }
 
         if (!indirect && (!draws[0].count || !info->instance_count))
            return;
