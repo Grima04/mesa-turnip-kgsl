@@ -2085,7 +2085,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
    /* Use optimal packet order based on whether we need to sync the pipeline. */
    if (unlikely(sctx->flags & (SI_CONTEXT_FLUSH_AND_INV_CB | SI_CONTEXT_FLUSH_AND_INV_DB |
-                               SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH))) {
+                               SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
+                               SI_CONTEXT_VS_PARTIAL_FLUSH))) {
       /* If we have to wait for idle, set all states first, so that all
        * SET packets are processed in parallel with previous draw calls.
        * Then draw and prefetch at the end. This ensures that the time
