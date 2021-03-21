@@ -125,6 +125,9 @@ struct nv50_ir_prog_info
       uint8_t msInfoCBSlot;      /* cX[] used for multisample info */
       uint16_t msInfoBase;       /* base address for multisample info */
       uint16_t uboInfoBase;      /* base address for compute UBOs (gk104+) */
+
+      uint16_t membarOffset;     /* base address for membar reads (nv50) */
+      uint8_t gmemMembar;        /* gX[] on which to perform membar reads (nv50) */
    } io;
 
    /* driver callback to assign input/output locations */

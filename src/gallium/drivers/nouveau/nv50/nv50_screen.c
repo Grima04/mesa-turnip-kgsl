@@ -797,6 +797,12 @@ nv50_screen_init_hwctx(struct nv50_screen *screen)
    PUSH_DATAh(push, screen->uniforms->offset + (4 << 16) + NV50_CB_AUX_RUNOUT_OFFSET);
    PUSH_DATA (push, screen->uniforms->offset + (4 << 16) + NV50_CB_AUX_RUNOUT_OFFSET);
 
+   /* set the membar offset */
+   BEGIN_NV04(push, NV50_3D(CB_ADDR), 1);
+   PUSH_DATA (push, (NV50_CB_AUX_MEMBAR_OFFSET << (8 - 2)) | NV50_CB_AUX);
+   BEGIN_NI04(push, NV50_3D(CB_DATA(0)), 1);
+   PUSH_DATA (push, screen->uniforms->offset + (4 << 16) + NV50_CB_AUX_MEMBAR_OFFSET);
+
    nv50_upload_ms_info(push);
 
    /* max TIC (bits 4:8) & TSC bindings, per program type */

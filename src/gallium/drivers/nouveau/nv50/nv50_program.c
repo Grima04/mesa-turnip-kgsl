@@ -364,6 +364,9 @@ nv50_program_translate(struct nv50_program *prog, uint16_t chipset,
    info->io.msInfoCBSlot = 15;
    info->io.msInfoBase = NV50_CB_AUX_MS_OFFSET;
 
+   info->io.membarOffset = NV50_CB_AUX_MEMBAR_OFFSET;
+   info->io.gmemMembar = 15;
+
    info->assignSlots = nv50_program_assign_varying_slots;
 
    prog->vp.bfc[0] = 0xff;

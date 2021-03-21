@@ -647,6 +647,7 @@ private:
    bool handleEXPORT(Instruction *);
    bool handleLOAD(Instruction *);
    bool handleLDST(Instruction *);
+   bool handleMEMBAR(Instruction *);
    bool handleSharedATOM(Instruction *);
    bool handleSULDP(TexInstruction *);
    bool handleSUREDP(TexInstruction *);
@@ -1619,6 +1620,42 @@ NV50LoweringPreSSA::handleLDST(Instruction *i)
    return true;
 }
 
+bool
+NV50LoweringPreSSA::handleMEMBAR(Instruction *i)
+{
+   // For global memory, apparently doing a bunch of reads at different
+   // addresses forces things to get sufficiently flushed.
+   if (i->subOp & NV50_IR_SUBOP_MEMBAR_GL) {
+      uint8_t b = prog->driver->io.auxCBSlot;
+      Value *base =
+         bld.mkLoadv(TYPE_U32, bld.mkSymbol(FILE_MEMORY_CONST, b, TYPE_U32,
+                                            prog->driver->io.membarOffset), NULL);
+      Value *physid = bld.mkOp1v(OP_RDSV, TYPE_U32, bld.getSSA(), bld.mkSysVal(SV_PHYSID, 0));
+      Value *off = bld.mkOp2v(OP_SHL, TYPE_U32, bld.getSSA(),
+                              bld.mkOp2v(OP_AND, TYPE_U32, bld.getSSA(),
+                                         physid, bld.loadImm(NULL, 0x1f)),
+                              bld.loadImm(NULL, 2));
+      base = bld.mkOp2v(OP_ADD, TYPE_U32, bld.getSSA(), base, off);
+      Symbol *gmemMembar = bld.mkSymbol(FILE_MEMORY_GLOBAL, prog->driver->io.gmemMembar, TYPE_U32, 0);
+      for (int i = 0; i < 8; i++) {
+         if (i != 0) {
+            base = bld.mkOp2v(OP_ADD, TYPE_U32, bld.getSSA(), base, bld.loadImm(NULL, 0x100));
+         }
+         bld.mkLoad(TYPE_U32, bld.getSSA(), gmemMembar, base)
+            ->fixed = 1;
+      }
+   }
+
+   // Both global and shared memory barriers also need a regular control bar
+   // TODO: double-check this is the case
+   i->op = OP_BAR;
+   i->subOp = NV50_IR_SUBOP_BAR_SYNC;
+   i->setSrc(0, bld.mkImm(0u));
+   i->setSrc(1, bld.mkImm(0u));
+
+   return true;
+}
+
 // The type that bests represents how each component can be stored when packed.
 static DataType
 getPackedType(const TexInstruction::ImgFormatDesc *t, int c)
@@ -2188,6 +2225,8 @@ NV50LoweringPreSSA::visit(Instruction *i)
       return handleEXPORT(i);
    case OP_LOAD:
       return handleLOAD(i);
+   case OP_MEMBAR:
+      return handleMEMBAR(i);
    case OP_ATOM:
    case OP_STORE:
       return handleLDST(i);

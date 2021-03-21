@@ -2569,6 +2569,13 @@ RegAlloc::InsertConstraintsPass::visit(BasicBlock *bb)
             addHazard(i, i->src(0).getIndirect(0));
          if (i->src(0).isIndirect(1) && typeSizeof(i->dType) >= 8)
             addHazard(i, i->src(0).getIndirect(1));
+         if (i->op == OP_LOAD && i->fixed && targ->getChipset() < 0xc0) {
+            // Add a hazard to make sure we keep the op around. These are used
+            // for membars.
+            Instruction *nop = new_Instruction(func, OP_NOP, i->dType);
+            nop->setSrc(0, i->getDef(0));
+            i->bb->insertAfter(i, nop);
+         }
       } else
       if (i->op == OP_UNION ||
           i->op == OP_MERGE ||
