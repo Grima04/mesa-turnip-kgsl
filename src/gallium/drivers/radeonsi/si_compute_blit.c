@@ -72,7 +72,8 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
 
    /* Invalidate L0-L1 caches. */
    /* sL0 is never invalidated, because src resources don't use it. */
-   sctx->flags |= SI_CONTEXT_INV_VCACHE;
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+      sctx->flags |= SI_CONTEXT_INV_VCACHE;
 
    /* Set settings for driver-internal compute dispatches. */
    sctx->flags &= ~SI_CONTEXT_START_PIPELINE_STATS;
@@ -125,7 +126,8 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    unsigned data[4] = {0};
    memcpy(data, clear_value, 12);
 
-   sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
 
    struct pipe_shader_buffer saved_sb = {0};
    si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
@@ -188,7 +190,8 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
    assert(dst->target != PIPE_BUFFER || dst_offset + size <= dst->width0);
    assert(!src || src_offset + size <= src->width0);
 
-   sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
 
    /* Save states. */
    void *saved_cs = sctx->cs_shader_state.program;

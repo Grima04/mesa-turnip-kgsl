@@ -208,7 +208,7 @@ void si_cp_dma_clear_buffer(struct si_context *sctx, struct radeon_cmdbuf *cs,
    if (sdst) {
       util_range_add(dst, &sdst->valid_buffer_range, offset, offset + size);
 
-      if (!(user_flags & SI_OP_CPDMA_SKIP_CACHE_FLUSH))
+      if (!(user_flags & SI_OP_SKIP_CACHE_INV_BEFORE))
          sctx->flags |= si_get_flush_flags(sctx, coher, cache_policy);
    }
 
@@ -345,7 +345,7 @@ void si_cp_dma_copy_buffer(struct si_context *sctx, struct pipe_resource *dst,
    if (user_flags & SI_OP_SYNC_PS_BEFORE)
       sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
 
-   if ((dst || src) && !(user_flags & SI_OP_CPDMA_SKIP_CACHE_FLUSH))
+   if ((dst || src) && !(user_flags & SI_OP_SKIP_CACHE_INV_BEFORE))
          sctx->flags |= si_get_flush_flags(sctx, coher, cache_policy);
 
    /* This is the main part doing the copying. Src is always aligned. */

@@ -1367,10 +1367,10 @@ void si_init_clear_functions(struct si_context *sctx);
 #define SI_OP_SYNC_BEFORE                 (SI_OP_SYNC_CS_BEFORE | SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_CPDMA_BEFORE)
 #define SI_OP_SYNC_AFTER                  (1 << 3)
 #define SI_OP_SYNC_BEFORE_AFTER           (SI_OP_SYNC_BEFORE | SI_OP_SYNC_AFTER)
-#define SI_OP_CS_IMAGE                    (1 << 4)
-#define SI_OP_CS_RENDER_COND_ENABLE       (1 << 5)
-#define SI_OP_CPDMA_SKIP_CHECK_CS_SPACE   (1 << 6) /* don't call need_cs_space */
-#define SI_OP_CPDMA_SKIP_CACHE_FLUSH      (1 << 7) /* don't flush caches */
+#define SI_OP_SKIP_CACHE_INV_BEFORE       (1 << 4) /* don't invalidate caches */
+#define SI_OP_CS_IMAGE                    (1 << 5)
+#define SI_OP_CS_RENDER_COND_ENABLE       (1 << 6)
+#define SI_OP_CPDMA_SKIP_CHECK_CS_SPACE   (1 << 7) /* don't call need_cs_space */
 
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);
