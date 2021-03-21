@@ -49,7 +49,6 @@ private:
    };
 
    void emit_shader_start() override;
-   bool do_process_inputs(nir_variable *input) override;
    bool do_allocate_reserved_registers() override;
    bool do_process_outputs(nir_variable *output) override;
    bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) override;

@@ -92,6 +92,8 @@ public:
 
    void get_array_info(r600_shader& shader) const;
 
+   virtual bool scan_inputs_read(const nir_shader *sh);
+
 protected:
 
    void set_var_address(nir_deref_instr *instr);
@@ -176,7 +178,6 @@ private:
 
    virtual void emit_shader_start();
    virtual bool emit_deref_instruction_override(nir_deref_instr* instr);
-   virtual bool do_process_inputs(nir_variable *input) = 0;
    virtual bool do_process_outputs(nir_variable *output) = 0;
    virtual bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) = 0;
    virtual bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) = 0;

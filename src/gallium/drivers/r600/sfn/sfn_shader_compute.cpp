@@ -104,11 +104,6 @@ bool ComputeShaderFromNir::emit_load_num_work_groups(nir_intrinsic_instr* instr)
    return true;
 }
 
-bool ComputeShaderFromNir::do_process_inputs(UNUSED nir_variable *input)
-{
-   return true;
-}
-
 bool ComputeShaderFromNir::do_process_outputs(UNUSED nir_variable *output)
 {
    return true;

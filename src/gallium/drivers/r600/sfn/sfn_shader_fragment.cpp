@@ -60,12 +60,6 @@ FragmentShaderFromNir::FragmentShaderFromNir(const nir_shader& nir,
    sh_info().atomic_base = key.ps.first_atomic_counter;
 }
 
-bool FragmentShaderFromNir::do_process_inputs(nir_variable *input)
-{
-   /*  inputs have been lowered */
-   return true;
-}
-
 bool FragmentShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr)
 {
    assert(0 && "all input derefs should have been lowered");

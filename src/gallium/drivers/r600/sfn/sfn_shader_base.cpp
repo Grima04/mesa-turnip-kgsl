@@ -292,9 +292,9 @@ bool ShaderFromNirProcessor::process_uniforms(nir_variable *uniform)
    return true;
 }
 
-bool ShaderFromNirProcessor::process_inputs(nir_variable *input)
+bool ShaderFromNirProcessor::scan_inputs_read(const nir_shader *sh)
 {
-   return do_process_inputs(input);
+   return true;
 }
 
 bool ShaderFromNirProcessor::process_outputs(nir_variable *output)

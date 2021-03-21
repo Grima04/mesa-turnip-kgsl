@@ -303,13 +303,9 @@ bool ShaderFromNir::emit_instruction(nir_instr *instr)
 
 bool ShaderFromNir::process_declaration()
 {
-   // scan declarations
-   nir_foreach_shader_in_variable(variable, sh) {
-      if (!impl->process_inputs(variable)) {
-         fprintf(stderr, "R600: error parsing input variable %s\n", variable->name);
-         return false;
-      }
-   }
+
+   if (!impl->scan_inputs_read(sh))
+      return false;
 
    // scan declarations
    nir_foreach_shader_out_variable(variable, sh) {
@@ -899,9 +895,7 @@ int r600_shader_from_nir(struct r600_context *rctx,
 
    NIR_PASS_V(sel->nir, r600_nir_lower_pack_unpack_2x16);
 
-   nir_variable_mode io_modes = nir_var_uniform;
-   if (sel->nir->info.stage != MESA_SHADER_VERTEX)
-      io_modes |= nir_var_shader_in;
+   nir_variable_mode io_modes = nir_var_uniform | nir_var_shader_in;
 
    if (sel->nir->info.stage != MESA_SHADER_FRAGMENT)
       io_modes |= nir_var_shader_out;

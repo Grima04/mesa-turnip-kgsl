@@ -193,39 +193,6 @@ bool GeometryShaderFromNir::process_load_input(nir_intrinsic_instr* instr)
    return false;
 }
 
-bool GeometryShaderFromNir::do_process_inputs(nir_variable *input)
-{
-
-   if (input->data.location == VARYING_SLOT_POS ||
-       input->data.location == VARYING_SLOT_PSIZ ||
-       input->data.location == VARYING_SLOT_FOGC ||
-       input->data.location == VARYING_SLOT_CLIP_VERTEX ||
-       input->data.location == VARYING_SLOT_CLIP_DIST0 ||
-       input->data.location == VARYING_SLOT_CLIP_DIST1 ||
-       input->data.location == VARYING_SLOT_COL0 ||
-       input->data.location == VARYING_SLOT_COL1 ||
-       input->data.location == VARYING_SLOT_BFC0 ||
-       input->data.location == VARYING_SLOT_BFC1 ||
-       input->data.location == VARYING_SLOT_PNTC ||
-       (input->data.location >= VARYING_SLOT_VAR0 &&
-       input->data.location <= VARYING_SLOT_VAR31) ||
-       (input->data.location >= VARYING_SLOT_TEX0 &&
-       input->data.location <= VARYING_SLOT_TEX7)) {
-
-      r600_shader_io& io = sh_info().input[input->data.driver_location];
-      auto semantic = r600_get_varying_semantic(input->data.location);
-      io.name = semantic.first;
-      io.sid = semantic.second;
-
-      io.ring_offset = 16 * input->data.driver_location;
-      ++sh_info().ninput;
-      m_next_input_ring_offset += 16;
-      return true;
-   }
-
-   return false;
-}
-
 bool GeometryShaderFromNir::do_process_outputs(nir_variable *output)
 {
    if (output->data.location == VARYING_SLOT_COL0 ||
