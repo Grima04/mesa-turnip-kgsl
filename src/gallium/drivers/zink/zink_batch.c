@@ -202,10 +202,11 @@ init_batch_state(struct zink_context *ctx, struct zink_batch *batch)
       if (he) { //there may not be any entries available
          bs = he->data;
          _mesa_hash_table_remove(&ctx->batch_states[batch->queue], he);
-         zink_reset_batch_state(ctx, bs);
       }
    }
-   if (!bs) {
+   if (bs)
+      zink_reset_batch_state(ctx, bs);
+   else {
       if (!batch->state) {
          /* this is batch init, so create a few more states for later use */
          for (int i = 0; i < 3; i++) {
