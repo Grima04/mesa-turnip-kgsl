@@ -112,7 +112,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
 
       /* The BUFFER_FILLED_SIZE is written using a PS_DONE event. */
       if (sctx->screen->use_ngg_streamout) {
-         sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
+         sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_PFP_SYNC_ME;
 
          /* Wait now. This is needed to make sure that GDS is not
           * busy at the end of IBs.
@@ -122,7 +122,7 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
           */
          wait_now = true;
       } else {
-         sctx->flags |= SI_CONTEXT_VS_PARTIAL_FLUSH;
+         sctx->flags |= SI_CONTEXT_VS_PARTIAL_FLUSH | SI_CONTEXT_PFP_SYNC_ME;
       }
    }
 
@@ -133,7 +133,8 @@ static void si_set_streamout_targets(struct pipe_context *ctx, unsigned num_targ
       if (sctx->screen->use_ngg_streamout)
          si_allocate_gds(sctx);
 
-      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH;
+      sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
+                     SI_CONTEXT_PFP_SYNC_ME;
    }
 
    /* Streamout buffers must be bound in 2 places:

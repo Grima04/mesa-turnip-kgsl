@@ -569,6 +569,8 @@ void si_emit_surface_sync(struct si_context *sctx, struct radeon_cmdbuf *cs, uns
 
    assert(sctx->chip_class <= GFX9);
 
+   cp_coher_cntl |= 1u << 31; /* don't sync PFP, i.e. execute the sync in ME */
+
    radeon_begin(cs);
 
    if (sctx->chip_class == GFX9 || compute_ib) {
@@ -749,21 +751,22 @@ void gfx10_emit_cache_flush(struct si_context *ctx, struct radeon_cmdbuf *cs)
 
    /* Ignore fields that only modify the behavior of other fields. */
    if (gcr_cntl & C_586_GL1_RANGE & C_586_GL2_RANGE & C_586_SEQ) {
+      unsigned dont_sync_pfp = (!(flags & SI_CONTEXT_PFP_SYNC_ME)) << 31;
+
       /* Flush caches and wait for the caches to assert idle.
        * The cache flush is executed in the ME, but the PFP waits
        * for completion.
        */
       radeon_emit(cs, PKT3(PKT3_ACQUIRE_MEM, 6, 0));
-      radeon_emit(cs, 0);          /* CP_COHER_CNTL */
+      radeon_emit(cs, dont_sync_pfp); /* CP_COHER_CNTL */
       radeon_emit(cs, 0xffffffff); /* CP_COHER_SIZE */
       radeon_emit(cs, 0xffffff);   /* CP_COHER_SIZE_HI */
       radeon_emit(cs, 0);          /* CP_COHER_BASE */
       radeon_emit(cs, 0);          /* CP_COHER_BASE_HI */
       radeon_emit(cs, 0x0000000A); /* POLL_INTERVAL */
       radeon_emit(cs, gcr_cntl);   /* GCR_CNTL */
-   } else if (cb_db_event || (flags & (SI_CONTEXT_VS_PARTIAL_FLUSH | SI_CONTEXT_PS_PARTIAL_FLUSH |
-                                       SI_CONTEXT_CS_PARTIAL_FLUSH))) {
-      /* We need to ensure that PFP waits as well. */
+   } else if (flags & SI_CONTEXT_PFP_SYNC_ME) {
+      /* Synchronize PFP with ME. (this stalls PFP) */
       radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
       radeon_emit(cs, 0);
    }
@@ -953,23 +956,11 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
       si_cp_wait_mem(sctx, cs, va, sctx->wait_mem_number, 0xffffffff, WAIT_REG_MEM_EQUAL);
    }
 
-   /* Make sure ME is idle (it executes most packets) before continuing.
-    * This prevents read-after-write hazards between PFP and ME.
-    */
-   if (sctx->has_graphics &&
-       (cp_coher_cntl || (flags & (SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_INV_VCACHE |
-                                   SI_CONTEXT_INV_L2 | SI_CONTEXT_WB_L2)))) {
-      radeon_begin(cs);
-      radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
-      radeon_emit(cs, 0);
-      radeon_end();
-   }
-
    /* GFX6-GFX8 only:
     *   When one of the CP_COHER_CNTL.DEST_BASE flags is set, SURFACE_SYNC
     *   waits for idle, so it should be last. SURFACE_SYNC is done in PFP.
     *
-    * cp_coher_cntl should contain all necessary flags except TC flags
+    * cp_coher_cntl should contain all necessary flags except TC and PFP flags
     * at this point.
     *
     * GFX6-GFX7 don't support L2 write-back.
@@ -1010,6 +1001,13 @@ void si_emit_cache_flush(struct si_context *sctx, struct radeon_cmdbuf *cs)
    /* If TC flushes haven't cleared this... */
    if (cp_coher_cntl)
       si_emit_surface_sync(sctx, cs, cp_coher_cntl);
+
+   if (flags & SI_CONTEXT_PFP_SYNC_ME) {
+      radeon_begin(cs);
+      radeon_emit(cs, PKT3(PKT3_PFP_SYNC_ME, 0, 0));
+      radeon_emit(cs, 0);
+      radeon_end();
+   }
 
    if (is_barrier)
       si_prim_discard_signal_next_compute_ib_start(sctx);

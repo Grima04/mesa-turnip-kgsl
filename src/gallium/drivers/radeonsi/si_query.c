@@ -1582,7 +1582,7 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
       }
 
       sctx->b.launch_grid(&sctx->b, &grid);
-      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
+      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_PFP_SYNC_ME;
    }
 
    si_restore_qbo_state(sctx, &saved_state);

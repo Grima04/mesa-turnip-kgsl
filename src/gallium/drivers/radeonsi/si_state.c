@@ -5001,7 +5001,8 @@ static void si_memory_barrier(struct pipe_context *ctx, unsigned flags)
 
    /* Subsequent commands must wait for all shader invocations to
     * complete. */
-   sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH;
+   sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
+                  SI_CONTEXT_PFP_SYNC_ME;
 
    if (flags & PIPE_BARRIER_CONSTANT_BUFFER)
       sctx->flags |= SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE;

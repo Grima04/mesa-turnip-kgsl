@@ -383,7 +383,7 @@ si_thread_trace_start(struct si_context *sctx, int family, struct radeon_cmdbuf 
    sctx->flags |=
       SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
       SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE |
-      SI_CONTEXT_INV_L2;
+      SI_CONTEXT_INV_L2 | SI_CONTEXT_PFP_SYNC_ME;
    sctx->emit_cache_flush(sctx, cs);
 
    si_inhibit_clockgating(sctx, cs, true);
@@ -426,7 +426,7 @@ si_thread_trace_stop(struct si_context *sctx, int family, struct radeon_cmdbuf *
    sctx->flags |=
       SI_CONTEXT_PS_PARTIAL_FLUSH | SI_CONTEXT_CS_PARTIAL_FLUSH |
       SI_CONTEXT_INV_ICACHE | SI_CONTEXT_INV_SCACHE | SI_CONTEXT_INV_VCACHE |
-      SI_CONTEXT_INV_L2;
+      SI_CONTEXT_INV_L2 | SI_CONTEXT_PFP_SYNC_ME;
    sctx->emit_cache_flush(sctx, cs);
 
    si_emit_thread_trace_stop(sctx, cs, family);

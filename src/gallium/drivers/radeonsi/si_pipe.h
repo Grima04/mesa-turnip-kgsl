@@ -98,6 +98,9 @@ extern "C" {
 #define SI_CONTEXT_CS_PARTIAL_FLUSH   (1 << 14)
 #define SI_CONTEXT_VGT_FLUSH          (1 << 15)
 #define SI_CONTEXT_VGT_STREAMOUT_SYNC (1 << 16)
+/* PFP waits for ME to finish. Used to sync for index and indirect buffers and render
+ * condition. It's typically set when doing a VS/PS/CS partial flush for buffers. */
+#define SI_CONTEXT_PFP_SYNC_ME        (1 << 17)
 
 #define SI_PREFETCH_LS              (1 << 1)
 #define SI_PREFETCH_HS              (1 << 2)
