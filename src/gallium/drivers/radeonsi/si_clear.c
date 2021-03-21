@@ -535,11 +535,8 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
    while (color_buffer_mask) {
       unsigned i = u_bit_scan(&color_buffer_mask);
 
-      unsigned level = fb->cbufs[i]->u.tex.level;
-      if (level > 0)
-         continue;
-
       struct si_texture *tex = (struct si_texture *)fb->cbufs[i]->texture;
+      unsigned level = fb->cbufs[i]->u.tex.level;
       unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
 
       /* the clear is allowed if all layers are bound */
@@ -598,7 +595,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
       }
 
       /* Try to clear DCC first, otherwise try CMASK. */
-      if (vi_dcc_enabled(tex, 0)) {
+      if (vi_dcc_enabled(tex, level)) {
          uint32_t reset_value;
 
          if (sctx->screen->debug_flags & DBG(NO_DCC_CLEAR))
@@ -623,13 +620,20 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
          if (eliminate_needed && too_small)
             continue;
 
+         /* We can clear any level, but we only set up the clear value registers for the first
+          * level. Therefore, all other levels can be cleared only if the clear value registers
+          * are not used, which is only the case with DCC constant encoding and 0/1 clear values.
+          */
+         if (level > 0 && (eliminate_needed || !sctx->screen->info.has_dcc_constant_encode))
+            continue;
+
          /* TODO: This DCC+CMASK clear doesn't work with MSAA. */
          if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer && eliminate_needed)
             continue;
 
          assert(num_clears < ARRAY_SIZE(info));
 
-         if (!vi_dcc_get_clear_info(sctx, tex, 0, reset_value, &info[num_clears]))
+         if (!vi_dcc_get_clear_info(sctx, tex, level, reset_value, &info[num_clears]))
             continue;
 
          num_clears++;
@@ -647,6 +651,9 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
             fmask_decompress_needed = true;
          }
       } else {
+         if (level > 0)
+            continue;
+
          /* Shared textures can't use fast clear without an explicit flush
           * because the clear color is not exported.
           */
