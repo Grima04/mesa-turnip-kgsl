@@ -16,20 +16,14 @@
 
 #include "wsi_common.h"
 
-static void
-batch_usage_unset(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id)
-{
-   p_atomic_cmpxchg(&u->usage[queue], batch_id, 0);
-}
-
 void
 zink_batch_state_clear_resources(struct zink_screen *screen, struct zink_batch_state *bs)
 {
    /* unref all used resources */
    set_foreach(bs->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
-      batch_usage_unset(&obj->reads, !!bs->fence.is_compute, bs->fence.batch_id);
-      batch_usage_unset(&obj->writes, !!bs->fence.is_compute, bs->fence.batch_id);
+      zink_batch_usage_unset(&obj->reads, !!bs->fence.is_compute, bs->fence.batch_id);
+      zink_batch_usage_unset(&obj->writes, !!bs->fence.is_compute, bs->fence.batch_id);
       zink_resource_object_reference(screen, &obj, NULL);
       _mesa_set_remove(bs->resources, entry);
    }
@@ -50,13 +44,13 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    set_foreach(bs->surfaces, entry) {
       struct zink_surface *surf = (struct zink_surface *)entry->key;
-      batch_usage_unset(&surf->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
+      zink_batch_usage_unset(&surf->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
       zink_surface_reference(screen, &surf, NULL);
       _mesa_set_remove(bs->surfaces, entry);
    }
    set_foreach(bs->bufferviews, entry) {
       struct zink_buffer_view *buffer_view = (struct zink_buffer_view *)entry->key;
-      batch_usage_unset(&buffer_view->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
+      zink_batch_usage_unset(&buffer_view->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
       zink_buffer_view_reference(screen, &buffer_view, NULL);
       _mesa_set_remove(bs->bufferviews, entry);
    }
@@ -69,7 +63,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 
    set_foreach(bs->desc_sets, entry) {
       struct zink_descriptor_set *zds = (void*)entry->key;
-      batch_usage_unset(&zds->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
+      zink_batch_usage_unset(&zds->batch_uses, !!bs->fence.is_compute, bs->fence.batch_id);
       /* reset descriptor pools when no bs is using this program to avoid
        * having some inactive program hogging a billion descriptors
        */

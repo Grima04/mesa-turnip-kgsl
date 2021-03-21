@@ -151,4 +151,10 @@ bool
 zink_batch_usage_matches(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id);
 bool
 zink_batch_usage_exists(struct zink_batch_usage *u);
+
+static inline void
+zink_batch_usage_unset(struct zink_batch_usage *u, enum zink_queue queue, uint32_t batch_id)
+{
+   p_atomic_cmpxchg(&u->usage[queue], batch_id, 0);
+}
 #endif
