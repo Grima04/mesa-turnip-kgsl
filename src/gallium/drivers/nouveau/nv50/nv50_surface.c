@@ -1178,7 +1178,7 @@ nv50_blit_set_src(struct nv50_blitctx *blit,
       flags |= NV50_TEXVIEW_FILTER_MSAA8;
 
    nv50->textures[2][0] = nv50_create_texture_view(
-      pipe, res, &templ, flags, target);
+      pipe, res, &templ, flags);
    nv50->textures[2][1] = NULL;
 
    nv50->num_textures[0] = nv50->num_textures[1] = 0;
@@ -1187,7 +1187,7 @@ nv50_blit_set_src(struct nv50_blitctx *blit,
    templ.format = nv50_zs_to_s_format(format);
    if (templ.format != res->format) {
       nv50->textures[2][1] = nv50_create_texture_view(
-         pipe, res, &templ, flags, target);
+         pipe, res, &templ, flags);
       nv50->num_textures[2] = 2;
    }
 }

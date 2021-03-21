@@ -53,15 +53,14 @@ nv50_create_sampler_view(struct pipe_context *pipe,
    if (templ->target == PIPE_TEXTURE_RECT || templ->target == PIPE_BUFFER)
       flags |= NV50_TEXVIEW_SCALED_COORDS;
 
-   return nv50_create_texture_view(pipe, res, templ, flags, templ->target);
+   return nv50_create_texture_view(pipe, res, templ, flags);
 }
 
 struct pipe_sampler_view *
 nv50_create_texture_view(struct pipe_context *pipe,
                          struct pipe_resource *texture,
                          const struct pipe_sampler_view *templ,
-                         uint32_t flags,
-                         enum pipe_texture_target target)
+                         uint32_t flags)
 {
    const uint32_t class_3d = nouveau_context(pipe)->screen->class_3d;
    const struct util_format_description *desc;
@@ -130,7 +129,7 @@ nv50_create_texture_view(struct pipe_context *pipe,
       tic[2] |= G80_TIC_2_NORMALIZED_COORDS;
 
    if (unlikely(!nouveau_bo_memtype(nv04_resource(texture)->bo))) {
-      if (target == PIPE_BUFFER) {
+      if (templ->target == PIPE_BUFFER) {
          addr += view->pipe.u.buf.offset;
          tic[2] |= G80_TIC_2_LAYOUT_PITCH | G80_TIC_2_TEXTURE_TYPE_ONE_D_BUFFER;
          tic[3] = 0;
@@ -157,7 +156,7 @@ nv50_create_texture_view(struct pipe_context *pipe,
       ((mt->level[0].tile_mode & 0x0f0) << (22 - 4)) |
       ((mt->level[0].tile_mode & 0xf00) << (25 - 8));
 
-   switch (target) {
+   switch (templ->target) {
    case PIPE_TEXTURE_1D:
       tic[2] |= G80_TIC_2_TEXTURE_TYPE_ONE_D;
       break;

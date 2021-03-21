@@ -967,6 +967,7 @@ nvc0_blit_set_src(struct nvc0_blitctx *ctx,
 
    target = nv50_blit_reinterpret_pipe_texture_target(res->target);
 
+   templ.target = target;
    templ.format = format;
    templ.u.tex.first_layer = templ.u.tex.last_layer = layer;
    templ.u.tex.first_level = templ.u.tex.last_level = level;
@@ -987,7 +988,7 @@ nvc0_blit_set_src(struct nvc0_blitctx *ctx,
       flags |= NV50_TEXVIEW_FILTER_MSAA8;
 
    nvc0->textures[4][0] = nvc0_create_texture_view(
-      pipe, res, &templ, flags, target);
+      pipe, res, &templ, flags);
    nvc0->textures[4][1] = NULL;
 
    for (s = 0; s <= 3; ++s)
@@ -997,7 +998,7 @@ nvc0_blit_set_src(struct nvc0_blitctx *ctx,
    templ.format = nv50_zs_to_s_format(format);
    if (templ.format != format) {
       nvc0->textures[4][1] = nvc0_create_texture_view(
-         pipe, res, &templ, flags, target);
+         pipe, res, &templ, flags);
       nvc0->num_textures[4] = 2;
    }
 }
