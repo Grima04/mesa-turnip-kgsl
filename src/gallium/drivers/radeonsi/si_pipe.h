@@ -1361,6 +1361,7 @@ void si_init_buffer_functions(struct si_context *sctx);
 /* si_clear.c */
 #define SI_CLEAR_TYPE_CMASK  (1 << 0)
 #define SI_CLEAR_TYPE_DCC    (1 << 1)
+#define SI_CLEAR_TYPE_HTILE  (1 << 2)
 
 struct si_clear_info {
    struct pipe_resource *resource;
