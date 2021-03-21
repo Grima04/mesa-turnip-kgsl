@@ -29,6 +29,7 @@
 #include "r600d.h"
 
 #include "util/format/u_format_s3tc.h"
+#include "util/u_draw.h"
 #include "util/u_index_modify.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
@@ -2078,14 +2079,8 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
                           unsigned num_draws)
 {
 	if (num_draws > 1) {
-           struct pipe_draw_info tmp_info = *info;
-
-           for (unsigned i = 0; i < num_draws; i++) {
-              r600_draw_vbo(ctx, &tmp_info, indirect, &draws[i], 1);
-              if (tmp_info.increment_draw_id)
-                 tmp_info.drawid++;
-           }
-           return;
+		util_draw_multi(ctx, info, indirect, draws, num_draws);
+		return;
 	}
 
 	struct r600_context *rctx = (struct r600_context *)ctx;
