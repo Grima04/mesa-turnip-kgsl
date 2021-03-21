@@ -446,6 +446,56 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
    p_atomic_inc(&sscreen->dirty_tex_counter);
 }
 
+static uint32_t si_get_htile_clear_value(struct si_texture *tex, float depth)
+{
+   /* Maximum 14-bit UINT value. */
+   const uint32_t max_z_value = 0x3FFF;
+
+   /* For clears, Zmask and Smem will always be set to zero. */
+   const uint32_t zmask = 0;
+   const uint32_t smem  = 0;
+
+   /* Convert depthValue to 14-bit zmin/zmax uint values. */
+   const uint32_t zmin = (depth * max_z_value) + 0.5f;
+   const uint32_t zmax = zmin;
+
+   if (tex->htile_stencil_disabled) {
+      /* Z-only HTILE is laid out as follows:
+       * |31     18|17      4|3     0|
+       * +---------+---------+-------+
+       * |  Max Z  |  Min Z  | ZMask |
+       */
+      return ((zmax & 0x3FFF) << 18) |
+             ((zmin & 0x3FFF) << 4) |
+             ((zmask & 0xF) << 0);
+   } else {
+      /* Z+S HTILE is laid out as-follows:
+       * |31       12|11 10|9    8|7   6|5   4|3     0|
+       * +-----------+-----+------+-----+-----+-------+
+       * |  Z Range  |     | SMem | SR1 | SR0 | ZMask |
+       *
+       * The base value for zRange is either zMax or zMin, depending on ZRANGE_PRECISION.
+       * For a fast clear, zMin == zMax == clearValue. This means that the base will
+       * always be the clear value (converted to 14-bit UINT).
+       *
+       * When abs(zMax-zMin) < 16, the delta is equal to the difference. In the case of
+       * fast clears, where zMax == zMin, the delta is always zero.
+       */
+      const uint32_t delta = 0;
+      const uint32_t zrange = (zmax << 6) | delta;
+
+      /* SResults 0 & 1 are set based on the stencil compare state.
+       * For fast-clear, the default value of sr0 and sr1 are both 0x3.
+       */
+      const uint32_t sresults = 0xf;
+
+      return ((zrange & 0xFFFFF) << 12) |
+             ((smem & 0x3) <<  8) |
+             ((sresults & 0xF) <<  4) |
+             ((zmask & 0xF) <<  0);
+   }
+}
+
 static bool si_can_fast_clear_depth(struct si_texture *zstex, unsigned level, float depth,
                                     unsigned buffers)
 {
@@ -465,7 +515,7 @@ static bool si_can_fast_clear_stencil(struct si_texture *zstex, unsigned level, 
 }
 
 static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
-                          const union pipe_color_union *color)
+                          const union pipe_color_union *color, float depth, uint8_t stencil)
 {
    struct pipe_framebuffer_state *fb = &sctx->framebuffer.state;
    struct si_clear_info info[8 * 2 + 1]; /* MRTs * (CMASK + DCC) + ZS */
@@ -699,11 +749,14 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
    /* Depth/stencil clears. */
    struct pipe_surface *zsbuf = fb->zsbuf;
    struct si_texture *zstex = zsbuf ? (struct si_texture *)zsbuf->texture : NULL;
+   unsigned zs_num_layers = zstex ? util_num_layers(&zstex->buffer.b.b, zsbuf->u.tex.level) : 0;
 
    if (zstex && zsbuf->u.tex.first_layer == 0 &&
-       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0) &&
+       zsbuf->u.tex.last_layer == zs_num_layers - 1 &&
        si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_ZS)) {
       unsigned level = zsbuf->u.tex.level;
+      bool update_db_depth_clear = false;
+      bool update_db_stencil_clear = false;
 
       /* Transition from TC-incompatible to TC-compatible HTILE if requested. */
       if (zstex->enable_tc_compatible_htile_next_clear) {
@@ -739,6 +792,82 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                                  zstex->surface.meta_offset, zstex->surface.meta_size, clear_value);
             clear_types |= SI_CLEAR_TYPE_HTILE;
          }
+      } else if (num_clears) {
+         /* This is where the HTILE buffer clear is done.
+          *
+          * If there is no clear scheduled, we should use the draw-based clear that is without
+          * waits. If there is some other clear scheduled, we will have to wait anyway, so add
+          * the HTILE buffer clear to the batch here.
+          */
+         uint64_t htile_offset = zstex->surface.meta_offset;
+         unsigned htile_size = 0;
+
+         /* Determine the HTILE subset to clear. */
+         if (sctx->chip_class >= GFX10) {
+            /* This can only clear a layered texture with 1 level or a mipmap texture
+             * with 1 layer. Other cases are unimplemented.
+             */
+            if (zs_num_layers == 1) {
+               /* Clear a specific level. */
+               htile_offset += zstex->surface.u.gfx9.meta_levels[level].offset;
+               htile_size = zstex->surface.u.gfx9.meta_levels[level].size;
+            } else if (zstex->buffer.b.b.last_level == 0) {
+               /* Clear all layers having only 1 level. */
+               htile_size = zstex->surface.meta_size;
+            }
+         } else {
+            /* This can only clear a layered texture with 1 level. Other cases are
+             * unimplemented.
+             */
+            if (zstex->buffer.b.b.last_level == 0)
+               htile_size = zstex->surface.meta_size;
+         }
+
+         /* Perform the clear if it's possible. */
+         if (zstex->htile_stencil_disabled || !zstex->surface.has_stencil) {
+            if (htile_size &&
+                si_can_fast_clear_depth(zstex, level, depth, *buffers)) {
+               /* Z-only clear. */
+               assert(num_clears < ARRAY_SIZE(info));
+               si_init_buffer_clear(&info[num_clears++], &zstex->buffer.b.b, htile_offset,
+                                    htile_size, si_get_htile_clear_value(zstex, depth));
+               clear_types |= SI_CLEAR_TYPE_HTILE;
+               *buffers &= ~PIPE_CLEAR_DEPTH;
+               zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
+               update_db_depth_clear = true;
+            }
+         } else if ((*buffers & PIPE_BIND_DEPTH_STENCIL) == PIPE_BIND_DEPTH_STENCIL) {
+            if (htile_size &&
+                si_can_fast_clear_depth(zstex, level, depth, *buffers) &&
+                si_can_fast_clear_stencil(zstex, level, stencil, *buffers)) {
+               /* Combined Z+S clear. */
+               assert(num_clears < ARRAY_SIZE(info));
+               si_init_buffer_clear(&info[num_clears++], &zstex->buffer.b.b, htile_offset,
+                                    htile_size, si_get_htile_clear_value(zstex, depth));
+               clear_types |= SI_CLEAR_TYPE_HTILE;
+               *buffers &= ~PIPE_CLEAR_DEPTHSTENCIL;
+               zstex->depth_cleared_level_mask |= BITFIELD_BIT(level);
+               zstex->stencil_cleared_level_mask |= BITFIELD_BIT(level);
+               update_db_depth_clear = true;
+               update_db_stencil_clear = true;
+            }
+         }
+
+         /* Update DB_DEPTH_CLEAR. */
+         if (update_db_depth_clear &&
+             zstex->depth_clear_value[level] != (float)depth) {
+            zstex->depth_clear_value[level] = depth;
+            sctx->framebuffer.dirty_zsbuf = true;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
+         }
+
+         /* Update DB_STENCIL_CLEAR. */
+         if (update_db_stencil_clear &&
+             zstex->stencil_clear_value[level] != stencil) {
+            zstex->stencil_clear_value[level] = stencil;
+            sctx->framebuffer.dirty_zsbuf = true;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
+         }
       }
    }
 
@@ -765,7 +894,7 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
    else if (!util_format_has_stencil(util_format_description(zsbuf->format)))
       buffers &= ~PIPE_CLEAR_STENCIL;
 
-   si_fast_clear(sctx, &buffers, color);
+   si_fast_clear(sctx, &buffers, color, depth, stencil);
    if (!buffers)
       return; /* all buffers have been cleared */
 
