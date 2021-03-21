@@ -701,43 +701,44 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
    struct si_texture *zstex = zsbuf ? (struct si_texture *)zsbuf->texture : NULL;
 
    if (zstex && zsbuf->u.tex.first_layer == 0 &&
-       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0)) {
+       zsbuf->u.tex.last_layer == util_max_layer(&zstex->buffer.b.b, 0) &&
+       si_htile_enabled(zstex, zsbuf->u.tex.level, PIPE_MASK_ZS)) {
       unsigned level = zsbuf->u.tex.level;
 
       /* Transition from TC-incompatible to TC-compatible HTILE if requested. */
-      if (zstex->enable_tc_compatible_htile_next_clear &&
-          !zstex->tc_compatible_htile &&
-          si_htile_enabled(zstex, level, PIPE_MASK_ZS) &&
+      if (zstex->enable_tc_compatible_htile_next_clear) {
           /* If both depth and stencil are present, they must be cleared together. */
-          ((*buffers & PIPE_CLEAR_DEPTHSTENCIL) == PIPE_CLEAR_DEPTHSTENCIL ||
-           (*buffers & PIPE_CLEAR_DEPTH && (!zstex->surface.has_stencil ||
-                                            zstex->htile_stencil_disabled)))) {
-         /* The conversion from TC-incompatible to TC-compatible can only be done in one clear. */
-         assert(zstex->buffer.b.b.last_level == 0);
+         if ((*buffers & PIPE_CLEAR_DEPTHSTENCIL) == PIPE_CLEAR_DEPTHSTENCIL ||
+             (*buffers & PIPE_CLEAR_DEPTH && (!zstex->surface.has_stencil ||
+                                              zstex->htile_stencil_disabled))) {
+            /* The conversion from TC-incompatible to TC-compatible can only be done in one clear. */
+            assert(zstex->buffer.b.b.last_level == 0);
+            assert(!zstex->tc_compatible_htile);
 
-         /* Enable TC-compatible HTILE. */
-         zstex->enable_tc_compatible_htile_next_clear = false;
-         zstex->tc_compatible_htile = true;
+            /* Enable TC-compatible HTILE. */
+            zstex->enable_tc_compatible_htile_next_clear = false;
+            zstex->tc_compatible_htile = true;
 
-         /* Update the framebuffer state to reflect the change. */
-         sctx->framebuffer.DB_has_shader_readable_metadata = true;
-         sctx->framebuffer.dirty_zsbuf = true;
-         si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
+            /* Update the framebuffer state to reflect the change. */
+            sctx->framebuffer.DB_has_shader_readable_metadata = true;
+            sctx->framebuffer.dirty_zsbuf = true;
+            si_mark_atom_dirty(sctx, &sctx->atoms.s.framebuffer);
 
-         /* Update all sampler views and shader images in all contexts. */
-         p_atomic_inc(&sctx->screen->dirty_tex_counter);
+            /* Update all sampler views and shader images in all contexts. */
+            p_atomic_inc(&sctx->screen->dirty_tex_counter);
 
-         /* Re-initialize HTILE, so that it doesn't contain values incompatible
-          * with the new TC-compatible HTILE setting.
-          *
-          * 0xfffff30f = uncompressed Z + S
-          * 0xfffc000f = uncompressed Z only
-          */
-         uint32_t clear_value = !zstex->htile_stencil_disabled ? 0xfffff30f : 0xfffc000f;
-         assert(num_clears < ARRAY_SIZE(info));
-         si_init_buffer_clear(&info[num_clears++], &zstex->buffer.b.b,
-                              zstex->surface.meta_offset, zstex->surface.meta_size, clear_value);
-         clear_types |= SI_CLEAR_TYPE_HTILE;
+            /* Re-initialize HTILE, so that it doesn't contain values incompatible
+             * with the new TC-compatible HTILE setting.
+             *
+             * 0xfffff30f = uncompressed Z + S
+             * 0xfffc000f = uncompressed Z only
+             */
+            uint32_t clear_value = !zstex->htile_stencil_disabled ? 0xfffff30f : 0xfffc000f;
+            assert(num_clears < ARRAY_SIZE(info));
+            si_init_buffer_clear(&info[num_clears++], &zstex->buffer.b.b,
+                                 zstex->surface.meta_offset, zstex->surface.meta_size, clear_value);
+            clear_types |= SI_CLEAR_TYPE_HTILE;
+         }
       }
    }
 
