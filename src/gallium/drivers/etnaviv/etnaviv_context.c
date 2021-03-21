@@ -50,6 +50,7 @@
 #include "pipe/p_state.h"
 #include "util/hash_table.h"
 #include "util/u_blitter.h"
+#include "util/u_draw.h"
 #include "util/u_helpers.h"
 #include "util/u_memory.h"
 #include "util/u_prim.h"
@@ -229,13 +230,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
               unsigned num_draws)
 {
    if (num_draws > 1) {
-      struct pipe_draw_info tmp_info = *info;
-
-      for (unsigned i = 0; i < num_draws; i++) {
-         etna_draw_vbo(pctx, &tmp_info, indirect, &draws[i], 1);
-         if (tmp_info.increment_draw_id)
-            tmp_info.drawid++;
-      }
+      util_draw_multi(pctx, info, indirect, draws, num_draws);
       return;
    }
 
