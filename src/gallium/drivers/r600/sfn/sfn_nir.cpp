@@ -308,14 +308,6 @@ bool ShaderFromNir::process_declaration()
       return false;
 
    // scan declarations
-   nir_foreach_shader_out_variable(variable, sh) {
-      if (!impl->process_outputs(variable)) {
-         fprintf(stderr, "R600: error parsing outputs variable %s\n", variable->name);
-         return false;
-      }
-   }
-
-   // scan declarations
    nir_foreach_variable_with_modes(variable, sh, nir_var_uniform |
                                                  nir_var_mem_ubo |
                                                  nir_var_mem_ssbo) {

@@ -297,11 +297,6 @@ bool ShaderFromNirProcessor::scan_inputs_read(const nir_shader *sh)
    return true;
 }
 
-bool ShaderFromNirProcessor::process_outputs(nir_variable *output)
-{
-   return do_process_outputs(output);
-}
-
 void ShaderFromNirProcessor::set_var_address(nir_deref_instr *instr)
 {
    auto& dest = instr->dest;
@@ -638,8 +633,6 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
          return false;
       }
       switch (mode_helper->second) {
-      case nir_var_shader_in:
-         return emit_load_input_deref(var, instr);
       case nir_var_function_temp:
          return emit_load_function_temp(var, instr);
       default:
@@ -652,8 +645,6 @@ bool ShaderFromNirProcessor::emit_intrinsic_instruction(nir_intrinsic_instr* ins
       return emit_store_scratch(instr);
    case nir_intrinsic_load_scratch:
       return emit_load_scratch(instr);
-   case nir_intrinsic_store_deref:
-      return emit_store_deref(instr);
    case nir_intrinsic_load_uniform:
       return load_uniform(instr);
    case nir_intrinsic_discard:
@@ -964,12 +955,6 @@ bool ShaderFromNirProcessor::emit_discard_if(nir_intrinsic_instr* instr)
    return true;
 }
 
-bool ShaderFromNirProcessor::emit_load_input_deref(const nir_variable *var,
-                                                   nir_intrinsic_instr* instr)
-{
-   return do_emit_load_deref(var, instr);
-}
-
 bool ShaderFromNirProcessor::load_uniform(nir_intrinsic_instr* instr)
 {
    r600::sfn_log << SfnLog::instr << __func__ << ": emit '"
@@ -1088,15 +1073,6 @@ PValue ShaderFromNirProcessor::from_nir_with_fetch_constant(const nir_src& src, 
       value = retval;
    }
    return value;
-}
-
-bool ShaderFromNirProcessor::emit_store_deref(nir_intrinsic_instr* instr)
-{
-   auto out_var = get_deref_location(instr->src[0]);
-   if (!out_var)
-      return false;
-
-   return do_emit_store_deref(out_var, instr);
 }
 
 bool ShaderFromNirProcessor::emit_deref_instruction(nir_deref_instr* instr)

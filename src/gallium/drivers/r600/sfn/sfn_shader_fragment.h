@@ -50,11 +50,8 @@ private:
 
    void emit_shader_start() override;
    bool do_allocate_reserved_registers() override;
-   bool do_process_outputs(nir_variable *output) override;
    bool process_store_output(nir_intrinsic_instr *instr);
 
-   bool do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr) override;
-   bool do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr) override;
    bool emit_store_output(nir_intrinsic_instr* instr);
 
    bool emit_export_pixel(const nir_variable *, nir_intrinsic_instr* instr, int outputs);

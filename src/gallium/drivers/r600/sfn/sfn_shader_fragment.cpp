@@ -60,12 +60,6 @@ FragmentShaderFromNir::FragmentShaderFromNir(const nir_shader& nir,
    sh_info().atomic_base = key.ps.first_atomic_counter;
 }
 
-bool FragmentShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr)
-{
-   assert(0 && "all input derefs should have been lowered");
-   return false;
-}
-
 unsigned barycentric_ij_index(nir_intrinsic_instr *instr)
 {
    unsigned index = 0;
@@ -430,23 +424,6 @@ void FragmentShaderFromNir::emit_shader_start()
    }
 }
 
-bool FragmentShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
-{
-   if (out_var->data.location == FRAG_RESULT_COLOR)
-      return emit_export_pixel(out_var, instr, m_dual_source_blend ? 1 : m_max_color_exports);
-
-   if ((out_var->data.location >= FRAG_RESULT_DATA0 &&
-        out_var->data.location <= FRAG_RESULT_DATA7) ||
-       out_var->data.location == FRAG_RESULT_DEPTH ||
-       out_var->data.location == FRAG_RESULT_STENCIL ||
-       out_var->data.location == FRAG_RESULT_SAMPLE_MASK)
-      return emit_export_pixel(out_var, instr, 1);
-
-   sfn_log << SfnLog::err << "r600-NIR: Unimplemented store_deref for " <<
-              out_var->data.location << "(" << out_var->data.driver_location << ")\n";
-   return false;
-}
-
 bool FragmentShaderFromNir::process_store_output(nir_intrinsic_instr *instr)
 {
 
@@ -487,55 +464,6 @@ bool FragmentShaderFromNir::process_store_output(nir_intrinsic_instr *instr)
    return false;
 
 
-}
-
-bool FragmentShaderFromNir::do_process_outputs(nir_variable *output)
-{
-   sfn_log << SfnLog::io << "Parse output variable "
-           << output->name << "  @" << output->data.location
-           << "@dl:" << output->data.driver_location
-           << " dual source idx: " << output->data.index
-           << "\n";
-
-   ++sh_info().noutput;
-   r600_shader_io& io = sh_info().output[output->data.driver_location];
-   tgsi_get_gl_frag_result_semantic(static_cast<gl_frag_result>( output->data.location),
-                                    &io.name, &io.sid);
-
-   /* Check whether this code has become obsolete by the IO vectorization */
-   unsigned num_components = 4;
-   unsigned vector_elements = glsl_get_vector_elements(glsl_without_array(output->type));
-   if (vector_elements)
-           num_components = vector_elements;
-   unsigned component = output->data.location_frac;
-
-   for (unsigned j = component; j < num_components + component; j++)
-      io.write_mask |= 1 << j;
-
-   int loc = output->data.location;
-   if (loc == FRAG_RESULT_COLOR &&
-       (m_nir.info.outputs_written & (1ull << loc)) &&
-       !m_dual_source_blend) {
-           sh_info().fs_write_all = true;
-   }
-
-   if (output->data.location == FRAG_RESULT_COLOR ||
-       (output->data.location >= FRAG_RESULT_DATA0 &&
-        output->data.location <= FRAG_RESULT_DATA7))  {
-      ++m_max_counted_color_exports;
-
-      if (m_max_counted_color_exports > 1)
-         sh_info().fs_write_all = false;
-      return true;
-   }
-   if (output->data.location == FRAG_RESULT_DEPTH ||
-       output->data.location == FRAG_RESULT_STENCIL ||
-       output->data.location == FRAG_RESULT_SAMPLE_MASK) {
-      io.write_mask = 15;
-      return true;
-   }
-
-   return false;
 }
 
 bool FragmentShaderFromNir::emit_load_sample_mask_in(nir_intrinsic_instr* instr)

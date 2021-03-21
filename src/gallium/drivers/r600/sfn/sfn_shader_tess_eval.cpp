@@ -99,17 +99,6 @@ bool TEvalShaderFromNir::emit_intrinsic_instruction_override(nir_intrinsic_instr
    }
 }
 
-
-bool TEvalShaderFromNir::do_process_outputs(nir_variable *output)
-{
-   return m_export_processor->do_process_outputs(output);
-}
-
-bool TEvalShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
-{
-   return false;
-}
-
 void TEvalShaderFromNir::do_finalize()
 {
    m_export_processor->finalize_exports();

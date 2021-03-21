@@ -222,36 +222,9 @@ bool VertexShaderFromNir::emit_store_local_shared(nir_intrinsic_instr* instr)
    return true;
 }
 
-bool VertexShaderFromNir::do_process_outputs(nir_variable *output)
-{
-   return m_export_processor->do_process_outputs(output);
-}
-
-bool VertexShaderFromNir::do_emit_load_deref(const nir_variable *in_var, nir_intrinsic_instr* instr)
-{
-   if (in_var->data.location < VERT_ATTRIB_MAX) {
-      for (unsigned i = 0; i < nir_dest_num_components(instr->dest); ++i) {
-         auto src = m_attribs[4 * in_var->data.driver_location + i];
-
-         if (i == 0)
-            set_input(in_var->data.driver_location, src);
-
-         load_preloaded_value(instr->dest, i, src, i == (unsigned)(instr->num_components - 1));
-      }
-      return true;
-   }
-   fprintf(stderr, "r600-NIR: Unimplemented load_deref for %d\n", in_var->data.location);
-   return false;
-}
-
 void VertexShaderFromNir::do_finalize()
 {
    m_export_processor->finalize_exports();
-}
-
-bool VertexShaderFromNir::do_emit_store_deref(const nir_variable *out_var, nir_intrinsic_instr* instr)
-{
-   return false;
 }
 
 }

@@ -51,16 +51,6 @@ GeometryShaderFromNir::GeometryShaderFromNir(r600_pipe_shader *sh,
    sh_info().atomic_base = key.gs.first_atomic_counter;
 }
 
-bool GeometryShaderFromNir::do_emit_load_deref(UNUSED const nir_variable *in_var, UNUSED nir_intrinsic_instr* instr)
-{
-   return false;
-}
-
-bool GeometryShaderFromNir::do_emit_store_deref(UNUSED const nir_variable *out_var, UNUSED nir_intrinsic_instr* instr)
-{
-   return false;
-}
-
 bool GeometryShaderFromNir::emit_store(nir_intrinsic_instr* instr)
 {
    auto location = nir_intrinsic_io_semantics(instr).location;
@@ -192,50 +182,6 @@ bool GeometryShaderFromNir::process_load_input(nir_intrinsic_instr* instr)
    }
    return false;
 }
-
-bool GeometryShaderFromNir::do_process_outputs(nir_variable *output)
-{
-   if (output->data.location == VARYING_SLOT_COL0 ||
-       output->data.location == VARYING_SLOT_COL1 ||
-       (output->data.location >= VARYING_SLOT_VAR0 &&
-       output->data.location <= VARYING_SLOT_VAR31) ||
-       (output->data.location >= VARYING_SLOT_TEX0 &&
-       output->data.location <= VARYING_SLOT_TEX7) ||
-       output->data.location == VARYING_SLOT_BFC0 ||
-       output->data.location == VARYING_SLOT_BFC1 ||
-       output->data.location == VARYING_SLOT_PNTC ||
-       output->data.location == VARYING_SLOT_CLIP_VERTEX ||
-       output->data.location == VARYING_SLOT_CLIP_DIST0 ||
-       output->data.location == VARYING_SLOT_CLIP_DIST1 ||
-       output->data.location == VARYING_SLOT_PRIMITIVE_ID ||
-       output->data.location == VARYING_SLOT_POS ||
-       output->data.location == VARYING_SLOT_PSIZ ||
-       output->data.location == VARYING_SLOT_LAYER ||
-       output->data.location == VARYING_SLOT_VIEWPORT ||
-       output->data.location == VARYING_SLOT_FOGC) {
-      r600_shader_io& io = sh_info().output[output->data.driver_location];
-
-      auto semantic = r600_get_varying_semantic(output->data.location);
-      io.name = semantic.first;
-      io.sid = semantic.second;
-
-      evaluate_spi_sid(io);
-      ++sh_info().noutput;
-
-      if (output->data.location == VARYING_SLOT_CLIP_DIST0 ||
-          output->data.location == VARYING_SLOT_CLIP_DIST1) {
-         m_clip_dist_mask |= 1 << (output->data.location - VARYING_SLOT_CLIP_DIST0);
-      }
-
-      if (output->data.location == VARYING_SLOT_VIEWPORT) {
-         sh_info().vs_out_viewport = 1;
-         sh_info().vs_out_misc_write = 1;
-      }
-      return true;
-   }
-   return false;
-}
-
 
 bool GeometryShaderFromNir::do_allocate_reserved_registers()
 {
