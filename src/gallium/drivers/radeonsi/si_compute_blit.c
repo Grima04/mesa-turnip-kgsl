@@ -126,9 +126,6 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    assert(size % 4 == 0);
    unsigned size_12 = DIV_ROUND_UP(size, 12);
 
-   unsigned data[4] = {0};
-   memcpy(data, clear_value, 12);
-
    if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
       sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
 
@@ -140,15 +137,7 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
        (1u << si_get_shaderbuf_slot(0)))
       saved_writable_mask = 1;
 
-   struct pipe_constant_buffer saved_cb = {};
-   si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &saved_cb);
-
    void *saved_cs = sctx->cs_shader_state.program;
-
-   struct pipe_constant_buffer cb = {};
-   cb.buffer_size = sizeof(data);
-   cb.user_buffer = data;
-   ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, false, &cb);
 
    struct pipe_shader_buffer sb = {0};
    sb.buffer = dst;
@@ -156,6 +145,8 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    sb.buffer_size = size;
 
    ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
+
+   memcpy(sctx->cs_user_data, clear_value, 12);
 
    struct pipe_grid_info info = {0};
 
@@ -173,8 +164,6 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    si_launch_grid_internal(sctx, &info, saved_cs, flags);
 
    ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
-   ctx->set_constant_buffer(ctx, PIPE_SHADER_COMPUTE, 0, true, &saved_cb);
-
    pipe_resource_reference(&saved_sb.buffer, NULL);
 }
 

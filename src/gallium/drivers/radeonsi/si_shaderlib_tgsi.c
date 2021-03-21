@@ -686,21 +686,25 @@ void *si_clear_12bytes_buffer_shader(struct pipe_context *ctx)
                               "PROPERTY CS_FIXED_BLOCK_WIDTH 64\n"
                               "PROPERTY CS_FIXED_BLOCK_HEIGHT 1\n"
                               "PROPERTY CS_FIXED_BLOCK_DEPTH 1\n"
+                              "PROPERTY CS_USER_DATA_COMPONENTS_AMD 3\n"
                               "DCL SV[0], THREAD_ID\n"
                               "DCL SV[1], BLOCK_ID\n"
+                              "DCL SV[2], CS_USER_DATA_AMD\n"
                               "DCL BUFFER[0]\n"
-                              "DCL CONST[0][0..0]\n" // 0:xyzw
                               "DCL TEMP[0..0]\n"
                               "IMM[0] UINT32 {64, 1, 12, 0}\n"
                               "UMAD TEMP[0].x, SV[1].xyzz, IMM[0].xyyy, SV[0].xyzz\n"
                               "UMUL TEMP[0].x, TEMP[0].xyzz, IMM[0].zzzz\n" // 12 bytes
-                              "STORE BUFFER[0].xyz, TEMP[0].xxxx, CONST[0][0].xyzw\n"
+                              "STORE BUFFER[0].xyz, TEMP[0].xxxx, SV[2].xyzz%s\n"
                               "END\n";
-
+   char final_text[2048];
    struct tgsi_token tokens[1024];
    struct pipe_compute_state state = {0};
 
-   if (!tgsi_text_translate(text, tokens, ARRAY_SIZE(tokens))) {
+   snprintf(final_text, sizeof(final_text), text,
+            SI_COMPUTE_DST_CACHE_POLICY != L2_LRU ? ", STREAM_CACHE_POLICY" : "");
+
+   if (!tgsi_text_translate(final_text, tokens, ARRAY_SIZE(tokens))) {
       assert(false);
       return NULL;
    }
