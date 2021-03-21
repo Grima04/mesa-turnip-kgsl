@@ -277,10 +277,8 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 	 * bogus data:
 	 */
 	if (indirect && indirect->buffer && FD_DBG(NOINDR)) {
-		if (num_draws > 1) {
-			util_draw_multi(pctx, info, indirect, draws, num_draws);
-			return;
-		}
+		/* num_draws is only applicable for direct draws: */
+		assert(num_draws == 1);
 		util_draw_indirect(pctx, info, indirect);
 		return;
 	}
