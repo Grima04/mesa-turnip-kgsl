@@ -132,8 +132,11 @@ static void si_create_compute_state_async(void *job, int thread_index)
 
    program->shader.is_monolithic = true;
 
+   /* Variable block sizes need 10 bits (1 + log2(SI_MAX_VARIABLE_THREADS_PER_BLOCK)) per dim.
+    * We pack them into a single user SGPR.
+    */
    unsigned user_sgprs = SI_NUM_RESOURCE_SGPRS + (sel->info.uses_grid_size ? 3 : 0) +
-                         (sel->info.uses_variable_block_size ? 3 : 0) +
+                         (sel->info.uses_variable_block_size ? 1 : 0) +
                          sel->info.base.cs.user_data_components_amd;
 
    /* Fast path for compute shaders - some descriptors passed via user SGPRs. */
@@ -707,7 +710,7 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
    unsigned block_size_reg = grid_size_reg +
                              /* 12 bytes = 3 dwords. */
                              12 * sel->info.uses_grid_size;
-   unsigned cs_user_data_reg = block_size_reg + 12 * program->sel.info.uses_variable_block_size;
+   unsigned cs_user_data_reg = block_size_reg + 4 * program->sel.info.uses_variable_block_size;
 
    radeon_begin(cs);
 
@@ -730,10 +733,8 @@ static void si_setup_nir_user_data(struct si_context *sctx, const struct pipe_gr
    }
 
    if (sel->info.uses_variable_block_size) {
-      radeon_set_sh_reg_seq(cs, block_size_reg, 3);
-      radeon_emit(cs, info->block[0]);
-      radeon_emit(cs, info->block[1]);
-      radeon_emit(cs, info->block[2]);
+      radeon_set_sh_reg(cs, block_size_reg,
+                        info->block[0] | (info->block[1] << 10) | (info->block[2] << 20));
    }
 
    if (sel->info.base.cs.user_data_components_amd) {

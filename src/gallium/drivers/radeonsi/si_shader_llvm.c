@@ -412,8 +412,15 @@ static LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
 {
    struct si_shader_context *ctx = si_shader_context_from_abi(abi);
 
-   assert(ctx->shader->selector->info.base.cs.local_size_variable);
-   return ac_get_arg(&ctx->ac, ctx->block_size);
+   assert(ctx->shader->selector->info.base.cs.local_size_variable &&
+          ctx->shader->selector->info.uses_variable_block_size);
+
+   LLVMValueRef chan[3] = {
+      si_unpack_param(ctx, ctx->block_size, 0, 10),
+      si_unpack_param(ctx, ctx->block_size, 10, 10),
+      si_unpack_param(ctx, ctx->block_size, 20, 10),
+   };
+   return ac_build_gather_values(&ctx->ac, chan, 3);
 }
 
 static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
