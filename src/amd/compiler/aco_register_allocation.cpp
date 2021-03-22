@@ -2134,7 +2134,9 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
          if (!definition.isFixed()) {
             std::vector<std::pair<Operand, Definition>> parallelcopy;
             /* try to find a register that is used by at least one operand */
-            for (const Operand& op : phi->operands) {
+            for (int i = phi->operands.size() - 1; i >= 0; i--) {
+               /* by going backwards, we aim to avoid copies in else-blocks */
+               const Operand& op = phi->operands[i];
                if (!(op.isTemp() && op.isFixed()))
                   continue;
                PhysReg reg = op.physReg();
