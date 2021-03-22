@@ -27,6 +27,7 @@ apt-get install -y --no-remove \
       libasan6 \
       libarchive-dev \
       libclang-cpp11-dev \
+      libllvmspirvlib-dev \
       liblua5.3-dev \
       libxcb-dri2-0-dev \
       libxcb-dri3-dev \
@@ -92,15 +93,6 @@ tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
 pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
 rm -rf libglvnd-v$GLVND_VERSION
 
-
-git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --single-branch --shallow-since=2020-11-12
-pushd SPIRV-LLVM-Translator
-# Last commit before bumping required LLVM version to 11.1.0
-git checkout 93032d36d2fe17befb7994714c07c67ea68efbea
-cmake -S . -B . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_FLAGS=-fPIC -DCMAKE_CXX_FLAGS=-fPIC
-ninja
-ninja install
-popd
 
 pushd /usr/local
 git clone https://gitlab.freedesktop.org/mesa/shader-db.git --depth 1

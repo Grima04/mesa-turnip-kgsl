@@ -313,7 +313,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-04-13-spirv-tools"
+    MESA_IMAGE_TAG: &x86_build "2021-04-13-llvm-spirv"
 
 .use-x86_build:
   extends:
@@ -413,7 +413,7 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-spirv-tools"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-llvm-spirv"
 
 # Debian 11 based x86 test image for VK
 x86_test-vk:

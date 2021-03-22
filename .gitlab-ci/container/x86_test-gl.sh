@@ -16,6 +16,7 @@ STABLE_EPHEMERAL=" \
       libclang-cpp11-dev \
       libgbm-dev \
       libgles2-mesa-dev \
+      libllvmspirvlib-dev \
       libpciaccess-dev \
       libudev-dev \
       libvulkan-dev \
@@ -25,6 +26,7 @@ STABLE_EPHEMERAL=" \
       libxkbcommon-dev \
       libxrender-dev \
       llvm-11-dev \
+      llvm-spirv \
       make \
       meson \
       ocl-icd-opencl-dev \
@@ -42,6 +44,7 @@ apt-get install -y --no-remove \
       libclang-common-11-dev \
       libclang-cpp11 \
       libegl1 \
+      libllvmspirvlib11 \
       libxcb-shm0 \
       ocl-icd-libopencl1 \
       python3-lxml \
