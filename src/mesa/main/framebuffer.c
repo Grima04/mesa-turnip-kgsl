@@ -80,30 +80,10 @@ compute_depth_max(struct gl_framebuffer *fb)
 }
 
 /**
- * Create and initialize a gl_framebuffer object.
- * This is intended for creating _window_system_ framebuffers, not generic
- * framebuffer objects ala GL_EXT_framebuffer_object.
- *
- * \sa _mesa_new_framebuffer
- */
-struct gl_framebuffer *
-_mesa_create_framebuffer(const struct gl_config *visual)
-{
-   struct gl_framebuffer *fb = CALLOC_STRUCT(gl_framebuffer);
-   assert(visual);
-   if (fb) {
-      _mesa_initialize_window_framebuffer(fb, visual);
-   }
-   return fb;
-}
-
-
-/**
  * Allocate a new gl_framebuffer object.
  * This is the default function for ctx->Driver.NewFramebuffer().
  * This is for allocating user-created framebuffers, not window-system
  * framebuffers!
- * \sa _mesa_create_framebuffer
  */
 struct gl_framebuffer *
 _mesa_new_framebuffer(struct gl_context *ctx, GLuint name)
