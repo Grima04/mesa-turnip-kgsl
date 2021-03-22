@@ -230,6 +230,10 @@ radv_use_dcc_for_image(struct radv_device *device, const struct radv_image *imag
         radv_formats_is_atomic_allowed(pCreateInfo->pNext, format, pCreateInfo->flags)))
       return false;
 
+   /* Do not enable DCC for fragment shading rate attachments. */
+   if (pCreateInfo->usage & VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR)
+      return false;
+
    if (pCreateInfo->tiling == VK_IMAGE_TILING_LINEAR)
       return false;
 
