@@ -4319,6 +4319,8 @@ bool nir_lower_array_deref_of_vec(nir_shader *shader, nir_variable_mode modes,
 bool nir_lower_indirect_derefs(nir_shader *shader, nir_variable_mode modes,
                                uint32_t max_lower_array_len);
 
+bool nir_lower_indirect_builtin_uniform_derefs(nir_shader *shader);
+
 bool nir_lower_locals_to_regs(nir_shader *shader);
 
 void nir_lower_io_to_temporaries(nir_shader *shader,
