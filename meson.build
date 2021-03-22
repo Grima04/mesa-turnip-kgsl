@@ -1422,7 +1422,7 @@ if host_machine.system() == 'darwin'
   dep_expat = meson.get_compiler('c').find_library('expat')
 elif host_machine.system() != 'windows'
   dep_expat = dependency('expat', fallback : ['expat', 'expat_dep'],
-                         required: not with_platform_android or with_any_broadcom or with_any_intel)
+                         required: not with_platform_android or with_any_intel)
 else
   dep_expat = null_dep
 endif
