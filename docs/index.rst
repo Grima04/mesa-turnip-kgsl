@@ -71,6 +71,7 @@ and other operating systems.
    osmesa
    debugging
    perf
+   perfetto
    extensions
    application-issues
    viewperf
