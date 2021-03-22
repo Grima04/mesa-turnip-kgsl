@@ -235,15 +235,11 @@ _mesa_create_visual( GLboolean dbFlag,
 {
    struct gl_config *vis = CALLOC_STRUCT(gl_config);
    if (vis) {
-      if (!_mesa_initialize_visual(vis, dbFlag, stereoFlag,
-                                   redBits, greenBits, blueBits, alphaBits,
-                                   depthBits, stencilBits,
-                                   accumRedBits, accumGreenBits,
-                                   accumBlueBits, accumAlphaBits,
-                                   numSamples)) {
-         free(vis);
-         return NULL;
-      }
+      _mesa_initialize_visual(vis, dbFlag, stereoFlag,
+                              redBits, greenBits, blueBits, alphaBits,
+                              depthBits, stencilBits,
+                              accumRedBits, accumGreenBits, accumBlueBits,
+                              accumAlphaBits, numSamples);
    }
    return vis;
 }
@@ -259,7 +255,7 @@ _mesa_create_visual( GLboolean dbFlag,
  *
  * \sa _mesa_create_visual() above for the parameter description.
  */
-GLboolean
+void
 _mesa_initialize_visual( struct gl_config *vis,
                          GLboolean dbFlag,
                          GLboolean stereoFlag,
@@ -276,17 +272,6 @@ _mesa_initialize_visual( struct gl_config *vis,
                          GLuint numSamples )
 {
    assert(vis);
-
-   if (depthBits < 0 || depthBits > 32) {
-      return GL_FALSE;
-   }
-   if (stencilBits < 0 || stencilBits > 8) {
-      return GL_FALSE;
-   }
-   assert(accumRedBits >= 0);
-   assert(accumGreenBits >= 0);
-   assert(accumBlueBits >= 0);
-   assert(accumAlphaBits >= 0);
 
    vis->doubleBufferMode = dbFlag;
    vis->stereoMode       = stereoFlag;
@@ -306,8 +291,6 @@ _mesa_initialize_visual( struct gl_config *vis,
    vis->accumAlphaBits = accumAlphaBits;
 
    vis->samples = numSamples;
-
-   return GL_TRUE;
 }
 
 

@@ -82,7 +82,7 @@ _mesa_create_visual( GLboolean dbFlag,
                      GLint accumAlphaBits,
                      GLuint numSamples );
 
-extern GLboolean
+extern void
 _mesa_initialize_visual( struct gl_config *v,
                          GLboolean dbFlag,
                          GLboolean stereoFlag,

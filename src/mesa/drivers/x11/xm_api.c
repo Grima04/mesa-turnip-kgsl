@@ -847,19 +847,15 @@ XMesaVisual XMesaCreateVisual( XMesaDisplay *display,
       alpha_bits = v->mesa_visual.alphaBits;
    }
 
-   if (!_mesa_initialize_visual(&v->mesa_visual,
-                                db_flag, stereo_flag,
-                                red_bits, green_bits,
-                                blue_bits, alpha_bits,
-                                depth_size,
-                                stencil_size,
-                                accum_red_size, accum_green_size,
-                                accum_blue_size, accum_alpha_size,
-                                0)) {
-      free(v->visinfo);
-      free(v);
-      return NULL;
-   }
+   _mesa_initialize_visual(&v->mesa_visual,
+                           db_flag, stereo_flag,
+                           red_bits, green_bits,
+                           blue_bits, alpha_bits,
+                           depth_size,
+                           stencil_size,
+                           accum_red_size, accum_green_size,
+                           accum_blue_size, accum_alpha_size,
+                           0);
 
    /* XXX minor hack */
    v->mesa_visual.level = level;
