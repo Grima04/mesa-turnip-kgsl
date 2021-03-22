@@ -1031,31 +1031,36 @@ anv_image_from_swapchain(VkDevice device,
    struct anv_image *swapchain_image = anv_swapchain_get_image(swapchain_info->swapchain, 0);
    assert(swapchain_image);
 
-   assert(swapchain_image->type == pCreateInfo->imageType);
-   assert(swapchain_image->vk_format == pCreateInfo->format);
-   assert(swapchain_image->extent.width == pCreateInfo->extent.width);
-   assert(swapchain_image->extent.height == pCreateInfo->extent.height);
-   assert(swapchain_image->extent.depth == pCreateInfo->extent.depth);
-   assert(swapchain_image->array_size == pCreateInfo->arrayLayers);
-   /* Color attachment is added by the wsi code. */
-   assert(swapchain_image->usage == (pCreateInfo->usage | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT));
-
-   VkImageCreateInfo local_create_info;
-   local_create_info = *pCreateInfo;
+   VkImageCreateInfo local_create_info = *pCreateInfo;
    local_create_info.pNext = NULL;
-   /* The following parameters are implictly selected by the wsi code. */
-   local_create_info.tiling = VK_IMAGE_TILING_OPTIMAL;
-   local_create_info.samples = VK_SAMPLE_COUNT_1_BIT;
+
+   /* Added by wsi code. */
    local_create_info.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-   /* If the image has a particular modifier, specify that modifier. */
+   /* The spec requires TILING_OPTIMAL as input, but the swapchain image may
+    * privately use a different tiling.  See spec anchor
+    * #swapchain-wsi-image-create-info .
+    */
+   assert(local_create_info.tiling == VK_IMAGE_TILING_OPTIMAL);
+
    VkImageDrmFormatModifierListCreateInfoEXT local_modifier_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
       .drmFormatModifierCount = 1,
       .pDrmFormatModifiers = &swapchain_image->drm_format_mod,
    };
+
    if (swapchain_image->drm_format_mod != DRM_FORMAT_MOD_INVALID)
       __vk_append_struct(&local_create_info, &local_modifier_info);
+
+   assert(swapchain_image->type == local_create_info.imageType);
+   assert(swapchain_image->vk_format == local_create_info.format);
+   assert(swapchain_image->extent.width == local_create_info.extent.width);
+   assert(swapchain_image->extent.height == local_create_info.extent.height);
+   assert(swapchain_image->extent.depth == local_create_info.extent.depth);
+   assert(swapchain_image->array_size == local_create_info.arrayLayers);
+   assert(swapchain_image->samples == local_create_info.samples);
+   assert(swapchain_image->tiling == local_create_info.tiling);
+   assert(swapchain_image->usage == local_create_info.usage);
 
    return anv_image_create(device,
       &(struct anv_image_create_info) {
