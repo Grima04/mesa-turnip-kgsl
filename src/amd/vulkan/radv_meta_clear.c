@@ -873,7 +873,11 @@ radv_get_htile_fast_clear_value(const struct radv_device *device, const struct r
    if (radv_image_tile_stencil_disabled(device, image)) {
       clear_value = value.depth ? 0xfffffff0 : 0;
    } else {
-      clear_value = value.depth ? 0xfffc00f0 : 0xf0;
+      if (radv_image_has_vrs_htile(device, image))
+         clear_value = value.depth ? 0xfffc0030 : 0x30;
+      else {
+         clear_value = value.depth ? 0xfffc00f0 : 0xf0;
+      }
    }
 
    return clear_value;

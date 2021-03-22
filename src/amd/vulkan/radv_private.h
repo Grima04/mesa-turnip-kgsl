@@ -2045,8 +2045,18 @@ radv_get_htile_initial_value(const struct radv_device *device, const struct radv
        *
        * SR0/SR1 contains the stencil test results. Initializing
        * SR0/SR1 to 0x3 means the stencil test result is unknown.
+       *
+       * Z, stencil and 4 bit VRS encoding:
+       * |31       12|11        10|9    8|7          6|5   4|3     0|
+       * +-----------+------------+------+------------+-----+-------+
+       * |  Z Range  | VRS y-rate | SMem | VRS x-rate | SR0 | ZMask |
        */
-      initial_value = 0xfffff3ff;
+      if (radv_image_has_vrs_htile(device, image)) {
+         /* Initialize the VRS x-rate value at 0, so the hw interprets it as 1 sample. */
+         initial_value = 0xfffff33f;
+      } else {
+         initial_value = 0xfffff3ff;
+      }
    }
 
    return initial_value;
