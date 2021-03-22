@@ -60,15 +60,14 @@ zink_fence_reference(struct zink_screen *screen,
                      struct zink_fence **ptr,
                      struct zink_fence *fence);
 
-bool
-zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct zink_fence *fence,
-                  uint64_t timeout_ns);
-
 void
 zink_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *pfence);
 
 void
 zink_screen_fence_init(struct pipe_screen *pscreen);
+
+bool
+zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t timeout_ns);
 
 void
 zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence);

@@ -104,17 +104,11 @@ fence_reference(struct pipe_screen *pscreen,
 }
 
 bool
-zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct zink_fence *fence,
-                  uint64_t timeout_ns)
+zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t timeout_ns)
 {
-   if (pctx && fence->deferred_ctx == pctx) {
-      zink_context(pctx)->batch.has_work = true;
-      /* this must be the current batch */
-      pctx->flush(pctx, NULL, 0);
-   }
-
    if (!fence->submitted)
       return true;
+
    bool success;
 
    if (timeout_ns)
@@ -127,6 +121,19 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
       p_atomic_set(&fence->submitted, false);
    }
    return success;
+}
+
+static bool
+zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct zink_fence *fence,
+                  uint64_t timeout_ns)
+{
+   if (pctx && fence->deferred_ctx == pctx) {
+      zink_context(pctx)->batch.has_work = true;
+      /* this must be the current batch */
+      pctx->flush(pctx, NULL, 0);
+   }
+
+   return zink_vkfence_wait(screen, fence, timeout_ns);
 }
 
 static bool

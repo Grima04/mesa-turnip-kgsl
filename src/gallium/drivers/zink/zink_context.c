@@ -1890,7 +1890,7 @@ zink_flush(struct pipe_context *pctx,
        * unknown at this time why this is the case
        */
       if (!ctx->first_frame_done)
-         zink_fence_finish(zink_screen(pctx->screen), pctx, fence, PIPE_TIMEOUT_INFINITE);
+         zink_vkfence_wait(zink_screen(pctx->screen), fence, PIPE_TIMEOUT_INFINITE);
       ctx->first_frame_done = true;
    }
 }
@@ -1904,7 +1904,7 @@ zink_maybe_flush_or_stall(struct zink_context *ctx)
       flush_batch(ctx);
 
    if (ctx->resource_size >= screen->total_mem / 10 || _mesa_hash_table_num_entries(&ctx->batch_states) > 10) {
-      zink_fence_finish(zink_screen(ctx->base.screen), &ctx->base, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
+      zink_vkfence_wait(zink_screen(ctx->base.screen), ctx->last_fence, PIPE_TIMEOUT_INFINITE);
       zink_batch_reset_all(ctx);
    }
 }
@@ -1917,7 +1917,7 @@ zink_fence_wait(struct pipe_context *pctx)
    if (ctx->batch.has_work)
       pctx->flush(pctx, NULL, PIPE_FLUSH_HINT_FINISH);
    if (ctx->last_fence) {
-      zink_fence_finish(zink_screen(pctx->screen), pctx, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
+      zink_vkfence_wait(zink_screen(pctx->screen), ctx->last_fence, PIPE_TIMEOUT_INFINITE);
       zink_batch_reset_all(ctx);
    }
 }
@@ -1987,7 +1987,7 @@ zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
    }
    simple_mtx_unlock(&ctx->batch_mtx);
    assert(fence);
-   return ctx->base.screen->fence_finish(ctx->base.screen, &ctx->base, (struct pipe_fence_handle*)fence, 0);
+   return zink_vkfence_wait(zink_screen(ctx->base.screen), fence, 0);
 }
 
 static void
