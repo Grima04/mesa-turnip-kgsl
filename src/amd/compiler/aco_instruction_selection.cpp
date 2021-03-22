@@ -2836,8 +2836,10 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
                                   sgpr_extract_sext : sgpr_extract_undef;
          extract_8_16_bit_sgpr_element(ctx, dst, &instr->src[0], mode);
       } else {
+         const unsigned input_bitsize = instr->src[0].src.ssa->bit_size;
+         const unsigned output_bitsize = instr->dest.dest.ssa.bit_size;
          convert_int(ctx, bld, get_alu_src(ctx, instr->src[0]),
-                     instr->src[0].src.ssa->bit_size, instr->dest.dest.ssa.bit_size, true, dst);
+                     input_bitsize, output_bitsize, output_bitsize > input_bitsize, dst);
       }
       break;
    }
