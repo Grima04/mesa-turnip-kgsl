@@ -54,6 +54,7 @@ struct zink_batch_state {
    struct zink_context *ctx;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
+   VkQueue queue; //duplicated from batch for threading
 
    struct zink_resource *flush_res;
 
@@ -72,6 +73,8 @@ struct zink_batch_state {
    struct set *active_queries; /* zink_query objects which were active at some point in this batch */
 
    VkDeviceSize resource_size;
+
+   bool is_device_lost;
 };
 
 struct zink_batch {

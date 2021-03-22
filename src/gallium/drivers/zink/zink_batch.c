@@ -258,6 +258,46 @@ zink_start_batch(struct zink_context *ctx, struct zink_batch *batch)
       zink_resume_queries(ctx, batch);
 }
 
+static void
+post_submit(void *data, int thread_index)
+{
+   struct zink_batch_state *bs = data;
+
+   if (bs->is_device_lost && bs->ctx->reset.reset)
+      bs->ctx->reset.reset(bs->ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+}
+
+static void
+submit_queue(void *data, int thread_index)
+{
+   struct zink_batch_state *bs = data;
+   VkSubmitInfo si = {};
+   si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+   si.waitSemaphoreCount = 0;
+   si.pWaitSemaphores = NULL;
+   si.signalSemaphoreCount = 0;
+   si.pSignalSemaphores = NULL;
+   si.pWaitDstStageMask = NULL;
+   si.commandBufferCount = 1;
+   si.pCommandBuffers = &bs->cmdbuf;
+
+   struct wsi_memory_signal_submit_info mem_signal = {
+      .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,
+      .pNext = si.pNext,
+   };
+
+   if (bs->flush_res) {
+      mem_signal.memory = bs->flush_res->obj->mem;
+      si.pNext = &mem_signal;
+   }
+
+   if (vkQueueSubmit(bs->queue, 1, &si, bs->fence.fence) != VK_SUCCESS) {
+      debug_printf("ZINK: vkQueueSubmit() failed\n");
+      bs->is_device_lost = true;
+   }
+   p_atomic_set(&bs->fence.submitted, true);
+}
+
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
@@ -283,40 +323,15 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
        vkFlushMappedMemoryRanges(screen->dev, 1, &range);
    }
 
-   VkSubmitInfo si = {};
-   si.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-   si.waitSemaphoreCount = 0;
-   si.pWaitSemaphores = NULL;
-   si.signalSemaphoreCount = 0;
-   si.pSignalSemaphores = NULL;
-   si.pWaitDstStageMask = NULL;
-   si.commandBufferCount = 1;
-   si.pCommandBuffers = &batch->state->cmdbuf;
-
-   struct wsi_memory_signal_submit_info mem_signal = {
-      .sType = VK_STRUCTURE_TYPE_WSI_MEMORY_SIGNAL_SUBMIT_INFO_MESA,
-      .pNext = si.pNext,
-   };
-
-   if (batch->state->flush_res) {
-      mem_signal.memory = batch->state->flush_res->obj->mem;
-      si.pNext = &mem_signal;
-   }
-
-   if (vkQueueSubmit(batch->queue, 1, &si, batch->state->fence.fence) != VK_SUCCESS) {
-      debug_printf("ZINK: vkQueueSubmit() failed\n");
-      ctx->is_device_lost = true;
-
-      if (ctx->reset.reset) {
-         ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
-      }
-   }
-   batch->state->fence.submitted = true;
    simple_mtx_lock(&ctx->batch_mtx);
    ctx->last_fence = &batch->state->fence;
    _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, batch->state->fence.batch_id, (void*)(uintptr_t)batch->state->fence.batch_id, batch->state);
    simple_mtx_unlock(&ctx->batch_mtx);
    ctx->resource_size += batch->state->resource_size;
+
+   batch->state->queue = batch->queue;
+   submit_queue(batch->state, 0);
+   post_submit(batch->state, 0);
 }
 
 void
