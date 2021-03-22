@@ -605,7 +605,7 @@ GLboolean radeonMakeCurrent(__DRIcontext * driContextPriv,
 	}
 
 	if(driDrawPriv == NULL && driReadPriv == NULL) {
-		drfb = _mesa_create_framebuffer(&radeon->glCtx.Visual);
+		drfb = _mesa_get_incomplete_framebuffer();
 		readfb = drfb;
 	}
 	else {
