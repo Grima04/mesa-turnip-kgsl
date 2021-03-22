@@ -42,6 +42,7 @@ apt-get install -y --no-remove \
       llvm-9-dev \
       ocl-icd-opencl-dev \
       procps \
+      spirv-tools \
       strace \
       time \
       wine \
@@ -91,7 +92,6 @@ tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
 pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
 rm -rf libglvnd-v$GLVND_VERSION
 
-. .gitlab-ci/container/build-spirv-tools.sh
 
 git clone https://github.com/KhronosGroup/SPIRV-LLVM-Translator -b llvm_release_110 --single-branch --shallow-since=2020-11-12
 pushd SPIRV-LLVM-Translator

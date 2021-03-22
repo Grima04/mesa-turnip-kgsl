@@ -46,7 +46,8 @@ apt-get install -y --no-remove \
       ocl-icd-libopencl1 \
       python3-lxml \
       python3-renderdoc \
-      python3-simplejson
+      python3-simplejson \
+      spirv-tools
 
 
 . .gitlab-ci/container/container_pre_build.sh
@@ -55,10 +56,6 @@ apt-get install -y --no-remove \
 ############### Build libdrm
 
 . .gitlab-ci/container/build-libdrm.sh
-
-############### Build spirv-tools (debian too old)
-
-. .gitlab-ci/container/build-spirv-tools.sh
 
 ############### Build libclc
 
