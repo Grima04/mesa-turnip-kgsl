@@ -51,6 +51,7 @@ struct zink_batch_usage {
 
 struct zink_batch_state {
    struct zink_fence fence;
+   struct zink_context *ctx;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
 

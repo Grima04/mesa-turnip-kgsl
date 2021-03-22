@@ -158,6 +158,8 @@ create_batch_state(struct zink_context *ctx)
    if (!ptr) \
       goto fail
 
+   bs->ctx = ctx;
+
    SET_CREATE_OR_FAIL(bs->fbs);
    SET_CREATE_OR_FAIL(bs->fence.resources);
    SET_CREATE_OR_FAIL(bs->surfaces);
