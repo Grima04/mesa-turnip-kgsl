@@ -1946,16 +1946,24 @@ static void handle_copy_image(struct lvp_cmd_buffer_entry *cmd,
       struct pipe_box src_box;
       src_box.x = copycmd->regions[i].srcOffset.x;
       src_box.y = copycmd->regions[i].srcOffset.y;
-      src_box.z = copycmd->regions[i].srcOffset.z + copycmd->regions[i].srcSubresource.baseArrayLayer;
       src_box.width = copycmd->regions[i].extent.width;
       src_box.height = copycmd->regions[i].extent.height;
-      src_box.depth = copycmd->regions[i].extent.depth;
+      if (copycmd->src->bo->target == PIPE_TEXTURE_3D) {
+         src_box.depth = copycmd->regions[i].extent.depth;
+         src_box.z = copycmd->regions[i].srcOffset.z;
+      } else {
+         src_box.depth = copycmd->regions[i].srcSubresource.layerCount;
+         src_box.z = copycmd->regions[i].srcSubresource.baseArrayLayer;
+      }
 
+      unsigned dstz = copycmd->dst->bo->target == PIPE_TEXTURE_3D ?
+                      copycmd->regions[i].dstOffset.z :
+                      copycmd->regions[i].dstSubresource.baseArrayLayer;
       state->pctx->resource_copy_region(state->pctx, copycmd->dst->bo,
                                         copycmd->regions[i].dstSubresource.mipLevel,
                                         copycmd->regions[i].dstOffset.x,
                                         copycmd->regions[i].dstOffset.y,
-                                        copycmd->regions[i].dstOffset.z + copycmd->regions[i].dstSubresource.baseArrayLayer,
+                                        dstz,
                                         copycmd->src->bo,
                                         copycmd->regions[i].srcSubresource.mipLevel,
                                         &src_box);
