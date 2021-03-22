@@ -250,8 +250,10 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 	 * use ir3 so no common way to get at the pipe_stream_output_info
 	 * which is needed for this calculation.
 	 */
-	if (ctx->streamout.num_targets > 0)
+	if (ctx->streamout.num_targets > 0) {
+		assert(ctx->active_queries);
 		ctx->stats.prims_emitted += prims;
+	}
 	ctx->stats.prims_generated += prims;
 }
 
