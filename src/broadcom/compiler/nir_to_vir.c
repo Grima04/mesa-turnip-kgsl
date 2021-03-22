@@ -1824,6 +1824,7 @@ v3d_optimize_nir(struct nir_shader *s)
                 }
 
                 NIR_PASS(progress, s, nir_opt_undef);
+                NIR_PASS(progress, s, nir_lower_undef_to_zero);
         } while (progress);
 
         nir_move_options sink_opts =
@@ -2156,18 +2157,6 @@ ntq_emit_load_const(struct v3d_compile *c, nir_load_const_instr *instr)
                 qregs[i] = vir_uniform_ui(c, instr->value[i].u32);
 
         _mesa_hash_table_insert(c->def_ht, &instr->def, qregs);
-}
-
-static void
-ntq_emit_ssa_undef(struct v3d_compile *c, nir_ssa_undef_instr *instr)
-{
-        struct qreg *qregs = ntq_init_ssa_def(c, &instr->def);
-
-        /* VIR needs there to be *some* value, so pick 0 (same as for
-         * ntq_setup_registers().
-         */
-        for (int i = 0; i < instr->def.num_components; i++)
-                qregs[i] = vir_uniform_ui(c, 0);
 }
 
 static void
@@ -3384,7 +3373,7 @@ ntq_emit_instr(struct v3d_compile *c, nir_instr *instr)
                 break;
 
         case nir_instr_type_ssa_undef:
-                ntq_emit_ssa_undef(c, nir_instr_as_ssa_undef(instr));
+                unreachable("Should've been lowered by nir_lower_undef_to_zero");
                 break;
 
         case nir_instr_type_tex:
