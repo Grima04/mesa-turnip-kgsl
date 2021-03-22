@@ -2136,15 +2136,30 @@ zink_resource_copy_region(struct pipe_context *pctx,
 
       region.srcSubresource.aspectMask = src->aspect;
       region.srcSubresource.mipLevel = src_level;
-      region.srcSubresource.layerCount = 1;
-      if (src->base.array_size > 1) {
+      switch (src->base.target) {
+      case PIPE_TEXTURE_CUBE:
+      case PIPE_TEXTURE_CUBE_ARRAY:
+      case PIPE_TEXTURE_2D_ARRAY:
+      case PIPE_TEXTURE_1D_ARRAY:
+         /* these use layer */
          region.srcSubresource.baseArrayLayer = src_box->z;
          region.srcSubresource.layerCount = src_box->depth;
+         region.srcOffset.z = 0;
          region.extent.depth = 1;
-      } else {
-         region.srcOffset.z = src_box->z;
+         break;
+      case PIPE_TEXTURE_3D:
+         /* this uses depth */
+         region.srcSubresource.baseArrayLayer = 0;
          region.srcSubresource.layerCount = 1;
+         region.srcOffset.z = src_box->z;
          region.extent.depth = src_box->depth;
+         break;
+      default:
+         /* these must only copy one layer */
+         region.srcSubresource.baseArrayLayer = 0;
+         region.srcSubresource.layerCount = 1;
+         region.srcOffset.z = 0;
+         region.extent.depth = 1;
       }
 
       region.srcOffset.x = src_box->x;
@@ -2152,12 +2167,27 @@ zink_resource_copy_region(struct pipe_context *pctx,
 
       region.dstSubresource.aspectMask = dst->aspect;
       region.dstSubresource.mipLevel = dst_level;
-      if (dst->base.array_size > 1) {
+      switch (dst->base.target) {
+      case PIPE_TEXTURE_CUBE:
+      case PIPE_TEXTURE_CUBE_ARRAY:
+      case PIPE_TEXTURE_2D_ARRAY:
+      case PIPE_TEXTURE_1D_ARRAY:
+         /* these use layer */
          region.dstSubresource.baseArrayLayer = dstz;
          region.dstSubresource.layerCount = src_box->depth;
-      } else {
-         region.dstOffset.z = dstz;
+         region.dstOffset.z = 0;
+         break;
+      case PIPE_TEXTURE_3D:
+         /* this uses depth */
+         region.dstSubresource.baseArrayLayer = 0;
          region.dstSubresource.layerCount = 1;
+         region.dstOffset.z = dstz;
+         break;
+      default:
+         /* these must only copy one layer */
+         region.dstSubresource.baseArrayLayer = 0;
+         region.dstSubresource.layerCount = 1;
+         region.dstOffset.z = 0;
       }
 
       region.dstOffset.x = dstx;
