@@ -78,6 +78,7 @@ struct zink_batch {
    struct zink_batch_state *state;
 
    uint32_t last_batch_id;
+   VkQueue queue; //gfx+compute
 
    bool has_work;
    bool in_rp; //renderpass is currently active

@@ -289,7 +289,7 @@ zink_context_destroy(struct pipe_context *pctx)
    struct zink_context *ctx = zink_context(pctx);
    struct zink_screen *screen = zink_screen(pctx->screen);
 
-   if (ctx->queue && vkQueueWaitIdle(ctx->queue) != VK_SUCCESS)
+   if (ctx->batch.queue && vkQueueWaitIdle(ctx->batch.queue) != VK_SUCCESS)
       debug_printf("vkQueueWaitIdle failed\n");
 
    util_blitter_destroy(ctx->blitter);
@@ -2587,12 +2587,13 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    if (!ctx->blitter)
       goto fail;
 
+   vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->batch.queue);
+
    incr_curr_batch(ctx);
    zink_start_batch(ctx, &ctx->batch);
    if (!ctx->batch.state)
       goto fail;
 
-   vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
    simple_mtx_init(&ctx->batch_mtx, mtx_plain);
 
    ctx->program_cache = _mesa_hash_table_create(NULL,

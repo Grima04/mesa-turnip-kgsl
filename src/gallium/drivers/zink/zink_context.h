@@ -136,7 +136,6 @@ struct zink_context {
    struct zink_batch batch;
    simple_mtx_t batch_mtx;
    struct zink_fence *last_fence; //the last command buffer submitted
-   VkQueue queue; //gfx+compute
    struct hash_table batch_states; //submitted batch states
    struct util_dynarray free_batch_states; //unused batch states
    VkDeviceSize resource_size; //the accumulated size of resources in submitted buffers

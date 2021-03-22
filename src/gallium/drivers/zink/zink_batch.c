@@ -303,7 +303,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       si.pNext = &mem_signal;
    }
 
-   if (vkQueueSubmit(ctx->queue, 1, &si, batch->state->fence.fence) != VK_SUCCESS) {
+   if (vkQueueSubmit(batch->queue, 1, &si, batch->state->fence.fence) != VK_SUCCESS) {
       debug_printf("ZINK: vkQueueSubmit() failed\n");
       ctx->is_device_lost = true;
 
