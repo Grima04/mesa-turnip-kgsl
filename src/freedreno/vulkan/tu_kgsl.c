@@ -206,7 +206,7 @@ tu_enumerate_devices(struct tu_instance *instance)
 
    struct tu_physical_device *device = &instance->physical_devices[0];
 
-   if (instance->enabled_extensions.KHR_display)
+   if (instance->vk.enabled_extensions.KHR_display)
       return vk_errorf(instance, VK_ERROR_INCOMPATIBLE_DRIVER,
                        "I can't KHR_display");
 
@@ -230,7 +230,6 @@ tu_enumerate_devices(struct tu_instance *instance)
    if (instance->debug_flags & TU_DEBUG_STARTUP)
       mesa_logi("Found compatible device '%s'.", path);
 
-   vk_object_base_init(NULL, &device->base, VK_OBJECT_TYPE_PHYSICAL_DEVICE);
    device->instance = instance;
    device->master_fd = -1;
    device->local_fd = fd;
