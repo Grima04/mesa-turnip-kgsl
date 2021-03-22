@@ -1854,6 +1854,7 @@ zink_flush(struct pipe_context *pctx,
    bool deferred = flags & PIPE_FLUSH_DEFERRED;
    struct zink_batch *batch = &ctx->batch;
    struct zink_fence *fence = &batch->state->fence;
+   struct zink_screen *screen = zink_screen(ctx->base.screen);
 
    if (!deferred && ctx->clears_enabled) {
       /* start rp to do all the clears */
@@ -1870,7 +1871,7 @@ zink_flush(struct pipe_context *pctx,
             zink_resource_image_barrier(ctx, batch,
                                         ctx->fb_state.cbufs[i] ? zink_resource(ctx->fb_state.cbufs[i]->texture) : NULL,
                                         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, 0);
-         if (zink_screen(pctx->screen)->needs_mesa_flush_wsi && ctx->fb_state.cbufs[0])
+         if (screen->needs_mesa_flush_wsi && ctx->fb_state.cbufs[0])
             batch->state->flush_res = zink_resource(ctx->fb_state.cbufs[0]->texture);
       }
       flush_batch(ctx);
@@ -1881,7 +1882,7 @@ zink_flush(struct pipe_context *pctx,
    if (deferred && !batch->has_work) {
       fence = ctx->last_fence;
    }
-   zink_fence_reference(zink_screen(pctx->screen),
+   zink_fence_reference(screen,
                         (struct zink_fence **)pfence,
                         fence);
    if (flags & PIPE_FLUSH_END_OF_FRAME) {
@@ -1890,7 +1891,7 @@ zink_flush(struct pipe_context *pctx,
        * unknown at this time why this is the case
        */
       if (!ctx->first_frame_done)
-         zink_vkfence_wait(zink_screen(pctx->screen), fence, PIPE_TIMEOUT_INFINITE);
+         zink_vkfence_wait(screen, fence, PIPE_TIMEOUT_INFINITE);
       ctx->first_frame_done = true;
    }
 }
