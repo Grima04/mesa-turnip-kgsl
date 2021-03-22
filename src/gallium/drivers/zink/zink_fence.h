@@ -52,8 +52,6 @@ zink_fence(void *pfence)
    return (struct zink_fence *)pfence;
 }
 
-void
-zink_fence_init(struct zink_context *ctx, struct zink_batch *batch);
 bool
 zink_create_fence(struct zink_screen *screen, struct zink_batch_state *bs);
 

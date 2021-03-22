@@ -76,16 +76,6 @@ fail:
 }
 
 void
-zink_fence_init(struct zink_context *ctx, struct zink_batch *batch)
-{
-   struct zink_fence *fence = zink_fence(batch->state);
-
-   vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &fence->fence);
-   fence->deferred_ctx = NULL;
-   fence->submitted = true;
-}
-
-void
 zink_fence_reference(struct zink_screen *screen,
                      struct zink_fence **ptr,
                      struct zink_fence *fence)

@@ -82,6 +82,7 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    }
 
    bs->flush_res = NULL;
+   bs->fence.deferred_ctx = NULL;
 
    bs->descs_used = 0;
    ctx->resource_size -= bs->resource_size;
@@ -267,8 +268,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
       debug_printf("vkEndCommandBuffer failed\n");
       return;
    }
-
-   zink_fence_init(ctx, batch);
+   vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &batch->state->fence.fence);
 
    util_dynarray_foreach(&batch->state->persistent_resources, struct zink_resource*, res) {
        struct zink_screen *screen = zink_screen(ctx->base.screen);
@@ -311,6 +311,7 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
          ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
       }
    }
+   batch->state->fence.submitted = true;
    simple_mtx_lock(&ctx->batch_mtx);
    ctx->last_fence = &batch->state->fence;
    _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, batch->state->fence.batch_id, (void*)(uintptr_t)batch->state->fence.batch_id, batch->state);
