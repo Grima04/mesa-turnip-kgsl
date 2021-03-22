@@ -97,12 +97,14 @@ zink_clear_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
 void
 zink_batch_reset_all(struct zink_context *ctx)
 {
+   simple_mtx_lock(&ctx->batch_mtx);
    hash_table_foreach(&ctx->batch_states, entry) {
       struct zink_batch_state *bs = entry->data;
       zink_reset_batch_state(ctx, bs);
       _mesa_hash_table_remove(&ctx->batch_states, entry);
       util_dynarray_append(&ctx->free_batch_states, struct zink_batch_state *, bs);
    }
+   simple_mtx_unlock(&ctx->batch_mtx);
 }
 
 void
@@ -186,6 +188,7 @@ init_batch_state(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_batch_state *bs = NULL;
 
+   simple_mtx_lock(&ctx->batch_mtx);
    if (util_dynarray_num_elements(&ctx->free_batch_states, struct zink_batch_state*))
       bs = util_dynarray_pop(&ctx->free_batch_states, struct zink_batch_state*);
    if (!bs) {
@@ -195,6 +198,7 @@ init_batch_state(struct zink_context *ctx, struct zink_batch *batch)
          _mesa_hash_table_remove(&ctx->batch_states, he);
       }
    }
+   simple_mtx_unlock(&ctx->batch_mtx);
    if (bs)
       zink_reset_batch_state(ctx, bs);
    else {
@@ -300,9 +304,10 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
          ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
       }
    }
-
+   simple_mtx_lock(&ctx->batch_mtx);
    ctx->last_fence = &batch->state->fence;
    _mesa_hash_table_insert_pre_hashed(&ctx->batch_states, batch->state->fence.batch_id, (void*)(uintptr_t)batch->state->fence.batch_id, batch->state);
+   simple_mtx_unlock(&ctx->batch_mtx);
    ctx->resource_size += batch->state->resource_size;
 }
 

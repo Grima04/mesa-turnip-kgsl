@@ -302,6 +302,7 @@ zink_context_destroy(struct pipe_context *pctx)
    for (unsigned i = 0; i < ARRAY_SIZE(ctx->null_buffers); i++)
       pipe_resource_reference(&ctx->null_buffers[i], NULL);
 
+   simple_mtx_destroy(&ctx->batch_mtx);
    struct zink_fence *fence = zink_fence(&ctx->batch.state);
    zink_clear_batch_state(ctx, ctx->batch.state);
    zink_fence_reference(screen, &fence, NULL);
@@ -1930,6 +1931,7 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
       /* not submitted yet */
       flush_batch(ctx);
 
+   simple_mtx_lock(&ctx->batch_mtx);
    struct zink_fence *fence;
 
    assert(batch_id || ctx->last_fence);
@@ -1939,18 +1941,23 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states, batch_id, (void*)(uintptr_t)batch_id);
       if (!he) {
         util_dynarray_foreach(&ctx->free_batch_states, struct zink_batch_state*, bs) {
-           if ((*bs)->fence.batch_id == batch_id)
+           if ((*bs)->fence.batch_id == batch_id) {
+              simple_mtx_unlock(&ctx->batch_mtx);
               return;
+           }
         }
-        if (ctx->last_fence && ctx->last_fence->batch_id > batch_id)
+        if (ctx->last_fence && ctx->last_fence->batch_id > batch_id) {
            /* already completed */
+           simple_mtx_unlock(&ctx->batch_mtx);
            return;
+        }
         unreachable("should've found batch state");
       }
       fence = he->data;
    }
    assert(fence);
    ctx->base.screen->fence_finish(ctx->base.screen, &ctx->base, (struct pipe_fence_handle*)fence, PIPE_TIMEOUT_INFINITE);
+   simple_mtx_unlock(&ctx->batch_mtx);
 }
 
 static void
@@ -2564,6 +2571,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
       goto fail;
 
    vkGetDeviceQueue(screen->dev, screen->gfx_queue, 0, &ctx->queue);
+   simple_mtx_init(&ctx->batch_mtx, mtx_plain);
 
    ctx->program_cache = _mesa_hash_table_create(NULL,
                                                 hash_gfx_program,

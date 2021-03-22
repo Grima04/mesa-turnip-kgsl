@@ -134,6 +134,7 @@ struct zink_context {
 
    uint32_t curr_batch; //the current batch id
    struct zink_batch batch;
+   simple_mtx_t batch_mtx;
    struct zink_fence *last_fence; //the last command buffer submitted
    VkQueue queue; //gfx+compute
    struct hash_table batch_states; //submitted batch states
