@@ -1333,9 +1333,15 @@ _mesa_test_framebuffer_completeness(struct gl_context *ctx,
 
       /* Check that layered rendering is consistent. */
       if (att->Layered) {
-         if (att_tex_target == GL_TEXTURE_CUBE_MAP)
+         if (att_tex_target == GL_TEXTURE_CUBE_MAP) {
+            /* Each layer's format and size must match to the base layer. */
+            if (!_mesa_cube_complete(att->Texture)) {
+               fb->_Status = GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT;
+               fbo_incomplete(ctx, "attachment not cube complete", i);
+               return;
+            }
             att_layer_count = 6;
-         else if (att_tex_target == GL_TEXTURE_1D_ARRAY)
+         } else if (att_tex_target == GL_TEXTURE_1D_ARRAY)
             att_layer_count = att->Renderbuffer->Height;
          else
             att_layer_count = att->Renderbuffer->Depth;
