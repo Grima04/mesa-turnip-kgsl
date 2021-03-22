@@ -3922,16 +3922,7 @@ lp_build_size_query_soa(struct gallivm_state *gallivm,
 
    dims = texture_dims(target);
 
-   switch (target) {
-   case PIPE_TEXTURE_1D_ARRAY:
-   case PIPE_TEXTURE_2D_ARRAY:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      has_array = TRUE;
-      break;
-   default:
-      has_array = FALSE;
-      break;
-   }
+   has_array = has_layer_coord(target);
 
    assert(!params->int_type.floating);
 
