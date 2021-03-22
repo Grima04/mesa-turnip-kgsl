@@ -1042,6 +1042,7 @@ anv_image_from_swapchain(VkDevice device,
     * #swapchain-wsi-image-create-info .
     */
    assert(local_create_info.tiling == VK_IMAGE_TILING_OPTIMAL);
+   local_create_info.tiling = swapchain_image->tiling;
 
    VkImageDrmFormatModifierListCreateInfoEXT local_modifier_info = {
       .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
