@@ -24,6 +24,7 @@
 #ifndef ZINK_FENCE_H
 #define ZINK_FENCE_H
 
+#include "util/simple_mtx.h"
 #include "util/u_inlines.h"
 
 #include <vulkan/vulkan.h>
@@ -40,6 +41,7 @@ struct zink_fence {
    VkFence fence;
    struct pipe_context *deferred_ctx;
    uint32_t batch_id;
+   simple_mtx_t resource_mtx;
    struct set *resources; /* resources need access removed asap, so they're on the fence */
    bool submitted;
 };

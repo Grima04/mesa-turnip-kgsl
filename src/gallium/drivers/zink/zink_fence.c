@@ -35,6 +35,7 @@
 void
 zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence)
 {
+   simple_mtx_lock(&fence->resource_mtx);
    /* unref all used resources */
    set_foreach(fence->resources, entry) {
       struct zink_resource_object *obj = (struct zink_resource_object *)entry->key;
@@ -43,6 +44,7 @@ zink_fence_clear_resources(struct zink_screen *screen, struct zink_fence *fence)
       zink_resource_object_reference(screen, &obj, NULL);
       _mesa_set_remove(fence->resources, entry);
    }
+   simple_mtx_unlock(&fence->resource_mtx);
 }
 
 static void

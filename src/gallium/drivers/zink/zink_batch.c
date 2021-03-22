@@ -125,6 +125,7 @@ zink_batch_state_destroy(struct zink_screen *screen, struct zink_batch_state *bs
    _mesa_set_destroy(bs->programs, NULL);
    _mesa_set_destroy(bs->desc_sets, NULL);
    _mesa_set_destroy(bs->active_queries, NULL);
+   simple_mtx_destroy(&bs->fence.resource_mtx);
    ralloc_free(bs);
 }
 
@@ -168,6 +169,7 @@ create_batch_state(struct zink_context *ctx)
       /* this destroys the batch state on failure */
       return NULL;
 
+   simple_mtx_init(&bs->fence.resource_mtx, mtx_plain);
    return bs;
 fail:
    zink_batch_state_destroy(screen, bs);
