@@ -429,10 +429,6 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		 * (sat) bit, we can just fold the (sat) flag back to the
 		 * src instruction and create a mov.  This is easier for cp
 		 * to eliminate.
-		 *
-		 * NOTE: a3xx definitely seen not working with flat bary.f. Same test
-		 * uses ldlv on a4xx+, so not definitive. Seems rare enough to apply
-		 * everywhere.
 		 */
 		if (alu->src[0].src.is_ssa &&
 				is_sat_compatible(src[0]->opc) &&

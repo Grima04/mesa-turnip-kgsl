@@ -1042,12 +1042,14 @@ static inline bool instr_sat(instr_t *instr)
 
 static inline bool is_sat_compatible(opc_t opc)
 {
-	/* TODO probably opc_cat==4 is ok too */
+	/* On a6xx saturation doesn't work on cat4 */
 	if (opc_cat(opc) != 2 && opc_cat(opc) != 3)
 		return false;
 
 	switch (opc) {
+	/* On a3xx and a6xx saturation doesn't work on bary.f */
 	case OPC_BARY_F:
+	/* On a6xx saturation doesn't work on sel.* */
 	case OPC_SEL_B16:
 	case OPC_SEL_B32:
 	case OPC_SEL_S16:
