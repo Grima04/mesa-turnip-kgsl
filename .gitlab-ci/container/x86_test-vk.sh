@@ -115,11 +115,6 @@ wine \
 
 PIGLIT_BUILD_TARGETS="piglit_replayer" . .gitlab-ci/container/build-piglit.sh
 
-############### Build dEQP runner (and install rust temporarily for it)
-. .gitlab-ci/container/build-rust.sh
-. .gitlab-ci/container/build-deqp-runner.sh
-rm -rf /root/.rustup /root/.cargo
-
 ############### Build Fossilize
 
 . .gitlab-ci/container/build-fossilize.sh

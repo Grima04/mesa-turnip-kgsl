@@ -397,7 +397,7 @@ android_build:
 x86_test-base:
   extends: x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-base "2021-03-31-librenderdoc"
+    MESA_IMAGE_TAG: &x86_test-base "2021-03-31-cargo"
 
 .use-x86_test-base:
   extends:
@@ -413,13 +413,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-llvm-spirv"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-cargo"
 
 # Debian 11 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-04-14-librenderdoc"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-04-14-cargo"
 
 # Debian 11 based ARM build image
 arm_build:

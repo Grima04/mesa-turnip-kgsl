@@ -187,7 +187,7 @@ popd
 rm -rf kernel
 
 ############### Delete rust, since the tests won't be compiling anything.
-rm -rf /root/.rustup /root/.cargo
+rm -rf /root/.cargo
 
 ############### Create rootfs
 set +e
