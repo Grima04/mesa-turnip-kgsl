@@ -979,6 +979,26 @@ decode_vs_state(struct intel_batch_decode_ctx *ctx, uint32_t offset)
    ctx_print_group(ctx, strct, offset, bind_bo.map);
 }
 
+static void
+decode_gs_state(struct intel_batch_decode_ctx *ctx, uint32_t offset)
+{
+   struct intel_group *strct =
+      intel_spec_find_struct(ctx->spec, "GS_STATE");
+   if (strct == NULL) {
+      fprintf(ctx->fp, "did not find GS_STATE info\n");
+      return;
+   }
+
+   struct intel_batch_decode_bo bind_bo =
+      ctx_get_bo(ctx, true, offset);
+
+   if (bind_bo.map == NULL) {
+      fprintf(ctx->fp, " gs state unavailable\n");
+      return;
+   }
+
+   ctx_print_group(ctx, strct, offset, bind_bo.map);
+}
 
 static void
 decode_clip_state(struct intel_batch_decode_ctx *ctx, uint32_t offset)
@@ -1114,6 +1134,10 @@ decode_pipelined_pointers(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 {
    fprintf(ctx->fp, "VS State Table:\n");
    decode_vs_state(ctx, p[1]);
+   if (p[2] & 1) {
+      fprintf(ctx->fp, "GS State Table:\n");
+      decode_gs_state(ctx, p[2] & ~1);
+   }
    fprintf(ctx->fp, "Clip State Table:\n");
    decode_clip_state(ctx, p[3] & ~1);
    fprintf(ctx->fp, "SF State Table:\n");
