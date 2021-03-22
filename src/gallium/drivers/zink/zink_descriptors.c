@@ -997,7 +997,7 @@ handle_image_descriptor(struct zink_screen *screen, struct zink_resource *res, e
         default:
            unreachable("unknown descriptor type");
         }
-     } else if (res->base.target != PIPE_BUFFER) {
+     } else if (res->base.b.target != PIPE_BUFFER) {
         assert(layout != VK_IMAGE_LAYOUT_UNDEFINED);
         image_info->imageLayout = layout;
         image_info->imageView = imageview;
@@ -1062,7 +1062,7 @@ update_sampler_descriptors(struct zink_context *ctx, struct zink_descriptor_set 
             struct pipe_sampler_view *psampler_view = ctx->sampler_views[stage][index + k];
             struct zink_sampler_view *sampler_view = zink_sampler_view(psampler_view);
             res = psampler_view ? zink_resource(psampler_view->texture) : NULL;
-            if (res && res->base.target == PIPE_BUFFER) {
+            if (res && res->base.b.target == PIPE_BUFFER) {
                bufferview = sampler_view->buffer_view->buffer_view;
             } else if (res) {
                imageview = sampler_view->image_view->image_view;

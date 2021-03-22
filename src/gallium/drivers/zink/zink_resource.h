@@ -35,6 +35,7 @@ struct zink_context;
 #include "util/u_transfer.h"
 #include "util/u_range.h"
 #include "util/u_dynarray.h"
+#include "util/u_threaded_context.h"
 
 #include "zink_batch.h"
 #include "zink_descriptors.h"
@@ -81,7 +82,7 @@ struct zink_resource_object {
 };
 
 struct zink_resource {
-   struct pipe_resource base;
+   struct threaded_resource base;
 
    enum pipe_format internal_format:16;
 
@@ -107,7 +108,7 @@ struct zink_resource {
 };
 
 struct zink_transfer {
-   struct pipe_transfer base;
+   struct threaded_transfer base;
    struct pipe_resource *staging_res;
    unsigned offset;
    unsigned depthPitch;
@@ -137,7 +138,7 @@ bool
 zink_resource_has_usage(struct zink_resource *res, enum zink_resource_access usage);
 
 bool
-zink_resource_has_usage_for_id(struct zink_resource *res, uint32_t id);
+zink_resource_has_curr_read_usage(struct zink_context *ctx, struct zink_resource *res);
 
 void
 zink_resource_desc_set_add(struct zink_resource *res, struct zink_descriptor_set *zds, unsigned idx);

@@ -1013,6 +1013,7 @@ update_queue_props(struct zink_screen *screen)
    for (uint32_t i = 0; i < num_queues; i++) {
       if (props[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
          screen->gfx_queue = i;
+         screen->max_queues = props[i].queueCount;
          screen->timestamp_valid_bits = props[i].timestampValidBits;
          break;
       }
@@ -1336,7 +1337,7 @@ zink_create_logical_device(struct zink_screen *screen)
    float dummy = 0.0f;
    qci.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
    qci.queueFamilyIndex = screen->gfx_queue;
-   qci.queueCount = 1;
+   qci.queueCount = screen->threaded && screen->max_queues > 1 ? 2 : 1;
    qci.pQueuePriorities = &dummy;
 
    VkDeviceCreateInfo dci = {};
@@ -1392,6 +1393,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
       return NULL;
 
    util_cpu_detect();
+   screen->threaded = util_get_cpu_caps()->nr_cpus > 1 && debug_get_bool_option("GALLIUM_THREAD", util_get_cpu_caps()->nr_cpus > 1);
 
    zink_debug = debug_get_option_zink_debug();
 

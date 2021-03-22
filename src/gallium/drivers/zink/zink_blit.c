@@ -54,7 +54,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.srcOffset.x = info->src.box.x;
    region.srcOffset.y = info->src.box.y;
 
-   if (src->base.array_size > 1) {
+   if (src->base.b.array_size > 1) {
       region.srcOffset.z = 0;
       region.srcSubresource.baseArrayLayer = info->src.box.z;
       region.srcSubresource.layerCount = info->src.box.depth;
@@ -70,7 +70,7 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.dstOffset.x = info->dst.box.x;
    region.dstOffset.y = info->dst.box.y;
 
-   if (dst->base.array_size > 1) {
+   if (dst->base.b.array_size > 1) {
       region.dstOffset.z = 0;
       region.dstSubresource.baseArrayLayer = info->dst.box.z;
       region.dstSubresource.layerCount = info->dst.box.depth;
@@ -138,7 +138,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.srcOffsets[1].x = info->src.box.x + info->src.box.width;
    region.srcOffsets[1].y = info->src.box.y + info->src.box.height;
 
-   if (src->base.array_size > 1) {
+   if (src->base.b.array_size > 1) {
       region.srcOffsets[0].z = 0;
       region.srcOffsets[1].z = 1;
       region.srcSubresource.baseArrayLayer = info->src.box.z;
@@ -157,7 +157,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.dstOffsets[1].x = info->dst.box.x + info->dst.box.width;
    region.dstOffsets[1].y = info->dst.box.y + info->dst.box.height;
 
-   if (dst->base.array_size > 1) {
+   if (dst->base.b.array_size > 1) {
       region.dstOffsets[0].z = 0;
       region.dstOffsets[1].z = 1;
       region.dstSubresource.baseArrayLayer = info->dst.box.z;

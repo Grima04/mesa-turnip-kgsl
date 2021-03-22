@@ -51,10 +51,13 @@ struct zink_batch_usage {
 
 struct zink_batch_state {
    struct zink_fence fence;
+   struct pipe_reference reference;
    struct zink_context *ctx;
    VkCommandPool cmdpool;
    VkCommandBuffer cmdbuf;
    VkQueue queue; //duplicated from batch for threading
+
+   struct util_queue_fence flush_completed;
 
    struct zink_resource *flush_res;
 
@@ -82,6 +85,8 @@ struct zink_batch {
 
    uint32_t last_batch_id;
    VkQueue queue; //gfx+compute
+   VkQueue thread_queue; //gfx+compute
+   struct util_queue flush_queue; //TODO: move to wsi
 
    bool has_work;
    bool in_rp; //renderpass is currently active
@@ -141,6 +146,22 @@ void
 zink_batch_reference_bufferview(struct zink_batch *batch, struct zink_buffer_view *buffer_view);
 void
 zink_batch_reference_surface(struct zink_batch *batch, struct zink_surface *surface);
+
+void
+debug_describe_zink_batch_state(char *buf, const struct zink_batch_state *ptr);
+
+static inline void
+zink_batch_state_reference(struct zink_screen *screen,
+                           struct zink_batch_state **dst,
+                           struct zink_batch_state *src)
+{
+   struct zink_batch_state *old_dst = dst ? *dst : NULL;
+
+   if (pipe_reference_described(old_dst ? &old_dst->reference : NULL, src ? &src->reference : NULL,
+                                (debug_reference_descriptor)debug_describe_zink_batch_state))
+      zink_batch_state_destroy(screen, old_dst);
+   if (dst) *dst = src;
+}
 
 bool
 zink_batch_add_desc_set(struct zink_batch *batch, struct zink_descriptor_set *zds);

@@ -40,7 +40,7 @@ create_ivci(struct zink_screen *screen,
    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
    ivci.image = res->obj->image;
 
-   switch (res->base.target) {
+   switch (res->base.b.target) {
    case PIPE_TEXTURE_1D:
       ivci.viewType = VK_IMAGE_VIEW_TYPE_1D;
       break;
@@ -88,7 +88,7 @@ create_ivci(struct zink_screen *screen,
    ivci.subresourceRange.levelCount = 1;
    ivci.subresourceRange.baseArrayLayer = templ->u.tex.first_layer;
    ivci.subresourceRange.layerCount = 1 + templ->u.tex.last_layer - templ->u.tex.first_layer;
-   ivci.viewType = zink_surface_clamp_viewtype(ivci.viewType, templ->u.tex.first_layer, templ->u.tex.last_layer, res->base.array_size);
+   ivci.viewType = zink_surface_clamp_viewtype(ivci.viewType, templ->u.tex.first_layer, templ->u.tex.last_layer, res->base.b.array_size);
 
    return ivci;
 }
