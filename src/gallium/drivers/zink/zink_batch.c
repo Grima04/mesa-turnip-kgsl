@@ -188,8 +188,8 @@ find_unused_state(struct hash_entry *entry)
    return !submitted;
 }
 
-static void
-init_batch_state(struct zink_context *ctx, struct zink_batch *batch)
+static struct zink_batch_state *
+get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_batch_state *bs = NULL;
 
@@ -216,7 +216,7 @@ init_batch_state(struct zink_context *ctx, struct zink_batch *batch)
       }
       bs = create_batch_state(ctx);
    }
-   batch->state = bs;
+   return bs;
 }
 
 void
@@ -225,7 +225,7 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    bool fresh = !batch->state;
 
-   init_batch_state(ctx, batch);
+   batch->state = get_batch_state(ctx, batch);
    assert(batch->state);
 
    if (!fresh) {
