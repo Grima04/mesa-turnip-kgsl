@@ -74,11 +74,6 @@ iris_set_debug_callback(struct pipe_context *ctx,
 void
 iris_lost_context_state(struct iris_batch *batch)
 {
-   /* The batch module doesn't have an iris_context, because we want to
-    * avoid introducing lots of layering violations.  Unfortunately, here
-    * we do need to inform the context of batch catastrophe.  We know the
-    * batch is one of our context's, so hackily claw our way back.
-    */
    struct iris_context *ice = batch->ice;
 
    if (batch->name == IRIS_BATCH_RENDER) {
