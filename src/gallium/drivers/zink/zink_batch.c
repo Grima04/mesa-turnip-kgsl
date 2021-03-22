@@ -86,6 +86,9 @@ zink_reset_batch_state(struct zink_context *ctx, struct zink_batch_state *bs)
    bs->descs_used = 0;
    ctx->resource_size -= bs->resource_size;
    bs->resource_size = 0;
+
+   bs->fence.submitted = false;
+   bs->fence.batch_id = 0;
 }
 
 void
