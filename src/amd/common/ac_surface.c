@@ -25,6 +25,7 @@
  * of the Software.
  */
 
+#define AC_SURFACE_INCLUDE_NIR
 #include "ac_surface.h"
 
 #include "ac_gpu_info.h"
@@ -138,276 +139,7 @@ typedef uint64_t __u64;
 
 struct ac_addrlib {
    ADDR_HANDLE handle;
-
-   /* The cache of DCC retile maps for reuse when allocating images of
-    * similar sizes.
-    */
-   simple_mtx_t dcc_retile_map_lock;
-   struct hash_table *dcc_retile_maps;
-   struct hash_table *dcc_retile_tile_indices;
 };
-
-struct dcc_retile_map_key {
-   enum radeon_family family;
-   unsigned retile_width;
-   unsigned retile_height;
-   bool rb_aligned;
-   bool pipe_aligned;
-   unsigned dcc_retile_num_elements;
-   ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT input;
-};
-
-static uint32_t dcc_retile_map_hash_key(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct dcc_retile_map_key));
-}
-
-static bool dcc_retile_map_keys_equal(const void *a, const void *b)
-{
-   return memcmp(a, b, sizeof(struct dcc_retile_map_key)) == 0;
-}
-
-static void dcc_retile_map_free(struct hash_entry *entry)
-{
-   free((void *)entry->key);
-   free(entry->data);
-}
-
-struct dcc_retile_tile_key {
-   enum radeon_family family;
-   unsigned bpp;
-   unsigned swizzle_mode;
-   bool rb_aligned;
-   bool pipe_aligned;
-};
-
-struct dcc_retile_tile_data {
-   unsigned tile_width_log2;
-   unsigned tile_height_log2;
-   uint16_t *data;
-};
-
-static uint32_t dcc_retile_tile_hash_key(const void *key)
-{
-   return _mesa_hash_data(key, sizeof(struct dcc_retile_tile_key));
-}
-
-static bool dcc_retile_tile_keys_equal(const void *a, const void *b)
-{
-   return memcmp(a, b, sizeof(struct dcc_retile_tile_key)) == 0;
-}
-
-static void dcc_retile_tile_free(struct hash_entry *entry)
-{
-   free((void *)entry->key);
-   free(((struct dcc_retile_tile_data *)entry->data)->data);
-   free(entry->data);
-}
-
-/* Assumes dcc_retile_map_lock is taken. */
-static const struct dcc_retile_tile_data *
-ac_compute_dcc_retile_tile_indices(struct ac_addrlib *addrlib, const struct radeon_info *info,
-                                   unsigned bpp, unsigned swizzle_mode, bool rb_aligned,
-                                   bool pipe_aligned)
-{
-   struct dcc_retile_tile_key key;
-   memset(&key, 0, sizeof(key));
-
-   key.family = info->family;
-   key.bpp = bpp;
-   key.swizzle_mode = swizzle_mode;
-   key.rb_aligned = rb_aligned;
-   key.pipe_aligned = pipe_aligned;
-
-   struct hash_entry *entry = _mesa_hash_table_search(addrlib->dcc_retile_tile_indices, &key);
-   if (entry)
-      return entry->data;
-
-   ADDR2_COMPUTE_DCCINFO_INPUT din = {0};
-   ADDR2_COMPUTE_DCCINFO_OUTPUT dout = {0};
-   din.size = sizeof(ADDR2_COMPUTE_DCCINFO_INPUT);
-   dout.size = sizeof(ADDR2_COMPUTE_DCCINFO_OUTPUT);
-
-   din.dccKeyFlags.pipeAligned = pipe_aligned;
-   din.dccKeyFlags.rbAligned = rb_aligned;
-   din.resourceType = ADDR_RSRC_TEX_2D;
-   din.swizzleMode = swizzle_mode;
-   din.bpp = bpp;
-   din.unalignedWidth = 1;
-   din.unalignedHeight = 1;
-   din.numSlices = 1;
-   din.numFrags = 1;
-   din.numMipLevels = 1;
-
-   ADDR_E_RETURNCODE ret = Addr2ComputeDccInfo(addrlib->handle, &din, &dout);
-   if (ret != ADDR_OK)
-      return NULL;
-
-   ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin = {0};
-   addrin.size = sizeof(addrin);
-   addrin.swizzleMode = swizzle_mode;
-   addrin.resourceType = ADDR_RSRC_TEX_2D;
-   addrin.bpp = bpp;
-   addrin.numSlices = 1;
-   addrin.numMipLevels = 1;
-   addrin.numFrags = 1;
-   addrin.pitch = dout.pitch;
-   addrin.height = dout.height;
-   addrin.compressBlkWidth = dout.compressBlkWidth;
-   addrin.compressBlkHeight = dout.compressBlkHeight;
-   addrin.compressBlkDepth = dout.compressBlkDepth;
-   addrin.metaBlkWidth = dout.metaBlkWidth;
-   addrin.metaBlkHeight = dout.metaBlkHeight;
-   addrin.metaBlkDepth = dout.metaBlkDepth;
-   addrin.dccKeyFlags.pipeAligned = pipe_aligned;
-   addrin.dccKeyFlags.rbAligned = rb_aligned;
-
-   unsigned w = dout.metaBlkWidth / dout.compressBlkWidth;
-   unsigned h = dout.metaBlkHeight / dout.compressBlkHeight;
-   uint16_t *indices = malloc(w * h * sizeof(uint16_t));
-   if (!indices)
-      return NULL;
-
-   ADDR2_COMPUTE_DCC_ADDRFROMCOORD_OUTPUT addrout = {0};
-   addrout.size = sizeof(addrout);
-
-   for (unsigned y = 0; y < h; ++y) {
-      addrin.y = y * dout.compressBlkHeight;
-      for (unsigned x = 0; x < w; ++x) {
-         addrin.x = x * dout.compressBlkWidth;
-         addrout.addr = 0;
-
-         if (Addr2ComputeDccAddrFromCoord(addrlib->handle, &addrin, &addrout) != ADDR_OK) {
-            free(indices);
-            return NULL;
-         }
-         indices[y * w + x] = addrout.addr;
-      }
-   }
-
-   struct dcc_retile_tile_data *data = calloc(1, sizeof(*data));
-   if (!data) {
-      free(indices);
-      return NULL;
-   }
-
-   data->tile_width_log2 = util_logbase2(w);
-   data->tile_height_log2 = util_logbase2(h);
-   data->data = indices;
-
-   struct dcc_retile_tile_key *heap_key = mem_dup(&key, sizeof(key));
-   if (!heap_key) {
-      free(data);
-      free(indices);
-      return NULL;
-   }
-
-   entry = _mesa_hash_table_insert(addrlib->dcc_retile_tile_indices, heap_key, data);
-   if (!entry) {
-      free(heap_key);
-      free(data);
-      free(indices);
-   }
-   return data;
-}
-
-static uint32_t ac_compute_retile_tile_addr(const struct dcc_retile_tile_data *tile,
-                                            unsigned stride, unsigned x, unsigned y)
-{
-   unsigned x_mask = (1u << tile->tile_width_log2) - 1;
-   unsigned y_mask = (1u << tile->tile_height_log2) - 1;
-   unsigned tile_size_log2 = tile->tile_width_log2 + tile->tile_height_log2;
-
-   unsigned base = ((y >> tile->tile_height_log2) * stride + (x >> tile->tile_width_log2))
-                   << tile_size_log2;
-   unsigned offset_in_tile = tile->data[((y & y_mask) << tile->tile_width_log2) + (x & x_mask)];
-   return base + offset_in_tile;
-}
-
-static uint32_t *ac_compute_dcc_retile_map(struct ac_addrlib *addrlib,
-                                           const struct radeon_info *info, unsigned retile_width,
-                                           unsigned retile_height, bool rb_aligned,
-                                           bool pipe_aligned, bool use_uint16,
-                                           unsigned dcc_retile_num_elements,
-                                           const ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT *in)
-{
-   unsigned dcc_retile_map_size = dcc_retile_num_elements * (use_uint16 ? 2 : 4);
-   struct dcc_retile_map_key key;
-
-   assert(in->numFrags == 1 && in->numSlices == 1 && in->numMipLevels == 1);
-
-   memset(&key, 0, sizeof(key));
-   key.family = info->family;
-   key.retile_width = retile_width;
-   key.retile_height = retile_height;
-   key.rb_aligned = rb_aligned;
-   key.pipe_aligned = pipe_aligned;
-   key.dcc_retile_num_elements = dcc_retile_num_elements;
-   memcpy(&key.input, in, sizeof(*in));
-
-   simple_mtx_lock(&addrlib->dcc_retile_map_lock);
-
-   /* If we have already computed this retile map, get it from the hash table. */
-   struct hash_entry *entry = _mesa_hash_table_search(addrlib->dcc_retile_maps, &key);
-   if (entry) {
-      uint32_t *map = entry->data;
-      simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
-      return map;
-   }
-
-   const struct dcc_retile_tile_data *src_tile = ac_compute_dcc_retile_tile_indices(
-      addrlib, info, in->bpp, in->swizzleMode, rb_aligned, pipe_aligned);
-   const struct dcc_retile_tile_data *dst_tile =
-      ac_compute_dcc_retile_tile_indices(addrlib, info, in->bpp, in->swizzleMode, false, false);
-   if (!src_tile || !dst_tile) {
-      simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
-      return NULL;
-   }
-
-   void *dcc_retile_map = malloc(dcc_retile_map_size);
-   if (!dcc_retile_map) {
-      simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
-      return NULL;
-   }
-
-   unsigned index = 0;
-   unsigned w = DIV_ROUND_UP(retile_width, in->compressBlkWidth);
-   unsigned h = DIV_ROUND_UP(retile_height, in->compressBlkHeight);
-   unsigned src_stride = DIV_ROUND_UP(w, 1u << src_tile->tile_width_log2);
-   unsigned dst_stride = DIV_ROUND_UP(w, 1u << dst_tile->tile_width_log2);
-
-   for (unsigned y = 0; y < h; ++y) {
-      for (unsigned x = 0; x < w; ++x) {
-         unsigned src_addr = ac_compute_retile_tile_addr(src_tile, src_stride, x, y);
-         unsigned dst_addr = ac_compute_retile_tile_addr(dst_tile, dst_stride, x, y);
-
-         if (use_uint16) {
-            ((uint16_t *)dcc_retile_map)[2 * index] = src_addr;
-            ((uint16_t *)dcc_retile_map)[2 * index + 1] = dst_addr;
-         } else {
-            ((uint32_t *)dcc_retile_map)[2 * index] = src_addr;
-            ((uint32_t *)dcc_retile_map)[2 * index + 1] = dst_addr;
-         }
-         ++index;
-      }
-   }
-
-   /* Fill the remaining pairs with the last one (for the compute shader). */
-   for (unsigned i = index * 2; i < dcc_retile_num_elements; i++) {
-      if (use_uint16)
-         ((uint16_t *)dcc_retile_map)[i] = ((uint16_t *)dcc_retile_map)[i - 2];
-      else
-         ((uint32_t *)dcc_retile_map)[i] = ((uint32_t *)dcc_retile_map)[i - 2];
-   }
-
-   /* Insert the retile map into the hash table, so that it can be reused and
-    * the computation can be skipped for similar image sizes.
-    */
-   _mesa_hash_table_insert(addrlib->dcc_retile_maps, mem_dup(&key, sizeof(key)), dcc_retile_map);
-
-   simple_mtx_unlock(&addrlib->dcc_retile_map_lock);
-   return dcc_retile_map;
-}
 
 bool ac_modifier_has_dcc(uint64_t modifier)
 {
@@ -742,20 +474,12 @@ struct ac_addrlib *ac_addrlib_create(const struct radeon_info *info,
    }
 
    addrlib->handle = addrCreateOutput.hLib;
-   simple_mtx_init(&addrlib->dcc_retile_map_lock, mtx_plain);
-   addrlib->dcc_retile_maps =
-      _mesa_hash_table_create(NULL, dcc_retile_map_hash_key, dcc_retile_map_keys_equal);
-   addrlib->dcc_retile_tile_indices =
-      _mesa_hash_table_create(NULL, dcc_retile_tile_hash_key, dcc_retile_tile_keys_equal);
    return addrlib;
 }
 
 void ac_addrlib_destroy(struct ac_addrlib *addrlib)
 {
    AddrDestroy(addrlib->handle);
-   simple_mtx_destroy(&addrlib->dcc_retile_map_lock);
-   _mesa_hash_table_destroy(addrlib->dcc_retile_maps, dcc_retile_map_free);
-   _mesa_hash_table_destroy(addrlib->dcc_retile_tile_indices, dcc_retile_tile_free);
    free(addrlib);
 }
 
@@ -1769,6 +1493,38 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
    }
 }
 
+static void ac_copy_dcc_equation(const struct radeon_info *info,
+                                 ADDR2_COMPUTE_DCCINFO_OUTPUT *dcc,
+                                 struct gfx9_dcc_equation *equation)
+{
+   equation->meta_block_width = dcc->metaBlkWidth;
+   equation->meta_block_height = dcc->metaBlkHeight;
+   equation->meta_block_depth = dcc->metaBlkDepth;
+
+   if (info->chip_class >= GFX10) {
+      /* gfx9_dcc_equation doesn't store the first 4 and the last 8 elements. They must be 0. */
+      for (unsigned i = 0; i < 4; i++)
+         assert(dcc->equation.gfx10_bits[i] == 0);
+
+      for (unsigned i = ARRAY_SIZE(equation->u.gfx10_bits) + 4; i < 68; i++)
+         assert(dcc->equation.gfx10_bits[i] == 0);
+
+      memcpy(equation->u.gfx10_bits, dcc->equation.gfx10_bits + 4,
+             sizeof(equation->u.gfx10_bits));
+   } else {
+      assert(dcc->equation.gfx9.num_bits <= ARRAY_SIZE(equation->u.gfx9.bit));
+
+      equation->u.gfx9.num_bits = dcc->equation.gfx9.num_bits;
+      equation->u.gfx9.num_pipe_bits = dcc->equation.gfx9.numPipeBits;
+      for (unsigned b = 0; b < ARRAY_SIZE(equation->u.gfx9.bit); b++) {
+         for (unsigned c = 0; c < ARRAY_SIZE(equation->u.gfx9.bit[b].coord); c++) {
+            equation->u.gfx9.bit[b].coord[c].dim = dcc->equation.gfx9.bit[b].coord[c].dim;
+            equation->u.gfx9.bit[b].coord[c].ord = dcc->equation.gfx9.bit[b].coord[c].ord;
+         }
+      }
+   }
+}
+
 static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_info *info,
                                 const struct ac_surf_config *config, struct radeon_surf *surf,
                                 bool compressed, ADDR2_COMPUTE_SURFACE_INFO_INPUT *in)
@@ -1982,6 +1738,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.color.dcc_block_height = dout.compressBlkHeight;
          surf->u.gfx9.color.dcc_block_depth = dout.compressBlkDepth;
          surf->u.gfx9.color.dcc_pitch_max = dout.pitch - 1;
+         surf->u.gfx9.color.dcc_height = dout.height;
          surf->meta_size = dout.dccRamSize;
          surf->meta_slice_size = dout.dccRamSliceSize;
          surf->meta_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
@@ -2034,6 +1791,10 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.color.display_dcc_size = surf->meta_size;
          surf->u.gfx9.color.display_dcc_alignment_log2 = surf->meta_alignment_log2;
          surf->u.gfx9.color.display_dcc_pitch_max = surf->u.gfx9.color.dcc_pitch_max;
+         surf->u.gfx9.color.display_dcc_height = surf->u.gfx9.color.dcc_height;
+
+         if (in->resourceType == ADDR_RSRC_TEX_2D)
+            ac_copy_dcc_equation(info, &dout, &surf->u.gfx9.color.dcc_equation);
 
          /* Compute displayable DCC. */
          if (((in->flags.display && info->use_display_dcc_with_retile_blit) ||
@@ -2055,84 +1816,11 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
             surf->u.gfx9.color.display_dcc_size = dout.dccRamSize;
             surf->u.gfx9.color.display_dcc_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
             surf->u.gfx9.color.display_dcc_pitch_max = dout.pitch - 1;
+            surf->u.gfx9.color.display_dcc_height = dout.height;
             assert(surf->u.gfx9.color.display_dcc_size <= surf->meta_size);
 
-            surf->u.gfx9.color.dcc_retile_use_uint16 =
-               surf->u.gfx9.color.display_dcc_size <= UINT16_MAX + 1 && surf->meta_size <= UINT16_MAX + 1;
-
-            /* Align the retile map size to get more hash table hits and
-             * decrease the maximum memory footprint when all retile maps
-             * are cached in the hash table.
-             */
-            unsigned retile_dim[2] = {in->width, in->height};
-
-            for (unsigned i = 0; i < 2; i++) {
-               /* Increase the alignment as the size increases.
-                * Greater alignment increases retile compute work,
-                * but decreases maximum memory footprint for the cache.
-                *
-                * With this alignment, the worst case memory footprint of
-                * the cache is:
-                *   1920x1080: 55 MB
-                *   2560x1440: 99 MB
-                *   3840x2160: 305 MB
-                *
-                * The worst case size in MB can be computed in Haskell as follows:
-                *   (sum (map get_retile_size (map get_dcc_size (deduplicate (map align_pair
-                *       [(i*16,j*16) | i <- [1..maxwidth`div`16], j <- [1..maxheight`div`16]])))))
-                * `div` 1024^2 where alignment x = if x <= 512 then 16 else if x <= 1024 then 32
-                * else if x <= 2048 then 64 else 128 align x = (x + (alignment x) - 1) `div`
-                * (alignment x) * (alignment x) align_pair e = (align (fst e), align (snd e))
-                *       deduplicate = map head . groupBy (\ a b -> ((fst a) == (fst b)) && ((snd a)
-                * == (snd b))) . sortBy compare get_dcc_size e = ((fst e) * (snd e) * bpp) `div` 256
-                *       get_retile_size dcc_size = dcc_size * 2 * (if dcc_size <= 2^16 then 2 else
-                * 4) bpp = 4; maxwidth = 3840; maxheight = 2160
-                */
-               if (retile_dim[i] <= 512)
-                  retile_dim[i] = align(retile_dim[i], 16);
-               else if (retile_dim[i] <= 1024)
-                  retile_dim[i] = align(retile_dim[i], 32);
-               else if (retile_dim[i] <= 2048)
-                  retile_dim[i] = align(retile_dim[i], 64);
-               else
-                  retile_dim[i] = align(retile_dim[i], 128);
-
-               /* Don't align more than the DCC pixel alignment. */
-               assert(dout.metaBlkWidth >= 128 && dout.metaBlkHeight >= 128);
-            }
-
-            surf->u.gfx9.color.dcc_retile_num_elements =
-               DIV_ROUND_UP(retile_dim[0], dout.compressBlkWidth) *
-               DIV_ROUND_UP(retile_dim[1], dout.compressBlkHeight) * 2;
-            /* Align the size to 4 (for the compute shader). */
-            surf->u.gfx9.color.dcc_retile_num_elements = align(surf->u.gfx9.color.dcc_retile_num_elements, 4);
-
-            /* Compute address mapping from non-displayable to displayable DCC. */
-            ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT addrin;
-            memset(&addrin, 0, sizeof(addrin));
-            addrin.size = sizeof(addrin);
-            addrin.swizzleMode = din.swizzleMode;
-            addrin.resourceType = din.resourceType;
-            addrin.bpp = din.bpp;
-            addrin.numSlices = 1;
-            addrin.numMipLevels = 1;
-            addrin.numFrags = 1;
-            addrin.pitch = dout.pitch;
-            addrin.height = dout.height;
-            addrin.compressBlkWidth = dout.compressBlkWidth;
-            addrin.compressBlkHeight = dout.compressBlkHeight;
-            addrin.compressBlkDepth = dout.compressBlkDepth;
-            addrin.metaBlkWidth = dout.metaBlkWidth;
-            addrin.metaBlkHeight = dout.metaBlkHeight;
-            addrin.metaBlkDepth = dout.metaBlkDepth;
-            addrin.dccRamSliceSize = 0; /* Don't care for non-layered images. */
-
-            surf->u.gfx9.color.dcc_retile_map = ac_compute_dcc_retile_map(
-               addrlib, info, retile_dim[0], retile_dim[1], surf->u.gfx9.color.dcc.rb_aligned,
-               surf->u.gfx9.color.dcc.pipe_aligned, surf->u.gfx9.color.dcc_retile_use_uint16,
-               surf->u.gfx9.color.dcc_retile_num_elements, &addrin);
-            if (!surf->u.gfx9.color.dcc_retile_map)
-               return ADDR_OUTOFMEMORY;
+            ac_copy_dcc_equation(info, &dout, &surf->u.gfx9.color.display_dcc_equation);
+            surf->u.gfx9.color.dcc.display_equation_valid = true;
          }
       }
 
@@ -2427,9 +2115,6 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    if (AddrSurfInfoIn.flags.stencil)
       surf->u.gfx9.zs.stencil_offset = 0;
    surf->cmask_size = 0;
-   surf->u.gfx9.color.dcc_retile_use_uint16 = false;
-   surf->u.gfx9.color.dcc_retile_num_elements = 0;
-   surf->u.gfx9.color.dcc_retile_map = NULL;
 
    const bool only_stencil =
       (surf->flags & RADEON_SURF_SBUFFER) && !(surf->flags & RADEON_SURF_ZBUFFER);
@@ -2477,7 +2162,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
           (!is_dcc_supported_by_DCN(info, config, surf, surf->u.gfx9.color.dcc.rb_aligned,
                                     surf->u.gfx9.color.dcc.pipe_aligned) ||
            /* Don't set is_displayable if displayable DCC is missing. */
-           (info->use_display_dcc_with_retile_blit && !surf->u.gfx9.color.dcc_retile_num_elements)))
+           (info->use_display_dcc_with_retile_blit && !surf->u.gfx9.color.dcc.display_equation_valid)))
          displayable = false;
    }
    surf->is_displayable = displayable;
@@ -2622,8 +2307,9 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
       /* It's better when displayable DCC is immediately after
        * the image due to hw-specific reasons.
        */
-      if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
-          info->chip_class >= GFX9 && surf->u.gfx9.color.dcc_retile_num_elements) {
+      if (info->chip_class >= GFX9 &&
+          !(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+          surf->u.gfx9.color.dcc.display_equation_valid) {
          /* Add space for the displayable DCC buffer. */
          surf->display_dcc_offset = align64(surf->total_size, 1 << surf->u.gfx9.color.display_dcc_alignment_log2);
          surf->total_size = surf->display_dcc_offset + surf->u.gfx9.color.display_dcc_size;
@@ -3110,12 +2796,6 @@ uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
    }
 }
 
-uint32_t ac_surface_get_retile_map_size(const struct radeon_surf *surf)
-{
-   return surf->u.gfx9.color.dcc_retile_num_elements *
-          (surf->u.gfx9.color.dcc_retile_use_uint16 ? 2 : 4);
-}
-
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf)
 {
@@ -3209,5 +2889,110 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
       if (surf->has_stencil)
          fprintf(out, "    StencilLayout: tilesplit=%u\n",
                  surf->u.legacy.stencil_tile_split);
+   }
+}
+
+nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info *info,
+                                        unsigned bpe, struct gfx9_dcc_equation *equation,
+                                        nir_ssa_def *dcc_pitch, nir_ssa_def *dcc_height,
+                                        nir_ssa_def *dcc_slice_size,
+                                        nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
+                                        nir_ssa_def *sample, nir_ssa_def *pipe_xor)
+{
+   nir_ssa_def *zero = nir_imm_int(b, 0);
+   nir_ssa_def *one = nir_imm_int(b, 1);
+
+   if (info->chip_class >= GFX10) {
+      unsigned bpp_log2 = util_logbase2(bpe);
+      unsigned meta_block_width_log2 = util_logbase2(equation->meta_block_width);
+      unsigned meta_block_height_log2 = util_logbase2(equation->meta_block_height);
+      unsigned blkSizeLog2 = meta_block_width_log2 + meta_block_height_log2 + bpp_log2 - 8;
+
+      nir_ssa_def *coord[] = {x, y, z, 0};
+      nir_ssa_def *address = zero;
+
+      for (unsigned i = 1; i < blkSizeLog2 + 1; i++) {
+         nir_ssa_def *v = zero;
+
+         for (unsigned c = 0; c < 4; c++) {
+            unsigned index = i * 4 + c - 4;
+            if (equation->u.gfx10_bits[index]) {
+               unsigned mask = equation->u.gfx10_bits[index];
+               nir_ssa_def *bits = coord[c];
+
+               while (mask)
+                  v = nir_ixor(b, v, nir_iand(b, nir_ushr_imm(b, bits, u_bit_scan(&mask)), one));
+            }
+         }
+
+         address = nir_ior(b, address, nir_ishl(b, v, nir_imm_int(b, i)));
+      }
+
+      unsigned blkMask = (1 << blkSizeLog2) - 1;
+      unsigned pipeMask = (1 << G_0098F8_NUM_PIPES(info->gb_addr_config)) - 1;
+      unsigned m_pipeInterleaveLog2 = 8 + G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
+      nir_ssa_def *xb = nir_ushr_imm(b, x, meta_block_width_log2);
+      nir_ssa_def *yb = nir_ushr_imm(b, y, meta_block_height_log2);
+      nir_ssa_def *pb = nir_ushr_imm(b, dcc_pitch, meta_block_width_log2);
+      nir_ssa_def *blkIndex = nir_iadd(b, nir_imul(b, yb, pb), xb);
+      nir_ssa_def *pipeXor = nir_iand_imm(b, nir_ishl(b, nir_iand_imm(b, pipe_xor, pipeMask),
+                                                      nir_imm_int(b, m_pipeInterleaveLog2)), blkMask);
+
+      return nir_iadd(b, nir_iadd(b, nir_imul(b, dcc_slice_size, z),
+                                  nir_imul(b, blkIndex, nir_ishl(b, one, nir_imm_int(b, blkSizeLog2)))),
+                      nir_ixor(b, nir_ushr(b, address, one), pipeXor));
+   } else {
+      assert(info->chip_class == GFX9);
+
+      unsigned meta_block_width_log2 = util_logbase2(equation->meta_block_width);
+      unsigned meta_block_height_log2 = util_logbase2(equation->meta_block_height);
+      unsigned meta_block_depth_log2 = util_logbase2(equation->meta_block_depth);
+
+      unsigned m_pipeInterleaveLog2 = 8 + G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
+      unsigned numPipeBits = equation->u.gfx9.num_pipe_bits;
+      nir_ssa_def *pitchInBlock = nir_ushr_imm(b, dcc_pitch, meta_block_width_log2);
+      nir_ssa_def *sliceSizeInBlock = nir_imul(b, nir_ushr_imm(b, dcc_height, meta_block_height_log2),
+                                               pitchInBlock);
+
+      nir_ssa_def *xb = nir_ushr_imm(b, x, meta_block_width_log2);
+      nir_ssa_def *yb = nir_ushr_imm(b, y, meta_block_height_log2);
+      nir_ssa_def *zb = nir_ushr_imm(b, z, meta_block_depth_log2);
+
+      nir_ssa_def *blockIndex = nir_iadd(b, nir_iadd(b, nir_imul(b, zb, sliceSizeInBlock),
+                                                     nir_imul(b, yb, pitchInBlock)), xb);
+      nir_ssa_def *coords[] = {x, y, z, sample, blockIndex};
+
+      nir_ssa_def *address = zero;
+      unsigned num_bits = equation->u.gfx9.num_bits;
+      assert(num_bits <= 32);
+
+      /* Compute the address up until the last bit that doesn't use the block index. */
+      for (unsigned i = 0; i < num_bits - 1; i++) {
+         nir_ssa_def *xor = zero;
+
+         for (unsigned c = 0; c < 5; c++) {
+            if (equation->u.gfx9.bit[i].coord[c].dim >= 5)
+               continue;
+
+            assert(equation->u.gfx9.bit[i].coord[c].ord < 32);
+            nir_ssa_def *ison =
+               nir_iand(b, nir_ushr_imm(b, coords[equation->u.gfx9.bit[i].coord[c].dim],
+                                        equation->u.gfx9.bit[i].coord[c].ord), one);
+
+            xor = nir_ixor(b, xor, ison);
+         }
+         address = nir_ior(b, address, nir_ishl(b, xor, nir_imm_int(b, i)));
+      }
+
+      /* Fill the remaining bits with the block index. */
+      unsigned last = num_bits - 1;
+      address = nir_ior(b, address,
+                        nir_ishl(b, nir_ushr_imm(b, blockIndex,
+                                                 equation->u.gfx9.bit[last].coord[0].ord),
+                        nir_imm_int(b, last)));
+
+      nir_ssa_def *pipeXor = nir_iand_imm(b, pipe_xor, (1 << numPipeBits) - 1);
+      return nir_ixor(b, nir_ushr(b, address, one),
+                      nir_ishl(b, pipeXor, nir_imm_int(b, m_pipeInterleaveLog2)));
    }
 }

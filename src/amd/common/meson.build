@@ -101,7 +101,7 @@ libamd_common = static_library(
   ],
   dependencies : [
     dep_thread, dep_elf, dep_libdrm_amdgpu, dep_valgrind,
-    idep_mesautil, idep_nir_headers
+    idep_mesautil, idep_nir_headers, idep_nir
   ],
   gnu_symbol_visibility : 'hidden',
 )

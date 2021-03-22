@@ -500,7 +500,6 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    tex->dcc_gather_statistics = new_tex->dcc_gather_statistics;
    si_resource_reference(&tex->dcc_separate_buffer, new_tex->dcc_separate_buffer);
    si_resource_reference(&tex->last_dcc_separate_buffer, new_tex->last_dcc_separate_buffer);
-   si_resource_reference(&tex->dcc_retile_buffer, new_tex->dcc_retile_buffer);
 
    if (new_bind_flag == PIPE_BIND_LINEAR) {
       assert(!tex->surface.meta_offset);
@@ -809,7 +808,6 @@ static void si_texture_destroy(struct pipe_screen *screen, struct pipe_resource 
    radeon_bo_reference(((struct si_screen*)screen)->ws, &resource->buf, NULL);
    si_resource_reference(&tex->dcc_separate_buffer, NULL);
    si_resource_reference(&tex->last_dcc_separate_buffer, NULL);
-   si_resource_reference(&tex->dcc_retile_buffer, NULL);
    FREE(tex);
 }
 
@@ -1050,7 +1048,6 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    /* Prepare metadata clears.  */
    struct si_clear_info clears[4];
    unsigned num_clears = 0;
-   bool aux_ctx_locked_with_copy = false;
 
    if (tex->cmask_buffer) {
       /* Initialize the cmask to 0xCC (= compressed state). */
@@ -1124,55 +1121,19 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
    }
 
    /* Initialize displayable DCC that requires the retile blit. */
-   if (tex->surface.display_dcc_offset) {
-      if (!(surface->flags & RADEON_SURF_IMPORTED)) {
-         /* Uninitialized DCC can hang the display hw.
-          * Clear to white to indicate that. */
-         assert(num_clears < ARRAY_SIZE(clears));
-         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.display_dcc_offset,
-                              tex->surface.u.gfx9.color.display_dcc_size, DCC_CLEAR_COLOR_1111);
-      }
-
-      /* Upload the DCC retile map.
-       * Use a staging buffer for the upload, because
-       * the buffer backing the texture is unmappable.
-       */
-      uint32_t dcc_retile_map_size = ac_surface_get_retile_map_size(&tex->surface);
-
-      tex->dcc_retile_buffer = si_aligned_buffer_create(screen,
-                                                        SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_DEFAULT,
-                                                        dcc_retile_map_size,
-                                                        sscreen->info.tcc_cache_line_size);
-      struct si_resource *buf = si_aligned_buffer_create(screen,
-                                                         SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_STREAM,
-                                                         dcc_retile_map_size,
-                                                         sscreen->info.tcc_cache_line_size);
-      void *map = sscreen->ws->buffer_map(sscreen->ws, buf->buf, NULL, PIPE_MAP_WRITE);
-
-      /* Upload the retile map into the staging buffer. */
-      memcpy(map, tex->surface.u.gfx9.color.dcc_retile_map, dcc_retile_map_size);
-
-      /* Copy the staging buffer to the buffer backing the texture. */
-      struct si_context *sctx = (struct si_context *)sscreen->aux_context;
-
-      simple_mtx_lock(&sscreen->aux_context_lock);
-      si_copy_buffer(sctx, &tex->dcc_retile_buffer->b.b, &buf->b.b, 0,
-                     0, buf->b.b.width0, SI_OP_SYNC_AFTER);
-      aux_ctx_locked_with_copy = true;
-
-      si_resource_reference(&buf, NULL);
+   if (tex->surface.display_dcc_offset && !(surface->flags & RADEON_SURF_IMPORTED)) {
+      /* Uninitialized DCC can hang the display hw.
+       * Clear to white to indicate that. */
+      assert(num_clears < ARRAY_SIZE(clears));
+      si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.display_dcc_offset,
+                           tex->surface.u.gfx9.color.display_dcc_size, DCC_CLEAR_COLOR_1111);
    }
 
    /* Execute the clears. */
    if (num_clears) {
-      if (!aux_ctx_locked_with_copy)
-         simple_mtx_lock(&sscreen->aux_context_lock);
-
+      simple_mtx_lock(&sscreen->aux_context_lock);
       si_execute_clears((struct si_context *)sscreen->aux_context,
                         clears, num_clears, 0);
-   }
-
-   if (num_clears || aux_ctx_locked_with_copy) {
       sscreen->aux_context->flush(sscreen->aux_context, NULL, 0);
       simple_mtx_unlock(&sscreen->aux_context_lock);
    }

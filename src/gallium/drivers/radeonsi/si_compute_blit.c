@@ -664,71 +664,65 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 
    /* Save states. */
    void *saved_cs = sctx->cs_shader_state.program;
-   struct pipe_image_view saved_img[3] = {};
+   struct pipe_shader_buffer saved_sb = {};
+   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
 
-   for (unsigned i = 0; i < 3; i++) {
-      util_copy_image_view(&saved_img[i], &sctx->images[PIPE_SHADER_COMPUTE].views[i]);
-   }
+   unsigned saved_writable_mask = 0;
+   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
+       (1u << si_get_shaderbuf_slot(0)))
+      saved_writable_mask |= 1 << 0;
 
-   /* Set images. */
-   bool use_uint16 = tex->surface.u.gfx9.color.dcc_retile_use_uint16;
-   unsigned num_elements = tex->surface.u.gfx9.color.dcc_retile_num_elements;
-   struct pipe_image_view img[3];
-
-   assert(tex->dcc_retile_buffer);
+   /* Set the DCC buffer. */
    assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
    assert(tex->surface.display_dcc_offset && tex->surface.display_dcc_offset <= UINT_MAX);
+   assert(tex->surface.display_dcc_offset < tex->surface.meta_offset);
+   assert(tex->buffer.bo_size <= UINT_MAX);
 
-   for (unsigned i = 0; i < 3; i++) {
-      img[i].resource = i == 0 ? &tex->dcc_retile_buffer->b.b : &tex->buffer.b.b;
-      img[i].access = i == 2 ? PIPE_IMAGE_ACCESS_WRITE : PIPE_IMAGE_ACCESS_READ;
-      img[i].shader_access = SI_IMAGE_ACCESS_AS_BUFFER;
-   }
+   struct pipe_shader_buffer sb = {};
+   sb.buffer = &tex->buffer.b.b;
+   sb.buffer_offset = tex->surface.display_dcc_offset;
+   sb.buffer_size = tex->buffer.bo_size - sb.buffer_offset;
+   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
 
-   img[0].format = use_uint16 ? PIPE_FORMAT_R16G16B16A16_UINT : PIPE_FORMAT_R32G32B32A32_UINT;
-   img[0].u.buf.offset = 0;
-   img[0].u.buf.size = ac_surface_get_retile_map_size(&tex->surface);
+   sctx->cs_user_data[0] = tex->surface.meta_offset - tex->surface.display_dcc_offset;
+   sctx->cs_user_data[1] = (tex->surface.u.gfx9.color.dcc_pitch_max + 1) |
+                           (tex->surface.u.gfx9.color.dcc_height << 16);
+   sctx->cs_user_data[2] = (tex->surface.u.gfx9.color.display_dcc_pitch_max + 1) |
+                           (tex->surface.u.gfx9.color.display_dcc_height << 16);
 
-   img[1].format = PIPE_FORMAT_R8_UINT;
-   img[1].u.buf.offset = tex->surface.meta_offset;
-   img[1].u.buf.size = tex->surface.meta_size;
+   /* There is only 1 shader variant because ac_surface only supports displayable DCC
+    * with one swizzle mode and 32bpp.
+    */
+   assert(tex->surface.bpe == 4);
+   assert(sctx->chip_class != GFX9 || tex->surface.u.gfx9.swizzle_mode == 25);  /* 64KB_S_X */
+   assert(sctx->chip_class != GFX10 || tex->surface.u.gfx9.swizzle_mode == 27); /* 64KB_R_X */
+   assert(sctx->chip_class != GFX10_3 || tex->surface.u.gfx9.swizzle_mode == 27); /* 64KB_R_X */
 
-   img[2].format = PIPE_FORMAT_R8_UINT;
-   img[2].u.buf.offset = tex->surface.display_dcc_offset;
-   img[2].u.buf.size = tex->surface.u.gfx9.color.display_dcc_size;
-
-   ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, 0, img);
-
-   /* Bind the compute shader. */
    if (!sctx->cs_dcc_retile)
-      sctx->cs_dcc_retile = si_create_dcc_retile_cs(ctx);
+      sctx->cs_dcc_retile = si_create_dcc_retile_cs(sctx, &tex->surface);
    ctx->bind_compute_state(ctx, sctx->cs_dcc_retile);
 
    /* Dispatch compute. */
-   /* img[0] has 4 channels per element containing 2 pairs of DCC offsets. */
-   unsigned num_threads = num_elements / 4;
+   unsigned width = DIV_ROUND_UP(tex->buffer.b.b.width0, tex->surface.u.gfx9.color.dcc_block_width);
+   unsigned height = DIV_ROUND_UP(tex->buffer.b.b.height0, tex->surface.u.gfx9.color.dcc_block_height);
 
    struct pipe_grid_info info = {};
-   info.block[0] = 64;
-   info.block[1] = 1;
+   info.block[0] = 8;
+   info.block[1] = 8;
    info.block[2] = 1;
-   info.grid[0] = DIV_ROUND_UP(num_threads, 64); /* includes the partial block */
-   info.grid[1] = 1;
+   info.last_block[0] = width % info.block[0];
+   info.last_block[1] = height % info.block[1];
+   info.grid[0] = DIV_ROUND_UP(width, info.block[0]);
+   info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
    info.grid[2] = 1;
-   info.last_block[0] = num_threads % 64;
 
    si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE);
 
-   /* Don't flush caches or wait. The driver will wait at the end of this IB,
-    * and L2 will be flushed by the kernel fence.
-    */
+   /* Don't flush caches. L2 will be flushed by the kernel fence. */
 
    /* Restore states. */
-   ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, 0, saved_img);
-
-   for (unsigned i = 0; i < 3; i++) {
-      pipe_resource_reference(&saved_img[i].resource, NULL);
-   }
+   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
+   pipe_resource_reference(&saved_sb.buffer, NULL);
 }
 
 /* Expand FMASK to make it identity, so that image stores can ignore it. */

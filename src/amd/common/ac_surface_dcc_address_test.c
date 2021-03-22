@@ -226,6 +226,20 @@ static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE
    in.height = dout.height;
    in.pipeXor = xout.pipeBankXor;
 
+   /* Validate that the packed gfx9_dcc_equation structure can fit all fields. */
+   const struct gfx9_dcc_equation eq;
+   if (info->chip_class == GFX9) {
+      /* The bit array is smaller in gfx9_dcc_equation than in addrlib. */
+      assert(dout.equation.gfx9.num_bits <= ARRAY_SIZE(eq.u.gfx9.bit));
+   } else {
+      /* gfx9_dcc_equation doesn't store the first 4 and the last 8 elements. They must be 0. */
+      for (unsigned i = 0; i < 4; i++)
+         assert(dout.equation.gfx10_bits[i] == 0);
+
+      for (unsigned i = ARRAY_SIZE(eq.u.gfx10_bits) + 4; i < 68; i++)
+         assert(dout.equation.gfx10_bits[i] == 0);
+   }
+
    for (in.x = start_x; in.x < in.pitch; in.x += dout.compressBlkWidth) {
       for (in.y = start_y; in.y < in.height; in.y += dout.compressBlkHeight) {
          for (in.slice = start_z; in.slice < depth; in.slice += dout.compressBlkDepth) {

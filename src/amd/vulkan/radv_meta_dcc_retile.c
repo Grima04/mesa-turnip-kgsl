@@ -187,7 +187,6 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 {
    struct radv_meta_saved_state saved_state;
    struct radv_device *device = cmd_buffer->device;
-   uint32_t retile_map_size = ac_surface_get_retile_map_size(&image->planes[0].surface);
 
    assert(image->type == VK_IMAGE_TYPE_2D);
    assert(image->info.array_size == 1 && image->info.levels == 1);
@@ -214,22 +213,8 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 
    struct radv_buffer buffer = {.size = image->size, .bo = image->bo, .offset = image->offset};
 
-   struct radv_buffer retile_buffer = {.size = retile_map_size,
-                                       .bo = image->retile_map,
-                                       .offset = 0};
-
    struct radv_buffer_view views[3];
    VkBufferView view_handles[3];
-   radv_buffer_view_init(
-      views + 0, cmd_buffer->device,
-      &(VkBufferViewCreateInfo){
-         .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
-         .buffer = radv_buffer_to_handle(&retile_buffer),
-         .offset = 0,
-         .range = retile_map_size,
-         .format = image->planes[0].surface.u.gfx9.color.dcc_retile_use_uint16 ? VK_FORMAT_R16G16_UINT
-                                                                         : VK_FORMAT_R32G32_UINT,
-      });
    radv_buffer_view_init(views + 1, cmd_buffer->device,
                          &(VkBufferViewCreateInfo){
                             .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
@@ -281,8 +266,8 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 
    /* src+dst pairs count double, so the number of DCC bytes we move is
     * actually half of dcc_retile_num_elements. */
-   radv_unaligned_dispatch(cmd_buffer, image->planes[0].surface.u.gfx9.color.dcc_retile_num_elements / 2,
-                           1, 1);
+   /*radv_unaligned_dispatch(cmd_buffer, image->planes[0].surface.u.gfx9.color.dcc_retile_num_elements / 2,
+                           1, 1);*/
 
    radv_meta_restore(&saved_state, cmd_buffer);
 

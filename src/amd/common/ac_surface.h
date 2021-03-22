@@ -29,6 +29,11 @@
 #include "amd_family.h"
 #include "util/format/u_format.h"
 
+/* NIR is optional. Some components don't want to include NIR with ac_surface.h. */
+#ifdef AC_SURFACE_INCLUDE_NIR
+#include "compiler/nir/nir_builder.h"
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -156,12 +161,57 @@ struct gfx9_surf_meta_flags {
    uint8_t independent_64B_blocks : 1;
    uint8_t independent_128B_blocks : 1;
    uint8_t max_compressed_block_size : 2;
+   uint8_t display_equation_valid : 1;
 };
 
 struct gfx9_surf_level {
    unsigned offset;
    unsigned size; /* the size of one level in one layer (the image is an array of layers
                    * where each layer has an array of levels) */
+};
+
+/**
+ * DCC address equation for doing DCC address computations in shaders.
+ *
+ * ac_surface_dcc_address_test.c contains the reference implementation.
+ * ac_nir_dcc_addr_from_coord is the NIR implementation.
+ *
+ * The gfx9 equation doesn't support mipmapping.
+ * The gfx10 equation doesn't support mipmapping and MSAA.
+ * (those are also limitations of Addr2ComputeDccAddrFromCoord)
+ */
+struct gfx9_dcc_equation {
+   uint16_t meta_block_width;
+   uint16_t meta_block_height;
+   uint16_t meta_block_depth;
+
+   union {
+      /* The gfx9 DCC equation is chip-specific, and it varies with:
+       * - resource type
+       * - swizzle_mode
+       * - bpp
+       * - number of fragments
+       * - pipe_aligned
+       * - rb_aligned
+       */
+      struct {
+         uint8_t num_bits;
+         uint8_t num_pipe_bits;
+
+         struct {
+            struct {
+               uint8_t dim:3; /* 0..4 */
+               uint8_t ord:5; /* 0..31 */
+            } coord[5]; /* 0..num_coords-1 */
+         } bit[20]; /* 0..num_bits-1 */
+      } gfx9;
+
+      /* The gfx10 DCC equation is chip-specific, it requires 64KB_R_X, and it varies with:
+       * - bpp
+       * - pipe_aligned
+       */
+      uint16_t gfx10_bits[56];
+   } u;
 };
 
 struct gfx9_surf_layout {
@@ -220,6 +270,10 @@ struct gfx9_surf_layout {
 
          /* CMASK level info (only level 0) */
          struct gfx9_surf_level cmask_level0;
+
+         /* For DCC retiling. */
+         struct gfx9_dcc_equation dcc_equation; /* 2D only */
+         struct gfx9_dcc_equation display_dcc_equation;
       } color;
 
       /* Z/S */
@@ -389,10 +443,18 @@ uint64_t ac_surface_get_plane_stride(enum chip_class chip_class,
 /* Of the whole miplevel, not an individual layer */
 uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
                                    unsigned plane);
-uint32_t ac_surface_get_retile_map_size(const struct radeon_surf *surf);
 
 void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                            const struct radeon_surf *surf);
+
+#ifdef AC_SURFACE_INCLUDE_NIR
+nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info *info,
+                                        unsigned bpe, struct gfx9_dcc_equation *equation,
+                                        nir_ssa_def *dcc_pitch, nir_ssa_def *dcc_height,
+                                        nir_ssa_def *dcc_slice_size,
+                                        nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
+                                        nir_ssa_def *sample, nir_ssa_def *pipe_xor);
+#endif
 
 #ifdef __cplusplus
 }
