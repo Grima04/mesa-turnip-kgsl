@@ -787,6 +787,88 @@ check_memory_bindings(const struct anv_device *device,
 #endif
 }
 
+/**
+ * Check that the fully-initialized anv_image is compatible with its DRM format
+ * modifier.
+ *
+ * Checking compatibility at the end of image creation is prudent, not
+ * superfluous, because usage of modifiers triggers numerous special cases
+ * throughout queries and image creation, and because
+ * vkGetPhysicalDeviceImageFormatProperties2 has difficulty detecting all
+ * incompatibilities.
+ *
+ * Return VK_ERROR_UNKNOWN if the incompatibility is difficult to detect in
+ * vkGetPhysicalDeviceImageFormatProperties2.  Otherwise, assert fail.
+ *
+ * Ideally, if vkGetPhysicalDeviceImageFormatProperties2() succeeds with a given
+ * modifier, then vkCreateImage() produces an image that is compatible with the
+ * modifier. However, it is difficult to reconcile the two functions to agree
+ * due to their complexity. For example, isl_surf_get_ccs_surf() may
+ * unexpectedly fail in vkCreateImage(), eliminating the image's aux surface
+ * even when the modifier requires one. (Maybe we should reconcile the two
+ * functions despite the difficulty).
+ */
+static VkResult MUST_CHECK
+check_drm_format_mod(const struct anv_device *device,
+                     const struct anv_image *image)
+{
+   /* Image must have a modifier if and only if it has modifier tiling. */
+   assert((image->drm_format_mod != DRM_FORMAT_MOD_INVALID) ==
+          (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT));
+
+   if (image->drm_format_mod == DRM_FORMAT_MOD_INVALID)
+      return VK_SUCCESS;
+
+   const struct isl_drm_modifier_info *isl_mod_info =
+      isl_drm_modifier_get_info(image->drm_format_mod);
+
+   /* Driver must support the modifier. */
+   assert(isl_drm_modifier_get_score(&device->info, isl_mod_info->modifier));
+
+   /* Enforced by us, not the Vulkan spec. */
+   assert(image->type == VK_IMAGE_TYPE_2D);
+   assert(!(image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT));
+   assert(!(image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT));
+   assert(image->levels == 1);
+   assert(image->array_size == 1);
+   assert(image->samples == 1);
+
+   /* FINISHME: Support multi-planar formats with modifiers */
+   assert(image->n_planes == 1);
+   assert(image->aspects == VK_IMAGE_ASPECT_COLOR_BIT);
+
+   for (int i = 0; i < image->n_planes; ++i) {
+      const struct anv_image_plane *plane = &image->planes[i];
+      ASSERTED const struct anv_format_plane *plane_format =
+         &image->format->planes[i];
+      ASSERTED const struct isl_format_layout *isl_layout =
+         isl_format_get_layout(plane_format->isl_format);
+
+      /* Enforced by us, not the Vulkan spec. */
+      assert(isl_layout->txc == ISL_TXC_NONE);
+      assert(isl_layout->colorspace == ISL_COLORSPACE_LINEAR ||
+             isl_layout->colorspace == ISL_COLORSPACE_SRGB);
+      assert(!anv_surface_is_valid(&plane->shadow_surface));
+
+      if (isl_mod_info->aux_usage != ISL_AUX_USAGE_NONE) {
+         /* Reject DISJOINT for consistency with the GL driver. */
+         assert(!image->disjoint);
+
+         /* The modifier's required aux usage mandates the image's aux usage.
+          * The inverse, however, does not hold; if the modifier has no aux
+          * usage, then we may enable a private aux surface.
+          */
+         if (plane->aux_usage != isl_mod_info->aux_usage) {
+            return vk_errorf(device, &image->base, VK_ERROR_UNKNOWN,
+                             "image with modifier unexpectedly has wrong aux "
+                             "usage");
+         }
+      }
+   }
+
+   return VK_SUCCESS;
+}
+
 static VkResult
 add_all_surfaces(struct anv_device *device,
                  struct anv_image *image,
@@ -988,6 +1070,10 @@ anv_image_create(VkDevice _device,
 
    r = add_all_surfaces(device, image, fmt_list, create_info->stride,
                         isl_tiling_flags, create_info->isl_extra_usage_flags);
+   if (r != VK_SUCCESS)
+      goto fail;
+
+   r = check_drm_format_mod(device, image);
    if (r != VK_SUCCESS)
       goto fail;
 
