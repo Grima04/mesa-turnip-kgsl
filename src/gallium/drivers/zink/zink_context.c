@@ -1960,6 +1960,36 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
    simple_mtx_unlock(&ctx->batch_mtx);
 }
 
+bool
+zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id)
+{
+   assert(batch_id);
+   struct zink_batch_state *bs = ctx->batch.state;
+   assert(bs);
+   if (bs->fence.batch_id == batch_id)
+      /* not submitted yet */
+      return false;
+
+   struct zink_fence *fence;
+
+   simple_mtx_lock(&ctx->batch_mtx);
+
+   if (ctx->last_fence && batch_id == zink_batch_state(ctx->last_fence)->fence.batch_id)
+      fence = ctx->last_fence;
+   else {
+      struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states, batch_id, (void*)(uintptr_t)batch_id);
+      /* if we can't find it, it must have finished already */
+      if (!he) {
+         simple_mtx_unlock(&ctx->batch_mtx);
+         return true;
+      }
+      fence = he->data;
+   }
+   simple_mtx_unlock(&ctx->batch_mtx);
+   assert(fence);
+   return ctx->base.screen->fence_finish(ctx->base.screen, &ctx->base, (struct pipe_fence_handle*)fence, 0);
+}
+
 static void
 zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
 {

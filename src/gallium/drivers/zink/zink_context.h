@@ -248,6 +248,9 @@ zink_fence_wait(struct pipe_context *ctx);
 void
 zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id);
 
+bool
+zink_check_batch_completion(struct zink_context *ctx, uint32_t batch_id);
+
 void
 zink_flush_queue(struct zink_context *ctx);
 
