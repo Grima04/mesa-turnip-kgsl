@@ -38,14 +38,10 @@ apt-get install -y --no-remove \
         libxxf86vm-dev:$arch \
         wget
 
-if [[ $arch == "armhf" ]]; then
-        LLVM=llvm-7-dev
-else
-        LLVM=llvm-8-dev
+if [[ $arch != "armhf" ]]; then
+    apt-get install -y --no-remove -t buster-backports \
+            llvm-8-dev:$arch
 fi
-
-apt-get install -y --no-remove -t buster-backports \
-        $LLVM:$arch
 
 . .gitlab-ci/container/create-cross-file.sh $arch
 

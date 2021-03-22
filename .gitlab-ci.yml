@@ -330,7 +330,7 @@ i386_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &i386_build "2021-04-11-libdrm"
+    MESA_IMAGE_TAG: &i386_build "2021-04-13-armhf-no-llvm"
 
 .use-i386_build:
   extends:
@@ -347,7 +347,7 @@ ppc64el_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &ppc64el_build "2021-04-11-libdrm"
+    MESA_IMAGE_TAG: &ppc64el_build "2021-04-13-armhf-no-llvm"
 
 .use-ppc64el_build:
   extends:
@@ -364,7 +364,7 @@ s390x_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &s390x_build "2021-04-11-libdrm"
+    MESA_IMAGE_TAG: &s390x_build "2021-04-13-armhf-no-llvm"
 
 .use-s390x_build:
   extends:
@@ -427,7 +427,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2021-04-11-libdrm"
+    MESA_IMAGE_TAG: &arm_build "2021-04-13-armhf-no-llvm"
 
 .use-arm_build:
   extends:
@@ -818,7 +818,6 @@ meson-armhf:
     - .ci-deqp-artifacts
   variables:
     CROSS: armhf
-    LLVM_VERSION: "7"
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=false
