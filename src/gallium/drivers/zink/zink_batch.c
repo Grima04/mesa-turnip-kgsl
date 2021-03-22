@@ -171,9 +171,12 @@ create_batch_state(struct zink_context *ctx)
    util_dynarray_init(&bs->zombie_samplers, NULL);
    util_dynarray_init(&bs->persistent_resources, NULL);
 
-   if (!zink_create_fence(screen, bs))
-      /* this destroys the batch state on failure */
-      return NULL;
+   VkFenceCreateInfo fci = {};
+   fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
+   if (vkCreateFence(screen->dev, &fci, NULL, &bs->fence.fence) != VK_SUCCESS)
+      goto fail;
+   pipe_reference_init(&bs->fence.reference, 1);
 
    simple_mtx_init(&bs->fence.resource_mtx, mtx_plain);
    return bs;

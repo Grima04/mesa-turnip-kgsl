@@ -52,9 +52,6 @@ zink_fence(void *pfence)
    return (struct zink_fence *)pfence;
 }
 
-bool
-zink_create_fence(struct zink_screen *screen, struct zink_batch_state *bs);
-
 void
 zink_fence_reference(struct zink_screen *screen,
                      struct zink_fence **ptr,

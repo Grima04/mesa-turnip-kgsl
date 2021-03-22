@@ -55,26 +55,6 @@ destroy_fence(struct zink_screen *screen, struct zink_fence *fence)
    zink_batch_state_destroy(screen, zink_batch_state(fence));
 }
 
-bool
-zink_create_fence(struct zink_screen *screen, struct zink_batch_state *bs)
-{
-   struct zink_fence *fence = zink_fence(bs);
-
-   VkFenceCreateInfo fci = {};
-   fci.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-
-   if (vkCreateFence(screen->dev, &fci, NULL, &fence->fence) != VK_SUCCESS) {
-      debug_printf("vkCreateFence failed\n");
-      goto fail;
-   }
-
-   pipe_reference_init(&fence->reference, 1);
-   return true;
-fail:
-   destroy_fence(screen, fence);
-   return false;
-}
-
 void
 zink_fence_reference(struct zink_screen *screen,
                      struct zink_fence **ptr,
