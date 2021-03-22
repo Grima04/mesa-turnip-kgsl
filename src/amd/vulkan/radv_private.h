@@ -805,6 +805,9 @@ struct radv_device {
    /* Whether the driver uses a global BO list. */
    bool use_global_bo_list;
 
+   /* Whether attachment VRS is enabled. */
+   bool attachment_vrs_enabled;
+
    /* Whether anisotropy is forced with RADV_TEX_ANISO (-1 is disabled). */
    int force_aniso;
 
