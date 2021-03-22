@@ -1381,11 +1381,16 @@ flush_batch(struct zink_context *ctx)
    zink_end_render_pass(ctx, batch);
    zink_end_batch(ctx, batch);
 
-   incr_curr_batch(ctx);
+   if (ctx->batch.state->is_device_lost && ctx->reset.reset) {
+      ctx->is_device_lost = true;
+      ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+   } else {
+      incr_curr_batch(ctx);
 
-   zink_start_batch(ctx, batch);
-   if (zink_screen(ctx->base.screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
-      ctx->dirty_so_targets = true;
+      zink_start_batch(ctx, batch);
+      if (zink_screen(ctx->base.screen)->info.have_EXT_transform_feedback && ctx->num_so_targets)
+         ctx->dirty_so_targets = true;
+   }
 }
 
 struct zink_batch *
