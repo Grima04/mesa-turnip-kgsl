@@ -27,6 +27,7 @@ apt-get install -y --no-remove \
       libasan6 \
       libarchive-dev \
       libclang-cpp11-dev \
+      libglvnd-dev \
       libllvmspirvlib-dev \
       liblua5.3-dev \
       libxcb-dri2-0-dev \
@@ -82,16 +83,6 @@ wget $WAYLAND_RELEASES/$LIBWAYLAND_VERSION.tar.xz
 tar -xvf $LIBWAYLAND_VERSION.tar.xz && rm $LIBWAYLAND_VERSION.tar.xz
 cd $LIBWAYLAND_VERSION; ./configure --enable-libraries --without-host-scanner --disable-documentation --disable-dtd-validation; make install; cd ..
 rm -rf $LIBWAYLAND_VERSION
-
-
-# The version of libglvnd-dev in debian is too old
-# Check this page to see when this local compilation can be dropped in favour of the package:
-# https://packages.debian.org/libglvnd-dev
-GLVND_VERSION=1.3.2
-wget https://gitlab.freedesktop.org/glvnd/libglvnd/-/archive/v$GLVND_VERSION/libglvnd-v$GLVND_VERSION.tar.gz
-tar -xvf libglvnd-v$GLVND_VERSION.tar.gz && rm libglvnd-v$GLVND_VERSION.tar.gz
-pushd libglvnd-v$GLVND_VERSION; ./autogen.sh; ./configure; make install; popd
-rm -rf libglvnd-v$GLVND_VERSION
 
 
 pushd /usr/local

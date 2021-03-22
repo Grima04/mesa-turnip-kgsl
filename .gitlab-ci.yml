@@ -313,7 +313,7 @@ x86_build:
   extends:
     - .use-x86_build-base
   variables:
-    MESA_IMAGE_TAG: &x86_build "2021-04-13-llvm-spirv"
+    MESA_IMAGE_TAG: &x86_build "2021-04-13-glvnd"
 
 .use-x86_build:
   extends:
