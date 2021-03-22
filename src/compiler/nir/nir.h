@@ -4856,8 +4856,17 @@ enum nir_lower_non_uniform_access_type {
    nir_lower_non_uniform_image_access   = (1 << 3),
 };
 
+/* Given the nir_src used for the resource, return the channels which might be non-uniform. */
+typedef nir_component_mask_t (*nir_lower_non_uniform_access_callback)(const nir_src *, void *);
+
+typedef struct nir_lower_non_uniform_access_options {
+   enum nir_lower_non_uniform_access_type types;
+   nir_lower_non_uniform_access_callback callback;
+   void *callback_data;
+} nir_lower_non_uniform_access_options;
+
 bool nir_lower_non_uniform_access(nir_shader *shader,
-                                  enum nir_lower_non_uniform_access_type);
+                                  const nir_lower_non_uniform_access_options *options);
 
 typedef struct {
    /* If true, a 32-bit division lowering based on NV50LegalizeSSA::handleDIV()

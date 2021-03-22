@@ -764,8 +764,11 @@ anv_pipeline_lower_nir(struct anv_pipeline *pipeline,
     * handled naturally by falling back to A64 messages.
     */
    NIR_PASS_V(nir, nir_lower_non_uniform_access,
-              nir_lower_non_uniform_texture_access |
-              nir_lower_non_uniform_image_access);
+              &(nir_lower_non_uniform_access_options) {
+                  .types = nir_lower_non_uniform_texture_access |
+                           nir_lower_non_uniform_image_access,
+                  .callback = NULL,
+              });
 
    anv_nir_compute_push_layout(pdevice, pipeline->device->robust_buffer_access,
                                nir, prog_data, &stage->bind_map, mem_ctx);
