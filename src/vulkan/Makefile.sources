@@ -30,6 +30,8 @@ VULKAN_UTIL_FILES := \
 	util/vk_debug_report.h \
 	util/vk_deferred_operation.c \
 	util/vk_deferred_operation.h \
+	util/vk_descriptors.c \
+	util/vk_descriptors.h \
 	util/vk_device.c \
 	util/vk_device.h \
 	util/vk_format.c \
