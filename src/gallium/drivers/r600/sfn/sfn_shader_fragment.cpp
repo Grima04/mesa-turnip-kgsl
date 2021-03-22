@@ -449,6 +449,12 @@ bool FragmentShaderFromNir::process_store_output(nir_intrinsic_instr *instr)
         semantic.location <= FRAG_RESULT_DATA7))  {
       ++m_max_counted_color_exports;
 
+      /* Hack: force dual source output handling if one color output has a
+       * dual_source_blend_index > 0 */
+      if (semantic.location == FRAG_RESULT_COLOR &&
+          semantic.dual_source_blend_index > 0)
+         m_dual_source_blend = true;
+
       if (m_max_counted_color_exports > 1)
          sh_info().fs_write_all = false;
       return true;
