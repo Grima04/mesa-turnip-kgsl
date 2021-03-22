@@ -27,7 +27,10 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#include "drm-uapi/drm_fourcc.h"
+
 #include "anv_private.h"
+#include "vk_util.h"
 
 VkResult anv_CreateDmaBufImageINTEL(
     VkDevice                                    _device,
@@ -49,23 +52,30 @@ VkResult anv_CreateDmaBufImageINTEL(
    if (mem == NULL)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
+   VkImageCreateInfo create_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+      .imageType = VK_IMAGE_TYPE_2D,
+      .format = pCreateInfo->format,
+      .extent = pCreateInfo->extent,
+      .mipLevels = 1,
+      .arrayLayers = 1,
+      .samples = 1,
+      .tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+      .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+      .flags = 0,
+   };
+
+   VkImageDrmFormatModifierListCreateInfoEXT mod_info = {
+      .sType = VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_LIST_CREATE_INFO_EXT,
+      .drmFormatModifierCount = 1,
+      .pDrmFormatModifiers = (uint64_t[]) { I915_FORMAT_MOD_X_TILED },
+   };
+   __vk_append_struct(&create_info, &mod_info);
+
    result = anv_image_create(_device,
       &(struct anv_image_create_info) {
-         .isl_tiling_flags = ISL_TILING_X_BIT,
          .stride = pCreateInfo->strideInBytes,
-         .vk_info = &(VkImageCreateInfo) {
-            .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-            .imageType = VK_IMAGE_TYPE_2D,
-            .format = pCreateInfo->format,
-            .extent = pCreateInfo->extent,
-            .mipLevels = 1,
-            .arrayLayers = 1,
-            .samples = 1,
-            /* FIXME: Need a way to use X tiling to allow scanout */
-            .tiling = VK_IMAGE_TILING_OPTIMAL,
-            .usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-            .flags = 0,
-         }
+         .vk_info = &create_info,
       }, pAllocator, &image_h);
    if (result != VK_SUCCESS)
       goto fail;
