@@ -2056,14 +2056,30 @@ zink_copy_image_buffer(struct zink_context *ctx, struct zink_batch *batch, struc
    region.bufferRowLength = 0;
    region.bufferImageHeight = 0;
    region.imageSubresource.mipLevel = buf2img ? dst_level : src_level;
-   region.imageSubresource.layerCount = 1;
-   if (img->base.array_size > 1) {
+   switch (img->base.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
       region.imageSubresource.baseArrayLayer = buf2img ? dstz : src_box->z;
       region.imageSubresource.layerCount = src_box->depth;
+      region.imageOffset.z = 0;
       region.imageExtent.depth = 1;
-   } else {
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
+      region.imageSubresource.baseArrayLayer = 0;
+      region.imageSubresource.layerCount = 1;
       region.imageOffset.z = buf2img ? dstz : src_box->z;
       region.imageExtent.depth = src_box->depth;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.imageSubresource.baseArrayLayer = 0;
+      region.imageSubresource.layerCount = 1;
+      region.imageOffset.z = 0;
+      region.imageExtent.depth = 1;
    }
    region.imageOffset.x = buf2img ? dstx : src_box->x;
    region.imageOffset.y = buf2img ? dsty : src_box->y;
