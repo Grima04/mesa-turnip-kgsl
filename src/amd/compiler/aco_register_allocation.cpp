@@ -1204,7 +1204,8 @@ bool get_reg_specified(ra_ctx& ctx,
    PhysRegInterval vcc_win = { vcc, 2 };
    /* VCC is outside the bounds */
    bool is_vcc = rc.type() == RegType::sgpr && vcc_win.contains(reg_win);
-   if (!bounds.contains(reg_win) && !is_vcc)
+   bool is_m0 = rc == s1 && reg == m0;
+   if (!bounds.contains(reg_win) && !is_vcc && !is_m0)
       return false;
 
    if (rc.is_subdword()) {
