@@ -1484,7 +1484,7 @@ iris_bind_zsa_state(struct pipe_context *ctx, void *state)
       if (cso_changed(alpha_func))
          ice->state.dirty |= IRIS_DIRTY_BLEND_STATE;
 
-      if (cso_changed(depth_writes_enabled))
+      if (cso_changed(depth_writes_enabled) || cso_changed(stencil_writes_enabled))
          ice->state.dirty |= IRIS_DIRTY_RENDER_RESOLVES_AND_FLUSHES;
 
       ice->state.depth_writes_enabled = new_cso->depth_writes_enabled;
