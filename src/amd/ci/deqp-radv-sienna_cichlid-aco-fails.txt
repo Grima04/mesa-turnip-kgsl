@@ -129,3 +129,4 @@ dEQP-VK.fragment_shading_rate.fragstencil.dynamic.noattachment.noshaderrate.repl
 dEQP-VK.fragment_shading_rate.fragstencil.dynamic.noattachment.shaderrate.keep.keep.151x431.samples8.vs,Fail
 dEQP-VK.fragment_shading_rate.fragstencil.dynamic.noattachment.shaderrate.keep.keep.256x256.samples8.vs,Fail
 dEQP-VK.fragment_shading_rate.fragstencil.dynamic.noattachment.shaderrate.replace.keep.151x431.samples8.vs,Fail
+dEQP-VK.fragment_shading_rate.fragstencil.dynamic.noattachment.shaderrate.replace.keep.256x256.samples8.vs,Fail
