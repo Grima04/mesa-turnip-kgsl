@@ -1763,8 +1763,10 @@ vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
                            const nir_shader *shader,
 			   void *mem_ctx,
                            bool no_spills,
-                           int shader_time_index)
-   : backend_shader(compiler, log_data, mem_ctx, shader, &prog_data->base),
+                           int shader_time_index,
+                           bool debug_enabled)
+   : backend_shader(compiler, log_data, mem_ctx, shader, &prog_data->base,
+                    debug_enabled),
      key_tex(key_tex),
      prog_data(prog_data),
      fail_msg(NULL),
@@ -1810,7 +1812,7 @@ vec4_visitor::fail(const char *format, ...)
 
    this->fail_msg = msg;
 
-   if (debug_enabled) {
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "%s",  msg);
    }
 }

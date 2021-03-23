@@ -46,6 +46,7 @@ public:
                     const nir_shader *nir,
                     void *mem_ctx,
                     int shader_time_index,
+                    bool debug_enabled,
                     const struct brw_vue_map *input_vue_map);
 
 protected:

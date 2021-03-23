@@ -72,7 +72,8 @@ public:
                 const nir_shader *shader,
 		void *mem_ctx,
                 bool no_spills,
-                int shader_time_index);
+                int shader_time_index,
+                bool debug_enabled);
 
    dst_reg dst_null_f()
    {

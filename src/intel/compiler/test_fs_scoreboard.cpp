@@ -52,7 +52,7 @@ void scoreboard_test::SetUp()
    nir_shader *shader =
       nir_shader_create(ctx, MESA_SHADER_FRAGMENT, NULL, NULL);
 
-   v = new fs_visitor(compiler, NULL, ctx, NULL, &prog_data->base, shader, 8, -1);
+   v = new fs_visitor(compiler, NULL, ctx, NULL, &prog_data->base, shader, 8, -1, false);
 
    devinfo->gen = 12;
    devinfo->genx10 = devinfo->gen * 10;

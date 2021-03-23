@@ -719,7 +719,8 @@ backend_shader::backend_shader(const struct brw_compiler *compiler,
                                void *log_data,
                                void *mem_ctx,
                                const nir_shader *shader,
-                               struct brw_stage_prog_data *stage_prog_data)
+                               struct brw_stage_prog_data *stage_prog_data,
+                               bool debug_enabled)
    : compiler(compiler),
      log_data(log_data),
      devinfo(compiler->devinfo),
@@ -727,9 +728,9 @@ backend_shader::backend_shader(const struct brw_compiler *compiler,
      stage_prog_data(stage_prog_data),
      mem_ctx(mem_ctx),
      cfg(NULL), idom_analysis(this),
-     stage(shader->info.stage)
+     stage(shader->info.stage),
+     debug_enabled(debug_enabled)
 {
-   debug_enabled = INTEL_DEBUG & intel_debug_flag_for_shader_stage(stage);
    stage_name = _mesa_shader_stage_to_string(stage);
    stage_abbrev = _mesa_shader_stage_to_abbrev(stage);
 }
@@ -1422,7 +1423,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
       assembly = g.get_assembly();
    } else {
       brw::vec4_tes_visitor v(compiler, log_data, key, prog_data,
-			      nir, mem_ctx, shader_time_index);
+                              nir, mem_ctx, shader_time_index, debug_enabled);
       if (!v.run()) {
 	 if (error_str)
 	    *error_str = ralloc_strdup(mem_ctx, v.fail_msg);

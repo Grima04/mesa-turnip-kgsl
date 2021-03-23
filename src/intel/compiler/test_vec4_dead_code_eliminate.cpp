@@ -48,7 +48,7 @@ public:
                                  nir_shader *shader,
                                  struct brw_vue_prog_data *prog_data)
       : vec4_visitor(compiler, NULL, NULL, prog_data, shader, mem_ctx,
-                     false /* no_spills */, -1)
+                     false /* no_spills */, -1, false)
    {
       prog_data->dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
    }

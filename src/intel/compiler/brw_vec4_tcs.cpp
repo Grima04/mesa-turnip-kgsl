@@ -41,9 +41,10 @@ vec4_tcs_visitor::vec4_tcs_visitor(const struct brw_compiler *compiler,
                                    const nir_shader *nir,
                                    void *mem_ctx,
                                    int shader_time_index,
+                                   bool debug_enabled,
                                    const struct brw_vue_map *input_vue_map)
    : vec4_visitor(compiler, log_data, &key->base.tex, &prog_data->base,
-                  nir, mem_ctx, false, shader_time_index),
+                  nir, mem_ctx, false, shader_time_index, debug_enabled),
      input_vue_map(input_vue_map), key(key)
 {
 }
@@ -459,7 +460,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    if (is_scalar) {
       fs_visitor v(compiler, log_data, mem_ctx, &key->base,
                    &prog_data->base.base, nir, 8,
-                   shader_time_index, &input_vue_map);
+                   shader_time_index, debug_enabled, &input_vue_map);
       if (!v.run_tcs()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
@@ -470,7 +471,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
 
       fs_generator g(compiler, log_data, mem_ctx,
                      &prog_data->base.base, false, MESA_SHADER_TESS_CTRL);
-      if (INTEL_DEBUG & DEBUG_TCS) {
+      if (unlikely(debug_enabled)) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
                                         "%s tessellation control shader %s",
                                         nir->info.label ? nir->info.label
@@ -486,7 +487,8 @@ brw_compile_tcs(const struct brw_compiler *compiler,
       assembly = g.get_assembly();
    } else {
       brw::vec4_tcs_visitor v(compiler, log_data, key, prog_data,
-                         nir, mem_ctx, shader_time_index, &input_vue_map);
+                              nir, mem_ctx, shader_time_index,
+                              debug_enabled, &input_vue_map);
       if (!v.run()) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v.fail_msg);

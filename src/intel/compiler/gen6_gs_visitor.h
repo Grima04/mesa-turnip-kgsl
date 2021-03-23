@@ -43,9 +43,10 @@ public:
                    const nir_shader *shader,
                    void *mem_ctx,
                    bool no_spills,
-                   int shader_time_index) :
+                   int shader_time_index,
+                   bool debug_enabled) :
       vec4_gs_visitor(comp, log_data, c, prog_data, shader, mem_ctx, no_spills,
-                      shader_time_index),
+                      shader_time_index, debug_enabled),
       prog(prog)
       {
       }

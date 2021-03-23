@@ -682,7 +682,7 @@ fs_visitor::vfail(const char *format, va_list va)
 
    this->fail_msg = msg;
 
-   if (debug_enabled) {
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "%s",  msg);
    }
 }
@@ -9104,7 +9104,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    v8 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                        &prog_data->base, nir, 8,
-                       params->shader_time ? params->shader_time_index8 : -1);
+                       params->shader_time ? params->shader_time_index8 : -1,
+                       debug_enabled);
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
       params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
       delete v8;
@@ -9135,7 +9136,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
       /* Try a SIMD16 compile */
       v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 16,
-                           params->shader_time ? params->shader_time_index16 : -1);
+                           params->shader_time ? params->shader_time_index16 : -1,
+                           debug_enabled);
       v16->import_uniforms(v8);
       if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
          compiler->shader_perf_log(params->log_data,
@@ -9162,7 +9164,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
       /* Try a SIMD32 compile */
       v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base, nir, 32,
-                           params->shader_time ? params->shader_time_index32 : -1);
+                           params->shader_time ? params->shader_time_index32 : -1,
+                           debug_enabled);
       v32->import_uniforms(v8);
       if (!v32->run_fs(allow_spilling, false)) {
          compiler->shader_perf_log(params->log_data,
@@ -9498,7 +9501,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                                            nir, 8, debug_enabled);
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base,
-                          nir8, 8, shader_time_index);
+                          nir8, 8, shader_time_index, debug_enabled);
       if (!v8->run_cs(true /* allow_spilling */)) {
          if (error_str)
             *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
@@ -9524,7 +9527,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                                             nir, 16, debug_enabled);
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base,
-                           nir16, 16, shader_time_index);
+                           nir16, 16, shader_time_index, debug_enabled);
       if (v8)
          v16->import_uniforms(v8);
 
@@ -9572,7 +9575,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                                             nir, 32, debug_enabled);
       v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base,
-                           nir32, 32, shader_time_index);
+                           nir32, 32, shader_time_index, debug_enabled);
       if (v8)
          v32->import_uniforms(v8);
       else if (v16)
@@ -9729,7 +9732,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
    if (likely(!(INTEL_DEBUG & DEBUG_NO8))) {
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base, shader,
-                          8, -1 /* shader time */);
+                          8, -1 /* shader time */, debug_enabled);
       const bool allow_spilling = true;
       if (!v8->run_bs(allow_spilling)) {
          if (error_str)
@@ -9747,7 +9750,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
    if (!has_spilled && likely(!(INTEL_DEBUG & DEBUG_NO16))) {
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base, shader,
-                           16, -1 /* shader time */);
+                           16, -1 /* shader time */, debug_enabled);
       const bool allow_spilling = (v == NULL);
       if (!v16->run_bs(allow_spilling)) {
          compiler->shader_perf_log(log_data,

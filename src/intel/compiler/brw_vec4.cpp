@@ -2946,7 +2946,8 @@ brw_compile_vs(const struct brw_compiler *compiler,
 
       fs_visitor v(compiler, params->log_data, mem_ctx, &key->base,
                    &prog_data->base.base, nir, 8,
-                   params->shader_time ? params->shader_time_index : -1);
+                   params->shader_time ? params->shader_time_index : -1,
+                   debug_enabled);
       if (!v.run_vs()) {
          params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
          return NULL;
@@ -2977,7 +2978,8 @@ brw_compile_vs(const struct brw_compiler *compiler,
 
       vec4_vs_visitor v(compiler, params->log_data, key, prog_data,
                         nir, mem_ctx,
-                        params->shader_time ? params->shader_time_index : -1);
+                        params->shader_time ? params->shader_time_index : -1,
+                        debug_enabled);
       if (!v.run()) {
          params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
          return NULL;

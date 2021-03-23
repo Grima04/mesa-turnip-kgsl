@@ -43,10 +43,11 @@ vec4_gs_visitor::vec4_gs_visitor(const struct brw_compiler *compiler,
                                  const nir_shader *shader,
                                  void *mem_ctx,
                                  bool no_spills,
-                                 int shader_time_index)
+                                 int shader_time_index,
+                                 bool debug_enabled)
    : vec4_visitor(compiler, log_data, &c->key.base.tex,
                   &prog_data->base, shader,  mem_ctx,
-                  no_spills, shader_time_index),
+                  no_spills, shader_time_index, debug_enabled),
      c(c),
      gs_prog_data(prog_data)
 {
@@ -820,7 +821,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
 
    if (is_scalar) {
       fs_visitor v(compiler, log_data, mem_ctx, &c, prog_data, nir,
-                   shader_time_index);
+                   shader_time_index, debug_enabled);
       if (v.run_gs()) {
          prog_data->base.dispatch_mode = DISPATCH_MODE_SIMD8;
          prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
@@ -856,7 +857,8 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
          prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
 
          brw::vec4_gs_visitor v(compiler, log_data, &c, prog_data, nir,
-                           mem_ctx, true /* no_spills */, shader_time_index);
+                                mem_ctx, true /* no_spills */,
+                                shader_time_index, debug_enabled);
 
          /* Backup 'nr_params' and 'param' as they can be modified by the
           * the DUAL_OBJECT visitor. If it fails, we will run the fallback
@@ -926,12 +928,12 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
 
    if (compiler->devinfo->gen >= 7)
       gs = new brw::vec4_gs_visitor(compiler, log_data, &c, prog_data,
-                               nir, mem_ctx, false /* no_spills */,
-                               shader_time_index);
+                                    nir, mem_ctx, false /* no_spills */,
+                                    shader_time_index, debug_enabled);
    else
       gs = new brw::gen6_gs_visitor(compiler, log_data, &c, prog_data, prog,
-                               nir, mem_ctx, false /* no_spills */,
-                               shader_time_index);
+                                    nir, mem_ctx, false /* no_spills */,
+                                    shader_time_index, debug_enabled);
 
    if (!gs->run()) {
       if (error_str)
