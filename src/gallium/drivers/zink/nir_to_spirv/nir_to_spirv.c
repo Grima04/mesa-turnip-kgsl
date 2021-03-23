@@ -1751,7 +1751,7 @@ emit_alu(struct ntv_context *ctx, nir_alu_instr *alu)
              alu_instr_src_components(alu, 1));
       assert(in_bit_sizes[0] == in_bit_sizes[1]);
       /* The type of Operand 1 and Operand 2 must be a scalar or vector of floating-point type. */
-      SpvOp op = in_bit_sizes[0] == 1 ? SpvOpLogicalNotEqual : SpvOpFOrdNotEqual;
+      SpvOp op = in_bit_sizes[0] == 1 ? SpvOpLogicalNotEqual : SpvOpFUnordNotEqual;
       result = emit_binop(ctx, op,
                           get_bvec_type(ctx, alu_instr_src_components(alu, 0)),
                           src[0], src[1]);
