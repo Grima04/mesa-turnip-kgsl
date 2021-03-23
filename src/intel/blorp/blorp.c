@@ -28,6 +28,7 @@
 #include "blorp_priv.h"
 #include "compiler/brw_compiler.h"
 #include "compiler/brw_nir.h"
+#include "dev/gen_debug.h"
 
 const char *
 blorp_shader_type_to_name(enum blorp_shader_type type)
@@ -223,6 +224,8 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
 
       .use_rep_send = use_repclear,
       .log_data = blorp->driver_ctx,
+
+      .debug_flag = DEBUG_BLORP,
    };
 
    return brw_compile_fs(compiler, mem_ctx, &params);
@@ -256,6 +259,8 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
       .key = &vs_key,
       .prog_data = vs_prog_data,
       .log_data = blorp->driver_ctx,
+
+      .debug_flag = DEBUG_BLORP,
    };
 
    return brw_compile_vs(compiler, mem_ctx, &params);

@@ -2837,7 +2837,8 @@ brw_compile_vs(const struct brw_compiler *compiler,
    struct nir_shader *nir = params->nir;
    const struct brw_vs_prog_key *key = params->key;
    struct brw_vs_prog_data *prog_data = params->prog_data;
-   const bool debug_enabled = INTEL_DEBUG & DEBUG_VS;
+   const bool debug_enabled =
+      INTEL_DEBUG & (params->debug_flag ? params->debug_flag : DEBUG_VS);
 
    prog_data->base.base.stage = MESA_SHADER_VERTEX;
 

@@ -1453,6 +1453,9 @@ struct brw_compile_vs_params {
    void *log_data;
 
    char *error_str;
+
+   /* If unset, DEBUG_VS is used. */
+   uint64_t debug_flag;
 };
 
 /**
@@ -1570,6 +1573,9 @@ struct brw_compile_fs_params {
    void *log_data;
 
    char *error_str;
+
+   /* If unset, DEBUG_WM is used. */
+   uint64_t debug_flag;
 };
 
 /**

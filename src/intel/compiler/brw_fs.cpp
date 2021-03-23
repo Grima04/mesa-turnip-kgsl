@@ -9063,7 +9063,8 @@ brw_compile_fs(const struct brw_compiler *compiler,
    const struct brw_wm_prog_key *key = params->key;
    struct brw_wm_prog_data *prog_data = params->prog_data;
    bool allow_spilling = params->allow_spilling;
-   const bool debug_enabled = INTEL_DEBUG & DEBUG_WM;
+   const bool debug_enabled =
+      INTEL_DEBUG & (params->debug_flag ? params->debug_flag : DEBUG_WM);
 
    prog_data->base.stage = MESA_SHADER_FRAGMENT;
 
