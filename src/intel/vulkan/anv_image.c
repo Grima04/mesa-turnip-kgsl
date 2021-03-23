@@ -1881,7 +1881,7 @@ vk_image_layout_is_read_only(VkImageLayout layout,
  *
  * @return The primary buffer that should be used for the given layout.
  */
-enum isl_aux_state
+enum isl_aux_state ATTRIBUTE_PURE
 anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
@@ -2067,7 +2067,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
  *
  * @return The primary buffer that should be used for the given layout.
  */
-enum isl_aux_usage
+enum isl_aux_usage ATTRIBUTE_PURE
 anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
@@ -2134,7 +2134,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
  * @param usage The usage which describes how the image will be accessed.
  * @param layout The current layout of the image aspect(s).
  */
-enum anv_fast_clear_type
+enum anv_fast_clear_type ATTRIBUTE_PURE
 anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
                               const struct anv_image * const image,
                               const VkImageAspectFlagBits aspect,
