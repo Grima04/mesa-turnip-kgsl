@@ -92,8 +92,6 @@ struct amdgpu_winsys_bo {
       } sparse;
    } u;
 
-   struct amdgpu_winsys *ws;
-
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
 
    uint32_t unique_id;
@@ -119,13 +117,13 @@ struct amdgpu_slab {
    struct amdgpu_winsys_bo *entries;
 };
 
-bool amdgpu_bo_can_reclaim(void *winsys, struct pb_buffer *_buf);
+bool amdgpu_bo_can_reclaim(struct amdgpu_winsys *ws, struct pb_buffer *_buf);
 struct pb_buffer *amdgpu_bo_create(struct amdgpu_winsys *ws,
                                    uint64_t size,
                                    unsigned alignment,
                                    enum radeon_bo_domain domain,
                                    enum radeon_bo_flag flags);
-void amdgpu_bo_destroy(void *winsys, struct pb_buffer *_buf);
+void amdgpu_bo_destroy(struct amdgpu_winsys *ws, struct pb_buffer *_buf);
 void *amdgpu_bo_map(struct radeon_winsys *rws,
                     struct pb_buffer *buf,
                     struct radeon_cmdbuf *rcs,
@@ -140,7 +138,7 @@ struct pb_slab *amdgpu_bo_slab_alloc_encrypted(void *priv, unsigned heap,
 struct pb_slab *amdgpu_bo_slab_alloc_normal(void *priv, unsigned heap,
                                             unsigned entry_size,
                                             unsigned group_index);
-void amdgpu_bo_slab_free(void *priv, struct pb_slab *slab);
+void amdgpu_bo_slab_free(struct amdgpu_winsys *ws, struct pb_slab *slab);
 
 static inline
 struct amdgpu_winsys_bo *amdgpu_winsys_bo(struct pb_buffer *bo)
@@ -155,10 +153,12 @@ struct amdgpu_slab *amdgpu_slab(struct pb_slab *slab)
 }
 
 static inline
-void amdgpu_winsys_bo_reference(struct amdgpu_winsys_bo **dst,
+void amdgpu_winsys_bo_reference(struct amdgpu_winsys *ws,
+                                struct amdgpu_winsys_bo **dst,
                                 struct amdgpu_winsys_bo *src)
 {
-   pb_reference((struct pb_buffer**)dst, (struct pb_buffer*)src);
+   radeon_bo_reference(&ws->dummy_ws.base,
+                       (struct pb_buffer**)dst, (struct pb_buffer*)src);
 }
 
 #endif

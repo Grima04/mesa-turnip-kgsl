@@ -443,8 +443,10 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       /* Create managers. */
       pb_cache_init(&aws->bo_cache, RADEON_MAX_CACHED_HEAPS,
                     500000, aws->check_vm ? 1.0f : 2.0f, 0,
-                    (aws->info.vram_size + aws->info.gart_size) / 8, ws,
-                    amdgpu_bo_destroy, amdgpu_bo_can_reclaim);
+                    (aws->info.vram_size + aws->info.gart_size) / 8, aws,
+                    /* Cast to void* because one of the function parameters
+                     * is a struct pointer instead of void*. */
+                    (void*)amdgpu_bo_destroy, (void*)amdgpu_bo_can_reclaim);
 
       unsigned min_slab_order = 8;  /* 256 bytes */
       unsigned max_slab_order = 20; /* 1 MB (slab size = 2 MB) */
@@ -463,7 +465,9 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                             aws,
                             amdgpu_bo_can_reclaim_slab,
                             amdgpu_bo_slab_alloc_normal,
-                            amdgpu_bo_slab_free)) {
+                            /* Cast to void* because one of the function parameters
+                             * is a struct pointer instead of void*. */
+                            (void*)amdgpu_bo_slab_free)) {
             amdgpu_winsys_destroy(&ws->base);
             simple_mtx_unlock(&dev_tab_mutex);
             return NULL;
@@ -476,7 +480,9 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
                             aws,
                             amdgpu_bo_can_reclaim_slab,
                             amdgpu_bo_slab_alloc_encrypted,
-                            amdgpu_bo_slab_free)) {
+                            /* Cast to void* because one of the function parameters
+                             * is a struct pointer instead of void*. */
+                            (void*)amdgpu_bo_slab_free)) {
             amdgpu_winsys_destroy(&ws->base);
             simple_mtx_unlock(&dev_tab_mutex);
             return NULL;
@@ -536,6 +542,11 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
    amdgpu_cs_init_functions(ws);
    amdgpu_surface_init_functions(ws);
 
+   simple_mtx_lock(&aws->sws_list_lock);
+   ws->next = aws->sws_list;
+   aws->sws_list = ws;
+   simple_mtx_unlock(&aws->sws_list_lock);
+
    /* Create the screen at the end. The winsys must be initialized
     * completely.
     *
@@ -547,11 +558,6 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       simple_mtx_unlock(&dev_tab_mutex);
       return NULL;
    }
-
-   simple_mtx_lock(&aws->sws_list_lock);
-   ws->next = aws->sws_list;
-   aws->sws_list = ws;
-   simple_mtx_unlock(&aws->sws_list_lock);
 
 unlock:
    /* We must unlock the mutex once the winsys is fully initialized, so that

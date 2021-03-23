@@ -457,7 +457,8 @@ int amdgpu_lookup_buffer_any_type(struct amdgpu_cs_context *cs, struct amdgpu_wi
 }
 
 static int
-amdgpu_do_add_real_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo *bo)
+amdgpu_do_add_real_buffer(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs,
+                          struct amdgpu_winsys_bo *bo)
 {
    struct amdgpu_cs_buffer *buffer;
    int idx;
@@ -488,7 +489,7 @@ amdgpu_do_add_real_buffer(struct amdgpu_cs_context *cs, struct amdgpu_winsys_bo 
    buffer = &cs->real_buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(&buffer->bo, bo);
+   amdgpu_winsys_bo_reference(ws, &buffer->bo, bo);
    cs->num_real_buffers++;
 
    return idx;
@@ -505,7 +506,7 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *ac
    if (idx >= 0)
       return idx;
 
-   idx = amdgpu_do_add_real_buffer(cs, bo);
+   idx = amdgpu_do_add_real_buffer(acs->ctx->ws, cs, bo);
 
    hash = bo->unique_id & (ARRAY_SIZE(cs->buffer_indices_hashlist)-1);
    cs->buffer_indices_hashlist[hash] = idx;
@@ -518,7 +519,8 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *ac
    return idx;
 }
 
-static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
+static int amdgpu_lookup_or_add_slab_buffer(struct amdgpu_winsys *ws,
+                                            struct radeon_cmdbuf *rcs,
                                             struct amdgpu_cs *acs,
                                             struct amdgpu_winsys_bo *bo)
 {
@@ -557,7 +559,7 @@ static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
    buffer = &cs->slab_buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(&buffer->bo, bo);
+   amdgpu_winsys_bo_reference(ws, &buffer->bo, bo);
    buffer->u.slab.real_idx = real_idx;
    cs->num_slab_buffers++;
 
@@ -567,7 +569,8 @@ static int amdgpu_lookup_or_add_slab_buffer(struct radeon_cmdbuf *rcs,
    return idx;
 }
 
-static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
+static int amdgpu_lookup_or_add_sparse_buffer(struct amdgpu_winsys *ws,
+                                              struct radeon_cmdbuf *rcs,
                                               struct amdgpu_cs *acs,
                                               struct amdgpu_winsys_bo *bo)
 {
@@ -601,7 +604,7 @@ static int amdgpu_lookup_or_add_sparse_buffer(struct radeon_cmdbuf *rcs,
    buffer = &cs->sparse_buffers[idx];
 
    memset(buffer, 0, sizeof(*buffer));
-   amdgpu_winsys_bo_reference(&buffer->bo, bo);
+   amdgpu_winsys_bo_reference(ws, &buffer->bo, bo);
    cs->num_sparse_buffers++;
 
    hash = bo->unique_id & (ARRAY_SIZE(cs->buffer_indices_hashlist)-1);
@@ -650,7 +653,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
    if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       if (!bo->bo) {
-         index = amdgpu_lookup_or_add_slab_buffer(rcs, acs, bo);
+         index = amdgpu_lookup_or_add_slab_buffer(acs->ctx->ws, rcs, acs, bo);
          if (index < 0)
             return 0;
 
@@ -667,7 +670,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
       buffer = &cs->real_buffers[index];
    } else {
-      index = amdgpu_lookup_or_add_sparse_buffer(rcs, acs, bo);
+      index = amdgpu_lookup_or_add_sparse_buffer(acs->ctx->ws, rcs, acs, bo);
       if (index < 0)
          return 0;
 
@@ -731,12 +734,12 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
 
    mapped = amdgpu_bo_map(&ws->dummy_ws.base, pb, NULL, PIPE_MAP_WRITE);
    if (!mapped) {
-      pb_reference(&pb, NULL);
+      radeon_bo_reference(&ws->dummy_ws.base, &pb, NULL);
       return false;
    }
 
-   pb_reference(&ib->big_ib_buffer, pb);
-   pb_reference(&pb, NULL);
+   radeon_bo_reference(&ws->dummy_ws.base, &ib->big_ib_buffer, pb);
+   radeon_bo_reference(&ws->dummy_ws.base, &pb, NULL);
 
    ib->ib_mapped = mapped;
    ib->used_ib_space = 0;
@@ -906,18 +909,18 @@ static void cleanup_fence_list(struct amdgpu_fence_list *fences)
    fences->num = 0;
 }
 
-static void amdgpu_cs_context_cleanup(struct amdgpu_cs_context *cs)
+static void amdgpu_cs_context_cleanup(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
 {
    unsigned i;
 
    for (i = 0; i < cs->num_real_buffers; i++) {
-      amdgpu_winsys_bo_reference(&cs->real_buffers[i].bo, NULL);
+      amdgpu_winsys_bo_reference(ws, &cs->real_buffers[i].bo, NULL);
    }
    for (i = 0; i < cs->num_slab_buffers; i++) {
-      amdgpu_winsys_bo_reference(&cs->slab_buffers[i].bo, NULL);
+      amdgpu_winsys_bo_reference(ws, &cs->slab_buffers[i].bo, NULL);
    }
    for (i = 0; i < cs->num_sparse_buffers; i++) {
-      amdgpu_winsys_bo_reference(&cs->sparse_buffers[i].bo, NULL);
+      amdgpu_winsys_bo_reference(ws, &cs->sparse_buffers[i].bo, NULL);
    }
    cleanup_fence_list(&cs->fence_dependencies);
    cleanup_fence_list(&cs->syncobj_dependencies);
@@ -934,9 +937,9 @@ static void amdgpu_cs_context_cleanup(struct amdgpu_cs_context *cs)
    cs->last_added_bo = NULL;
 }
 
-static void amdgpu_destroy_cs_context(struct amdgpu_cs_context *cs)
+static void amdgpu_destroy_cs_context(struct amdgpu_winsys *ws, struct amdgpu_cs_context *cs)
 {
-   amdgpu_cs_context_cleanup(cs);
+   amdgpu_cs_context_cleanup(ws, cs);
    FREE(cs->real_buffers);
    FREE(cs->slab_buffers);
    FREE(cs->sparse_buffers);
@@ -988,7 +991,7 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    }
 
    if (!amdgpu_init_cs_context(ctx->ws, &cs->csc2, ring_type)) {
-      amdgpu_destroy_cs_context(&cs->csc1);
+      amdgpu_destroy_cs_context(ctx->ws, &cs->csc1);
       FREE(cs);
       return false;
    }
@@ -1001,8 +1004,8 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
    rcs->priv = cs;
 
    if (!amdgpu_get_new_ib(ctx->ws, rcs, &cs->main, cs)) {
-      amdgpu_destroy_cs_context(&cs->csc2);
-      amdgpu_destroy_cs_context(&cs->csc1);
+      amdgpu_destroy_cs_context(ctx->ws, &cs->csc2);
+      amdgpu_destroy_cs_context(ctx->ws, &cs->csc1);
       FREE(cs);
       rcs->priv = NULL;
       return false;
@@ -1066,7 +1069,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    map = (uint32_t*)amdgpu_bo_map(&ws->dummy_ws.base, preamble_bo, NULL,
                                   PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
    if (!map) {
-      pb_reference(&preamble_bo, NULL);
+      radeon_bo_reference(&ws->dummy_ws.base, &preamble_bo, NULL);
       return false;
    }
 
@@ -1399,7 +1402,8 @@ static void amdgpu_cs_add_syncobj_signal(struct radeon_cmdbuf *rws,
  * This is done late, during submission, to keep the buffer list short before
  * submit, and to avoid managing fences for the backing buffers.
  */
-static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
+static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_winsys *ws,
+                                              struct amdgpu_cs_context *cs)
 {
    for (unsigned i = 0; i < cs->num_sparse_buffers; ++i) {
       struct amdgpu_cs_buffer *buffer = &cs->sparse_buffers[i];
@@ -1411,7 +1415,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_cs_context *cs)
          /* We can directly add the buffer here, because we know that each
           * backing buffer occurs only once.
           */
-         int idx = amdgpu_do_add_real_buffer(cs, backing->bo);
+         int idx = amdgpu_do_add_real_buffer(ws, cs, backing->bo);
          if (idx < 0) {
             fprintf(stderr, "%s: failed to add buffer\n", __FUNCTION__);
             simple_mtx_unlock(&bo->lock);
@@ -1467,7 +1471,7 @@ static void amdgpu_cs_submit_ib(void *job, int thread_index)
    } else
 #endif
    {
-      if (!amdgpu_add_sparse_backing_buffers(cs)) {
+      if (!amdgpu_add_sparse_backing_buffers(ws, cs)) {
          fprintf(stderr, "amdgpu: amdgpu_add_sparse_backing_buffers failed\n");
          r = -ENOMEM;
          goto cleanup;
@@ -1727,7 +1731,7 @@ cleanup:
    for (i = 0; i < cs->num_sparse_buffers; i++)
       p_atomic_dec(&cs->sparse_buffers[i].bo->num_active_ioctls);
 
-   amdgpu_cs_context_cleanup(cs);
+   amdgpu_cs_context_cleanup(ws, cs);
 }
 
 /* Make sure the previous submission is completed. */
@@ -1865,7 +1869,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
    } else {
       if (flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION)
          cs->csc->secure = !cs->csc->secure;
-      amdgpu_cs_context_cleanup(cs->csc);
+      amdgpu_cs_context_cleanup(ws, cs->csc);
    }
 
    amdgpu_get_new_ib(ws, rcs, &cs->main, cs);
@@ -1898,14 +1902,14 @@ static void amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
    amdgpu_cs_sync_flush(rcs);
    util_queue_fence_destroy(&cs->flush_completed);
    p_atomic_dec(&cs->ctx->ws->num_cs);
-   pb_reference(&cs->preamble_ib_bo, NULL);
-   pb_reference(&cs->main.big_ib_buffer, NULL);
+   radeon_bo_reference(&cs->ctx->ws->dummy_ws.base, &cs->preamble_ib_bo, NULL);
+   radeon_bo_reference(&cs->ctx->ws->dummy_ws.base, &cs->main.big_ib_buffer, NULL);
    FREE(rcs->prev);
-   pb_reference(&cs->compute_ib.big_ib_buffer, NULL);
+   radeon_bo_reference(&cs->ctx->ws->dummy_ws.base, &cs->compute_ib.big_ib_buffer, NULL);
    if (cs->compute_ib.rcs)
       FREE(cs->compute_ib.rcs->prev);
-   amdgpu_destroy_cs_context(&cs->csc1);
-   amdgpu_destroy_cs_context(&cs->csc2);
+   amdgpu_destroy_cs_context(cs->ctx->ws, &cs->csc1);
+   amdgpu_destroy_cs_context(cs->ctx->ws, &cs->csc2);
    amdgpu_fence_reference(&cs->next_fence, NULL);
    FREE(cs);
 }
