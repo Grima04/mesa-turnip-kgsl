@@ -1736,6 +1736,11 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
 
    switch (info->chip_class) {
    case GFX9:
+      /* Only support 64KB_S_X, so that we have only 1 variant of the retile shader. */
+      if (info->use_display_dcc_with_retile_blit &&
+          surf->u.gfx9.swizzle_mode != ADDR_SW_64KB_S_X)
+         return false;
+
       /* There are more constraints, but we always set
        * INDEPENDENT_64B_BLOCKS = 1 and MAX_COMPRESSED_BLOCK_SIZE = 64B,
        * which always works.
@@ -1745,6 +1750,11 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
       return true;
    case GFX10:
    case GFX10_3:
+      /* Only support 64KB_R_X, so that we have only 1 variant of the retile shader. */
+      if (info->use_display_dcc_with_retile_blit &&
+          surf->u.gfx9.swizzle_mode != ADDR_SW_64KB_R_X)
+         return false;
+
       /* DCN requires INDEPENDENT_128B_BLOCKS = 0 only on Navi1x. */
       if (info->chip_class == GFX10 && surf->u.gfx9.color.dcc.independent_128B_blocks)
          return false;
