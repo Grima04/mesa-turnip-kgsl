@@ -35,34 +35,6 @@
  * src iterators work.
  */
 
-/* generally don't count false dependencies, since this can just be
- * something like a barrier, or SSBO store.  The exception is array
- * dependencies if the assigner is an array write and the consumer
- * reads the same array.
- */
-static bool
-ignore_dep(struct ir3_instruction *assigner,
-		struct ir3_instruction *consumer, unsigned n)
-{
-	if (!__is_false_dep(consumer, n))
-		return false;
-
-	if (assigner->barrier_class & IR3_BARRIER_ARRAY_W) {
-		struct ir3_register *dst = assigner->regs[0];
-
-		debug_assert(dst->flags & IR3_REG_ARRAY);
-
-		foreach_src (src, consumer) {
-			if ((src->flags & IR3_REG_ARRAY) &&
-					(dst->array.id == src->array.id)) {
-				return false;
-			}
-		}
-	}
-
-	return true;
-}
-
 /* calculate required # of delay slots between the instruction that
  * assigns a value and the one that consumes
  */
@@ -70,7 +42,10 @@ int
 ir3_delayslots(struct ir3_instruction *assigner,
 		struct ir3_instruction *consumer, unsigned n, bool soft)
 {
-	if (ignore_dep(assigner, consumer, n))
+	/* generally don't count false dependencies, since this can just be
+	 * something like a barrier, or SSBO store.
+	 */
+	if (__is_false_dep(consumer, n))
 		return 0;
 
 	/* worst case is cat1-3 (alu) -> cat4/5 needing 6 cycles, normal
