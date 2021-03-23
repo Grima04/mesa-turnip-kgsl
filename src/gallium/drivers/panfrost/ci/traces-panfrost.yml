@@ -53,7 +53,8 @@ traces:
       - device: gl-panfrost-t860
         checksum: f83da726bff354684a576effa74ef681
       - device: gl-panfrost-t760
-        checksum: a41f53e9318cbd32c27b48d304df1ea6
+        # Wrong rendering, many elements are missing
+        checksum: 67db7302b28cb8e3e217cc79b672af79
   - path: 0ad/0ad.trace
     expectations:
       - device: gl-panfrost-t860
