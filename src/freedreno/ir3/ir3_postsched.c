@@ -362,10 +362,17 @@ add_dep(struct ir3_postsched_deps_state *state,
 
 static void
 add_single_reg_dep(struct ir3_postsched_deps_state *state,
-		struct ir3_postsched_node *node, unsigned num, bool write)
+		struct ir3_postsched_node *node, unsigned num, int src_n)
 {
-	add_dep(state, dep_reg(state, num), node);
-	if (write) {
+	struct ir3_postsched_node *dep = dep_reg(state, num);
+
+	if (src_n >= 0 && dep && state->direction == F) {
+		unsigned d = ir3_delayslots(dep->instr, node->instr, src_n, true);
+		node->delay = MAX2(node->delay, d);
+	}
+
+	add_dep(state, dep, node);
+	if (src_n < 0) {
 		dep_reg(state, num) = node;
 	}
 }
@@ -373,11 +380,17 @@ add_single_reg_dep(struct ir3_postsched_deps_state *state,
 /* This is where we handled full vs half-precision, and potential conflicts
  * between half and full precision that result in additional dependencies.
  * The 'reg' arg is really just to know half vs full precision.
+ * 
+ * If non-negative, then this adds a dependency on a source register, and
+ * src_n is the index passed into ir3_delayslots() for calculating the delay:
+ * 0 means this is for an address source, non-0 corresponds to
+ * node->instr->regs[src_n]. If negative, then this is for a destination
+ * register.
  */
 static void
 add_reg_dep(struct ir3_postsched_deps_state *state,
 		struct ir3_postsched_node *node, const struct ir3_register *reg,
-		unsigned num, bool write)
+		unsigned num, int src_n)
 {
 	if (state->merged) {
 		/* Make sure that special registers like a0.x that are written as
@@ -386,16 +399,16 @@ add_reg_dep(struct ir3_postsched_deps_state *state,
 		 */
 		if ((reg->flags & IR3_REG_HALF) && num < regid(48, 0)) {
 			/* single conflict in half-reg space: */
-			add_single_reg_dep(state, node, num, write);
+			add_single_reg_dep(state, node, num, src_n);
 		} else {
 			/* two conflicts in half-reg space: */
-			add_single_reg_dep(state, node, 2 * num + 0, write);
-			add_single_reg_dep(state, node, 2 * num + 1, write);
+			add_single_reg_dep(state, node, 2 * num + 0, src_n);
+			add_single_reg_dep(state, node, 2 * num + 1, src_n);
 		}
 	} else {
 		if (reg->flags & IR3_REG_HALF)
 			num += ARRAY_SIZE(state->regs) / 2;
-		add_single_reg_dep(state, node, num, write);
+		add_single_reg_dep(state, node, num, src_n);
 	}
 }
 
@@ -413,27 +426,20 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 		if (reg->flags & IR3_REG_RELATIV) {
 			/* mark entire array as read: */
 			struct ir3_array *arr = ir3_lookup_array(state->ctx->ir, reg->array.id);
-			for (unsigned i = 0; i < arr->length; i++) {
-				add_reg_dep(state, node, reg, arr->reg + i, false);
+			for (unsigned j = 0; j < arr->length; j++) {
+				add_reg_dep(state, node, reg, arr->reg + j, i + 1);
 			}
 		} else {
 			assert(reg->wrmask >= 1);
 			u_foreach_bit (b, reg->wrmask) {
-				add_reg_dep(state, node, reg, reg->num + b, false);
-
-				struct ir3_postsched_node *dep = dep_reg(state, reg->num + b);
-				if (dep && (state->direction == F)) {
-					unsigned d = ir3_delayslots(dep->instr, node->instr, i + 1, true);
-					node->delay = MAX2(node->delay, d);
-				}
+				add_reg_dep(state, node, reg, reg->num + b, i + 1);
 			}
 		}
 	}
 
 	if (node->instr->address) {
 		add_reg_dep(state, node, node->instr->address->regs[0],
-					node->instr->address->regs[0]->num,
-					false);
+				node->instr->address->regs[0]->num, 0);
 	}
 
 	if (dest_regs(node->instr) == 0)
@@ -447,12 +453,12 @@ calculate_deps(struct ir3_postsched_deps_state *state,
 		/* mark the entire array as written: */
 		struct ir3_array *arr = ir3_lookup_array(state->ctx->ir, reg->array.id);
 		for (unsigned i = 0; i < arr->length; i++) {
-			add_reg_dep(state, node, reg, arr->reg + i, true);
+			add_reg_dep(state, node, reg, arr->reg + i, -1);
 		}
 	} else {
 		assert(reg->wrmask >= 1);
 		u_foreach_bit (b, reg->wrmask) {
-			add_reg_dep(state, node, reg, reg->num + b, true);
+			add_reg_dep(state, node, reg, reg->num + b, -1);
 		}
 	}
 }
