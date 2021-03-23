@@ -92,7 +92,7 @@ mm_buffer(struct pb_buffer *buf)
 
 
 static void
-mm_buffer_destroy(struct pb_buffer *buf)
+mm_buffer_destroy(void *winsys, struct pb_buffer *buf)
 {
    struct mm_buffer *mm_buf = mm_buffer(buf);
    struct mm_pb_manager *mm = mm_buf->mgr;

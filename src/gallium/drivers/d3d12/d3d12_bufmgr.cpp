@@ -214,7 +214,7 @@ d3d12_bo_unmap(struct d3d12_bo *bo, D3D12_RANGE *range)
 }
 
 static void
-d3d12_buffer_destroy(struct pb_buffer *pbuf)
+d3d12_buffer_destroy(void *winsys, struct pb_buffer *pbuf)
 {
    struct d3d12_buffer *buf = d3d12_buffer(pbuf);
 

@@ -645,7 +645,7 @@ fenced_buffer_copy_storage_to_cpu_locked(struct fenced_buffer *fenced_buf)
 
 
 static void
-fenced_buffer_destroy(struct pb_buffer *buf)
+fenced_buffer_destroy(void *winsys, struct pb_buffer *buf)
 {
    struct fenced_buffer *fenced_buf = fenced_buffer(buf);
    struct fenced_manager *fenced_mgr = fenced_buf->mgr;

@@ -187,7 +187,7 @@ pb_slab_range_manager(struct pb_manager *mgr)
  * it on the slab FREE list.
  */
 static void
-pb_slab_buffer_destroy(struct pb_buffer *_buf)
+pb_slab_buffer_destroy(void *winsys, struct pb_buffer *_buf)
 {
    struct pb_slab_buffer *buf = pb_slab_buffer(_buf);
    struct pb_slab *slab = buf->slab;

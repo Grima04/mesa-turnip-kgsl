@@ -142,7 +142,7 @@ struct pb_buffer
  */
 struct pb_vtbl
 {
-   void (*destroy)(struct pb_buffer *buf);
+   void (*destroy)(void *winsys, struct pb_buffer *buf);
 
    /**
     * Map the entire data store of a buffer object into the client's address.
@@ -245,13 +245,13 @@ pb_fence(struct pb_buffer *buf, struct pipe_fence_handle *fence)
 
 
 static inline void
-pb_destroy(struct pb_buffer *buf)
+pb_destroy(void *winsys, struct pb_buffer *buf)
 {
    assert(buf);
    if (!buf)
       return;
    assert(!pipe_is_referenced(&buf->reference));
-   buf->vtbl->destroy(buf);
+   buf->vtbl->destroy(winsys, buf);
 }
 
 
@@ -262,10 +262,21 @@ pb_reference(struct pb_buffer **dst,
    struct pb_buffer *old = *dst;
 
    if (pipe_reference(&(*dst)->reference, &src->reference))
-      pb_destroy(old);
+      pb_destroy(NULL, old);
    *dst = src;
 }
 
+static inline void
+pb_reference_with_winsys(void *winsys,
+                         struct pb_buffer **dst,
+                         struct pb_buffer *src)
+{
+   struct pb_buffer *old = *dst;
+
+   if (pipe_reference(&(*dst)->reference, &src->reference))
+      pb_destroy(winsys, old);
+   *dst = src;
+}
 
 /**
  * Utility function to check whether the provided alignment is consistent with

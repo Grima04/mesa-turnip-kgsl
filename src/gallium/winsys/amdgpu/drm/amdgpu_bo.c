@@ -169,7 +169,7 @@ static void amdgpu_bo_remove_fences(struct amdgpu_winsys_bo *bo)
    bo->max_fences = 0;
 }
 
-void amdgpu_bo_destroy(struct pb_buffer *_buf)
+void amdgpu_bo_destroy(void *winsys, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
    struct amdgpu_screen_winsys *sws_iter;
@@ -231,7 +231,7 @@ void amdgpu_bo_destroy(struct pb_buffer *_buf)
    FREE(bo);
 }
 
-static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
+static void amdgpu_bo_destroy_or_cache(void *winsys, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
 
@@ -240,7 +240,7 @@ static void amdgpu_bo_destroy_or_cache(struct pb_buffer *_buf)
    if (bo->u.real.use_reusable_pool)
       pb_cache_add_buffer(bo->cache_entry);
    else
-      amdgpu_bo_destroy(_buf);
+      amdgpu_bo_destroy(winsys, _buf);
 }
 
 static void amdgpu_clean_up_buffer_managers(struct amdgpu_winsys *ws)
@@ -620,7 +620,7 @@ error_bo_alloc:
    return NULL;
 }
 
-bool amdgpu_bo_can_reclaim(struct pb_buffer *_buf)
+bool amdgpu_bo_can_reclaim(void *winsys, struct pb_buffer *_buf)
 {
    return amdgpu_bo_wait(_buf, 0, RADEON_USAGE_READWRITE);
 }
@@ -629,7 +629,7 @@ bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
 {
    struct amdgpu_winsys_bo *bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
 
-   return amdgpu_bo_can_reclaim(&bo->base);
+   return amdgpu_bo_can_reclaim(NULL, &bo->base);
 }
 
 static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size,
@@ -658,7 +658,7 @@ static unsigned get_slab_wasted_size(struct amdgpu_winsys_bo *bo)
    return bo->u.slab.entry.entry_size - bo->base.size;
 }
 
-static void amdgpu_bo_slab_destroy(struct pb_buffer *_buf)
+static void amdgpu_bo_slab_destroy(void *winsys, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
 
@@ -1090,7 +1090,7 @@ sparse_backing_free(struct amdgpu_winsys_bo *bo,
    return true;
 }
 
-static void amdgpu_bo_sparse_destroy(struct pb_buffer *_buf)
+static void amdgpu_bo_sparse_destroy(void *winsys, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
    int r;

@@ -501,7 +501,7 @@ fenced_buffer_create_gpu_storage_locked(struct fenced_manager *fenced_mgr,
 
 
 static void
-fenced_buffer_destroy(struct pb_buffer *buf)
+fenced_buffer_destroy(void *winsys, struct pb_buffer *buf)
 {
    struct fenced_buffer *fenced_buf = fenced_buffer(buf);
    struct fenced_manager *fenced_mgr = fenced_buf->mgr;

@@ -442,7 +442,7 @@ amdgpu_winsys_create(int fd, const struct pipe_screen_config *config,
       /* Create managers. */
       pb_cache_init(&aws->bo_cache, RADEON_MAX_CACHED_HEAPS,
                     500000, aws->check_vm ? 1.0f : 2.0f, 0,
-                    (aws->info.vram_size + aws->info.gart_size) / 8,
+                    (aws->info.vram_size + aws->info.gart_size) / 8, NULL,
                     amdgpu_bo_destroy, amdgpu_bo_can_reclaim);
 
       unsigned min_slab_order = 8;  /* 256 bytes */

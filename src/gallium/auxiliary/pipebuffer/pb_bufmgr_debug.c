@@ -226,7 +226,7 @@ pb_debug_buffer_check(struct pb_debug_buffer *buf)
 
 
 static void
-pb_debug_buffer_destroy(struct pb_buffer *_buf)
+pb_debug_buffer_destroy(void *winsys, struct pb_buffer *_buf)
 {
    struct pb_debug_buffer *buf = pb_debug_buffer(_buf);
    struct pb_debug_manager *mgr = buf->mgr;
