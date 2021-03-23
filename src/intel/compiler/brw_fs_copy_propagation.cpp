@@ -547,6 +547,28 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
                         devinfo))
       return false;
 
+   /* From the Cherry Trail/Braswell PRMs, Volume 7: 3D Media GPGPU:
+    *    EU Overview
+    *       Register Region Restrictions
+    *          Special Requirements for Handling Double Precision Data Types :
+    *
+    *   "When source or destination datatype is 64b or operation is integer
+    *    DWord multiply, regioning in Align1 must follow these rules:
+    *
+    *      1. Source and Destination horizontal stride must be aligned to the
+    *         same qword.
+    *      2. Regioning must ensure Src.Vstride = Src.Width * Src.Hstride.
+    *      3. Source and Destination offset must be the same, except the case
+    *         of scalar source."
+    *
+    * Most of this is already checked in can_take_stride(), we're only left
+    * with checking 3.
+    */
+   if (has_dst_aligned_region_restriction(devinfo, inst, dst_type) &&
+       entry_stride != 0 &&
+       (reg_offset(inst->dst) % REG_SIZE) != (reg_offset(entry->src) % REG_SIZE))
+      return false;
+
    /* Bail if the source FIXED_GRF region of the copy cannot be trivially
     * composed with the source region of the instruction -- E.g. because the
     * copy uses some extended stride greater than 4 not supported natively by
