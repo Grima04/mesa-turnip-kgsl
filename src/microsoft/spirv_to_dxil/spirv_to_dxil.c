@@ -52,6 +52,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    nir_validate_shader(nir,
                        "Validate before feeding NIR to the DXIL compiler");
 
+   NIR_PASS_V(nir, nir_split_per_member_structs);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
 
