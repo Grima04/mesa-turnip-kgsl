@@ -34,6 +34,7 @@
 
 struct ntv_context {
    void *mem_ctx;
+   bool spirv_15;
 
    struct spirv_builder builder;
 
@@ -3487,13 +3488,14 @@ get_spacing(enum gl_tess_spacing spacing)
 }
 
 struct spirv_shader *
-nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
+nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spirv_15)
 {
    struct spirv_shader *ret = NULL;
 
    struct ntv_context ctx = {};
    ctx.mem_ctx = ralloc_context(NULL);
    ctx.builder.mem_ctx = ctx.mem_ctx;
+   ctx.spirv_15 = spirv_15;
 
    switch (s->info.stage) {
    case MESA_SHADER_VERTEX:
@@ -3812,7 +3814,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
    if (!ret->words)
       goto fail;
 
-   ret->num_words = spirv_builder_get_words(&ctx.builder, ret->words, num_words);
+   ret->num_words = spirv_builder_get_words(&ctx.builder, ret->words, num_words, ctx.spirv_15);
    assert(ret->num_words == num_words);
 
    ralloc_free(ctx.mem_ctx);

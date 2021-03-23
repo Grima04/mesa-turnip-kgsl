@@ -448,7 +448,7 @@ spirv_builder_get_num_words(struct spirv_builder *b);
 
 size_t
 spirv_builder_get_words(struct spirv_builder *b, uint32_t *words,
-                        size_t num_words);
+                        size_t num_words, bool spirv_15);
 
 void
 spirv_builder_emit_vertex(struct spirv_builder *b, uint32_t stream);
