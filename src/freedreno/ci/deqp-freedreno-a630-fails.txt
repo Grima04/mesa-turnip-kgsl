@@ -140,5 +140,10 @@ dEQP-VK.spirv_assembly.instruction.graphics.opquantize.too_small_tessc,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.spirv_ids_abuse.lots_ids_geom,Timeout
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_single_buffer_geom,Fail
 dEQP-VK.spirv_assembly.instruction.graphics.variable_pointers.graphics.writes_two_buffers_geom,Fail
+dEQP-VK.spirv_assembly.instruction.graphics.float16.opvectorshuffle.344_vert,Crash
+dEQP-VK.spirv_assembly.instruction.graphics.float16.opvectorshuffle.444_geom,Crash
+dEQP-VK.spirv_assembly.instruction.graphics.float16.opvectorshuffle.244_tessc,Crash
+dEQP-VK.spirv_assembly.instruction.graphics.float16.opvectorshuffle.344_frag,Crash
+dEQP-VK.spirv_assembly.instruction.compute.float16.opvectorshuffle.344,Crash
 dEQP-VK.texture.filtering.cube.formats.d24_unorm_s8_uint_stencil.nearest,Fail
 dEQP-VK.wsi.display_control.register_device_event,Crash

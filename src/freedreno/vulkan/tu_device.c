@@ -416,7 +416,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->storagePushConstant8                = false;
          features->shaderBufferInt64Atomics            = false;
          features->shaderSharedInt64Atomics            = false;
-         features->shaderFloat16                       = false;
+         features->shaderFloat16                       = true;
          features->shaderInt8                          = false;
 
          features->descriptorIndexing                                 = true;
@@ -601,7 +601,13 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->pipelineExecutableInfo = true;
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_FLOAT16_INT8_FEATURES: {
+         VkPhysicalDeviceShaderFloat16Int8Features *features =
+            (VkPhysicalDeviceShaderFloat16Int8Features *) ext;
+         features->shaderFloat16 = true;
+         features->shaderInt8 = false;
+         break;
+      }
       default:
          break;
       }
