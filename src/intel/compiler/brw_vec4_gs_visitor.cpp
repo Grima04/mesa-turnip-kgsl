@@ -597,6 +597,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    c.key = *key;
 
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_GEOMETRY];
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_GS;
 
    prog_data->base.base.stage = MESA_SHADER_GEOMETRY;
 
@@ -810,7 +811,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    /* Now that prog_data setup is done, we are ready to actually compile the
     * program.
     */
-   if (INTEL_DEBUG & DEBUG_GS) {
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "GS Input ");
       brw_print_vue_map(stderr, &c.input_vue_map, MESA_SHADER_GEOMETRY);
       fprintf(stderr, "GS Output ");
@@ -826,7 +827,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
 
          fs_generator g(compiler, log_data, mem_ctx,
                         &prog_data->base.base, false, MESA_SHADER_GEOMETRY);
-         if (INTEL_DEBUG & DEBUG_GS) {
+         if (unlikely(debug_enabled)) {
             const char *label =
                nir->info.label ? nir->info.label : "unnamed";
             char *name = ralloc_asprintf(mem_ctx, "%s geometry shader %s",

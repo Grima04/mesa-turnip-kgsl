@@ -2837,6 +2837,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
    struct nir_shader *nir = params->nir;
    const struct brw_vs_prog_key *key = params->key;
    struct brw_vs_prog_data *prog_data = params->prog_data;
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_VS;
 
    prog_data->base.base.stage = MESA_SHADER_VERTEX;
 
@@ -2935,7 +2936,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
       prog_data->base.urb_entry_size = DIV_ROUND_UP(vue_entries, 4);
    }
 
-   if (INTEL_DEBUG & DEBUG_VS) {
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "VS Output ");
       brw_print_vue_map(stderr, &prog_data->base.vue_map, MESA_SHADER_VERTEX);
    }
@@ -2956,7 +2957,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
       fs_generator g(compiler, params->log_data, mem_ctx,
                      &prog_data->base.base, v.runtime_check_aads_emit,
                      MESA_SHADER_VERTEX);
-      if (INTEL_DEBUG & DEBUG_VS) {
+      if (unlikely(debug_enabled)) {
          const char *debug_name =
             ralloc_asprintf(mem_ctx, "%s vertex shader %s",
                             nir->info.label ? nir->info.label :

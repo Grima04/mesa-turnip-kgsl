@@ -1312,6 +1312,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_EVAL];
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_TES;
    const unsigned *assembly;
 
    prog_data->base.base.stage = MESA_SHADER_TESS_EVAL;
@@ -1382,7 +1383,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
                              : BRW_TESS_OUTPUT_TOPOLOGY_TRI_CCW;
    }
 
-   if (INTEL_DEBUG & DEBUG_TES) {
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "TES Input ");
       brw_print_vue_map(stderr, input_vue_map, MESA_SHADER_TESS_EVAL);
       fprintf(stderr, "TES Output ");
@@ -1405,7 +1406,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 
       fs_generator g(compiler, log_data, mem_ctx,
                      &prog_data->base.base, false, MESA_SHADER_TESS_EVAL);
-      if (INTEL_DEBUG & DEBUG_TES) {
+      if (unlikely(debug_enabled)) {
          g.enable_debug(ralloc_asprintf(mem_ctx,
                                         "%s tessellation evaluation shader %s",
                                         nir->info.label ? nir->info.label
@@ -1428,7 +1429,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
 	 return NULL;
       }
 
-      if (INTEL_DEBUG & DEBUG_TES)
+      if (unlikely(debug_enabled))
 	 v.dump_instructions();
 
       assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,

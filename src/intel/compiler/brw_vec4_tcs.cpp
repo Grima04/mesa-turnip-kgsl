@@ -368,6 +368,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    const struct gen_device_info *devinfo = compiler->devinfo;
    struct brw_vue_prog_data *vue_prog_data = &prog_data->base;
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_CTRL];
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_TCS;
    const unsigned *assembly;
 
    vue_prog_data->base.stage = MESA_SHADER_TESS_CTRL;
@@ -448,7 +449,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
     */
    vue_prog_data->urb_read_length = 0;
 
-   if (INTEL_DEBUG & DEBUG_TCS) {
+   if (unlikely(debug_enabled)) {
       fprintf(stderr, "TCS Input ");
       brw_print_vue_map(stderr, &input_vue_map, MESA_SHADER_TESS_CTRL);
       fprintf(stderr, "TCS Output ");

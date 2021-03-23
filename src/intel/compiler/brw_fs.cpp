@@ -9063,6 +9063,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    const struct brw_wm_prog_key *key = params->key;
    struct brw_wm_prog_data *prog_data = params->prog_data;
    bool allow_spilling = params->allow_spilling;
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_WM;
 
    prog_data->base.stage = MESA_SHADER_FRAGMENT;
 
@@ -9238,7 +9239,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
-   if (INTEL_DEBUG & DEBUG_WM) {
+   if (unlikely(debug_enabled)) {
       g.enable_debug(ralloc_asprintf(mem_ctx, "%s fragment shader %s",
                                      nir->info.label ?
                                         nir->info.label : "unnamed",
@@ -9407,7 +9408,8 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
                   void *mem_ctx,
                   const struct brw_cs_prog_key *key,
                   const nir_shader *src_shader,
-                  unsigned dispatch_width)
+                  unsigned dispatch_width,
+                  bool debug_enabled)
 {
    nir_shader *shader = nir_shader_clone(mem_ctx, src_shader);
    brw_nir_apply_key(shader, compiler, &key->base, dispatch_width, true);
@@ -9433,6 +9435,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
                struct brw_compile_stats *stats,
                char **error_str)
 {
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_CS;
+
    prog_data->base.stage = MESA_SHADER_COMPUTE;
    prog_data->base.total_shared = nir->info.cs.shared_size;
 
@@ -9491,7 +9495,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    if (!(INTEL_DEBUG & DEBUG_NO8) &&
        min_dispatch_width <= 8 && max_dispatch_width >= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
-                                           nir, 8);
+                                           nir, 8, debug_enabled);
       v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                           &prog_data->base,
                           nir8, 8, shader_time_index);
@@ -9517,7 +9521,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
        min_dispatch_width <= 16 && max_dispatch_width >= 16) {
       /* Try a SIMD16 compile */
       nir_shader *nir16 = compile_cs_to_nir(compiler, mem_ctx, key,
-                                            nir, 16);
+                                            nir, 16, debug_enabled);
       v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base,
                            nir16, 16, shader_time_index);
@@ -9565,7 +9569,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
        min_dispatch_width <= 32 && max_dispatch_width >= 32) {
       /* Try a SIMD32 compile */
       nir_shader *nir32 = compile_cs_to_nir(compiler, mem_ctx, key,
-                                            nir, 32);
+                                            nir, 32, debug_enabled);
       v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
                            &prog_data->base,
                            nir32, 32, shader_time_index);
@@ -9614,7 +9618,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
 
    fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
                   v->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
-   if (INTEL_DEBUG & DEBUG_CS) {
+   if (unlikely(debug_enabled)) {
       char *name = ralloc_asprintf(mem_ctx, "%s compute shader %s",
                                    nir->info.label ?
                                    nir->info.label : "unnamed",
@@ -9710,6 +9714,8 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
                struct brw_compile_stats *stats,
                char **error_str)
 {
+   const bool debug_enabled = INTEL_DEBUG & DEBUG_RT;
+
    prog_data->base.stage = shader->info.stage;
    prog_data->stack_size = shader->scratch_size;
 
@@ -9778,7 +9784,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
 
    fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
                   v->runtime_check_aads_emit, shader->info.stage);
-   if (INTEL_DEBUG & DEBUG_RT) {
+   if (unlikely(debug_enabled)) {
       char *name = ralloc_asprintf(mem_ctx, "%s %s shader %s",
                                    shader->info.label ?
                                       shader->info.label : "unnamed",
