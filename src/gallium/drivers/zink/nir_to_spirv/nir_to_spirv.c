@@ -536,8 +536,7 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
    if (var->data.patch)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
 
-   if (var->data.interpolation == INTERP_MODE_FLAT)
-      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationFlat);
+   emit_interpolation(ctx, var_id, var->data.interpolation);
 
    _mesa_hash_table_insert(ctx->vars, var, (void *)(intptr_t)var_id);
 

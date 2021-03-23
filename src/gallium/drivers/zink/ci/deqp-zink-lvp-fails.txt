@@ -182,7 +182,6 @@ dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler2dshadow_
 dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler2d_vec3_fixed_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler2d_vec4_fixed_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler3d_fixed_vertex,Fail
-KHR-GL32.glsl_noperspective.functionaltest,Fail
 KHR-GL32.gpu_shader5_gl.float_encoding,Fail
 KHR-GL32.packed_depth_stencil.blit.depth24_stencil8,Fail
 KHR-GL32.packed_depth_stencil.blit.depth32f_stencil8,Fail
