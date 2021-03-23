@@ -369,13 +369,13 @@ static void radeon_enc_get_feedback(struct pipe_video_codec *encoder, void *feed
    struct rvid_buffer *fb = feedback;
 
    if (size) {
-      uint32_t *ptr = enc->ws->buffer_map(fb->res->buf, &enc->cs,
+      uint32_t *ptr = enc->ws->buffer_map(enc->ws, fb->res->buf, &enc->cs,
                                           PIPE_MAP_READ_WRITE | RADEON_MAP_TEMPORARY);
       if (ptr[1])
          *size = ptr[6];
       else
          *size = 0;
-      enc->ws->buffer_unmap(fb->res->buf);
+      enc->ws->buffer_unmap(enc->ws, fb->res->buf);
    }
 
    si_vid_destroy_buffer(fb);

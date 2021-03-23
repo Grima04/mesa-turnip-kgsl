@@ -39,7 +39,7 @@ bool si_cs_is_buffer_referenced(struct si_context *sctx, struct pb_buffer *buf,
 void *si_buffer_map(struct si_context *sctx, struct si_resource *resource,
                     unsigned usage)
 {
-   return sctx->ws->buffer_map(resource->buf, &sctx->gfx_cs, usage);
+   return sctx->ws->buffer_map(sctx->ws, resource->buf, &sctx->gfx_cs, usage);
 }
 
 void si_init_resource_fields(struct si_screen *sscreen, struct si_resource *res, uint64_t size,
@@ -252,7 +252,7 @@ static bool si_invalidate_buffer(struct si_context *sctx, struct si_resource *bu
 
    /* Check if mapping this buffer would cause waiting for the GPU. */
    if (si_cs_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
-       !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
+       !sctx->ws->buffer_wait(sctx->ws, buf->buf, 0, RADEON_USAGE_READWRITE)) {
       /* Reallocate the buffer in the same pipe_resource. */
       si_alloc_resource(sctx->screen, buf);
       si_rebind_buffer(sctx, &buf->b.b);
@@ -402,7 +402,7 @@ static void *si_buffer_transfer_map(struct pipe_context *ctx, struct pipe_resour
        */
       if (buf->flags & RADEON_FLAG_SPARSE || force_discard_range ||
           si_cs_is_buffer_referenced(sctx, buf->buf, RADEON_USAGE_READWRITE) ||
-          !sctx->ws->buffer_wait(buf->buf, 0, RADEON_USAGE_READWRITE)) {
+          !sctx->ws->buffer_wait(sctx->ws, buf->buf, 0, RADEON_USAGE_READWRITE)) {
          /* Do a wait-free write-only transfer using a temporary buffer. */
          struct u_upload_mgr *uploader;
          struct si_resource *staging = NULL;
@@ -513,7 +513,7 @@ static void si_buffer_transfer_unmap(struct pipe_context *ctx, struct pipe_trans
 
    if (transfer->usage & (PIPE_MAP_ONCE | RADEON_MAP_TEMPORARY) &&
        !stransfer->staging)
-      sctx->ws->buffer_unmap(si_resource(stransfer->b.b.resource)->buf);
+      sctx->ws->buffer_unmap(sctx->ws, si_resource(stransfer->b.b.resource)->buf);
 
    si_resource_reference(&stransfer->staging, NULL);
    assert(stransfer->b.staging == NULL); /* for threaded context only */
@@ -717,7 +717,7 @@ static bool si_resource_commit(struct pipe_context *pctx, struct pipe_resource *
 
    assert(resource->target == PIPE_BUFFER);
 
-   return ctx->ws->buffer_commit(res->buf, box->x, box->width, commit);
+   return ctx->ws->buffer_commit(ctx->ws, res->buf, box->x, box->width, commit);
 }
 
 void si_init_screen_buffer_functions(struct si_screen *sscreen)

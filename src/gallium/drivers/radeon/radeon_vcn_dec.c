@@ -1602,10 +1602,10 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
          si_vid_clear_buffer(dec->base.context, &dec->ctx);
 
          /* ctx needs probs table */
-         ptr = dec->ws->buffer_map(dec->ctx.res->buf, &dec->cs,
+         ptr = dec->ws->buffer_map(dec->ws, dec->ctx.res->buf, &dec->cs,
                                    PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
          fill_probs_table(ptr);
-         dec->ws->buffer_unmap(dec->ctx.res->buf);
+         dec->ws->buffer_unmap(dec->ws, dec->ctx.res->buf);
          dec->bs_ptr = NULL;
       } else if (fmt == PIPE_VIDEO_FORMAT_HEVC) {
          unsigned ctx_size;
@@ -1781,14 +1781,14 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
             RVID_ERR("Can't allocated context buffer.\n");
          si_vid_clear_buffer(dec->base.context, &dec->ctx);
 
-         ptr = dec->ws->buffer_map(dec->ctx.res->buf, &dec->cs, PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
+         ptr = dec->ws->buffer_map(dec->ws, dec->ctx.res->buf, &dec->cs, PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
 
          for (i = 0; i < 4; ++i) {
             rvcn_init_mode_probs((void*)(ptr + i * align(sizeof(rvcn_av1_frame_context_t), 2048)));
             rvcn_av1_init_mv_probs((void*)(ptr + i * align(sizeof(rvcn_av1_frame_context_t), 2048)));
             rvcn_av1_default_coef_probs((void*)(ptr + i * align(sizeof(rvcn_av1_frame_context_t), 2048)), i);
          }
-         dec->ws->buffer_unmap(dec->ctx.res->buf);
+         dec->ws->buffer_unmap(dec->ws, dec->ctx.res->buf);
       }
 
       break;
@@ -1881,7 +1881,7 @@ static void map_msg_fb_it_probs_buf(struct radeon_decoder *dec)
 
    /* and map it for CPU access */
    ptr =
-      dec->ws->buffer_map(buf->res->buf, &dec->cs, PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
+      dec->ws->buffer_map(dec->ws, buf->res->buf, &dec->cs, PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
 
    /* calc buffer offsets */
    dec->msg = ptr;
@@ -1906,7 +1906,7 @@ static void send_msg_buf(struct radeon_decoder *dec)
    buf = &dec->msg_fb_it_probs_buffers[dec->cur_buffer];
 
    /* unmap the buffer */
-   dec->ws->buffer_unmap(buf->res->buf);
+   dec->ws->buffer_unmap(dec->ws, buf->res->buf);
    dec->bs_ptr = NULL;
    dec->msg = NULL;
    dec->fb = NULL;
@@ -2176,7 +2176,7 @@ static void radeon_dec_begin_frame(struct pipe_video_codec *decoder,
                                           &radeon_dec_destroy_associated_data);
 
    dec->bs_size = 0;
-   dec->bs_ptr = dec->ws->buffer_map(dec->bs_buffers[dec->cur_buffer].res->buf, &dec->cs,
+   dec->bs_ptr = dec->ws->buffer_map(dec->ws, dec->bs_buffers[dec->cur_buffer].res->buf, &dec->cs,
                                      PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
 }
 
@@ -2214,14 +2214,14 @@ static void radeon_dec_decode_bitstream(struct pipe_video_codec *decoder,
       unsigned new_size = dec->bs_size + sizes[i];
 
       if (new_size > buf->res->buf->size) {
-         dec->ws->buffer_unmap(buf->res->buf);
+         dec->ws->buffer_unmap(dec->ws, buf->res->buf);
          dec->bs_ptr = NULL;
          if (!si_vid_resize_buffer(dec->screen, &dec->cs, buf, new_size)) {
             RVID_ERR("Can't resize bitstream buffer!");
             return;
          }
 
-         dec->bs_ptr = dec->ws->buffer_map(buf->res->buf, &dec->cs,
+         dec->bs_ptr = dec->ws->buffer_map(dec->ws, buf->res->buf, &dec->cs,
                                            PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
          if (!dec->bs_ptr)
             return;
@@ -2248,7 +2248,7 @@ void send_cmd_dec(struct radeon_decoder *dec, struct pipe_video_buffer *target,
    bs_buf = &dec->bs_buffers[dec->cur_buffer];
 
    memset(dec->bs_ptr, 0, align(dec->bs_size, 128) - dec->bs_size);
-   dec->ws->buffer_unmap(bs_buf->res->buf);
+   dec->ws->buffer_unmap(dec->ws, bs_buf->res->buf);
    dec->bs_ptr = NULL;
 
    map_msg_fb_it_probs_buf(dec);
@@ -2410,11 +2410,11 @@ struct pipe_video_codec *radeon_create_decoder(struct pipe_context *context,
          void *ptr;
 
          buf = &dec->msg_fb_it_probs_buffers[i];
-         ptr = dec->ws->buffer_map(buf->res->buf, &dec->cs,
+         ptr = dec->ws->buffer_map(dec->ws, buf->res->buf, &dec->cs,
                                    PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
          ptr += FB_BUFFER_OFFSET + FB_BUFFER_SIZE;
          fill_probs_table(ptr);
-         dec->ws->buffer_unmap(buf->res->buf);
+         dec->ws->buffer_unmap(dec->ws, buf->res->buf);
          dec->bs_ptr = NULL;
       }
    }

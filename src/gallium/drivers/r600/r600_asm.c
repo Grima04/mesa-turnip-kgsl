@@ -2778,7 +2778,7 @@ void *r600_create_vertex_fetch_shader(struct pipe_context *ctx,
 	} else {
 		memcpy(bytecode, bc.bytecode, fs_size);
 	}
-	rctx->b.ws->buffer_unmap(shader->buffer->buf);
+	rctx->b.ws->buffer_unmap(rctx->b.ws, shader->buffer->buf);
 
 	r600_bytecode_clear(&bc);
 	return shader;

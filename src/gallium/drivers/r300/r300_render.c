@@ -374,7 +374,7 @@ static void r300_draw_arrays_immediate(struct r300_context *r300,
 
         /* Map the buffer. */
         if (!map[vbi]) {
-            map[vbi] = (uint32_t*)r300->rws->buffer_map(
+            map[vbi] = (uint32_t*)r300->rws->buffer_map(r300->rws,
                 r300_resource(vbuf->buffer.resource)->buf,
                 &r300->cs, PIPE_MAP_READ | PIPE_MAP_UNSYNCHRONIZED);
             map[vbi] += (vbuf->buffer_offset / 4) + stride[i] * draw->start;
@@ -611,7 +611,7 @@ static void r300_draw_elements(struct r300_context *r300,
     /* Fallback for misaligned ushort indices. */
     if (indexSize == 2 && (start & 1) && indexBuffer) {
         /* If we got here, then orgIndexBuffer == indexBuffer. */
-        uint16_t *ptr = r300->rws->buffer_map(r300_resource(orgIndexBuffer)->buf,
+        uint16_t *ptr = r300->rws->buffer_map(r300->rws, r300_resource(orgIndexBuffer)->buf,
                                               &r300->cs,
                                               PIPE_MAP_READ |
                                               PIPE_MAP_UNSYNCHRONIZED);
@@ -946,7 +946,7 @@ static boolean r300_render_allocate_vertices(struct vbuf_render* render,
             return FALSE;
         }
         r300->draw_vbo_offset = 0;
-        r300render->vbo_ptr = rws->buffer_map(r300->vbo, &r300->cs,
+        r300render->vbo_ptr = rws->buffer_map(rws, r300->vbo, &r300->cs,
                                               PIPE_MAP_WRITE);
     }
 

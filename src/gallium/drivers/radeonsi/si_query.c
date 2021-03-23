@@ -570,7 +570,7 @@ void si_query_buffer_reset(struct si_context *sctx, struct si_query_buffer *buff
 
    /* Discard even the oldest buffer if it can't be mapped without a stall. */
    if (si_cs_is_buffer_referenced(sctx, buffer->buf->buf, RADEON_USAGE_READWRITE) ||
-       !sctx->ws->buffer_wait(buffer->buf->buf, 0, RADEON_USAGE_READWRITE)) {
+       !sctx->ws->buffer_wait(sctx->ws, buffer->buf->buf, 0, RADEON_USAGE_READWRITE)) {
       si_resource_reference(&buffer->buf, NULL);
    } else {
       buffer->unprepared = true;
@@ -629,7 +629,7 @@ static bool si_query_hw_prepare_buffer(struct si_context *sctx, struct si_query_
    struct si_screen *screen = sctx->screen;
 
    /* The caller ensures that the buffer is currently unused by the GPU. */
-   uint32_t *results = screen->ws->buffer_map(qbuf->buf->buf, NULL,
+   uint32_t *results = screen->ws->buffer_map(sctx->ws, qbuf->buf->buf, NULL,
                                               PIPE_MAP_WRITE | PIPE_MAP_UNSYNCHRONIZED);
    if (!results)
       return false;
@@ -1424,7 +1424,7 @@ bool si_query_hw_get_result(struct si_context *sctx, struct si_query *squery, bo
       void *map;
 
       if (squery->b.flushed)
-         map = sctx->ws->buffer_map(qbuf->buf->buf, NULL, usage);
+         map = sctx->ws->buffer_map(sctx->ws, qbuf->buf->buf, NULL, usage);
       else
          map = si_buffer_map(sctx, qbuf->buf, usage);
 

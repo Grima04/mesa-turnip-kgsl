@@ -871,7 +871,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
    u.get_external_symbol = si_get_external_symbol;
    u.cb_data = &scratch_va;
    u.rx_va = shader->bo->gpu_address;
-   u.rx_ptr = sscreen->ws->buffer_map(
+   u.rx_ptr = sscreen->ws->buffer_map(sscreen->ws,
       shader->bo->buf, NULL,
       PIPE_MAP_READ_WRITE | PIPE_MAP_UNSYNCHRONIZED | RADEON_MAP_TEMPORARY);
    if (!u.rx_ptr)
@@ -886,7 +886,7 @@ bool si_shader_binary_upload(struct si_screen *sscreen, struct si_shader *shader
       memcpy(shader->binary.uploaded_code, u.rx_ptr, size);
    }
 
-   sscreen->ws->buffer_unmap(shader->bo->buf);
+   sscreen->ws->buffer_unmap(sscreen->ws, shader->bo->buf);
    ac_rtld_close(&binary);
 
    return size >= 0;

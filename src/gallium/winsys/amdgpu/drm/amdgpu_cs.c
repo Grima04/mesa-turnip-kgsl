@@ -729,7 +729,7 @@ static bool amdgpu_ib_new_buffer(struct amdgpu_winsys *ws,
    if (!pb)
       return false;
 
-   mapped = amdgpu_bo_map(pb, NULL, PIPE_MAP_WRITE);
+   mapped = amdgpu_bo_map(&ws->dummy_ws.base, pb, NULL, PIPE_MAP_WRITE);
    if (!mapped) {
       pb_reference(&pb, NULL);
       return false;
@@ -1063,7 +1063,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    if (!preamble_bo)
       return false;
 
-   map = (uint32_t*)amdgpu_bo_map(preamble_bo, NULL,
+   map = (uint32_t*)amdgpu_bo_map(&ws->dummy_ws.base, preamble_bo, NULL,
                                   PIPE_MAP_WRITE | RADEON_MAP_TEMPORARY);
    if (!map) {
       pb_reference(&preamble_bo, NULL);
@@ -1077,7 +1077,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
    uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ring_type];
    while (preamble_num_dw & ib_pad_dw_mask)
       map[preamble_num_dw++] = PKT3_NOP_PAD;
-   amdgpu_bo_unmap(preamble_bo);
+   amdgpu_bo_unmap(&ws->dummy_ws.base, preamble_bo);
 
    for (unsigned i = 0; i < 2; i++) {
       csc[i]->ib[IB_PREAMBLE] = csc[i]->ib[IB_MAIN];

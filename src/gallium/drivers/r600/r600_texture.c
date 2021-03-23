@@ -519,7 +519,7 @@ static bool r600_texture_get_handle(struct pipe_screen* screen,
 		if (!res->b.is_shared || update_metadata) {
 			r600_texture_init_metadata(rscreen, rtex, &metadata);
 
-			rscreen->ws->buffer_set_metadata(res->buf, &metadata, NULL);
+			rscreen->ws->buffer_set_metadata(rscreen->ws, res->buf, &metadata, NULL);
 		}
 
 		slice_size = (uint64_t)rtex->surface.u.legacy.level[0].slice_size_dw * 4;
@@ -1132,7 +1132,7 @@ static struct pipe_resource *r600_texture_from_handle(struct pipe_screen *screen
 	if (!buf)
 		return NULL;
 
-	rscreen->ws->buffer_get_metadata(buf, &metadata, NULL);
+	rscreen->ws->buffer_get_metadata(rscreen->ws, buf, &metadata, NULL);
 	r600_surface_import_metadata(rscreen, &surface, &metadata,
 				     &array_mode, &is_scanout);
 
@@ -1343,7 +1343,7 @@ static void *r600_texture_transfer_map(struct pipe_context *ctx,
 		/* Write & linear only: */
 		else if (r600_rings_is_buffer_referenced(rctx, rtex->resource.buf,
 							 RADEON_USAGE_READWRITE) ||
-			 !rctx->ws->buffer_wait(rtex->resource.buf, 0,
+			 !rctx->ws->buffer_wait(rctx->ws, rtex->resource.buf, 0,
 						RADEON_USAGE_READWRITE)) {
 			/* It's busy. */
 			if (r600_can_invalidate_texture(rctx->screen, rtex,
@@ -1899,7 +1899,7 @@ r600_texture_from_memobj(struct pipe_screen *screen,
 	struct pb_buffer *buf = NULL;
 
 	if (memobj->b.dedicated) {
-		rscreen->ws->buffer_get_metadata(memobj->buf, &metadata, NULL);
+		rscreen->ws->buffer_get_metadata(rscreen->ws, memobj->buf, &metadata, NULL);
 		r600_surface_import_metadata(rscreen, &surface, &metadata,
 				     &array_mode, &is_scanout);
 	} else {

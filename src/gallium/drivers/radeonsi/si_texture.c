@@ -521,7 +521,7 @@ static void si_set_tex_bo_metadata(struct si_screen *sscreen, struct si_texture 
    ac_surface_get_umd_metadata(&sscreen->info, &tex->surface,
                                tex->buffer.b.b.last_level + 1,
                                desc, &md.size_metadata, md.metadata);
-   sscreen->ws->buffer_set_metadata(tex->buffer.buf, &md, &tex->surface);
+   sscreen->ws->buffer_set_metadata(sscreen->ws, tex->buffer.buf, &md, &tex->surface);
 }
 
 static bool si_displayable_dcc_needs_explicit_flush(struct si_texture *tex)
@@ -1118,7 +1118,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
                                                          SI_RESOURCE_FLAG_DRIVER_INTERNAL, PIPE_USAGE_STREAM,
                                                          dcc_retile_map_size,
                                                          sscreen->info.tcc_cache_line_size);
-      void *map = sscreen->ws->buffer_map(buf->buf, NULL, PIPE_MAP_WRITE);
+      void *map = sscreen->ws->buffer_map(sscreen->ws, buf->buf, NULL, PIPE_MAP_WRITE);
 
       /* Upload the retile map into the staging buffer. */
       memcpy(map, tex->surface.u.gfx9.dcc_retile_map, dcc_retile_map_size);
@@ -1541,7 +1541,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
       dedicated = false;
 
    if (dedicated) {
-      sscreen->ws->buffer_get_metadata(buf, &metadata, &surface);
+      sscreen->ws->buffer_get_metadata(sscreen->ws, buf, &metadata, &surface);
    } else {
       /**
        * The bo metadata is unset for un-dedicated images. So we fall
@@ -1864,7 +1864,7 @@ static void *si_texture_transfer_map(struct pipe_context *ctx, struct pipe_resou
             tex->buffer.domains & RADEON_DOMAIN_VRAM || tex->buffer.flags & RADEON_FLAG_GTT_WC;
       /* Write & linear only: */
       else if (si_cs_is_buffer_referenced(sctx, tex->buffer.buf, RADEON_USAGE_READWRITE) ||
-               !sctx->ws->buffer_wait(tex->buffer.buf, 0, RADEON_USAGE_READWRITE)) {
+               !sctx->ws->buffer_wait(sctx->ws, tex->buffer.buf, 0, RADEON_USAGE_READWRITE)) {
          /* It's busy. */
          if (si_can_invalidate_texture(sctx->screen, tex, usage, box))
             si_texture_invalidate_storage(sctx, tex);
@@ -1967,7 +1967,7 @@ static void si_texture_transfer_unmap(struct pipe_context *ctx, struct pipe_tran
    if (sizeof(void *) == 4) {
       struct si_resource *buf = stransfer->staging ? stransfer->staging : &tex->buffer;
 
-      sctx->ws->buffer_unmap(buf->buf);
+      sctx->ws->buffer_unmap(sctx->ws, buf->buf);
    }
 
    if ((transfer->usage & PIPE_MAP_WRITE) && stransfer->staging)

@@ -47,7 +47,8 @@ struct amdgpu_sparse_backing_chunk {
    uint32_t begin, end;
 };
 
-static bool amdgpu_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
+static bool amdgpu_bo_wait(struct radeon_winsys *rws,
+                           struct pb_buffer *_buf, uint64_t timeout,
                            enum radeon_bo_usage usage)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
@@ -173,13 +174,13 @@ void amdgpu_bo_destroy(void *winsys, struct pb_buffer *_buf)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(_buf);
    struct amdgpu_screen_winsys *sws_iter;
-   struct amdgpu_winsys *ws = bo->ws;
+   struct amdgpu_winsys *ws = winsys;
 
    assert(bo->bo && "must not be called for slab entries");
 
    if (!bo->u.real.is_user_ptr && bo->u.real.cpu_ptr) {
       bo->u.real.cpu_ptr = NULL;
-      amdgpu_bo_unmap(&bo->base);
+      amdgpu_bo_unmap(&ws->dummy_ws.base, &bo->base);
    }
    assert(bo->u.real.is_user_ptr || bo->u.real.map_count == 0);
 
@@ -277,7 +278,8 @@ static bool amdgpu_bo_do_map(struct amdgpu_winsys_bo *bo, void **cpu)
    return true;
 }
 
-void *amdgpu_bo_map(struct pb_buffer *buf,
+void *amdgpu_bo_map(struct radeon_winsys *rws,
+                    struct pb_buffer *buf,
                     struct radeon_cmdbuf *rcs,
                     enum pipe_map_flags usage)
 {
@@ -306,7 +308,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
                return NULL;
             }
 
-            if (!amdgpu_bo_wait((struct pb_buffer*)bo, 0,
+            if (!amdgpu_bo_wait(rws, (struct pb_buffer*)bo, 0,
                                 RADEON_USAGE_WRITE)) {
                return NULL;
             }
@@ -317,7 +319,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
                return NULL;
             }
 
-            if (!amdgpu_bo_wait((struct pb_buffer*)bo, 0,
+            if (!amdgpu_bo_wait(rws, (struct pb_buffer*)bo, 0,
                                 RADEON_USAGE_READWRITE)) {
                return NULL;
             }
@@ -345,7 +347,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
                }
             }
 
-            amdgpu_bo_wait((struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
+            amdgpu_bo_wait(rws, (struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
                            RADEON_USAGE_WRITE);
          } else {
             /* Mapping for write. */
@@ -360,7 +362,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
                }
             }
 
-            amdgpu_bo_wait((struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
+            amdgpu_bo_wait(rws, (struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
                            RADEON_USAGE_READWRITE);
          }
 
@@ -407,7 +409,7 @@ void *amdgpu_bo_map(struct pb_buffer *buf,
    return (uint8_t*)cpu + offset;
 }
 
-void amdgpu_bo_unmap(struct pb_buffer *buf)
+void amdgpu_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *buf)
 {
    struct amdgpu_winsys_bo *bo = (struct amdgpu_winsys_bo*)buf;
    struct amdgpu_winsys_bo *real;
@@ -622,7 +624,9 @@ error_bo_alloc:
 
 bool amdgpu_bo_can_reclaim(void *winsys, struct pb_buffer *_buf)
 {
-   return amdgpu_bo_wait(_buf, 0, RADEON_USAGE_READWRITE);
+   struct amdgpu_winsys *ws = winsys;
+
+   return amdgpu_bo_wait(&ws->dummy_ws.base, _buf, 0, RADEON_USAGE_READWRITE);
 }
 
 bool amdgpu_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
@@ -1188,8 +1192,8 @@ error_alloc_commitments:
 }
 
 static bool
-amdgpu_bo_sparse_commit(struct pb_buffer *buf, uint64_t offset, uint64_t size,
-                        bool commit)
+amdgpu_bo_sparse_commit(struct radeon_winsys *rws, struct pb_buffer *buf,
+                        uint64_t offset, uint64_t size, bool commit)
 {
    struct amdgpu_winsys_bo *bo = amdgpu_winsys_bo(buf);
    struct amdgpu_sparse_commitment *comm;
@@ -1316,7 +1320,8 @@ out:
    return ok;
 }
 
-static void amdgpu_buffer_get_metadata(struct pb_buffer *_buf,
+static void amdgpu_buffer_get_metadata(struct radeon_winsys *rws,
+                                       struct pb_buffer *_buf,
                                        struct radeon_bo_metadata *md,
                                        struct radeon_surf *surf)
 {
@@ -1337,7 +1342,8 @@ static void amdgpu_buffer_get_metadata(struct pb_buffer *_buf,
    memcpy(md->metadata, info.metadata.umd_metadata, sizeof(md->metadata));
 }
 
-static void amdgpu_buffer_set_metadata(struct pb_buffer *_buf,
+static void amdgpu_buffer_set_metadata(struct radeon_winsys *rws,
+                                       struct pb_buffer *_buf,
                                        struct radeon_bo_metadata *md,
                                        struct radeon_surf *surf)
 {

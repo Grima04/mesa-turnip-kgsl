@@ -572,7 +572,7 @@ static bool r600_resource_commit(struct pipe_context *pctx,
 
 	assert(resource->target == PIPE_BUFFER);
 
-	return ctx->ws->buffer_commit(res->buf, box->x, box->width, commit);
+	return ctx->ws->buffer_commit(ctx->ws, res->buf, box->x, box->width, commit);
 }
 
 bool r600_common_context_init(struct r600_common_context *rctx,

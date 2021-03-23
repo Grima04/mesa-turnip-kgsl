@@ -4818,7 +4818,7 @@ static void *si_create_vertex_elements(struct pipe_context *ctx, unsigned count,
          return NULL;
       }
       void *map =
-         sscreen->ws->buffer_map(v->instance_divisor_factor_buffer->buf, NULL, PIPE_MAP_WRITE);
+         sscreen->ws->buffer_map(sscreen->ws, v->instance_divisor_factor_buffer->buf, NULL, PIPE_MAP_WRITE);
       memcpy(map, divisor_factors, num_divisors * sizeof(divisor_factors[0]));
    }
    return v;

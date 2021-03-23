@@ -491,7 +491,7 @@ si_get_thread_trace(struct si_context *sctx,
    memset(thread_trace, 0, sizeof(*thread_trace));
    thread_trace->num_traces = max_se;
 
-   sctx->thread_trace->ptr = sctx->ws->buffer_map(sctx->thread_trace->bo,
+   sctx->thread_trace->ptr = sctx->ws->buffer_map(sctx->ws, sctx->thread_trace->bo,
                                                           NULL,
                                                           PIPE_MAP_READ);
 

@@ -80,7 +80,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
       qbuf = list_first_entry(&sctx->shader_query_buffers, struct gfx10_sh_query_buffer, list);
       if (!qbuf->refcount &&
           !si_cs_is_buffer_referenced(sctx, qbuf->buf->buf, RADEON_USAGE_READWRITE) &&
-          sctx->ws->buffer_wait(qbuf->buf->buf, 0, RADEON_USAGE_READWRITE)) {
+          sctx->ws->buffer_wait(sctx->ws, qbuf->buf->buf, 0, RADEON_USAGE_READWRITE)) {
          /* Can immediately re-use the oldest buffer */
          list_del(&qbuf->list);
       } else {
@@ -108,7 +108,7 @@ static bool gfx10_alloc_query_buffer(struct si_context *sctx)
     * We need to set the high bit of all the primitive counters for
     * compatibility with the SET_PREDICATION packet.
     */
-   uint64_t *results = sctx->ws->buffer_map(qbuf->buf->buf, NULL,
+   uint64_t *results = sctx->ws->buffer_map(sctx->ws, qbuf->buf->buf, NULL,
                                             PIPE_MAP_WRITE | PIPE_MAP_UNSYNCHRONIZED);
    assert(results);
 
@@ -247,7 +247,7 @@ static bool gfx10_sh_query_get_result(struct si_context *sctx, struct si_query *
       void *map;
 
       if (rquery->b.flushed)
-         map = sctx->ws->buffer_map(qbuf->buf->buf, NULL, usage);
+         map = sctx->ws->buffer_map(sctx->ws, qbuf->buf->buf, NULL, usage);
       else
          map = si_buffer_map(sctx, qbuf->buf, usage);
 

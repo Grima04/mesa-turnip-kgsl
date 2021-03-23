@@ -336,15 +336,15 @@ struct radeon_winsys {
     * \param usage     A bitmask of the PIPE_MAP_* and RADEON_MAP_* flags.
     * \return          The pointer at the beginning of the buffer.
     */
-   void *(*buffer_map)(struct pb_buffer *buf, struct radeon_cmdbuf *cs,
-                       enum pipe_map_flags usage);
+   void *(*buffer_map)(struct radeon_winsys *ws, struct pb_buffer *buf,
+                       struct radeon_cmdbuf *cs, enum pipe_map_flags usage);
 
    /**
     * Unmap a buffer object from the client's address space.
     *
     * \param buf       A winsys buffer object to unmap.
     */
-   void (*buffer_unmap)(struct pb_buffer *buf);
+   void (*buffer_unmap)(struct radeon_winsys *ws, struct pb_buffer *buf);
 
    /**
     * Wait for the buffer and return true if the buffer is not used
@@ -354,7 +354,8 @@ struct radeon_winsys {
     * The timeout of PIPE_TIMEOUT_INFINITE will always wait until the buffer
     * is idle.
     */
-   bool (*buffer_wait)(struct pb_buffer *buf, uint64_t timeout, enum radeon_bo_usage usage);
+   bool (*buffer_wait)(struct radeon_winsys *ws, struct pb_buffer *buf,
+                       uint64_t timeout, enum radeon_bo_usage usage);
 
    /**
     * Return buffer metadata.
@@ -363,8 +364,8 @@ struct radeon_winsys {
     * \param buf       A winsys buffer object to get the flags from.
     * \param md        Metadata
     */
-   void (*buffer_get_metadata)(struct pb_buffer *buf, struct radeon_bo_metadata *md,
-                               struct radeon_surf *surf);
+   void (*buffer_get_metadata)(struct radeon_winsys *ws, struct pb_buffer *buf,
+                               struct radeon_bo_metadata *md, struct radeon_surf *surf);
 
    /**
     * Set buffer metadata.
@@ -373,8 +374,8 @@ struct radeon_winsys {
     * \param buf       A winsys buffer object to set the flags for.
     * \param md        Metadata
     */
-   void (*buffer_set_metadata)(struct pb_buffer *buf, struct radeon_bo_metadata *md,
-                               struct radeon_surf *surf);
+   void (*buffer_set_metadata)(struct radeon_winsys *ws, struct pb_buffer *buf,
+                               struct radeon_bo_metadata *md, struct radeon_surf *surf);
 
    /**
     * Get a winsys buffer from a winsys handle. The internal structure
@@ -430,7 +431,8 @@ struct radeon_winsys {
     *
     * \return false on out of memory or other failure, true on success.
     */
-   bool (*buffer_commit)(struct pb_buffer *buf, uint64_t offset, uint64_t size, bool commit);
+   bool (*buffer_commit)(struct radeon_winsys *ws, struct pb_buffer *buf,
+                         uint64_t offset, uint64_t size, bool commit);
 
    /**
     * Return the virtual address of a buffer.

@@ -543,7 +543,7 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
          goto fail;
 
       sctx->border_color_map =
-         ws->buffer_map(sctx->border_color_buffer->buf, NULL, PIPE_MAP_WRITE);
+         ws->buffer_map(ws, sctx->border_color_buffer->buf, NULL, PIPE_MAP_WRITE);
       if (!sctx->border_color_map)
          goto fail;
    }

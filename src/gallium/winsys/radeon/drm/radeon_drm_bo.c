@@ -129,7 +129,8 @@ static void radeon_bo_wait_idle(struct radeon_bo *bo)
    }
 }
 
-static bool radeon_bo_wait(struct pb_buffer *_buf, uint64_t timeout,
+static bool radeon_bo_wait(struct radeon_winsys *rws,
+                           struct pb_buffer *_buf, uint64_t timeout,
                            enum radeon_bo_usage usage)
 {
    struct radeon_bo *bo = radeon_bo(_buf);
@@ -496,7 +497,8 @@ void *radeon_bo_do_map(struct radeon_bo *bo)
    return (uint8_t*)bo->u.real.ptr + offset;
 }
 
-static void *radeon_bo_map(struct pb_buffer *buf,
+static void *radeon_bo_map(struct radeon_winsys *rws,
+                           struct pb_buffer *buf,
                            struct radeon_cmdbuf *rcs,
                            enum pipe_map_flags usage)
 {
@@ -521,7 +523,7 @@ static void *radeon_bo_map(struct pb_buffer *buf,
                return NULL;
             }
 
-            if (!radeon_bo_wait((struct pb_buffer*)bo, 0,
+            if (!radeon_bo_wait(rws, (struct pb_buffer*)bo, 0,
                                 RADEON_USAGE_WRITE)) {
                return NULL;
             }
@@ -532,7 +534,7 @@ static void *radeon_bo_map(struct pb_buffer *buf,
                return NULL;
             }
 
-            if (!radeon_bo_wait((struct pb_buffer*)bo, 0,
+            if (!radeon_bo_wait(rws, (struct pb_buffer*)bo, 0,
                                 RADEON_USAGE_READWRITE)) {
                return NULL;
             }
@@ -552,7 +554,7 @@ static void *radeon_bo_map(struct pb_buffer *buf,
                cs->flush_cs(cs->flush_data,
                             RADEON_FLUSH_START_NEXT_GFX_IB_NOW, NULL);
             }
-            radeon_bo_wait((struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
+            radeon_bo_wait(rws, (struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
                            RADEON_USAGE_WRITE);
          } else {
             /* Mapping for write. */
@@ -567,7 +569,7 @@ static void *radeon_bo_map(struct pb_buffer *buf,
                }
             }
 
-            radeon_bo_wait((struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
+            radeon_bo_wait(rws, (struct pb_buffer*)bo, PIPE_TIMEOUT_INFINITE,
                            RADEON_USAGE_READWRITE);
          }
 
@@ -578,7 +580,7 @@ static void *radeon_bo_map(struct pb_buffer *buf,
    return radeon_bo_do_map(bo);
 }
 
-static void radeon_bo_unmap(struct pb_buffer *_buf)
+static void radeon_bo_unmap(struct radeon_winsys *rws, struct pb_buffer *_buf)
 {
    struct radeon_bo *bo = (struct radeon_bo*)_buf;
 
@@ -744,7 +746,7 @@ bool radeon_bo_can_reclaim(void *winsys, struct pb_buffer *_buf)
    if (radeon_bo_is_referenced_by_any_cs(bo))
       return false;
 
-   return radeon_bo_wait(_buf, 0, RADEON_USAGE_READWRITE);
+   return radeon_bo_wait(winsys, _buf, 0, RADEON_USAGE_READWRITE);
 }
 
 bool radeon_bo_can_reclaim_slab(void *priv, struct pb_slab_entry *entry)
@@ -872,7 +874,8 @@ static unsigned eg_tile_split_rev(unsigned eg_tile_split)
    }
 }
 
-static void radeon_bo_get_metadata(struct pb_buffer *_buf,
+static void radeon_bo_get_metadata(struct radeon_winsys *rws,
+                                   struct pb_buffer *_buf,
                                    struct radeon_bo_metadata *md,
                                    struct radeon_surf *surf)
 {
@@ -929,7 +932,8 @@ static void radeon_bo_get_metadata(struct pb_buffer *_buf,
    md->u.legacy.scanout = bo->rws->gen >= DRV_SI && !(args.tiling_flags & RADEON_TILING_R600_NO_SCANOUT);
 }
 
-static void radeon_bo_set_metadata(struct pb_buffer *_buf,
+static void radeon_bo_set_metadata(struct radeon_winsys *rws,
+                                   struct pb_buffer *_buf,
                                    struct radeon_bo_metadata *md,
                                    struct radeon_surf *surf)
 {
