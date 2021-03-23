@@ -135,11 +135,11 @@ static void radeon_cs_context_cleanup(struct radeon_cs_context *csc)
 
    for (i = 0; i < csc->num_relocs; i++) {
       p_atomic_dec(&csc->relocs_bo[i].bo->num_cs_references);
-      radeon_bo_reference(&csc->relocs_bo[i].bo, NULL);
+      radeon_ws_bo_reference(&csc->relocs_bo[i].bo, NULL);
    }
    for (i = 0; i < csc->num_slab_buffers; ++i) {
       p_atomic_dec(&csc->slab_buffers[i].bo->num_cs_references);
-      radeon_bo_reference(&csc->slab_buffers[i].bo, NULL);
+      radeon_ws_bo_reference(&csc->slab_buffers[i].bo, NULL);
    }
 
    csc->num_relocs = 0;
@@ -289,7 +289,7 @@ static unsigned radeon_lookup_or_add_real_buffer(struct radeon_drm_cs *cs,
    /* Initialize the new relocation. */
    csc->relocs_bo[csc->num_relocs].bo = NULL;
    csc->relocs_bo[csc->num_relocs].u.real.priority_usage = 0;
-   radeon_bo_reference(&csc->relocs_bo[csc->num_relocs].bo, bo);
+   radeon_ws_bo_reference(&csc->relocs_bo[csc->num_relocs].bo, bo);
    p_atomic_inc(&bo->num_cs_references);
    reloc = &csc->relocs[csc->num_relocs];
    reloc->handle = bo->handle;
@@ -342,7 +342,7 @@ static int radeon_lookup_or_add_slab_buffer(struct radeon_drm_cs *cs,
 
    item->bo = NULL;
    item->u.slab.real_idx = real_idx;
-   radeon_bo_reference(&item->bo, bo);
+   radeon_ws_bo_reference(&item->bo, bo);
    p_atomic_inc(&bo->num_cs_references);
 
    hash = bo->hash & (ARRAY_SIZE(csc->reloc_indices_hashlist)-1);
@@ -423,7 +423,7 @@ static bool radeon_drm_cs_validate(struct radeon_cmdbuf *rcs)
 
       for (i = cs->csc->num_validated_relocs; i < cs->csc->num_relocs; i++) {
          p_atomic_dec(&cs->csc->relocs_bo[i].bo->num_cs_references);
-         radeon_bo_reference(&cs->csc->relocs_bo[i].bo, NULL);
+         radeon_ws_bo_reference(&cs->csc->relocs_bo[i].bo, NULL);
       }
       cs->csc->num_relocs = cs->csc->num_validated_relocs;
 
@@ -536,7 +536,7 @@ static void radeon_bo_slab_fence(struct radeon_bo *bo, struct radeon_bo *fence)
          bo->u.slab.fences[dst] = bo->u.slab.fences[src];
          dst++;
       } else {
-         radeon_bo_reference(&bo->u.slab.fences[src], NULL);
+         radeon_ws_bo_reference(&bo->u.slab.fences[src], NULL);
       }
    }
    bo->u.slab.num_fences = dst;
@@ -558,7 +558,7 @@ static void radeon_bo_slab_fence(struct radeon_bo *bo, struct radeon_bo *fence)
 
    /* Add the new fence */
    bo->u.slab.fences[bo->u.slab.num_fences] = NULL;
-   radeon_bo_reference(&bo->u.slab.fences[bo->u.slab.num_fences], fence);
+   radeon_ws_bo_reference(&bo->u.slab.fences[bo->u.slab.num_fences], fence);
    bo->u.slab.num_fences++;
 }
 

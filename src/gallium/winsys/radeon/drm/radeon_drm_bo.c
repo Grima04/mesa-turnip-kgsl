@@ -83,7 +83,7 @@ static bool radeon_bo_is_busy(struct radeon_bo *bo)
          busy = true;
          break;
       }
-      radeon_bo_reference(&bo->u.slab.fences[num_idle], NULL);
+      radeon_ws_bo_reference(&bo->u.slab.fences[num_idle], NULL);
    }
    memmove(&bo->u.slab.fences[0], &bo->u.slab.fences[num_idle],
          (bo->u.slab.num_fences - num_idle) * sizeof(bo->u.slab.fences[0]));
@@ -110,7 +110,7 @@ static void radeon_bo_wait_idle(struct radeon_bo *bo)
       mtx_lock(&bo->rws->bo_fence_lock);
       while (bo->u.slab.num_fences) {
          struct radeon_bo *fence = NULL;
-         radeon_bo_reference(&fence, bo->u.slab.fences[0]);
+         radeon_ws_bo_reference(&fence, bo->u.slab.fences[0]);
          mtx_unlock(&bo->rws->bo_fence_lock);
 
          /* Wait without holding the fence lock. */
@@ -118,12 +118,12 @@ static void radeon_bo_wait_idle(struct radeon_bo *bo)
 
          mtx_lock(&bo->rws->bo_fence_lock);
          if (bo->u.slab.num_fences && fence == bo->u.slab.fences[0]) {
-            radeon_bo_reference(&bo->u.slab.fences[0], NULL);
+            radeon_ws_bo_reference(&bo->u.slab.fences[0], NULL);
             memmove(&bo->u.slab.fences[0], &bo->u.slab.fences[1],
                   (bo->u.slab.num_fences - 1) * sizeof(bo->u.slab.fences[0]));
             bo->u.slab.num_fences--;
          }
-         radeon_bo_reference(&fence, NULL);
+         radeon_ws_bo_reference(&fence, NULL);
       }
       mtx_unlock(&bo->rws->bo_fence_lock);
    }
@@ -821,7 +821,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
    return &slab->base;
 
 fail_buffer:
-   radeon_bo_reference(&slab->buffer, NULL);
+   radeon_ws_bo_reference(&slab->buffer, NULL);
 fail:
    FREE(slab);
    return NULL;
@@ -834,12 +834,12 @@ void radeon_bo_slab_free(void *priv, struct pb_slab *pslab)
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       struct radeon_bo *bo = &slab->entries[i];
       for (unsigned j = 0; j < bo->u.slab.num_fences; ++j)
-         radeon_bo_reference(&bo->u.slab.fences[j], NULL);
+         radeon_ws_bo_reference(&bo->u.slab.fences[j], NULL);
       FREE(bo->u.slab.fences);
    }
 
    FREE(slab->entries);
-   radeon_bo_reference(&slab->buffer, NULL);
+   radeon_ws_bo_reference(&slab->buffer, NULL);
    FREE(slab);
 }
 

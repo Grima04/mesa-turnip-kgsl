@@ -87,7 +87,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
 void radeon_bo_slab_free(void *priv, struct pb_slab *slab);
 
 static inline
-void radeon_bo_reference(struct radeon_bo **dst, struct radeon_bo *src)
+void radeon_ws_bo_reference(struct radeon_bo **dst, struct radeon_bo *src)
 {
    pb_reference((struct pb_buffer**)dst, (struct pb_buffer*)src);
 }
