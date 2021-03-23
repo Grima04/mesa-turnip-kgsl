@@ -178,9 +178,6 @@ struct panfrost_context {
         unsigned sample_mask;
         unsigned min_samples;
 
-        struct panfrost_blend_state *blit_blend;
-        struct hash_table *blend_shaders;
-
         struct panfrost_query *cond_query;
         bool cond_cond;
         enum pipe_render_cond_flag cond_mode;

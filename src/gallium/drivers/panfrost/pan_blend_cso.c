@@ -28,7 +28,8 @@
 #include <stdio.h>
 #include "util/u_memory.h"
 #include "gallium/auxiliary/util/u_blend.h"
-#include "pan_blend_shaders.h"
+#include "pan_context.h"
+#include "pan_blend_cso.h"
 #include "pan_bo.h"
 #include "panfrost-quirks.h"
 
@@ -58,54 +59,6 @@
  * All of this state is encapsulated in the panfrost_blend_state struct
  * (our subclass of pipe_blend_state).
  */
-
-/* Given an initialized CSO and a particular framebuffer format, grab a
- * blend shader, generating and compiling it if it doesn't exist
- * (lazy-loading in a way). This routine, when the cache hits, should
- * befast, suitable for calling every draw to avoid wacky dirty
- * tracking paths. If the cache hits, boom, done. */
-
-struct panfrost_blend_shader *
-panfrost_get_blend_shader(struct panfrost_context *ctx,
-                          struct panfrost_blend_state *blend,
-                          enum pipe_format fmt, unsigned nr_samples,
-                          unsigned rt,
-                          const float *constants)
-{
-        /* Prevent NULL collision issues.. */
-        assert(fmt != 0);
-
-        /* Check the cache. Key by the RT and format */
-        struct hash_table *shaders = ctx->blend_shaders;
-        struct panfrost_blend_shader_key key = {
-                .rt = rt,
-                .format = fmt,
-                .nr_samples = MAX2(nr_samples, 1),
-                .has_constants = constants != NULL,
-                .logicop_enable = blend->base.logicop_enable,
-        };
-
-        if (blend->base.logicop_enable) {
-                key.logicop_func = blend->base.logicop_func;
-        } else {
-                unsigned idx = blend->base.independent_blend_enable ? rt : 0;
-
-                if (blend->base.rt[idx].blend_enable)
-                        key.equation = blend->base.rt[idx];
-        }
-
-        struct hash_entry *he = _mesa_hash_table_search(shaders, &key);
-        struct panfrost_blend_shader *shader = he ? he->data : NULL;
-
-        if (!shader) {
-                /* Cache miss. Build one instead, cache it, and go */
-                shader = panfrost_create_blend_shader(ctx, blend, &key);
-                _mesa_hash_table_insert(shaders, &shader->key, shader);
-        }
-
-        panfrost_compile_blend_shader(shader, constants);
-        return shader;
-}
 
 /* Create a blend CSO. Essentially, try to compile a fixed-function
  * expression and initialize blend shaders */
@@ -214,12 +167,6 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
 
 
         /* Otherwise, we need to grab a shader */
-        unsigned constant_mask = pan_blend_constant_mask(&pan_blend, rti);
-        struct panfrost_blend_shader *shader =
-                panfrost_get_blend_shader(ctx, blend, fmt, nr_samples, rti,
-                                          constant_mask ?
-                                          ctx->blend_color.color : NULL);
-
         /* Upload the shader, sharing a BO */
         if (!(*bo)) {
                 *bo = panfrost_batch_create_bo(batch, 4096,
@@ -229,22 +176,26 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                    PAN_BO_ACCESS_FRAGMENT);
         }
 
-        /* Size check */
-        assert((*shader_offset + shader->size) < 4096);
+        pthread_mutex_lock(&dev->blend_shaders.lock);
+        struct pan_blend_shader_variant *shader =
+                pan_blend_get_shader_locked(dev, &pan_blend, rti);
 
-        memcpy((*bo)->ptr.cpu + *shader_offset, shader->buffer, shader->size);
+        /* Size check */
+        assert((*shader_offset + shader->binary.size) < 4096);
+
+        memcpy((*bo)->ptr.cpu + *shader_offset, shader->binary.data, shader->binary.size);
 
         struct panfrost_blend_final final = {
                 .is_shader = true,
                 .shader = {
-                        .work_count = shader->work_count,
                         .first_tag = shader->first_tag,
                         .gpu = (*bo)->ptr.gpu + *shader_offset,
                 },
                 .load_dest = pan_blend_reads_dest(&pan_blend, rti),
         };
 
-        *shader_offset += shader->size;
+        *shader_offset += shader->binary.size;
+        pthread_mutex_unlock(&dev->blend_shaders.lock);
 
         return final;
 }

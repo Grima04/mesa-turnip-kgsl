@@ -51,7 +51,6 @@
 
 #include "midgard_pack.h"
 #include "pan_screen.h"
-#include "pan_blend_shaders.h"
 #include "pan_cmdstream.h"
 #include "pan_util.h"
 #include "decode.h"
@@ -1665,16 +1664,6 @@ panfrost_set_stream_output_targets(struct pipe_context *pctx,
         so->num_targets = num_targets;
 }
 
-static uint32_t panfrost_shader_key_hash(const void *key)
-{
-        return _mesa_hash_data(key, sizeof(struct panfrost_blend_shader_key));
-}
-
-static bool panfrost_shader_key_equal(const void *a, const void *b)
-{
-        return !memcmp(a, b, sizeof(struct panfrost_blend_shader_key));
-}
-
 struct pipe_context *
 panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
 {
@@ -1779,12 +1768,6 @@ panfrost_create_context(struct pipe_screen *screen, void *priv, unsigned flags)
         /* Prepare for render! */
 
         panfrost_batch_init(ctx);
-
-        ctx->blit_blend = rzalloc(ctx, struct panfrost_blend_state);
-        ctx->blend_shaders =
-                _mesa_hash_table_create(ctx,
-                                        panfrost_shader_key_hash,
-                                        panfrost_shader_key_equal);
 
         /* By default mask everything on */
         ctx->sample_mask = ~0;

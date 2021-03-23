@@ -685,6 +685,8 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
 
+        pan_blend_shaders_cleanup(dev);
+
         if (dev->ro)
                 dev->ro->destroy(dev->ro);
         panfrost_close_device(dev);
@@ -856,6 +858,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
 
         panfrost_resource_screen_init(&screen->base);
         panfrost_init_blit_shaders(dev);
+        pan_blend_shaders_init(dev);
 
         return &screen->base;
 }

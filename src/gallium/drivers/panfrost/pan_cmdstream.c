@@ -36,7 +36,6 @@
 #include "pan_job.h"
 #include "pan_shader.h"
 #include "pan_texture.h"
-#include "pan_blend_shaders.h"
 
 /* If a BO is accessed for a particular shader stage, will it be in the primary
  * batch (vertex/tiler) or the secondary batch (fragment)? Anything but
@@ -989,7 +988,8 @@ panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch, unsigned rt,
 
         if (rt < batch->key.nr_cbufs && batch->key.cbufs[rt]) {
                 enum pipe_format format = batch->key.cbufs[rt]->format;
-                uniform->u[0] = bifrost_get_blend_desc(dev, format, rt, 32) >> 32;
+                uniform->u[0] =
+                        pan_blend_get_bifrost_desc(dev, format, rt, 32) >> 32;
         } else {
                 pan_pack(&uniform->u[0], BIFROST_INTERNAL_CONVERSION, cfg)
                         cfg.memory_format = dev->formats[PIPE_FORMAT_NONE].hw;
