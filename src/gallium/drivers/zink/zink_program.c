@@ -218,7 +218,6 @@ shader_key_vs_gen(struct zink_context *ctx, struct zink_shader *zs,
    default:
       unreachable("impossible case");
    }
-   key->is_default_variant = !vs_key->clip_halfz && vs_key->push_drawid;
 }
 
 static void
@@ -245,8 +244,6 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
       fs_key->coord_replace_bits = ctx->rast_state->base.sprite_coord_enable;
       fs_key->coord_replace_yinvert = !!ctx->rast_state->base.sprite_coord_mode;
    }
-   key->is_default_variant = !fs_key->samples && !fs_key->force_dual_color_blend &&
-                             !fs_key->coord_replace_bits && !fs_key->coord_replace_yinvert;
 }
 
 static void
@@ -301,6 +298,15 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
    bool needs_base_size = false;
 
    shader_key_vtbl[stage](ctx, zs, ctx->gfx_stages, &key);
+   /* this is default variant if there is no default or it matches the default */
+   if (prog->default_variant_key[pstage]) {
+      const struct keybox *tmp = prog->default_variant_key[pstage];
+      /* if comparing against the existing default, use the base variant key size since
+       * we're only checking the stage-specific data
+       */
+      key.is_default_variant = !memcmp(tmp->data, &key, key.size);
+   } else
+      key.is_default_variant = true;
 
    if (zs->nir->info.num_inlinable_uniforms &&
        ctx->inlinable_uniforms_valid_mask & BITFIELD64_BIT(pstage)) {
@@ -343,9 +349,11 @@ get_shader_module_for_stage(struct zink_context *ctx, struct zink_shader *zs, st
       zm->shader = mod;
 
       _mesa_hash_table_insert_pre_hashed(prog->shader_cache->shader_cache, hash, keybox, zm);
-      if (key.is_default_variant)
+      if (key.is_default_variant) {
          /* previously returned */
          *default_zm = zm;
+         prog->default_variant_key[pstage] = keybox;
+      }
    }
    return zm;
 }
