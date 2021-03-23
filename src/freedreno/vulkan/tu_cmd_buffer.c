@@ -1812,7 +1812,7 @@ void tu_CmdPushDescriptorSetKHR(VkCommandBuffer commandBuffer,
    set->mapped_ptr = set_mem.map;
    set->va = set_mem.iova;
 
-   tu_update_descriptor_sets(tu_descriptor_set_to_handle(set),
+   tu_update_descriptor_sets(cmd->device, tu_descriptor_set_to_handle(set),
                              descriptorWriteCount, pDescriptorWrites, 0, NULL);
 
    tu_CmdBindDescriptorSets(commandBuffer, pipelineBindPoint, _layout, _set,
@@ -1851,7 +1851,7 @@ void tu_CmdPushDescriptorSetWithTemplateKHR(
    set->mapped_ptr = set_mem.map;
    set->va = set_mem.iova;
 
-   tu_update_descriptor_set_with_template(set, descriptorUpdateTemplate, pData);
+   tu_update_descriptor_set_with_template(cmd->device, set, descriptorUpdateTemplate, pData);
 
    tu_CmdBindDescriptorSets(commandBuffer, templ->bind_point, _layout, _set,
                             1, (VkDescriptorSet[]) { tu_descriptor_set_to_handle(set) },

@@ -143,6 +143,7 @@ static const struct test {
 
 	INSTR_5XX(c6e60000_00010600, "ldgb.untyped.4d.u32.1 r0.x, g[0], r1.x, r0.x"),
 	INSTR_5XX(d7660204_02000a01, "(sy)stib.typed.2d.u32.1 g[1], r0.x, r0.z, r1.x"),
+	INSTR_6XX(c0240402_00674100, "stib.b.untyped.1d.u16.1.imm.base0 r0.z, r0.x, 2"),
 
 	// TODO is this a real instruction?  Or float -6.0 ?
 	// INSTR_6XX(c0c00000_00000000, "stg.f16 g[hr0.x], hr0.x, hr0.x", .parse_fail=true),

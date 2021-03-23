@@ -75,6 +75,7 @@ tu_spirv_to_nir(struct tu_device *dev,
          .runtime_descriptor_array = true,
          .float_controls = true,
          .float16 = true,
+         .storage_16bit = dev->physical_device->gpu_id >= 650,
       },
    };
 

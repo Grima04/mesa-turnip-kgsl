@@ -340,6 +340,8 @@ void
 tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
                               VkPhysicalDeviceFeatures2 *pFeatures)
 {
+   TU_FROM_HANDLE(tu_physical_device, pdevice, physicalDevice);
+
    pFeatures->features = (VkPhysicalDeviceFeatures) {
       .robustBufferAccess = true,
       .fullDrawIndexUint32 = true,
@@ -393,7 +395,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       switch (ext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES: {
          VkPhysicalDeviceVulkan11Features *features = (void *) ext;
-         features->storageBuffer16BitAccess            = false;
+         features->storageBuffer16BitAccess            = pdevice->gpu_id >= 650;
          features->uniformAndStorageBuffer16BitAccess  = false;
          features->storagePushConstant16               = false;
          features->storageInputOutput16                = false;
@@ -489,7 +491,7 @@ tu_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
          VkPhysicalDevice16BitStorageFeatures *features =
             (VkPhysicalDevice16BitStorageFeatures *) ext;
-         features->storageBuffer16BitAccess = false;
+         features->storageBuffer16BitAccess = pdevice->gpu_id >= 650;
          features->uniformAndStorageBuffer16BitAccess = false;
          features->storagePushConstant16 = false;
          features->storageInputOutput16 = false;

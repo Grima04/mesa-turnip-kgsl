@@ -706,17 +706,23 @@ static uint32_t get_range(struct tu_buffer *buf, VkDeviceSize offset,
 }
 
 static void
-write_buffer_descriptor(uint32_t *dst, const VkDescriptorBufferInfo *buffer_info)
+write_buffer_descriptor(const struct tu_device *device,
+                        uint32_t *dst,
+                        const VkDescriptorBufferInfo *buffer_info)
 {
    TU_FROM_HANDLE(tu_buffer, buffer, buffer_info->buffer);
 
    assert((buffer_info->offset & 63) == 0); /* minStorageBufferOffsetAlignment */
    uint64_t va = tu_buffer_iova(buffer) + buffer_info->offset;
    uint32_t range = get_range(buffer, buffer_info->offset, buffer_info->range);
-   range = ALIGN_POT(range, 4) / 4;
-   dst[0] =
-      A6XX_IBO_0_TILE_MODE(TILE6_LINEAR) | A6XX_IBO_0_FMT(FMT6_32_UINT);
-   dst[1] = range;
+   /* newer a6xx allows using 16-bit descriptor for both 16-bit and 32-bit access */
+   if (device->physical_device->gpu_id >= 650) {
+      dst[0] = A6XX_IBO_0_TILE_MODE(TILE6_LINEAR) | A6XX_IBO_0_FMT(FMT6_16_UINT);
+      dst[1] = DIV_ROUND_UP(range, 2);
+   } else {
+      dst[0] = A6XX_IBO_0_TILE_MODE(TILE6_LINEAR) | A6XX_IBO_0_FMT(FMT6_32_UINT);
+      dst[1] = DIV_ROUND_UP(range, 4);
+   }
    dst[2] =
       A6XX_IBO_2_UNK4 | A6XX_IBO_2_TYPE(A6XX_TEX_1D) | A6XX_IBO_2_UNK31;
    dst[3] = 0;
@@ -784,7 +790,8 @@ write_sampler_push(uint32_t *dst, const struct tu_sampler *sampler)
 }
 
 void
-tu_update_descriptor_sets(VkDescriptorSet dstSetOverride,
+tu_update_descriptor_sets(const struct tu_device *device,
+                          VkDescriptorSet dstSetOverride,
                           uint32_t descriptorWriteCount,
                           const VkWriteDescriptorSet *pDescriptorWrites,
                           uint32_t descriptorCopyCount,
@@ -823,12 +830,12 @@ tu_update_descriptor_sets(VkDescriptorSet dstSetOverride,
             assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
             unsigned idx = writeset->dstArrayElement + j;
             idx += binding_layout->dynamic_offset_offset;
-            write_buffer_descriptor(set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
+            write_buffer_descriptor(device, set->dynamic_descriptors + A6XX_TEX_CONST_DWORDS * idx,
                                     writeset->pBufferInfo + j);
             break;
          }
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            write_buffer_descriptor(ptr, writeset->pBufferInfo + j);
+            write_buffer_descriptor(device, ptr, writeset->pBufferInfo + j);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -915,7 +922,8 @@ tu_UpdateDescriptorSets(VkDevice _device,
                         uint32_t descriptorCopyCount,
                         const VkCopyDescriptorSet *pDescriptorCopies)
 {
-   tu_update_descriptor_sets(VK_NULL_HANDLE,
+   TU_FROM_HANDLE(tu_device, device, _device);
+   tu_update_descriptor_sets(device, VK_NULL_HANDLE,
                              descriptorWriteCount, pDescriptorWrites,
                              descriptorCopyCount, pDescriptorCopies);
 }
@@ -1023,6 +1031,7 @@ tu_DestroyDescriptorUpdateTemplate(
 
 void
 tu_update_descriptor_set_with_template(
+   const struct tu_device *device,
    struct tu_descriptor_set *set,
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
@@ -1049,11 +1058,11 @@ tu_update_descriptor_set_with_template(
             break;
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
             assert(!(set->layout->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR));
-            write_buffer_descriptor(set->dynamic_descriptors + dst_offset, src);
+            write_buffer_descriptor(device, set->dynamic_descriptors + dst_offset, src);
             break;
          }
          case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-            write_buffer_descriptor(ptr, src);
+            write_buffer_descriptor(device, ptr, src);
             break;
          case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
          case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
@@ -1099,9 +1108,10 @@ tu_UpdateDescriptorSetWithTemplate(
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData)
 {
+   TU_FROM_HANDLE(tu_device, device, _device);
    TU_FROM_HANDLE(tu_descriptor_set, set, descriptorSet);
 
-   tu_update_descriptor_set_with_template(set, descriptorUpdateTemplate, pData);
+   tu_update_descriptor_set_with_template(device, set, descriptorUpdateTemplate, pData);
 }
 
 VkResult

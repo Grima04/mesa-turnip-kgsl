@@ -1552,7 +1552,8 @@ uint32_t
 tu_subpass_get_attachment_to_resolve(const struct tu_subpass *subpass, uint32_t index);
 
 void
-tu_update_descriptor_sets(VkDescriptorSet overrideSet,
+tu_update_descriptor_sets(const struct tu_device *device,
+                          VkDescriptorSet overrideSet,
                           uint32_t descriptorWriteCount,
                           const VkWriteDescriptorSet *pDescriptorWrites,
                           uint32_t descriptorCopyCount,
@@ -1560,6 +1561,7 @@ tu_update_descriptor_sets(VkDescriptorSet overrideSet,
 
 void
 tu_update_descriptor_set_with_template(
+   const struct tu_device *device,
    struct tu_descriptor_set *set,
    VkDescriptorUpdateTemplate descriptorUpdateTemplate,
    const void *pData);
