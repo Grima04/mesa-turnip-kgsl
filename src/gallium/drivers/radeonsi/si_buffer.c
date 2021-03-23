@@ -201,7 +201,7 @@ bool si_alloc_resource(struct si_screen *sscreen, struct si_resource *res)
       assert((last >> 32) == sscreen->info.address32_hi);
    }
 
-   pb_reference(&old_buf, NULL);
+   radeon_bo_reference(sscreen->ws, &old_buf, NULL);
 
    util_range_set_empty(&res->valid_buffer_range);
    res->TC_L2_dirty = false;
@@ -224,7 +224,7 @@ static void si_buffer_destroy(struct pipe_screen *screen, struct pipe_resource *
 
    threaded_resource_deinit(buf);
    util_range_destroy(&buffer->valid_buffer_range);
-   pb_reference(&buffer->buf, NULL);
+   radeon_bo_reference(((struct si_screen*)screen)->ws, &buffer->buf, NULL);
    FREE(buffer);
 }
 
@@ -271,7 +271,7 @@ void si_replace_buffer_storage(struct pipe_context *ctx, struct pipe_resource *d
    struct si_resource *sdst = si_resource(dst);
    struct si_resource *ssrc = si_resource(src);
 
-   pb_reference(&sdst->buf, ssrc->buf);
+   radeon_bo_reference(sctx->screen->ws, &sdst->buf, ssrc->buf);
    sdst->gpu_address = ssrc->gpu_address;
    sdst->b.b.bind = ssrc->b.b.bind;
    sdst->b.max_forced_staging_uploads = ssrc->b.max_forced_staging_uploads;

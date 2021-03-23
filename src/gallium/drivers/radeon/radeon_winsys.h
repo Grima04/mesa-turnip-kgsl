@@ -744,6 +744,12 @@ static inline bool radeon_uses_secure_bos(struct radeon_winsys* ws)
   return ws->uses_secure_bos;
 }
 
+static inline void
+radeon_bo_reference(struct radeon_winsys *rws, struct pb_buffer **dst, struct pb_buffer *src)
+{
+   pb_reference_with_winsys(rws, dst, src);
+}
+
 enum radeon_heap
 {
    RADEON_HEAP_VRAM_NO_CPU_ACCESS,

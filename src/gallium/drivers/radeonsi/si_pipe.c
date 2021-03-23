@@ -313,8 +313,8 @@ static void si_destroy_context(struct pipe_context *context)
    si_resource_reference(&sctx->barrier_buf, NULL);
    si_resource_reference(&sctx->last_ib_barrier_buf, NULL);
    si_resource_reference(&sctx->shadowed_regs, NULL);
-   pb_reference(&sctx->gds, NULL);
-   pb_reference(&sctx->gds_oa, NULL);
+   radeon_bo_reference(sctx->screen->ws, &sctx->gds, NULL);
+   radeon_bo_reference(sctx->screen->ws, &sctx->gds_oa, NULL);
 
    si_destroy_compiler(&sctx->compiler);
 

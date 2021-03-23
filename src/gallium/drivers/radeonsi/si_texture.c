@@ -432,7 +432,7 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
 
    /* Replace the structure fields of tex. */
    tex->buffer.b.b.bind = templ.bind;
-   pb_reference(&tex->buffer.buf, new_tex->buffer.buf);
+   radeon_bo_reference(sctx->screen->ws, &tex->buffer.buf, new_tex->buffer.buf);
    tex->buffer.gpu_address = new_tex->buffer.gpu_address;
    tex->buffer.vram_usage_kb = new_tex->buffer.vram_usage_kb;
    tex->buffer.gart_usage_kb = new_tex->buffer.gart_usage_kb;
@@ -789,7 +789,7 @@ static void si_texture_destroy(struct pipe_screen *screen, struct pipe_resource 
    if (tex->cmask_buffer != &tex->buffer) {
       si_resource_reference(&tex->cmask_buffer, NULL);
    }
-   pb_reference(&resource->buf, NULL);
+   radeon_bo_reference(((struct si_screen*)screen)->ws, &resource->buf, NULL);
    si_resource_reference(&tex->dcc_separate_buffer, NULL);
    si_resource_reference(&tex->last_dcc_separate_buffer, NULL);
    si_resource_reference(&tex->dcc_retile_buffer, NULL);
@@ -996,7 +996,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       resource->vram_usage_kb = plane0->buffer.vram_usage_kb;
       resource->gart_usage_kb = plane0->buffer.gart_usage_kb;
 
-      pb_reference(&resource->buf, plane0->buffer.buf);
+      radeon_bo_reference(sscreen->ws, &resource->buf, plane0->buffer.buf);
       resource->gpu_address = plane0->buffer.gpu_address;
    } else if (!(surface->flags & RADEON_SURF_IMPORTED)) {
       /* Create the backing buffer. */
@@ -1508,7 +1508,7 @@ static void si_auxiliary_texture_destroy(struct pipe_screen *screen,
 {
    struct si_auxiliary_texture *tex = (struct si_auxiliary_texture *)ptex;
 
-   pb_reference(&tex->buffer, NULL);
+   radeon_bo_reference(((struct si_screen*)screen)->ws, &tex->buffer, NULL);
    FREE(ptex);
 }
 
@@ -2461,7 +2461,7 @@ static void si_memobj_destroy(struct pipe_screen *screen, struct pipe_memory_obj
 {
    struct si_memory_object *memobj = (struct si_memory_object *)_memobj;
 
-   pb_reference(&memobj->buf, NULL);
+   radeon_bo_reference(((struct si_screen*)screen)->ws, &memobj->buf, NULL);
    free(memobj);
 }
 
@@ -2491,7 +2491,7 @@ static struct pipe_resource *si_resource_from_memobj(struct pipe_screen *screen,
     * memobj->buf, so increment it here.
     */
    struct pb_buffer *buf = NULL;
-   pb_reference(&buf, memobj->buf);
+   radeon_bo_reference(sscreen->ws, &buf, memobj->buf);
    return res;
 }
 

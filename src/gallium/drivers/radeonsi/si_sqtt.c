@@ -606,7 +606,7 @@ si_destroy_thread_trace(struct si_context *sctx)
 {
    struct si_screen *sscreen = sctx->screen;
    struct pb_buffer *bo = sctx->thread_trace->bo;
-   pb_reference(&bo, NULL);
+   radeon_bo_reference(sctx->screen->ws, &bo, NULL);
 
    if (sctx->thread_trace->trigger_file)
       free(sctx->thread_trace->trigger_file);
