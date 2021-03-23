@@ -563,3 +563,164 @@ pan_blend_create_shader(const struct panfrost_device *dev,
 
         return b.shader;
 }
+
+uint64_t
+pan_blend_get_bifrost_desc(const struct panfrost_device *dev,
+                           enum pipe_format fmt, unsigned rt,
+                           unsigned force_size)
+{
+        const struct util_format_description *desc = util_format_description(fmt);
+        uint64_t res;
+
+        pan_pack(&res, BIFROST_INTERNAL_BLEND, cfg) {
+                cfg.mode = MALI_BIFROST_BLEND_MODE_OPAQUE;
+                cfg.fixed_function.num_comps = desc->nr_channels;
+                cfg.fixed_function.rt = rt;
+
+                nir_alu_type T = pan_unpacked_type_for_format(desc);
+
+                if (force_size)
+                        T = nir_alu_type_get_base_type(T) | force_size;
+
+                switch (T) {
+                case nir_type_float16:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_F16;
+                        break;
+                case nir_type_float32:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_F32;
+                        break;
+                case nir_type_int8:
+                case nir_type_int16:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_I16;
+                        break;
+                case nir_type_int32:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_I32;
+                        break;
+                case nir_type_uint8:
+                case nir_type_uint16:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_U16;
+                        break;
+                case nir_type_uint32:
+                        cfg.fixed_function.conversion.register_format =
+                                MALI_BIFROST_REGISTER_FILE_FORMAT_U32;
+                        break;
+                default:
+                        unreachable("Invalid format");
+                }
+
+                cfg.fixed_function.conversion.memory_format =
+                         panfrost_format_to_bifrost_blend(dev, desc, true);
+        }
+
+        return res;
+}
+
+struct pan_blend_shader_variant *
+pan_blend_get_shader_locked(const struct panfrost_device *dev,
+                            const struct pan_blend_state *state,
+                            unsigned rt)
+{
+        struct pan_blend_shader_key key = {
+                .format = state->rts[rt].format,
+                .rt = rt,
+                .has_constants = pan_blend_constant_mask(state, rt) != 0,
+                .logicop_enable = state->logicop_enable,
+                .logicop_func = state->logicop_func,
+                .nr_samples = state->rts[rt].nr_samples,
+                .equation = state->rts[rt].equation,
+        };
+
+        struct hash_entry *he = _mesa_hash_table_search(dev->blend_shaders.shaders, &key);
+        struct pan_blend_shader *shader = he ? he->data : NULL;
+
+        if (!shader) {
+                shader = rzalloc(dev->blend_shaders.shaders, struct pan_blend_shader);
+                shader->key = key;
+                list_inithead(&shader->variants);
+                _mesa_hash_table_insert(dev->blend_shaders.shaders, &shader->key, shader);
+        }
+
+        list_for_each_entry(struct pan_blend_shader_variant, iter,
+                            &shader->variants, node) {
+                if (!key.has_constants ||
+                    !memcmp(iter->constants, state->constants, sizeof(iter->constants))) {
+                        return iter;
+                }
+        }
+
+        struct pan_blend_shader_variant *variant = NULL;
+
+        if (shader->nvariants < PAN_BLEND_SHADER_MAX_VARIANTS) {
+                variant = rzalloc(shader, struct pan_blend_shader_variant);
+                memcpy(variant->constants, state->constants, sizeof(variant->constants));
+                util_dynarray_init(&variant->binary, variant);
+                list_add(&variant->node, &shader->variants);
+                shader->nvariants++;
+        } else {
+                variant = list_last_entry(&shader->variants, struct pan_blend_shader_variant, node);
+                list_del(&variant->node);
+                list_add(&variant->node, &shader->variants);
+                util_dynarray_clear(&variant->binary);
+        }
+
+        nir_shader *nir = pan_blend_create_shader(dev, state, rt);
+
+        /* Compile the NIR shader */
+        struct panfrost_compile_inputs inputs = {
+                .gpu_id = dev->gpu_id,
+                .is_blend = true,
+                .blend.rt = shader->key.rt,
+                .blend.nr_samples = key.nr_samples,
+                .rt_formats = { key.format },
+        };
+
+        if (key.has_constants)
+                memcpy(inputs.blend.constants, state->constants, sizeof(inputs.blend.constants));
+
+        if (pan_is_bifrost(dev)) {
+                inputs.blend.bifrost_blend_desc =
+                        pan_blend_get_bifrost_desc(dev, key.format, key.rt, 0);
+        }
+
+        struct pan_shader_info info;
+
+        pan_shader_compile(dev, nir, &inputs, &variant->binary, &info);
+
+        variant->work_reg_count = info.work_reg_count;
+        if (!pan_is_bifrost(dev))
+                variant->first_tag = info.midgard.first_tag;
+
+        ralloc_free(nir);
+
+        return variant;
+}
+
+static uint32_t pan_blend_shader_key_hash(const void *key)
+{
+        return _mesa_hash_data(key, sizeof(struct pan_blend_shader_key));
+}
+
+static bool pan_blend_shader_key_equal(const void *a, const void *b)
+{
+        return !memcmp(a, b, sizeof(struct pan_blend_shader_key));
+}
+
+void
+pan_blend_shaders_init(struct panfrost_device *dev)
+{
+        dev->blend_shaders.shaders =
+                _mesa_hash_table_create(NULL, pan_blend_shader_key_hash,
+                                        pan_blend_shader_key_equal);
+        pthread_mutex_init(&dev->blend_shaders.lock, NULL);
+}
+
+void
+pan_blend_shaders_cleanup(struct panfrost_device *dev)
+{
+        _mesa_hash_table_destroy(dev->blend_shaders.shaders, NULL);
+}

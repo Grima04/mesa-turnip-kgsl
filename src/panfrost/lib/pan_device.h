@@ -89,6 +89,11 @@ struct pan_blit_shaders {
         struct pan_blit_shader loads[PAN_BLIT_NUM_TARGETS][PAN_BLIT_NUM_TYPES][2];
 };
 
+struct pan_blend_shaders {
+        struct hash_table *shaders;
+        pthread_mutex_t lock;
+};
+
 typedef uint32_t mali_pixel_format;
 
 struct panfrost_format {
@@ -143,6 +148,7 @@ struct panfrost_device {
         } bo_cache;
 
         struct pan_blit_shaders blit_shaders;
+        struct pan_blend_shaders blend_shaders;
 
         /* Tiler heap shared across all tiler jobs, allocated against the
          * device since there's only a single tiler. Since this is invisible to
