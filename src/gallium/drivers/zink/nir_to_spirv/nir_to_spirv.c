@@ -453,6 +453,32 @@ input_var_init(struct ntv_context *ctx, struct nir_variable *var)
 }
 
 static void
+emit_interpolation(struct ntv_context *ctx, SpvId var_id,
+                   enum glsl_interp_mode mode)
+{
+   switch (mode) {
+   case INTERP_MODE_NONE:
+   case INTERP_MODE_SMOOTH:
+      /* XXX spirv doesn't seem to have anything for this */
+      break;
+   case INTERP_MODE_FLAT:
+      spirv_builder_emit_decoration(&ctx->builder, var_id,
+                                    SpvDecorationFlat);
+      break;
+   case INTERP_MODE_EXPLICIT:
+      spirv_builder_emit_decoration(&ctx->builder, var_id,
+                                    SpvDecorationExplicitInterpAMD);
+      break;
+   case INTERP_MODE_NOPERSPECTIVE:
+      spirv_builder_emit_decoration(&ctx->builder, var_id,
+                                    SpvDecorationNoPerspective);
+      break;
+   default:
+      unreachable("unknown interpolation value");
+   }
+}
+
+static void
 emit_input(struct ntv_context *ctx, struct nir_variable *var)
 {
    SpvId var_id = input_var_init(ctx, var);
@@ -604,22 +630,7 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
       spirv_builder_emit_component(&ctx->builder, var_id,
                                    var->data.location_frac);
 
-   switch (var->data.interpolation) {
-   case INTERP_MODE_NONE:
-   case INTERP_MODE_SMOOTH: /* XXX spirv doesn't seem to have anything for this */
-      break;
-   case INTERP_MODE_FLAT:
-      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationFlat);
-      break;
-   case INTERP_MODE_EXPLICIT:
-      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationExplicitInterpAMD);
-      break;
-   case INTERP_MODE_NOPERSPECTIVE:
-      spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationNoPerspective);
-      break;
-   default:
-      unreachable("unknown interpolation value");
-   }
+   emit_interpolation(ctx, var_id, var->data.interpolation);
 
    if (var->data.patch)
       spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationPatch);
