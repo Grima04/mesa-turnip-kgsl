@@ -2987,7 +2987,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
                                             nir, &prog_data->base,
                                             v.cfg,
                                             v.performance_analysis.require(),
-                                            params->stats);
+                                            params->stats, debug_enabled);
    }
 
    return assembly;

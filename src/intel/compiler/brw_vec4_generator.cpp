@@ -1473,12 +1473,11 @@ generate_code(struct brw_codegen *p,
               struct brw_vue_prog_data *prog_data,
               const struct cfg_t *cfg,
               const performance &perf,
-              struct brw_compile_stats *stats)
+              struct brw_compile_stats *stats,
+              bool debug_enabled)
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const char *stage_abbrev = _mesa_shader_stage_to_abbrev(nir->info.stage);
-   bool debug_flag = INTEL_DEBUG &
-      intel_debug_flag_for_shader_stage(nir->info.stage);
    struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
 
    /* `send_count` explicitly does not include spills or fills, as we'd
@@ -1493,7 +1492,7 @@ generate_code(struct brw_codegen *p,
    foreach_block_and_inst (block, vec4_instruction, inst, cfg) {
       struct brw_reg src[3], dst;
 
-      if (unlikely(debug_flag))
+      if (unlikely(debug_enabled))
          disasm_annotate(disasm_info, inst, p->next_insn_offset);
 
       for (unsigned int i = 0; i < 3; i++) {
@@ -2180,7 +2179,7 @@ generate_code(struct brw_codegen *p,
    brw_compact_instructions(p, 0, disasm_info);
    int after_size = p->next_insn_offset;
 
-   if (unlikely(debug_flag)) {
+   if (unlikely(debug_enabled)) {
       unsigned char sha1[21];
       char sha1buf[41];
 
@@ -2235,13 +2234,15 @@ brw_vec4_generate_assembly(const struct brw_compiler *compiler,
                            struct brw_vue_prog_data *prog_data,
                            const struct cfg_t *cfg,
                            const performance &perf,
-                           struct brw_compile_stats *stats)
+                           struct brw_compile_stats *stats,
+                           bool debug_enabled)
 {
    struct brw_codegen *p = rzalloc(mem_ctx, struct brw_codegen);
    brw_init_codegen(compiler->devinfo, p, mem_ctx);
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
-   generate_code(p, compiler, log_data, nir, prog_data, cfg, perf, stats);
+   generate_code(p, compiler, log_data, nir, prog_data, cfg, perf, stats,
+                 debug_enabled);
 
    assert(prog_data->base.const_data_size == 0);
    if (nir->constant_data_size > 0) {

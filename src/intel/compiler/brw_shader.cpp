@@ -1435,7 +1435,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
       assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,
                                             &prog_data->base, v.cfg,
                                             v.performance_analysis.require(),
-                                            stats);
+                                            stats, debug_enabled);
    }
 
    return assembly;

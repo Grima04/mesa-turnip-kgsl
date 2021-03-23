@@ -875,7 +875,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                                               nir, &prog_data->base,
                                               v.cfg,
                                               v.performance_analysis.require(),
-                                              stats);
+                                              stats, debug_enabled);
          } else {
             /* These variables could be modified by the execution of the GS
              * visitor if it packed the uniforms in the push constant buffer.
@@ -940,7 +940,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
       ret = brw_vec4_generate_assembly(compiler, log_data, mem_ctx, nir,
                                        &prog_data->base, gs->cfg,
                                        gs->performance_analysis.require(),
-                                       stats);
+                                       stats, debug_enabled);
    }
 
    delete gs;
