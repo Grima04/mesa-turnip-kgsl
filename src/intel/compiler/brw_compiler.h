@@ -1164,7 +1164,7 @@ void brw_compute_tess_vue_map(struct brw_vue_map *const vue_map,
                               uint32_t is_patch);
 
 /* brw_interpolation_map.c */
-void brw_setup_vue_interpolation(struct brw_vue_map *vue_map,
+void brw_setup_vue_interpolation(const struct brw_vue_map *vue_map,
                                  struct nir_shader *nir,
                                  struct brw_wm_prog_data *prog_data);
 
@@ -1544,7 +1544,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                int shader_time_index16,
                int shader_time_index32,
                bool allow_spilling,
-               bool use_rep_send, struct brw_vue_map *vue_map,
+               bool use_rep_send, const struct brw_vue_map *vue_map,
                struct brw_compile_stats *stats, /**< Array of three stats */
                char **error_str);
 

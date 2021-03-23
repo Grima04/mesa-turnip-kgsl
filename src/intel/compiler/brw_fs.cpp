@@ -9062,7 +9062,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                nir_shader *nir,
                int shader_time_index8, int shader_time_index16,
                int shader_time_index32, bool allow_spilling,
-               bool use_rep_send, struct brw_vue_map *vue_map,
+               bool use_rep_send, const struct brw_vue_map *vue_map,
                struct brw_compile_stats *stats,
                char **error_str)
 {
