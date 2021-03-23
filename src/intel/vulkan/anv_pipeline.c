@@ -792,11 +792,16 @@ anv_pipeline_compile_vs(const struct brw_compiler *compiler,
                        pos_slots);
 
    vs_stage->num_stats = 1;
-   vs_stage->code = brw_compile_vs(compiler, pipeline->base.device, mem_ctx,
-                                   &vs_stage->key.vs,
-                                   &vs_stage->prog_data.vs,
-                                   vs_stage->nir, -1,
-                                   vs_stage->stats, NULL);
+
+   struct brw_compile_vs_params params = {
+      .nir = vs_stage->nir,
+      .key = &vs_stage->key.vs,
+      .prog_data = &vs_stage->prog_data.vs,
+      .stats = vs_stage->stats,
+      .log_data = pipeline->base.device,
+   };
+
+   vs_stage->code = brw_compile_vs(compiler, mem_ctx, &params);
 }
 
 static void

@@ -2829,21 +2829,15 @@ vec4_visitor::run()
 
 extern "C" {
 
-/**
- * Compile a vertex shader.
- *
- * Returns the final assembly and the program's size.
- */
 const unsigned *
-brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_vs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_vs_prog_key *key,
-               struct brw_vs_prog_data *prog_data,
-               nir_shader *nir,
-               int shader_time_index,
-               struct brw_compile_stats *stats,
-               char **error_str)
+               struct brw_compile_vs_params *params)
 {
+   struct nir_shader *nir = params->nir;
+   const struct brw_vs_prog_key *key = params->key;
+   struct brw_vs_prog_data *prog_data = params->prog_data;
+
    prog_data->base.base.stage = MESA_SHADER_VERTEX;
 
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_VERTEX];
@@ -2949,19 +2943,17 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
    if (is_scalar) {
       prog_data->base.dispatch_mode = DISPATCH_MODE_SIMD8;
 
-      fs_visitor v(compiler, log_data, mem_ctx, &key->base,
-                   &prog_data->base.base,
-                   nir, 8, shader_time_index);
+      fs_visitor v(compiler, params->log_data, mem_ctx, &key->base,
+                   &prog_data->base.base, nir, 8,
+                   params->shader_time ? params->shader_time_index : -1);
       if (!v.run_vs()) {
-         if (error_str)
-            *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
-
+         params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
          return NULL;
       }
 
       prog_data->base.base.dispatch_grf_start_reg = v.payload.num_regs;
 
-      fs_generator g(compiler, log_data, mem_ctx,
+      fs_generator g(compiler, params->log_data, mem_ctx,
                      &prog_data->base.base, v.runtime_check_aads_emit,
                      MESA_SHADER_VERTEX);
       if (INTEL_DEBUG & DEBUG_VS) {
@@ -2974,7 +2966,7 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
          g.enable_debug(debug_name);
       }
       g.generate_code(v.cfg, 8, v.shader_stats,
-                      v.performance_analysis.require(), stats);
+                      v.performance_analysis.require(), params->stats);
       g.add_const_data(nir->constant_data, nir->constant_data_size);
       assembly = g.get_assembly();
    }
@@ -2982,20 +2974,19 @@ brw_compile_vs(const struct brw_compiler *compiler, void *log_data,
    if (!assembly) {
       prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_OBJECT;
 
-      vec4_vs_visitor v(compiler, log_data, key, prog_data,
-                        nir, mem_ctx, shader_time_index);
+      vec4_vs_visitor v(compiler, params->log_data, key, prog_data,
+                        nir, mem_ctx,
+                        params->shader_time ? params->shader_time_index : -1);
       if (!v.run()) {
-         if (error_str)
-            *error_str = ralloc_strdup(mem_ctx, v.fail_msg);
-
+         params->error_str = ralloc_strdup(mem_ctx, v.fail_msg);
          return NULL;
       }
 
-      assembly = brw_vec4_generate_assembly(compiler, log_data, mem_ctx,
+      assembly = brw_vec4_generate_assembly(compiler, params->log_data, mem_ctx,
                                             nir, &prog_data->base,
                                             v.cfg,
                                             v.performance_analysis.require(),
-                                            stats);
+                                            params->stats);
    }
 
    return assembly;

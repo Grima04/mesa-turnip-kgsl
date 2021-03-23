@@ -1200,12 +1200,16 @@ iris_compile_vs(struct iris_screen *screen,
 
    struct brw_vs_prog_key brw_key = iris_to_brw_vs_key(devinfo, key);
 
-   char *error_str = NULL;
-   const unsigned *program =
-      brw_compile_vs(compiler, dbg, mem_ctx, &brw_key, vs_prog_data,
-                     nir, -1, NULL, &error_str);
+   struct brw_compile_vs_params params = {
+      .nir = nir,
+      .key = &brw_key,
+      .prog_data = vs_prog_data,
+      .log_data = dbg,
+   };
+
+   const unsigned *program = brw_compile_vs(compiler, mem_ctx, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile vertex shader: %s\n", error_str);
+      dbg_printf("Failed to compile vertex shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
       return false;
    }

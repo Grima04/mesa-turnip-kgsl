@@ -176,24 +176,31 @@ brw_codegen_vs_prog(struct brw_context *brw,
          brw_dump_arb_asm("vertex", &vp->program);
    }
 
-   int st_index = -1;
-   if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
-      st_index = brw_get_shader_time_index(brw, &vp->program, ST_VS,
-                                           !vp->program.is_arb_asm);
-   }
 
    /* Emit GEN4 code.
     */
-   char *error_str;
-   program = brw_compile_vs(compiler, brw, mem_ctx, key, &prog_data,
-                            nir, st_index, NULL, &error_str);
+   struct brw_compile_vs_params params = {
+      .nir = nir,
+      .key = key,
+      .prog_data = &prog_data,
+      .log_data = brw,
+   };
+
+   if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
+      params.shader_time = true;
+      params.shader_time_index =
+         brw_get_shader_time_index(brw, &vp->program, ST_VS,
+                                   !vp->program.is_arb_asm);
+   }
+
+   program = brw_compile_vs(compiler, mem_ctx, &params);
    if (program == NULL) {
       if (!vp->program.is_arb_asm) {
          vp->program.sh.data->LinkStatus = LINKING_FAILURE;
-         ralloc_strcat(&vp->program.sh.data->InfoLog, error_str);
+         ralloc_strcat(&vp->program.sh.data->InfoLog, params.error_str);
       }
 
-      _mesa_problem(NULL, "Failed to compile vertex shader: %s\n", error_str);
+      _mesa_problem(NULL, "Failed to compile vertex shader: %s\n", params.error_str);
 
       ralloc_free(mem_ctx);
       return false;

@@ -251,11 +251,14 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 
    struct brw_vs_prog_key vs_key = { 0, };
 
-   const unsigned *program =
-      brw_compile_vs(compiler, blorp->driver_ctx, mem_ctx,
-                     &vs_key, vs_prog_data, nir, -1, NULL, NULL);
+   struct brw_compile_vs_params params = {
+      .nir = nir,
+      .key = &vs_key,
+      .prog_data = vs_prog_data,
+      .log_data = blorp->driver_ctx,
+   };
 
-   return program;
+   return brw_compile_vs(compiler, mem_ctx, &params);
 }
 
 struct blorp_sf_key {
