@@ -9093,7 +9093,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
    if (!key->multisample_fbo)
       NIR_PASS_V(nir, brw_nir_demote_sample_qualifiers);
    NIR_PASS_V(nir, brw_nir_move_interpolation_to_top);
-   brw_postprocess_nir(nir, compiler, true);
+   brw_postprocess_nir(nir, compiler, true, debug_enabled);
 
    brw_nir_populate_wm_prog_data(nir, compiler->devinfo, key, prog_data);
 
@@ -9420,7 +9420,7 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
    NIR_PASS_V(shader, nir_opt_constant_folding);
    NIR_PASS_V(shader, nir_opt_dce);
 
-   brw_postprocess_nir(shader, compiler, true);
+   brw_postprocess_nir(shader, compiler, true, debug_enabled);
 
    return shader;
 }
@@ -9721,7 +9721,7 @@ brw_compile_bs(const struct brw_compiler *compiler, void *log_data,
 
    const unsigned max_dispatch_width = 16;
    brw_nir_apply_key(shader, compiler, &key->base, max_dispatch_width, true);
-   brw_postprocess_nir(shader, compiler, true);
+   brw_postprocess_nir(shader, compiler, true, debug_enabled);
 
    fs_visitor *v = NULL, *v8 = NULL, *v16 = NULL;
    bool has_spilled = false;

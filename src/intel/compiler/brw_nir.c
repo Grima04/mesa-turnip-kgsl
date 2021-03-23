@@ -1077,11 +1077,9 @@ nir_shader_has_local_variables(const nir_shader *nir)
  */
 void
 brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
-                    bool is_scalar)
+                    bool is_scalar, bool debug_enabled)
 {
    const struct gen_device_info *devinfo = compiler->devinfo;
-   bool debug_enabled =
-      (INTEL_DEBUG & intel_debug_flag_for_shader_stage(nir->info.stage));
 
    UNUSED bool progress; /* Written by OPT */
 
