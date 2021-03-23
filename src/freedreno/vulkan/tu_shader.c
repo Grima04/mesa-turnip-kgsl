@@ -73,6 +73,7 @@ tu_spirv_to_nir(struct tu_device *dev,
          .descriptor_array_dynamic_indexing = true,
          .descriptor_array_non_uniform_indexing = true,
          .runtime_descriptor_array = true,
+         .float_controls = true,
       },
    };
 

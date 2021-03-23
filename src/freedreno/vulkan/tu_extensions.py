@@ -110,6 +110,7 @@ EXTENSIONS = [
     Extension('VK_KHR_storage_buffer_storage_class',      1, True),
     Extension('VK_KHR_external_fence_capabilities',       1, True),
     Extension('VK_KHR_pipeline_executable_properties',    1, True),
+    Extension('VK_KHR_shader_float_controls',             1, True),
 ]
 
 MAX_API_VERSION = VkVersion(MAX_API_VERSION)

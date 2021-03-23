@@ -890,7 +890,28 @@ tu_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->maxDescriptorSetUpdateAfterBindInputAttachments = max_descriptor_set_size;
          break;
       }
-
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT_CONTROLS_PROPERTIES: {
+         VkPhysicalDeviceFloatControlsProperties *properties =
+            (VkPhysicalDeviceFloatControlsProperties *) ext;
+         properties->denormBehaviorIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
+         properties->roundingModeIndependence = VK_SHADER_FLOAT_CONTROLS_INDEPENDENCE_ALL;
+         properties->shaderSignedZeroInfNanPreserveFloat16 = true;
+         properties->shaderSignedZeroInfNanPreserveFloat32 = true;
+         properties->shaderSignedZeroInfNanPreserveFloat64 = false;
+         properties->shaderDenormPreserveFloat16 = false;
+         properties->shaderDenormPreserveFloat32 = false;
+         properties->shaderDenormPreserveFloat64 = false;
+         properties->shaderDenormFlushToZeroFloat16 = true;
+         properties->shaderDenormFlushToZeroFloat32 = true;
+         properties->shaderDenormFlushToZeroFloat64 = false;
+         properties->shaderRoundingModeRTEFloat16 = true;
+         properties->shaderRoundingModeRTEFloat32 = true;
+         properties->shaderRoundingModeRTEFloat64 = false;
+         properties->shaderRoundingModeRTZFloat16 = false;
+         properties->shaderRoundingModeRTZFloat32 = false;
+         properties->shaderRoundingModeRTZFloat64 = false;
+         break;
+      }
       default:
          break;
       }
