@@ -9055,17 +9055,15 @@ brw_register_blocks(int reg_count)
 }
 
 const unsigned *
-brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_fs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_wm_prog_key *key,
-               struct brw_wm_prog_data *prog_data,
-               nir_shader *nir,
-               int shader_time_index8, int shader_time_index16,
-               int shader_time_index32, bool allow_spilling,
-               bool use_rep_send, const struct brw_vue_map *vue_map,
-               struct brw_compile_stats *stats,
-               char **error_str)
+               struct brw_compile_fs_params *params)
 {
+   struct nir_shader *nir = params->nir;
+   const struct brw_wm_prog_key *key = params->key;
+   struct brw_wm_prog_data *prog_data = params->prog_data;
+   bool allow_spilling = params->allow_spilling;
+
    prog_data->base.stage = MESA_SHADER_FRAGMENT;
 
    const struct gen_device_info *devinfo = compiler->devinfo;
@@ -9076,7 +9074,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    brw_nir_lower_fs_outputs(nir);
 
    if (devinfo->gen < 6)
-      brw_setup_vue_interpolation(vue_map, nir, prog_data);
+      brw_setup_vue_interpolation(params->vue_map, nir, prog_data);
 
    /* From the SKL PRM, Volume 7, "Alpha Coverage":
     *  "If Pixel Shader outputs oMask, AlphaToCoverage is disabled in
@@ -9103,12 +9101,11 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    float throughput = 0;
    bool has_spilled = false;
 
-   v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
-                       &prog_data->base, nir, 8, shader_time_index8);
+   v8 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
+                       &prog_data->base, nir, 8,
+                       params->shader_time ? params->shader_time_index8 : -1);
    if (!v8->run_fs(allow_spilling, false /* do_rep_send */)) {
-      if (error_str)
-         *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
-
+      params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
       delete v8;
       return NULL;
    } else if (!(INTEL_DEBUG & DEBUG_NO8)) {
@@ -9126,20 +9123,21 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
     */
    if (devinfo->gen == 8 && prog_data->dual_src_blend &&
        !(INTEL_DEBUG & DEBUG_NO8)) {
-      assert(!use_rep_send);
+      assert(!params->use_rep_send);
       v8->limit_dispatch_width(8, "gen8 workaround: "
                                "using SIMD8 when dual src blending.\n");
    }
 
    if (!has_spilled &&
        v8->max_dispatch_width >= 16 &&
-       (!(INTEL_DEBUG & DEBUG_NO16) || use_rep_send)) {
+       (!(INTEL_DEBUG & DEBUG_NO16) || params->use_rep_send)) {
       /* Try a SIMD16 compile */
-      v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
-                           &prog_data->base, nir, 16, shader_time_index16);
+      v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
+                           &prog_data->base, nir, 16,
+                           params->shader_time ? params->shader_time_index16 : -1);
       v16->import_uniforms(v8);
-      if (!v16->run_fs(allow_spilling, use_rep_send)) {
-         compiler->shader_perf_log(log_data,
+      if (!v16->run_fs(allow_spilling, params->use_rep_send)) {
+         compiler->shader_perf_log(params->log_data,
                                    "SIMD16 shader failed to compile: %s",
                                    v16->fail_msg);
       } else {
@@ -9157,22 +9155,23 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
 
    /* Currently, the compiler only supports SIMD32 on SNB+ */
    if (!has_spilled &&
-       v8->max_dispatch_width >= 32 && !use_rep_send &&
+       v8->max_dispatch_width >= 32 && !params->use_rep_send &&
        devinfo->gen >= 6 && !simd16_failed &&
        !(INTEL_DEBUG & DEBUG_NO32)) {
       /* Try a SIMD32 compile */
-      v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
-                           &prog_data->base, nir, 32, shader_time_index32);
+      v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
+                           &prog_data->base, nir, 32,
+                           params->shader_time ? params->shader_time_index32 : -1);
       v32->import_uniforms(v8);
       if (!v32->run_fs(allow_spilling, false)) {
-         compiler->shader_perf_log(log_data,
+         compiler->shader_perf_log(params->log_data,
                                    "SIMD32 shader failed to compile: %s",
                                    v32->fail_msg);
       } else {
          const performance &perf = v32->performance_analysis.require();
 
          if (!(INTEL_DEBUG & DEBUG_DO32) && throughput >= perf.throughput) {
-            compiler->shader_perf_log(log_data, "SIMD32 shader inefficient\n");
+            compiler->shader_perf_log(params->log_data, "SIMD32 shader inefficient\n");
          } else {
             simd32_cfg = v32->cfg;
             prog_data->dispatch_grf_start_reg_32 = v32->payload.num_regs;
@@ -9183,7 +9182,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
    }
 
    /* When the caller requests a repclear shader, they want SIMD16-only */
-   if (use_rep_send)
+   if (params->use_rep_send)
       simd8_cfg = NULL;
 
    /* Prior to Iron Lake, the PS had a single shader offset with a jump table
@@ -9236,7 +9235,7 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
          simd16_cfg = NULL;
    }
 
-   fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
+   fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   v8->runtime_check_aads_emit, MESA_SHADER_FRAGMENT);
 
    if (INTEL_DEBUG & DEBUG_WM) {
@@ -9245,6 +9244,8 @@ brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
                                         nir->info.label : "unnamed",
                                      nir->info.name));
    }
+
+   struct brw_compile_stats *stats = params->stats;
 
    if (simd8_cfg) {
       prog_data->dispatch_8 = true;

@@ -109,30 +109,39 @@ brw_codegen_wm_prog(struct brw_context *brw,
       start_time = get_time();
    }
 
-   int st_index8 = -1, st_index16 = -1, st_index32 = -1;
+   struct brw_compile_fs_params params = {
+      .nir = nir,
+      .key = key,
+      .prog_data = &prog_data,
+
+      .allow_spilling = true,
+      .vue_map = vue_map,
+
+      .log_data = brw,
+   };
+
    if (INTEL_DEBUG & DEBUG_SHADER_TIME) {
-      st_index8 = brw_get_shader_time_index(brw, &fp->program, ST_FS8,
-                                            !fp->program.is_arb_asm);
-      st_index16 = brw_get_shader_time_index(brw, &fp->program, ST_FS16,
-                                             !fp->program.is_arb_asm);
-      st_index32 = brw_get_shader_time_index(brw, &fp->program, ST_FS32,
-                                             !fp->program.is_arb_asm);
+      params.shader_time = true;
+      params.shader_time_index8 =
+         brw_get_shader_time_index(brw, &fp->program, ST_FS8,
+                                   !fp->program.is_arb_asm);
+      params.shader_time_index16 =
+         brw_get_shader_time_index(brw, &fp->program, ST_FS16,
+                                   !fp->program.is_arb_asm);
+      params.shader_time_index32 =
+         brw_get_shader_time_index(brw, &fp->program, ST_FS32,
+                                   !fp->program.is_arb_asm);
    }
 
-   char *error_str = NULL;
-   program = brw_compile_fs(brw->screen->compiler, brw, mem_ctx,
-                            key, &prog_data, nir,
-                            st_index8, st_index16, st_index32,
-                            true, false, vue_map,
-                            NULL, &error_str);
+   program = brw_compile_fs(brw->screen->compiler, mem_ctx, &params);
 
    if (program == NULL) {
       if (!fp->program.is_arb_asm) {
          fp->program.sh.data->LinkStatus = LINKING_FAILURE;
-         ralloc_strcat(&fp->program.sh.data->InfoLog, error_str);
+         ralloc_strcat(&fp->program.sh.data->InfoLog, params.error_str);
       }
 
-      _mesa_problem(NULL, "Failed to compile fragment shader: %s\n", error_str);
+      _mesa_problem(NULL, "Failed to compile fragment shader: %s\n", params.error_str);
 
       ralloc_free(mem_ctx);
       return false;

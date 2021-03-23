@@ -216,12 +216,16 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
       wm_key->input_slots_valid = nir->info.inputs_read | VARYING_BIT_POS;
    }
 
-   const unsigned *program =
-      brw_compile_fs(compiler, blorp->driver_ctx, mem_ctx, wm_key,
-                     wm_prog_data, nir, -1, -1, -1, false, use_repclear,
-                     NULL, NULL, NULL);
+   struct brw_compile_fs_params params = {
+      .nir = nir,
+      .key = wm_key,
+      .prog_data = wm_prog_data,
 
-   return program;
+      .use_rep_send = use_repclear,
+      .log_data = blorp->driver_ctx,
+   };
+
+   return brw_compile_fs(compiler, mem_ctx, &params);
 }
 
 const unsigned *

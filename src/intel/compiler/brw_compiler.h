@@ -1530,23 +1530,41 @@ brw_compile_clip(const struct brw_compiler *compiler,
                  unsigned *final_assembly_size);
 
 /**
+ * Parameters for compiling a fragment shader.
+ *
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_fs_params {
+   nir_shader *nir;
+
+   const struct brw_wm_prog_key *key;
+   struct brw_wm_prog_data *prog_data;
+   const struct brw_vue_map *vue_map;
+
+   bool shader_time;
+   int shader_time_index8;
+   int shader_time_index16;
+   int shader_time_index32;
+
+   bool allow_spilling;
+   bool use_rep_send;
+
+   struct brw_compile_stats *stats;
+
+   void *log_data;
+
+   char *error_str;
+};
+
+/**
  * Compile a fragment shader.
  *
- * Returns the final assembly and the program's size.
+ * Returns the final assembly and updates the parameters structure.
  */
 const unsigned *
-brw_compile_fs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_fs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_wm_prog_key *key,
-               struct brw_wm_prog_data *prog_data,
-               nir_shader *nir,
-               int shader_time_index8,
-               int shader_time_index16,
-               int shader_time_index32,
-               bool allow_spilling,
-               bool use_rep_send, const struct brw_vue_map *vue_map,
-               struct brw_compile_stats *stats, /**< Array of three stats */
-               char **error_str);
+               struct brw_compile_fs_params *params);
 
 /**
  * Compile a compute shader.

@@ -1776,13 +1776,20 @@ iris_compile_fs(struct iris_screen *screen,
 
    struct brw_wm_prog_key brw_key = iris_to_brw_fs_key(devinfo, key);
 
-   char *error_str = NULL;
-   const unsigned *program =
-      brw_compile_fs(compiler, dbg, mem_ctx, &brw_key, fs_prog_data,
-                     nir, -1, -1, -1, true, false, vue_map,
-                     NULL, &error_str);
+   struct brw_compile_fs_params params = {
+      .nir = nir,
+      .key = &brw_key,
+      .prog_data = fs_prog_data,
+
+      .allow_spilling = true,
+      .vue_map = vue_map,
+
+      .log_data = dbg,
+   };
+
+   const unsigned *program = brw_compile_fs(compiler, mem_ctx, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile fragment shader: %s\n", error_str);
+      dbg_printf("Failed to compile fragment shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
       return false;
    }

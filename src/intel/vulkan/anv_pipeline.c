@@ -1045,12 +1045,17 @@ anv_pipeline_compile_fs(const struct brw_compiler *compiler,
    fs_stage->key.wm.input_slots_valid =
       prev_stage->prog_data.vue.vue_map.slots_valid;
 
-   fs_stage->code = brw_compile_fs(compiler, device, mem_ctx,
-                                   &fs_stage->key.wm,
-                                   &fs_stage->prog_data.wm,
-                                   fs_stage->nir, -1, -1, -1,
-                                   true, false, NULL,
-                                   fs_stage->stats, NULL);
+   struct brw_compile_fs_params params = {
+      .nir = fs_stage->nir,
+      .key = &fs_stage->key.wm,
+      .prog_data = &fs_stage->prog_data.wm,
+
+      .allow_spilling = true,
+      .stats = fs_stage->stats,
+      .log_data = device,
+   };
+
+   fs_stage->code = brw_compile_fs(compiler, mem_ctx, &params);
 
    fs_stage->num_stats = (uint32_t)fs_stage->prog_data.wm.dispatch_8 +
                          (uint32_t)fs_stage->prog_data.wm.dispatch_16 +
