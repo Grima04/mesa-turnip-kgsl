@@ -45,6 +45,7 @@
 #include <directx/d3d12sdklayers.h>
 
 #include <dxguids/dxguids.h>
+static GUID OpenGLOn12CreatorID = { 0x6bb3cd34, 0x0d19, 0x45ab, 0x97, 0xed, 0xd7, 0x20, 0xba, 0x3d, 0xfc, 0x80 };
 
 static const struct debug_named_value
 d3d12_debug_options[] = {
@@ -965,9 +966,18 @@ d3d12_init_screen(struct d3d12_screen *screen, struct sw_winsys *winsys, IUnknow
    queue_desc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
    queue_desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
    queue_desc.NodeMask = 0;
-   if (FAILED(screen->dev->CreateCommandQueue(&queue_desc,
+
+   ID3D12Device9 *device9;
+   if (SUCCEEDED(screen->dev->QueryInterface(&device9))) {
+      if (FAILED(device9->CreateCommandQueue1(&queue_desc, OpenGLOn12CreatorID,
                                               IID_PPV_ARGS(&screen->cmdqueue))))
-      goto failed;
+         goto failed;
+      device9->Release();
+   } else {
+      if (FAILED(screen->dev->CreateCommandQueue(&queue_desc,
+                                                 IID_PPV_ARGS(&screen->cmdqueue))))
+         goto failed;
+   }
 
    UINT64 timestamp_freq;
    if (FAILED(screen->cmdqueue->GetTimestampFrequency(&timestamp_freq)))
