@@ -1872,6 +1872,9 @@ zink_wait_on_batch(struct zink_context *ctx, enum zink_queue queue, uint32_t bat
            if ((*bs)->fence.batch_id == batch_id)
               return;
         }
+        if (ctx->last_fence[queue] && ctx->last_fence[queue]->batch_id > batch_id)
+           /* already completed */
+           return;
         unreachable("should've found batch state");
       }
       fence = he->data;
