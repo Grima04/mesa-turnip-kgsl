@@ -259,24 +259,22 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: 0efd30250af93d0b5f03eeabd079e8ee
-  - path: valve/counterstrike.trace
+  - path: valve/counterstrike-v2.trace
     expectations:
       - device: freedreno-a630
         checksum: 5a11d791a5a718d4aa6c84b416b9f2b6
-#  Disabled because it takes 500s to replay
-#  - path: valve/counterstrike-source.trace
-#    expectations:
-#      - device: freedreno-a630
-#        checksum: 4b707f385256b380c936186db8c251cb
-  - path: valve/half-life-2.trace
+  - path: valve/counterstrike-source-v2.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: 4b707f385256b380c936186db8c251cb
+  - path: valve/half-life-2-v2.trace
     expectations:
       - device: freedreno-a630
         checksum: 8f5929c82e7d990e8c3d2bea14688224
-#  Disabled because it takes 1340s to replay.
-#  - path: valve/portal-2.trace
-#   expectations:
-#       - device: freedreno-a630
-#        checksum: a3a9e158ccf7fa5ba978e045505a060e
+  - path: valve/portal-2-v2.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: a3a9e158ccf7fa5ba978e045505a060e
 # Throws errors on freedreno
 #  - path: supertuxkart/supertuxkart-antediluvian-abyss.rdc
 #    expectations:
