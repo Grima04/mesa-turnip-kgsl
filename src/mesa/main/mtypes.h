@@ -192,13 +192,6 @@ struct gl_config
    GLint sampleBuffers;
    GLuint samples;
 
-   /* SGIX_pbuffer / GLX 1.3 */
-   GLint maxPbufferWidth;
-   GLint maxPbufferHeight;
-   GLint maxPbufferPixels;
-   GLint optimalPbufferWidth;   /* Only for SGIX_pbuffer. */
-   GLint optimalPbufferHeight;  /* Only for SGIX_pbuffer. */
-
    /* OML_swap_method */
    GLint swapMethod;
 
