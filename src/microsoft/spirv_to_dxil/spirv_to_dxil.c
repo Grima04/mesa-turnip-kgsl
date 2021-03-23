@@ -53,8 +53,17 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
                        "Validate before feeding NIR to the DXIL compiler");
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   nir_variable_mode nir_var_function_temp =
+      nir_var_shader_in | nir_var_shader_out;
+   NIR_PASS_V(nir, nir_lower_variable_initializers,
+              nir_var_function_temp);
+   NIR_PASS_V(nir, nir_opt_deref);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
+   // todo remove all non-entrypoint functions
+   NIR_PASS_V(nir, nir_lower_variable_initializers,
+              ~nir_var_function_temp);
 
    struct nir_to_dxil_options opts = {0};
 
