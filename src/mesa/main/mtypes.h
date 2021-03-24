@@ -119,10 +119,6 @@ _mesa_varying_slot_in_fs(gl_varying_slot slot)
 #define BUFFER_BIT_BACK_LEFT    (1 << BUFFER_BACK_LEFT)
 #define BUFFER_BIT_FRONT_RIGHT  (1 << BUFFER_FRONT_RIGHT)
 #define BUFFER_BIT_BACK_RIGHT   (1 << BUFFER_BACK_RIGHT)
-#define BUFFER_BIT_AUX0         (1 << BUFFER_AUX0)
-#define BUFFER_BIT_AUX1         (1 << BUFFER_AUX1)
-#define BUFFER_BIT_AUX2         (1 << BUFFER_AUX2)
-#define BUFFER_BIT_AUX3         (1 << BUFFER_AUX3)
 #define BUFFER_BIT_DEPTH        (1 << BUFFER_DEPTH)
 #define BUFFER_BIT_STENCIL      (1 << BUFFER_STENCIL)
 #define BUFFER_BIT_ACCUM        (1 << BUFFER_ACCUM)
@@ -142,7 +138,6 @@ _mesa_varying_slot_in_fs(gl_varying_slot slot)
                             BUFFER_BIT_BACK_LEFT | \
                             BUFFER_BIT_FRONT_RIGHT | \
                             BUFFER_BIT_BACK_RIGHT | \
-                            BUFFER_BIT_AUX0 | \
                             BUFFER_BIT_COLOR0 | \
                             BUFFER_BIT_COLOR1 | \
                             BUFFER_BIT_COLOR2 | \
@@ -174,8 +169,6 @@ struct gl_config
    GLint accumRedBits, accumGreenBits, accumBlueBits, accumAlphaBits;
    GLint depthBits;
    GLint stencilBits;
-
-   GLint numAuxBuffers;
 
    /* EXT_visual_rating / GLX 1.2 */
    GLint visualRating;

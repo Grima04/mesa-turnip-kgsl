@@ -746,8 +746,7 @@ radeonCreateBuffer( __DRIscreen *driScrnPriv,
 	    swDepth,
 	    swStencil,
 	    swAccum,
-	    swAlpha,
-	    GL_FALSE /* aux */);
+	    swAlpha);
     driDrawPriv->driverPrivate = (void *) rfb;
 
     return (driDrawPriv->driverPrivate != NULL);

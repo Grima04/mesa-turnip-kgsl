@@ -422,6 +422,7 @@ driGetConfigAttribIndex(const __DRIconfig *config,
     __ATTRIB(__DRI_ATTRIB_BLUE_SIZE,			blueBits);
     case __DRI_ATTRIB_LEVEL:
     case __DRI_ATTRIB_LUMINANCE_SIZE:
+    case __DRI_ATTRIB_AUX_BUFFERS:
         *value = 0;
         break;
     __ATTRIB(__DRI_ATTRIB_ALPHA_SIZE,			alphaBits);
@@ -458,7 +459,6 @@ driGetConfigAttribIndex(const __DRIconfig *config,
         break;
     __ATTRIB(__DRI_ATTRIB_DOUBLE_BUFFER,		doubleBufferMode);
     __ATTRIB(__DRI_ATTRIB_STEREO,			stereoMode);
-    __ATTRIB(__DRI_ATTRIB_AUX_BUFFERS,			numAuxBuffers);
     case __DRI_ATTRIB_TRANSPARENT_TYPE:
     case __DRI_ATTRIB_TRANSPARENT_INDEX_VALUE: /* horrible bc hack */
         *value = GLX_NONE;

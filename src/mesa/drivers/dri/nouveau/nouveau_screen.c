@@ -286,7 +286,7 @@ nouveau_create_buffer(__DRIscreen *dri_screen,
 	/* Software renderbuffers. */
 	_swrast_add_soft_renderbuffers(fb, GL_FALSE, GL_FALSE, GL_FALSE,
                                        visual->accumRedBits > 0,
-                                       GL_FALSE, GL_FALSE);
+                                       GL_FALSE);
 
 	drawable->driverPrivate = fb;
 

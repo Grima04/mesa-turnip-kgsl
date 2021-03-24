@@ -1857,8 +1857,7 @@ brw_create_buffer(__DRIscreen *dri_screen,
                                   false, /* never sw depth */
                                   false, /* never sw stencil */
                                   mesaVis->accumRedBits > 0,
-                                  false, /* never sw alpha */
-                                  false  /* never sw aux */ );
+                                  false /* never sw alpha */);
    driDrawPriv->driverPrivate = fb;
 
    return true;
