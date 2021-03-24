@@ -40,7 +40,6 @@ spec@!opengl 1.1@polygon-mode-offset,Fail
 spec@!opengl 1.1@texwrap formats bordercolor,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled,Fail
 spec@!opengl 1.1@windowoverlap,Fail
-spec@!opengl 1.3@gl-1.3-texture-env,Timeout
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail

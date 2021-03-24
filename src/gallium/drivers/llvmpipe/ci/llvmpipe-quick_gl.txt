@@ -745,7 +745,7 @@ spec/arb_texture_float/multisample-formats 16 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 32 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 6 gl_arb_texture_float: skip
 spec/arb_texture_float/multisample-formats 8 gl_arb_texture_float: skip
-spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb9_e5: fail
+spec/arb_texture_multisample/arb_texture_multisample-dsa-texelfetch/texture type: gl_rgb9_e5: skip
 spec/arb_texture_multisample/arb_texture_multisample-negative-max-samples: skip
 spec/arb_texture_multisample/arb_texture_multisample-texelfetch 16: skip
 spec/arb_texture_multisample/arb_texture_multisample-texelfetch 32: skip
@@ -870,7 +870,6 @@ spec/arb_timer_query/query gl_timestamp: fail
 spec/arb_vertex_attrib_64bit/get_double_attribs-display-lists: skip
 spec/arb_vertex_program/vp-address-02: skip
 spec/arb_vertex_program/vp-address-04: skip
-spec/arb_vertex_type_2_10_10_10_rev/attrib-p-type-size-match: skip
 spec/arb_viewport_array/display-list: skip
 spec/ati_envmap_bumpmap/ati_envmap_bumpmap-bump: skip
 spec/egl 1.4/egl-blob-cache: skip

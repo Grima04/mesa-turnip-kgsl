@@ -183,7 +183,6 @@ spec@arb_texture_cube_map@copyteximage cube samples=2,Crash
 spec@arb_texture_cube_map@copyteximage cube samples=4,Crash
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled,Fail
-spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch,Fail
 spec@arb_texture_rectangle@1-1-linear-texture,Fail
 spec@arb_texture_rectangle@copyteximage rect,Crash
 spec@arb_texture_rectangle@copyteximage rect samples=2,Crash

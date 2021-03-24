@@ -131,7 +131,6 @@ spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-sh
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_float@texwrap formats bordercolor,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled,Fail
-spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch,Fail
 spec@arb_texture_rectangle@copyteximage rect,Fail
 spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
 spec@arb_texture_rectangle@texwrap rect proj bordercolor,Fail
