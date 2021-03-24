@@ -245,12 +245,14 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_BARRIER:
    case PIPE_CAP_TGSI_VOTE:
    case PIPE_CAP_DRAW_PARAMETERS:
-   case PIPE_CAP_POLYGON_OFFSET_CLAMP:
    case PIPE_CAP_QUERY_SO_OVERFLOW:
    case PIPE_CAP_GL_SPIRV:
    case PIPE_CAP_CLEAR_SCISSORED:
    case PIPE_CAP_INVALIDATE_BUFFER:
       return 1;
+
+   case PIPE_CAP_POLYGON_OFFSET_CLAMP:
+      return screen->info.feats.features.depthBiasClamp;
 
    case PIPE_CAP_QUERY_PIPELINE_STATISTICS_SINGLE:
       return screen->info.feats.features.pipelineStatisticsQuery;

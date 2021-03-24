@@ -29,7 +29,6 @@ Here's a list of those requirements:
 
   * ``logicOp``
   * ``depthClamp``
-  * ``depthBiasClamp``
   * ``fillModeNonSolid``
   * ``wideLines``
   * ``largePoints``
@@ -200,6 +199,7 @@ are required to be supported
 
   * ``samplerAnisotropy``
   * ``pipelineStatisticsQuery``
+  * ``depthBiasClamp``
 
 * Device extensions:
 
