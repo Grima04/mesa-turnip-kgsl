@@ -170,9 +170,6 @@ struct gl_config
    GLint depthBits;
    GLint stencilBits;
 
-   /* EXT_visual_rating / GLX 1.2 */
-   GLint visualRating;
-
    /* ARB_multisample / SGIS_multisample */
    GLint sampleBuffers;
    GLuint samples;

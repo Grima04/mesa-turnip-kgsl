@@ -345,7 +345,6 @@ driCreateConfigs(mesa_format format,
 		    modes->accumGreenBits = 16 * j;
 		    modes->accumBlueBits  = 16 * j;
 		    modes->accumAlphaBits = (masks[3] != 0) ? 16 * j : 0;
-		    modes->visualRating = (j == 0) ? GLX_NONE : GLX_SLOW_CONFIG;
 
 		    modes->stencilBits = stencil_bits[k];
 		    modes->depthBits = depth_bits[k];
@@ -447,9 +446,7 @@ driGetConfigAttribIndex(const __DRIconfig *config,
             *value |= __DRI_ATTRIB_FLOAT_BIT;
 	break;
     case __DRI_ATTRIB_CONFIG_CAVEAT:
-	if (config->modes.visualRating == GLX_NON_CONFORMANT_CONFIG)
-	    *value = __DRI_ATTRIB_NON_CONFORMANT_CONFIG;
-	else if (config->modes.visualRating == GLX_SLOW_CONFIG)
+	if (config->modes.accumRedBits != 0)
 	    *value = __DRI_ATTRIB_SLOW_BIT;
 	else
 	    *value = 0;
