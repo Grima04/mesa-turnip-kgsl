@@ -549,6 +549,8 @@ hs_emit_write_tess_factors(nir_shader *shader,
    }
 
    nir_pop_if(b, invocation_id_zero);
+
+   nir_metadata_preserve(impl, nir_metadata_none);
 }
 
 static nir_ssa_def *
