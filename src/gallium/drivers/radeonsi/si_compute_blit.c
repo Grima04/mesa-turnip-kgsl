@@ -324,25 +324,14 @@ void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
    if (aligned_size >= 4) {
       uint64_t compute_min_size;
 
-      /* CP DMA clears are terribly slow with GTT on GFX6-8, which can always
-       * happen due to BO evictions.
-       */
       if (sctx->chip_class <= GFX8) {
+         /* CP DMA clears are terribly slow with GTT on GFX6-8, which can always
+          * happen due to BO evictions.
+          */
          compute_min_size = 0;
-      } else if (sctx->chip_class >= GFX10 &&
-                 sctx->screen->info.has_dedicated_vram &&
-                 si_resource(dst)->domains & RADEON_DOMAIN_VRAM) {
-         /* VRAM clears on gfx10 dGPUs */
-         if (sctx->screen->info.vram_bit_width >= 192)
-            compute_min_size = 128 * 1024;
-         else
-            compute_min_size = 1024 * 1024;
-      } else if (sctx->screen->info.has_dedicated_vram &&
-                 si_resource(dst)->domains & RADEON_DOMAIN_GTT) {
-         /* GTT clears on gfx9 and gfx10 dGPUs */
-         compute_min_size = UINT64_MAX; /* CP DMA is the best due to slow PCIe */
       } else {
-         compute_min_size = 32 * 1024;
+         /* Use a small enough size because CP DMA is slower than compute with bigger sizes. */
+         compute_min_size = 4 * 1024;
       }
 
       if (method == SI_AUTO_SELECT_CLEAR_METHOD && (
@@ -402,24 +391,7 @@ void si_copy_buffer(struct si_context *sctx, struct pipe_resource *dst, struct p
 
    enum si_coherency coher = SI_COHERENCY_SHADER;
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
-   uint64_t compute_min_size;
-
-   if (sctx->chip_class >= GFX10 &&
-       sctx->screen->info.has_dedicated_vram &&
-       si_resource(dst)->domains & RADEON_DOMAIN_VRAM &&
-       si_resource(src)->domains & RADEON_DOMAIN_VRAM) {
-      /* VRAM copies on gfx10 dGPUs */
-      if (sctx->screen->info.vram_bit_width >= 192)
-         compute_min_size = 128 * 1024;
-      else
-         compute_min_size = 1024 * 1024;
-   } else if (sctx->chip_class >= GFX10 &&
-              sctx->screen->info.has_dedicated_vram &&
-              (si_resource(dst)->domains | si_resource(src)->domains) & RADEON_DOMAIN_GTT) {
-      compute_min_size = UINT64_MAX; /* CP DMA is the best due to slow PCIe */
-   } else {
-      compute_min_size = 32 * 1024;
-   }
+   uint64_t compute_min_size = 8 * 1024;
 
    /* Only use compute for VRAM copies on dGPUs. */
    if (sctx->screen->info.has_dedicated_vram && si_resource(dst)->domains & RADEON_DOMAIN_VRAM &&
