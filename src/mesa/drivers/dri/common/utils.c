@@ -417,10 +417,10 @@ driGetConfigAttribIndex(const __DRIconfig *config,
 {
     switch (index + 1) {
     __ATTRIB(__DRI_ATTRIB_BUFFER_SIZE,			rgbBits);
-    __ATTRIB(__DRI_ATTRIB_LEVEL,			level);
     __ATTRIB(__DRI_ATTRIB_RED_SIZE,			redBits);
     __ATTRIB(__DRI_ATTRIB_GREEN_SIZE,			greenBits);
     __ATTRIB(__DRI_ATTRIB_BLUE_SIZE,			blueBits);
+    case __DRI_ATTRIB_LEVEL:
     case __DRI_ATTRIB_LUMINANCE_SIZE:
         *value = 0;
         break;

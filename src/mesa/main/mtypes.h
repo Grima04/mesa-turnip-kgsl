@@ -177,8 +177,6 @@ struct gl_config
 
    GLint numAuxBuffers;
 
-   GLint level;
-
    /* EXT_visual_rating / GLX 1.2 */
    GLint visualRating;
 
