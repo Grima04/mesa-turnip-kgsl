@@ -127,12 +127,6 @@ radv_dump_debug_registers(struct radv_device *device, FILE *f)
 	fprintf(f, "Memory-mapped registers:\n");
 	radv_dump_mmapped_reg(device, f, R_008010_GRBM_STATUS);
 
-	/* No other registers can be read on DRM < 3.1.0. */
-	if (info->drm_minor < 1) {
-		fprintf(f, "\n");
-		return;
-	}
-
 	radv_dump_mmapped_reg(device, f, R_008008_GRBM_STATUS2);
 	radv_dump_mmapped_reg(device, f, R_008014_GRBM_STATUS_SE0);
 	radv_dump_mmapped_reg(device, f, R_008018_GRBM_STATUS_SE1);

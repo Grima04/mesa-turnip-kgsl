@@ -45,6 +45,11 @@ do_winsys_init(struct radv_amdgpu_winsys *ws, int fd)
 	if (!ac_query_gpu_info(fd, ws->dev, &ws->info, &ws->amdinfo))
 		return false;
 
+	if (ws->info.drm_minor < 35) {
+		fprintf(stderr, "radv: DRM 3.35+ is required (Linux kernel 4.15+)\n");
+		return false;
+	}
+
 	/* LLVM 11 is required for GFX10.3. */
 	if (ws->info.chip_class == GFX10_3 && ws->use_llvm && LLVM_VERSION_MAJOR < 11) {
 		fprintf(stderr, "radv: GFX 10.3 requires LLVM 11 or higher\n");

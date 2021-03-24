@@ -616,9 +616,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_userptr = true;
    info->has_syncobj = has_syncobj(fd);
    info->has_timeline_syncobj = has_timeline_syncobj(fd);
-   info->has_syncobj_wait_for_submit = info->has_syncobj && info->drm_minor >= 20;
    info->has_fence_to_handle = info->has_syncobj && info->drm_minor >= 21;
-   info->has_ctx_priority = info->drm_minor >= 22;
    info->has_local_buffers = info->drm_minor >= 20;
    info->kernel_flushes_hdp_before_ib = true;
    info->htile_cmask_support_1d_tiling = true;
@@ -1107,10 +1105,8 @@ void ac_print_gpu_info(struct radeon_info *info, FILE *f)
    fprintf(f, "    drm = %i.%i.%i\n", info->drm_major, info->drm_minor, info->drm_patchlevel);
    fprintf(f, "    has_userptr = %i\n", info->has_userptr);
    fprintf(f, "    has_syncobj = %u\n", info->has_syncobj);
-   fprintf(f, "    has_syncobj_wait_for_submit = %u\n", info->has_syncobj_wait_for_submit);
    fprintf(f, "    has_timeline_syncobj = %u\n", info->has_timeline_syncobj);
    fprintf(f, "    has_fence_to_handle = %u\n", info->has_fence_to_handle);
-   fprintf(f, "    has_ctx_priority = %u\n", info->has_ctx_priority);
    fprintf(f, "    has_local_buffers = %u\n", info->has_local_buffers);
    fprintf(f, "    kernel_flushes_hdp_before_ib = %u\n", info->kernel_flushes_hdp_before_ib);
    fprintf(f, "    htile_cmask_support_1d_tiling = %u\n", info->htile_cmask_support_1d_tiling);

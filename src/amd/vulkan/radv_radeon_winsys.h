@@ -157,7 +157,6 @@ struct radeon_bo_metadata {
 	uint32_t                metadata[64];
 };
 
-struct radeon_winsys_fence;
 struct radeon_winsys_ctx;
 
 struct radeon_winsys_bo {
@@ -171,10 +170,8 @@ struct radv_winsys_sem_counts {
 	uint32_t syncobj_count;
 	uint32_t syncobj_reset_count; /* for wait only, whether to reset the syncobj */
 	uint32_t timeline_syncobj_count;
-	uint32_t sem_count;
 	uint32_t *syncobj;
 	uint64_t *points;
-	struct radeon_winsys_sem **sem;
 };
 
 struct radv_winsys_sem_info {
@@ -298,8 +295,7 @@ struct radeon_winsys {
 			      struct radeon_cmdbuf *initial_preamble_cs,
 			      struct radeon_cmdbuf *continue_preamble_cs,
 			      struct radv_winsys_sem_info *sem_info,
-			      bool can_patch,
-			      struct radeon_winsys_fence *fence);
+			      bool can_patch);
 
 	void (*cs_add_buffer)(struct radeon_cmdbuf *cs,
 			      struct radeon_winsys_bo *bo);
@@ -317,26 +313,6 @@ struct radeon_winsys {
 			    const struct ac_surf_info *surf_info,
 			    struct radeon_surf *surf);
 
-	struct radeon_winsys_fence *(*create_fence)();
-	void (*destroy_fence)(struct radeon_winsys_fence *fence);
-	void (*reset_fence)(struct radeon_winsys_fence *fence);
-	void (*signal_fence)(struct radeon_winsys_fence *fence);
-	bool (*is_fence_waitable)(struct radeon_winsys_fence *fence);
-	bool (*fence_wait)(struct radeon_winsys *ws,
-			   struct radeon_winsys_fence *fence,
-			   bool absolute,
-			   uint64_t timeout);
-	bool (*fences_wait)(struct radeon_winsys *ws,
-			    struct radeon_winsys_fence *const *fences,
-			    uint32_t fence_count,
-			    bool wait_all,
-			    uint64_t timeout);
-
-	/* old semaphores - non shareable */
-	struct radeon_winsys_sem *(*create_sem)(struct radeon_winsys *ws);
-	void (*destroy_sem)(struct radeon_winsys_sem *sem);
-
-	/* new shareable sync objects */
 	int (*create_syncobj)(struct radeon_winsys *ws, bool create_signaled,
 			      uint32_t *handle);
 	void (*destroy_syncobj)(struct radeon_winsys *ws, uint32_t handle);

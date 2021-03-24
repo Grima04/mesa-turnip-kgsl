@@ -268,9 +268,6 @@ VkResult radv_AcquireNextImage2KHR(
 			switch (part->kind) {
 			case RADV_FENCE_NONE:
 				break;
-			case RADV_FENCE_WINSYS:
-				device->ws->signal_fence(part->fence);
-				break;
 			case RADV_FENCE_SYNCOBJ:
 				device->ws->signal_syncobj(device->ws, part->syncobj, 0);
 				break;
@@ -285,7 +282,6 @@ VkResult radv_AcquireNextImage2KHR(
 
 			switch (part->kind) {
 			case RADV_SEMAPHORE_NONE:
-			case RADV_SEMAPHORE_WINSYS:
 				/* Do not need to do anything. */
 				break;
 			case RADV_SEMAPHORE_TIMELINE:

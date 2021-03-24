@@ -143,10 +143,8 @@ struct radeon_info {
    bool is_amdgpu;
    bool has_userptr;
    bool has_syncobj;
-   bool has_syncobj_wait_for_submit;
    bool has_timeline_syncobj;
    bool has_fence_to_handle;
-   bool has_ctx_priority;
    bool has_local_buffers;
    bool kernel_flushes_hdp_before_ib;
    bool htile_cmask_support_1d_tiling;

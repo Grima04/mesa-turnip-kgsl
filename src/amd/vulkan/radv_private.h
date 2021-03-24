@@ -741,7 +741,6 @@ struct radv_device {
 	int queue_count[RADV_MAX_QUEUE_FAMILIES];
 	struct radeon_cmdbuf *empty_cs[RADV_MAX_QUEUE_FAMILIES];
 
-	bool always_use_syncobj;
 	bool pbb_allowed;
 	bool dfsm_allowed;
 	uint32_t tess_offchip_block_dw_size;
@@ -2405,7 +2404,6 @@ struct radv_query_pool {
 
 typedef enum {
 	RADV_SEMAPHORE_NONE,
-	RADV_SEMAPHORE_WINSYS,
 	RADV_SEMAPHORE_SYNCOBJ,
 	RADV_SEMAPHORE_TIMELINE_SYNCOBJ,
 	RADV_SEMAPHORE_TIMELINE,
@@ -2458,7 +2456,6 @@ struct radv_semaphore_part {
 	radv_semaphore_kind kind;
 	union {
 		uint32_t syncobj;
-		struct radeon_winsys_sem *ws_sem;
 		struct radv_timeline timeline;
 		struct radv_timeline_syncobj timeline_syncobj;
 	};
@@ -2511,20 +2508,14 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 
 typedef enum {
 	RADV_FENCE_NONE,
-	RADV_FENCE_WINSYS,
 	RADV_FENCE_SYNCOBJ,
 } radv_fence_kind;
 
 struct radv_fence_part {
 	radv_fence_kind kind;
 
-	union {
-		/* AMDGPU winsys fence. */
-		struct radeon_winsys_fence *fence;
-
-		/* DRM syncobj handle for syncobj-based fences. */
-		uint32_t syncobj;
-	};
+	/* DRM syncobj handle for syncobj-based fences. */
+	uint32_t syncobj;
 };
 
 struct radv_fence {
@@ -2623,8 +2614,6 @@ void radv_describe_barrier_end(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_barrier_end_delayed(struct radv_cmd_buffer *cmd_buffer);
 void radv_describe_layout_transition(struct radv_cmd_buffer *cmd_buffer,
 				     const struct radv_barrier_data *barrier);
-
-struct radeon_winsys_sem;
 
 uint64_t radv_get_current_time(void);
 
