@@ -11,7 +11,7 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 
-#define NUM_QUERIES 50
+#define NUM_QUERIES 5000
 
 struct zink_query_buffer {
    struct list_head list;
