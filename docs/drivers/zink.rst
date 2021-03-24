@@ -179,10 +179,16 @@ supported:
 OpenGL 4.4
 ^^^^^^^^^^
 
-For OpenGL 4.4 support, the following additional format needs to support
-``VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT``:
+For OpenGL 4.4 support, the following additional requirements needs to be
+supported:
+
+* Formats requiring ``VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT``:
 
   * ``VK_FORMAT_B10G11R11_UFLOAT_PACK32``
+
+* Device extensions:
+
+  * `VK_KHR_sampler_mirror_clamp_to_edge`_
 
 OpenGL 4.5
 ^^^^^^^^^^
@@ -258,3 +264,4 @@ questions, don't hesitate to visit `#zink on FreeNode
 .. _VK_KHR_vulkan_memory_model: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_vulkan_memory_model.html
 .. _VK_KHR_shader_draw_parameters: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_shader_draw_parameters.html
 .. _VK_KHR_draw_indirect_count: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_draw_indirect_count.html
+.. _VK_KHR_sampler_mirror_clamp_to_edge: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_sampler_mirror_clamp_to_edge.html
