@@ -265,6 +265,17 @@ create_cov(struct ir3_context *ctx, struct ir3_instruction *src,
 	return cov;
 }
 
+/* For shift instructions NIR always has shift amount as 32 bit integer */
+static struct ir3_instruction *
+resize_shift_amount(struct ir3_context *ctx,
+					struct ir3_instruction *src, unsigned bs)
+{
+	if (bs != 16)
+		return src;
+
+	return ir3_COV(ctx->block, src, TYPE_U32, TYPE_U16);
+}
+
 static void
 emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 {
@@ -575,10 +586,10 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_OR_B(b, src[0], 0, src[1], 0);
 		break;
 	case nir_op_ishl:
-		dst[0] = ir3_SHL_B(b, src[0], 0, src[1], 0);
+		dst[0] = ir3_SHL_B(b, src[0], 0, resize_shift_amount(ctx, src[1], bs[0]), 0);
 		break;
 	case nir_op_ishr:
-		dst[0] = ir3_ASHR_B(b, src[0], 0, src[1], 0);
+		dst[0] = ir3_ASHR_B(b, src[0], 0, resize_shift_amount(ctx, src[1], bs[0]), 0);
 		break;
 	case nir_op_isub:
 		dst[0] = ir3_SUB_U(b, src[0], 0, src[1], 0);
@@ -587,7 +598,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 		dst[0] = ir3_XOR_B(b, src[0], 0, src[1], 0);
 		break;
 	case nir_op_ushr:
-		dst[0] = ir3_SHR_B(b, src[0], 0, src[1], 0);
+		dst[0] = ir3_SHR_B(b, src[0], 0, resize_shift_amount(ctx, src[1], bs[0]), 0);
 		break;
 	case nir_op_ilt:
 		dst[0] = ir3_CMPS_S(b, src[0], 0, src[1], 0);
