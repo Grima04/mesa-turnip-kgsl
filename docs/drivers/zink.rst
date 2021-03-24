@@ -199,6 +199,7 @@ are required to be supported
 * ``VkPhysicalDeviceFeatures``:
 
   * ``samplerAnisotropy``
+  * ``pipelineStatisticsQuery``
 
 * Device extensions:
 
