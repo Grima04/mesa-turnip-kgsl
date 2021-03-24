@@ -424,7 +424,6 @@ st_visual_to_context_mode(const struct st_visual *visual,
    }
 
    if (visual->samples > 1) {
-      mode->sampleBuffers = 1;
       mode->samples = visual->samples;
    }
 }

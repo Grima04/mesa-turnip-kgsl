@@ -450,7 +450,6 @@ _mesa_update_framebuffer_visual(struct gl_context *ctx,
           * attachments).
           */
          fb->Visual.samples = rb->NumSamples;
-         fb->Visual.sampleBuffers = rb->NumSamples > 0 ? 1 : 0;
 
          if (_mesa_is_legal_color_format(ctx, baseFormat)) {
             fb->Visual.redBits = _mesa_get_format_bits(fmt, GL_RED_BITS);

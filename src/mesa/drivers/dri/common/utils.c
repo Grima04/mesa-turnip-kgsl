@@ -359,7 +359,6 @@ driCreateConfigs(mesa_format format,
 		    }
 
 		    modes->samples = msaa_samples[h];
-		    modes->sampleBuffers = modes->samples ? 1 : 0;
 
 		    modes->sRGBCapable = is_srgb;
 		    modes->mutableRenderBuffer = mutable_render_buffer;
@@ -437,7 +436,9 @@ driGetConfigAttribIndex(const __DRIconfig *config,
     __ATTRIB(__DRI_ATTRIB_ACCUM_GREEN_SIZE,		accumGreenBits);
     __ATTRIB(__DRI_ATTRIB_ACCUM_BLUE_SIZE,		accumBlueBits);
     __ATTRIB(__DRI_ATTRIB_ACCUM_ALPHA_SIZE,		accumAlphaBits);
-    __ATTRIB(__DRI_ATTRIB_SAMPLE_BUFFERS,		sampleBuffers);
+    case __DRI_ATTRIB_SAMPLE_BUFFERS:
+        *value = !!config->modes.samples;
+        break;
     __ATTRIB(__DRI_ATTRIB_SAMPLES,			samples);
     case __DRI_ATTRIB_RENDER_TYPE:
         /* no support for color index mode */

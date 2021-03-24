@@ -425,7 +425,7 @@ dri_fill_st_visual(struct st_visual *stvis,
       return;
    }
 
-   if (mode->sampleBuffers) {
+   if (mode->samples > 0) {
       stvis->samples = mode->samples;
    }
 

@@ -171,7 +171,6 @@ struct gl_config
    GLint stencilBits;
 
    /* ARB_multisample / SGIS_multisample */
-   GLint sampleBuffers;
    GLuint samples;
 
    /* OML_swap_method */
