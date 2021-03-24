@@ -396,7 +396,7 @@ static bool amdgpu_cs_has_user_fence(struct amdgpu_cs_context *cs)
 
 static bool amdgpu_cs_has_chaining(struct amdgpu_cs *cs)
 {
-   return cs->ctx->ws->info.chip_class >= GFX7 &&
+   return cs->ws->info.chip_class >= GFX7 &&
           (cs->ring_type == RING_GFX || cs->ring_type == RING_COMPUTE);
 }
 
@@ -506,7 +506,7 @@ amdgpu_lookup_or_add_real_buffer(struct radeon_cmdbuf *rcs, struct amdgpu_cs *ac
    if (idx >= 0)
       return idx;
 
-   idx = amdgpu_do_add_real_buffer(acs->ctx->ws, cs, bo);
+   idx = amdgpu_do_add_real_buffer(acs->ws, cs, bo);
 
    hash = bo->unique_id & (ARRAY_SIZE(cs->buffer_indices_hashlist)-1);
    cs->buffer_indices_hashlist[hash] = idx;
@@ -653,7 +653,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
    if (!(bo->base.usage & RADEON_FLAG_SPARSE)) {
       if (!bo->bo) {
-         index = amdgpu_lookup_or_add_slab_buffer(acs->ctx->ws, rcs, acs, bo);
+         index = amdgpu_lookup_or_add_slab_buffer(acs->ws, rcs, acs, bo);
          if (index < 0)
             return 0;
 
@@ -670,7 +670,7 @@ static unsigned amdgpu_cs_add_buffer(struct radeon_cmdbuf *rcs,
 
       buffer = &cs->real_buffers[index];
    } else {
-      index = amdgpu_lookup_or_add_sparse_buffer(acs->ctx->ws, rcs, acs, bo);
+      index = amdgpu_lookup_or_add_sparse_buffer(acs->ws, rcs, acs, bo);
       if (index < 0)
          return 0;
 
@@ -970,6 +970,7 @@ amdgpu_cs_create(struct radeon_cmdbuf *rcs,
 
    util_queue_fence_init(&cs->flush_completed);
 
+   cs->ws = ctx->ws;
    cs->ctx = ctx;
    cs->flush_cs = flush;
    cs->flush_data = flush_ctx;
@@ -1021,7 +1022,7 @@ amdgpu_cs_add_parallel_compute_ib(struct radeon_cmdbuf *compute_cs,
                                   bool uses_gds_ordered_append)
 {
    struct amdgpu_cs *cs = amdgpu_cs(gfx_cs);
-   struct amdgpu_winsys *ws = cs->ctx->ws;
+   struct amdgpu_winsys *ws = cs->ws;
 
    if (cs->ring_type != RING_GFX)
       return false;
@@ -1051,7 +1052,7 @@ amdgpu_cs_setup_preemption(struct radeon_cmdbuf *rcs, const uint32_t *preamble_i
                            unsigned preamble_num_dw)
 {
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
-   struct amdgpu_winsys *ws = cs->ctx->ws;
+   struct amdgpu_winsys *ws = cs->ws;
    struct amdgpu_cs_context *csc[2] = {&cs->csc1, &cs->csc2};
    unsigned size = align(preamble_num_dw * 4, ws->info.ib_alignment);
    struct pb_buffer *preamble_bo;
@@ -1153,7 +1154,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
       rcs->max_prev = new_max_prev;
    }
 
-   if (!amdgpu_ib_new_buffer(cs->ctx->ws, ib, cs))
+   if (!amdgpu_ib_new_buffer(cs->ws, ib, cs))
       return false;
 
    assert(ib->used_ib_space == 0);
@@ -1163,7 +1164,7 @@ static bool amdgpu_cs_check_space(struct radeon_cmdbuf *rcs, unsigned dw,
    rcs->current.max_dw += cs_epilog_dw;
 
    /* Pad with NOPs but leave 4 dwords for INDIRECT_BUFFER. */
-   uint32_t ib_pad_dw_mask = cs->ctx->ws->info.ib_pad_dw_mask[cs->ring_type];
+   uint32_t ib_pad_dw_mask = cs->ws->info.ib_pad_dw_mask[cs->ring_type];
    while ((rcs->current.cdw & ib_pad_dw_mask) != ib_pad_dw_mask - 3)
       radeon_emit(rcs, PKT3_NOP_PAD);
 
@@ -1246,7 +1247,7 @@ static bool is_noop_fence_dependency(struct amdgpu_cs *acs,
     * we need the parallelism between IBs for good performance.
     */
    if ((acs->ring_type == RING_GFX ||
-        acs->ctx->ws->info.num_rings[acs->ring_type] == 1) &&
+        acs->ws->info.num_rings[acs->ring_type] == 1) &&
        !amdgpu_fence_is_syncobj(fence) &&
        fence->ctx == acs->ctx &&
        fence->fence.ip_type == cs->ib[IB_MAIN].ip_type &&
@@ -1271,7 +1272,7 @@ static void amdgpu_cs_add_fence_dependency(struct radeon_cmdbuf *rws,
       /* Syncobjs are not needed here. */
       assert(!amdgpu_fence_is_syncobj(fence));
 
-      if (acs->ctx->ws->info.has_scheduled_fence_dependency &&
+      if (acs->ws->info.has_scheduled_fence_dependency &&
           dependency_flags & RADEON_DEPENDENCY_START_FENCE)
          add_fence_to_list(&cs->compute_start_fence_dependencies, fence);
       else
@@ -1434,7 +1435,7 @@ static bool amdgpu_add_sparse_backing_buffers(struct amdgpu_winsys *ws,
 static void amdgpu_cs_submit_ib(void *job, int thread_index)
 {
    struct amdgpu_cs *acs = (struct amdgpu_cs*)job;
-   struct amdgpu_winsys *ws = acs->ctx->ws;
+   struct amdgpu_winsys *ws = acs->ws;
    struct amdgpu_cs_context *cs = acs->cst;
    int i, r;
    uint32_t bo_list = 0;
@@ -1748,7 +1749,7 @@ static int amdgpu_cs_flush(struct radeon_cmdbuf *rcs,
                            struct pipe_fence_handle **fence)
 {
    struct amdgpu_cs *cs = amdgpu_cs(rcs);
-   struct amdgpu_winsys *ws = cs->ctx->ws;
+   struct amdgpu_winsys *ws = cs->ws;
    int error_code = 0;
    uint32_t ib_pad_dw_mask = ws->info.ib_pad_dw_mask[cs->ring_type];
 
@@ -1901,15 +1902,15 @@ static void amdgpu_cs_destroy(struct radeon_cmdbuf *rcs)
 
    amdgpu_cs_sync_flush(rcs);
    util_queue_fence_destroy(&cs->flush_completed);
-   p_atomic_dec(&cs->ctx->ws->num_cs);
-   radeon_bo_reference(&cs->ctx->ws->dummy_ws.base, &cs->preamble_ib_bo, NULL);
-   radeon_bo_reference(&cs->ctx->ws->dummy_ws.base, &cs->main.big_ib_buffer, NULL);
+   p_atomic_dec(&cs->ws->num_cs);
+   radeon_bo_reference(&cs->ws->dummy_ws.base, &cs->preamble_ib_bo, NULL);
+   radeon_bo_reference(&cs->ws->dummy_ws.base, &cs->main.big_ib_buffer, NULL);
    FREE(rcs->prev);
-   radeon_bo_reference(&cs->ctx->ws->dummy_ws.base, &cs->compute_ib.big_ib_buffer, NULL);
+   radeon_bo_reference(&cs->ws->dummy_ws.base, &cs->compute_ib.big_ib_buffer, NULL);
    if (cs->compute_ib.rcs)
       FREE(cs->compute_ib.rcs->prev);
-   amdgpu_destroy_cs_context(cs->ctx->ws, &cs->csc1);
-   amdgpu_destroy_cs_context(cs->ctx->ws, &cs->csc2);
+   amdgpu_destroy_cs_context(cs->ws, &cs->csc1);
+   amdgpu_destroy_cs_context(cs->ws, &cs->csc2);
    amdgpu_fence_reference(&cs->next_fence, NULL);
    FREE(cs);
 }
