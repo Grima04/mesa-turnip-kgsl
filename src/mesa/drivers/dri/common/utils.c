@@ -350,13 +350,6 @@ driCreateConfigs(mesa_format format,
 		    modes->stencilBits = stencil_bits[k];
 		    modes->depthBits = depth_bits[k];
 
-		    modes->transparentPixel = GLX_NONE;
-		    modes->transparentRed = GLX_DONT_CARE;
-		    modes->transparentGreen = GLX_DONT_CARE;
-		    modes->transparentBlue = GLX_DONT_CARE;
-		    modes->transparentAlpha = GLX_DONT_CARE;
-		    modes->transparentIndex = GLX_DONT_CARE;
-
 		    if (db_modes[i] == __DRI_ATTRIB_SWAP_NONE) {
 		    	modes->doubleBufferMode = GL_FALSE;
 		        modes->swapMethod = __DRI_ATTRIB_SWAP_UNDEFINED;
@@ -466,12 +459,16 @@ driGetConfigAttribIndex(const __DRIconfig *config,
     __ATTRIB(__DRI_ATTRIB_DOUBLE_BUFFER,		doubleBufferMode);
     __ATTRIB(__DRI_ATTRIB_STEREO,			stereoMode);
     __ATTRIB(__DRI_ATTRIB_AUX_BUFFERS,			numAuxBuffers);
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_TYPE,		transparentPixel);
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_INDEX_VALUE,	transparentPixel);
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_RED_VALUE,	transparentRed);
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_GREEN_VALUE,	transparentGreen);
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_BLUE_VALUE,	transparentBlue);
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_ALPHA_VALUE,	transparentAlpha);
+    case __DRI_ATTRIB_TRANSPARENT_TYPE:
+    case __DRI_ATTRIB_TRANSPARENT_INDEX_VALUE: /* horrible bc hack */
+        *value = GLX_NONE;
+        break;
+    case __DRI_ATTRIB_TRANSPARENT_RED_VALUE:
+    case __DRI_ATTRIB_TRANSPARENT_GREEN_VALUE:
+    case __DRI_ATTRIB_TRANSPARENT_BLUE_VALUE:
+    case __DRI_ATTRIB_TRANSPARENT_ALPHA_VALUE:
+        *value = GLX_DONT_CARE;
+        break;
     case __DRI_ATTRIB_FLOAT_MODE:
         *value = config->modes.floatMode;
         break;

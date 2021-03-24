@@ -182,12 +182,6 @@ struct gl_config
    /* EXT_visual_rating / GLX 1.2 */
    GLint visualRating;
 
-   /* EXT_visual_info / GLX 1.2 */
-   GLint transparentPixel;
-   /*    colors are floats scaled to ints */
-   GLint transparentRed, transparentGreen, transparentBlue, transparentAlpha;
-   GLint transparentIndex;
-
    /* ARB_multisample / SGIS_multisample */
    GLint sampleBuffers;
    GLuint samples;
