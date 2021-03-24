@@ -383,6 +383,9 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         if (v3d_qpu_writes_r5(devinfo, inst))
                 add_write_dep(state, &state->last_r[5], n);
 
+        /* If we add any more dependencies here we should consider whether we
+         * also need to update qpu_inst_after_thrsw_valid_in_delay_slot.
+         */
         if (inst->sig.thrsw) {
                 /* All accumulator contents and flags are undefined after the
                  * switch.
@@ -984,6 +987,11 @@ try_skip_for_ldvary_pipelining(const struct v3d_qpu_instr *inst)
         return inst->sig.ldunif || inst->sig.ldunifrf;
 }
 
+static bool
+qpu_inst_after_thrsw_valid_in_delay_slot(struct v3d_compile *c,
+                                         struct choose_scoreboard *scoreboard,
+                                         const struct qinst *qinst);
+
 static struct schedule_node *
 choose_instruction_to_schedule(struct v3d_compile *c,
                                struct choose_scoreboard *scoreboard,
@@ -1057,6 +1065,15 @@ retry:
                         continue;
                 }
 
+                /* If we are in a thrsw delay slot check that this instruction
+                 * is valid for that.
+                 */
+                if (scoreboard->last_thrsw_tick + 2 >= scoreboard->tick &&
+                    !qpu_inst_after_thrsw_valid_in_delay_slot(c, scoreboard,
+                                                              n->inst)) {
+                        continue;
+                }
+
                 /* If we're trying to pair with another instruction, check
                  * that they're compatible.
                  */
@@ -1094,6 +1111,19 @@ retry:
                          */
                         if (!scoreboard->tlb_locked && qpu_inst_is_tlb(inst))
                                 continue;
+
+                        /* When we succesfully pair up an ldvary we then try
+                         * to merge it into the previous instruction if
+                         * possible to improve pipelining. Don't pick up the
+                         * ldvary now if the follow-up fixup would place
+                         * it in the delay slots of a thrsw, which is not
+                         * allowed and would prevent the fixup from being
+                         * successul.
+                         */
+                        if (inst->sig.ldvary &&
+                            scoreboard->last_thrsw_tick + 2 >= scoreboard->tick - 1) {
+                                continue;
+                        }
 
                         struct v3d_qpu_instr merged_inst;
                         if (!qpu_merge_inst(c->devinfo, &merged_inst,
@@ -1399,8 +1429,8 @@ emit_nop(struct v3d_compile *c, struct qblock *block,
 }
 
 static bool
-qpu_instruction_valid_in_thrend_slot(struct v3d_compile *c,
-                                     const struct qinst *qinst, int slot)
+qpu_inst_valid_in_thrend_slot(struct v3d_compile *c,
+                              const struct qinst *qinst, int slot)
 {
         const struct v3d_qpu_instr *inst = &qinst->qpu;
 
@@ -1457,6 +1487,140 @@ qpu_instruction_valid_in_thrend_slot(struct v3d_compile *c,
         return true;
 }
 
+/**
+ * This is called when trying to merge a thrsw back into the instruction stream
+ * of instructions that were scheduled *before* the thrsw signal to fill its
+ * delay slots. Because the actual execution of the thrsw happens after the
+ * delay slots, it is usually safe to do this, but there are some cases that
+ * need special care.
+ */
+static bool
+qpu_inst_before_thrsw_valid_in_delay_slot(struct v3d_compile *c,
+                                          const struct qinst *qinst,
+                                          uint32_t slot)
+{
+        /* No scheduling SFU when the result would land in the other
+         * thread.  The simulator complains for safety, though it
+         * would only occur for dead code in our case.
+         */
+        if (slot > 0 &&
+            qinst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+            (v3d_qpu_magic_waddr_is_sfu(qinst->qpu.alu.add.waddr) ||
+             v3d_qpu_magic_waddr_is_sfu(qinst->qpu.alu.mul.waddr))) {
+                return false;
+        }
+
+        if (slot > 0 && qinst->qpu.sig.ldvary)
+                return false;
+
+        /* unifa and the following 3 instructions can't overlap a
+         * thread switch/end. The docs further clarify that this means
+         * the cycle at which the actual thread switch/end happens
+         * and not when the thrsw instruction is processed, which would
+         * be after the 2 delay slots following the thrsw instruction.
+         * This means that we can move up a thrsw up to the instruction
+         * right after unifa:
+         *
+         * unifa, r5
+         * thrsw
+         * delay slot 1
+         * delay slot 2
+         * Thread switch happens here, 4 instructions away from unifa
+         */
+        if (v3d_qpu_writes_unifa(c->devinfo, &qinst->qpu))
+                return false;
+
+        return true;
+}
+
+/**
+ * This is called for instructions scheduled *after* a thrsw signal that may
+ * land in the delay slots of the thrsw. Because these instructions were
+ * scheduled after the thrsw, we need to be careful when placing them into
+ * the delay slots, since that means that we are moving them ahead of the
+ * thread switch and we need to ensure that is not a problem.
+ */
+static bool
+qpu_inst_after_thrsw_valid_in_delay_slot(struct v3d_compile *c,
+                                         struct choose_scoreboard *scoreboard,
+                                         const struct qinst *qinst)
+{
+        const uint32_t slot = scoreboard->tick - scoreboard->last_thrsw_tick;
+        assert(slot <= 2);
+
+        /* We merge thrsw instructions back into the instruction stream
+         * manually, so any instructions scheduled after a thrsw shold be
+         * in the actual delay slots and not in the same slot as the thrsw.
+         */
+        assert(slot >= 1);
+
+        /* No emitting a thrsw while the previous thrsw hasn't happened yet. */
+        if (qinst->qpu.sig.thrsw)
+                return false;
+
+        /* The restrictions for instructions scheduled before the the thrsw
+         * also apply to instructions scheduled after the thrsw that we want
+         * to place in its delay slots.
+         */
+        if (!qpu_inst_before_thrsw_valid_in_delay_slot(c, qinst, slot))
+                return false;
+
+        /* TLB access is disallowed until scoreboard wait is executed, which
+         * we do on the last thread switch.
+         */
+        if (qpu_inst_is_tlb(&qinst->qpu))
+                return false;
+
+        /* Instruction sequence restrictions: Branch is not allowed in delay
+         * slots of a thrsw.
+         */
+        if (qinst->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH)
+                return false;
+
+        /* Miscellaneous restrictions: At the point of a thrsw we need to have
+         * at least one outstanding lookup or TSY wait.
+         *
+         * So avoid placing TMU instructions scheduled after the thrsw into
+         * its delay slots or we may be compromising the integrity of our TMU
+         * sequences. Also, notice that if we moved these instructions into
+         * the delay slots of a previous thrsw we could overflow our TMU output
+         * fifo, since we could be effectively pipelining a lookup scheduled
+         * after the thrsw into the sequence before the thrsw.
+         */
+        if (v3d_qpu_writes_tmu(c->devinfo, &qinst->qpu) ||
+            qinst->qpu.sig.wrtmuc) {
+                return false;
+        }
+
+        /* Don't move instructions that wait on the TMU before the thread switch
+         * happens since that would make the current thread stall before the
+         * switch, which is exactly what we want to avoid with the thrsw
+         * instruction.
+         */
+        if (v3d_qpu_waits_on_tmu(&qinst->qpu))
+                return false;
+
+        /* A thread switch invalidates all accumulators, so don't place any
+         * instructions that write accumulators into the delay slots.
+         */
+        if (v3d_qpu_writes_accum(c->devinfo, &qinst->qpu))
+                return false;
+
+        /* Multop has an implicit write to the rtop register which is an
+         * specialized accumulator that is only used with this instruction.
+         */
+        if (qinst->qpu.alu.mul.op == V3D_QPU_M_MULTOP)
+                return false;
+
+        /* Flags are invalidated across a thread switch, so dont' place
+         * instructions that write flags into delay slots.
+         */
+        if (v3d_qpu_writes_flags(&qinst->qpu))
+                return false;
+
+        return true;
+}
+
 static bool
 valid_thrsw_sequence(struct v3d_compile *c, struct choose_scoreboard *scoreboard,
                      struct qinst *qinst, int instructions_in_sequence,
@@ -1469,41 +1633,13 @@ valid_thrsw_sequence(struct v3d_compile *c, struct choose_scoreboard *scoreboard
         }
 
         for (int slot = 0; slot < instructions_in_sequence; slot++) {
-                /* No scheduling SFU when the result would land in the other
-                 * thread.  The simulator complains for safety, though it
-                 * would only occur for dead code in our case.
-                 */
-                if (slot > 0 &&
-                    qinst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
-                    (v3d_qpu_magic_waddr_is_sfu(qinst->qpu.alu.add.waddr) ||
-                     v3d_qpu_magic_waddr_is_sfu(qinst->qpu.alu.mul.waddr))) {
-                        return false;
-                }
-
-                if (slot > 0 && qinst->qpu.sig.ldvary)
+                if (!qpu_inst_before_thrsw_valid_in_delay_slot(c, qinst, slot))
                         return false;
 
                 if (is_thrend &&
-                    !qpu_instruction_valid_in_thrend_slot(c, qinst, slot)) {
+                    !qpu_inst_valid_in_thrend_slot(c, qinst, slot)) {
                         return false;
                 }
-
-                /* unifa and the following 3 instructions can't overlap a
-                 * thread switch/end. The docs further clarify that this means
-                 * the cycle at which the actual thread switch/end happens
-                 * and not when the thrsw instruction is processed, which would
-                 * be after the 2 delay slots following the thrsw instruction.
-                 * This means that we can move up a thrsw up to the instruction
-                 * right after unifa:
-                 *
-                 * unifa, r5
-                 * thrsw
-                 * delay slot 1
-                 * delay slot 2
-                 * Thread switch happens here, 4 instructions away from unifa
-                 */
-                if (v3d_qpu_writes_unifa(c->devinfo, &qinst->qpu))
-                        return false;
 
                 /* Note that the list is circular, so we can only do this up
                  * to instructions_in_sequence.
@@ -1533,6 +1669,12 @@ emit_thrsw(struct v3d_compile *c,
         assert(inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU);
         assert(inst->qpu.alu.add.op == V3D_QPU_A_NOP);
         assert(inst->qpu.alu.mul.op == V3D_QPU_M_NOP);
+
+        /* Don't try to emit a thrsw in the delay slots of a previous thrsw */
+        while (scoreboard->last_thrsw_tick + 2 >= scoreboard->tick) {
+                emit_nop(c, block, scoreboard);
+                time++;
+        }
 
         /* Find how far back into previous instructions we can put the THRSW. */
         int slots_filled = 0;
@@ -1569,19 +1711,25 @@ emit_thrsw(struct v3d_compile *c,
                 merge_inst = inst;
         }
 
-        /* Insert any extra delay slot NOPs we need. */
-        for (int i = 0; i < 3 - slots_filled; i++) {
-                emit_nop(c, block, scoreboard);
-                time++;
-        }
-
         /* If we're emitting the last THRSW (other than program end), then
          * signal that to the HW by emitting two THRSWs in a row.
          */
         if (inst->is_last_thrsw) {
+                if (slots_filled <= 1) {
+                        emit_nop(c, block, scoreboard);
+                        time++;
+                }
                 struct qinst *second_inst =
                         (struct qinst *)merge_inst->link.next;
                 second_inst->qpu.sig.thrsw = true;
+        }
+
+        /* Make sure the thread end executes within the program lifespan */
+        if (is_thrend) {
+                for (int i = 0; i < 3 - slots_filled; i++) {
+                        emit_nop(c, block, scoreboard);
+                        time++;
+                }
         }
 
         /* If we put our THRSW into another instruction, free up the
@@ -1717,6 +1865,12 @@ fixup_pipelined_ldvary(struct v3d_compile *c,
                 return false;
         if (v3d_qpu_reads_flags(&prev->qpu))
                 return false;
+
+        /* We can't put an ldvary in the delay slots of a thrsw. We should've
+         * prevented this when pairing up the ldvary with another instruction
+         * and flagging it for a fixup.
+         */
+        assert(scoreboard->last_thrsw_tick + 2 < scoreboard->tick - 1);
 
         /* Move the ldvary to the previous instruction and remove it from the
          * current one.
