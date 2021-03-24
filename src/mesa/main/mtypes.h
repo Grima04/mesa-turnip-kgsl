@@ -195,13 +195,6 @@ struct gl_config
    /* OML_swap_method */
    GLint swapMethod;
 
-   /* EXT_texture_from_pixmap */
-   GLint bindToTextureRgb;
-   GLint bindToTextureRgba;
-   GLint bindToMipmapTexture;
-   GLint bindToTextureTargets;
-   GLint yInverted;
-
    /* EXT_framebuffer_sRGB */
    GLint sRGBCapable;
 

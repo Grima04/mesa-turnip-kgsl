@@ -369,15 +369,6 @@ driCreateConfigs(mesa_format format,
 		    modes->samples = msaa_samples[h];
 		    modes->sampleBuffers = modes->samples ? 1 : 0;
 
-		    modes->bindToTextureRgb = GL_TRUE;
-		    modes->bindToTextureRgba = GL_TRUE;
-		    modes->bindToMipmapTexture = GL_FALSE;
-		    modes->bindToTextureTargets =
-			__DRI_ATTRIB_TEXTURE_1D_BIT |
-			__DRI_ATTRIB_TEXTURE_2D_BIT |
-			__DRI_ATTRIB_TEXTURE_RECTANGLE_BIT;
-
-		    modes->yInverted = GL_TRUE;
 		    modes->sRGBCapable = is_srgb;
 		    modes->mutableRenderBuffer = mutable_render_buffer;
 		}
@@ -503,11 +494,19 @@ driGetConfigAttribIndex(const __DRIconfig *config,
     case __DRI_ATTRIB_MIN_SWAP_INTERVAL:
         *value = 0;
         break;
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGB,		bindToTextureRgb);
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGBA,		bindToTextureRgba);
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE,	bindToMipmapTexture);
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_TARGETS,	bindToTextureTargets);
-    __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted);
+    case __DRI_ATTRIB_BIND_TO_TEXTURE_RGB:
+    case __DRI_ATTRIB_BIND_TO_TEXTURE_RGBA:
+    case __DRI_ATTRIB_YINVERTED:
+        *value = GL_TRUE;
+        break;
+    case __DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE:
+        *value = GL_FALSE;
+        break;
+    case __DRI_ATTRIB_BIND_TO_TEXTURE_TARGETS:
+        *value = __DRI_ATTRIB_TEXTURE_1D_BIT |
+                 __DRI_ATTRIB_TEXTURE_2D_BIT |
+                 __DRI_ATTRIB_TEXTURE_RECTANGLE_BIT;
+        break;
     __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable);
     __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer);
     __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift);
