@@ -5760,7 +5760,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
                                     dim == GLSL_SAMPLER_DIM_BUF ? ACO_DESC_BUFFER : ACO_DESC_IMAGE,
-                                    nullptr, true, true);
+                                    nullptr, true, false);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
