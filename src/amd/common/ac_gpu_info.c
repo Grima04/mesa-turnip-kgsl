@@ -806,6 +806,12 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    /* Drawing from 0-sized index buffers causes hangs on Navi10/14. */
    info->has_zero_index_buffer_bug = info->family == CHIP_NAVI10 || info->family == CHIP_NAVI14;
 
+   /* Whether chips are affected by the image load/sample/gather hw bug when
+    * DCC is enabled (ie. WRITE_COMPRESS_ENABLE should be 0).
+    */
+   info->has_image_load_dcc_bug = info->family == CHIP_DIMGREY_CAVEFISH ||
+                                  info->family == CHIP_VANGOGH;
+
    /* Support for GFX10.3 was added with F32_ME_FEATURE_VERSION_31 but the
     * firmware version wasn't bumped.
     */

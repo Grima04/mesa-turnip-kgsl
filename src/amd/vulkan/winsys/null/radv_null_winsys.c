@@ -133,6 +133,9 @@ static void radv_null_winsys_query_info(struct radeon_winsys *rws,
 
 	info->has_dedicated_vram = gpu_info[info->family].has_dedicated_vram;
 	info->has_packed_math_16bit = info->chip_class >= GFX9;
+
+	info->has_image_load_dcc_bug = info->family == CHIP_DIMGREY_CAVEFISH ||
+				       info->family == CHIP_VANGOGH;
 }
 
 static void radv_null_winsys_destroy(struct radeon_winsys *rws)
