@@ -99,7 +99,6 @@ attachment_to_buffer_index(enum st_attachment_type statt)
    case ST_ATTACHMENT_ACCUM:
       index = BUFFER_ACCUM;
       break;
-   case ST_ATTACHMENT_SAMPLE:
    default:
       index = BUFFER_COUNT;
       break;
