@@ -2333,7 +2333,7 @@ static void handle_copy_query_pool_results(struct lvp_cmd_buffer_entry *cmd,
    struct lvp_query_pool *pool = copycmd->pool;
 
    for (unsigned i = copycmd->first_query; i < copycmd->first_query + copycmd->query_count; i++) {
-      unsigned offset = copycmd->dst->offset + (copycmd->stride * (i - copycmd->first_query));
+      unsigned offset = copycmd->dst_offset + copycmd->dst->offset + (copycmd->stride * (i - copycmd->first_query));
       if (pool->queries[i]) {
          if (copycmd->flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)
             state->pctx->get_query_result_resource(state->pctx,
@@ -2370,7 +2370,8 @@ static void handle_copy_query_pool_results(struct lvp_cmd_buffer_entry *cmd,
             uint32_t *map;
 
             struct pipe_box box = {0};
-            box.width = copycmd->stride * copycmd->query_count;
+            box.x = offset;
+            box.width = copycmd->stride;
             box.height = 1;
             box.depth = 1;
             map = state->pctx->transfer_map(state->pctx,
