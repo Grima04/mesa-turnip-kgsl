@@ -140,6 +140,7 @@ supported:
     * ``shaderDrawParameters``
     * ``vertexPipelineStoresAndAtomics``
     * ``fragmentStoresAndAtomics``
+    * ``textureCompressionBC``
 
 * For Vulkan 1.1 and below:
 
