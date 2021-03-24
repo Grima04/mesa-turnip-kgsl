@@ -1224,6 +1224,7 @@
     <field name="Null Vertex Buffer" start="13" end="13" type="bool"/>
     <field name="Address Modify Enable" start="14" end="14" type="bool"/>
     <field name="MOCS" start="16" end="22" type="uint"/>
+    <field name="L3 Bypass Disable" start="25" end="25" type="bool"/>
     <field name="Vertex Buffer Index" start="26" end="31" type="uint"/>
     <field name="Buffer Starting Address" start="32" end="95" type="address"/>
     <field name="Buffer Size" start="96" end="127" type="uint"/>
@@ -1998,6 +1999,7 @@
       <value name="WORD" value="1"/>
       <value name="DWORD" value="2"/>
     </field>
+    <field name="L3 Bypass Disable" start="43" end="43" type="bool"/>
     <field name="Buffer Starting Address" start="64" end="127" type="address"/>
     <field name="Buffer Size" start="128" end="159" type="uint"/>
   </instruction>
