@@ -37,6 +37,8 @@
 
 #include "git_sha1.h"
 
+#include "vulkan/vulkan_core.h"
+
 #include <stdint.h>
 
 int debug_dxil = 0;
@@ -1871,11 +1873,9 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
    case nir_op_vec16:
       return emit_vec(ctx, alu, nir_op_infos[alu->op].num_inputs);
    case nir_op_mov: {
-         const struct dxil_type *type = get_alu_src_type(ctx, alu, 0);
-         nir_alu_type t = dxil_type_to_nir_type(type);
          assert(nir_dest_num_components(alu->dest.dest) == 1);
-         store_alu_dest(ctx, alu, 0,get_src(ctx, &alu->src[0].src,
-                        alu->src[0].swizzle[0], t));
+         store_ssa_def(ctx, &alu->dest.dest.ssa, 0, get_src_ssa(ctx,
+                        alu->src->src.ssa, alu->src->swizzle[0]));
          return true;
       }
    default:
@@ -2385,9 +2385,15 @@ emit_store_scratch(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_load_ubo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   nir_const_value *const_block_index = nir_src_as_const_value(intr->src[0]);
-   assert(const_block_index); // no dynamic indexing for now
-   const struct dxil_value *handle = ctx->cbv_handles[const_block_index->u32];
+   const struct dxil_value* handle = NULL;
+   nir_const_value* const_block_index = nir_src_as_const_value(intr->src[0]);
+   if (const_block_index) {
+      handle = ctx->cbv_handles[const_block_index->u32];
+   } else {
+      assert(nir_src_num_components(intr->src[0]) == 1);
+      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
+   }
+
    assert(handle);
    const struct dxil_value *offset;
    nir_const_value *const_offset = nir_src_as_const_value(intr->src[1]);
@@ -2418,18 +2424,21 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    assert(nir_dest_num_components(intr->dest) <= 4);
    assert(nir_dest_bit_size(intr->dest) == 32);
 
-   /* We only support const indexes right now. */
    nir_const_value *index = nir_src_as_const_value(intr->src[0]);
-   assert(index && index->u32 < ARRAY_SIZE(ctx->cbv_handles));
+
+   const struct dxil_value* handle = NULL;
+   if (index) {
+      assert(index && index->u32 < ARRAY_SIZE(ctx->cbv_handles));
+      handle = ctx->cbv_handles[index->u32];
+   } else {
+      assert(nir_src_num_components(intr->src[0]) == 1);
+      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
+   }
 
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
 
-   if (!index || !offset)
-      return false;
-
-   const struct dxil_value *handle = ctx->cbv_handles[index->u32];
-   if (!handle)
+   if (!handle || !offset)
       return false;
 
    const struct dxil_value *agg = load_ubo(ctx, handle, offset, DXIL_I32);
@@ -3101,6 +3110,38 @@ emit_shared_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
+emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   nir_intrinsic_instr* index = nir_src_as_intrinsic(intr->src[0]);
+   /* We currently do not support reindex */
+   assert(index && index->intrinsic == nir_intrinsic_vulkan_resource_index);
+   unsigned int binding = nir_intrinsic_binding(index);
+   /* We currently do not support non-zero sets */
+   assert(nir_intrinsic_desc_set(index) == 0);
+
+   switch (nir_intrinsic_desc_type(intr)) {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+      if (ctx->cbv_handles[binding])
+         break;
+      char name[64];
+      snprintf(name, sizeof(name), "__ubo%d", binding);
+      if (!emit_cbv(ctx, binding, 16384 /*4096 vec4's*/, name))
+         return false;
+      break;
+   }
+   default:
+      unreachable("unknown descriptor type");
+      return false;
+   }
+
+   store_ssa_def(ctx, &intr->dest.ssa, 0, ctx->cbv_handles[binding]);
+   store_ssa_def(ctx, &intr->dest.ssa, 1, dxil_module_get_int32_const(
+                 &ctx->mod, 0));
+
+   return true;
+}
+
+static bool
 emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    switch (intr->intrinsic) {
@@ -3202,6 +3243,11 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_image_store(ctx, intr);
    case nir_intrinsic_image_size:
       return emit_image_size(ctx, intr);
+
+   case nir_intrinsic_vulkan_resource_index:
+      return true;
+   case nir_intrinsic_load_vulkan_descriptor:
+      return emit_load_vulkan_descriptor(ctx, intr);
 
    case nir_intrinsic_load_num_work_groups:
    case nir_intrinsic_load_local_group_size:
@@ -3965,8 +4011,9 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    sort_uniforms_by_binding_and_remove_structs(s);
 
    /* CBVs */
-   if (!emit_cbvs(ctx, s))
-      return false;
+   if(!opts->vulkan_environment)
+      if (!emit_cbvs(ctx, s))
+         return false;
 
    /* Samplers */
    binding = 0;

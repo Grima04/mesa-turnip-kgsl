@@ -38,6 +38,8 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       return false;
 
    struct spirv_to_nir_options spirv_opts = {0};
+   spirv_opts.ubo_addr_format = nir_address_format_32bit_index_offset;
+   spirv_opts.ssbo_addr_format = nir_address_format_32bit_index_offset;
 
    glsl_type_singleton_init_or_ref();
 
@@ -54,6 +56,9 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
                        "Validate before feeding NIR to the DXIL compiler");
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
+
+   NIR_PASS_V(nir, nir_lower_explicit_io, nir_var_mem_ubo | nir_var_mem_ssbo,
+              nir_address_format_32bit_index_offset);
 
    nir_variable_mode nir_var_function_temp =
       nir_var_shader_in | nir_var_shader_out;
@@ -99,7 +104,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
 
-   struct nir_to_dxil_options opts = {0};
+   struct nir_to_dxil_options opts = {.vulkan_environment = true};
 
    struct blob dxil_blob;
    if (!nir_to_dxil(nir, &opts, &dxil_blob)) {
