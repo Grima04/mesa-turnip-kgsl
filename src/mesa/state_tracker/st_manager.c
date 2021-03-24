@@ -871,8 +871,7 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
    struct st_context *shared_ctx = (struct st_context *) shared_stctxi;
    struct st_context *st;
    struct pipe_context *pipe;
-   struct gl_config* mode_ptr;
-   struct gl_config mode;
+   struct gl_config mode, *mode_ptr = &mode;
    gl_api api;
    bool no_error = false;
    unsigned ctx_flags = PIPE_CONTEXT_PREFER_THREADED;
@@ -936,12 +935,8 @@ st_api_create_context(struct st_api *stapi, struct st_manager *smapi,
    }
 
    st_visual_to_context_mode(&attribs->visual, &mode);
-
-   if (attribs->visual.no_config)
+   if (attribs->visual.color_format == PIPE_FORMAT_NONE)
       mode_ptr = NULL;
-   else
-      mode_ptr = &mode;
-
    st = st_create_context(api, pipe, mode_ptr, shared_ctx,
                           &attribs->options, no_error);
    if (!st) {
