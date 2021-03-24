@@ -138,6 +138,8 @@ supported:
   * ``VkPhysicalDeviceVulkan11Features``:
 
     * ``shaderDrawParameters``
+    * ``vertexPipelineStoresAndAtomics``
+    * ``fragmentStoresAndAtomics``
 
 * For Vulkan 1.1 and below:
 

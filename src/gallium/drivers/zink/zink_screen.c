@@ -713,6 +713,24 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       return 32; /* arbitrary */
 
    case PIPE_SHADER_CAP_MAX_SHADER_BUFFERS:
+      switch (shader) {
+      case PIPE_SHADER_VERTEX:
+      case PIPE_SHADER_TESS_CTRL:
+      case PIPE_SHADER_TESS_EVAL:
+      case PIPE_SHADER_GEOMETRY:
+         if (!screen->info.feats.features.vertexPipelineStoresAndAtomics)
+            return 0;
+         break;
+
+      case PIPE_SHADER_FRAGMENT:
+         if (!screen->info.feats.features.fragmentStoresAndAtomics)
+            return 0;
+         break;
+
+      default:
+         break;
+      }
+
       /* TODO: this limitation is dumb, and will need some fixes in mesa */
       return MIN2(screen->info.props.limits.maxPerStageDescriptorStorageBuffers, PIPE_MAX_SHADER_BUFFERS);
 
