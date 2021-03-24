@@ -352,12 +352,13 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
 {
    struct zink_shader *dirty[ZINK_SHADER_COUNT] = {NULL};
 
-   if (!ctx->dirty_shader_stages)
+   unsigned gfx_bits = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
+   unsigned dirty_shader_stages = ctx->dirty_shader_stages & gfx_bits;
+   if (!dirty_shader_stages)
       return;
    /* we need to map pipe_shader_type -> gl_shader_stage so we can ensure that we're compiling
     * the shaders in pipeline order and have builtin input/output locations match up after being compacted
     */
-   unsigned dirty_shader_stages = ctx->dirty_shader_stages;
    while (dirty_shader_stages) {
       unsigned type = u_bit_scan(&dirty_shader_stages);
       dirty[tgsi_processor_to_shader_stage(type)] = stages[type];
