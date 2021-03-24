@@ -2590,7 +2590,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
 
             /* finish incomplete phis and check if they became trivial */
             for (Instruction* phi : ctx.incomplete_phis[succ_idx]) {
-               std::vector<unsigned> preds = phi->definitions[0].getTemp().is_linear() ? succ.linear_preds : succ.logical_preds;
+               const std::vector<unsigned>& preds = phi->definitions[0].getTemp().is_linear() ? succ.linear_preds : succ.logical_preds;
                for (unsigned i = 0; i < phi->operands.size(); i++) {
                   phi->operands[i].setTemp(read_variable(ctx, phi->operands[i].getTemp(), preds[i]));
                   phi->operands[i].setFixed(ctx.assignments[phi->operands[i].tempId()].reg);
@@ -2601,7 +2601,7 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             for (aco_ptr<Instruction>& instr : succ.instructions) {
                if (!is_phi(instr))
                   break;
-               std::vector<unsigned> preds = instr->opcode == aco_opcode::p_phi ? succ.logical_preds : succ.linear_preds;
+               const std::vector<unsigned>& preds = instr->opcode == aco_opcode::p_phi ? succ.logical_preds : succ.linear_preds;
 
                for (unsigned i = 0; i < instr->operands.size(); i++) {
                   auto& operand = instr->operands[i];
