@@ -440,7 +440,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
                    first_level, last_level, level_mask);
 
    if (need_dcc_decompress) {
-      assert(sctx->chip_class == GFX8);
+      assert(sctx->chip_class == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2);
       custom_blend = sctx->custom_blend_dcc_decompress;
 
       assert(vi_dcc_enabled(tex, first_level));
@@ -1327,11 +1327,12 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
    if (!tex->surface.meta_offset || !sctx->has_graphics)
       return;
 
-   if (sctx->chip_class == GFX8) {
+   if (sctx->chip_class == GFX8 || tex->buffer.b.b.nr_storage_samples >= 2) {
       si_blit_decompress_color(sctx, tex, 0, tex->buffer.b.b.last_level, 0,
                                util_max_layer(&tex->buffer.b.b, 0), true, false);
    } else {
       struct pipe_resource *ptex = &tex->buffer.b.b;
+      assert(ptex->nr_storage_samples <= 1);
 
       /* DCC decompression using a compute shader. */
       for (unsigned level = 0; level < tex->surface.num_meta_levels; level++) {
