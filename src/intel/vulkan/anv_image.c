@@ -930,7 +930,6 @@ anv_image_create(VkDevice _device,
                                              pCreateInfo->extent);
    image->vk_format = pCreateInfo->format;
    image->format = anv_get_format(pCreateInfo->format);
-   image->n_planes = image->format->n_planes;
    image->aspects = vk_format_aspects(image->vk_format);
    image->levels = pCreateInfo->mipLevels;
    image->array_size = pCreateInfo->arrayLayers;
@@ -941,14 +940,6 @@ anv_image_create(VkDevice _device,
    image->needs_set_tiling = wsi_info && wsi_info->scanout;
    image->drm_format_mod = isl_mod_info ? isl_mod_info->modifier :
                                           DRM_FORMAT_MOD_INVALID;
-
-   /* The Vulkan 1.2.165 glossary says:
-    *
-    *    A disjoint image consists of multiple disjoint planes, and is created
-    *    with the VK_IMAGE_CREATE_DISJOINT_BIT bit set.
-    */
-   image->disjoint = image->format->n_planes > 1 &&
-                     (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
 
    if (image->aspects & VK_IMAGE_ASPECT_STENCIL_BIT) {
       image->stencil_usage = pCreateInfo->usage;
@@ -976,6 +967,16 @@ anv_image_create(VkDevice _device,
       *pImage = anv_image_to_handle(image);
       return VK_SUCCESS;
    }
+
+   image->n_planes = image->format->n_planes;
+
+   /* The Vulkan 1.2.165 glossary says:
+    *
+    *    A disjoint image consists of multiple disjoint planes, and is created
+    *    with the VK_IMAGE_CREATE_DISJOINT_BIT bit set.
+    */
+   image->disjoint = image->format->n_planes > 1 &&
+                     (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT);
 
    const isl_tiling_flags_t isl_tiling_flags =
       choose_isl_tiling_flags(&device->info, create_info, isl_mod_info,
