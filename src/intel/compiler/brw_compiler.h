@@ -1589,19 +1589,35 @@ brw_compile_fs(const struct brw_compiler *compiler,
                struct brw_compile_fs_params *params);
 
 /**
+ * Parameters for compiling a compute shader.
+ *
+ * Some of these will be modified during the shader compilation.
+ */
+struct brw_compile_cs_params {
+   nir_shader *nir;
+
+   const struct brw_cs_prog_key *key;
+   struct brw_cs_prog_data *prog_data;
+
+   bool shader_time;
+   int shader_time_index;
+
+   struct brw_compile_stats *stats;
+
+   void *log_data;
+
+   char *error_str;
+};
+
+/**
  * Compile a compute shader.
  *
- * Returns the final assembly and the program's size.
+ * Returns the final assembly and updates the parameters structure.
  */
 const unsigned *
-brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_cs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_cs_prog_key *key,
-               struct brw_cs_prog_data *prog_data,
-               const nir_shader *nir,
-               int shader_time_index,
-               struct brw_compile_stats *stats,
-               char **error_str);
+               struct brw_compile_cs_params *params);
 
 /**
  * Compile a Ray Tracing shader.

@@ -9430,15 +9430,15 @@ compile_cs_to_nir(const struct brw_compiler *compiler,
 }
 
 const unsigned *
-brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
+brw_compile_cs(const struct brw_compiler *compiler,
                void *mem_ctx,
-               const struct brw_cs_prog_key *key,
-               struct brw_cs_prog_data *prog_data,
-               const nir_shader *nir,
-               int shader_time_index,
-               struct brw_compile_stats *stats,
-               char **error_str)
+               struct brw_compile_cs_params *params)
 {
+   const nir_shader *nir = params->nir;
+   const struct brw_cs_prog_key *key = params->key;
+   struct brw_cs_prog_data *prog_data = params->prog_data;
+   int shader_time_index = params->shader_time ? params->shader_time_index : -1;
+
    const bool debug_enabled = INTEL_DEBUG & DEBUG_CS;
 
    prog_data->base.stage = MESA_SHADER_COMPUTE;
@@ -9482,10 +9482,8 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
              required_dispatch_width == 32);
       if (required_dispatch_width < min_dispatch_width ||
           required_dispatch_width > max_dispatch_width) {
-         if (error_str) {
-            *error_str = ralloc_strdup(mem_ctx,
-                                       "Cannot satisfy explicit subgroup size");
-         }
+         params->error_str = ralloc_strdup(mem_ctx,
+                                           "Cannot satisfy explicit subgroup size");
          return NULL;
       }
       min_dispatch_width = max_dispatch_width = required_dispatch_width;
@@ -9500,12 +9498,11 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
        min_dispatch_width <= 8 && max_dispatch_width >= 8) {
       nir_shader *nir8 = compile_cs_to_nir(compiler, mem_ctx, key,
                                            nir, 8, debug_enabled);
-      v8 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+      v8 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                           &prog_data->base,
                           nir8, 8, shader_time_index, debug_enabled);
       if (!v8->run_cs(true /* allow_spilling */)) {
-         if (error_str)
-            *error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
+         params->error_str = ralloc_strdup(mem_ctx, v8->fail_msg);
          delete v8;
          return NULL;
       }
@@ -9526,7 +9523,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       /* Try a SIMD16 compile */
       nir_shader *nir16 = compile_cs_to_nir(compiler, mem_ctx, key,
                                             nir, 16, debug_enabled);
-      v16 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+      v16 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base,
                            nir16, 16, shader_time_index, debug_enabled);
       if (v8)
@@ -9534,16 +9531,14 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
 
       const bool allow_spilling = generate_all || v == NULL;
       if (!v16->run_cs(allow_spilling)) {
-         compiler->shader_perf_log(log_data,
+         compiler->shader_perf_log(params->log_data,
                                    "SIMD16 shader failed to compile: %s",
                                    v16->fail_msg);
          if (!v) {
             assert(v8 == NULL);
-            if (error_str) {
-               *error_str = ralloc_asprintf(
-                  mem_ctx, "Not enough threads for SIMD8 and "
-                  "couldn't generate SIMD16: %s", v16->fail_msg);
-            }
+            params->error_str = ralloc_asprintf(
+               mem_ctx, "Not enough threads for SIMD8 and "
+               "couldn't generate SIMD16: %s", v16->fail_msg);
             delete v16;
             return NULL;
          }
@@ -9574,7 +9569,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       /* Try a SIMD32 compile */
       nir_shader *nir32 = compile_cs_to_nir(compiler, mem_ctx, key,
                                             nir, 32, debug_enabled);
-      v32 = new fs_visitor(compiler, log_data, mem_ctx, &key->base,
+      v32 = new fs_visitor(compiler, params->log_data, mem_ctx, &key->base,
                            &prog_data->base,
                            nir32, 32, shader_time_index, debug_enabled);
       if (v8)
@@ -9584,17 +9579,15 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
 
       const bool allow_spilling = generate_all || v == NULL;
       if (!v32->run_cs(allow_spilling)) {
-         compiler->shader_perf_log(log_data,
+         compiler->shader_perf_log(params->log_data,
                                    "SIMD32 shader failed to compile: %s",
                                    v32->fail_msg);
          if (!v) {
             assert(v8 == NULL);
             assert(v16 == NULL);
-            if (error_str) {
-               *error_str = ralloc_asprintf(
-                  mem_ctx, "Not enough threads for SIMD16 and "
-                  "couldn't generate SIMD32: %s", v32->fail_msg);
-            }
+            params->error_str = ralloc_asprintf(
+               mem_ctx, "Not enough threads for SIMD16 and "
+               "couldn't generate SIMD32: %s", v32->fail_msg);
             delete v32;
             return NULL;
          }
@@ -9608,11 +9601,9 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
    }
 
    if (unlikely(!v) && (INTEL_DEBUG & (DEBUG_NO8 | DEBUG_NO16 | DEBUG_NO32))) {
-      if (error_str) {
-         *error_str =
-            ralloc_strdup(mem_ctx,
-                          "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
-      }
+      params->error_str =
+         ralloc_strdup(mem_ctx,
+                       "Cannot satisfy INTEL_DEBUG flags SIMD restrictions");
       return NULL;
    }
 
@@ -9620,7 +9611,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
 
    const unsigned *ret = NULL;
 
-   fs_generator g(compiler, log_data, mem_ctx, &prog_data->base,
+   fs_generator g(compiler, params->log_data, mem_ctx, &prog_data->base,
                   v->runtime_check_aads_emit, MESA_SHADER_COMPUTE);
    if (unlikely(debug_enabled)) {
       char *name = ralloc_asprintf(mem_ctx, "%s compute shader %s",
@@ -9630,6 +9621,7 @@ brw_compile_cs(const struct brw_compiler *compiler, void *log_data,
       g.enable_debug(name);
    }
 
+   struct brw_compile_stats *stats = params->stats;
    if (generate_all) {
       if (prog_data->prog_mask & (1 << 0)) {
          assert(v8);

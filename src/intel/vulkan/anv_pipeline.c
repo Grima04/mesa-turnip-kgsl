@@ -1747,9 +1747,16 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
       NIR_PASS_V(stage.nir, brw_nir_lower_cs_intrinsics);
 
       stage.num_stats = 1;
-      stage.code = brw_compile_cs(compiler, pipeline->base.device, mem_ctx,
-                                  &stage.key.cs, &stage.prog_data.cs,
-                                  stage.nir, -1, stage.stats, NULL);
+
+      struct brw_compile_cs_params params = {
+         .nir = stage.nir,
+         .key = &stage.key.cs,
+         .prog_data = &stage.prog_data.cs,
+         .stats = stage.stats,
+         .log_data = pipeline->base.device,
+      };
+
+      stage.code = brw_compile_cs(compiler, mem_ctx, &params);
       if (stage.code == NULL) {
          ralloc_free(mem_ctx);
          return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);

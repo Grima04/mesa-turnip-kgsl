@@ -2051,12 +2051,16 @@ iris_compile_cs(struct iris_screen *screen,
 
    struct brw_cs_prog_key brw_key = iris_to_brw_cs_key(devinfo, key);
 
-   char *error_str = NULL;
-   const unsigned *program =
-      brw_compile_cs(compiler, dbg, mem_ctx, &brw_key, cs_prog_data,
-                     nir, -1, NULL, &error_str);
+   struct brw_compile_cs_params params = {
+      .nir = nir,
+      .key = &brw_key,
+      .prog_data = cs_prog_data,
+      .log_data = dbg,
+   };
+
+   const unsigned *program = brw_compile_cs(compiler, mem_ctx, &params);
    if (program == NULL) {
-      dbg_printf("Failed to compile compute shader: %s\n", error_str);
+      dbg_printf("Failed to compile compute shader: %s\n", params.error_str);
       ralloc_free(mem_ctx);
       return false;
    }
