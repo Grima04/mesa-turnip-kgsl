@@ -790,9 +790,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
                                                is_ms, is_sampler ? 1 : 2,
                                                get_image_format(var->data.image.format));
 
-   SpvId sampled_type = spirv_builder_type_sampled_image(&ctx->builder,
-                                                         image_type);
-   SpvId var_type = is_sampler ? sampled_type : image_type;
+   SpvId var_type = is_sampler ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
 
    int index = var->data.driver_location;
    assert(!is_sampler || (!(ctx->samplers_used & (1 << index))));
