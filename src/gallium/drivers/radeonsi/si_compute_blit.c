@@ -460,6 +460,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    assert(util_format_is_subsampled_422(src_format) == util_format_is_subsampled_422(dst_format));
 
    if (!vi_dcc_enabled((struct si_texture*)src, src_level) &&
+       !vi_dcc_enabled((struct si_texture*)dst, dst_level) &&
        src_format == dst_format &&
        util_format_is_float(src_format) &&
        !util_format_is_compressed(src_format)) {
