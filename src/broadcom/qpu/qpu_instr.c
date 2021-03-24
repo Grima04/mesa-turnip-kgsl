@@ -794,26 +794,33 @@ v3d_qpu_uses_vpm(const struct v3d_qpu_instr *inst)
                v3d_qpu_waits_vpm(inst);
 }
 
+static bool
+qpu_writes_magic_waddr_explicitly(const struct v3d_device_info *devinfo,
+                                  const struct v3d_qpu_instr *inst,
+                                  uint32_t waddr)
+{
+        if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
+                if (inst->alu.add.magic_write && inst->alu.add.waddr == waddr)
+                        return true;
+
+                if (inst->alu.mul.magic_write && inst->alu.mul.waddr == waddr)
+                        return true;
+        }
+
+        if (v3d_qpu_sig_writes_address(devinfo, &inst->sig) &&
+            inst->sig_magic && inst->sig_addr == waddr) {
+                return true;
+        }
+
+        return false;
+}
+
 bool
 v3d_qpu_writes_r3(const struct v3d_device_info *devinfo,
                   const struct v3d_qpu_instr *inst)
 {
-        if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
-                if (inst->alu.add.magic_write &&
-                    inst->alu.add.waddr == V3D_QPU_WADDR_R3) {
-                        return true;
-                }
-
-                if (inst->alu.mul.magic_write &&
-                    inst->alu.mul.waddr == V3D_QPU_WADDR_R3) {
-                        return true;
-                }
-        }
-
-        if (v3d_qpu_sig_writes_address(devinfo, &inst->sig) &&
-            inst->sig_magic && inst->sig_addr == V3D_QPU_WADDR_R3) {
+        if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R3))
                 return true;
-        }
 
         return (devinfo->ver < 41 && inst->sig.ldvary) || inst->sig.ldvpm;
 }
@@ -850,24 +857,30 @@ bool
 v3d_qpu_writes_r5(const struct v3d_device_info *devinfo,
                   const struct v3d_qpu_instr *inst)
 {
-        if (inst->type == V3D_QPU_INSTR_TYPE_ALU) {
-                if (inst->alu.add.magic_write &&
-                    inst->alu.add.waddr == V3D_QPU_WADDR_R5) {
-                        return true;
-                }
-
-                if (inst->alu.mul.magic_write &&
-                    inst->alu.mul.waddr == V3D_QPU_WADDR_R5) {
-                        return true;
-                }
-        }
-
-        if (v3d_qpu_sig_writes_address(devinfo, &inst->sig) &&
-            inst->sig_magic && inst->sig_addr == V3D_QPU_WADDR_R5) {
+        if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R5))
                 return true;
-        }
 
         return inst->sig.ldvary || inst->sig.ldunif || inst->sig.ldunifa;
+}
+
+bool
+v3d_qpu_writes_accum(const struct v3d_device_info *devinfo,
+                     const struct v3d_qpu_instr *inst)
+{
+        if (v3d_qpu_writes_r5(devinfo, inst))
+                return true;
+        if (v3d_qpu_writes_r4(devinfo, inst))
+                return true;
+        if (v3d_qpu_writes_r3(devinfo, inst))
+                return true;
+        if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R2))
+                return true;
+        if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R1))
+                return true;
+        if (qpu_writes_magic_waddr_explicitly(devinfo, inst, V3D_QPU_WADDR_R0))
+                return true;
+
+        return false;
 }
 
 bool
