@@ -5474,6 +5474,29 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
       res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s8),
                        components[0], components[1], components[2], components[3],
                        components[4], components[5], components[6], components[7]);
+   } else if (desc_type == ACO_DESC_IMAGE &&
+              ctx->options->has_image_load_dcc_bug &&
+              image && !write) {
+      Temp components[8];
+      for (unsigned i = 0; i < 8; i++)
+         components[i] = bld.tmp(s1);
+
+      bld.pseudo(aco_opcode::p_split_vector,
+                 Definition(components[0]), Definition(components[1]),
+                 Definition(components[2]), Definition(components[3]),
+                 Definition(components[4]), Definition(components[5]),
+                 Definition(components[6]), Definition(components[7]), res);
+
+      /* WRITE_COMPRESS_ENABLE must be 0 for all image loads to workaround a
+       * hardware bug.
+       */
+      components[6] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc),
+                               components[6],
+                               bld.copy(bld.def(s1), Operand((uint32_t)C_00A018_WRITE_COMPRESS_ENABLE)));
+
+      res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s8),
+                       components[0], components[1], components[2], components[3],
+                       components[4], components[5], components[6], components[7]);
    }
 
    return res;
