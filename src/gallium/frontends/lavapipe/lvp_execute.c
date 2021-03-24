@@ -2343,13 +2343,26 @@ static void handle_copy_query_pool_results(struct lvp_cmd_buffer_entry *cmd,
                                                    -1,
                                                    copycmd->dst->bo,
                                                    offset + (copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4));
-         state->pctx->get_query_result_resource(state->pctx,
-                                                pool->queries[i],
-                                                copycmd->flags & VK_QUERY_RESULT_WAIT_BIT,
-                                                copycmd->flags & VK_QUERY_RESULT_64_BIT ? PIPE_QUERY_TYPE_U64 : PIPE_QUERY_TYPE_U32,
-                                                0,
-                                                copycmd->dst->bo,
-                                                offset);
+         if (pool->type == VK_QUERY_TYPE_PIPELINE_STATISTICS) {
+            unsigned num_results = 0;
+            unsigned result_size = copycmd->flags & VK_QUERY_RESULT_64_BIT ? 8 : 4;
+            u_foreach_bit(bit, pool->pipeline_stats)
+               state->pctx->get_query_result_resource(state->pctx,
+                                                      pool->queries[i],
+                                                      copycmd->flags & VK_QUERY_RESULT_WAIT_BIT,
+                                                      copycmd->flags & VK_QUERY_RESULT_64_BIT ? PIPE_QUERY_TYPE_U64 : PIPE_QUERY_TYPE_U32,
+                                                      bit,
+                                                      copycmd->dst->bo,
+                                                      offset + num_results++ * result_size);
+         } else {
+            state->pctx->get_query_result_resource(state->pctx,
+                                                   pool->queries[i],
+                                                   copycmd->flags & VK_QUERY_RESULT_WAIT_BIT,
+                                                   copycmd->flags & VK_QUERY_RESULT_64_BIT ? PIPE_QUERY_TYPE_U64 : PIPE_QUERY_TYPE_U32,
+                                                   0,
+                                                   copycmd->dst->bo,
+                                                   offset);
+         }
       } else {
          /* if no queries emitted yet, just reset the buffer to 0 so avail is reported correctly */
          if (copycmd->flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {
