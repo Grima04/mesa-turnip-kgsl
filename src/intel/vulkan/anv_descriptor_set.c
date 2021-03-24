@@ -614,20 +614,23 @@ set_layout_descriptor_buffer_size(const struct anv_descriptor_set_layout *set_la
    const struct anv_descriptor_set_binding_layout *dynamic_binding =
       set_layout_dynamic_binding(set_layout);
    if (dynamic_binding == NULL)
-      return set_layout->descriptor_buffer_size;
+      return ALIGN(set_layout->descriptor_buffer_size, ANV_UBO_ALIGNMENT);
 
    assert(var_desc_count <= dynamic_binding->array_size);
    uint32_t shrink = dynamic_binding->array_size - var_desc_count;
+   uint32_t set_size;
 
    if (dynamic_binding->type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
       /* Inline uniform blocks are specified to use the descriptor array
        * size as the size in bytes of the block.
        */
-      return set_layout->descriptor_buffer_size - shrink;
+      set_size = set_layout->descriptor_buffer_size - shrink;
    } else {
-      return set_layout->descriptor_buffer_size -
-             shrink * anv_descriptor_size(dynamic_binding);
+      set_size = set_layout->descriptor_buffer_size -
+                 shrink * anv_descriptor_size(dynamic_binding);
    }
+
+   return ALIGN(set_size, ANV_UBO_ALIGNMENT);
 }
 
 void anv_DestroyDescriptorSetLayout(
@@ -843,7 +846,7 @@ VkResult anv_CreateDescriptorPool(
     * extra space that we can chop it into maxSets pieces and align each one
     * of them to 32B.
     */
-   descriptor_bo_size += 32 * pCreateInfo->maxSets;
+   descriptor_bo_size += ANV_UBO_ALIGNMENT * pCreateInfo->maxSets;
    /* We align inline uniform blocks to ANV_UBO_ALIGNMENT */
    if (inline_info) {
       descriptor_bo_size +=
@@ -1069,12 +1072,9 @@ anv_descriptor_set_create(struct anv_device *device,
    uint32_t descriptor_buffer_size =
       set_layout_descriptor_buffer_size(layout, var_desc_count);
    if (descriptor_buffer_size) {
-      /* Align the size to 32 so that alignment gaps don't cause extra holes
-       * in the heap which can lead to bad performance.
-       */
-      uint32_t set_buffer_size = ALIGN(descriptor_buffer_size, 32);
       uint64_t pool_vma_offset =
-         util_vma_heap_alloc(&pool->bo_heap, set_buffer_size, 32);
+         util_vma_heap_alloc(&pool->bo_heap, descriptor_buffer_size,
+                             ANV_UBO_ALIGNMENT);
       if (pool_vma_offset == 0) {
          anv_descriptor_pool_free_set(pool, set);
          return vk_error(VK_ERROR_FRAGMENTED_POOL);
@@ -1082,7 +1082,7 @@ anv_descriptor_set_create(struct anv_device *device,
       assert(pool_vma_offset >= POOL_HEAP_OFFSET &&
              pool_vma_offset - POOL_HEAP_OFFSET <= INT32_MAX);
       set->desc_mem.offset = pool_vma_offset - POOL_HEAP_OFFSET;
-      set->desc_mem.alloc_size = set_buffer_size;
+      set->desc_mem.alloc_size = descriptor_buffer_size;
       set->desc_mem.map = pool->bo->map + set->desc_mem.offset;
 
       enum isl_format format =
