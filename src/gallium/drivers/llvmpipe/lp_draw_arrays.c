@@ -56,11 +56,6 @@ llvmpipe_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
                   const struct pipe_draw_start_count *draws,
                   unsigned num_draws)
 {
-   if (num_draws > 1) {
-      util_draw_multi(pipe, info, indirect, draws, num_draws);
-      return;
-   }
-
    if (!indirect && (!draws[0].count || !info->instance_count))
       return;
 
