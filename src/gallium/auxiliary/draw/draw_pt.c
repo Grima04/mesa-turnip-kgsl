@@ -411,7 +411,8 @@ prim_restart_loop(struct draw_context *draw,
 static void
 draw_pt_arrays_restart(struct draw_context *draw,
                        const struct pipe_draw_info *info,
-                       const struct pipe_draw_start_count *draw_info)
+                       const struct pipe_draw_start_count *draw_info,
+                       unsigned num_draws)
 {
    const unsigned prim = info->mode;
 
@@ -419,13 +420,15 @@ draw_pt_arrays_restart(struct draw_context *draw,
 
    if (draw->pt.user.eltSize) {
       /* indexed prims (draw_elements) */
-      prim_restart_loop(draw, info, draw_info->start, draw_info->count, draw->pt.user.elts);
+      for (unsigned i = 0; i < num_draws; i++)
+         prim_restart_loop(draw, info, draw_info[i].start, draw_info[i].count, draw->pt.user.elts);
    }
    else {
       /* Non-indexed prims (draw_arrays).
        * Primitive restart should have been handled in gallium frontends.
        */
-      draw_pt_arrays(draw, prim, draw_info->start, draw_info->count);
+      for (unsigned i = 0; i < num_draws; i++)
+         draw_pt_arrays(draw, prim, draw_info[i].start, draw_info[i].count);
    }
 }
 
@@ -484,8 +487,7 @@ draw_instances(struct draw_context *draw,
       draw_new_instance(draw);
 
       if (info->primitive_restart) {
-         for (unsigned i = 0; i < num_draws; i++)
-            draw_pt_arrays_restart(draw, info, &draws[i]);
+         draw_pt_arrays_restart(draw, info, draws, num_draws);
       }
       else {
          for (unsigned i = 0; i < num_draws; i++)
