@@ -223,12 +223,13 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
       int cpu = util_get_current_cpu();
 
       if (cpu >= 0) {
-         unsigned L3_cache = util_get_cpu_caps()->cpu_to_L3[cpu];
-
-         util_set_thread_affinity(glthread->queue.threads[0],
-                                  util_get_cpu_caps()->L3_affinity_mask[L3_cache],
-                                  NULL, util_get_cpu_caps()->num_cpu_mask_bits);
-         ctx->Driver.PinDriverToL3Cache(ctx, L3_cache);
+         uint16_t L3_cache = util_get_cpu_caps()->cpu_to_L3[cpu];
+         if (L3_cache != U_CPU_INVALID_L3) {
+            util_set_thread_affinity(glthread->queue.threads[0],
+                                     util_get_cpu_caps()->L3_affinity_mask[L3_cache],
+                                     NULL, util_get_cpu_caps()->num_cpu_mask_bits);
+            ctx->Driver.PinDriverToL3Cache(ctx, L3_cache);
+         }
       }
    }
 

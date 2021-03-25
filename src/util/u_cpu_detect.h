@@ -105,6 +105,8 @@ struct util_cpu_caps_t {
    util_affinity_mask *L3_affinity_mask;
 };
 
+#define U_CPU_INVALID_L3 0xffff
+
 static inline const struct util_cpu_caps_t *
 util_get_cpu_caps(void)
 {

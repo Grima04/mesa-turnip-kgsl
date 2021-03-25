@@ -438,6 +438,8 @@ get_cpu_topology(void)
    util_cpu_caps.cores_per_L3 = util_cpu_caps.nr_cpus;
    util_cpu_caps.num_L3_caches = 1;
 
+   memset(util_cpu_caps.cpu_to_L3, 0xff, sizeof(util_cpu_caps.cpu_to_L3));
+
 #if defined(PIPE_ARCH_X86) || defined(PIPE_ARCH_X86_64)
    /* AMD Zen */
    if (util_cpu_caps.family >= CPU_AMD_ZEN1_ZEN2 &&
