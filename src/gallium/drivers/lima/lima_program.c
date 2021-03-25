@@ -381,7 +381,6 @@ lima_create_fs_state(struct pipe_context *pctx,
 {
    struct lima_context *ctx = lima_context(pctx);
    struct lima_fs_uncompiled_shader *so = rzalloc(NULL, struct lima_fs_uncompiled_shader);
-   struct lima_screen *screen = lima_screen(pctx->screen);
 
    if (!so)
       return NULL;
@@ -400,18 +399,16 @@ lima_create_fs_state(struct pipe_context *pctx,
    so->base.type = PIPE_SHADER_IR_NIR;
    so->base.ir.nir = nir;
 
-   if (screen->disk_cache) {
-      /* Serialize the NIR to a binary blob that we can hash for the disk
-       * cache.  Drop unnecessary information (like variable names)
-       * so the serialized NIR is smaller, and also to let us detect more
-       * isomorphic shaders when hashing, increasing cache hits.
-       */
-      struct blob blob;
-      blob_init(&blob);
-      nir_serialize(&blob, nir, true);
-      _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
-      blob_finish(&blob);
-   }
+   /* Serialize the NIR to a binary blob that we can hash for the disk
+    * cache.  Drop unnecessary information (like variable names)
+    * so the serialized NIR is smaller, and also to let us detect more
+    * isomorphic shaders when hashing, increasing cache hits.
+    */
+   struct blob blob;
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
+   blob_finish(&blob);
 
    if (lima_debug & LIMA_DEBUG_PRECOMPILE) {
       /* Trigger initial compilation with default settings */
@@ -626,7 +623,6 @@ lima_create_vs_state(struct pipe_context *pctx,
                      const struct pipe_shader_state *cso)
 {
    struct lima_context *ctx = lima_context(pctx);
-   struct lima_screen *screen = lima_screen(pctx->screen);
    struct lima_vs_uncompiled_shader *so = rzalloc(NULL, struct lima_vs_uncompiled_shader);
 
    if (!so)
@@ -646,18 +642,16 @@ lima_create_vs_state(struct pipe_context *pctx,
    so->base.type = PIPE_SHADER_IR_NIR;
    so->base.ir.nir = nir;
 
-   if (screen->disk_cache) {
-      /* Serialize the NIR to a binary blob that we can hash for the disk
-       * cache.  Drop unnecessary information (like variable names)
-       * so the serialized NIR is smaller, and also to let us detect more
-       * isomorphic shaders when hashing, increasing cache hits.
-       */
-      struct blob blob;
-      blob_init(&blob);
-      nir_serialize(&blob, nir, true);
-      _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
-      blob_finish(&blob);
-   }
+   /* Serialize the NIR to a binary blob that we can hash for the disk
+    * cache.  Drop unnecessary information (like variable names)
+    * so the serialized NIR is smaller, and also to let us detect more
+    * isomorphic shaders when hashing, increasing cache hits.
+    */
+   struct blob blob;
+   blob_init(&blob);
+   nir_serialize(&blob, nir, true);
+   _mesa_sha1_compute(blob.data, blob.size, so->nir_sha1);
+   blob_finish(&blob);
 
    if (lima_debug & LIMA_DEBUG_PRECOMPILE) {
       /* Trigger initial compilation with default settings */
