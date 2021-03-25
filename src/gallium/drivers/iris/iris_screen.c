@@ -394,6 +394,13 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_INTEGER_MULTIPLY_32X16:
       return true;
 
+   case PIPE_CAP_ALLOW_DYNAMIC_VAO_FASTPATH:
+      /* Internal details of VF cache make this optimization harmful on GFX
+       * version 8 and 9, because generated VERTEX_BUFFER_STATEs are cached
+       * separately.
+       */
+      return devinfo->gen >= 11;
+
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
    }
