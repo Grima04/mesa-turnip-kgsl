@@ -63,21 +63,6 @@ draw_pt_arrays(struct draw_context *draw,
    struct draw_pt_middle_end *middle = NULL;
    unsigned opt = 0;
 
-   /* Sanitize primitive length:
-    */
-   {
-      unsigned first, incr;
-
-      if (prim == PIPE_PRIM_PATCHES) {
-         first = draw->pt.vertices_per_patch;
-         incr = draw->pt.vertices_per_patch;
-      } else
-         draw_pt_split_prim(prim, &first, &incr);
-      count = draw_pt_trim_count(count, first, incr);
-      if (count < first)
-         return TRUE;
-   }
-
    if (!draw->force_passthrough) {
       unsigned out_prim = prim;
 
@@ -153,6 +138,22 @@ draw_pt_arrays(struct draw_context *draw,
       /* update constants, viewport dims, clip planes, etc */
       middle->bind_parameters(middle);
       draw->pt.rebind_parameters = FALSE;
+   }
+
+
+   /* Sanitize primitive length:
+    */
+   {
+      unsigned first, incr;
+
+      if (prim == PIPE_PRIM_PATCHES) {
+         first = draw->pt.vertices_per_patch;
+         incr = draw->pt.vertices_per_patch;
+      } else
+         draw_pt_split_prim(prim, &first, &incr);
+      count = draw_pt_trim_count(count, first, incr);
+      if (count < first)
+         return TRUE;
    }
 
    frontend->run( frontend, start, count );
