@@ -39,7 +39,7 @@
 #define PAN_MODIFIER_COUNT 4
 extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
 
-struct panfrost_slice {
+struct pan_image_slice_layout {
         unsigned offset;
         unsigned line_stride;
         unsigned row_stride;
@@ -81,7 +81,7 @@ struct panfrost_slice {
 struct pan_image_layout {
         uint64_t modifier;
         enum mali_texture_dimension dim;
-        struct panfrost_slice slices[MAX_MIP_LEVELS];
+        struct pan_image_slice_layout slices[MAX_MIP_LEVELS];
         unsigned array_stride;
 };
 
@@ -99,7 +99,7 @@ struct pan_image {
 
 unsigned
 panfrost_compute_checksum_size(
-        struct panfrost_slice *slice,
+        struct pan_image_slice_layout *slice,
         unsigned width,
         unsigned height);
 

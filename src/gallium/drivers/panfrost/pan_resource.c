@@ -380,7 +380,7 @@ panfrost_setup_layout(struct panfrost_device *dev,
         }
 
         for (unsigned l = 0; l <= res->last_level; ++l) {
-                struct panfrost_slice *slice = &pres->layout.slices[l];
+                struct pan_image_slice_layout *slice = &pres->layout.slices[l];
 
                 unsigned effective_width = width;
                 unsigned effective_height = height;
@@ -646,7 +646,7 @@ panfrost_resource_init_afbc_headers(struct panfrost_resource *pres)
 
         for (unsigned i = 0; i < pres->base.array_size; ++i) {
                 for (unsigned l = 0; l <= pres->base.last_level; ++l) {
-                        struct panfrost_slice *slice = &pres->layout.slices[l];
+                        struct pan_image_slice_layout *slice = &pres->layout.slices[l];
 
                         for (unsigned s = 0; s < nr_samples; ++s) {
                                 void *ptr = pres->bo->ptr.cpu +
@@ -1343,7 +1343,7 @@ panfrost_get_afbc_pointers(struct panfrost_resource *rsrc,
 {
         assert(drm_is_afbc(rsrc->layout.modifier));
 
-        struct panfrost_slice *slice = &rsrc->layout.slices[level];
+        struct pan_image_slice_layout *slice = &rsrc->layout.slices[level];
 
         if (rsrc->base.target == PIPE_TEXTURE_3D) {
                 *header = rsrc->bo->ptr.gpu + slice->offset +

@@ -260,7 +260,7 @@ panfrost_get_surface_strides(const struct panfrost_device *dev,
                              unsigned l,
                              int32_t *row_stride, int32_t *surf_stride)
 {
-        const struct panfrost_slice *slice = &layout->slices[l];
+        const struct pan_image_slice_layout *slice = &layout->slices[l];
 
         if (drm_is_afbc(layout->modifier)) {
                 /* Pre v7 don't have a row stride field. This field is
@@ -486,7 +486,7 @@ panfrost_new_texture(const struct panfrost_device *dev,
 
 unsigned
 panfrost_compute_checksum_size(
-        struct panfrost_slice *slice,
+        struct pan_image_slice_layout *slice,
         unsigned width,
         unsigned height)
 {

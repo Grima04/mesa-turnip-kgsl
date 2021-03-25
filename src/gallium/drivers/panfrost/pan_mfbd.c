@@ -168,7 +168,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                 rt->rgb.row_stride = row_stride;
                 rt->rgb.surface_stride = layer_stride;
         } else if (drm_is_afbc(rsrc->layout.modifier)) {
-                const struct panfrost_slice *slice = &rsrc->layout.slices[level];
+                const struct pan_image_slice_layout *slice = &rsrc->layout.slices[level];
 
                 if (dev->arch >= 7)
                         rt->bifrost_v7.writeback_block_format = MALI_BLOCK_FORMAT_V7_AFBC;
@@ -245,7 +245,7 @@ get_z_internal_format(struct panfrost_batch *batch)
 static void
 panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                                   struct MALI_ZS_CRC_EXTENSION *ext,
-                                  struct panfrost_slice **checksum_slice)
+                                  struct pan_image_slice_layout **checksum_slice)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -257,7 +257,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
                 if (rsrc->checksummed) {
                         unsigned level = c_surf->u.tex.level;
-                        struct panfrost_slice *slice = &rsrc->layout.slices[level];
+                        struct pan_image_slice_layout *slice = &rsrc->layout.slices[level];
 
                         *checksum_slice = slice;
 
@@ -295,7 +295,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 ext->zs_msaa_v7 = nr_samples > 1 ? MALI_MSAA_LAYERED : MALI_MSAA_SINGLE;
 
         if (drm_is_afbc(rsrc->layout.modifier)) {
-                struct panfrost_slice *slice = &rsrc->layout.slices[level];
+                struct pan_image_slice_layout *slice = &rsrc->layout.slices[level];
 
                 panfrost_get_afbc_pointers(rsrc, level, first_layer,
                                            &ext->zs_afbc_header,
@@ -371,7 +371,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 }
 
                 struct panfrost_resource *stencil = rsrc->separate_stencil;
-                struct panfrost_slice *stencil_slice =
+                struct pan_image_slice_layout *stencil_slice =
 			&stencil->layout.slices[level];
 
                 ext->s_writeback_base =
@@ -387,7 +387,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
 static void
 panfrost_mfbd_emit_zs_crc_ext(struct panfrost_batch *batch, void *extp,
-                              struct panfrost_slice **checksum_slice)
+                              struct pan_image_slice_layout **checksum_slice)
 {
         pan_pack(extp, ZS_CRC_EXTENSION, ext) {
                 ext.zs_clean_pixel_write_enable = true;
@@ -558,7 +558,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 rts = fb + MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
         }
 
-        struct panfrost_slice *checksum_slice = NULL;
+        struct pan_image_slice_layout *checksum_slice = NULL;
 
         if (zs_crc_ext)
                 panfrost_mfbd_emit_zs_crc_ext(batch, zs_crc_ext, &checksum_slice);
