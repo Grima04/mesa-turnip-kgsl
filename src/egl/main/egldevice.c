@@ -274,6 +274,9 @@ _eglRefreshDeviceList(void)
 
    num_devs = drmGetDevices2(0, devices, ARRAY_SIZE(devices));
    for (int i = 0; i < num_devs; i++) {
+      if (!(devices[i]->available_nodes & (1 << DRM_NODE_RENDER)))
+         continue;
+
       ret = _eglAddDRMDevice(devices[i], NULL);
 
       /* Device is not added - error or already present */
