@@ -96,8 +96,13 @@ struct pan_image_state {
         struct pan_image_slice_state slices[MAX_MIP_LEVELS];
 };
 
-struct pan_image {
+struct pan_image_mem {
         struct panfrost_bo *bo;
+        unsigned offset;
+};
+
+struct pan_image {
+        struct pan_image_mem data;
         struct pan_image_layout layout;
 };
 

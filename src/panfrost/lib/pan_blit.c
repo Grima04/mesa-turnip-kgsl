@@ -343,7 +343,8 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                              0, 0,
                              iview->image->layout.nr_samples,
                              swizzle,
-                             iview->image->bo->ptr.gpu + offset, &payload);
+                             iview->image->data.bo->ptr.gpu + offset,
+                             &payload);
 
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
                 cfg.normalized_coordinates = false;
@@ -518,7 +519,8 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                              0, 0,
                              iview->image->layout.nr_samples,
                              swizzle,
-                             iview->image->bo->ptr.gpu + offset, &payload);
+                             iview->image->data.bo->ptr.gpu + offset,
+                             &payload);
 
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;

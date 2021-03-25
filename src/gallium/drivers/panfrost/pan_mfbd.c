@@ -262,10 +262,12 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                         *checksum_slice = &rsrc->state.slices[level];
 
                         ext->crc_row_stride = slice->crc.stride;
-                        if (rsrc->checksum_bo)
+                        if (rsrc->checksum_bo) {
                                 ext->crc_base = rsrc->checksum_bo->ptr.gpu;
-                        else
-                                ext->crc_base = rsrc->image.bo->ptr.gpu + slice->crc.offset;
+			} else {
+                                ext->crc_base = rsrc->image.data.bo->ptr.gpu +
+                                                slice->crc.offset;
+                        }
 
                         if ((batch->clear & PIPE_CLEAR_COLOR0) && dev->arch >= 7) {
                                 ext->crc_clear_color = batch->clear_color[0][0] |

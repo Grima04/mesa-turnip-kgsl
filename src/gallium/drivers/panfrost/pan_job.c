@@ -559,13 +559,13 @@ panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
                                 struct panfrost_resource *rsrc,
                                 uint32_t flags)
 {
-        panfrost_batch_add_bo(batch, rsrc->image.bo, flags);
+        panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
 
         if (rsrc->checksum_bo)
                 panfrost_batch_add_bo(batch, rsrc->checksum_bo, flags);
 
         if (rsrc->separate_stencil)
-                panfrost_batch_add_bo(batch, rsrc->separate_stencil->image.bo, flags);
+                panfrost_batch_add_bo(batch, rsrc->separate_stencil->image.data.bo, flags);
 }
 
 /* Adds the BO backing surface to a batch if the surface is non-null */

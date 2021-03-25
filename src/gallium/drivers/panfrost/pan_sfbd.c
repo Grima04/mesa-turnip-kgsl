@@ -114,7 +114,8 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        fb->zs_writeback.base = rsrc->image.bo->ptr.gpu + rsrc->image.layout.slices[level].offset;
+        fb->zs_writeback.base = rsrc->image.data.bo->ptr.gpu +
+                                rsrc->image.layout.slices[level].offset;
         fb->zs_writeback.row_stride = rsrc->image.layout.slices[level].row_stride;
 
         if (rsrc->image.layout.modifier == DRM_FORMAT_MOD_LINEAR)
@@ -222,7 +223,7 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 if (batch->key.nr_cbufs && batch->key.cbufs[0]) {
                         struct pipe_surface *surf = batch->key.cbufs[0];
                         struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                        struct panfrost_bo *bo = rsrc->image.bo;
+                        struct panfrost_bo *bo = rsrc->image.data.bo;
 
                         panfrost_sfbd_set_cbuf(&params, surf);
 

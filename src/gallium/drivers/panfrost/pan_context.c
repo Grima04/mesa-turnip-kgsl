@@ -653,7 +653,7 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
 
         if (info->index_size) {
                 assert(!info->has_user_indices);
-                index_buf = pan_resource(info->index.resource)->image.bo;
+                index_buf = pan_resource(info->index.resource)->image.data.bo;
                 panfrost_batch_add_bo(batch,
                                       index_buf,
                                       PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
@@ -707,13 +707,13 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
                 vs->info.attribute_count -
                 util_bitcount(ctx->image_mask[PIPE_SHADER_VERTEX]);
 
-        panfrost_batch_add_bo(batch, draw_buf->image.bo,
+        panfrost_batch_add_bo(batch, draw_buf->image.data.bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
         struct pan_indirect_draw_info draw_info = {
                 .last_indirect_draw = batch->indirect_draw_job_id,
-                .draw_buf = draw_buf->image.bo->ptr.gpu + indirect->offset,
+                .draw_buf = draw_buf->image.data.bo->ptr.gpu + indirect->offset,
                 .index_buf = index_buf ? index_buf->ptr.gpu : 0,
                 .vertex_job = vertex.gpu,
                 .tiler_job = tiler.gpu,
@@ -1237,7 +1237,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         struct panfrost_device *device = pan_device(pctx->screen);
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         enum pipe_format format = so->base.format;
-        assert(prsrc->image.bo);
+        assert(prsrc->image.data.bo);
 
         /* Format to access the stencil portion of a Z32_S8 texture */
         if (format == PIPE_FORMAT_X32_S8X24_UINT) {
@@ -1259,7 +1259,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 desc = util_format_description(format);
         }
 
-        so->texture_bo = prsrc->image.bo->ptr.gpu;
+        so->texture_bo = prsrc->image.data.bo->ptr.gpu;
         so->modifier = prsrc->image.layout.modifier;
 
         unsigned char user_swizzle[4] = {
@@ -1330,7 +1330,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                              first_layer, last_layer,
                              texture->nr_samples,
                              user_swizzle,
-                             prsrc->image.bo->ptr.gpu + offset,
+                             prsrc->image.data.bo->ptr.gpu + offset,
                              &payload);
 }
 
