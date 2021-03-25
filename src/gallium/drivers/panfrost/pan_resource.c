@@ -112,8 +112,8 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                         panfrost_compute_checksum_size(&rsc->image.layout.slices[0],
                                                        templat->width0,
                                                        templat->height0);
-                rsc->checksum_bo = panfrost_bo_create(dev, size, 0);
-                rsc->checksummed = true;
+                rsc->image.crc.bo = panfrost_bo_create(dev, size, 0);
+                rsc->image.layout.crc_mode = PAN_IMAGE_CRC_OOB;
         }
 
         /* If we import an AFBC resource, it should be in a format that's
@@ -379,6 +379,7 @@ panfrost_setup_layout(struct panfrost_device *dev,
         bool should_align = renderable || tiled || afbc;
         bool is_3d = res->target == PIPE_TEXTURE_3D;
 
+        unsigned oob_crc_offset = 0;
         unsigned offset = 0;
         unsigned tile_h = 1, tile_w = 1, tile_shift = 0;
 
@@ -464,13 +465,17 @@ panfrost_setup_layout(struct panfrost_device *dev,
                 offset += slice_full_size;
 
                 /* Add a checksum region if necessary */
-                if (pres->checksummed) {
-                        slice->crc.offset = offset;
-
+                if (pres->image.layout.crc_mode != PAN_IMAGE_CRC_NONE) {
                         unsigned size = panfrost_compute_checksum_size(
                                                 slice, width, height);
 
-                        offset += size;
+                        if (pres->image.layout.crc_mode == PAN_IMAGE_CRC_INBAND) {
+                                slice->crc.offset = offset;
+                                offset += size;
+                        } else {
+                                slice->crc.offset = oob_crc_offset;
+                                oob_crc_offset += size;
+                        }
                 }
 
                 width = u_minify(width, 1);
@@ -484,6 +489,7 @@ panfrost_setup_layout(struct panfrost_device *dev,
         pres->image.layout.array_stride = ALIGN_POT(offset, 64);
         pres->image.layout.data_size =
                 ALIGN_POT(pres->image.layout.array_stride * res->array_size, 4096);
+        pres->image.layout.crc_size = oob_crc_offset;
         if (bo_size)
                 *bo_size = pres->image.layout.data_size;
 }
@@ -639,7 +645,8 @@ panfrost_resource_setup(struct panfrost_device *dev, struct panfrost_resource *p
 {
         pres->image.layout.modifier = (modifier != DRM_FORMAT_MOD_INVALID) ? modifier :
                 panfrost_best_modifier(dev, pres);
-        pres->checksummed = panfrost_should_checksum(dev, pres);
+        pres->image.layout.crc_mode = panfrost_should_checksum(dev, pres) ?
+                                      PAN_IMAGE_CRC_INBAND : PAN_IMAGE_CRC_NONE;
 
         /* We can only switch tiled->linear if the resource isn't already
          * linear and if we control the modifier */
@@ -805,8 +812,8 @@ panfrost_resource_destroy(struct pipe_screen *screen,
         if (rsrc->image.data.bo)
                 panfrost_bo_unreference(rsrc->image.data.bo);
 
-        if (rsrc->checksum_bo)
-                panfrost_bo_unreference(rsrc->checksum_bo);
+        if (rsrc->image.crc.bo)
+                panfrost_bo_unreference(rsrc->image.crc.bo);
 
         util_range_destroy(&rsrc->valid_buffer_range);
         ralloc_free(rsrc);
@@ -1133,8 +1140,8 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
         }
 
         panfrost_bo_unreference(rsrc->image.data.bo);
-        if (rsrc->checksum_bo)
-                panfrost_bo_unreference(rsrc->checksum_bo);
+        if (rsrc->image.crc.bo)
+                panfrost_bo_unreference(rsrc->image.crc.bo);
 
         rsrc->image.data.bo = tmp_rsrc->image.data.bo;
         panfrost_bo_reference(rsrc->image.data.bo);
@@ -1198,8 +1205,8 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                         if (panfrost_should_linear_convert(prsrc, transfer)) {
 
                                 panfrost_bo_unreference(prsrc->image.data.bo);
-                                if (prsrc->checksum_bo)
-                                        panfrost_bo_unreference(prsrc->checksum_bo);
+                                if (prsrc->image.crc.bo)
+                                        panfrost_bo_unreference(prsrc->image.crc.bo);
 
                                 panfrost_resource_setup(dev, prsrc, NULL, DRM_FORMAT_MOD_LINEAR);
 

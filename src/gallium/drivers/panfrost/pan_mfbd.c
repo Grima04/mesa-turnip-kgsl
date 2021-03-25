@@ -36,7 +36,8 @@ panfrost_mfbd_has_zs_crc_ext(struct panfrost_batch *batch)
         if (batch->key.nr_cbufs == 1) {
                 struct pipe_surface *surf = batch->key.cbufs[0];
 
-                if (surf->texture && pan_resource(surf->texture)->checksummed)
+                if (surf->texture &&
+                    pan_resource(surf->texture)->image.layout.crc_mode != PAN_IMAGE_CRC_NONE)
                         return true;
         }
 
@@ -255,15 +256,16 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                 struct pipe_surface *c_surf = batch->key.cbufs[0];
                 struct panfrost_resource *rsrc = pan_resource(c_surf->texture);
 
-                if (rsrc->checksummed) {
+                if (rsrc->image.layout.crc_mode != PAN_IMAGE_CRC_NONE) {
                         unsigned level = c_surf->u.tex.level;
                         struct pan_image_slice_layout *slice = &rsrc->image.layout.slices[level];
 
                         *checksum_slice = &rsrc->state.slices[level];
 
                         ext->crc_row_stride = slice->crc.stride;
-                        if (rsrc->checksum_bo) {
-                                ext->crc_base = rsrc->checksum_bo->ptr.gpu;
+                        if (rsrc->image.layout.crc_mode == PAN_IMAGE_CRC_OOB) {
+                                ext->crc_base = rsrc->image.crc.bo->ptr.gpu +
+                                                slice->crc.offset;
 			} else {
                                 ext->crc_base = rsrc->image.data.bo->ptr.gpu +
                                                 slice->crc.offset;

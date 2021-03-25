@@ -223,16 +223,22 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 if (batch->key.nr_cbufs && batch->key.cbufs[0]) {
                         struct pipe_surface *surf = batch->key.cbufs[0];
                         struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                        struct panfrost_bo *bo = rsrc->image.data.bo;
 
                         panfrost_sfbd_set_cbuf(&params, surf);
 
-                        if (rsrc->checksummed) {
+                        if (rsrc->image.layout.crc_mode != PAN_IMAGE_CRC_NONE) {
                                 unsigned level = surf->u.tex.level;
                                 struct pan_image_slice_layout *slice = &rsrc->image.layout.slices[level];
 
+                                if (rsrc->image.layout.crc_mode == PAN_IMAGE_CRC_INBAND) {
+                                        params.crc_buffer.base = rsrc->image.data.bo->ptr.gpu +
+                                                                 rsrc->image.data.offset +
+                                                                 slice->crc.offset;
+                                } else {
+                                        params.crc_buffer.base = rsrc->image.crc.bo->ptr.gpu +
+                                                                 slice->crc.offset;
+                                }
                                 params.crc_buffer.row_stride = slice->crc.stride;
-                                params.crc_buffer.base = bo->ptr.gpu + slice->crc.offset;
                         }
                 }
 

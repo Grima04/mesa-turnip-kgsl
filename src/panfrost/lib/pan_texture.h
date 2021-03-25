@@ -72,6 +72,12 @@ struct pan_image_slice_layout {
         } crc;
 };
 
+enum pan_image_crc_mode {
+      PAN_IMAGE_CRC_NONE,
+      PAN_IMAGE_CRC_INBAND,
+      PAN_IMAGE_CRC_OOB,
+};
+
 struct pan_image_layout {
         uint64_t modifier;
         enum pipe_format format;
@@ -82,6 +88,11 @@ struct pan_image_layout {
         unsigned array_size;
         unsigned array_stride;
         unsigned data_size;
+
+        enum pan_image_crc_mode crc_mode;
+        /* crc_size != 0 only if crc_mode == OOB otherwise CRC words are
+         * counted in data_size */
+        unsigned crc_size;
 };
 
 struct pan_image_slice_state {
@@ -103,6 +114,7 @@ struct pan_image_mem {
 
 struct pan_image {
         struct pan_image_mem data;
+        struct pan_image_mem crc;
         struct pan_image_layout layout;
 };
 

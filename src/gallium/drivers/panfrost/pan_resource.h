@@ -60,12 +60,6 @@ struct panfrost_resource {
         /* Whether the modifier can be changed */
         bool modifier_constant;
 
-        /* Is transaction elimination enabled? */
-        bool checksummed;
-
-        /* The CRC BO can be allocated separately */
-        struct panfrost_bo *checksum_bo;
-
         /* Used to decide when to convert to another modifier */
         uint16_t modifier_updates;
 

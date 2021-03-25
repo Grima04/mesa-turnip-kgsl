@@ -561,8 +561,8 @@ panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
 {
         panfrost_batch_add_bo(batch, rsrc->image.data.bo, flags);
 
-        if (rsrc->checksum_bo)
-                panfrost_batch_add_bo(batch, rsrc->checksum_bo, flags);
+        if (rsrc->image.crc.bo)
+                panfrost_batch_add_bo(batch, rsrc->image.crc.bo, flags);
 
         if (rsrc->separate_stencil)
                 panfrost_batch_add_bo(batch, rsrc->separate_stencil->image.data.bo, flags);
