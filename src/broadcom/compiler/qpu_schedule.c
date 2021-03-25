@@ -407,7 +407,7 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         if (v3d_qpu_waits_on_tmu(inst)) {
                 /* TMU loads are coming from a FIFO, so ordering is important.
                  */
-                add_write_dep(state, &state->last_tmu_write, n);
+                add_write_dep(state, &state->last_tmu_config, n);
         }
 
         /* Allow wrtmuc to be reordered with other instructions in the
