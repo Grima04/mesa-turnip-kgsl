@@ -683,6 +683,16 @@
   <struct name="Draw Padding" size="2">
   </struct>
 
+  <struct name="Surface" align="8">
+    <field name="Pointer" size="64" start="0:0" type="address"/>
+  </struct>
+
+  <struct name="Surface With Stride" align="8">
+    <field name="Pointer" size="64" start="0:0" type="address"/>
+    <field name="Row stride" size="32" start="2:0" type="int"/>
+    <field name="Surface stride" size="32" start="3:0" type="int"/>
+  </struct>
+
   <struct name="Midgard Sampler" align="32">
     <field name="Magnify Nearest" size="1" start="0" type="bool" default="true"/>
     <field name="Minify Nearest" size="1" start="1" type="bool" default="true"/>
