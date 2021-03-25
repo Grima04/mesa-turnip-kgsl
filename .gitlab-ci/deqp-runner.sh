@@ -267,7 +267,7 @@ deqp-runner junit \
    --results $RESULTS/failures.csv \
    --output $RESULTS/junit.xml \
    --limit 50 \
-   --template "See https://$CI_PROJECT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/results/{{testcase}}.xml"
+   --template "See https://$CI_PROJECT_ROOT_NAMESPACE.pages.freedesktop.org/-/$CI_PROJECT_NAME/-/jobs/$CI_JOB_ID/artifacts/results/{{testcase}}.xml"
 
 # Report the flakes to the IRC channel for monitoring (if configured):
 quiet report_flakes $RESULTS_CSV
