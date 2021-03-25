@@ -94,4 +94,49 @@ panfrost_pool_upload(struct pan_pool *pool, const void *data, size_t sz);
 mali_ptr
 panfrost_pool_upload_aligned(struct pan_pool *pool, const void *data, size_t sz, unsigned alignment);
 
+struct pan_desc_alloc_info {
+        unsigned size;
+        unsigned align;
+        unsigned nelems;
+};
+
+#define PAN_DESC_ARRAY(count, name) \
+        { \
+                .size = MALI_ ## name ## _LENGTH, \
+                .align = MALI_ ## name ## _ALIGN, \
+                .nelems = count, \
+        }
+
+#define PAN_DESC(name) PAN_DESC_ARRAY(1, name)
+
+#define PAN_DESC_AGGREGATE(...) \
+        (struct pan_desc_alloc_info[]) { \
+                __VA_ARGS__, \
+                { 0 }, \
+        }
+
+static inline struct panfrost_ptr
+panfrost_pool_alloc_descs(struct pan_pool *pool,
+                          const struct pan_desc_alloc_info *descs)
+{
+        unsigned size = 0;
+        unsigned align = descs[0].align;
+
+        for (unsigned i = 0; descs[i].size; i++) {
+                assert(!(size & (descs[i].align - 1)));
+                size += descs[i].size * descs[i].nelems;
+        }
+
+        return panfrost_pool_alloc_aligned(pool, size, align);
+}
+
+#define panfrost_pool_alloc_desc(pool, name) \
+        panfrost_pool_alloc_descs(pool, PAN_DESC_AGGREGATE(PAN_DESC(name)))
+
+#define panfrost_pool_alloc_desc_array(pool, count, name) \
+        panfrost_pool_alloc_descs(pool, PAN_DESC_AGGREGATE(PAN_DESC_ARRAY(count, name)))
+
+#define panfrost_pool_alloc_desc_aggregate(pool, ...) \
+        panfrost_pool_alloc_descs(pool, PAN_DESC_AGGREGATE(__VA_ARGS__))
+
 #endif
