@@ -583,6 +583,15 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    BEGIN_NV04(push, NV50_CP(CP_REG_ALLOC_TEMP), 1);
    PUSH_DATA (push, cp->max_gpr);
 
+   /* no indirect support - just read the parameters out */
+   uint32_t grid[3];
+   if (unlikely(info->indirect)) {
+      pipe_buffer_read(pipe, info->indirect, info->indirect_offset,
+                       sizeof(grid), grid);
+   } else {
+      memcpy(grid, info->grid, sizeof(grid));
+   }
+
    /* grid/block setup */
    BEGIN_NV04(push, NV50_CP(BLOCKDIM_XY), 2);
    PUSH_DATA (push, info->block[1] << 16 | info->block[0]);
@@ -592,13 +601,13 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    BEGIN_NV04(push, NV50_CP(BLOCKDIM_LATCH), 1);
    PUSH_DATA (push, 1);
    BEGIN_NV04(push, NV50_CP(GRIDDIM), 1);
-   PUSH_DATA (push, info->grid[1] << 16 | info->grid[0]);
+   PUSH_DATA (push, grid[1] << 16 | grid[0]);
    BEGIN_NV04(push, NV50_CP(GRIDID), 1);
    PUSH_DATA (push, 1);
 
-   for (int i = 0; i < info->grid[2]; i++) {
+   for (int i = 0; i < grid[2]; i++) {
       BEGIN_NV04(push, NV50_CP(USER_PARAM(0)), 1);
-      PUSH_DATA (push, info->grid[2] | i << 16);
+      PUSH_DATA (push, grid[2] | i << 16);
 
       /* kernel launching */
       BEGIN_NV04(push, NV50_CP(LAUNCH), 1);
@@ -612,5 +621,5 @@ nv50_launch_grid(struct pipe_context *pipe, const struct pipe_grid_info *info)
    nv50->dirty_3d |= NV50_NEW_3D_FRAGPROG;
 
    nv50->compute_invocations += info->block[0] * info->block[1] * info->block[2] *
-      info->grid[0] * info->grid[1] * info->grid[2];
+      grid[0] * grid[1] * grid[2];
 }
