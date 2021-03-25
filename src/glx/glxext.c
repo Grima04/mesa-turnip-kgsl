@@ -58,6 +58,18 @@
 #include <xcb/xcb.h>
 #include <xcb/glx.h>
 
+#define __GLX_MIN_CONFIG_PROPS	18
+#define __GLX_EXT_CONFIG_PROPS	32
+
+/*
+** Since we send all non-core visual properties as token, value pairs,
+** we require 2 words across the wire. In order to maintain backwards
+** compatibility, we need to send the total number of words that the
+** VisualConfigs are sent back in so old libraries can simply "ignore"
+** the new properties.
+*/
+#define __GLX_TOTAL_CONFIG \
+   (__GLX_MIN_CONFIG_PROPS + 2 * __GLX_EXT_CONFIG_PROPS)
 
 #ifdef DEBUG
 void __glXDumpDrawBuffer(struct glx_context * ctx);
@@ -619,10 +631,8 @@ createConfigsFromProperties(Display * dpy, int nvisuals, int nprops,
    if (nprops == 0)
       return NULL;
 
-   /* FIXME: Is the __GLX_MIN_CONFIG_PROPS test correct for FBconfigs? */
-
    /* Check number of properties */
-   if (nprops < __GLX_MIN_CONFIG_PROPS || nprops > __GLX_MAX_CONFIG_PROPS)
+   if (nprops < __GLX_MIN_CONFIG_PROPS)
       return NULL;
 
    /* Allocate memory for our config structure */
