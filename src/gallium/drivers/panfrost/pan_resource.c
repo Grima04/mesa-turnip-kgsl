@@ -350,13 +350,6 @@ panfrost_setup_layout(struct panfrost_device *dev,
         pres->image.layout.depth = height;
         pres->image.layout.array_size = res->array_size;
 
-        /* Z32_S8X24 variants are actually stored in 2 planes (one per
-         * component), we have to adjust the bytes_per_pixel value accordingly.
-         */
-        if (pres->image.layout.format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT ||
-            pres->image.layout.format == PIPE_FORMAT_X32_S8X24_UINT)
-                bytes_per_pixel = 4;
-
         /* MSAA is implemented as a 3D texture with z corresponding to the
          * sample #, horrifyingly enough */
 
@@ -652,6 +645,12 @@ panfrost_resource_setup(struct panfrost_device *dev, struct panfrost_resource *p
          * linear and if we control the modifier */
         pres->modifier_constant = !((pres->image.layout.modifier != DRM_FORMAT_MOD_LINEAR)
                         && (modifier == DRM_FORMAT_MOD_INVALID));
+
+        /* Z32_S8X24 variants are actually stored in 2 planes (one per
+         * component), we have to adjust the format on the first plane.
+         */
+        if (pres->image.layout.format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT)
+                pres->image.layout.format = PIPE_FORMAT_Z32_FLOAT;
 
         panfrost_setup_layout(dev, pres, bo_size);
 }
