@@ -84,7 +84,7 @@ panfrost_sfbd_set_cbuf(
         unsigned level = surf->u.tex.level;
         unsigned first_layer = surf->u.tex.first_layer;
         assert(surf->u.tex.last_layer == first_layer);
-        signed row_stride = rsrc->layout.slices[level].row_stride;
+        signed row_stride = rsrc->image.layout.slices[level].row_stride;
 
         mali_ptr base = panfrost_get_texture_address(rsrc, level, first_layer, 0);
 
@@ -94,9 +94,9 @@ panfrost_sfbd_set_cbuf(
         fb->color_writeback.base = base;
         fb->color_writeback.row_stride = row_stride;
 
-        if (rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR)
+        if (rsrc->image.layout.modifier == DRM_FORMAT_MOD_LINEAR)
                 fb->color_block_format = MALI_BLOCK_FORMAT_LINEAR;
-        else if (rsrc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
+        else if (rsrc->image.layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 fb->color_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
         } else {
                 fprintf(stderr, "Invalid render modifier\n");
@@ -114,12 +114,12 @@ panfrost_sfbd_set_zsbuf(
         unsigned level = surf->u.tex.level;
         assert(surf->u.tex.first_layer == 0);
 
-        fb->zs_writeback.base = rsrc->bo->ptr.gpu + rsrc->layout.slices[level].offset;
-        fb->zs_writeback.row_stride = rsrc->layout.slices[level].row_stride;
+        fb->zs_writeback.base = rsrc->image.bo->ptr.gpu + rsrc->image.layout.slices[level].offset;
+        fb->zs_writeback.row_stride = rsrc->image.layout.slices[level].row_stride;
 
-        if (rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR)
+        if (rsrc->image.layout.modifier == DRM_FORMAT_MOD_LINEAR)
                 fb->zs_block_format = MALI_BLOCK_FORMAT_LINEAR;
-        else if (rsrc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
+        else if (rsrc->image.layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                 fb->zs_block_format = MALI_BLOCK_FORMAT_TILED_U_INTERLEAVED;
         } else {
                 fprintf(stderr, "Invalid render modifier\n");
@@ -222,13 +222,13 @@ panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 if (batch->key.nr_cbufs && batch->key.cbufs[0]) {
                         struct pipe_surface *surf = batch->key.cbufs[0];
                         struct panfrost_resource *rsrc = pan_resource(surf->texture);
-                        struct panfrost_bo *bo = rsrc->bo;
+                        struct panfrost_bo *bo = rsrc->image.bo;
 
                         panfrost_sfbd_set_cbuf(&params, surf);
 
                         if (rsrc->checksummed) {
                                 unsigned level = surf->u.tex.level;
-                                struct pan_image_slice_layout *slice = &rsrc->layout.slices[level];
+                                struct pan_image_slice_layout *slice = &rsrc->image.layout.slices[level];
 
                                 params.crc_buffer.row_stride = slice->crc.stride;
                                 params.crc_buffer.base = bo->ptr.gpu + slice->crc.offset;

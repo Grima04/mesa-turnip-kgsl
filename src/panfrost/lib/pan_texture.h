@@ -97,13 +97,19 @@ struct pan_image_state {
 };
 
 struct pan_image {
-        /* Format and size */
+        struct panfrost_bo *bo;
+        struct pan_image_layout layout;
+};
+
+struct pan_image_view {
+        /* Format, dimension and sample count of the view might differ from
+         * those of the image (2D view of a 3D image surface for instance).
+         */
         enum pipe_format format;
         enum mali_texture_dimension dim;
         unsigned first_level, last_level;
         unsigned first_layer, last_layer;
-        struct panfrost_bo *bo;
-        const struct pan_image_layout *layout;
+        const struct pan_image *image;
 };
 
 unsigned
@@ -243,7 +249,7 @@ panfrost_load_midg(
                 mali_ptr blend_shader,
                 mali_ptr fbd,
                 mali_ptr coordinates, unsigned vertex_count,
-                struct pan_image *image,
+                struct pan_image_view *iview,
                 unsigned loc);
 
 void
@@ -253,7 +259,7 @@ panfrost_load_bifrost(struct pan_pool *pool,
                       mali_ptr thread_storage,
                       mali_ptr tiler,
                       mali_ptr coordinates, unsigned vertex_count,
-                      struct pan_image *image,
+                      struct pan_image_view *iview,
                       unsigned loc);
 
 /* DRM modifier helper */

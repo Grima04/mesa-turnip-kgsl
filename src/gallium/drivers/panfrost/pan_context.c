@@ -653,7 +653,7 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
 
         if (info->index_size) {
                 assert(!info->has_user_indices);
-                index_buf = pan_resource(info->index.resource)->bo;
+                index_buf = pan_resource(info->index.resource)->image.bo;
                 panfrost_batch_add_bo(batch,
                                       index_buf,
                                       PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
@@ -707,13 +707,13 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
                 vs->info.attribute_count -
                 util_bitcount(ctx->image_mask[PIPE_SHADER_VERTEX]);
 
-        panfrost_batch_add_bo(batch, draw_buf->bo,
+        panfrost_batch_add_bo(batch, draw_buf->image.bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
         struct pan_indirect_draw_info draw_info = {
                 .last_indirect_draw = batch->indirect_draw_job_id,
-                .draw_buf = draw_buf->bo->ptr.gpu + indirect->offset,
+                .draw_buf = draw_buf->image.bo->ptr.gpu + indirect->offset,
                 .index_buf = index_buf ? index_buf->ptr.gpu : 0,
                 .vertex_job = vertex.gpu,
                 .tiler_job = tiler.gpu,
@@ -844,7 +844,7 @@ panfrost_set_shader_images(
                 struct panfrost_resource *rsrc = pan_resource(image->resource);
 
                 /* Images don't work with AFBC, since they require pixel-level granularity */
-                if (drm_is_afbc(rsrc->layout.modifier)) {
+                if (drm_is_afbc(rsrc->image.layout.modifier)) {
                         pan_resource_modifier_convert(ctx, rsrc,
                                         DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED);
                 }
@@ -1237,7 +1237,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         struct panfrost_device *device = pan_device(pctx->screen);
         struct panfrost_resource *prsrc = (struct panfrost_resource *)texture;
         enum pipe_format format = so->base.format;
-        assert(prsrc->bo);
+        assert(prsrc->image.bo);
 
         /* Format to access the stencil portion of a Z32_S8 texture */
         if (format == PIPE_FORMAT_X32_S8X24_UINT) {
@@ -1259,8 +1259,8 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 desc = util_format_description(format);
         }
 
-        so->texture_bo = prsrc->bo->ptr.gpu;
-        so->modifier = prsrc->layout.modifier;
+        so->texture_bo = prsrc->image.bo->ptr.gpu;
+        so->modifier = prsrc->image.layout.modifier;
 
         unsigned char user_swizzle[4] = {
                 so->base.swizzle_r,
@@ -1304,7 +1304,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                                                        first_layer, last_layer,
                                                        texture->nr_samples,
                                                        type,
-                                                       prsrc->layout.modifier);
+                                                       prsrc->image.layout.modifier);
 
         so->bo = panfrost_bo_create(device, size, 0);
 
@@ -1322,7 +1322,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
         }
 
-        panfrost_new_texture(device, &prsrc->layout, tex,
+        panfrost_new_texture(device, &prsrc->image.layout, tex,
                              width, texture->height0,
                              depth, array_size,
                              format, type,
@@ -1330,7 +1330,7 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                              first_layer, last_layer,
                              texture->nr_samples,
                              user_swizzle,
-                             prsrc->bo->ptr.gpu + offset,
+                             prsrc->image.bo->ptr.gpu + offset,
                              &payload);
 }
 

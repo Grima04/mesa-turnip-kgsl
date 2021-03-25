@@ -45,7 +45,6 @@ struct panfrost_resource {
                 unsigned inverted_len;
         } damage;
 
-        struct panfrost_bo *bo;
         struct renderonly_scanout *scanout;
 
         struct panfrost_resource *separate_stencil;
@@ -53,7 +52,7 @@ struct panfrost_resource {
         struct util_range valid_buffer_range;
 
         /* Description of the resource layout */
-        struct pan_image_layout layout;
+        struct pan_image image;
 
         /* Image state */
         struct pan_image_state state;

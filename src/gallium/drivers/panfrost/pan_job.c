@@ -559,13 +559,13 @@ panfrost_batch_add_resource_bos(struct panfrost_batch *batch,
                                 struct panfrost_resource *rsrc,
                                 uint32_t flags)
 {
-        panfrost_batch_add_bo(batch, rsrc->bo, flags);
+        panfrost_batch_add_bo(batch, rsrc->image.bo, flags);
 
         if (rsrc->checksum_bo)
                 panfrost_batch_add_bo(batch, rsrc->checksum_bo, flags);
 
         if (rsrc->separate_stencil)
-                panfrost_batch_add_bo(batch, rsrc->separate_stencil->bo, flags);
+                panfrost_batch_add_bo(batch, rsrc->separate_stencil->image.bo, flags);
 }
 
 /* Adds the BO backing surface to a batch if the surface is non-null */
@@ -819,15 +819,14 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
         enum mali_texture_dimension dim =
                 panfrost_translate_texture_dimension(rsrc->base.target);
 
-        struct pan_image img = {
+        struct pan_image_view iview = {
                 .format = format,
                 .dim = dim,
                 .first_level = level,
                 .last_level = level,
                 .first_layer = surf->u.tex.first_layer,
                 .last_layer = surf->u.tex.last_layer,
-                .bo = rsrc->bo,
-                .layout = &rsrc->layout,
+                .image = &rsrc->image,
         };
 
         mali_ptr blend_shader = 0;
@@ -905,13 +904,13 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                                       batch->framebuffer.gpu,
                                       tiler,
                                       transfer.gpu, vertex_count,
-                                      &img, loc);
+                                      &iview, loc);
         } else {
                 panfrost_load_midg(&batch->pool, &batch->scoreboard,
                                    blend_shader,
                                    batch->framebuffer.gpu,
                                    transfer.gpu, vertex_count,
-                                   &img, loc);
+                                   &iview, loc);
         }
 
         panfrost_batch_add_bo(batch, batch->pool.dev->blit_shaders.bo,

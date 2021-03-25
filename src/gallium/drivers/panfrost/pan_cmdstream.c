@@ -80,11 +80,11 @@ panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
 
         if (!info->has_user_indices) {
                 /* Only resources can be directly mapped */
-                panfrost_batch_add_bo(batch, rsrc->bo,
+                panfrost_batch_add_bo(batch, rsrc->image.bo,
                                       PAN_BO_ACCESS_SHARED |
                                       PAN_BO_ACCESS_READ |
                                       PAN_BO_ACCESS_VERTEX_TILER);
-                out = rsrc->bo->ptr.gpu + offset;
+                out = rsrc->image.bo->ptr.gpu + offset;
 
                 /* Check the cache */
                 needs_indices = !panfrost_minmax_cache_get(rsrc->index_cache,
@@ -635,12 +635,12 @@ panfrost_emit_compute_shader_meta(struct panfrost_batch *batch, enum pipe_shader
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
-        panfrost_batch_add_bo(batch, pan_resource(ss->upload.rsrc)->bo,
+        panfrost_batch_add_bo(batch, pan_resource(ss->upload.rsrc)->image.bo,
                               PAN_BO_ACCESS_PRIVATE |
                               PAN_BO_ACCESS_READ |
                               PAN_BO_ACCESS_VERTEX_TILER);
 
-        return pan_resource(ss->upload.rsrc)->bo->ptr.gpu + ss->upload.offset;
+        return pan_resource(ss->upload.rsrc)->image.bo->ptr.gpu + ss->upload.offset;
 }
 
 mali_ptr
@@ -760,14 +760,14 @@ panfrost_map_constant_buffer_gpu(struct panfrost_batch *batch,
         struct panfrost_resource *rsrc = pan_resource(cb->buffer);
 
         if (rsrc) {
-                panfrost_batch_add_bo(batch, rsrc->bo,
+                panfrost_batch_add_bo(batch, rsrc->image.bo,
                                       PAN_BO_ACCESS_SHARED |
                                       PAN_BO_ACCESS_READ |
                                       panfrost_bo_access_for_stage(st));
 
                 /* Alignment gauranteed by
                  * PIPE_CAP_CONSTANT_BUFFER_OFFSET_ALIGNMENT */
-                return rsrc->bo->ptr.gpu + cb->buffer_offset;
+                return rsrc->image.bo->ptr.gpu + cb->buffer_offset;
         } else if (cb->user_buffer) {
                 return panfrost_pool_upload_aligned(&batch->pool,
                                                  cb->user_buffer +
@@ -892,7 +892,7 @@ panfrost_upload_ssbo_sysval(struct panfrost_batch *batch,
         struct pipe_shader_buffer sb = ctx->ssbo[st][ssbo_id];
 
         /* Compute address */
-        struct panfrost_bo *bo = pan_resource(sb.buffer)->bo;
+        struct panfrost_bo *bo = pan_resource(sb.buffer)->image.bo;
 
         panfrost_batch_add_bo(batch, bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_RW |
@@ -1074,11 +1074,11 @@ panfrost_map_constant_buffer_cpu(struct panfrost_context *ctx,
         struct panfrost_resource *rsrc = pan_resource(cb->buffer);
 
         if (rsrc) {
-                panfrost_bo_mmap(rsrc->bo);
-                panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, false);
-                panfrost_bo_wait(rsrc->bo, INT64_MAX, false);
+                panfrost_bo_mmap(rsrc->image.bo);
+                panfrost_flush_batches_accessing_bo(ctx, rsrc->image.bo, false);
+                panfrost_bo_wait(rsrc->image.bo, INT64_MAX, false);
 
-                return rsrc->bo->ptr.cpu + cb->buffer_offset;
+                return rsrc->image.bo->ptr.cpu + cb->buffer_offset;
         } else if (cb->user_buffer) {
                 return cb->user_buffer + cb->buffer_offset;
         } else
@@ -1235,7 +1235,7 @@ panfrost_get_tex_desc(struct panfrost_batch *batch,
 
         /* Add the BO to the job so it's retained until the job is done. */
 
-        panfrost_batch_add_bo(batch, rsrc->bo,
+        panfrost_batch_add_bo(batch, rsrc->image.bo,
                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                               panfrost_bo_access_for_stage(st));
 
@@ -1251,8 +1251,8 @@ panfrost_update_sampler_view(struct panfrost_sampler_view *view,
                              struct pipe_context *pctx)
 {
         struct panfrost_resource *rsrc = pan_resource(view->base.texture);
-        if (view->texture_bo != rsrc->bo->ptr.gpu ||
-            view->modifier != rsrc->layout.modifier) {
+        if (view->texture_bo != rsrc->image.bo->ptr.gpu ||
+            view->modifier != rsrc->image.layout.modifier) {
                 panfrost_bo_unreference(view->bo);
                 panfrost_create_sampler_view_bo(view, pctx, &rsrc->base);
         }
@@ -1286,7 +1286,7 @@ panfrost_emit_texture_descriptors(struct panfrost_batch *batch,
 
                         /* Add the BOs to the job so they are retained until the job is done. */
 
-                        panfrost_batch_add_bo(batch, rsrc->bo,
+                        panfrost_batch_add_bo(batch, rsrc->image.bo,
                                               PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_READ |
                                               panfrost_bo_access_for_stage(stage));
 
@@ -1371,17 +1371,17 @@ emit_image_attribs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 assert(image->resource->nr_samples <= 1 && "MSAA'd images not supported");
 
                 bool is_3d = rsrc->base.target == PIPE_TEXTURE_3D;
-                bool is_linear = rsrc->layout.modifier == DRM_FORMAT_MOD_LINEAR;
+                bool is_linear = rsrc->image.layout.modifier == DRM_FORMAT_MOD_LINEAR;
                 bool is_buffer = rsrc->base.target == PIPE_BUFFER;
 
                 unsigned offset = is_buffer ? image->u.buf.offset :
-                        panfrost_texture_offset(&rsrc->layout,
+                        panfrost_texture_offset(&rsrc->image.layout,
                                                 image->u.tex.level,
                                                 is_3d ? 0 : image->u.tex.first_layer,
                                                 is_3d ? image->u.tex.first_layer : 0);
 
                 /* AFBC should've been converted to tiled on panfrost_set_shader_image */
-                assert(!drm_is_afbc(rsrc->layout.modifier));
+                assert(!drm_is_afbc(rsrc->image.layout.modifier));
 
                 /* Add a dependency of the batch on the shader image buffer */
                 uint32_t flags = PAN_BO_ACCESS_SHARED | PAN_BO_ACCESS_VERTEX_TILER;
@@ -1392,16 +1392,16 @@ emit_image_attribs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                         unsigned level = is_buffer ? 0 : image->u.tex.level;
                         rsrc->state.slices[level].data_valid = true;
                 }
-                panfrost_batch_add_bo(batch, rsrc->bo, flags);
+                panfrost_batch_add_bo(batch, rsrc->image.bo, flags);
 
                 pan_pack(bufs + (k * 2), ATTRIBUTE_BUFFER, cfg) {
                         cfg.type = is_linear ?
                                 MALI_ATTRIBUTE_TYPE_3D_LINEAR :
                                 MALI_ATTRIBUTE_TYPE_3D_INTERLEAVED;
 
-                        cfg.pointer = rsrc->bo->ptr.gpu + offset;
+                        cfg.pointer = rsrc->image.bo->ptr.gpu + offset;
                         cfg.stride = util_format_get_blocksize(image->format);
-                        cfg.size = rsrc->bo->size;
+                        cfg.size = rsrc->image.bo->size;
                 }
 
                 pan_pack(bufs + (k * 2) + 1, ATTRIBUTE_BUFFER_CONTINUATION_3D, cfg) {
@@ -1411,11 +1411,11 @@ emit_image_attribs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                                 image->u.tex.last_layer - image->u.tex.first_layer + 1;
 
                         cfg.row_stride =
-                                is_buffer ? 0 : rsrc->layout.slices[image->u.tex.level].row_stride;
+                                is_buffer ? 0 : rsrc->image.layout.slices[image->u.tex.level].row_stride;
 
                         if (rsrc->base.target != PIPE_TEXTURE_2D && !is_buffer) {
                                 cfg.slice_stride =
-                                        panfrost_get_layer_stride(&rsrc->layout,
+                                        panfrost_get_layer_stride(&rsrc->image.layout,
                                                                   image->u.tex.level);
                         }
                 }
@@ -1534,13 +1534,13 @@ panfrost_emit_vertex_data(struct panfrost_batch *batch,
                         continue;
 
                 /* Add a dependency of the batch on the vertex buffer */
-                panfrost_batch_add_bo(batch, rsrc->bo,
+                panfrost_batch_add_bo(batch, rsrc->image.bo,
                                       PAN_BO_ACCESS_SHARED |
                                       PAN_BO_ACCESS_READ |
                                       PAN_BO_ACCESS_VERTEX_TILER);
 
                 /* Mask off lower bits, see offset fixup below */
-                mali_ptr raw_addr = rsrc->bo->ptr.gpu + buf->buffer_offset;
+                mali_ptr raw_addr = rsrc->image.bo->ptr.gpu + buf->buffer_offset;
                 mali_ptr addr = raw_addr & ~63;
 
                 /* Since we advanced the base pointer, we shrink the buffer
@@ -1732,7 +1732,7 @@ panfrost_emit_streamout(struct panfrost_batch *batch,
         unsigned expected_size = stride * count;
 
         /* Grab the BO and bind it to the batch */
-        struct panfrost_bo *bo = pan_resource(target->buffer)->bo;
+        struct panfrost_bo *bo = pan_resource(target->buffer)->image.bo;
 
         /* Varyings are WRITE from the perspective of the VERTEX but READ from
          * the perspective of the TILER and FRAGMENT.

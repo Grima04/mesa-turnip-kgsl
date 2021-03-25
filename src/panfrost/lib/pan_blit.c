@@ -211,11 +211,11 @@ panfrost_init_blit_shaders(struct panfrost_device *dev)
 
 static void
 panfrost_load_emit_viewport(struct pan_pool *pool, struct MALI_DRAW *draw,
-                            struct pan_image *image)
+                            struct pan_image_view *iview)
 {
         struct panfrost_ptr t = panfrost_pool_alloc_desc(pool, VIEWPORT);
-        unsigned width = u_minify(image->layout->width, image->first_level);
-        unsigned height = u_minify(image->layout->height, image->first_level);
+        unsigned width = u_minify(iview->image->layout.width, iview->first_level);
+        unsigned height = u_minify(iview->image->layout.height, iview->first_level);
 
         pan_pack(t.cpu, VIEWPORT, cfg) {
                 cfg.scissor_maximum_x = width - 1; /* Inclusive */
@@ -227,16 +227,16 @@ panfrost_load_emit_viewport(struct pan_pool *pool, struct MALI_DRAW *draw,
 
 static void
 panfrost_load_prepare_rsd(struct pan_pool *pool, struct MALI_RENDERER_STATE *state,
-                          struct pan_image *image, unsigned loc)
+                          struct pan_image_view *iview, unsigned loc)
 {
         /* Determine the sampler type needed. Stencil is always sampled as
          * UINT. Pure (U)INT is always (U)INT. Everything else is FLOAT. */
         enum pan_blit_type T =
                 (loc == FRAG_RESULT_STENCIL) ? PAN_BLIT_UINT :
-                (util_format_is_pure_uint(image->format)) ? PAN_BLIT_UINT :
-                (util_format_is_pure_sint(image->format)) ? PAN_BLIT_INT :
+                (util_format_is_pure_uint(iview->format)) ? PAN_BLIT_UINT :
+                (util_format_is_pure_sint(iview->format)) ? PAN_BLIT_INT :
                 PAN_BLIT_FLOAT;
-        bool ms = image->layout->nr_samples > 1;
+        bool ms = iview->image->layout.nr_samples > 1;
         const struct pan_blit_shader *shader =
                 &pool->dev->blit_shaders.loads[loc][T][ms];
 
@@ -306,12 +306,12 @@ panfrost_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
 
 static void
 midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
-                          struct pan_image *image)
+                          struct pan_image_view *iview)
 {
         struct panfrost_ptr texture =
                  panfrost_pool_alloc_desc_aggregate(pool,
                                                     PAN_DESC(MIDGARD_TEXTURE),
-                                                    PAN_DESC_ARRAY(image->layout->nr_samples,
+                                                    PAN_DESC_ARRAY(iview->image->layout.nr_samples,
                                                                    SURFACE_WITH_STRIDE));
 
         struct panfrost_ptr payload = {
@@ -329,21 +329,21 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
          * 2D and 3D variants */
 
         unsigned offset =
-                image->first_layer *
-                panfrost_get_layer_stride(image->layout, image->first_level);
+                iview->first_layer *
+                panfrost_get_layer_stride(&iview->image->layout, iview->first_level);
 
         unsigned char swizzle[4] = {
                 PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
         };
 
-        panfrost_new_texture(pool->dev, image->layout, texture.cpu,
-                             image->layout->width, image->layout->height, 1, 1,
-                             image->format, MALI_TEXTURE_DIMENSION_2D,
-                             image->first_level, image->last_level,
+        panfrost_new_texture(pool->dev, &iview->image->layout, texture.cpu,
+                             iview->image->layout.width, iview->image->layout.height, 1, 1,
+                             iview->format, MALI_TEXTURE_DIMENSION_2D,
+                             iview->first_level, iview->last_level,
                              0, 0,
-                             image->layout->nr_samples,
+                             iview->image->layout.nr_samples,
                              swizzle,
-                             image->bo->ptr.gpu + offset, &payload);
+                             iview->image->bo->ptr.gpu + offset, &payload);
 
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
                 cfg.normalized_coordinates = false;
@@ -354,11 +354,11 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
 
 static void
 midgard_load_emit_blend_rt(struct pan_pool *pool, void *out,
-                           mali_ptr blend_shader, struct pan_image *image,
+                           mali_ptr blend_shader, struct pan_image_view *iview,
                            unsigned rt, unsigned loc)
 {
         bool disabled = loc != (FRAG_RESULT_DATA0 + rt);
-        bool srgb = util_format_is_srgb(image->format);
+        bool srgb = util_format_is_srgb(iview->format);
 
         pan_pack(out, BLEND, cfg) {
                 if (disabled) {
@@ -392,17 +392,17 @@ midgard_load_emit_blend_rt(struct pan_pool *pool, void *out,
 
 static void
 midgard_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
-                      mali_ptr blend_shader, struct pan_image *image,
+                      mali_ptr blend_shader, struct pan_image_view *iview,
                       unsigned loc)
 {
         struct panfrost_ptr t =
                 panfrost_pool_alloc_desc_aggregate(pool,
                                                    PAN_DESC(RENDERER_STATE),
                                                    PAN_DESC_ARRAY(8, BLEND));
-        bool srgb = util_format_is_srgb(image->format);
+        bool srgb = util_format_is_srgb(iview->format);
 
         pan_pack(t.cpu, RENDERER_STATE, cfg) {
-                panfrost_load_prepare_rsd(pool, &cfg, image, loc);
+                panfrost_load_prepare_rsd(pool, &cfg, iview, loc);
                 cfg.properties.midgard.work_register_count = 4;
                 cfg.properties.midgard.force_early_z = (loc >= FRAG_RESULT_DATA0);
                 cfg.stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
@@ -435,7 +435,7 @@ midgard_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
         for (unsigned i = 0; i < 8; ++i) {
                 void *dest = t.cpu + MALI_RENDERER_STATE_LENGTH + MALI_BLEND_LENGTH * i;
 
-                midgard_load_emit_blend_rt(pool, dest, blend_shader, image, i, loc);
+                midgard_load_emit_blend_rt(pool, dest, blend_shader, iview, i, loc);
         }
 
         draw->state = t.gpu;
@@ -450,7 +450,7 @@ panfrost_load_midg(struct pan_pool *pool,
                    mali_ptr blend_shader,
                    mali_ptr fbd,
                    mali_ptr coordinates, unsigned vertex_count,
-                   struct pan_image *image,
+                   struct pan_image_view *iview,
                    unsigned loc)
 {
         struct panfrost_ptr t =
@@ -462,10 +462,10 @@ panfrost_load_midg(struct pan_pool *pool,
                 cfg.four_components_per_vertex = true;
 
                 panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count);
-                midgard_load_emit_texture(pool, &cfg, image);
-                panfrost_load_emit_viewport(pool, &cfg, image);
+                midgard_load_emit_texture(pool, &cfg, iview);
+                panfrost_load_emit_viewport(pool, &cfg, iview);
                 cfg.fbd = fbd;
-                midgard_load_emit_rsd(pool, &cfg, blend_shader, image, loc);
+                midgard_load_emit_rsd(pool, &cfg, blend_shader, iview, loc);
         }
 
         pan_section_pack(t.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
@@ -489,12 +489,12 @@ panfrost_load_midg(struct pan_pool *pool,
 
 static void
 bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
-                          struct pan_image *image)
+                          struct pan_image_view *iview)
 {
         struct panfrost_ptr texture =
                  panfrost_pool_alloc_desc_aggregate(pool,
                                                     PAN_DESC(BIFROST_TEXTURE),
-                                                    PAN_DESC_ARRAY(image->layout->nr_samples,
+                                                    PAN_DESC_ARRAY(iview->image->layout.nr_samples,
                                                                    SURFACE_WITH_STRIDE));
         struct panfrost_ptr sampler =
                  panfrost_pool_alloc_desc(pool, BIFROST_SAMPLER);
@@ -504,21 +504,21 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         };
 
         unsigned offset =
-                image->first_layer *
-                panfrost_get_layer_stride(image->layout, image->first_level);
+                iview->first_layer *
+                panfrost_get_layer_stride(&iview->image->layout, iview->first_level);
 
         unsigned char swizzle[4] = {
                 PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
         };
 
-        panfrost_new_texture(pool->dev, image->layout, texture.cpu,
-                             image->layout->width, image->layout->height, 1, 1,
-                             image->format, MALI_TEXTURE_DIMENSION_2D,
-                             image->first_level, image->last_level,
+        panfrost_new_texture(pool->dev, &iview->image->layout, texture.cpu,
+                             iview->image->layout.width, iview->image->layout.height, 1, 1,
+                             iview->format, MALI_TEXTURE_DIMENSION_2D,
+                             iview->first_level, iview->last_level,
                              0, 0,
-                             image->layout->nr_samples,
+                             iview->image->layout.nr_samples,
                              swizzle,
-                             image->bo->ptr.gpu + offset, &payload);
+                             iview->image->bo->ptr.gpu + offset, &payload);
 
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;
@@ -548,16 +548,16 @@ blit_type_to_reg_fmt(enum pan_blit_type btype)
 
 static void
 bifrost_load_emit_blend_rt(struct pan_pool *pool, void *out,
-                           mali_ptr blend_shader, struct pan_image *image,
+                           mali_ptr blend_shader, struct pan_image_view *iview,
                            unsigned rt, unsigned loc)
 {
         enum pan_blit_type T =
                 (loc == FRAG_RESULT_STENCIL) ? PAN_BLIT_UINT :
-                (util_format_is_pure_uint(image->format)) ? PAN_BLIT_UINT :
-                (util_format_is_pure_sint(image->format)) ? PAN_BLIT_INT :
+                (util_format_is_pure_uint(iview->format)) ? PAN_BLIT_UINT :
+                (util_format_is_pure_sint(iview->format)) ? PAN_BLIT_INT :
                 PAN_BLIT_FLOAT;
         bool disabled = loc != (FRAG_RESULT_DATA0 + rt);
-        bool srgb = util_format_is_srgb(image->format);
+        bool srgb = util_format_is_srgb(iview->format);
 
         pan_pack(out, BLEND, cfg) {
                 if (disabled) {
@@ -575,7 +575,7 @@ bifrost_load_emit_blend_rt(struct pan_pool *pool, void *out,
                         cfg.bifrost.internal.shader.pc = blend_shader;
                 } else {
                         const struct util_format_description *format_desc =
-                                util_format_description(image->format);
+                                util_format_description(iview->format);
 
                         cfg.bifrost.equation.rgb.a = MALI_BLEND_OPERAND_A_SRC;
                         cfg.bifrost.equation.rgb.b = MALI_BLEND_OPERAND_B_SRC;
@@ -597,7 +597,7 @@ bifrost_load_emit_blend_rt(struct pan_pool *pool, void *out,
 
 static void
 bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
-                      mali_ptr blend_shader, struct pan_image *image,
+                      mali_ptr blend_shader, struct pan_image_view *iview,
                       unsigned loc)
 {
         struct panfrost_ptr t =
@@ -606,7 +606,7 @@ bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
                                                    PAN_DESC_ARRAY(8, BLEND));
 
         pan_pack(t.cpu, RENDERER_STATE, cfg) {
-                panfrost_load_prepare_rsd(pool, &cfg, image, loc);
+                panfrost_load_prepare_rsd(pool, &cfg, iview, loc);
                 if (loc >= FRAG_RESULT_DATA0) {
                         cfg.properties.bifrost.zs_update_operation =
                                 MALI_PIXEL_KILL_STRONG_EARLY;
@@ -620,13 +620,13 @@ bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
                 }
                 cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
                 cfg.preload.fragment.coverage = true;
-                cfg.preload.fragment.sample_mask_id = image->layout->nr_samples > 1;
+                cfg.preload.fragment.sample_mask_id = iview->image->layout.nr_samples > 1;
         }
 
         for (unsigned i = 0; i < 8; ++i) {
                 void *dest = t.cpu + MALI_RENDERER_STATE_LENGTH + MALI_BLEND_LENGTH * i;
 
-                bifrost_load_emit_blend_rt(pool, dest, blend_shader, image, i, loc);
+                bifrost_load_emit_blend_rt(pool, dest, blend_shader, iview, i, loc);
         }
 
         draw->state = t.gpu;
@@ -639,7 +639,7 @@ panfrost_load_bifrost(struct pan_pool *pool,
                       mali_ptr thread_storage,
                       mali_ptr tiler,
                       mali_ptr coordinates, unsigned vertex_count,
-                      struct pan_image *image,
+                      struct pan_image_view *iview,
                       unsigned loc)
 {
         struct panfrost_ptr t =
@@ -650,10 +650,10 @@ panfrost_load_bifrost(struct pan_pool *pool,
                 cfg.draw_descriptor_is_64b = true;
 
                 panfrost_load_emit_varying(pool, &cfg, coordinates, vertex_count);
-                bifrost_load_emit_texture(pool, &cfg, image);
-                panfrost_load_emit_viewport(pool, &cfg, image);
+                bifrost_load_emit_texture(pool, &cfg, iview);
+                panfrost_load_emit_viewport(pool, &cfg, iview);
                 cfg.thread_storage = thread_storage;
-                bifrost_load_emit_rsd(pool, &cfg, blend_shader, image, loc);
+                bifrost_load_emit_rsd(pool, &cfg, blend_shader, iview, loc);
         }
 
         pan_section_pack(t.cpu, BIFROST_TILER_JOB, PRIMITIVE, cfg) {
