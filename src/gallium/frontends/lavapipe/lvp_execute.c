@@ -2108,14 +2108,11 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
                                 struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
-   struct pipe_draw_start_count draw = {0};
    state->info.index_bounds_valid = false;
    state->info.min_index = 0;
    state->info.max_index = ~0;
    state->info.index_size = state->index_size;
    state->info.index.resource = state->index_buffer;
-   draw.start = (state->index_offset / state->index_size) + cmd->u.draw_indexed.first_index;
-   draw.count = cmd->u.draw_indexed.index_count;
    state->info.start_instance = cmd->u.draw_indexed.first_instance;
    state->info.instance_count = cmd->u.draw_indexed.instance_count;
    state->info.index_bias = cmd->u.draw_indexed.vertex_offset;
@@ -2123,8 +2120,13 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
 
    if (state->info.primitive_restart)
       state->info.restart_index = util_prim_restart_index_from_size(state->info.index_size);
-
-   state->pctx->draw_vbo(state->pctx, &state->info, NULL, &draw, 1);
+   /* avoid calculating multiple times if cmdbuf is submitted again */
+   if (cmd->u.draw_indexed.calc_start) {
+      for (unsigned i = 0; i < cmd->u.draw_indexed.draw_count; i++)
+         cmd->u.draw_indexed.draws[i].start = (state->index_offset / state->index_size) + cmd->u.draw_indexed.draws[i].start;
+      cmd->u.draw_indexed.calc_start = false;
+   }
+   state->pctx->draw_vbo(state->pctx, &state->info, NULL, cmd->u.draw_indexed.draws, cmd->u.draw_indexed.draw_count);
 }
 
 static void handle_draw_indirect(struct lvp_cmd_buffer_entry *cmd,

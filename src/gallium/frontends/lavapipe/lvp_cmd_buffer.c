@@ -745,15 +745,18 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDrawIndexed(
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    struct lvp_cmd_buffer_entry *cmd;
 
-   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_DRAW_INDEXED);
+   uint32_t cmd_size = sizeof(struct pipe_draw_start_count);
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_DRAW_INDEXED);
    if (!cmd)
       return;
 
-   cmd->u.draw_indexed.index_count = indexCount;
    cmd->u.draw_indexed.instance_count = instanceCount;
-   cmd->u.draw_indexed.first_index = firstIndex;
    cmd->u.draw_indexed.vertex_offset = vertexOffset;
    cmd->u.draw_indexed.first_instance = firstInstance;
+   cmd->u.draw_indexed.draw_count = 1;
+   cmd->u.draw_indexed.draws[0].start = firstIndex;
+   cmd->u.draw_indexed.draws[0].count = indexCount;
+   cmd->u.draw_indexed.calc_start = true;
 
    cmd_buf_queue(cmd_buffer, cmd);
 }
