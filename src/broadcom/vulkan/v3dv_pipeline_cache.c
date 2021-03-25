@@ -857,7 +857,7 @@ v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *
    blob_write_uint32(blob, total_assembly_size);
 
    assert(cache_entry->assembly_bo->map);
-   assert(cache_entry->assembly_bo->size > total_assembly_size);
+   assert(cache_entry->assembly_bo->size >= total_assembly_size);
    blob_write_bytes(blob, cache_entry->assembly_bo->map, total_assembly_size);
 
    return !blob->out_of_memory;
