@@ -2102,17 +2102,14 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
              ctx.assignments[ctx.affinities[definition.tempId()]].assigned) {
             assert(ctx.assignments[ctx.affinities[definition.tempId()]].rc == definition.regClass());
             PhysReg reg = ctx.assignments[ctx.affinities[definition.tempId()]].reg;
-            bool try_use_special_reg = reg == scc || reg == exec;
-            if (try_use_special_reg) {
-               for (const Operand& op : phi->operands) {
-                  if (!(op.isTemp() && op.isFixed() && op.physReg() == reg)) {
-                     try_use_special_reg = false;
-                     break;
-                  }
-               }
-               if (!try_use_special_reg)
+            if (reg == scc) {
+               /* only use scc if all operands are already placed there */
+               bool use_scc = std::all_of(phi->operands.begin(), phi->operands.end(),
+                                          [] (const Operand& op) { return op.isTemp() && op.isFixed() && op.physReg() == scc;});
+               if (!use_scc)
                   continue;
             }
+
             /* only assign if register is still free */
             if (!register_file.test(reg, definition.bytes())) {
                definition.setFixed(reg);
@@ -2138,11 +2135,11 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
             for (int i = phi->operands.size() - 1; i >= 0; i--) {
                /* by going backwards, we aim to avoid copies in else-blocks */
                const Operand& op = phi->operands[i];
-               if (!(op.isTemp() && op.isFixed()))
+               if (!op.isTemp() || !op.isFixed())
                   continue;
                PhysReg reg = op.physReg();
                /* we tried this already on the previous loop */
-               if (reg == scc || reg == exec)
+               if (reg == scc)
                   continue;
                if (get_reg_specified(ctx, register_file, definition.regClass(), phi, reg)) {
                   definition.setFixed(reg);
