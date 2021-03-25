@@ -254,21 +254,23 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane)
         }
 }
 
-static uint64_t
+static void
 panfrost_get_surface_strides(const struct panfrost_device *dev,
                              const struct pan_image_layout *layout,
-                             unsigned l)
+                             unsigned l,
+                             int32_t *row_stride, int32_t *surf_stride)
 {
         const struct panfrost_slice *slice = &layout->slices[l];
 
         if (drm_is_afbc(layout->modifier)) {
                 /* Pre v7 don't have a row stride field. This field is
                  * repurposed as a Y offset which we don't use */
-                return ((uint64_t)slice->afbc.surface_stride << 32) |
-                       (dev->arch < 7 ? 0 : slice->afbc.row_stride);
+                *row_stride = dev->arch < 7 ? 0 : slice->afbc.row_stride;
+                *surf_stride = slice->afbc.surface_stride;
+        } else {
+                *row_stride = slice->row_stride;
+                *surf_stride = slice->surface_stride;
         }
-
-        return ((uint64_t)slice->surface_stride << 32) | slice->row_stride;
 }
 
 static mali_ptr
@@ -341,7 +343,7 @@ panfrost_surface_iter_next(const struct panfrost_device *dev,
 static void
 panfrost_emit_texture_payload(const struct panfrost_device *dev,
                               const struct pan_image_layout *layout,
-                              mali_ptr *payload,
+                              void *payload,
                               const struct util_format_description *desc,
                               enum mali_texture_dimension dim,
                               unsigned first_level, unsigned last_level,
@@ -368,23 +370,31 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
         nr_samples = MAX2(nr_samples, 1);
 
         struct panfrost_surface_iter iter;
-        unsigned idx = 0;
 
         for (panfrost_surface_iter_begin(&iter, first_layer, last_layer,
                                          first_level, last_level,
                                          first_face, last_face, nr_samples);
              !panfrost_surface_iter_end(&iter);
              panfrost_surface_iter_next(dev, &iter)) {
-                payload[idx++] =
+                mali_ptr pointer =
                         panfrost_get_surface_pointer(layout, dim, base,
                                                      iter.level, iter.layer,
                                                      iter.face, iter.sample);
 
-                if (!manual_stride)
-                        continue;
-
-                payload[idx++] =
-                        panfrost_get_surface_strides(dev, layout, iter.level);
+                if (!manual_stride) {
+                        pan_pack(payload, SURFACE, cfg) {
+                                cfg.pointer = pointer;
+                        }
+                        payload += MALI_SURFACE_LENGTH;
+                } else {
+                        pan_pack(payload, SURFACE_WITH_STRIDE, cfg) {
+                                cfg.pointer = pointer;
+                                panfrost_get_surface_strides(dev, layout, iter.level,
+                                                             &cfg.row_stride,
+                                                             &cfg.surface_stride);
+                        }
+                        payload += MALI_SURFACE_WITH_STRIDE_LENGTH;
+                }
         }
 }
 
