@@ -79,6 +79,7 @@ struct schedule_state {
         struct schedule_node *last_vpm_read;
         struct schedule_node *last_tmu_write;
         struct schedule_node *last_tmu_config;
+        struct schedule_node *last_tmu_read;
         struct schedule_node *last_tlb;
         struct schedule_node *last_vpm;
         struct schedule_node *last_unif;
@@ -248,6 +249,7 @@ process_waddr_deps(struct schedule_state *state, struct schedule_node *n,
                          * barriers to affect ALU operations.
                          */
                         add_write_dep(state, &state->last_tmu_write, n);
+                        add_write_dep(state, &state->last_tmu_read, n);
                         break;
 
                 case V3D_QPU_WADDR_UNIFA:
@@ -407,7 +409,9 @@ calculate_deps(struct schedule_state *state, struct schedule_node *n)
         if (v3d_qpu_waits_on_tmu(inst)) {
                 /* TMU loads are coming from a FIFO, so ordering is important.
                  */
-                add_write_dep(state, &state->last_tmu_config, n);
+                add_write_dep(state, &state->last_tmu_read, n);
+                /* Keep TMU loads after their TMU lookup terminator */
+                add_read_dep(state, state->last_tmu_config, n);
         }
 
         /* Allow wrtmuc to be reordered with other instructions in the
