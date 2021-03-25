@@ -245,7 +245,7 @@ get_z_internal_format(struct panfrost_batch *batch)
 static void
 panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                                   struct MALI_ZS_CRC_EXTENSION *ext,
-                                  struct pan_image_slice_layout **checksum_slice)
+                                  struct pan_image_slice_state **checksum_slice)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -259,7 +259,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
                         unsigned level = c_surf->u.tex.level;
                         struct pan_image_slice_layout *slice = &rsrc->layout.slices[level];
 
-                        *checksum_slice = slice;
+                        *checksum_slice = &rsrc->state.slices[level];
 
                         ext->crc_row_stride = slice->crc.stride;
                         if (rsrc->checksum_bo)
@@ -387,7 +387,7 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
 
 static void
 panfrost_mfbd_emit_zs_crc_ext(struct panfrost_batch *batch, void *extp,
-                              struct pan_image_slice_layout **checksum_slice)
+                              struct pan_image_slice_state **checksum_slice)
 {
         pan_pack(extp, ZS_CRC_EXTENSION, ext) {
                 ext.zs_clean_pixel_write_enable = true;
@@ -558,7 +558,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 rts = fb + MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
         }
 
-        struct pan_image_slice_layout *checksum_slice = NULL;
+        struct pan_image_slice_state *checksum_slice = NULL;
 
         if (zs_crc_ext)
                 panfrost_mfbd_emit_zs_crc_ext(batch, zs_crc_ext, &checksum_slice);
@@ -588,8 +588,8 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                                 MAX2(samples, 1);
 
                         struct panfrost_resource *prsrc = pan_resource(surf->texture);
-                        if (!checksum_slice)
-                                prsrc->layout.slices[surf->u.tex.level].checksum_valid = false;
+                        if (checksum_slice != &prsrc->state.slices[surf->u.tex.level])
+                                prsrc->state.slices[surf->u.tex.level].crc_valid = false;
                 }
         }
 
@@ -628,7 +628,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                 params.has_zs_crc_extension = !!zs_crc_ext;
 
                 if (checksum_slice) {
-                        bool valid = checksum_slice->checksum_valid;
+                        bool valid = checksum_slice->crc_valid;
                         bool full = !batch->minx && !batch->miny &&
                                 batch->maxx == batch->key.width &&
                                 batch->maxy == batch->key.height;
@@ -640,7 +640,7 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
                          * valid for next time. */
                         params.crc_write_enable = valid || full;
 
-                        checksum_slice->checksum_valid |= full;
+                        checksum_slice->crc_valid |= full;
                 }
         }
 

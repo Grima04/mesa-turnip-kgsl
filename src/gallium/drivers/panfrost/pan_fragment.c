@@ -42,7 +42,7 @@ panfrost_initialize_surface(
         unsigned level = surf->u.tex.level;
         struct panfrost_resource *rsrc = pan_resource(surf->texture);
 
-        rsrc->layout.slices[level].initialized = true;
+        rsrc->state.slices[level].data_valid = true;
 }
 
 /* Generate a fragment job. This should be called once per frame. (According to

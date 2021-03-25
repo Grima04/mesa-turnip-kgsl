@@ -1390,7 +1390,7 @@ emit_image_attribs(struct panfrost_batch *batch, enum pipe_shader_type shader,
                 if (image->shader_access & PIPE_IMAGE_ACCESS_WRITE) {
                         flags |= PAN_BO_ACCESS_WRITE;
                         unsigned level = is_buffer ? 0 : image->u.tex.level;
-                        rsrc->layout.slices[level].initialized = true;
+                        rsrc->state.slices[level].data_valid = true;
                 }
                 panfrost_batch_add_bo(batch, rsrc->bo, flags);
 

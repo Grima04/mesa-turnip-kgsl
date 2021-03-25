@@ -55,6 +55,9 @@ struct panfrost_resource {
         /* Description of the resource layout */
         struct pan_image_layout layout;
 
+        /* Image state */
+        struct pan_image_state state;
+
         /* Whether the modifier can be changed */
         bool modifier_constant;
 

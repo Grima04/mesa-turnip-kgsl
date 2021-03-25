@@ -98,7 +98,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         }
 
         rsc->layout.slices[0].offset = whandle->offset;
-        rsc->layout.slices[0].initialized = true;
+        rsc->state.slices[0].data_valid = true;
         panfrost_resource_set_damage_region(NULL, &rsc->base, 0, NULL);
 
         if (panfrost_should_checksum(dev, rsc)) {
@@ -941,7 +941,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * from a pending batch XXX */
                 panfrost_flush_batches_accessing_bo(ctx, rsrc->bo, true);
 
-                if ((usage & PIPE_MAP_READ) && rsrc->layout.slices[level].initialized) {
+                if ((usage & PIPE_MAP_READ) && rsrc->state.slices[level].data_valid) {
                         pan_blit_to_staging(pctx, transfer);
                         panfrost_flush_batches_accessing_bo(ctx, staging->bo, true);
                         panfrost_bo_wait(staging->bo, INT64_MAX, false);
@@ -1039,7 +1039,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                 transfer->map = ralloc_size(transfer, transfer->base.layer_stride * box->depth);
                 assert(box->depth == 1);
 
-                if ((usage & PIPE_MAP_READ) && rsrc->layout.slices[level].initialized) {
+                if ((usage & PIPE_MAP_READ) && rsrc->state.slices[level].data_valid) {
                         panfrost_load_tiled_image(
                                         transfer->map,
                                         bo->ptr.cpu + rsrc->layout.slices[level].offset,
@@ -1070,7 +1070,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                  * initialized (maybe), so be conservative */
 
                 if (usage & PIPE_MAP_WRITE) {
-                        rsrc->layout.slices[level].initialized = true;
+                        rsrc->state.slices[level].data_valid = true;
                         panfrost_minmax_cache_invalidate(rsrc->index_cache, &transfer->base);
                 }
 
@@ -1103,7 +1103,7 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
                 { 0, 0, 0, rsrc->base.width0, rsrc->base.height0, depth };
 
         for (int i = 0; i <= rsrc->base.last_level; i++) {
-                if (!rsrc->layout.slices[i].initialized)
+                if (!rsrc->state.slices[i].data_valid)
                         continue;
 
                 blit.dst.resource = &tmp_rsrc->base;
@@ -1174,7 +1174,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
         struct panfrost_device *dev = pan_device(pctx->screen);
 
         if (transfer->usage & PIPE_MAP_WRITE)
-                prsrc->layout.slices[transfer->level].checksum_valid = false;
+                prsrc->state.slices[transfer->level].crc_valid = false;
 
         /* AFBC will use a staging resource. `initialized` will be set when the
          * fragment job is created; this is deferred to prevent useless surface
@@ -1207,7 +1207,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                 struct panfrost_bo *bo = prsrc->bo;
 
                 if (transfer->usage & PIPE_MAP_WRITE) {
-                        prsrc->layout.slices[transfer->level].initialized = true;
+                        prsrc->state.slices[transfer->level].data_valid = true;
 
                         if (prsrc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED) {
                                 assert(transfer->box.depth == 1);
@@ -1273,7 +1273,7 @@ panfrost_ptr_flush_region(struct pipe_context *pctx,
                                transfer->box.x + box->x + box->width);
         } else {
                 unsigned level = transfer->level;
-                rsc->layout.slices[level].initialized = true;
+                rsc->state.slices[level].data_valid = true;
         }
 }
 
@@ -1308,7 +1308,7 @@ panfrost_generate_mipmap(
 
         assert(rsrc->bo);
         for (unsigned l = base_level + 1; l <= last_level; ++l)
-                rsrc->layout.slices[l].initialized = false;
+                rsrc->state.slices[l].data_valid = false;
 
         /* Beyond that, we just delegate the hard stuff. */
 
