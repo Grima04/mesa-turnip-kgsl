@@ -2169,7 +2169,7 @@ generate_code(struct brw_codegen *p,
 #ifndef NDEBUG
    bool validated =
 #else
-   if (unlikely(debug_flag))
+   if (unlikely(debug_enabled))
 #endif
       brw_validate_instructions(devinfo, p->store,
                                 0, p->next_insn_offset,
