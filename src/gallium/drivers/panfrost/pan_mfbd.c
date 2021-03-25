@@ -47,16 +47,6 @@ panfrost_mfbd_has_zs_crc_ext(struct panfrost_batch *batch)
         return false;
 }
 
-static unsigned
-panfrost_mfbd_size(struct panfrost_batch *batch)
-{
-        unsigned rt_count = MAX2(batch->key.nr_cbufs, 1);
-
-        return MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH +
-               (panfrost_mfbd_has_zs_crc_ext(batch) * MALI_ZS_CRC_EXTENSION_LENGTH) +
-               (rt_count * MALI_RENDER_TARGET_LENGTH);
-}
-
 static enum mali_mfbd_color_format
 panfrost_mfbd_raw_format(unsigned bits)
 {
@@ -545,9 +535,14 @@ panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         unsigned vertex_count = has_draws;
+        unsigned zs_crc_count = panfrost_mfbd_has_zs_crc_ext(batch) ? 1 : 0;
+        unsigned rt_count = MAX2(batch->key.nr_cbufs, 1);
+        
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            panfrost_mfbd_size(batch), 64);
+                panfrost_pool_alloc_desc_aggregate(&batch->pool,
+                                                   PAN_DESC(MULTI_TARGET_FRAMEBUFFER),
+                                                   PAN_DESC_ARRAY(zs_crc_count, ZS_CRC_EXTENSION),
+                                                   PAN_DESC_ARRAY(rt_count, RENDER_TARGET));
         void *fb = t.cpu, *zs_crc_ext, *rts;
 
         if (panfrost_mfbd_has_zs_crc_ext(batch)) {

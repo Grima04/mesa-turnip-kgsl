@@ -107,9 +107,7 @@ panfrost_launch_grid(struct pipe_context *pipe,
         ctx->compute_grid = info;
 
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_COMPUTE_JOB_LENGTH,
-                                            64);
+                panfrost_pool_alloc_desc(&batch->pool, COMPUTE_JOB);
 
         /* We implement OpenCL inputs as uniforms (or a UBO -- same thing), so
          * reuse the graphics path for this by lowering to Gallium */

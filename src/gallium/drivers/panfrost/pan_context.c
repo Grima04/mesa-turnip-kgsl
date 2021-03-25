@@ -511,15 +511,11 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         ctx->active_prim = info->mode;
 
         struct panfrost_ptr tiler =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            pan_is_bifrost(device) ?
-                                            MALI_BIFROST_TILER_JOB_LENGTH :
-                                            MALI_MIDGARD_TILER_JOB_LENGTH,
-                                            64);
+                pan_is_bifrost(device) ?
+                panfrost_pool_alloc_desc(&batch->pool, BIFROST_TILER_JOB) :
+                panfrost_pool_alloc_desc(&batch->pool, MIDGARD_TILER_JOB);
         struct panfrost_ptr vertex =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_COMPUTE_JOB_LENGTH,
-                                            64);
+                panfrost_pool_alloc_desc(&batch->pool, COMPUTE_JOB);
 
         unsigned vertex_count = ctx->vertex_count;
 

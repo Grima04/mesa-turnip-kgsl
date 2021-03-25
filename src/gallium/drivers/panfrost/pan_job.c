@@ -688,7 +688,7 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
 
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(&batch->pool, MALI_BIFROST_TILER_HEAP_LENGTH, 64);
+                panfrost_pool_alloc_desc(&batch->pool, BIFROST_TILER_HEAP);
 
         pan_pack(t.cpu, BIFROST_TILER_HEAP, heap) {
                 heap.size = dev->tiler_heap->size;
@@ -699,7 +699,7 @@ panfrost_batch_get_bifrost_tiler(struct panfrost_batch *batch, unsigned vertex_c
 
         mali_ptr heap = t.gpu;
 
-        t = panfrost_pool_alloc_aligned(&batch->pool, MALI_BIFROST_TILER_LENGTH, 64);
+        t = panfrost_pool_alloc_desc(&batch->pool, BIFROST_TILER);
         pan_pack(t.cpu, BIFROST_TILER, tiler) {
                 tiler.hierarchy_mask = 0x28;
                 tiler.fb_width = batch->key.width;
@@ -747,17 +747,21 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
          * full framebuffer descriptor on Midgard) */
 
         if (!batch->framebuffer.gpu) {
-                unsigned size = pan_is_bifrost(dev) ?
-                        MALI_LOCAL_STORAGE_LENGTH :
-                        (dev->quirks & MIDGARD_SFBD) ?
-                        MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH :
-                        MALI_MULTI_TARGET_FRAMEBUFFER_LENGTH;
-
-                batch->framebuffer = panfrost_pool_alloc_aligned(&batch->pool, size, 64);
-
-                /* Tag the pointer */
-                if (!pan_is_bifrost(dev) && !(dev->quirks & MIDGARD_SFBD))
+                if (pan_is_bifrost(dev)) {
+                        batch->framebuffer =
+                                panfrost_pool_alloc_desc(&batch->pool,
+                                                         LOCAL_STORAGE);
+                } else if (dev->quirks & MIDGARD_SFBD) {
+                        batch->framebuffer =
+                                panfrost_pool_alloc_desc(&batch->pool,
+                                                         SINGLE_TARGET_FRAMEBUFFER);
+                } else {
+                        batch->framebuffer =
+                                panfrost_pool_alloc_desc(&batch->pool,
+                                                         MULTI_TARGET_FRAMEBUFFER);
+                        /* Tag the pointer */
                         batch->framebuffer.gpu |= MALI_FBD_TAG_IS_MFBD;
+                }
         }
 
         return batch->framebuffer.gpu;

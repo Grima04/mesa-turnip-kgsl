@@ -88,8 +88,7 @@ panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws)
         assert(batch->maxy > batch->miny);
 
         struct panfrost_ptr transfer =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_FRAGMENT_JOB_LENGTH, 64);
+                panfrost_pool_alloc_desc(&batch->pool, FRAGMENT_JOB);
 
         pan_section_pack(transfer.cpu, FRAGMENT_JOB, HEADER, header) {
                 header.type = MALI_JOB_TYPE_FRAGMENT;

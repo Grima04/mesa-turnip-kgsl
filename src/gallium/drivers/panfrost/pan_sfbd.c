@@ -209,9 +209,7 @@ mali_ptr
 panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws)
 {
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(&batch->pool,
-                                            MALI_SINGLE_TARGET_FRAMEBUFFER_LENGTH,
-                                            64);
+                panfrost_pool_alloc_desc(&batch->pool, SINGLE_TARGET_FRAMEBUFFER);
         void *sfbd = t.cpu;
 
         panfrost_emit_sfdb_local_storage(batch, sfbd, has_draws);

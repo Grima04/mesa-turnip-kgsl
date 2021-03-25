@@ -213,7 +213,7 @@ static void
 panfrost_load_emit_viewport(struct pan_pool *pool, struct MALI_DRAW *draw,
                             struct pan_image *image)
 {
-        struct panfrost_ptr t = panfrost_pool_alloc(pool, MALI_VIEWPORT_LENGTH);
+        struct panfrost_ptr t = panfrost_pool_alloc_desc(pool, VIEWPORT);
         unsigned width = u_minify(image->width0, image->first_level);
         unsigned height = u_minify(image->height0, image->first_level);
 
@@ -277,10 +277,10 @@ panfrost_load_emit_varying(struct pan_pool *pool, struct MALI_DRAW *draw,
         bool padding_buffer = pan_is_bifrost(pool->dev);
 
         struct panfrost_ptr varying =
-                panfrost_pool_alloc(pool, MALI_ATTRIBUTE_LENGTH);
+                panfrost_pool_alloc_desc(pool, ATTRIBUTE);
         struct panfrost_ptr varying_buffer =
-                panfrost_pool_alloc(pool, MALI_ATTRIBUTE_BUFFER_LENGTH *
-                                (padding_buffer ? 2 : 1));
+                panfrost_pool_alloc_desc_array(pool, (padding_buffer ? 2 : 1),
+                                               ATTRIBUTE_BUFFER);
 
         pan_pack(varying_buffer.cpu, ATTRIBUTE_BUFFER, cfg) {
                 cfg.pointer = coordinates;
@@ -309,11 +309,10 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                           struct pan_image *image)
 {
         struct panfrost_ptr texture =
-                 panfrost_pool_alloc_aligned(pool,
-                                             MALI_MIDGARD_TEXTURE_LENGTH +
-                                             sizeof(mali_ptr) * 2 *
-                                             MAX2(image->nr_samples, 1),
-                                             128);
+                 panfrost_pool_alloc_desc_aggregate(pool,
+                                                    PAN_DESC(MIDGARD_TEXTURE),
+                                                    PAN_DESC_ARRAY(MAX2(image->nr_samples, 1),
+                                                                   SURFACE_WITH_STRIDE));
 
         struct panfrost_ptr payload = {
                 texture.cpu + MALI_MIDGARD_TEXTURE_LENGTH,
@@ -321,7 +320,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         };
 
         struct panfrost_ptr sampler =
-                 panfrost_pool_alloc(pool, MALI_MIDGARD_SAMPLER_LENGTH);
+                 panfrost_pool_alloc_desc(pool, MIDGARD_SAMPLER);
 
         /* Create the texture descriptor. We partially compute the base address
          * ourselves to account for layer, such that the texture descriptor
@@ -398,10 +397,9 @@ midgard_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
                       unsigned loc)
 {
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(pool,
-                                            MALI_RENDERER_STATE_LENGTH +
-                                            8 * MALI_BLEND_LENGTH,
-                                            128);
+                panfrost_pool_alloc_desc_aggregate(pool,
+                                                   PAN_DESC(RENDERER_STATE),
+                                                   PAN_DESC_ARRAY(8, BLEND));
         bool srgb = util_format_is_srgb(image->format);
 
         pan_pack(t.cpu, RENDERER_STATE, cfg) {
@@ -457,9 +455,8 @@ panfrost_load_midg(struct pan_pool *pool,
                    unsigned loc)
 {
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(pool,
-                                            MALI_MIDGARD_TILER_JOB_LENGTH,
-                                            64);
+                panfrost_pool_alloc_desc(pool, MIDGARD_TILER_JOB);
+
         pan_section_pack(t.cpu, MIDGARD_TILER_JOB, DRAW, cfg) {
                 cfg.texture_descriptor_is_64b = true;
                 cfg.draw_descriptor_is_64b = true;
@@ -496,13 +493,12 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                           struct pan_image *image)
 {
         struct panfrost_ptr texture =
-                 panfrost_pool_alloc_aligned(pool,
-                                             MALI_BIFROST_TEXTURE_LENGTH +
-                                             sizeof(mali_ptr) * 2 *
-                                             MAX2(image->nr_samples, 1),
-                                             128);
+                 panfrost_pool_alloc_desc_aggregate(pool,
+                                                    PAN_DESC(BIFROST_TEXTURE),
+                                                    PAN_DESC_ARRAY(MAX2(image->nr_samples, 1),
+                                                                   SURFACE_WITH_STRIDE));
         struct panfrost_ptr sampler =
-                 panfrost_pool_alloc(pool, MALI_BIFROST_SAMPLER_LENGTH);
+                 panfrost_pool_alloc_desc(pool, BIFROST_SAMPLER);
         struct panfrost_ptr payload = {
                  .cpu = texture.cpu + MALI_BIFROST_TEXTURE_LENGTH,
                  .gpu = texture.gpu + MALI_BIFROST_TEXTURE_LENGTH,
@@ -607,10 +603,9 @@ bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
                       unsigned loc)
 {
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(pool,
-                                            MALI_RENDERER_STATE_LENGTH +
-                                            8 * MALI_BLEND_LENGTH,
-                                            128);
+                panfrost_pool_alloc_desc_aggregate(pool,
+                                                   PAN_DESC(RENDERER_STATE),
+                                                   PAN_DESC_ARRAY(8, BLEND));
 
         pan_pack(t.cpu, RENDERER_STATE, cfg) {
                 panfrost_load_prepare_rsd(pool, &cfg, image, loc);
@@ -650,9 +645,8 @@ panfrost_load_bifrost(struct pan_pool *pool,
                       unsigned loc)
 {
         struct panfrost_ptr t =
-                panfrost_pool_alloc_aligned(pool,
-                                            MALI_BIFROST_TILER_JOB_LENGTH,
-                                            64);
+                panfrost_pool_alloc_desc(pool, BIFROST_TILER_JOB);
+
         pan_section_pack(t.cpu, BIFROST_TILER_JOB, DRAW, cfg) {
                 cfg.four_components_per_vertex = true;
                 cfg.draw_descriptor_is_64b = true;
