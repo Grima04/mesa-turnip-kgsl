@@ -4398,6 +4398,9 @@ v3dv_CmdDraw(VkCommandBuffer commandBuffer,
              uint32_t firstVertex,
              uint32_t firstInstance)
 {
+   if (vertexCount == 0 || instanceCount == 0)
+      return;
+
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    struct v3dv_draw_info info = {};
    info.vertex_count = vertexCount;
@@ -4416,6 +4419,9 @@ v3dv_CmdDrawIndexed(VkCommandBuffer commandBuffer,
                     int32_t vertexOffset,
                     uint32_t firstInstance)
 {
+   if (indexCount == 0 || instanceCount == 0)
+      return;
+
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
 
    cmd_buffer_emit_pre_draw(cmd_buffer);
@@ -4474,6 +4480,9 @@ v3dv_CmdDrawIndirect(VkCommandBuffer commandBuffer,
                      uint32_t drawCount,
                      uint32_t stride)
 {
+   if (drawCount == 0)
+      return;
+
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
 
@@ -4509,6 +4518,9 @@ v3dv_CmdDrawIndexedIndirect(VkCommandBuffer commandBuffer,
                             uint32_t drawCount,
                             uint32_t stride)
 {
+   if (drawCount == 0)
+      return;
+
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
    V3DV_FROM_HANDLE(v3dv_buffer, buffer, _buffer);
 
