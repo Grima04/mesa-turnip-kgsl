@@ -820,17 +820,12 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 panfrost_translate_texture_dimension(rsrc->base.target);
 
         struct pan_image img = {
-                .width0 = rsrc->base.width0,
-                .height0 = rsrc->base.height0,
-                .depth0 = rsrc->base.depth0,
                 .format = format,
                 .dim = dim,
-                .array_size = rsrc->base.array_size,
                 .first_level = level,
                 .last_level = level,
                 .first_layer = surf->u.tex.first_layer,
                 .last_layer = surf->u.tex.last_layer,
-                .nr_samples = rsrc->base.nr_samples,
                 .bo = rsrc->bo,
                 .layout = &rsrc->layout,
         };

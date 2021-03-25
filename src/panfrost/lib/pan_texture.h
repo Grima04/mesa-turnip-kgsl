@@ -75,9 +75,13 @@ struct pan_image_slice_layout {
 struct pan_image_layout {
         uint64_t modifier;
         enum pipe_format format;
+        unsigned width, height, depth;
+        unsigned nr_samples;
         enum mali_texture_dimension dim;
         struct pan_image_slice_layout slices[MAX_MIP_LEVELS];
+        unsigned array_size;
         unsigned array_stride;
+        unsigned data_size;
 };
 
 struct pan_image_slice_state {
@@ -94,12 +98,10 @@ struct pan_image_state {
 
 struct pan_image {
         /* Format and size */
-        uint16_t width0, height0, depth0, array_size;
         enum pipe_format format;
         enum mali_texture_dimension dim;
         unsigned first_level, last_level;
         unsigned first_layer, last_layer;
-        unsigned nr_samples;
         struct panfrost_bo *bo;
         const struct pan_image_layout *layout;
 };

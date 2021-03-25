@@ -214,8 +214,8 @@ panfrost_load_emit_viewport(struct pan_pool *pool, struct MALI_DRAW *draw,
                             struct pan_image *image)
 {
         struct panfrost_ptr t = panfrost_pool_alloc_desc(pool, VIEWPORT);
-        unsigned width = u_minify(image->width0, image->first_level);
-        unsigned height = u_minify(image->height0, image->first_level);
+        unsigned width = u_minify(image->layout->width, image->first_level);
+        unsigned height = u_minify(image->layout->height, image->first_level);
 
         pan_pack(t.cpu, VIEWPORT, cfg) {
                 cfg.scissor_maximum_x = width - 1; /* Inclusive */
@@ -236,7 +236,7 @@ panfrost_load_prepare_rsd(struct pan_pool *pool, struct MALI_RENDERER_STATE *sta
                 (util_format_is_pure_uint(image->format)) ? PAN_BLIT_UINT :
                 (util_format_is_pure_sint(image->format)) ? PAN_BLIT_INT :
                 PAN_BLIT_FLOAT;
-        bool ms = image->nr_samples > 1;
+        bool ms = image->layout->nr_samples > 1;
         const struct pan_blit_shader *shader =
                 &pool->dev->blit_shaders.loads[loc][T][ms];
 
@@ -311,7 +311,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         struct panfrost_ptr texture =
                  panfrost_pool_alloc_desc_aggregate(pool,
                                                     PAN_DESC(MIDGARD_TEXTURE),
-                                                    PAN_DESC_ARRAY(MAX2(image->nr_samples, 1),
+                                                    PAN_DESC_ARRAY(image->layout->nr_samples,
                                                                    SURFACE_WITH_STRIDE));
 
         struct panfrost_ptr payload = {
@@ -337,11 +337,11 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         };
 
         panfrost_new_texture(pool->dev, image->layout, texture.cpu,
-                             image->width0, image->height0, 1, 1,
+                             image->layout->width, image->layout->height, 1, 1,
                              image->format, MALI_TEXTURE_DIMENSION_2D,
                              image->first_level, image->last_level,
                              0, 0,
-                             image->nr_samples,
+                             image->layout->nr_samples,
                              swizzle,
                              image->bo->ptr.gpu + offset, &payload);
 
@@ -494,7 +494,7 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         struct panfrost_ptr texture =
                  panfrost_pool_alloc_desc_aggregate(pool,
                                                     PAN_DESC(BIFROST_TEXTURE),
-                                                    PAN_DESC_ARRAY(MAX2(image->nr_samples, 1),
+                                                    PAN_DESC_ARRAY(image->layout->nr_samples,
                                                                    SURFACE_WITH_STRIDE));
         struct panfrost_ptr sampler =
                  panfrost_pool_alloc_desc(pool, BIFROST_SAMPLER);
@@ -512,11 +512,11 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         };
 
         panfrost_new_texture(pool->dev, image->layout, texture.cpu,
-                             image->width0, image->height0, 1, 1,
+                             image->layout->width, image->layout->height, 1, 1,
                              image->format, MALI_TEXTURE_DIMENSION_2D,
                              image->first_level, image->last_level,
                              0, 0,
-                             image->nr_samples,
+                             image->layout->nr_samples,
                              swizzle,
                              image->bo->ptr.gpu + offset, &payload);
 
@@ -620,7 +620,7 @@ bifrost_load_emit_rsd(struct pan_pool *pool, struct MALI_DRAW *draw,
                 }
                 cfg.properties.bifrost.allow_forward_pixel_to_kill = true;
                 cfg.preload.fragment.coverage = true;
-                cfg.preload.fragment.sample_mask_id = image->nr_samples > 1;
+                cfg.preload.fragment.sample_mask_id = image->layout->nr_samples > 1;
         }
 
         for (unsigned i = 0; i < 8; ++i) {

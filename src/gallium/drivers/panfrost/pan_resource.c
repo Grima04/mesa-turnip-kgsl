@@ -86,6 +86,12 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->modifier_constant = true;
         rsc->layout.slices[0].line_stride = whandle->stride;
         rsc->layout.slices[0].row_stride = whandle->stride;
+        rsc->layout.width = prsc->width0;
+        rsc->layout.height = prsc->height0;
+        rsc->layout.depth = prsc->depth0;
+        rsc->layout.nr_samples = prsc->nr_samples;
+        rsc->layout.array_size = prsc->array_size;
+        rsc->layout.data_size = rsc->bo->size;
 
         if (rsc->layout.modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED ||
             drm_is_afbc(rsc->layout.modifier)) {
@@ -341,6 +347,11 @@ panfrost_setup_layout(struct panfrost_device *dev,
         unsigned depth = res->depth0;
         unsigned bytes_per_pixel = util_format_get_blocksize(pres->layout.format);
 
+        pres->layout.width = width;
+        pres->layout.height = height;
+        pres->layout.depth = height;
+        pres->layout.array_size = res->array_size;
+
         /* Z32_S8X24 variants are actually stored in 2 planes (one per
          * component), we have to adjust the bytes_per_pixel value accordingly.
          */
@@ -352,6 +363,7 @@ panfrost_setup_layout(struct panfrost_device *dev,
          * sample #, horrifyingly enough */
 
         unsigned nr_samples = MAX2(res->nr_samples, 1);
+        pres->layout.nr_samples = nr_samples;
 
         assert(depth == 1 || nr_samples == 1);
 
@@ -472,8 +484,10 @@ panfrost_setup_layout(struct panfrost_device *dev,
 
         /* Arrays and cubemaps have the entire miptree duplicated */
         pres->layout.array_stride = ALIGN_POT(offset, 64);
+        pres->layout.data_size =
+                ALIGN_POT(pres->layout.array_stride * res->array_size, 4096);
         if (bo_size)
-                *bo_size = ALIGN_POT(pres->layout.array_stride * res->array_size, 4096);
+                *bo_size = pres->layout.data_size;
 }
 
 static inline bool
