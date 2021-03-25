@@ -651,8 +651,6 @@ createConfigsFromProperties(Display * dpy, int nvisuals, int nprops,
        */
       m->drawableType = GLX_WINDOW_BIT | GLX_PIXMAP_BIT | GLX_PBUFFER_BIT;
 #endif
-      /* Older X servers don't send this so we default it here. */
-      m->sRGBCapable = GL_FALSE;
        __glXInitializeVisualConfigFromTags(m, nprops, props,
                                           tagged_only, GL_TRUE);
       m->screen = screen;
