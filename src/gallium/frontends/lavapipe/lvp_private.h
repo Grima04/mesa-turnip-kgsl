@@ -747,10 +747,10 @@ struct lvp_cmd_bind_vertex_buffers {
 };
 
 struct lvp_cmd_draw {
-   uint32_t vertex_count;
    uint32_t instance_count;
-   uint32_t first_vertex;
    uint32_t first_instance;
+   uint32_t draw_count;
+   struct pipe_draw_start_count draws[0];
 };
 
 struct lvp_cmd_draw_indexed {

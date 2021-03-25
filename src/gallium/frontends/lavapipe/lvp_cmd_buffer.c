@@ -493,14 +493,16 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdDraw(
    LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
    struct lvp_cmd_buffer_entry *cmd;
 
-   cmd = cmd_buf_entry_alloc(cmd_buffer, LVP_CMD_DRAW);
+   uint32_t cmd_size = sizeof(struct pipe_draw_start_count);
+   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_DRAW);
    if (!cmd)
       return;
 
-   cmd->u.draw.vertex_count = vertexCount;
    cmd->u.draw.instance_count = instanceCount;
-   cmd->u.draw.first_vertex = firstVertex;
    cmd->u.draw.first_instance = firstInstance;
+   cmd->u.draw.draw_count = 1;
+   cmd->u.draw.draws[0].start = firstVertex;
+   cmd->u.draw.draws[0].count = vertexCount;
 
    cmd_buf_queue(cmd_buffer, cmd);
 }

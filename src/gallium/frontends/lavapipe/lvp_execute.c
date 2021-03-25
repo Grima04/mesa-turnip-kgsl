@@ -1549,16 +1549,13 @@ static void handle_draw(struct lvp_cmd_buffer_entry *cmd,
                         struct rendering_state *state)
 {
    const struct lvp_subpass *subpass = &state->pass->subpasses[state->subpass];
-   struct pipe_draw_start_count draw = {0};
    state->info.index_size = 0;
    state->info.index.resource = NULL;
-   draw.start = cmd->u.draw.first_vertex;
-   draw.count = cmd->u.draw.vertex_count;
    state->info.start_instance = cmd->u.draw.first_instance;
    state->info.instance_count = cmd->u.draw.instance_count;
    state->info.view_mask = subpass->view_mask;
 
-   state->pctx->draw_vbo(state->pctx, &state->info, NULL, &draw, 1);
+   state->pctx->draw_vbo(state->pctx, &state->info, NULL, cmd->u.draw.draws, cmd->u.draw.draw_count);
 }
 
 static void handle_set_viewport(struct lvp_cmd_buffer_entry *cmd,
