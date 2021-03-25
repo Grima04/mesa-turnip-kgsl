@@ -123,6 +123,9 @@ cs_program_emit(struct fd_ringbuffer *ring, struct kernel *kernel)
 	OUT_PKT4(ring, REG_A6XX_SP_PERFCTR_ENABLE, 1);
 	OUT_RING(ring, A6XX_SP_PERFCTR_ENABLE_CS);
 
+	OUT_PKT4(ring, REG_A6XX_SP_FLOAT_CNTL, 1);
+	OUT_RING(ring, 0);
+
 	OUT_PKT4(ring, REG_A6XX_HLSQ_INVALIDATE_CMD, 1);
 	OUT_RING(ring, A6XX_HLSQ_INVALIDATE_CMD_VS_STATE |
                    A6XX_HLSQ_INVALIDATE_CMD_HS_STATE |

@@ -3180,7 +3180,9 @@ to upconvert to 32b float internally?
 		<!-- TODO: valid bits 0x3c3f, see kernel -->
 	</reg32>
 	<reg32 offset="0xae03" name="SP_UNKNOWN_AE03"/>
-	<reg32 offset="0xae04" name="SP_UNKNOWN_AE04" low="0" high="3"/> <!-- 0x8 or 0 ? -->
+	<reg32 offset="0xae04" name="SP_FLOAT_CNTL">
+		<bitfield name="F16_NO_INF" pos="3" type="boolean"/>
+	</reg32>
 
 	<reg32 offset="0xae0f" name="SP_PERFCTR_ENABLE">
 		<!-- some perfcntrs are affected by a per-stage enable bit

@@ -743,7 +743,7 @@ tu6_init_hw(struct tu_cmd_buffer *cmd, struct tu_cs *cs)
                    A6XX_RB_CCU_CNTL(.offset = phys_dev->info.a6xx.ccu_offset_bypass));
    cmd->state.ccu_state = TU_CMD_CCU_SYSMEM;
    tu_cs_emit_write_reg(cs, REG_A6XX_RB_UNKNOWN_8E04, 0x00100000);
-   tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE04, 0x8);
+   tu_cs_emit_write_reg(cs, REG_A6XX_SP_FLOAT_CNTL, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_UNKNOWN_AE00, 0);
    tu_cs_emit_write_reg(cs, REG_A6XX_SP_PERFCTR_ENABLE, 0x3f);
    tu_cs_emit_write_reg(cs, REG_A6XX_TPL1_UNKNOWN_B605, 0x44);
