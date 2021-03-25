@@ -275,6 +275,7 @@ class Aggregate(object):
         self.name = name
         self.explicit_size = int(attrs["size"]) if "size" in attrs else 0
         self.size = 0
+        self.align = int(attrs["align"]) if "align" in attrs else None
 
     class Section:
         def __init__(self, name):
@@ -676,6 +677,7 @@ class Parser(object):
             self.group = Group(self, None, 0, 1, name)
             if "size" in attrs:
                 self.group.length = int(attrs["size"]) * 4
+            self.group.align = int(attrs["align"]) if "align" in attrs else None
             self.structs[attrs["name"]] = self.group
         elif name == "field":
             self.group.fields.append(Field(self, attrs))
@@ -744,6 +746,8 @@ class Parser(object):
         print("   uint32_t opaque[{}];".format(aggregate.get_size() // 4))
         print("};\n")
         print('#define {}_LENGTH {}'.format(aggregate.name.upper(), aggregate.size))
+        if aggregate.align != None:
+            print('#define {}_ALIGN {}'.format(aggregate.name.upper(), aggregate.align))
         for section in aggregate.sections:
             print('#define {}_SECTION_{}_TYPE struct {}'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
             print('#define {}_SECTION_{}_header {}_header'.format(aggregate.name.upper(), section.name.upper(), section.type_name))
@@ -765,6 +769,8 @@ class Parser(object):
         assert((self.group.length % 4) == 0)
 
         print('#define {} {}'.format (name + "_LENGTH", self.group.length))
+        if self.group.align != None:
+            print('#define {} {}'.format (name + "_ALIGN", self.group.align))
         print('struct {}_packed {{ uint32_t opaque[{}]; }};'.format(name.lower(), self.group.length // 4))
 
     def emit_unpack_function(self, name, group):
