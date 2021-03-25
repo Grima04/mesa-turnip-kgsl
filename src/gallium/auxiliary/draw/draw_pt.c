@@ -352,28 +352,56 @@ draw_print_arrays(struct draw_context *draw, uint prim, int start, uint count)
 
 
 /** Helper code for below */
-#define PRIM_RESTART_LOOP(elements) \
-   do { \
-      for (j = 0; j < count; j++) {               \
-         i = draw_overflow_uadd(start, j, MAX_LOOP_IDX);  \
-         if (i < elt_max && elements[i] == info->restart_index) { \
-            if (cur_count > 0) { \
-               /* draw elts up to prev pos */ \
-               draw_pt_arrays(draw, prim, cur_start, cur_count); \
-            } \
-            /* begin new prim at next elt */ \
-            cur_start = i + 1; \
-            cur_count = 0; \
-         } \
-         else { \
-            cur_count++; \
-         } \
-      } \
-      if (cur_count > 0) { \
-         draw_pt_arrays(draw, prim, cur_start, cur_count); \
-      } \
-   } while (0)
+static inline void
+prim_restart_loop(struct draw_context *draw,
+                  const struct pipe_draw_info *info,
+                  unsigned start,
+                  unsigned count,
+                  const void *elements)
+{
+   const unsigned elt_max = draw->pt.user.eltMax;
+   struct pipe_draw_start_count cur;
+   cur.start = start;
+   cur.count = 0;
 
+   /* The largest index within a loop using the i variable as the index.
+    * Used for overflow detection */
+   const unsigned MAX_LOOP_IDX = 0xffffffff;
+
+   for (unsigned j = 0; j < count; j++) {
+      unsigned restart_idx = 0;
+      unsigned i = draw_overflow_uadd(start, j, MAX_LOOP_IDX);
+      switch (draw->pt.user.eltSize) {
+      case 1:
+         restart_idx = ((const uint8_t*)elements)[i];
+         break;
+      case 2:
+         restart_idx = ((const uint16_t*)elements)[i];
+         break;
+      case 4:
+         restart_idx = ((const uint32_t*)elements)[i];
+         break;
+      default:
+         assert(0 && "bad eltSize in draw_arrays()");
+      }
+
+      if (i < elt_max && restart_idx == info->restart_index) {
+         if (cur.count > 0) {
+            /* draw elts up to prev pos */
+            draw_pt_arrays(draw, info->mode, cur.start, cur.count);
+         }
+         /* begin new prim at next elt */
+         cur.start = i + 1;
+         cur.count = 0;
+      }
+      else {
+         cur.count++;
+      }
+   }
+   if (cur.count > 0) {
+      draw_pt_arrays(draw, info->mode, cur.start, cur.count);
+   }
+}
 
 /**
  * For drawing prims with primitive restart enabled.
@@ -386,49 +414,18 @@ draw_pt_arrays_restart(struct draw_context *draw,
                        const struct pipe_draw_start_count *draw_info)
 {
    const unsigned prim = info->mode;
-   const unsigned start = draw_info->start;
-   const unsigned count = draw_info->count;
-   const unsigned elt_max = draw->pt.user.eltMax;
-   unsigned i, j, cur_start, cur_count;
-   /* The largest index within a loop using the i variable as the index.
-    * Used for overflow detection */
-   const unsigned MAX_LOOP_IDX = 0xffffffff;
 
    assert(info->primitive_restart);
 
    if (draw->pt.user.eltSize) {
       /* indexed prims (draw_elements) */
-      cur_start = start;
-      cur_count = 0;
-
-      switch (draw->pt.user.eltSize) {
-      case 1:
-         {
-            const ubyte *elt_ub = (const ubyte *) draw->pt.user.elts;
-            PRIM_RESTART_LOOP(elt_ub);
-         }
-         break;
-      case 2:
-         {
-            const ushort *elt_us = (const ushort *) draw->pt.user.elts;
-            PRIM_RESTART_LOOP(elt_us);
-         }
-         break;
-      case 4:
-         {
-            const uint *elt_ui = (const uint *) draw->pt.user.elts;
-            PRIM_RESTART_LOOP(elt_ui);
-         }
-         break;
-      default:
-         assert(0 && "bad eltSize in draw_arrays()");
-      }
+      prim_restart_loop(draw, info, draw_info->start, draw_info->count, draw->pt.user.elts);
    }
    else {
       /* Non-indexed prims (draw_arrays).
        * Primitive restart should have been handled in gallium frontends.
        */
-      draw_pt_arrays(draw, prim, start, count);
+      draw_pt_arrays(draw, prim, draw_info->start, draw_info->count);
    }
 }
 
