@@ -74,6 +74,7 @@ struct pan_image_slice_layout {
 
 struct pan_image_layout {
         uint64_t modifier;
+        enum pipe_format format;
         enum mali_texture_dimension dim;
         struct pan_image_slice_layout slices[MAX_MIP_LEVELS];
         unsigned array_stride;

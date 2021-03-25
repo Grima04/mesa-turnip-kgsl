@@ -79,7 +79,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         prsc->screen = pscreen;
 
         rsc->bo = panfrost_bo_import(dev, whandle->handle);
-        rsc->internal_format = templat->format;
+        rsc->layout.format = templat->format;
         rsc->layout.modifier = (whandle->modifier == DRM_FORMAT_MOD_INVALID) ?
                                DRM_FORMAT_MOD_LINEAR : whandle->modifier;
         rsc->layout.dim = panfrost_translate_texture_dimension(templat->target);
@@ -91,7 +91,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
             drm_is_afbc(rsc->layout.modifier)) {
                 unsigned tile_h = panfrost_block_dim(rsc->layout.modifier, false, 0);
 
-                if (util_format_is_compressed(rsc->internal_format))
+                if (util_format_is_compressed(rsc->layout.format))
                         tile_h >>= 2;
 
                 rsc->layout.slices[0].row_stride *= tile_h;
@@ -118,7 +118,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
          * of hardware (VPU?) that supports the BGR variants.
          */
         assert(!drm_is_afbc(whandle->modifier) ||
-               !panfrost_afbc_format_needs_fixup(dev, rsc->internal_format));
+               !panfrost_afbc_format_needs_fixup(dev, rsc->layout.format));
 
         if (drm_is_afbc(whandle->modifier)) {
 
@@ -167,7 +167,7 @@ panfrost_resource_get_handle(struct pipe_screen *pscreen,
          * that supports BGR variants.
          */
         assert(!drm_is_afbc(rsrc->layout.modifier) ||
-               !panfrost_afbc_format_needs_fixup(dev, rsrc->internal_format));
+               !panfrost_afbc_format_needs_fixup(dev, rsrc->layout.format));
 
         handle->modifier = rsrc->layout.modifier;
         rsrc->modifier_constant = true;
@@ -339,13 +339,13 @@ panfrost_setup_layout(struct panfrost_device *dev,
         unsigned width = res->width0;
         unsigned height = res->height0;
         unsigned depth = res->depth0;
-        unsigned bytes_per_pixel = util_format_get_blocksize(pres->internal_format);
+        unsigned bytes_per_pixel = util_format_get_blocksize(pres->layout.format);
 
         /* Z32_S8X24 variants are actually stored in 2 planes (one per
          * component), we have to adjust the bytes_per_pixel value accordingly.
          */
-        if (pres->internal_format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT ||
-            pres->internal_format == PIPE_FORMAT_X32_S8X24_UINT)
+        if (pres->layout.format == PIPE_FORMAT_Z32_FLOAT_S8X24_UINT ||
+            pres->layout.format == PIPE_FORMAT_X32_S8X24_UINT)
                 bytes_per_pixel = 4;
 
         /* MSAA is implemented as a 3D texture with z corresponding to the
@@ -375,7 +375,7 @@ panfrost_setup_layout(struct panfrost_device *dev,
         if (tiled || afbc) {
                 tile_w = panfrost_block_dim(pres->layout.modifier, true, 0);
                 tile_h = panfrost_block_dim(pres->layout.modifier, false, 0);
-                if (util_format_is_compressed(pres->internal_format))
+                if (util_format_is_compressed(pres->layout.format))
                         tile_shift = 2;
         }
 
@@ -516,7 +516,7 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
                 return false;
 
         /* Only a small selection of formats are AFBC'able */
-        if (!panfrost_format_supports_afbc(dev, pres->internal_format))
+        if (!panfrost_format_supports_afbc(dev, pres->layout.format))
                 return false;
 
         /* AFBC does not support layered (GLES3 style) multisampling. Use
@@ -550,7 +550,7 @@ panfrost_should_afbc(struct panfrost_device *dev, const struct panfrost_resource
          * share the buffer we can fake those formats since we're in control
          * of the format/swizzle we apply to the textures/RTs.
          */
-        if (panfrost_afbc_format_needs_fixup(dev, pres->internal_format) &&
+        if (panfrost_afbc_format_needs_fixup(dev, pres->layout.format) &&
             (pres->base.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)))
                 return false;
 
@@ -571,7 +571,7 @@ panfrost_should_tile(struct panfrost_device *dev, const struct panfrost_resource
                 PIPE_BIND_SCANOUT |
                 PIPE_BIND_SHARED;
 
-        unsigned bpp = util_format_get_blocksizebits(pres->internal_format);
+        unsigned bpp = util_format_get_blocksizebits(pres->layout.format);
 
         bool is_sane_bpp =
                 bpp == 8 || bpp == 16 || bpp == 24 || bpp == 32 ||
@@ -725,7 +725,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
         struct panfrost_resource *so = rzalloc(screen, struct panfrost_resource);
         so->base = *template;
         so->base.screen = screen;
-        so->internal_format = template->format;
+        so->layout.format = template->format;
         so->layout.dim = panfrost_translate_texture_dimension(template->target);
 
         pipe_reference_init(&so->base.reference, 1);
@@ -901,7 +901,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
         struct panfrost_context *ctx = pan_context(pctx);
         struct panfrost_device *dev = pan_device(pctx->screen);
         struct panfrost_resource *rsrc = pan_resource(resource);
-        int bytes_per_pixel = util_format_get_blocksize(rsrc->internal_format);
+        int bytes_per_pixel = util_format_get_blocksize(rsrc->layout.format);
         struct panfrost_bo *bo = rsrc->bo;
 
         /* Can't map tiled/compressed directly */
@@ -1046,7 +1046,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
                                         box->x, box->y, box->width, box->height,
                                         transfer->base.stride,
                                         rsrc->layout.slices[level].line_stride,
-                                        rsrc->internal_format);
+                                        rsrc->layout.format);
                 }
 
                 return transfer->map;
@@ -1240,7 +1240,7 @@ panfrost_ptr_unmap(struct pipe_context *pctx,
                                                 transfer->box.width, transfer->box.height,
                                                 prsrc->layout.slices[transfer->level].line_stride,
                                                 transfer->stride,
-                                                prsrc->internal_format);
+                                                prsrc->layout.format);
                                 }
                         }
                 }
@@ -1287,7 +1287,7 @@ static enum pipe_format
 panfrost_resource_get_internal_format(struct pipe_resource *rsrc)
 {
         struct panfrost_resource *prsrc = (struct panfrost_resource *) rsrc;
-        return prsrc->internal_format;
+        return prsrc->layout.format;
 }
 
 static bool

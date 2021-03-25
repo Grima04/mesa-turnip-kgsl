@@ -70,8 +70,6 @@ struct panfrost_resource {
         /* Used to decide when to convert to another modifier */
         uint16_t modifier_updates;
 
-        enum pipe_format internal_format;
-
         /* Cached min/max values for index buffers */
         struct panfrost_minmax_cache *index_cache;
 };
