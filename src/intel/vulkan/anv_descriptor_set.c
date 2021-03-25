@@ -526,7 +526,8 @@ VkResult anv_CreateDescriptorSetLayout(
          /* Inline uniform blocks are specified to use the descriptor array
           * size as the size in bytes of the block.
           */
-         descriptor_buffer_size = align_u32(descriptor_buffer_size, 32);
+         descriptor_buffer_size = align_u32(descriptor_buffer_size,
+                                            ANV_UBO_ALIGNMENT);
          set_layout->binding[b].descriptor_offset = descriptor_buffer_size;
          descriptor_buffer_size += binding->descriptorCount;
       } else {
@@ -843,9 +844,11 @@ VkResult anv_CreateDescriptorPool(
     * of them to 32B.
     */
    descriptor_bo_size += 32 * pCreateInfo->maxSets;
-   /* We align inline uniform blocks to 32B */
-   if (inline_info)
-      descriptor_bo_size += 32 * inline_info->maxInlineUniformBlockBindings;
+   /* We align inline uniform blocks to ANV_UBO_ALIGNMENT */
+   if (inline_info) {
+      descriptor_bo_size +=
+         ANV_UBO_ALIGNMENT * inline_info->maxInlineUniformBlockBindings;
+   }
    descriptor_bo_size = ALIGN(descriptor_bo_size, 4096);
 
    const size_t pool_size =
