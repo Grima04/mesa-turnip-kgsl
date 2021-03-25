@@ -450,17 +450,15 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
    memcpy(info, raw_info, sizeof(struct pipe_draw_info));
    memcpy(draw, raw_draw, sizeof(struct pipe_draw_start_count));
 
-   if (indirect && indirect->count_from_stream_output) {
-      struct draw_so_target *target =
-         (struct draw_so_target *)indirect->count_from_stream_output;
-      assert(vertex_buffer != NULL);
-      draw->count = vertex_buffer->stride == 0 ? 0 :
-                       target->internal_offset / vertex_buffer->stride;
+   struct draw_so_target *target =
+      (struct draw_so_target *)indirect->count_from_stream_output;
+   assert(vertex_buffer != NULL);
+   draw->count = vertex_buffer->stride == 0 ? 0 :
+                    target->internal_offset / vertex_buffer->stride;
 
-      /* Stream output draw can not be indexed */
-      debug_assert(!info->index_size);
-      info->max_index = draw->count - 1;
-   }
+   /* Stream output draw can not be indexed */
+   debug_assert(!info->index_size);
+   info->max_index = draw->count - 1;
 }
 
 /*
@@ -515,6 +513,8 @@ draw_vbo(struct draw_context *draw,
    unsigned fpstate = util_fpstate_get();
    struct pipe_draw_info resolved_info;
    struct pipe_draw_start_count resolved_draw;
+   struct pipe_draw_info *use_info = (struct pipe_draw_info *)info;
+   struct pipe_draw_start_count *use_draws = (struct pipe_draw_start_count *)draws;
 
    if (info->instance_count == 0)
       return;
@@ -524,28 +524,30 @@ draw_vbo(struct draw_context *draw,
     */
    util_fpstate_set_denorms_to_zero(fpstate);
 
-   resolve_draw_info(info, indirect, &draws[0], &resolved_info,
-                     &resolved_draw, &(draw->pt.vertex_buffer[0]));
-   info = &resolved_info;
-   draws = &resolved_draw;
-   num_draws = 1;
+   if (indirect && indirect->count_from_stream_output) {
+      resolve_draw_info(info, indirect, &draws[0], &resolved_info,
+                        &resolved_draw, &(draw->pt.vertex_buffer[0]));
+      use_info = &resolved_info;
+      use_draws = &resolved_draw;
+      num_draws = 1;
+   }
 
    if (info->index_size)
       assert(draw->pt.user.elts);
 
    count = draws[0].count;
 
-   draw->pt.user.eltBias = info->index_size ? info->index_bias : 0;
-   draw->pt.user.min_index = info->index_bounds_valid ? info->min_index : 0;
-   draw->pt.user.max_index = info->index_bounds_valid ? info->max_index : ~0;
-   draw->pt.user.eltSize = info->index_size ? draw->pt.user.eltSizeIB : 0;
-   draw->pt.user.drawid = info->drawid;
+   draw->pt.user.eltBias = use_info->index_size ? use_info->index_bias : 0;
+   draw->pt.user.min_index = use_info->index_bounds_valid ? use_info->min_index : 0;
+   draw->pt.user.max_index = use_info->index_bounds_valid ? use_info->max_index : ~0;
+   draw->pt.user.eltSize = use_info->index_size ? draw->pt.user.eltSizeIB : 0;
+   draw->pt.user.drawid = use_info->drawid;
    draw->pt.user.viewid = 0;
-   draw->pt.vertices_per_patch = info->vertices_per_patch;
+   draw->pt.vertices_per_patch = use_info->vertices_per_patch;
 
    if (0)
       debug_printf("draw_vbo(mode=%u start=%u count=%u):\n",
-                   info->mode, draws[0].start, count);
+                   use_info->mode, use_draws[0].start, count);
 
    if (0)
       tgsi_dump(draw->vs.vertex_shader->state.tokens, 0);
@@ -573,12 +575,12 @@ draw_vbo(struct draw_context *draw,
    }
 
    if (0)
-      draw_print_arrays(draw, info->mode, draws[0].start, MIN2(count, 20));
+      draw_print_arrays(draw, use_info->mode, use_draws[0].start, MIN2(count, 20));
 
    index_limit = util_draw_max_index(draw->pt.vertex_buffer,
                                      draw->pt.vertex_element,
                                      draw->pt.nr_vertex_elements,
-                                     info);
+                                     use_info);
 #ifdef DRAW_LLVM_AVAILABLE
    if (!draw->llvm)
 #endif
@@ -597,20 +599,20 @@ draw_vbo(struct draw_context *draw,
    }
 
    draw->pt.max_index = index_limit - 1;
-   draw->start_index = draws[0].start;
+   draw->start_index = use_draws[0].start;
 
    /*
     * TODO: We could use draw->pt.max_index to further narrow
     * the min_index/max_index hints given by gallium frontends.
     */
 
-   if (info->view_mask) {
-      u_foreach_bit(i, info->view_mask) {
+   if (use_info->view_mask) {
+      u_foreach_bit(i, use_info->view_mask) {
          draw->pt.user.viewid = i;
-         draw_instances(draw, info, draws, count);
+         draw_instances(draw, use_info, use_draws, count);
       }
    } else
-      draw_instances(draw, info, draws, count);
+      draw_instances(draw, use_info, use_draws, count);
 
    /* If requested emit the pipeline statistics for this run */
    if (draw->collect_statistics) {
