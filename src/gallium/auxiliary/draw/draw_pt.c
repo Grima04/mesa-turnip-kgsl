@@ -465,7 +465,7 @@ static void
 draw_instances(struct draw_context *draw,
                const struct pipe_draw_info *info,
                const struct pipe_draw_start_count *draws,
-               int count)
+               unsigned num_draws)
 {
    unsigned instance;
 
@@ -484,10 +484,12 @@ draw_instances(struct draw_context *draw,
       draw_new_instance(draw);
 
       if (info->primitive_restart) {
-         draw_pt_arrays_restart(draw, info, &draws[0]);
+         for (unsigned i = 0; i < num_draws; i++)
+            draw_pt_arrays_restart(draw, info, &draws[i]);
       }
       else {
-         draw_pt_arrays(draw, info->mode, draws[0].start, count);
+         for (unsigned i = 0; i < num_draws; i++)
+            draw_pt_arrays(draw, info->mode, draws[i].start, draws[i].count);
       }
    }
 }
@@ -506,7 +508,6 @@ draw_vbo(struct draw_context *draw,
          unsigned num_draws)
 {
    unsigned index_limit;
-   unsigned count;
    unsigned fpstate = util_fpstate_get();
    struct pipe_draw_info resolved_info;
    struct pipe_draw_start_count resolved_draw;
@@ -532,8 +533,6 @@ draw_vbo(struct draw_context *draw,
    if (info->index_size)
       assert(draw->pt.user.elts);
 
-   count = draws[0].count;
-
    draw->pt.user.eltBias = use_info->index_size ? use_info->index_bias : 0;
    draw->pt.user.min_index = use_info->index_bounds_valid ? use_info->min_index : 0;
    draw->pt.user.max_index = use_info->index_bounds_valid ? use_info->max_index : ~0;
@@ -542,9 +541,11 @@ draw_vbo(struct draw_context *draw,
    draw->pt.user.viewid = 0;
    draw->pt.vertices_per_patch = use_info->vertices_per_patch;
 
-   if (0)
-      debug_printf("draw_vbo(mode=%u start=%u count=%u):\n",
-                   use_info->mode, use_draws[0].start, count);
+   if (0) {
+      for (unsigned i = 0; i < num_draws; i++)
+         debug_printf("draw_vbo(mode=%u start=%u count=%u):\n",
+                      use_info->mode, use_draws[i].start, use_draws[i].count);
+   }
 
    if (0)
       tgsi_dump(draw->vs.vertex_shader->state.tokens, 0);
@@ -571,8 +572,10 @@ draw_vbo(struct draw_context *draw,
       }
    }
 
-   if (0)
-      draw_print_arrays(draw, use_info->mode, use_draws[0].start, MIN2(count, 20));
+   if (0) {
+      for (unsigned i = 0; i < num_draws; i++)
+         draw_print_arrays(draw, use_info->mode, use_draws[i].start, MIN2(use_draws[i].count, 20));
+   }
 
    index_limit = util_draw_max_index(draw->pt.vertex_buffer,
                                      draw->pt.vertex_element,
@@ -606,10 +609,10 @@ draw_vbo(struct draw_context *draw,
    if (use_info->view_mask) {
       u_foreach_bit(i, use_info->view_mask) {
          draw->pt.user.viewid = i;
-         draw_instances(draw, use_info, use_draws, count);
+         draw_instances(draw, use_info, use_draws, num_draws);
       }
    } else
-      draw_instances(draw, use_info, use_draws, count);
+      draw_instances(draw, use_info, use_draws, num_draws);
 
    /* If requested emit the pipeline statistics for this run */
    if (draw->collect_statistics) {
