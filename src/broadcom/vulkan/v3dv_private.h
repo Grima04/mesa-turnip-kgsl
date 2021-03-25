@@ -395,6 +395,13 @@ struct v3dv_device {
 
    struct v3dv_pipeline_cache default_pipeline_cache;
 
+   /* GL_SHADER_STATE_RECORD needs to speficy default attribute values. The
+    * following covers the most common case, that is all attributes format
+    * being float being float, allowing us to reuse the same BO for all
+    * pipelines matching this requirement. Pipelines that need integer
+    * attributes will create their own BO.
+    */
+   struct v3dv_bo *default_attribute_float;
    VkPhysicalDeviceFeatures features;
 };
 
@@ -1706,8 +1713,12 @@ struct v3dv_pipeline {
 
    struct v3dv_pipeline_shared_data *shared_data;
 
-   /* FIXME: this bo is another candidate to data to be uploaded using a
-    * resource manager, instead of a individual bo
+   /* In general we can reuse v3dv_device->default_attribute_float, so note
+    * that the following can be NULL.
+    *
+    * FIXME: the content of this BO will be small, so it could be improved to
+    * be uploaded to a common BO. But as in most cases it will be NULL, it is
+    * not a priority.
     */
    struct v3dv_bo *default_attribute_values;
 
@@ -1999,6 +2010,10 @@ v3dv_pipeline_cache_search_for_pipeline(struct v3dv_pipeline_cache *cache,
 void
 v3dv_pipeline_cache_upload_pipeline(struct v3dv_pipeline *pipeline,
                                     struct v3dv_pipeline_cache *cache);
+
+struct v3dv_bo *
+v3dv_pipeline_create_default_attribute_values(struct v3dv_device *device,
+                                              struct v3dv_pipeline *pipeline);
 
 void v3dv_shader_module_internal_init(struct v3dv_device *device,
                                       struct vk_shader_module *module,

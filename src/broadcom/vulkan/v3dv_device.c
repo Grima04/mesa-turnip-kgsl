@@ -1462,6 +1462,8 @@ v3dv_CreateDevice(VkPhysicalDevice physicalDevice,
    v3dv_bo_cache_init(device);
    v3dv_pipeline_cache_init(&device->default_pipeline_cache, device,
                             device->instance->default_pipeline_cache_enabled);
+   device->default_attribute_float =
+      v3dv_pipeline_create_default_attribute_values(device, NULL);
 
    *pDevice = v3dv_device_to_handle(device);
 
@@ -1486,6 +1488,11 @@ v3dv_DestroyDevice(VkDevice _device,
    drmSyncobjDestroy(device->pdevice->render_fd, device->last_job_sync);
    destroy_device_meta(device);
    v3dv_pipeline_cache_finish(&device->default_pipeline_cache);
+
+   if (device->default_attribute_float) {
+      v3dv_bo_free(device, device->default_attribute_float);
+      device->default_attribute_float = NULL;
+   }
 
    /* Bo cache should be removed the last, as any other object could be
     * freeing their private bos

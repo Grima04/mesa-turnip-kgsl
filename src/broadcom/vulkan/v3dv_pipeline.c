@@ -2773,46 +2773,59 @@ get_attr_type(const struct util_format_description *desc)
 }
 
 static bool
-create_default_attribute_values(struct v3dv_pipeline *pipeline,
-                                const VkPipelineVertexInputStateCreateInfo *vi_info)
+pipeline_has_integer_vertex_attrib(struct v3dv_pipeline *pipeline)
+{
+   for (uint8_t i = 0; i < pipeline->va_count; i++) {
+      if (vk_format_is_int(pipeline->va[i].vk_format))
+         return true;
+   }
+   return false;
+}
+
+/* @pipeline can be NULL. We assume in that case that all the attributes have
+ * a float format (we only create an all-float BO once and we reuse it with
+ * all float pipelines), otherwise we look at the actual type of each
+ * attribute used with the specific pipeline passed in.
+ */
+struct v3dv_bo *
+v3dv_pipeline_create_default_attribute_values(struct v3dv_device *device,
+                                              struct v3dv_pipeline *pipeline)
 {
    uint32_t size = MAX_VERTEX_ATTRIBS * sizeof(float) * 4;
+   struct v3dv_bo *bo;
 
-   if (pipeline->default_attribute_values == NULL) {
-      pipeline->default_attribute_values = v3dv_bo_alloc(pipeline->device, size,
-                                                         "default_vi_attributes",
-                                                         true);
+   bo = v3dv_bo_alloc(device, size, "default_vi_attributes", true);
 
-      if (!pipeline->default_attribute_values) {
-         fprintf(stderr, "failed to allocate memory for the default "
-                 "attribute values\n");
-         return false;
-      }
+   if (!bo) {
+      fprintf(stderr, "failed to allocate memory for the default "
+              "attribute values\n");
+      return NULL;
    }
 
-   bool ok = v3dv_bo_map(pipeline->device,
-                         pipeline->default_attribute_values, size);
+   bool ok = v3dv_bo_map(device, bo, size);
    if (!ok) {
       fprintf(stderr, "failed to map default attribute values buffer\n");
       return false;
    }
 
-   uint32_t *attrs = pipeline->default_attribute_values->map;
-
+   uint32_t *attrs = bo->map;
+   uint8_t va_count = pipeline != NULL ? pipeline->va_count : 0;
    for (int i = 0; i < MAX_VERTEX_ATTRIBS; i++) {
       attrs[i * 4 + 0] = 0;
       attrs[i * 4 + 1] = 0;
       attrs[i * 4 + 2] = 0;
-      if (i < pipeline->va_count && vk_format_is_int(pipeline->va[i].vk_format)) {
+      VkFormat attr_format =
+         pipeline != NULL ? pipeline->va[i].vk_format : VK_FORMAT_UNDEFINED;
+      if (i < va_count && vk_format_is_int(attr_format)) {
          attrs[i * 4 + 3] = 1;
       } else {
          attrs[i * 4 + 3] = fui(1.0);
       }
    }
 
-   v3dv_bo_unmap(pipeline->device, pipeline->default_attribute_values);
+   v3dv_bo_unmap(device, bo);
 
-   return true;
+   return bo;
 }
 
 static void
@@ -2986,8 +2999,14 @@ pipeline_init(struct v3dv_pipeline *pipeline,
       }
    }
 
-   if (!create_default_attribute_values(pipeline, vi_info))
-      return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   if (pipeline_has_integer_vertex_attrib(pipeline)) {
+      pipeline->default_attribute_values =
+         v3dv_pipeline_create_default_attribute_values(pipeline->device, pipeline);
+      if (!pipeline->default_attribute_values)
+         return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+   } else {
+      pipeline->default_attribute_values = NULL;
+   }
 
    return result;
 }

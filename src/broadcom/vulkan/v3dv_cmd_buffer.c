@@ -3822,6 +3822,11 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
    struct v3dv_bo *assembly_bo = pipeline->shared_data->assembly_bo;
 
+   struct v3dv_bo *default_attribute_values =
+      pipeline->default_attribute_values != NULL ?
+      pipeline->default_attribute_values :
+      pipeline->device->default_attribute_float;
+
    cl_emit_with_prepacked(&job->indirect, GL_SHADER_STATE_RECORD,
                           pipeline->shader_state_record, shader) {
 
@@ -3847,7 +3852,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
       shader.fragment_shader_uniforms_address = cmd_buffer->state.uniforms.fs;
 
       shader.address_of_default_attribute_values =
-         v3dv_cl_address(pipeline->default_attribute_values, 0);
+         v3dv_cl_address(default_attribute_values, 0);
    }
 
    /* Upload vertex element attributes (SHADER_STATE_ATTRIBUTE_RECORD) */
