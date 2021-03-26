@@ -4232,6 +4232,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    assert(opts);
    bool retval = true;
    debug_dxil = (int)debug_get_option_debug_dxil();
+   blob_init(blob);
 
    struct ntd_context *ctx = calloc(1, sizeof(*ctx));
    if (!ctx)
@@ -4323,7 +4324,6 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
       goto out;
    }
 
-   blob_init(blob);
    if (!dxil_container_write(&container, blob)) {
       debug_printf("D3D12: dxil_container_write failed\n");
       retval = false;
