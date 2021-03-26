@@ -61,10 +61,18 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    NIR_PASS_V(nir, nir_opt_deref);
    NIR_PASS_V(nir, nir_lower_returns);
    NIR_PASS_V(nir, nir_inline_functions);
-   // todo remove all non-entrypoint functions
    NIR_PASS_V(nir, nir_lower_variable_initializers,
               ~nir_var_function_temp);
 
+   // Pick off the single entrypoint that we want.
+   nir_function *entrypoint;
+   foreach_list_typed_safe(nir_function, func, node, &nir->functions) {
+      if (func->is_entrypoint)
+         entrypoint = func;
+      else
+         exec_node_remove(&func->node);
+   }
+   assert(exec_list_length(&nir->functions) == 1);
    struct nir_to_dxil_options opts = {0};
 
    struct blob dxil_blob;
