@@ -337,8 +337,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         };
 
         panfrost_new_texture(pool->dev, image->layout, texture.cpu,
-                             image->width0, image->height0,
-                             MAX2(image->nr_samples, 1), 1,
+                             image->width0, image->height0, 1, 1,
                              image->format, MALI_TEXTURE_DIMENSION_2D,
                              image->first_level, image->last_level,
                              0, 0,
@@ -513,8 +512,7 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         };
 
         panfrost_new_texture(pool->dev, image->layout, texture.cpu,
-                             image->width0, image->height0,
-                             MAX2(image->nr_samples, 1), 1,
+                             image->width0, image->height0, 1, 1,
                              image->format, MALI_TEXTURE_DIMENSION_2D,
                              image->first_level, image->last_level,
                              0, 0,
