@@ -6389,6 +6389,8 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 					       unsigned dst_queue_mask,
 					       const VkImageSubresourceRange *range)
 {
+	bool dcc_decompressed = false, fast_clear_flushed = false;
+
 	if (!radv_image_has_cmask(image) &&
 	    !radv_image_has_fmask(image) &&
 	    !radv_dcc_enabled(image, range->baseMipLevel))
@@ -6414,11 +6416,13 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		} else if (radv_layout_dcc_compressed(cmd_buffer->device, image, src_layout, src_render_loop, src_queue_mask) &&
 		           !radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			radv_decompress_dcc(cmd_buffer, image, range);
+			dcc_decompressed = true;
 		} else if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout,
 		                                      src_render_loop, src_queue_mask) &&
 		           !radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
 		                                       dst_render_loop, dst_queue_mask)) {
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
+			fast_clear_flushed = true;
 		}
 
 		if (src_layout != VK_IMAGE_LAYOUT_PRESENT_SRC_KHR &&
@@ -6426,39 +6430,44 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 		    image->retile_map)
 			radv_retile_dcc(cmd_buffer, image);
 	} else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
-		bool fce_eliminate = false, fmask_expand = false;
-
 		if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout,
 		                               src_render_loop, src_queue_mask) &&
 		    !radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
 		                                dst_render_loop, dst_queue_mask)) {
-			fce_eliminate = true;
+			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
+			fast_clear_flushed = true;
 		}
+	}
 
-		if (radv_image_has_fmask(image) &&
-		    (image->usage & (VK_IMAGE_USAGE_STORAGE_BIT |
-				     VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
-		    radv_layout_fmask_compressed(cmd_buffer->device, image,
-						 src_layout, src_queue_mask) &&
-		    !radv_layout_fmask_compressed(cmd_buffer->device, image,
-						  dst_layout, dst_queue_mask)) {
-			fmask_expand = true;
-		}
-
-		if (fce_eliminate || fmask_expand) {
+	/* MSAA color decompress. */
+	if (radv_image_has_fmask(image) &&
+	    (image->usage & (VK_IMAGE_USAGE_STORAGE_BIT |
+			     VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
+	    radv_layout_fmask_compressed(cmd_buffer->device, image,
+					 src_layout, src_queue_mask) &&
+	    !radv_layout_fmask_compressed(cmd_buffer->device, image,
+					  dst_layout, dst_queue_mask)) {
+		if (radv_dcc_enabled(image, range->baseMipLevel) &&
+		    !radv_image_use_dcc_image_stores(cmd_buffer->device, image) &&
+		    !dcc_decompressed) {
+			/* A DCC decompress is required before expanding FMASK
+			 * when DCC stores aren't supported to avoid being in
+			 * a state where DCC is compressed and the main
+			 * surface is uncompressed.
+			 */
+			radv_decompress_dcc(cmd_buffer, image, range);
+		} else if (!fast_clear_flushed) {
 			/* A FMASK decompress is required before expanding
 			 * FMASK.
 			 */
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
 		}
 
-		if (fmask_expand) {
-			struct radv_barrier_data barrier = {0};
-			barrier.layout_transitions.fmask_color_expand = 1;
-			radv_describe_layout_transition(cmd_buffer, &barrier);
+		struct radv_barrier_data barrier = {0};
+		barrier.layout_transitions.fmask_color_expand = 1;
+		radv_describe_layout_transition(cmd_buffer, &barrier);
 
-			radv_expand_fmask_image_inplace(cmd_buffer, image, range);
-		}
+		radv_expand_fmask_image_inplace(cmd_buffer, image, range);
 	}
 }
 
