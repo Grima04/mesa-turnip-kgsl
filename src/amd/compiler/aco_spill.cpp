@@ -409,6 +409,9 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
    if (block_idx == 0)
       return {0, 0};
 
+   /* next use distances at the beginning of the current block */
+   auto& next_use_distances = ctx.next_use_distances_start[block_idx];
+
    /* loop header block */
    if (block->loop_nest_depth > ctx.program->blocks[block_idx - 1].loop_nest_depth) {
       assert(block->linear_preds[0] == block_idx - 1);
@@ -428,11 +431,10 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       unsigned loop_end = i;
 
       for (auto spilled : ctx.spills_exit[block_idx - 1]) {
-         auto map = ctx.next_use_distances_end[block_idx - 1];
-         auto it = map.find(spilled.first);
+         auto it = next_use_distances.find(spilled.first);
 
-         /* variable is not even live at the predecessor: probably from a phi */
-         if (it == map.end())
+         /* variable is not live at loop entry: probably a phi operand */
+         if (it == next_use_distances.end())
             continue;
 
          /* keep constants and live-through variables spilled */
@@ -455,7 +457,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
 
          unsigned distance = 0;
          Temp to_spill;
-         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_end[block_idx - 1]) {
+         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_use_distances) {
             if (pair.first.type() == type &&
                 (pair.second.first >= loop_end || (ctx.remat.count(pair.first) && type == RegType::sgpr)) &&
                 pair.second.second > distance &&
@@ -497,7 +499,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          Temp to_spill;
          type = reg_pressure.vgpr > ctx.target_pressure.vgpr ? RegType::vgpr : RegType::sgpr;
 
-         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_start[block_idx]) {
+         for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_use_distances) {
             if (pair.first.type() == type &&
                 pair.second.second > distance &&
                 ctx.spills_entry[block_idx].find(pair.first) == ctx.spills_entry[block_idx].end()) {
@@ -520,8 +522,8 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       unsigned pred_idx = block->linear_preds[0];
       for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
          if (pair.first.type() == RegType::sgpr &&
-             ctx.next_use_distances_start[block_idx].find(pair.first) != ctx.next_use_distances_start[block_idx].end() &&
-             ctx.next_use_distances_start[block_idx][pair.first].first != block_idx) {
+             next_use_distances.find(pair.first) != next_use_distances.end() &&
+             next_use_distances[pair.first].first != block_idx) {
             ctx.spills_entry[block_idx].insert(pair);
             spilled_registers.sgpr += pair.first.size();
          }
@@ -530,8 +532,8 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          pred_idx = block->logical_preds[0];
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
             if (pair.first.type() == RegType::vgpr &&
-                ctx.next_use_distances_start[block_idx].find(pair.first) != ctx.next_use_distances_start[block_idx].end() &&
-                ctx.next_use_distances_start[block_idx][pair.first].first != block_idx) {
+                next_use_distances.find(pair.first) != next_use_distances.end() &&
+                next_use_distances[pair.first].first != block_idx) {
                ctx.spills_entry[block_idx].insert(pair);
                spilled_registers.vgpr += pair.first.size();
             }
@@ -543,7 +545,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          pred_idx = block->linear_preds[0];
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
             if (pair.first.type() == RegType::sgpr &&
-                ctx.next_use_distances_start[block_idx].find(pair.first) != ctx.next_use_distances_start[block_idx].end() &&
+                next_use_distances.find(pair.first) != next_use_distances.end() &&
                 ctx.spills_entry[block_idx].insert(pair).second) {
                spilled_registers.sgpr += pair.first.size();
             }
@@ -553,7 +555,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
          pred_idx = block->logical_preds[0];
          for (std::pair<Temp, uint32_t> pair : ctx.spills_exit[pred_idx]) {
             if (pair.first.type() == RegType::vgpr &&
-                ctx.next_use_distances_start[block_idx].find(pair.first) != ctx.next_use_distances_start[block_idx].end() &&
+                next_use_distances.find(pair.first) != next_use_distances.end() &&
                 ctx.spills_entry[block_idx].insert(pair).second) {
                spilled_registers.vgpr += pair.first.size();
             }
@@ -567,7 +569,7 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
    std::set<Temp> partial_spills;
 
    /* keep variables spilled on all incoming paths */
-   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : ctx.next_use_distances_start[block_idx]) {
+   for (std::pair<Temp, std::pair<uint32_t, uint32_t>> pair : next_use_distances) {
       std::vector<unsigned>& preds = pair.first.is_linear() ? block->linear_preds : block->logical_preds;
       /* If it can be rematerialized, keep the variable spilled if all predecessors do not reload it.
        * Otherwise, if any predecessor reloads it, ensure it's reloaded on all other predecessors.
@@ -642,8 +644,8 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
       while (it != partial_spills.end()) {
          assert(ctx.spills_entry[block_idx].find(*it) == ctx.spills_entry[block_idx].end());
 
-         if (it->type() == type && ctx.next_use_distances_start[block_idx][*it].second > distance) {
-            distance = ctx.next_use_distances_start[block_idx][*it].second;
+         if (it->type() == type && next_use_distances[*it].second > distance) {
+            distance = next_use_distances[*it].second;
             to_spill = *it;
          }
          ++it;
