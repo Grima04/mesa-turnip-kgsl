@@ -1004,4 +1004,22 @@ ir3_shader_nibo(const struct ir3_shader_variant *v)
 	return v->shader->nir->info.num_ssbos + v->shader->nir->info.num_images;
 }
 
+static inline uint32_t
+ir3_shader_branchstack_hw(const struct ir3_shader_variant *v)
+{
+	/* Dummy shader */
+	if (!v->shader)
+		return 0;
+
+	if (v->shader->compiler->gpu_id < 500)
+		return v->branchstack;
+
+	if (v->branchstack > 0) {
+		uint32_t branchstack = v->branchstack / 2 + 1;
+		return MIN2(branchstack, v->shader->compiler->branchstack_size / 2);
+	} else {
+		return 0;
+	}
+}
+
 #endif /* IR3_SHADER_H_ */

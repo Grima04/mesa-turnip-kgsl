@@ -399,7 +399,7 @@ tu6_emit_xs_config(struct tu_cs *cs,
       tu_cs_emit_regs(cs, A6XX_SP_VS_CTRL_REG0(
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
-               .branchstack = xs->branchstack,
+               .branchstack = ir3_shader_branchstack_hw(xs),
                .mergedregs = xs->mergedregs,
       ));
       break;
@@ -407,14 +407,14 @@ tu6_emit_xs_config(struct tu_cs *cs,
       tu_cs_emit_regs(cs, A6XX_SP_HS_CTRL_REG0(
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
-               .branchstack = xs->branchstack,
+               .branchstack = ir3_shader_branchstack_hw(xs),
       ));
       break;
    case MESA_SHADER_TESS_EVAL:
       tu_cs_emit_regs(cs, A6XX_SP_DS_CTRL_REG0(
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
-               .branchstack = xs->branchstack,
+               .branchstack = ir3_shader_branchstack_hw(xs),
                .mergedregs = xs->mergedregs,
       ));
       break;
@@ -422,14 +422,14 @@ tu6_emit_xs_config(struct tu_cs *cs,
       tu_cs_emit_regs(cs, A6XX_SP_GS_CTRL_REG0(
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
-               .branchstack = xs->branchstack,
+               .branchstack = ir3_shader_branchstack_hw(xs),
       ));
       break;
    case MESA_SHADER_FRAGMENT:
       tu_cs_emit_regs(cs, A6XX_SP_FS_CTRL_REG0(
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
-               .branchstack = xs->branchstack,
+               .branchstack = ir3_shader_branchstack_hw(xs),
                .mergedregs = xs->mergedregs,
                .threadsize = thrsz,
                .pixlodenable = xs->need_pixlod,
@@ -443,7 +443,7 @@ tu6_emit_xs_config(struct tu_cs *cs,
       tu_cs_emit_regs(cs, A6XX_SP_CS_CTRL_REG0(
                .fullregfootprint = xs->info.max_reg + 1,
                .halfregfootprint = xs->info.max_half_reg + 1,
-               .branchstack = xs->branchstack,
+               .branchstack = ir3_shader_branchstack_hw(xs),
                .mergedregs = xs->mergedregs,
                .threadsize = thrsz,
       ));
