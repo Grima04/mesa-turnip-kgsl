@@ -816,16 +816,17 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 format = util_format_stencil_only(format);
         }
 
-        enum mali_texture_dimension dim =
-                panfrost_translate_texture_dimension(rsrc->base.target);
-
         struct pan_image_view iview = {
                 .format = format,
-                .dim = dim,
+                .dim = MALI_TEXTURE_DIMENSION_2D,
                 .first_level = level,
                 .last_level = level,
                 .first_layer = surf->u.tex.first_layer,
                 .last_layer = surf->u.tex.last_layer,
+                .swizzle = {
+                        PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y,
+                        PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W,
+                },
                 .image = &rsrc->image,
         };
 

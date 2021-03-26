@@ -1262,25 +1262,6 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         so->texture_bo = prsrc->image.data.bo->ptr.gpu;
         so->modifier = prsrc->image.layout.modifier;
 
-        unsigned char user_swizzle[4] = {
-                so->base.swizzle_r,
-                so->base.swizzle_g,
-                so->base.swizzle_b,
-                so->base.swizzle_a
-        };
-
-        /* In the hardware, array_size refers specifically to array textures,
-         * whereas in Gallium, it also covers cubemaps */
-
-        unsigned array_size = texture->array_size;
-        unsigned depth = texture->depth0;
-
-        if (so->base.target == PIPE_TEXTURE_CUBE) {
-                /* TODO: Cubemap arrays */
-                assert(array_size == 6);
-                array_size /= 6;
-        }
-
         /* MSAA only supported for 2D textures */
 
         assert(texture->nr_samples <= 1 ||
@@ -1296,6 +1277,15 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
         unsigned last_level = is_buffer ? 0 : so->base.u.tex.last_level;
         unsigned first_layer = is_buffer ? 0 : so->base.u.tex.first_layer;
         unsigned last_layer = is_buffer ? 0 : so->base.u.tex.last_layer;
+        unsigned buf_offset = is_buffer ? so->base.u.buf.offset : 0;
+        unsigned buf_size = (is_buffer ? so->base.u.buf.size : 0) /
+                            util_format_get_blocksize(format);
+
+        if (so->base.target == PIPE_TEXTURE_3D) {
+                first_layer /= prsrc->image.layout.depth;
+                last_layer /= prsrc->image.layout.depth;
+                assert(!first_layer && !last_layer);
+        }
 
         unsigned size =
                 (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
@@ -1308,11 +1298,6 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
 
         so->bo = panfrost_bo_create(device, size, 0);
 
-        unsigned width = is_buffer ?
-                (so->base.u.buf.size / util_format_get_blocksize(so->base.format)) :
-                texture->width0;
-        unsigned offset = is_buffer ? so->base.u.buf.offset : 0;
-
         struct panfrost_ptr payload = so->bo->ptr;
         void *tex = pan_is_bifrost(device) ?
                     &so->bifrost_descriptor : so->bo->ptr.cpu;
@@ -1322,16 +1307,26 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
         }
 
-        panfrost_new_texture(device, &prsrc->image.layout, tex,
-                             width, texture->height0,
-                             depth, array_size,
-                             format, type,
-                             first_level, last_level,
-                             first_layer, last_layer,
-                             texture->nr_samples,
-                             user_swizzle,
-                             prsrc->image.data.bo->ptr.gpu + offset,
-                             &payload);
+        struct pan_image_view iview = {
+                .format = format,
+                .dim = type,
+                .first_level = first_level,
+                .last_level = last_level,
+                .first_layer = first_layer,
+                .last_layer = last_layer,
+                .swizzle = {
+                        so->base.swizzle_r,
+                        so->base.swizzle_g,
+                        so->base.swizzle_b,
+                        so->base.swizzle_a,
+                },
+                .image = &prsrc->image,
+
+                .buf.offset = buf_offset,
+                .buf.size = buf_size,
+        };
+
+        panfrost_new_texture(device, &iview, tex, &payload);
 }
 
 static struct pipe_sampler_view *

@@ -64,26 +64,22 @@ uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT] = {
 
 static bool
 panfrost_needs_explicit_stride(const struct panfrost_device *dev,
-                               const struct pan_image_layout *layout,
-                               enum pipe_format format,
-                               uint16_t width,
-                               unsigned first_level,
-                               unsigned last_level)
+                               const struct pan_image_view *iview)
 {
         /* Stride is explicit on Bifrost */
         if (pan_is_bifrost(dev))
                 return true;
 
-        if (layout->modifier != DRM_FORMAT_MOD_LINEAR)
+        if (iview->image->layout.modifier != DRM_FORMAT_MOD_LINEAR)
                 return false;
 
-        unsigned bytes_per_block = util_format_get_blocksize(format);
-        unsigned block_w = util_format_get_blockwidth(format);
+        unsigned bytes_per_block = util_format_get_blocksize(iview->format);
+        unsigned block_w = util_format_get_blockwidth(iview->format);
 
-        for (unsigned l = first_level; l <= last_level; ++l) {
-                unsigned actual = layout->slices[l].line_stride;
+        for (unsigned l = iview->first_level; l <= iview->last_level; ++l) {
+                unsigned actual = iview->image->layout.slices[l].line_stride;
                 unsigned expected =
-                        DIV_ROUND_UP(u_minify(width, l), block_w) *
+                        DIV_ROUND_UP(u_minify(iview->image->layout.width, l), block_w) *
                         bytes_per_block;
 
                 if (actual != expected)
@@ -280,8 +276,17 @@ panfrost_get_surface_pointer(const struct pan_image_layout *layout,
                              unsigned l, unsigned w, unsigned f, unsigned s)
 {
         unsigned face_mult = dim == MALI_TEXTURE_DIMENSION_CUBE ? 6 : 1;
+        unsigned offset;
 
-        return base + panfrost_texture_offset(layout, l, w * face_mult + f, s);
+        if (layout->dim == MALI_TEXTURE_DIMENSION_3D) {
+                assert(!f && !s);
+                offset = layout->slices[l].offset +
+                         (w * panfrost_get_layer_stride(layout, l));
+        } else {
+                offset = panfrost_texture_offset(layout, l, (w * face_mult) + f, s);
+        }
+
+        return base + offset;
 }
 
 struct panfrost_surface_iter {
@@ -342,16 +347,22 @@ panfrost_surface_iter_next(const struct panfrost_device *dev,
 
 static void
 panfrost_emit_texture_payload(const struct panfrost_device *dev,
-                              const struct pan_image_layout *layout,
-                              void *payload,
-                              const struct util_format_description *desc,
-                              enum mali_texture_dimension dim,
-                              unsigned first_level, unsigned last_level,
-                              unsigned first_layer, unsigned last_layer,
-                              unsigned nr_samples,
+                              const struct pan_image_view *iview,
+                              enum pipe_format format,
                               bool manual_stride,
-                              mali_ptr base)
+                              void *payload)
 {
+        const struct pan_image_layout *layout = &iview->image->layout;
+        const struct util_format_description *desc =
+                util_format_description(format);
+
+        mali_ptr base = iview->image->data.bo->ptr.gpu + iview->image->data.offset;
+
+        if (iview->buf.size) {
+                assert (iview->dim == MALI_TEXTURE_DIMENSION_1D);
+                base += iview->buf.offset;
+        }
+
         /* panfrost_compression_tag() wants the dimension of the resource, not the
          * one of the image view (those might differ).
          */
@@ -360,24 +371,24 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
         /* Inject the addresses in, interleaving array indices, mip levels,
          * cube faces, and strides in that order */
 
-        unsigned first_face  = 0, last_face = 0;
+        unsigned first_layer = iview->first_layer, last_layer = iview->last_layer;
+        unsigned nr_samples = layout->nr_samples;
+        unsigned first_face = 0, last_face = 0;
 
-        if (dim == MALI_TEXTURE_DIMENSION_CUBE) {
+        if (iview->dim == MALI_TEXTURE_DIMENSION_CUBE) {
                 panfrost_adjust_cube_dimensions(&first_face, &last_face,
                                                 &first_layer, &last_layer);
         }
 
-        nr_samples = MAX2(nr_samples, 1);
-
         struct panfrost_surface_iter iter;
 
         for (panfrost_surface_iter_begin(&iter, first_layer, last_layer,
-                                         first_level, last_level,
+                                         iview->first_level, iview->last_level,
                                          first_face, last_face, nr_samples);
              !panfrost_surface_iter_end(&iter);
              panfrost_surface_iter_next(dev, &iter)) {
                 mali_ptr pointer =
-                        panfrost_get_surface_pointer(layout, dim, base,
+                        panfrost_get_surface_pointer(layout, iview->dim, base,
                                                      iter.level, iter.layer,
                                                      iter.face, iter.sample);
 
@@ -400,54 +411,59 @@ panfrost_emit_texture_payload(const struct panfrost_device *dev,
 
 void
 panfrost_new_texture(const struct panfrost_device *dev,
-                     const struct pan_image_layout *layout,
-                     void *out,
-                     unsigned width, uint16_t height,
-                     uint16_t depth, uint16_t array_size,
-                     enum pipe_format format,
-                     enum mali_texture_dimension dim,
-                     unsigned first_level, unsigned last_level,
-                     unsigned first_layer, unsigned last_layer,
-                     unsigned nr_samples,
-                     const unsigned char user_swizzle[4],
-                     mali_ptr base,
-                     const struct panfrost_ptr *payload)
+                     const struct pan_image_view *iview,
+                     void *out, const struct panfrost_ptr *payload)
 {
-        unsigned swizzle = panfrost_translate_swizzle_4(user_swizzle);
+        const struct pan_image_layout *layout = &iview->image->layout;
+        unsigned swizzle = panfrost_translate_swizzle_4(iview->swizzle);
+        enum pipe_format format = iview->format;
 
         if (drm_is_afbc(layout->modifier))
                 format = panfrost_afbc_format_fixup(dev, format);
 
-        const struct util_format_description *desc =
-                util_format_description(format);
-
         bool manual_stride =
-                panfrost_needs_explicit_stride(dev, layout, format, width,
-                                               first_level, last_level);
+                panfrost_needs_explicit_stride(dev, iview);
 
-        panfrost_emit_texture_payload(dev, layout,
-                                      payload->cpu,
-                                      desc, dim,
-                                      first_level, last_level,
-                                      first_layer, last_layer,
-                                      nr_samples,
+        panfrost_emit_texture_payload(dev, iview, format,
                                       manual_stride,
-                                      base);
+                                      payload->cpu);
+
+        unsigned array_size = iview->last_layer - iview->first_layer + 1;
+
+        if (iview->dim == MALI_TEXTURE_DIMENSION_CUBE) {
+                assert(iview->first_layer % 6 == 0);
+                assert(iview->last_layer % 6 == 5);
+                array_size /=  6;
+        }
+
+        unsigned width;
+
+        if (iview->buf.size) {
+                assert(iview->dim == MALI_TEXTURE_DIMENSION_1D);
+                assert(!iview->first_level && !iview->last_level);
+                assert(!iview->first_layer && !iview->last_layer);
+                assert(layout->nr_samples == 1);
+                assert(layout->height == 1 && layout->depth == 1);
+                assert(iview->buf.offset + iview->buf.size <= layout->width);
+                width = iview->buf.size;
+        } else {
+                width = u_minify(layout->width, iview->first_level);
+        }
 
         if (pan_is_bifrost(dev)) {
                 pan_pack(out, BIFROST_TEXTURE, cfg) {
-                        cfg.dimension = dim;
+                        cfg.dimension = iview->dim;
                         cfg.format = dev->formats[format].hw;
-                        cfg.width = u_minify(width, first_level);
-                        cfg.height = u_minify(height, first_level);
-                        if (dim == MALI_TEXTURE_DIMENSION_3D)
-                                cfg.depth = u_minify(depth, first_level);
+                        cfg.width = width;
+                        cfg.height = u_minify(layout->height, iview->first_level);
+                        if (iview->dim == MALI_TEXTURE_DIMENSION_3D)
+                                cfg.depth = u_minify(layout->depth, iview->first_level);
                         else
-                                cfg.sample_count = MAX2(nr_samples, 1);
+                                cfg.sample_count = layout->nr_samples;
                         cfg.swizzle = swizzle;
                         cfg.texel_ordering =
                                 panfrost_modifier_to_layout(layout->modifier);
-                        cfg.levels = last_level - first_level + 1;
+                        cfg.levels = iview->last_level - iview->first_level + 1;
                         cfg.array_size = array_size;
                         cfg.surfaces = payload->gpu;
 
@@ -458,19 +474,19 @@ panfrost_new_texture(const struct panfrost_device *dev,
                 }
         } else {
                 pan_pack(out, MIDGARD_TEXTURE, cfg) {
-                        cfg.width = u_minify(width, first_level);
-                        cfg.height = u_minify(height, first_level);
-                        if (dim == MALI_TEXTURE_DIMENSION_3D)
-                                cfg.depth = u_minify(depth, first_level);
+                        cfg.width = width;
+                        cfg.height = u_minify(layout->height, iview->first_level);
+                        if (iview->dim == MALI_TEXTURE_DIMENSION_3D)
+                                cfg.depth = u_minify(layout->depth, iview->first_level);
                         else
-                                cfg.sample_count = MAX2(1, nr_samples);
+                                cfg.sample_count = layout->nr_samples;
                         cfg.array_size = array_size;
                         cfg.format = panfrost_pipe_format_v6[format].hw;
-                        cfg.dimension = dim;
+                        cfg.dimension = iview->dim;
                         cfg.texel_ordering =
                                 panfrost_modifier_to_layout(layout->modifier);
                         cfg.manual_stride = manual_stride;
-                        cfg.levels = last_level - first_level + 1;
+                        cfg.levels = iview->last_level - iview->first_level + 1;
                         cfg.swizzle = swizzle;
                 };
         }
@@ -537,7 +553,7 @@ pan_image_layout_init(const struct panfrost_device *dev,
                       unsigned nr_slices, enum pan_image_crc_mode crc_mode,
                       const struct pan_image_explicit_layout *explicit_layout)
 {
-        /* Explicit layouts only work with non-mipmap, non-array; single-sample
+        /* Explicit stride only work with non-mipmap, non-array; single-sample
          * 2D image, and in-band CRC can't be used.
          */
         if (explicit_layout &&

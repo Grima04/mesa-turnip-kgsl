@@ -322,29 +322,7 @@ midgard_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
         struct panfrost_ptr sampler =
                  panfrost_pool_alloc_desc(pool, MIDGARD_SAMPLER);
 
-        /* Create the texture descriptor. We partially compute the base address
-         * ourselves to account for layer, such that the texture descriptor
-         * itself is for a 2D texture with array size 1 even for 3D/array
-         * textures, removing the need to separately key the blit shaders for
-         * 2D and 3D variants */
-
-        unsigned offset =
-                iview->first_layer *
-                panfrost_get_layer_stride(&iview->image->layout, iview->first_level);
-
-        unsigned char swizzle[4] = {
-                PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
-        };
-
-        panfrost_new_texture(pool->dev, &iview->image->layout, texture.cpu,
-                             iview->image->layout.width, iview->image->layout.height, 1, 1,
-                             iview->format, MALI_TEXTURE_DIMENSION_2D,
-                             iview->first_level, iview->last_level,
-                             0, 0,
-                             iview->image->layout.nr_samples,
-                             swizzle,
-                             iview->image->data.bo->ptr.gpu + offset,
-                             &payload);
+        panfrost_new_texture(pool->dev, iview, texture.cpu, &payload);
 
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg)
                 cfg.normalized_coordinates = false;
@@ -504,23 +482,7 @@ bifrost_load_emit_texture(struct pan_pool *pool, struct MALI_DRAW *draw,
                  .gpu = texture.gpu + MALI_BIFROST_TEXTURE_LENGTH,
         };
 
-        unsigned offset =
-                iview->first_layer *
-                panfrost_get_layer_stride(&iview->image->layout, iview->first_level);
-
-        unsigned char swizzle[4] = {
-                PIPE_SWIZZLE_X, PIPE_SWIZZLE_Y, PIPE_SWIZZLE_Z, PIPE_SWIZZLE_W
-        };
-
-        panfrost_new_texture(pool->dev, &iview->image->layout, texture.cpu,
-                             iview->image->layout.width, iview->image->layout.height, 1, 1,
-                             iview->format, MALI_TEXTURE_DIMENSION_2D,
-                             iview->first_level, iview->last_level,
-                             0, 0,
-                             iview->image->layout.nr_samples,
-                             swizzle,
-                             iview->image->data.bo->ptr.gpu + offset,
-                             &payload);
+        panfrost_new_texture(pool->dev, iview, texture.cpu, &payload);
 
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;

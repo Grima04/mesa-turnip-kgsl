@@ -130,7 +130,14 @@ struct pan_image_view {
         enum mali_texture_dimension dim;
         unsigned first_level, last_level;
         unsigned first_layer, last_layer;
+        unsigned char swizzle[4];
         const struct pan_image *image;
+
+        /* Only valid if dim == 1D, needed to implement buffer views */
+        struct {
+                unsigned offset;
+                unsigned size;
+        } buf;
 };
 
 unsigned
@@ -176,17 +183,8 @@ panfrost_estimate_texture_payload_size(const struct panfrost_device *dev,
 
 void
 panfrost_new_texture(const struct panfrost_device *dev,
-                     const struct pan_image_layout *layout,
+                     const struct pan_image_view *iview,
                      void *out,
-                     unsigned width, uint16_t height,
-                     uint16_t depth, uint16_t array_size,
-                     enum pipe_format format,
-                     enum mali_texture_dimension dim,
-                     unsigned first_level, unsigned last_level,
-                     unsigned first_layer, unsigned last_layer,
-                     unsigned nr_samples,
-                     const unsigned char swizzle[4],
-                     mali_ptr base,
                      const struct panfrost_ptr *payload);
 
 unsigned
