@@ -480,7 +480,7 @@ maybe_init(int fd)
    bos = calloc(MAX_FD_COUNT * MAX_BO_COUNT, sizeof(bos[0]));
    fail_if(bos == NULL, "out of memory\n");
 
-   int ret = get_pci_id(fd, &device);
+   ASSERTED int ret = get_pci_id(fd, &device);
    assert(ret == 0);
 
    aub_file_init(&aub_file, output_file,
