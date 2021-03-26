@@ -561,7 +561,11 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorUpdateTemplate(VkDevice _devi
    templ->descriptor_set_layout = set_layout;
    templ->bind_point = pCreateInfo->pipelineBindPoint;
    templ->set = pCreateInfo->set;
-   templ->pipeline_layout = lvp_pipeline_layout_from_handle(pCreateInfo->pipelineLayout);
+   /* This parameter is ignored if templateType is not VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR */
+   if (pCreateInfo->templateType == VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR)
+      templ->pipeline_layout = lvp_pipeline_layout_from_handle(pCreateInfo->pipelineLayout);
+   else
+      templ->pipeline_layout = NULL;
    templ->entry_count = entry_count;
 
    VkDescriptorUpdateTemplateEntry *entries = (VkDescriptorUpdateTemplateEntry *)(templ + 1);
