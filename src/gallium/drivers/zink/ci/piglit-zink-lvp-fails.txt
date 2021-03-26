@@ -152,7 +152,6 @@ spec@arb_texture_stencil8@texwrap formats bordercolor,Fail
 spec@arb_texture_stencil8@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_view@rendering-formats,Fail
 spec@arb_texture_view@sampling-2d-array-as-cubemap-array,Fail
-spec@arb_transform_feedback_instanced@draw-auto instanced,Fail
 spec@arb_uniform_buffer_object@maxblocks,Crash
 spec@egl 1.4@egl-copy-buffers,Fail
 spec@egl 1.4@eglterminate then unbind context,Fail
@@ -229,7 +228,6 @@ spec@ext_texture_srgb@texwrap formats-s3tc bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled,Fail
 spec@ext_texture_swizzle@depth_texture_mode_and_swizzle,Fail
 spec@ext_transform_feedback2@counting with pause,Fail
-spec@ext_transform_feedback2@draw-auto,Fail
 spec@ext_transform_feedback@generatemipmap prims_generated,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop ffs,Fail
 spec@glsl-1.50@execution@geometry@primitive-id-restart gl_line_loop other,Fail
