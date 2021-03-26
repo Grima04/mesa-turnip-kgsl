@@ -746,7 +746,7 @@ meson-release:
       -D gallium-nine=false
       -D gallium-opencl=disabled
       -D llvm=false
-    GALLIUM_DRIVERS: "nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12"
+    GALLIUM_DRIVERS: "iris,nouveau,kmsro,freedreno,r300,svga,swrast,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,d3d12"
     BUILDTYPE: "release"
     EXTRA_OPTION: >
       -D osmesa=true
