@@ -18,15 +18,11 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-# TODO: android?
-
 files_libintel_common = files(
   'intel_aux_map.c',
   'intel_aux_map.h',
   'intel_buffer_alloc.h',
   'intel_clflush.h',
-  'intel_batch_decoder.c',
-  'intel_decoder.c',
   'intel_decoder.h',
   'intel_disasm.c',
   'intel_disasm.h',
@@ -44,6 +40,19 @@ files_libintel_common = files(
   'intel_measure.h',
 )
 
+files_batch_decoder = files(
+  'intel_batch_decoder.c',
+  'intel_decoder.c',
+)
+
+batch_decoder_dependencies = []
+if with_platform_android
+  files_libintel_common += 'intel_batch_decoder_stub.c'
+else
+  batch_decoder_dependencies += dep_expat
+  files_libintel_common += files_batch_decoder
+endif
+
 libintel_common = static_library(
   'intel_common',
   [files_libintel_common, genX_xml_h, sha1_h],
@@ -51,7 +60,7 @@ libintel_common = static_library(
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   link_with : [libisl],
-  dependencies : [dep_expat, dep_libdrm, dep_thread, idep_genxml, idep_mesautil],
+  dependencies : [batch_decoder_dependencies, dep_libdrm, dep_thread, idep_genxml, idep_mesautil],
 )
 
 libintel_extra_dependencies = []
