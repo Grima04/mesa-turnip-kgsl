@@ -69,7 +69,10 @@ struct pan_image_slice_layout {
         struct {
                 unsigned offset;
                 unsigned stride;
+                unsigned size;
         } crc;
+
+        unsigned size;
 };
 
 enum pan_image_crc_mode {
@@ -84,6 +87,7 @@ struct pan_image_layout {
         unsigned width, height, depth;
         unsigned nr_samples;
         enum mali_texture_dimension dim;
+        unsigned nr_slices;
         struct pan_image_slice_layout slices[MAX_MIP_LEVELS];
         unsigned array_size;
         unsigned array_stride;
@@ -299,5 +303,22 @@ panfrost_modifier_to_layout(uint64_t modifier)
         else
                 unreachable("Invalid modifer");
 }
+
+struct pan_image_explicit_layout {
+        unsigned offset;
+        unsigned line_stride;
+};
+
+bool
+pan_image_layout_init(const struct panfrost_device *dev,
+                      struct pan_image_layout *layout,
+                      uint64_t modifier,
+                      enum pipe_format format,
+                      enum mali_texture_dimension dim,
+                      unsigned width, unsigned height, unsigned depth,
+                      unsigned array_size, unsigned nr_samples,
+                      unsigned nr_slices,
+                      enum pan_image_crc_mode crc_mode,
+                      const struct pan_image_explicit_layout *explicit_layout);
 
 #endif

@@ -525,3 +525,177 @@ panfrost_texture_offset(const struct pan_image_layout *layout,
                (array_idx * layout->array_stride) +
                (surface_idx * layout->slices[level].surface_stride);
 }
+
+bool
+pan_image_layout_init(const struct panfrost_device *dev,
+                      struct pan_image_layout *layout,
+                      uint64_t modifier,
+                      enum pipe_format format,
+                      enum mali_texture_dimension dim,
+                      unsigned width, unsigned height, unsigned depth,
+                      unsigned array_size, unsigned nr_samples,
+                      unsigned nr_slices, enum pan_image_crc_mode crc_mode,
+                      const struct pan_image_explicit_layout *explicit_layout)
+{
+        /* Explicit layouts only work with non-mipmap, non-array; single-sample
+         * 2D image, and in-band CRC can't be used.
+         */
+        if (explicit_layout &&
+	    (depth > 1 || nr_samples > 1 || array_size > 1 ||
+             dim != MALI_TEXTURE_DIMENSION_2D || nr_slices > 1 ||
+             crc_mode == PAN_IMAGE_CRC_INBAND))
+                return false;
+
+        /* Mandate 64 byte alignement */
+        if (explicit_layout && (explicit_layout->offset & 63))
+                return false;
+
+        layout->crc_mode = crc_mode;
+        layout->modifier = modifier;
+        layout->format = format;
+        layout->dim = dim;
+        layout->width = width;
+        layout->height = height;
+        layout->depth = depth;
+        layout->array_size = array_size;
+        layout->nr_samples = nr_samples;
+        layout->nr_slices = nr_slices;
+
+        unsigned bytes_per_pixel = util_format_get_blocksize(format);
+
+        /* MSAA is implemented as a 3D texture with z corresponding to the
+         * sample #, horrifyingly enough */
+
+        assert(depth == 1 || nr_samples == 1);
+
+        bool afbc = drm_is_afbc(layout->modifier);
+        bool tiled = layout->modifier == DRM_FORMAT_MOD_ARM_16X16_BLOCK_U_INTERLEAVED;
+        bool linear = layout->modifier == DRM_FORMAT_MOD_LINEAR;
+        bool should_align = tiled || afbc;
+        bool is_3d = layout->dim == MALI_TEXTURE_DIMENSION_3D;
+
+        unsigned oob_crc_offset = 0;
+        unsigned offset = explicit_layout ? explicit_layout->offset : 0;
+        unsigned tile_h = 1, tile_w = 1, tile_shift = 0;
+
+        if (tiled || afbc) {
+                tile_w = panfrost_block_dim(layout->modifier, true, 0);
+                tile_h = panfrost_block_dim(layout->modifier, false, 0);
+                if (util_format_is_compressed(format))
+                        tile_shift = 2;
+        }
+
+        for (unsigned l = 0; l < nr_slices; ++l) {
+                struct pan_image_slice_layout *slice = &layout->slices[l];
+
+                unsigned effective_width = width;
+                unsigned effective_height = height;
+                unsigned effective_depth = depth;
+
+                if (should_align) {
+                        effective_width = ALIGN_POT(effective_width, tile_w) >> tile_shift;
+                        effective_height = ALIGN_POT(effective_height, tile_h);
+
+                        /* We don't need to align depth */
+                }
+
+                /* Align levels to cache-line as a performance improvement for
+                 * linear/tiled and as a requirement for AFBC */
+
+                offset = ALIGN_POT(offset, 64);
+
+                slice->offset = offset;
+
+                /* Compute the would-be stride */
+                unsigned stride = bytes_per_pixel * effective_width;
+
+                /* On Bifrost, pixel lines have to be aligned on 64 bytes otherwise
+                 * we end up with DATA_INVALID faults. That doesn't seem to be
+                 * mandatory on Midgard, but we keep the alignment for performance.
+                 */
+                if (linear)
+                        stride = ALIGN_POT(stride, 64);
+
+                if (explicit_layout) {
+                        /* Make sure the explicit stride is valid */
+                        if (explicit_layout->line_stride < stride ||
+                            (explicit_layout->line_stride & 63))
+                                return false;
+
+                        stride = explicit_layout->line_stride;
+                }
+
+                slice->line_stride = stride;
+                slice->row_stride = stride * (tile_h >> tile_shift);
+
+                unsigned slice_one_size = slice->line_stride * effective_height;
+
+                /* Compute AFBC sizes if necessary */
+                if (afbc) {
+                        slice->afbc.header_size =
+                                panfrost_afbc_header_size(width, height);
+
+                        /* Stride between two rows of AFBC headers */
+                        slice->afbc.row_stride =
+                                (effective_width / tile_w) *
+                                AFBC_HEADER_BYTES_PER_TILE;
+
+                        /* AFBC body size */
+                        slice->afbc.body_size = slice_one_size;
+
+                        /* 3D AFBC resources have all headers placed at the
+                         * beginning instead of having them split per depth
+                         * level
+                         */
+                        if (is_3d) {
+                                slice->afbc.surface_stride =
+                                        slice->afbc.header_size;
+                                slice->afbc.header_size *= effective_depth;
+                                slice->afbc.body_size *= effective_depth;
+                                offset += slice->afbc.header_size;
+                        } else {
+                                slice_one_size += slice->afbc.header_size;
+                                slice->afbc.surface_stride = slice_one_size;
+                        }
+                }
+
+                unsigned slice_full_size =
+                        slice_one_size * effective_depth * nr_samples;
+
+                slice->surface_stride = slice_one_size;
+
+                /* Compute AFBC sizes if necessary */
+
+                offset += slice_full_size;
+                slice->size = slice_full_size;
+
+                /* Add a checksum region if necessary */
+                if (crc_mode != PAN_IMAGE_CRC_NONE) {
+                        slice->crc.size =
+                                panfrost_compute_checksum_size(slice, width, height);
+
+                        if (crc_mode == PAN_IMAGE_CRC_INBAND) {
+                                slice->crc.offset = offset;
+                                offset += slice->crc.size;
+                                slice->size += slice->crc.size;
+                        } else {
+                                slice->crc.offset = oob_crc_offset;
+                                oob_crc_offset += slice->crc.size;
+                        }
+                }
+
+                width = u_minify(width, 1);
+                height = u_minify(height, 1);
+                depth = u_minify(depth, 1);
+        }
+
+        /* Arrays and cubemaps have the entire miptree duplicated */
+        layout->array_stride = ALIGN_POT(offset, 64);
+        if (explicit_layout)
+                layout->data_size = offset;
+        else
+                layout->data_size = ALIGN_POT(layout->array_stride * array_size, 4096);
+        layout->crc_size = oob_crc_offset;
+
+        return true;
+}
