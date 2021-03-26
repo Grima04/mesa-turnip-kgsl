@@ -443,7 +443,6 @@ struct lvp_descriptor_update_template {
    uint32_t entry_count;
    uint32_t set;
    VkDescriptorUpdateTemplateType type;
-   struct lvp_descriptor_set_layout *descriptor_set_layout;
    VkPipelineBindPoint bind_point;
    struct lvp_pipeline_layout *pipeline_layout;
    VkDescriptorUpdateTemplateEntry entry[0];

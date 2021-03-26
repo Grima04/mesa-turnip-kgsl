@@ -543,7 +543,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorUpdateTemplate(VkDevice _devi
                                             VkDescriptorUpdateTemplate *pDescriptorUpdateTemplate)
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
-   LVP_FROM_HANDLE(lvp_descriptor_set_layout, set_layout, pCreateInfo->descriptorSetLayout);
    const uint32_t entry_count = pCreateInfo->descriptorUpdateEntryCount;
    const size_t size = sizeof(struct lvp_descriptor_update_template) +
       sizeof(VkDescriptorUpdateTemplateEntry) * entry_count;
@@ -558,7 +557,6 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorUpdateTemplate(VkDevice _devi
                        VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE);
 
    templ->type = pCreateInfo->templateType;
-   templ->descriptor_set_layout = set_layout;
    templ->bind_point = pCreateInfo->pipelineBindPoint;
    templ->set = pCreateInfo->set;
    /* This parameter is ignored if templateType is not VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR */
