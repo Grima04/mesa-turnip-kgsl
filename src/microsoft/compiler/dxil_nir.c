@@ -1130,3 +1130,103 @@ dxil_nir_lower_upcast_phis(nir_shader *shader, unsigned min_bit_size)
 
    return progress;
 }
+
+/* In GLSL and SPIR-V, clip and cull distance are arrays of floats (with a limit of 8).
+ * In DXIL, clip and cull distances are up to 2 float4s combined.
+ * Coming from GLSL, we can request this 2 float4 format, but coming from SPIR-V,
+ * we can't, and have to accept a "compact" array of scalar floats.
+ *
+ * To help emitting a valid input signature for this case, split the variables so that they
+ * match what we need to put in the signature (e.g. { float clip[4]; float clip1; float cull[3]; })
+ */
+bool
+dxil_nir_split_clip_cull_distance(nir_shader *shader)
+{
+   nir_variable *new_var = NULL;
+   nir_foreach_function(function, shader) {
+      if (!function->impl)
+         continue;
+
+      bool progress = false;
+      nir_builder b;
+      nir_builder_init(&b, function->impl);
+      nir_foreach_block(block, function->impl) {
+         nir_foreach_instr_safe(instr, block) {
+            if (instr->type != nir_instr_type_deref)
+               continue;
+            nir_deref_instr *deref = nir_instr_as_deref(instr);
+            nir_variable *var = nir_deref_instr_get_variable(deref);
+            if (!var ||
+                var->data.location < VARYING_SLOT_CLIP_DIST0 ||
+                var->data.location > VARYING_SLOT_CULL_DIST1 ||
+                !var->data.compact)
+               continue;
+
+            /* The location should only be inside clip distance, because clip
+             * and cull should've been merged by nir_lower_clip_cull_distance_arrays()
+             */
+            assert(var->data.location == VARYING_SLOT_CLIP_DIST0 ||
+                   var->data.location == VARYING_SLOT_CLIP_DIST1);
+
+            /* The deref chain to the clip/cull variables should be simple, just the 
+             * var and an array with a constant index, otherwise more lowering/optimization
+             * might be needed before this pass, e.g. copy prop, lower_io_to_temporaries,
+             * split_var_copies, and/or lower_var_copies
+             */
+            assert(deref->deref_type == nir_deref_type_var ||
+                   deref->deref_type == nir_deref_type_array);
+
+            b.cursor = nir_before_instr(instr);
+            if (!new_var) {
+               /* Update lengths for new and old vars */
+               int old_length = glsl_array_size(var->type);
+               int new_length = (old_length + var->data.location_frac) - 4;
+               old_length -= new_length;
+
+               /* The existing variable fits in the float4 */
+               if (new_length <= 0)
+                  continue;
+
+               new_var = nir_variable_clone(var, shader);
+               nir_shader_add_variable(shader, new_var);
+               assert(glsl_get_base_type(glsl_get_array_element(var->type)) == GLSL_TYPE_FLOAT);
+               var->type = glsl_array_type(glsl_float_type(), old_length, 0);
+               new_var->type = glsl_array_type(glsl_float_type(), new_length, 0);
+               new_var->data.location++;
+               new_var->data.location_frac = 0;
+            }
+
+            /* Update the type for derefs of the old var */
+            if (deref->deref_type == nir_deref_type_var) {
+               deref->type = var->type;
+               continue;
+            }
+
+            nir_const_value *index = nir_src_as_const_value(deref->arr.index);
+            assert(index);
+
+            /* Treat this array as a vector starting at the component index in location_frac,
+             * so if location_frac is 1 and index is 0, then it's accessing the 'y' component
+             * of the vector. If index + location_frac is >= 4, there's no component there,
+             * so we need to add a new variable and adjust the index.
+             */
+            unsigned total_index = index->u32 + var->data.location_frac;
+            if (total_index < 4)
+               continue;
+
+            nir_deref_instr *new_var_deref = nir_build_deref_var(&b, new_var);
+            nir_deref_instr *new_array_deref = nir_build_deref_array(&b, new_var_deref, nir_imm_int(&b, total_index % 4));
+            nir_ssa_def_rewrite_uses(&deref->dest.ssa, &new_array_deref->dest.ssa);
+            progress = true;
+         }
+      }
+      if (progress)
+         nir_metadata_preserve(function->impl, nir_metadata_block_index |
+                                               nir_metadata_dominance |
+                                               nir_metadata_loop_analysis);
+      else
+         nir_metadata_preserve(function->impl, nir_metadata_all);
+   }
+
+   return new_var != NULL;
+}
