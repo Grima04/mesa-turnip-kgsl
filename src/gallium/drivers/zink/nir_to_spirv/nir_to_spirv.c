@@ -773,8 +773,10 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
    bool is_sampler = glsl_type_is_sampler(type);
 
    if (!is_sampler && !var->data.image.format) {
-      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageWriteWithoutFormat);
-      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageReadWithoutFormat);
+      if (!(var->data.access & ACCESS_NON_WRITEABLE))
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageWriteWithoutFormat);
+      if (!(var->data.access & ACCESS_NON_READABLE))
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilityStorageImageReadWithoutFormat);
    }
 
    SpvDim dimension = type_to_dim(glsl_get_sampler_dim(type), &is_ms);
