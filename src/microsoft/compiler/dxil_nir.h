@@ -28,6 +28,10 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 bool dxil_nir_lower_8bit_conv(nir_shader *shader);
 bool dxil_nir_lower_16bit_conv(nir_shader *shader);
 bool dxil_nir_lower_x2b(nir_shader *shader);
@@ -46,5 +50,9 @@ nir_ssa_def *
 build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
                     nir_ssa_def *offset, unsigned num_components,
                     unsigned bit_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DXIL_NIR_H */
