@@ -449,13 +449,9 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
     __ATTRIB(__DRI_ATTRIB_TRANSPARENT_BLUE_VALUE,	transparentBlue),
     __ATTRIB(__DRI_ATTRIB_TRANSPARENT_ALPHA_VALUE,	transparentAlpha),
     __ATTRIB(__DRI_ATTRIB_RED_MASK,			redMask),
-    __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift),
     __ATTRIB(__DRI_ATTRIB_GREEN_MASK,			greenMask),
-    __ATTRIB(__DRI_ATTRIB_GREEN_SHIFT,			greenShift),
     __ATTRIB(__DRI_ATTRIB_BLUE_MASK,			blueMask),
-    __ATTRIB(__DRI_ATTRIB_BLUE_SHIFT,			blueShift),
     __ATTRIB(__DRI_ATTRIB_ALPHA_MASK,			alphaMask),
-    __ATTRIB(__DRI_ATTRIB_ALPHA_SHIFT,			alphaShift),
     __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_WIDTH,		maxPbufferWidth),
     __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_HEIGHT,		maxPbufferHeight),
     __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_PIXELS,		maxPbufferPixels),
@@ -469,12 +465,23 @@ static const struct { unsigned int attrib, offset; } attribMap[] = {
     __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted),
     __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable),
     __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer),
+    __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift),
+    __ATTRIB(__DRI_ATTRIB_GREEN_SHIFT,			greenShift),
+    __ATTRIB(__DRI_ATTRIB_BLUE_SHIFT,			blueShift),
+    __ATTRIB(__DRI_ATTRIB_ALPHA_SHIFT,			alphaShift),
 
     /* The struct field doesn't matter here, these are handled by the
      * switch in driGetConfigAttribIndex.  We need them in the array
      * so the iterator includes them though.*/
+    __ATTRIB(__DRI_ATTRIB_LUMINANCE_SIZE,               level),
     __ATTRIB(__DRI_ATTRIB_RENDER_TYPE,			level),
     __ATTRIB(__DRI_ATTRIB_CONFIG_CAVEAT,		level),
+    __ATTRIB(__DRI_ATTRIB_CONFORMANT,                   level),
+    __ATTRIB(__DRI_ATTRIB_FLOAT_MODE,                   level),
+    __ATTRIB(__DRI_ATTRIB_VISUAL_SELECT_GROUP,          level),
+    __ATTRIB(__DRI_ATTRIB_MAX_SWAP_INTERVAL,            level),
+    __ATTRIB(__DRI_ATTRIB_MIN_SWAP_INTERVAL,            level),
+
 };
 
 
@@ -487,6 +494,9 @@ driGetConfigAttribIndex(const __DRIconfig *config,
 			unsigned int index, unsigned int *value)
 {
     switch (attribMap[index].attrib) {
+    case __DRI_ATTRIB_LUMINANCE_SIZE:
+        *value = 0;
+        break;
     case __DRI_ATTRIB_RENDER_TYPE:
         /* no support for color index mode */
 	*value = __DRI_ATTRIB_RGBA_BIT;
@@ -501,6 +511,21 @@ driGetConfigAttribIndex(const __DRIconfig *config,
 	else
 	    *value = 0;
 	break;
+    case __DRI_ATTRIB_CONFORMANT:
+        *value = GL_TRUE;
+        break;
+    case __DRI_ATTRIB_FLOAT_MODE:
+        *value = config->modes.floatMode;
+        break;
+    case __DRI_ATTRIB_VISUAL_SELECT_GROUP:
+        *value = 0;
+        break;
+    case __DRI_ATTRIB_MAX_SWAP_INTERVAL:
+        *value = INT_MAX;
+        break;
+    case __DRI_ATTRIB_MIN_SWAP_INTERVAL:
+        *value = 0;
+        break;
     default:
         /* any other int-sized field */
 	*value = *(unsigned int *)
