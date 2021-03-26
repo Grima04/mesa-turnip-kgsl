@@ -983,8 +983,7 @@ meson-vulkan:
     UBSAN_OPTIONS: "print_stacktrace=1"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom
     EXTRA_OPTION: >
-      -D vulkan-overlay-layer=true
-      -D vulkan-device-select-layer=true
+      -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
       -D werror=true
 
@@ -998,8 +997,7 @@ meson-i386:
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink"
     DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
     EXTRA_OPTION: >
-      -D vulkan-overlay-layer=true
-      -D vulkan-device-select-layer=true
+      -D vulkan-layers=device-select,overlay
       -D werror=true
 
 meson-s390x:
