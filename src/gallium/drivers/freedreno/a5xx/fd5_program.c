@@ -240,7 +240,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	struct stage s[MAX_STAGES];
 	uint32_t pos_regid, psize_regid, color_regid[8];
 	uint32_t face_regid, coord_regid, zwcoord_regid, samp_id_regid, samp_mask_regid;
-	uint32_t ij_regid[IJ_COUNT], vertex_regid, instance_regid;
+	uint32_t ij_regid[IJ_COUNT], vertex_regid, instance_regid, clip0_regid, clip1_regid;
 	enum a3xx_threadsize fssz;
 	uint8_t psize_loc = ~0;
 	int i, j;
@@ -248,11 +248,15 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	setup_stages(emit, s);
 
 	bool do_streamout = (s[VS].v->shader->stream_output.num_outputs > 0);
+	uint8_t clip_mask = s[VS].v->clip_mask, cull_mask = s[VS].v->cull_mask;
+	uint8_t clip_cull_mask = clip_mask | cull_mask;
 
 	fssz = (s[FS].i->double_threadsize) ? FOUR_QUADS : TWO_QUADS;
 
 	pos_regid = ir3_find_output_regid(s[VS].v, VARYING_SLOT_POS);
 	psize_regid = ir3_find_output_regid(s[VS].v, VARYING_SLOT_PSIZ);
+	clip0_regid = ir3_find_output_regid(s[VS].v, VARYING_SLOT_CLIP_DIST0);
+	clip1_regid = ir3_find_output_regid(s[VS].v, VARYING_SLOT_CLIP_DIST1);
 	vertex_regid = ir3_find_sysval_regid(s[VS].v, SYSTEM_VALUE_VERTEX_ID_ZERO_BASE);
 	instance_regid = ir3_find_sysval_regid(s[VS].v, SYSTEM_VALUE_INSTANCE_ID);
 
@@ -378,6 +382,9 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	struct ir3_shader_linkage l = {0};
 	ir3_link_shaders(&l, s[VS].v, link_fs, true);
 
+	uint8_t clip0_loc = l.clip0_loc;
+	uint8_t clip1_loc = l.clip1_loc;
+
 	OUT_PKT4(ring, REG_A5XX_VPC_VAR_DISABLE(0), 4);
 	OUT_RING(ring, ~l.varmask[0]);  /* VPC_VAR[0].DISABLE */
 	OUT_RING(ring, ~l.varmask[1]);  /* VPC_VAR[1].DISABLE */
@@ -394,6 +401,20 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	if (psize_regid != regid(63,0)) {
 		psize_loc = l.max_loc;
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
+	}
+
+	/* Handle the case where clip/cull distances aren't read by the FS. Make
+	 * sure to avoid adding an output with an empty writemask if the user
+	 * disables all the clip distances in the API so that the slot is unused.
+	 */
+	if (clip0_loc == 0xff && clip0_regid != regid(63,0) && (clip_cull_mask & 0xf) != 0) {
+		clip0_loc = l.max_loc;
+		ir3_link_add(&l, clip0_regid, clip_cull_mask & 0xf, l.max_loc);
+	}
+
+	if (clip1_loc == 0xff && clip1_regid != regid(63,0) && (clip_cull_mask >> 4) != 0) {
+		clip1_loc = l.max_loc;
+		ir3_link_add(&l, clip1_regid, clip_cull_mask >> 4, l.max_loc);
 	}
 
 	/* If we have stream-out, we use the full shader for binning
@@ -623,6 +644,18 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 		for (i = 0; i < 8; i++)
 			OUT_RING(ring, vpsrepl[i]);   /* VPC_VARYING_PS_REPL[i] */
 	}
+
+	OUT_PKT4(ring, REG_A5XX_GRAS_VS_CL_CNTL, 1);
+	OUT_RING(ring, A5XX_GRAS_VS_CL_CNTL_CLIP_MASK(clip_mask) |
+				   A5XX_GRAS_VS_CL_CNTL_CULL_MASK(cull_mask));
+
+	OUT_PKT4(ring, REG_A5XX_VPC_CLIP_CNTL, 1);
+	OUT_RING(ring, A5XX_VPC_CLIP_CNTL_CLIP_MASK(clip_cull_mask) |
+				   A5XX_VPC_CLIP_CNTL_CLIP_DIST_03_LOC(clip0_loc) |
+				   A5XX_VPC_CLIP_CNTL_CLIP_DIST_47_LOC(clip1_loc));
+
+	OUT_PKT4(ring, REG_A5XX_PC_CLIP_CNTL, 1);
+	OUT_RING(ring, A5XX_PC_CLIP_CNTL_CLIP_MASK(clip_mask));
 
 	if (!emit->binning_pass)
 		if (s[FS].instrlen)

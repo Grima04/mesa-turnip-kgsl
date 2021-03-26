@@ -86,7 +86,6 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
 			.fs = ctx->prog.fs,
 			.key = {
 				.rasterflat = ctx->rasterizer->flatshade,
-				.ucp_enables = ctx->rasterizer->clip_plane_enable,
 				.has_per_samp = fd5_ctx->fastc_srgb || fd5_ctx->vastc_srgb,
 				.vastc_srgb = fd5_ctx->vastc_srgb,
 				.fastc_srgb = fd5_ctx->fastc_srgb,
