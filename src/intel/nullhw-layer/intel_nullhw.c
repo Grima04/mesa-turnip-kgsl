@@ -34,6 +34,7 @@
 #include "util/macros.h"
 #include "util/simple_mtx.h"
 
+#include "vk_dispatch_table.h"
 #include "vk_enum_to_str.h"
 #include "vk_util.h"
 
@@ -242,7 +243,7 @@ static VkResult nullhw_CreateDevice(
    struct instance_data *instance_data = FIND(struct instance_data, physicalDevice);
    struct device_data *device_data = new_device_data(*pDevice, instance_data);
    device_data->physical_device = physicalDevice;
-   vk_load_device_commands(*pDevice, fpGetDeviceProcAddr, &device_data->vtable);
+   vk_device_dispatch_table_load(&device_data->vtable, fpGetDeviceProcAddr, *pDevice);
 
    VkLayerDeviceCreateInfo *load_data_info =
       get_device_chain_info(pCreateInfo, VK_LOADER_DATA_CALLBACK);
@@ -312,9 +313,9 @@ static VkResult nullhw_CreateInstance(
    if (result != VK_SUCCESS) return result;
 
    struct instance_data *instance_data = new_instance_data(*pInstance);
-   vk_load_instance_commands(instance_data->instance,
-                             fpGetInstanceProcAddr,
-                             &instance_data->vtable);
+   vk_instance_dispatch_table_load(&instance_data->vtable,
+                                   fpGetInstanceProcAddr,
+                                   instance_data->instance);
 
    return result;
 }
