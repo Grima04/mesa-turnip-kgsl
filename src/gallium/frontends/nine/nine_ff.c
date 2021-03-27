@@ -1351,7 +1351,9 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
 
             if (key->ts[s].colorarg0 == D3DTA_TEXTURE ||
                 key->ts[s].colorarg1 == D3DTA_TEXTURE ||
-                key->ts[s].colorarg2 == D3DTA_TEXTURE) {
+                key->ts[s].colorarg2 == D3DTA_TEXTURE ||
+                key->ts[s].colorop == D3DTOP_BLENDTEXTUREALPHA ||
+                key->ts[s].colorop == D3DTOP_BLENDTEXTUREALPHAPM) {
                 ps.s[s] = ureg_DECL_sampler(ureg, s);
                 ps.vT[s] = ureg_DECL_fs_input(ureg, texcoord_sn, s, TGSI_INTERPOLATE_PERSPECTIVE);
             }
@@ -1368,7 +1370,9 @@ nine_ff_build_ps(struct NineDevice9 *device, struct nine_ff_ps_key *key)
 
             if (key->ts[s].alphaarg0 == D3DTA_TEXTURE ||
                 key->ts[s].alphaarg1 == D3DTA_TEXTURE ||
-                key->ts[s].alphaarg2 == D3DTA_TEXTURE) {
+                key->ts[s].alphaarg2 == D3DTA_TEXTURE ||
+                key->ts[s].colorop == D3DTOP_BLENDTEXTUREALPHA ||
+                key->ts[s].colorop == D3DTOP_BLENDTEXTUREALPHAPM) {
                 ps.s[s] = ureg_DECL_sampler(ureg, s);
                 ps.vT[s] = ureg_DECL_fs_input(ureg, texcoord_sn, s, TGSI_INTERPOLATE_PERSPECTIVE);
             }
