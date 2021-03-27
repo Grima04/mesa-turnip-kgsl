@@ -3013,11 +3013,9 @@ static LLVMValueRef visit_var_atomic(struct ac_nir_context *ctx, const nir_intri
       case nir_intrinsic_shared_atomic_exchange:
          op = LLVMAtomicRMWBinOpXchg;
          break;
-#if LLVM_VERSION_MAJOR >= 10
       case nir_intrinsic_shared_atomic_fadd:
          op = LLVMAtomicRMWBinOpFAdd;
          break;
-#endif
       default:
          return NULL;
       }
@@ -5038,17 +5036,8 @@ static void setup_constant_data(struct ac_nir_context *ctx, struct nir_shader *s
    LLVMValueRef data = LLVMConstStringInContext(ctx->ac.context, shader->constant_data,
                                                 shader->constant_data_size, true);
    LLVMTypeRef type = LLVMArrayType(ctx->ac.i8, shader->constant_data_size);
-
-   /* We want to put the constant data in the CONST address space so that
-    * we can use scalar loads. However, LLVM versions before 10 put these
-    * variables in the same section as the code, which is unacceptable
-    * for RadeonSI as it needs to relocate all the data sections after
-    * the code sections. See https://reviews.llvm.org/D65813.
-    */
-   unsigned address_space = LLVM_VERSION_MAJOR < 10 ? AC_ADDR_SPACE_GLOBAL : AC_ADDR_SPACE_CONST;
-
    LLVMValueRef global =
-      LLVMAddGlobalInAddressSpace(ctx->ac.module, type, "const_data", address_space);
+      LLVMAddGlobalInAddressSpace(ctx->ac.module, type, "const_data", AC_ADDR_SPACE_CONST);
 
    LLVMSetInitializer(global, data);
    LLVMSetGlobalConstant(global, true);

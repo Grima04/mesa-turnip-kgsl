@@ -1579,8 +1579,7 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderBufferFloat64Atomics = true;
          features->shaderBufferFloat64AtomicAdd = false;
          features->shaderSharedFloat32Atomics = true;
-         features->shaderSharedFloat32AtomicAdd = pdevice->rad_info.chip_class >= GFX8 &&
-                                                  (!pdevice->use_llvm || LLVM_VERSION_MAJOR >= 10);
+         features->shaderSharedFloat32AtomicAdd = pdevice->rad_info.chip_class >= GFX8;
          features->shaderSharedFloat64Atomics = true;
          features->shaderSharedFloat64AtomicAdd = false;
          features->shaderImageFloat32Atomics = true;
