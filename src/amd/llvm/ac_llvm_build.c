@@ -4698,13 +4698,11 @@ LLVMValueRef ac_build_main(const struct ac_shader_args *args, struct ac_llvm_con
 
    ctx->main_function = main_function;
 
-   if (LLVM_VERSION_MAJOR >= 11) {
-      /* Enable denormals for FP16 and FP64: */
-      LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math", "ieee,ieee");
-      /* Disable denormals for FP32: */
-      LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math-f32",
-                                         "preserve-sign,preserve-sign");
-   }
+   /* Enable denormals for FP16 and FP64: */
+   LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math", "ieee,ieee");
+   /* Disable denormals for FP32: */
+   LLVMAddTargetDependentFunctionAttr(main_function, "denormal-fp-math-f32",
+                                      "preserve-sign,preserve-sign");
    return main_function;
 }
 

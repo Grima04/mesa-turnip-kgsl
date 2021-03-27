@@ -1536,7 +1536,9 @@ if with_tests or with_gallium_softpipe
   llvm_modules += 'native'
 endif
 
-if with_microsoft_clc or with_amd_vk or with_gallium_radeonsi
+if with_amd_vk or with_gallium_radeonsi
+  _llvm_version = '>= 11.0.0'
+elif with_microsoft_clc
   _llvm_version = '>= 10.0.0'
 elif with_gallium_opencl
   _llvm_version = '>= 8.0.0'

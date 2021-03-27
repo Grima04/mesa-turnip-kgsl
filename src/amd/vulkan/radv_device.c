@@ -461,7 +461,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_scalar_block_layout = device->rad_info.chip_class >= GFX7,
       .EXT_shader_atomic_float = true,
       .EXT_shader_demote_to_helper_invocation = true,
-      .EXT_shader_image_atomic_int64 = LLVM_VERSION_MAJOR >= 11 || !device->use_llvm,
+      .EXT_shader_image_atomic_int64 = true,
       .EXT_shader_stencil_export = true,
       .EXT_shader_subgroup_ballot = true,
       .EXT_shader_subgroup_vote = true,
@@ -1604,8 +1604,8 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT: {
          VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT *features =
             (VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT *)ext;
-         features->shaderImageInt64Atomics = LLVM_VERSION_MAJOR >= 11 || !pdevice->use_llvm;
-         features->sparseImageInt64Atomics = LLVM_VERSION_MAJOR >= 11 || !pdevice->use_llvm;
+         features->shaderImageInt64Atomics = true;
+         features->sparseImageInt64Atomics = true;
          break;
       }
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MUTABLE_DESCRIPTOR_TYPE_FEATURES_VALVE: {
