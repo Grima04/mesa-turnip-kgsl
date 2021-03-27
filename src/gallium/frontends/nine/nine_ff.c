@@ -338,7 +338,7 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
     unsigned i, c;
     unsigned label[32], l = 0;
     boolean need_aNrm = key->lighting || key->passthrough & (1 << NINE_DECLUSAGE_NORMAL);
-    boolean has_aNrm = need_aNrm && key->has_normal;
+    boolean has_aNrm;
     boolean need_aVtx = key->lighting || key->fog_mode || key->pointscale || key->ucp;
     const unsigned texcoord_sn = get_texcoord_sn(device->screen);
 
@@ -363,6 +363,8 @@ nine_ff_build_vs(struct NineDevice9 *device, struct vs_build_ctx *vs)
             break;
         }
     }
+
+    has_aNrm = need_aNrm && key->has_normal;
 
     /* Declare and record used inputs (needed for linkage with vertex format):
      * (texture coordinates handled later)
