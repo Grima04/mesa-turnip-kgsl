@@ -846,7 +846,7 @@ GPRVector ShaderFromNirProcessor::vec_from_nir_with_fetch_constant(const nir_src
     */
    if (!use_same) {
       AluInstruction *ir = nullptr;
-      GPRVector result(allocate_temp_register(), swizzle);
+      GPRVector result = get_temp_vec4(swizzle);
       for (int i = 0; i < 4; ++i) {
          if (swizzle[i] < 4 && (mask & (1 << i))) {
             ir = new AluInstruction(op1_mov, result[i], from_nir(src, swizzle[i]),
