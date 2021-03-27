@@ -131,6 +131,13 @@ NineUnknown_Release( struct NineUnknown *This )
     if (This->forward)
         return NineUnknown_Release(This->container);
 
+    /* Cannot decrease lower than 0. This is a thing
+     * according to wine tests. It's not just clamping
+     * the result as AddRef after Release while refs is 0
+     * will give 1 */
+    if (!p_atomic_read(&This->refs))
+        return 0;
+
     ULONG r = p_atomic_dec_return(&This->refs);
 
     if (r == 0) {
