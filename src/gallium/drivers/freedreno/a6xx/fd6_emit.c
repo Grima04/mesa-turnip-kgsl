@@ -1362,7 +1362,7 @@ fd6_emit_restore(struct fd_batch *batch, struct fd_ringbuffer *ring)
 	OUT_PKT4(ring, REG_A6XX_PC_MODE_CNTL, 1);
 	OUT_RING(ring, 0x0000001f);   /* PC_MODE_CNTL */
 
-	/* we don't use this yet.. probably best to disable.. */
+	/* Clear any potential pending state groups to be safe: */
 	OUT_PKT7(ring, CP_SET_DRAW_STATE, 3);
 	OUT_RING(ring, CP_SET_DRAW_STATE__0_COUNT(0) |
 			CP_SET_DRAW_STATE__0_DISABLE_ALL_GROUPS |
