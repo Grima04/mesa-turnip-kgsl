@@ -421,69 +421,8 @@ __DRIconfig **driConcatConfigs(__DRIconfig **a,
     return all;
 }
 
-#define __ATTRIB(attrib, field) \
-    { attrib, offsetof(struct gl_config, field) }
-
-static const struct { unsigned int attrib, offset; } attribMap[] = {
-    __ATTRIB(__DRI_ATTRIB_BUFFER_SIZE,			rgbBits),
-    __ATTRIB(__DRI_ATTRIB_LEVEL,			level),
-    __ATTRIB(__DRI_ATTRIB_RED_SIZE,			redBits),
-    __ATTRIB(__DRI_ATTRIB_GREEN_SIZE,			greenBits),
-    __ATTRIB(__DRI_ATTRIB_BLUE_SIZE,			blueBits),
-    __ATTRIB(__DRI_ATTRIB_ALPHA_SIZE,			alphaBits),
-    __ATTRIB(__DRI_ATTRIB_DEPTH_SIZE,			depthBits),
-    __ATTRIB(__DRI_ATTRIB_STENCIL_SIZE,			stencilBits),
-    __ATTRIB(__DRI_ATTRIB_ACCUM_RED_SIZE,		accumRedBits),
-    __ATTRIB(__DRI_ATTRIB_ACCUM_GREEN_SIZE,		accumGreenBits),
-    __ATTRIB(__DRI_ATTRIB_ACCUM_BLUE_SIZE,		accumBlueBits),
-    __ATTRIB(__DRI_ATTRIB_ACCUM_ALPHA_SIZE,		accumAlphaBits),
-    __ATTRIB(__DRI_ATTRIB_SAMPLE_BUFFERS,		sampleBuffers),
-    __ATTRIB(__DRI_ATTRIB_SAMPLES,			samples),
-    __ATTRIB(__DRI_ATTRIB_DOUBLE_BUFFER,		doubleBufferMode),
-    __ATTRIB(__DRI_ATTRIB_STEREO,			stereoMode),
-    __ATTRIB(__DRI_ATTRIB_AUX_BUFFERS,			numAuxBuffers),
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_TYPE,		transparentPixel),
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_INDEX_VALUE,	transparentPixel),
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_RED_VALUE,	transparentRed),
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_GREEN_VALUE,	transparentGreen),
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_BLUE_VALUE,	transparentBlue),
-    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_ALPHA_VALUE,	transparentAlpha),
-    __ATTRIB(__DRI_ATTRIB_RED_MASK,			redMask),
-    __ATTRIB(__DRI_ATTRIB_GREEN_MASK,			greenMask),
-    __ATTRIB(__DRI_ATTRIB_BLUE_MASK,			blueMask),
-    __ATTRIB(__DRI_ATTRIB_ALPHA_MASK,			alphaMask),
-    __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_WIDTH,		maxPbufferWidth),
-    __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_HEIGHT,		maxPbufferHeight),
-    __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_PIXELS,		maxPbufferPixels),
-    __ATTRIB(__DRI_ATTRIB_OPTIMAL_PBUFFER_WIDTH,	optimalPbufferWidth),
-    __ATTRIB(__DRI_ATTRIB_OPTIMAL_PBUFFER_HEIGHT,	optimalPbufferHeight),
-    __ATTRIB(__DRI_ATTRIB_SWAP_METHOD,			swapMethod),
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGB,		bindToTextureRgb),
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGBA,		bindToTextureRgba),
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE,	bindToMipmapTexture),
-    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_TARGETS,	bindToTextureTargets),
-    __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted),
-    __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable),
-    __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer),
-    __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift),
-    __ATTRIB(__DRI_ATTRIB_GREEN_SHIFT,			greenShift),
-    __ATTRIB(__DRI_ATTRIB_BLUE_SHIFT,			blueShift),
-    __ATTRIB(__DRI_ATTRIB_ALPHA_SHIFT,			alphaShift),
-
-    /* The struct field doesn't matter here, these are handled by the
-     * switch in driGetConfigAttribIndex.  We need them in the array
-     * so the iterator includes them though.*/
-    __ATTRIB(__DRI_ATTRIB_LUMINANCE_SIZE,               level),
-    __ATTRIB(__DRI_ATTRIB_RENDER_TYPE,			level),
-    __ATTRIB(__DRI_ATTRIB_CONFIG_CAVEAT,		level),
-    __ATTRIB(__DRI_ATTRIB_CONFORMANT,                   level),
-    __ATTRIB(__DRI_ATTRIB_FLOAT_MODE,                   level),
-    __ATTRIB(__DRI_ATTRIB_VISUAL_SELECT_GROUP,          level),
-    __ATTRIB(__DRI_ATTRIB_MAX_SWAP_INTERVAL,            level),
-    __ATTRIB(__DRI_ATTRIB_MIN_SWAP_INTERVAL,            level),
-
-};
-
+/* careful, lack of trailing semicolon */
+#define __ATTRIB(attrib, field) case attrib: *value = config->modes.field; break
 
 /**
  * Return the value of a configuration attribute.  The attribute is
@@ -493,10 +432,30 @@ static int
 driGetConfigAttribIndex(const __DRIconfig *config,
 			unsigned int index, unsigned int *value)
 {
-    switch (attribMap[index].attrib) {
+    switch (index + 1) {
+    __ATTRIB(__DRI_ATTRIB_BUFFER_SIZE,			rgbBits);
+    __ATTRIB(__DRI_ATTRIB_LEVEL,			level);
+    __ATTRIB(__DRI_ATTRIB_RED_SIZE,			redBits);
+    __ATTRIB(__DRI_ATTRIB_GREEN_SIZE,			greenBits);
+    __ATTRIB(__DRI_ATTRIB_BLUE_SIZE,			blueBits);
     case __DRI_ATTRIB_LUMINANCE_SIZE:
         *value = 0;
         break;
+    __ATTRIB(__DRI_ATTRIB_ALPHA_SIZE,			alphaBits);
+    case __DRI_ATTRIB_ALPHA_MASK_SIZE:
+        /* I have no idea what this value was ever meant to mean, it's
+         * never been set to anything, just say 0.
+         */
+        *value = 0;
+        break;
+    __ATTRIB(__DRI_ATTRIB_DEPTH_SIZE,			depthBits);
+    __ATTRIB(__DRI_ATTRIB_STENCIL_SIZE,			stencilBits);
+    __ATTRIB(__DRI_ATTRIB_ACCUM_RED_SIZE,		accumRedBits);
+    __ATTRIB(__DRI_ATTRIB_ACCUM_GREEN_SIZE,		accumGreenBits);
+    __ATTRIB(__DRI_ATTRIB_ACCUM_BLUE_SIZE,		accumBlueBits);
+    __ATTRIB(__DRI_ATTRIB_ACCUM_ALPHA_SIZE,		accumAlphaBits);
+    __ATTRIB(__DRI_ATTRIB_SAMPLE_BUFFERS,		sampleBuffers);
+    __ATTRIB(__DRI_ATTRIB_SAMPLES,			samples);
     case __DRI_ATTRIB_RENDER_TYPE:
         /* no support for color index mode */
 	*value = __DRI_ATTRIB_RGBA_BIT;
@@ -514,29 +473,55 @@ driGetConfigAttribIndex(const __DRIconfig *config,
     case __DRI_ATTRIB_CONFORMANT:
         *value = GL_TRUE;
         break;
+    __ATTRIB(__DRI_ATTRIB_DOUBLE_BUFFER,		doubleBufferMode);
+    __ATTRIB(__DRI_ATTRIB_STEREO,			stereoMode);
+    __ATTRIB(__DRI_ATTRIB_AUX_BUFFERS,			numAuxBuffers);
+    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_TYPE,		transparentPixel);
+    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_INDEX_VALUE,	transparentPixel);
+    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_RED_VALUE,	transparentRed);
+    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_GREEN_VALUE,	transparentGreen);
+    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_BLUE_VALUE,	transparentBlue);
+    __ATTRIB(__DRI_ATTRIB_TRANSPARENT_ALPHA_VALUE,	transparentAlpha);
     case __DRI_ATTRIB_FLOAT_MODE:
         *value = config->modes.floatMode;
         break;
+    __ATTRIB(__DRI_ATTRIB_RED_MASK,			redMask);
+    __ATTRIB(__DRI_ATTRIB_GREEN_MASK,			greenMask);
+    __ATTRIB(__DRI_ATTRIB_BLUE_MASK,			blueMask);
+    __ATTRIB(__DRI_ATTRIB_ALPHA_MASK,			alphaMask);
+    __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_WIDTH,		maxPbufferWidth);
+    __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_HEIGHT,		maxPbufferHeight);
+    __ATTRIB(__DRI_ATTRIB_MAX_PBUFFER_PIXELS,		maxPbufferPixels);
+    __ATTRIB(__DRI_ATTRIB_OPTIMAL_PBUFFER_WIDTH,	optimalPbufferWidth);
+    __ATTRIB(__DRI_ATTRIB_OPTIMAL_PBUFFER_HEIGHT,	optimalPbufferHeight);
     case __DRI_ATTRIB_VISUAL_SELECT_GROUP:
         *value = 0;
         break;
+    __ATTRIB(__DRI_ATTRIB_SWAP_METHOD,			swapMethod);
     case __DRI_ATTRIB_MAX_SWAP_INTERVAL:
         *value = INT_MAX;
         break;
     case __DRI_ATTRIB_MIN_SWAP_INTERVAL:
         *value = 0;
         break;
+    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGB,		bindToTextureRgb);
+    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGBA,		bindToTextureRgba);
+    __ATTRIB(__DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE,	bindToMipmapTexture);
+    __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_TARGETS,	bindToTextureTargets);
+    __ATTRIB(__DRI_ATTRIB_YINVERTED,			yInverted);
+    __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable);
+    __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer);
+    __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift);
+    __ATTRIB(__DRI_ATTRIB_GREEN_SHIFT,			greenShift);
+    __ATTRIB(__DRI_ATTRIB_BLUE_SHIFT,			blueShift);
+    __ATTRIB(__DRI_ATTRIB_ALPHA_SHIFT,			alphaShift);
     default:
-        /* any other int-sized field */
-	*value = *(unsigned int *)
-	    ((char *) &config->modes + attribMap[index].offset);
-	
-	break;
+        /* XXX log an error or smth */
+        return GL_FALSE;
     }
 
     return GL_TRUE;
 }
-
 
 /**
  * Get the value of a configuration attribute.
@@ -548,13 +533,7 @@ int
 driGetConfigAttrib(const __DRIconfig *config,
 		   unsigned int attrib, unsigned int *value)
 {
-    unsigned i;
-
-    for (i = 0; i < ARRAY_SIZE(attribMap); i++)
-	if (attribMap[i].attrib == attrib)
-	    return driGetConfigAttribIndex(config, i, value);
-
-    return GL_FALSE;
+    return driGetConfigAttribIndex(config, attrib - 1, value);
 }
 
 
@@ -569,9 +548,9 @@ int
 driIndexConfigAttrib(const __DRIconfig *config, int index,
 		     unsigned int *attrib, unsigned int *value)
 {
-    if (index >= 0 && index < ARRAY_SIZE(attribMap)) {
-	*attrib = attribMap[index].attrib;
-	return driGetConfigAttribIndex(config, index, value);
+    if (driGetConfigAttribIndex(config, index, value)) {
+        *attrib = index + 1;
+        return GL_TRUE;
     }
 
     return GL_FALSE;
