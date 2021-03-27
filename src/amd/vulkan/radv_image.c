@@ -714,7 +714,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			       unsigned plane_id,
 			       unsigned base_level, unsigned first_level,
 			       unsigned block_width, bool is_stencil,
-			       bool is_storage_image, bool disable_compression,
+			       bool is_storage_image, bool disable_compression, bool enable_write_compression,
 			       uint32_t *state)
 {
 	struct radv_image_plane *plane = &image->planes[plane_id];
@@ -781,7 +781,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			if (plane->surface.dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
 
-			if (radv_dcc_enabled(image, first_level))
+			if (radv_dcc_enabled(image, first_level) && enable_write_compression)
 				state[6] |= S_00A018_WRITE_COMPRESS_ENABLE(1);
 
 			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
@@ -1279,7 +1279,7 @@ radv_query_opaque_metadata(struct radv_device *device,
 				     desc, NULL);
 
 	si_set_mutable_tex_desc_fields(device, image, &image->planes[0].surface.u.legacy.level[0], 0, 0, 0,
-				       image->planes[0].surface.blk_w, false, false, false, desc);
+				       image->planes[0].surface.blk_w, false, false, false, false, desc);
 
 	ac_surface_get_umd_metadata(&device->physical_device->rad_info, &image->planes[0].surface,
 				    image->info.levels, desc, &md->size_metadata, md->metadata);
@@ -1827,7 +1827,8 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 			base_level_info = &plane->surface.u.legacy.level[iview->base_mip];
 	}
 
-	if (is_storage_image && !radv_image_use_dcc_image_stores(device, image))
+	bool enable_write_compression = radv_image_use_dcc_image_stores(device, image);
+	if (is_storage_image && !enable_write_compression)
 		disable_compression = true;
 	si_set_mutable_tex_desc_fields(device, image,
 				       base_level_info,
@@ -1835,7 +1836,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview,
 				       iview->base_mip,
 				       iview->base_mip,
 				       blk_w, is_stencil, is_storage_image,
-				       disable_compression,
+				       disable_compression, enable_write_compression,
 				       descriptor->plane_descriptors[descriptor_plane_id]);
 }
 
