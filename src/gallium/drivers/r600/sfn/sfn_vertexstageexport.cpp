@@ -412,22 +412,20 @@ bool VertexStageExportForFS::emit_stream(int stream)
        * to store Y, Z, or W at buffer offset 0, we need to use MOV
        * to move it to X and output X. */
       if (m_so_info->output[i].dst_offset < m_so_info->output[i].start_component) {
-         int tmp_index = m_proc.allocate_temp_register();
+
+         GPRVector::Swizzle swizzle =  {0,1,2,3};
+         for (auto j = m_so_info->output[i].num_components; j < 4; ++j)
+            swizzle[j] = 7;
+         tmp[i] = m_proc.get_temp_vec4(swizzle);
+
          int sc = m_so_info->output[i].start_component;
          AluInstruction *alu = nullptr;
          for (int j = 0; j < m_so_info->output[i].num_components; j++) {
-            PValue dst(new GPRValue(tmp_index, j));
-            alu = new AluInstruction(op1_mov, dst, so_gpr[i]->reg_i(j + sc), {alu_write});
-            tmp[i].set_reg_i(j, dst);
+            alu = new AluInstruction(op1_mov, tmp[i][j], so_gpr[i]->reg_i(j + sc), {alu_write});
             m_proc.emit_instruction(alu);
          }
          if (alu)
             alu->set_flag(alu_last_instr);
-
-         /* Fill the vector with masked values */
-         PValue dst_blank(new GPRValue(tmp_index, 7));
-         for (int j = m_so_info->output[i].num_components; j < 4; j++)
-            tmp[i].set_reg_i(j, dst_blank);
 
          start_comp[i] = 0;
          so_gpr[i] = &tmp[i];
