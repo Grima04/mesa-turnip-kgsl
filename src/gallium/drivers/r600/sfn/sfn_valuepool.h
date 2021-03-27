@@ -138,11 +138,6 @@ public:
       m_next_register_index =rr;
    }
 
-   /** Allocate a register that is is needed for lowering an instruction
-    * that requires complex calculations,
-    */
-   int allocate_temp_register();
-
    /** Reserve a undef register, currently it uses (0,7),
     * \todo should be eliminated in the final pass
     */
@@ -181,6 +176,12 @@ private:
     * \returns r600 ir inxex
     */
    int lookup_register_index(const nir_dest& dst);
+
+   /** Allocate a register that is is needed for lowering an instruction
+    * that requires complex calculations,
+    */
+   int allocate_temp_register();
+
 
    PValue create_register(unsigned index, unsigned swizzle);
 

@@ -109,11 +109,6 @@ GPRVector EmitInstruction::vec_from_nir_with_fetch_constant(const nir_src& src, 
    return m_proc.vec_from_nir_with_fetch_constant(src, mask, swizzle, match);
 }
 
-int EmitInstruction::allocate_temp_register()
-{
-   return m_proc.allocate_temp_register();
-}
-
 PGPRValue EmitInstruction::get_temp_register(int channel)
 {
    return m_proc.get_temp_register(channel);
