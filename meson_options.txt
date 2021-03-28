@@ -442,7 +442,7 @@ option(
   'platform-sdk-version',
   type : 'integer',
   min : 25,
-  max : 28,
+  max : 30,
   value : 25,
   description : 'Android Platform SDK version. Default: Nougat version.'
 )
