@@ -669,7 +669,7 @@ static struct radeon_bo *radeon_create_bo(struct radeon_drm_winsys *rws,
       return NULL;
 
    pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment = alignment;
+   bo->base.alignment_log2 = util_logbase2(alignment);
    bo->base.usage = 0;
    bo->base.size = size;
    bo->base.vtbl = &radeon_bo_vtbl;
@@ -804,7 +804,7 @@ struct pb_slab *radeon_bo_slab_alloc(void *priv, unsigned heap,
    for (unsigned i = 0; i < slab->base.num_entries; ++i) {
       struct radeon_bo *bo = &slab->entries[i];
 
-      bo->base.alignment = entry_size;
+      bo->base.alignment_log2 = util_logbase2(entry_size);
       bo->base.usage = slab->buffer->base.usage;
       bo->base.size = entry_size;
       bo->base.vtbl = &radeon_winsys_bo_slab_vtbl;
@@ -1130,7 +1130,7 @@ static struct pb_buffer *radeon_winsys_bo_from_ptr(struct radeon_winsys *rws,
    /* Initialize it. */
    pipe_reference_init(&bo->base.reference, 1);
    bo->handle = args.handle;
-   bo->base.alignment = 0;
+   bo->base.alignment_log2 = 0;
    bo->base.size = size;
    bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = ws;
@@ -1259,7 +1259,7 @@ static struct pb_buffer *radeon_winsys_bo_from_handle(struct radeon_winsys *rws,
 
    /* Initialize it. */
    pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment = 0;
+   bo->base.alignment_log2 = 0;
    bo->base.size = (unsigned) size;
    bo->base.vtbl = &radeon_bo_vtbl;
    bo->rws = ws;

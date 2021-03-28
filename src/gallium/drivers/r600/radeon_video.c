@@ -189,9 +189,9 @@ void rvid_join_surfaces(struct r600_common_context *rctx,
 		if (!buffers[i] || !*buffers[i])
 			continue;
 
-		size = align(size, (*buffers[i])->alignment);
+		size = align(size, 1 << (*buffers[i])->alignment_log2);
 		size += (*buffers[i])->size;
-		alignment = MAX2(alignment, (*buffers[i])->alignment * 1);
+		alignment = MAX2(alignment, 1 << (*buffers[i])->alignment_log2);
 	}
 
 	if (!size)

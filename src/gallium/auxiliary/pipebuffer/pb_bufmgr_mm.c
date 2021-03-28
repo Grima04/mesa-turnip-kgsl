@@ -193,7 +193,7 @@ mm_bufmgr_create_buffer(struct pb_manager *mgr,
    }
 
    pipe_reference_init(&mm_buf->base.reference, 1);
-   mm_buf->base.alignment = desc->alignment;
+   mm_buf->base.alignment_log2 = util_logbase2(desc->alignment);
    mm_buf->base.usage = desc->usage;
    mm_buf->base.size = size;
    

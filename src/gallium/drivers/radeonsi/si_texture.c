@@ -1008,7 +1008,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       resource->buf = imported_buf;
       resource->gpu_address = sscreen->ws->buffer_get_virtual_address(resource->buf);
       resource->bo_size = imported_buf->size;
-      resource->bo_alignment = imported_buf->alignment;
+      resource->bo_alignment = 1 << imported_buf->alignment_log2;
       resource->domains = sscreen->ws->buffer_get_initial_domain(resource->buf);
       if (resource->domains & RADEON_DOMAIN_VRAM)
          resource->vram_usage_kb = MAX2(1, resource->bo_size / 1024);
@@ -1625,7 +1625,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 
    if (ac_surface_get_plane_offset(sscreen->info.chip_class, &tex->surface, 0, 0) +
         tex->surface.total_size > buf->size ||
-       buf->alignment < tex->surface.alignment) {
+       1 << buf->alignment_log2 < tex->surface.alignment) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }

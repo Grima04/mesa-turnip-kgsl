@@ -286,7 +286,7 @@ d3d12_bufmgr_create_buffer(struct pb_manager *pmgr,
    size = align64(size, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
    pipe_reference_init(&buf->base.reference, 1);
-   buf->base.alignment = pb_desc->alignment;
+   buf->base.alignment_log2 = util_logbase2(pb_desc->alignment);
    buf->base.usage = pb_desc->usage;
    buf->base.vtbl = &d3d12_buffer_vtbl;
    buf->base.size = size;

@@ -667,7 +667,7 @@ struct pipe_resource *si_buffer_from_winsys_buffer(struct pipe_screen *screen,
    res->buf = imported_buf;
    res->gpu_address = sscreen->ws->buffer_get_virtual_address(res->buf);
    res->bo_size = imported_buf->size;
-   res->bo_alignment = imported_buf->alignment;
+   res->bo_alignment = 1 << imported_buf->alignment_log2;
    res->domains = sscreen->ws->buffer_get_initial_domain(res->buf);
 
    if (res->domains & RADEON_DOMAIN_VRAM)

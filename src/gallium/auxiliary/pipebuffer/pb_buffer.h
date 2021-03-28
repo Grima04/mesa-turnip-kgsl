@@ -111,7 +111,13 @@ typedef uint64_t pb_size;
 struct pb_buffer
 {
    struct pipe_reference  reference;
-   unsigned               alignment;
+
+   /* Alignments are powers of two, so store only the bit position.
+    *    alignment_log2 = util_logbase2(alignment);
+    *    alignment = 1 << alignment_log2;
+    */
+   uint8_t                alignment_log2;
+
    pb_size                size;
 
    /**

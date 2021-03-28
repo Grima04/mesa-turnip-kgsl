@@ -982,7 +982,7 @@ static void r600_init_color_surface(struct r600_context *rctx,
 		/* CMASK. */
 		if (!rctx->dummy_cmask ||
 		    rctx->dummy_cmask->b.b.width0 < cmask.size ||
-		    rctx->dummy_cmask->buf->alignment % cmask.alignment != 0) {
+		    (1 << rctx->dummy_cmask->buf->alignment_log2) % cmask.alignment != 0) {
 			struct pipe_transfer *transfer;
 			void *ptr;
 
@@ -1007,7 +1007,7 @@ static void r600_init_color_surface(struct r600_context *rctx,
 		/* FMASK. */
 		if (!rctx->dummy_fmask ||
 		    rctx->dummy_fmask->b.b.width0 < fmask.size ||
-		    rctx->dummy_fmask->buf->alignment % fmask.alignment != 0) {
+		    (1 << rctx->dummy_fmask->buf->alignment_log2) % fmask.alignment != 0) {
 			r600_resource_reference(&rctx->dummy_fmask, NULL);
 			rctx->dummy_fmask = (struct r600_resource*)
 				r600_aligned_buffer_create(&rscreen->b.b, 0,

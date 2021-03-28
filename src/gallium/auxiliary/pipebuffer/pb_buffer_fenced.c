@@ -908,7 +908,7 @@ fenced_bufmgr_create_buffer(struct pb_manager *mgr,
       goto no_buffer;
 
    pipe_reference_init(&fenced_buf->base.reference, 1);
-   fenced_buf->base.alignment = desc->alignment;
+   fenced_buf->base.alignment_log2 = util_logbase2(desc->alignment);
    fenced_buf->base.usage = desc->usage;
    fenced_buf->base.size = size;
    fenced_buf->size = size;

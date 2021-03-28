@@ -222,7 +222,7 @@ vmw_gmr_bufmgr_create_buffer(struct pb_manager *_mgr,
       goto error1;
 
    pipe_reference_init(&buf->base.reference, 1);
-   buf->base.alignment = pb_desc->alignment;
+   buf->base.alignment_log2 = util_logbase2(pb_desc->alignment);
    buf->base.usage = pb_desc->usage & ~VMW_BUFFER_USAGE_SHARED;
    buf->base.vtbl = &vmw_gmr_buffer_vtbl;
    buf->mgr = mgr;

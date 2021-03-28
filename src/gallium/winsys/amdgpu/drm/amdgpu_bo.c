@@ -592,7 +592,7 @@ static struct amdgpu_winsys_bo *amdgpu_create_bo(struct amdgpu_winsys *ws,
 
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment = alignment;
+   bo->base.alignment_log2 = util_logbase2(alignment);
    bo->base.size = size;
    bo->base.vtbl = &amdgpu_winsys_bo_vtbl;
    bo->bo = buf_handle;
@@ -656,7 +656,7 @@ static struct pb_slabs *get_slabs(struct amdgpu_winsys *ws, uint64_t size,
 static unsigned get_slab_wasted_size(struct amdgpu_winsys *ws, struct amdgpu_winsys_bo *bo)
 {
    assert(bo->base.size <= bo->u.slab.entry.entry_size);
-   assert(bo->base.size < bo->base.alignment ||
+   assert(bo->base.size < (1 << bo->base.alignment_log2) ||
           bo->base.size < 1 << ws->bo_slabs[0].min_order ||
           bo->base.size > bo->u.slab.entry.entry_size / 2);
    return bo->u.slab.entry.entry_size - bo->base.size;
@@ -788,7 +788,7 @@ static struct pb_slab *amdgpu_bo_slab_alloc(void *priv, unsigned heap,
       struct amdgpu_winsys_bo *bo = &slab->entries[i];
 
       simple_mtx_init(&bo->lock, mtx_plain);
-      bo->base.alignment = get_slab_entry_alignment(ws, entry_size);
+      bo->base.alignment_log2 = util_logbase2(get_slab_entry_alignment(ws, entry_size));
       bo->base.size = entry_size;
       bo->base.vtbl = &amdgpu_winsys_bo_slab_vtbl;
       bo->va = slab->buffer->va + i * entry_size;
@@ -1149,7 +1149,7 @@ amdgpu_bo_sparse_create(struct amdgpu_winsys *ws, uint64_t size,
 
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment = RADEON_SPARSE_PAGE_SIZE;
+   bo->base.alignment_log2 = util_logbase2(RADEON_SPARSE_PAGE_SIZE);
    bo->base.size = size;
    bo->base.vtbl = &amdgpu_winsys_bo_sparse_vtbl;
    bo->base.placement = domain;
@@ -1435,7 +1435,7 @@ amdgpu_bo_create(struct amdgpu_winsys *ws,
       bo = container_of(entry, struct amdgpu_winsys_bo, u.slab.entry);
       pipe_reference_init(&bo->base.reference, 1);
       bo->base.size = size;
-      assert(alignment <= bo->base.alignment);
+      assert(alignment <= 1 << bo->base.alignment_log2);
 
       if (domain & RADEON_DOMAIN_VRAM)
          ws->slab_wasted_vram += get_slab_wasted_size(ws, bo);
@@ -1591,7 +1591,7 @@ static struct pb_buffer *amdgpu_bo_from_handle(struct radeon_winsys *rws,
    /* Initialize the structure. */
    simple_mtx_init(&bo->lock, mtx_plain);
    pipe_reference_init(&bo->base.reference, 1);
-   bo->base.alignment = info.phys_alignment;
+   bo->base.alignment_log2 = util_logbase2(info.phys_alignment);
    bo->bo = result.buf_handle;
    bo->base.size = result.alloc_size;
    bo->base.vtbl = &amdgpu_winsys_bo_vtbl;
@@ -1741,7 +1741,7 @@ static struct pb_buffer *amdgpu_bo_from_ptr(struct radeon_winsys *rws,
     pipe_reference_init(&bo->base.reference, 1);
     simple_mtx_init(&bo->lock, mtx_plain);
     bo->bo = buf_handle;
-    bo->base.alignment = 0;
+    bo->base.alignment_log2 = 0;
     bo->base.size = size;
     bo->base.vtbl = &amdgpu_winsys_bo_vtbl;
     bo->u.real.cpu_ptr = pointer;

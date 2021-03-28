@@ -981,7 +981,7 @@ r600_texture_create_object(struct pipe_screen *screen,
 		resource->buf = buf;
 		resource->gpu_address = rscreen->ws->buffer_get_virtual_address(resource->buf);
 		resource->bo_size = buf->size;
-		resource->bo_alignment = buf->alignment;
+		resource->bo_alignment = 1 << buf->alignment_log2;
 		resource->domains = rscreen->ws->buffer_get_initial_domain(resource->buf);
 		if (resource->domains & RADEON_DOMAIN_VRAM)
 			resource->vram_usage = buf->size;
