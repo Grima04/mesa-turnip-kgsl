@@ -93,9 +93,9 @@ struct amdgpu_winsys_bo {
    } u;
 
    amdgpu_bo_handle bo; /* NULL for slab entries and sparse buffers */
+   uint64_t va;
 
    uint32_t unique_id;
-   uint64_t va;
    simple_mtx_t lock;
 
    /* how many command streams, which are being emitted in a separate
@@ -103,8 +103,8 @@ struct amdgpu_winsys_bo {
    volatile int num_active_ioctls;
 
    /* Fences for buffer synchronization. */
-   unsigned num_fences;
-   unsigned max_fences;
+   uint16_t num_fences;
+   uint16_t max_fences;
    struct pipe_fence_handle **fences;
 
    struct pb_cache_entry cache_entry[];

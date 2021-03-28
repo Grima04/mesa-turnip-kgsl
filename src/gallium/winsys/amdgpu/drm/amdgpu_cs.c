@@ -1334,13 +1334,16 @@ void amdgpu_add_fences(struct amdgpu_winsys_bo *bo,
          REALLOC(bo->fences,
                  bo->num_fences * sizeof(*new_fences),
                  new_max_fences * sizeof(*new_fences));
-      if (likely(new_fences)) {
+      if (likely(new_fences && new_max_fences < UINT16_MAX)) {
          bo->fences = new_fences;
          bo->max_fences = new_max_fences;
       } else {
          unsigned drop;
 
-         fprintf(stderr, "amdgpu_add_fences: allocation failure, dropping fence(s)\n");
+         fprintf(stderr, new_fences ? "amdgpu_add_fences: too many fences, dropping some\n"
+                                    : "amdgpu_add_fences: allocation failure, dropping fence(s)\n");
+         free(new_fences);
+
          if (!bo->num_fences)
             return;
 
