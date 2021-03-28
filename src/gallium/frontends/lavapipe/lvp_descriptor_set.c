@@ -172,6 +172,8 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
       set_layout->shader_stages |= binding->stageFlags;
    }
 
+   free(bindings);
+
    set_layout->dynamic_offset_count = dynamic_offset_count;
 
    *pSetLayout = lvp_descriptor_set_layout_to_handle(set_layout);
