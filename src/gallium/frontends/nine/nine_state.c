@@ -2550,6 +2550,18 @@ CSMT_ITEM_NO_WAIT_WITH_COUNTER(nine_context_box_upload,
     /* Binding src_ref avoids release before upload */
     (void)src_ref;
 
+    if (is_ATI1_ATI2(src_format)) {
+        const unsigned bw = util_format_get_blockwidth(src_format);
+        const unsigned bh = util_format_get_blockheight(src_format);
+        /* For these formats, the allocate surface can be too small to contain
+         * a block. Yet we can be asked to upload such surfaces.
+         * It is ok for these surfaces to have buggy content,
+         * but we should avoid crashing.
+         * Calling util_format_translate_3d would read out of bounds. */
+        if (dst_box->width < bw || dst_box->height < bh)
+            return;
+    }
+
     map = pipe->transfer_map(pipe,
                              res,
                              level,
