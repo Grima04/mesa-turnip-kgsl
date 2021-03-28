@@ -1102,6 +1102,23 @@ anv_get_image_format_properties(
       }
    }
 
+   if (info->flags & VK_IMAGE_CREATE_ALIAS_BIT) {
+      /* Reject aliasing of images with non-linear DRM format modifiers because:
+       *
+       * 1. For modifiers with compression, we store aux tracking state in
+       *    ANV_IMAGE_MEMORY_BINDING_PRIVATE, which is not aliasable because it's
+       *    not client-bound.
+       *
+       * 2. For tiled modifiers without compression, we may attempt to compress
+       *    them behind the scenes, in which case both the aux tracking state
+       *    and the CCS data are bound to ANV_IMAGE_MEMORY_BINDING_PRIVATE.
+       */
+      if (info->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT &&
+          isl_mod_info->modifier != DRM_FORMAT_MOD_LINEAR) {
+         goto unsupported;
+      }
+   }
+
    if (info->usage & VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) {
       /* Nothing to check. */
    }

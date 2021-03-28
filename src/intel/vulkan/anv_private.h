@@ -3643,6 +3643,12 @@ struct anv_image_memory_range {
       ANV_IMAGE_MEMORY_BINDING_PLANE_1,
       ANV_IMAGE_MEMORY_BINDING_PLANE_2,
 
+      /**
+       * Driver-private bo. In special cases we may store the aux surface and/or
+       * aux state in this binding.
+       */
+      ANV_IMAGE_MEMORY_BINDING_PRIVATE,
+
       /** Sentinel */
       ANV_IMAGE_MEMORY_BINDING_END,
    } binding;
@@ -3725,6 +3731,8 @@ struct anv_image {
    /**
     * The memory bindings created by vkCreateImage and vkBindImageMemory.
     *
+    * For details on the image's memory layout, see check_memory_bindings().
+    *
     * vkCreateImage constructs the `memory_range` for each
     * anv_image_memory_binding.  After vkCreateImage, each binding is valid if
     * and only if `memory_range::size > 0`.
@@ -3751,29 +3759,6 @@ struct anv_image {
     * reside in the same VkImage.  To satisfy both the hardware and Vulkan, we
     * allocate the depth and stencil buffers as separate surfaces in the same
     * bo.
-    *
-    * Memory layout :
-    *
-    * -----------------------
-    * |     surface0        |   /|\
-    * -----------------------    |
-    * |   shadow surface0   |    |
-    * -----------------------    | Plane 0
-    * |    aux surface0     |    |
-    * -----------------------    |
-    * | fast clear colors0  |   \|/
-    * -----------------------
-    * |     surface1        |   /|\
-    * -----------------------    |
-    * |   shadow surface1   |    |
-    * -----------------------    | Plane 1
-    * |    aux surface1     |    |
-    * -----------------------    |
-    * | fast clear colors1  |   \|/
-    * -----------------------
-    * |        ...          |
-    * |                     |
-    * -----------------------
     */
    struct anv_image_plane {
       struct anv_surface primary_surface;

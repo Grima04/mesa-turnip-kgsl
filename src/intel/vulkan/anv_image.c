@@ -76,6 +76,8 @@ image_binding_grow(struct anv_image *image,
       if (!image->disjoint)
          binding = ANV_IMAGE_MEMORY_BINDING_MAIN;
       break;
+   case ANV_IMAGE_MEMORY_BINDING_PRIVATE:
+      break;
    case ANV_IMAGE_MEMORY_BINDING_END:
       unreachable("ANV_IMAGE_MEMORY_BINDING_END");
    }
@@ -396,12 +398,17 @@ add_aux_state_tracking_buffer(struct anv_device *device,
       }
    }
 
+   enum anv_image_memory_binding binding =
+      ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
+
+   if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID)
+       binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
+
    /* We believe that 256B alignment may be sufficient, but we choose 4K due to
     * lack of testing.  And MI_LOAD/STORE operations require dword-alignment.
     */
    image->planes[plane].fast_clear_memory_range =
-      image_binding_grow(image, ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
-                         state_size, 4096);
+      image_binding_grow(image, binding, state_size, 4096);
 }
 
 /**
@@ -509,6 +516,11 @@ add_aux_surface_if_supported(struct anv_device *device,
       if ((image->create_flags & VK_IMAGE_CREATE_ALIAS_BIT)) {
          /* The image may alias a plane of a multiplanar image. Above we ban
           * CCS on multiplanar images.
+          *
+          * We must also reject aliasing of any image that uses
+          * ANV_IMAGE_MEMORY_BINDING_PRIVATE. Since we're already rejecting all
+          * aliasing here, there's no need to further analyze if the image needs
+          * a private binding.
           */
          return VK_SUCCESS;
       }
@@ -575,9 +587,16 @@ add_aux_surface_if_supported(struct anv_device *device,
          image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_D;
       }
 
-      if (!device->physical->has_implicit_ccs)
-         add_surface(image, ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
-                     &image->planes[plane].aux_surface);
+      if (!device->physical->has_implicit_ccs) {
+         enum anv_image_memory_binding binding =
+            ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane;
+
+         if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
+             !isl_drm_modifier_has_aux(image->drm_format_mod))
+            binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
+
+         add_surface(image, binding, &image->planes[plane].aux_surface);
+      }
 
       add_aux_state_tracking_buffer(device, image, plane);
    } else if ((aspect & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV) && image->samples > 1) {
@@ -746,6 +765,12 @@ check_memory_bindings(const struct anv_device *device,
          ? ANV_IMAGE_MEMORY_BINDING_PLANE_0 + p
          : ANV_IMAGE_MEMORY_BINDING_MAIN;
 
+      /* Aliasing is incompatible with the private binding because it does not
+       * live in a VkDeviceMemory.
+       */
+      assert(!(image->create_flags & VK_IMAGE_CREATE_ALIAS_BIT) ||
+             image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].memory_range.size == 0);
+
       /* Check primary surface */
       check_memory_range(accum_ranges,
                          .test_surface = &plane->primary_surface,
@@ -760,6 +785,12 @@ check_memory_bindings(const struct anv_device *device,
 
       /* Check aux_surface */
       if (anv_surface_is_valid(&plane->aux_surface)) {
+         enum anv_image_memory_binding binding = primary_binding;
+
+         if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
+             !isl_drm_modifier_has_aux(image->drm_format_mod))
+            binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
+
          /* Display hardware requires that the aux surface start at
           * a higher address than the primary surface. The 3D hardware
           * doesn't care, but we enforce the display requirement in case
@@ -767,7 +798,7 @@ check_memory_bindings(const struct anv_device *device,
           */
          check_memory_range(accum_ranges,
                             .test_surface = &plane->aux_surface,
-                            .expect_binding = primary_binding);
+                            .expect_binding = binding);
       }
 
       /* Check fast clear state */
@@ -776,6 +807,11 @@ check_memory_bindings(const struct anv_device *device,
               image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV));
 
       if (plane->fast_clear_memory_range.size > 0) {
+         enum anv_image_memory_binding binding = primary_binding;
+
+         if (image->drm_format_mod != DRM_FORMAT_MOD_INVALID)
+            binding = ANV_IMAGE_MEMORY_BINDING_PRIVATE;
+
          /* We believe that 256B alignment may be sufficient, but we choose 4K
           * due to lack of testing.  And MI_LOAD/STORE operations require
           * dword-alignment.
@@ -783,7 +819,7 @@ check_memory_bindings(const struct anv_device *device,
          assert(plane->fast_clear_memory_range.alignment == 4096);
          check_memory_range(accum_ranges,
                             .test_range = &plane->fast_clear_memory_range,
-                            .expect_binding = primary_binding);
+                            .expect_binding = binding);
       }
    }
 #endif
@@ -969,6 +1005,30 @@ anv_image_create_usage(const VkImageCreateInfo *pCreateInfo,
    return usage;
 }
 
+static VkResult MUST_CHECK
+alloc_private_binding(struct anv_device *device,
+                      struct anv_image *image,
+                      const VkImageCreateInfo *create_info)
+{
+   struct anv_image_binding *binding =
+      &image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE];
+
+   if (binding->memory_range.size == 0)
+      return VK_SUCCESS;
+
+   const VkImageSwapchainCreateInfoKHR *swapchain_info =
+      vk_find_struct_const(create_info->pNext, IMAGE_SWAPCHAIN_CREATE_INFO_KHR);
+
+   if (swapchain_info && swapchain_info->swapchain != VK_NULL_HANDLE) {
+      /* The image will be bound to swapchain memory. */
+      return VK_SUCCESS;
+   }
+
+   return anv_device_alloc_bo(device, "image-binding-private",
+                              binding->memory_range.size, 0, 0,
+                              &binding->address.bo);
+}
+
 VkResult
 anv_image_create(VkDevice _device,
                  const struct anv_image_create_info *create_info,
@@ -1072,6 +1132,10 @@ anv_image_create(VkDevice _device,
 
    r = add_all_surfaces(device, image, fmt_list, create_info->stride,
                         isl_tiling_flags, create_info->isl_extra_usage_flags);
+   if (r != VK_SUCCESS)
+      goto fail;
+
+   r = alloc_private_binding(device, image, pCreateInfo);
    if (r != VK_SUCCESS)
       goto fail;
 
@@ -1223,6 +1287,10 @@ anv_DestroyImage(VkDevice _device, VkImage _image,
       assert(image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo != NULL);
       anv_device_release_bo(device, image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address.bo);
    }
+
+   struct anv_bo *private_bo = image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
+   if (private_bo)
+      anv_device_release_bo(device, private_bo);
 
    vk_object_base_finish(&image->base);
    vk_free2(&device->vk.alloc, pAllocator, image);
@@ -1436,15 +1504,19 @@ VkResult anv_BindImageMemory2(
          case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
             const VkBindImagePlaneMemoryInfo *plane_info =
                (const VkBindImagePlaneMemoryInfo *) s;
+
             uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                                        plane_info->planeAspect);
 
-            /* Unlike VkImagePlaneMemoryRequirementsInfo, which requires that
+            /* Workaround for possible spec bug.
+             *
+             * Unlike VkImagePlaneMemoryRequirementsInfo, which requires that
              * the image be disjoint (that is, multi-planar format and
              * VK_IMAGE_CREATE_DISJOINT_BIT), VkBindImagePlaneMemoryInfo allows
              * the image to be non-disjoint and requires only that the image
-             * have the DISJOINT flag. (This may be a spec bug). In this case,
-             * we continue as if VkImagePlaneMemoryRequirementsInfo was omitted.
+             * have the DISJOINT flag. In this case, regardless of the value of
+             * VkImagePlaneMemoryRequirementsInfo::planeAspect, the behavior is
+             * the same as if VkImagePlaneMemoryRequirementsInfo were omitted.
              */
             if (!image->disjoint) {
                assert(plane == 0);
@@ -1470,14 +1542,16 @@ VkResult anv_BindImageMemory2(
             assert(image->aspects == swapchain_image->aspects);
             assert(mem == NULL);
 
-            /* The Vulkan 1.2 spec ensures that the image is not disjoint. See
-             * the table of implied image creation parameters for swapchains
-             * <vkspec.html#swapchain-wsi-image-create-info>.
-             */
-            assert(!swapchain_image->disjoint);
+            for (int j = 0; j < ARRAY_SIZE(image->bindings); ++j)
+               image->bindings[j].address = swapchain_image->bindings[j].address;
 
-            image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address =
-               swapchain_image->bindings[ANV_IMAGE_MEMORY_BINDING_MAIN].address;
+            /* We must bump the private binding's bo's refcount because, unlike the other
+             * bindings, its lifetime is not application-managed.
+             */
+            struct anv_bo *private_bo =
+               image->bindings[ANV_IMAGE_MEMORY_BINDING_PRIVATE].address.bo;
+            if (private_bo)
+               anv_bo_ref(private_bo);
 
             did_bind = true;
             break;
