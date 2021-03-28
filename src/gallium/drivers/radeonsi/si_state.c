@@ -3751,8 +3751,8 @@ static void gfx10_make_texture_descriptor(
       }
 
       if (tex->upgraded_depth && !is_stencil) {
-         assert(img_format == V_008F0C_IMG_FORMAT_32_FLOAT);
-         img_format = V_008F0C_IMG_FORMAT_32_FLOAT_CLAMP;
+         assert(img_format == V_008F0C_GFX10_FORMAT_32_FLOAT);
+         img_format = V_008F0C_GFX10_FORMAT_32_FLOAT_CLAMP;
       }
    } else {
       util_format_compose_swizzles(desc->swizzle, state_swizzle, swizzle);
@@ -3816,43 +3816,43 @@ static void gfx10_make_texture_descriptor(
 #define FMASK(s, f) (((unsigned)(MAX2(1, s)) * 16) + (MAX2(1, f)))
       switch (FMASK(res->nr_samples, res->nr_storage_samples)) {
       case FMASK(2, 1):
-         format = V_008F0C_IMG_FORMAT_FMASK8_S2_F1;
+         format = V_008F0C_GFX10_FORMAT_FMASK8_S2_F1;
          break;
       case FMASK(2, 2):
-         format = V_008F0C_IMG_FORMAT_FMASK8_S2_F2;
+         format = V_008F0C_GFX10_FORMAT_FMASK8_S2_F2;
          break;
       case FMASK(4, 1):
-         format = V_008F0C_IMG_FORMAT_FMASK8_S4_F1;
+         format = V_008F0C_GFX10_FORMAT_FMASK8_S4_F1;
          break;
       case FMASK(4, 2):
-         format = V_008F0C_IMG_FORMAT_FMASK8_S4_F2;
+         format = V_008F0C_GFX10_FORMAT_FMASK8_S4_F2;
          break;
       case FMASK(4, 4):
-         format = V_008F0C_IMG_FORMAT_FMASK8_S4_F4;
+         format = V_008F0C_GFX10_FORMAT_FMASK8_S4_F4;
          break;
       case FMASK(8, 1):
-         format = V_008F0C_IMG_FORMAT_FMASK8_S8_F1;
+         format = V_008F0C_GFX10_FORMAT_FMASK8_S8_F1;
          break;
       case FMASK(8, 2):
-         format = V_008F0C_IMG_FORMAT_FMASK16_S8_F2;
+         format = V_008F0C_GFX10_FORMAT_FMASK16_S8_F2;
          break;
       case FMASK(8, 4):
-         format = V_008F0C_IMG_FORMAT_FMASK32_S8_F4;
+         format = V_008F0C_GFX10_FORMAT_FMASK32_S8_F4;
          break;
       case FMASK(8, 8):
-         format = V_008F0C_IMG_FORMAT_FMASK32_S8_F8;
+         format = V_008F0C_GFX10_FORMAT_FMASK32_S8_F8;
          break;
       case FMASK(16, 1):
-         format = V_008F0C_IMG_FORMAT_FMASK16_S16_F1;
+         format = V_008F0C_GFX10_FORMAT_FMASK16_S16_F1;
          break;
       case FMASK(16, 2):
-         format = V_008F0C_IMG_FORMAT_FMASK32_S16_F2;
+         format = V_008F0C_GFX10_FORMAT_FMASK32_S16_F2;
          break;
       case FMASK(16, 4):
-         format = V_008F0C_IMG_FORMAT_FMASK64_S16_F4;
+         format = V_008F0C_GFX10_FORMAT_FMASK64_S16_F4;
          break;
       case FMASK(16, 8):
-         format = V_008F0C_IMG_FORMAT_FMASK64_S16_F8;
+         format = V_008F0C_GFX10_FORMAT_FMASK64_S16_F8;
          break;
       default:
          unreachable("invalid nr_samples");

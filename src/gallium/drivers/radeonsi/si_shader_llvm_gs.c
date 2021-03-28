@@ -403,7 +403,7 @@ void si_preload_gs_rings(struct si_shader_context *ctx)
          S_008F0C_ADD_TID_ENABLE(1);
 
       if (ctx->ac.chip_class >= GFX10) {
-         rsrc3 |= S_008F0C_FORMAT(V_008F0C_IMG_FORMAT_32_FLOAT) |
+         rsrc3 |= S_008F0C_FORMAT(V_008F0C_GFX10_FORMAT_32_FLOAT) |
                   S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_DISABLED) | S_008F0C_RESOURCE_LEVEL(1);
       } else {
          rsrc3 |= S_008F0C_NUM_FORMAT(V_008F0C_BUF_NUM_FORMAT_FLOAT) |

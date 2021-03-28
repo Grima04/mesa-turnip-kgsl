@@ -939,13 +939,13 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
 
          switch (image->info.samples) {
          case 2:
-            format = V_008F0C_IMG_FORMAT_FMASK8_S2_F2;
+            format = V_008F0C_GFX10_FORMAT_FMASK8_S2_F2;
             break;
          case 4:
-            format = V_008F0C_IMG_FORMAT_FMASK8_S4_F4;
+            format = V_008F0C_GFX10_FORMAT_FMASK8_S4_F4;
             break;
          case 8:
-            format = V_008F0C_IMG_FORMAT_FMASK32_S8_F8;
+            format = V_008F0C_GFX10_FORMAT_FMASK32_S8_F8;
             break;
          default:
             unreachable("invalid nr_samples");

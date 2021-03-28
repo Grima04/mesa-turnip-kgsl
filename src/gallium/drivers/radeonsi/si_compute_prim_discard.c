@@ -1157,7 +1157,7 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
    case PIPE_PRIM_TRIANGLE_FAN:
       vertices_per_prim = 3;
       output_indexbuf_format = V_008F0C_BUF_DATA_FORMAT_32_32_32;
-      gfx10_output_indexbuf_format = V_008F0C_IMG_FORMAT_32_32_32_UINT;
+      gfx10_output_indexbuf_format = V_008F0C_GFX10_FORMAT_32_32_32_UINT;
       break;
    default:
       unreachable("unsupported primitive type");
@@ -1278,9 +1278,9 @@ void si_dispatch_prim_discard_cs_and_draw(struct si_context *sctx,
 
    if (sctx->chip_class >= GFX10) {
       desc[3] = S_008F0C_DST_SEL_X(V_008F0C_SQ_SEL_X) |
-                S_008F0C_FORMAT(index_size == 1 ? V_008F0C_IMG_FORMAT_8_UINT
-                                                : index_size == 2 ? V_008F0C_IMG_FORMAT_16_UINT
-                                                                  : V_008F0C_IMG_FORMAT_32_UINT) |
+                S_008F0C_FORMAT(index_size == 1 ? V_008F0C_GFX10_FORMAT_8_UINT
+                                                : index_size == 2 ? V_008F0C_GFX10_FORMAT_16_UINT
+                                                                  : V_008F0C_GFX10_FORMAT_32_UINT) |
                 S_008F0C_OOB_SELECT(V_008F0C_OOB_SELECT_STRUCTURED_WITH_OFFSET) |
                 S_008F0C_RESOURCE_LEVEL(1);
    } else {
