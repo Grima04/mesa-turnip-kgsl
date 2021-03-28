@@ -79,12 +79,14 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    set_layout->shader_stages = 0;
    set_layout->size = 0;
 
-   VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
-                                                                      pCreateInfo->bindingCount);
-   if (!bindings) {
+   VkDescriptorSetLayoutBinding *bindings = NULL;
+   VkResult result = vk_create_sorted_bindings(pCreateInfo->pBindings,
+                                               pCreateInfo->bindingCount,
+                                               &bindings);
+   if (result != VK_SUCCESS) {
       vk_object_base_finish(&set_layout->base);
       vk_free2(&device->vk.alloc, pAllocator, set_layout);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device->instance, result);
    }
 
    uint32_t dynamic_offset_count = 0;

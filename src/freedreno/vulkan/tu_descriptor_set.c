@@ -132,11 +132,12 @@ tu_CreateDescriptorSetLayout(
    struct tu_sampler_ycbcr_conversion *ycbcr_samplers =
       (void*) &samplers[immutable_sampler_count];
 
-   VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(
-      pCreateInfo->pBindings, pCreateInfo->bindingCount);
-   if (!bindings) {
+   VkDescriptorSetLayoutBinding *bindings = NULL;
+   VkResult result = vk_create_sorted_bindings(
+      pCreateInfo->pBindings, pCreateInfo->bindingCount, &bindings);
+   if (result != VK_SUCCESS) {
       vk_object_free(&device->vk, pAllocator, set_layout);
-      return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+      return vk_error(device->instance, result);
    }
 
    set_layout->binding_count = max_binding + 1;
@@ -247,9 +248,10 @@ tu_GetDescriptorSetLayoutSupport(
    const VkDescriptorSetLayoutCreateInfo *pCreateInfo,
    VkDescriptorSetLayoutSupport *pSupport)
 {
-   VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(
-      pCreateInfo->pBindings, pCreateInfo->bindingCount);
-   if (!bindings) {
+   VkDescriptorSetLayoutBinding *bindings = NULL;
+   VkResult result = vk_create_sorted_bindings(
+      pCreateInfo->pBindings, pCreateInfo->bindingCount, &bindings);
+   if (result != VK_SUCCESS) {
       pSupport->supported = false;
       return;
    }

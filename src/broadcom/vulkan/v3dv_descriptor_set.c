@@ -607,15 +607,14 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    /* We just allocate all the immutable samplers at the end of the struct */
    struct v3dv_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
 
+   assert(pCreateInfo->bindingCount == 0 || max_binding >= 0);
+
    VkDescriptorSetLayoutBinding *bindings = NULL;
-   if (pCreateInfo->bindingCount > 0) {
-      assert(max_binding >= 0);
-      bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
-                                           pCreateInfo->bindingCount);
-      if (!bindings) {
-         vk_object_free(&device->vk, pAllocator, set_layout);
-         return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-      }
+   VkResult result = vk_create_sorted_bindings(pCreateInfo->pBindings,
+                                               pCreateInfo->bindingCount, &bindings);
+   if (result != VK_SUCCESS) {
+      vk_object_free(&device->vk, pAllocator, set_layout);
+      return vk_error(device->instance, result);
    }
 
    memset(set_layout->binding, 0,

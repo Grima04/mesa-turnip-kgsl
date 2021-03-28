@@ -155,12 +155,14 @@ VkResult radv_CreateDescriptorSetLayout(
 	} else
 		set_layout->ycbcr_sampler_offsets_offset = 0;
 
-	VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
-	                                                                   pCreateInfo->bindingCount);
-	if (!bindings) {
+	VkDescriptorSetLayoutBinding *bindings = NULL;
+	VkResult result = vk_create_sorted_bindings(pCreateInfo->pBindings,
+	                                            pCreateInfo->bindingCount,
+	                                            &bindings);
+	if (result != VK_SUCCESS) {
 		vk_object_base_finish(&set_layout->base);
 		vk_free2(&device->vk.alloc, pAllocator, set_layout);
-		return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+		return vk_error(device->instance, result);
 	}
 
 	set_layout->binding_count = num_bindings;
@@ -337,9 +339,11 @@ void radv_GetDescriptorSetLayoutSupport(VkDevice device,
                                         const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
                                         VkDescriptorSetLayoutSupport* pSupport)
 {
-	VkDescriptorSetLayoutBinding *bindings = vk_create_sorted_bindings(pCreateInfo->pBindings,
-	                                                                   pCreateInfo->bindingCount);
-	if (!bindings) {
+	VkDescriptorSetLayoutBinding *bindings = NULL;
+	VkResult result = vk_create_sorted_bindings(pCreateInfo->pBindings,
+	                                            pCreateInfo->bindingCount,
+	                                            &bindings);
+	if (result != VK_SUCCESS) {
 		pSupport->supported = false;
 		return;
 	}
