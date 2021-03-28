@@ -648,9 +648,14 @@ lima_pack_render_state(struct lima_context *ctx, const struct pipe_draw_info *in
    near = float_to_ushort(ctx->viewport.near);
    far = float_to_ushort(ctx->viewport.far);
 
-   /* Subtract epsilon from 'near' if far == near. Make sure we don't get overflow */
-   if ((far == near) && (near != 0))
+   /* Insert a small 'epsilon' difference between 'near' and 'far' when
+    * they are equal, to avoid application bugs. */
+   if (far == near) {
+      if (near > 0)
          near--;
+      if (far < USHRT_MAX)
+         far++;
+   }
 
    /* overlap with plbu? any place can remove one? */
    render->depth_range = near | (far << 16);
