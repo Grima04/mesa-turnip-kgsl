@@ -112,24 +112,23 @@ struct pb_buffer
 {
    struct pipe_reference  reference;
 
+   /* For internal driver use. It's here so as not to waste space due to
+    * type alignment. (pahole)
+    */
+   uint8_t                placement;
+
    /* Alignments are powers of two, so store only the bit position.
     *    alignment_log2 = util_logbase2(alignment);
     *    alignment = 1 << alignment_log2;
     */
    uint8_t                alignment_log2;
 
-   pb_size                size;
-
    /**
     * Used with pb_usage_flags or driver-specific flags, depending on drivers.
     */
-   unsigned               usage;
+   uint16_t               usage;
 
-   /**
-    * For internal driver use. It's here so as not to waste space due to
-    * type alignment. (pahole)
-    */
-   unsigned               placement;
+   pb_size                size;
 
    /**
     * Pointer to the virtual function table.
