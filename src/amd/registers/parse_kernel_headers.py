@@ -629,6 +629,8 @@ fields_missing = {
   },
   'gfx103': {
     "DB_RESERVED_REG_2": [["RESOURCE_LEVEL", 28, 31, None, True]],
+    "VGT_DRAW_PAYLOAD_CNTL": [["EN_VRS_RATE", 6, 6]],
+    "VGT_SHADER_STAGES_EN": [["PRIMGEN_PASSTHRU_NO_MSG", 26, 26]],
   },
 }
 
