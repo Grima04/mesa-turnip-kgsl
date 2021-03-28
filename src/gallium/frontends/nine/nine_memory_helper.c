@@ -367,12 +367,13 @@ static void move_region_ordered(struct list_head *tail, struct nine_memfd_file_r
 
 static void move_region_ordered_merge(struct nine_allocator *allocator, struct list_head *tail, struct nine_memfd_file_region *region)
 {
-    struct nine_memfd_file_region *cur_region = NULL, *prev_region = NULL;
+    struct nine_memfd_file_region *p, *cur_region = NULL, *prev_region = NULL;
 
     /* Remove from previous list (if any) */
     list_delinit(&region->list);
 
-    LIST_FOR_EACH_ENTRY(cur_region, tail, list) {
+    LIST_FOR_EACH_ENTRY(p, tail, list) {
+        cur_region = p;
         if (cur_region->offset > region->offset)
             break;
         prev_region = cur_region;
