@@ -355,7 +355,7 @@ static int r600_get_param(struct pipe_screen* pscreen, enum pipe_cap param)
 		return 256;
 
 	case PIPE_CAP_TEXTURE_BUFFER_OFFSET_ALIGNMENT:
-		return 1;
+		return 4;
 
 	case PIPE_CAP_GLSL_FEATURE_LEVEL:
 		if (family >= CHIP_CEDAR)
