@@ -82,7 +82,6 @@ v3d-rpi4-gles31:armhf:
     - .v3d-rpi4-test:armhf
   parallel: 2
   variables:
-    DEQP_FRACTION: 2
     DEQP_VER: gles31
 
 v3d-rpi4-gles3:armhf:
@@ -90,7 +89,6 @@ v3d-rpi4-gles3:armhf:
     - .v3d-rpi4-test:armhf
   parallel: 4
   variables:
-    DEQP_FRACTION: 2
     DEQP_VER: gles3
 
 v3d-rpi4-gles2:armhf:
