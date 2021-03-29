@@ -233,6 +233,14 @@ setup_stages(struct fd5_emit *emit, struct stage *s)
 	s[HS].instroff = s[DS].instroff = s[GS].instroff = s[FS].instroff;
 }
 
+static inline uint32_t
+next_regid(uint32_t reg, uint32_t increment)
+{
+	if (VALIDREG(reg))
+		return reg + increment;
+	else
+		return regid(63,0);
+}
 void
 fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 				 struct fd5_emit *emit)
@@ -279,7 +287,7 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	samp_mask_regid = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_SAMPLE_MASK_IN);
 	face_regid      = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRONT_FACE);
 	coord_regid     = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_FRAG_COORD);
-	zwcoord_regid   = (coord_regid == regid(63,0)) ? regid(63,0) : (coord_regid + 2);
+	zwcoord_regid   = next_regid(coord_regid, 2);
 	for (unsigned i = 0; i < ARRAY_SIZE(ij_regid); i++)
 		ij_regid[i] = ir3_find_sysval_regid(s[FS].v, SYSTEM_VALUE_BARYCENTRIC_PERSP_PIXEL + i);
 
@@ -395,10 +403,10 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	ir3_link_stream_out(&l, s[VS].v);
 
 	/* a5xx appends pos/psize to end of the linkage map: */
-	if (pos_regid != regid(63,0))
+	if (VALIDREG(pos_regid))
 		ir3_link_add(&l, pos_regid, 0xf, l.max_loc);
 
-	if (psize_regid != regid(63,0)) {
+	if (VALIDREG(psize_regid)) {
 		psize_loc = l.max_loc;
 		ir3_link_add(&l, psize_regid, 0x1, l.max_loc);
 	}
@@ -407,12 +415,12 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 	 * sure to avoid adding an output with an empty writemask if the user
 	 * disables all the clip distances in the API so that the slot is unused.
 	 */
-	if (clip0_loc == 0xff && clip0_regid != regid(63,0) && (clip_cull_mask & 0xf) != 0) {
+	if (clip0_loc == 0xff && VALIDREG(clip0_regid) && (clip_cull_mask & 0xf) != 0) {
 		clip0_loc = l.max_loc;
 		ir3_link_add(&l, clip0_regid, clip_cull_mask & 0xf, l.max_loc);
 	}
 
-	if (clip1_loc == 0xff && clip1_regid != regid(63,0) && (clip_cull_mask >> 4) != 0) {
+	if (clip1_loc == 0xff && VALIDREG(clip1_regid) && (clip_cull_mask >> 4) != 0) {
 		clip1_loc = l.max_loc;
 		ir3_link_add(&l, clip1_regid, clip_cull_mask >> 4, l.max_loc);
 	}
@@ -545,11 +553,9 @@ fd5_program_emit(struct fd_context *ctx, struct fd_ringbuffer *ring,
 			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL0_SIZE) |
 			CONDREG(ij_regid[IJ_LINEAR_PIXEL], A5XX_RB_RENDER_CONTROL0_SIZE));
 	OUT_RING(ring,
-			COND(samp_mask_regid != regid(63, 0),
-				A5XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
+			CONDREG(samp_mask_regid, A5XX_RB_RENDER_CONTROL1_SAMPLEMASK) |
 			COND(s[FS].v->frag_face, A5XX_RB_RENDER_CONTROL1_FACENESS) |
-			COND(samp_id_regid != regid(63, 0),
-				A5XX_RB_RENDER_CONTROL1_SAMPLEID));
+			CONDREG(samp_id_regid, A5XX_RB_RENDER_CONTROL1_SAMPLEID));
 
 	OUT_PKT4(ring, REG_A5XX_SP_FS_OUTPUT_REG(0), 8);
 	for (i = 0; i < 8; i++) {
