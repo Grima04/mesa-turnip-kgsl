@@ -6,7 +6,7 @@
   variables:
     BM_BOOTFS: /boot/raspberrypi_armhf
     BM_KERNEL_MODULES: vc4
-    BM_ROOTFS: /lava-files/rootfs-armhf
+    BM_ROOTFS: /rootfs
     GPU_VERSION: vc4-rpi3
     DEQP_EXPECTED_RENDERER: VC4
   script:
@@ -66,7 +66,7 @@ vc4-rpi3-piglit-quick_shader:armhf:
     BM_BOOTFS: /boot/raspberrypi_armhf
     BM_KERNEL_MODULES: v3d,vc4
     BM_POE_TIMEOUT: 300
-    BM_ROOTFS: /lava-files/rootfs-armhf
+    BM_ROOTFS: /rootfs
     DEQP_EXPECTED_RENDERER: V3D
     GPU_VERSION: v3d-rpi4
   script:
@@ -131,7 +131,7 @@ v3dv-rpi4-vk:armhf:
     BM_BOOTFS: /boot/raspberrypi_armhf
     BM_KERNEL_MODULES: v3d,vc4
     BM_POE_TIMEOUT: 300
-    BM_ROOTFS: /lava-files/rootfs-armhf
+    BM_ROOTFS: /rootfs
     CPU: arm7hlf
     DEQP_EXPECTED_RENDERER: "V3D 4.2"
     DEQP_FRACTION: 7

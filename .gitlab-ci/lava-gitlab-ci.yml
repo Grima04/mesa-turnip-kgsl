@@ -1,33 +1,36 @@
-variables:
-  MESA_LAVA_TAG: "2021-03-31-piglit"
-
 .kernel+rootfs:
-  stage: container-2
   extends:
     - .ci-run-policy
+  stage: container-2
   variables:
-    DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_LAVA_TAG}--${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
     GIT_STRATEGY: fetch
-    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
-    UPLOAD_FOR_LAVA: 1
-    INSTALL_KERNEL_MODULES: 1
-    PIGLIT_BUILD_TARGETS: "piglit_replayer"
   script:
     - .gitlab-ci/container/lava_build.sh
+
+.kernel+rootfs-lava:
+  extends:
+    - .kernel+rootfs
+  variables:
+    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
+    DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    INSTALL_KERNEL_MODULES: 1
+    MESA_ROOTFS_TAG: &lava-rootfs "2021-03-31-libxrender"
+    MINIO_SUFFIX: "lava"
+    PIGLIT_BUILD_TARGETS: "piglit_replayer"
 
 kernel+rootfs_amd64:
   extends:
     - .use-x86_build-base
-    - .kernel+rootfs
+    - .kernel+rootfs-lava
   image: "$FDO_BASE_IMAGE"
   variables:
     DEBIAN_ARCH: "amd64"
-    DISTRIBUTION_TAG: &distribution-tag-amd64 "${MESA_LAVA_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
+    DISTRIBUTION_TAG: &distribution-tag-amd64 "${MESA_ROOTFS_TAG}--${MESA_BASE_TAG}--${MESA_TEMPLATES_COMMIT}"
 
 kernel+rootfs_arm64:
   extends:
     - .use-arm_build
-    - .kernel+rootfs
+    - .kernel+rootfs-lava
   tags:
     - aarch64
   variables:
@@ -51,14 +54,15 @@ kernel+rootfs_armhf:
     FIXED_ENV_VARS: "CI_PIPELINE_ID=${CI_PIPELINE_ID} CI_JOB_ID=${CI_JOB_ID} CI_PAGES_DOMAIN=${CI_PAGES_DOMAIN} CI_PROJECT_NAME=${CI_PROJECT_NAME} CI_PROJECT_PATH=${CI_PROJECT_PATH} CI_PROJECT_ROOT_NAMESPACE=${CI_PROJECT_ROOT_NAMESPACE} CI_JOB_JWT=${CI_JOB_JWT} CI_SERVER_URL=${CI_SERVER_URL} DRIVER_NAME=${DRIVER_NAME} FDO_UPSTREAM_REPO=${FDO_UPSTREAM_REPO} PIGLIT_NO_WINDOW=1 PIGLIT_REPLAY_UPLOAD_TO_MINIO=1 MINIO_HOST=${MINIO_HOST}"
     DEQP_VERSION: gles2
     ARTIFACTS_PREFIX: "https://${MINIO_HOST}/mesa-lava/"
+    MESA_ROOTFS_TAG: *lava-rootfs
     MESA_URL: "https://${MINIO_HOST}/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/mesa-${ARCH}.tar.gz"
   script:
     # Try to use the kernel and rootfs built in mainline first, to save cycles
     - >
-      if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/${DISTRIBUTION_TAG}/${ARCH}/done"; then
-        ARTIFACTS_URL="${ARTIFACTS_PREFIX}/mesa/mesa/${DISTRIBUTION_TAG}/${ARCH}"
+      if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/lava/${DISTRIBUTION_TAG}/${ARCH}/done"; then
+        ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/lava/${DISTRIBUTION_TAG}/${ARCH}"
       else
-        ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/${DISTRIBUTION_TAG}/${ARCH}"
+        ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/lava/${DISTRIBUTION_TAG}/${ARCH}"
       fi
     - >
       artifacts/generate_lava.py \

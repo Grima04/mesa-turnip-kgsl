@@ -5,7 +5,7 @@ set -o xtrace
 
 check_minio()
 {
-    MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
+    MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${MINIO_SUFFIX}/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
     if wget -q --method=HEAD "https://${MINIO_PATH}/done"; then
         exit
     fi
@@ -194,7 +194,7 @@ if [ -n "$INSTALL_KERNEL_MODULES" ]; then
     INSTALL_MOD_PATH=/lava-files/rootfs-${DEBIAN_ARCH}/ make modules_install
 fi
 
-if [[ ${DEBIAN_ARCH} = "arm64" ]] && which mkimage > /dev/null; then
+if [[ ${DEBIAN_ARCH} = "arm64" ]] && [[ ${MINIO_SUFFIX} = "baremetal" ]]; then
     make Image.lzma
     mkimage \
         -f auto \
@@ -204,6 +204,7 @@ if [[ ${DEBIAN_ARCH} = "arm64" ]] && which mkimage > /dev/null; then
         -C lzma\
         -b arch/arm64/boot/dts/qcom/sdm845-cheza-r3.dtb \
         /lava-files/cheza-kernel
+    KERNEL_IMAGE_NAME+=" cheza-kernel"
 fi
 
 popd
@@ -241,14 +242,10 @@ find /libdrm/ -name lib\*\.so\* | xargs cp -t /lava-files/rootfs-${DEBIAN_ARCH}/
 rm -rf /libdrm
 
 
-du -ah /lava-files/rootfs-${DEBIAN_ARCH} | sort -h | tail -100
-pushd /lava-files/rootfs-${DEBIAN_ARCH}
-  tar czf /lava-files/lava-rootfs.tgz .
-popd
-
-if [ ${DEBIAN_ARCH} = arm64 ]; then
+if [ ${DEBIAN_ARCH} = arm64 ] && [ ${MINIO_SUFFIX} = baremetal ]; then
     # Make a gzipped copy of the Image for db410c.
     gzip -k /lava-files/Image
+    KERNEL_IMAGE_NAME+=" Image.gz"
 
     # Add missing a630 firmware, added to debian packge in apr 2020
     wget https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/plain/qcom/a630_gmu.bin \
@@ -257,24 +254,26 @@ if [ ${DEBIAN_ARCH} = arm64 ]; then
          -O /lava-files/rootfs-arm64/lib/firmware/qcom/a630_sqe.fw
 fi
 
+du -ah /lava-files/rootfs-${DEBIAN_ARCH} | sort -h | tail -100
+pushd /lava-files/rootfs-${DEBIAN_ARCH}
+  tar czf /lava-files/lava-rootfs.tgz .
+popd
+
 . .gitlab-ci/container/container_post_build.sh
 
 ############### Upload the files!
-if [ -n "$UPLOAD_FOR_LAVA" ]; then
-    ci-fairy minio login $CI_JOB_JWT
-    FILES_TO_UPLOAD="lava-rootfs.tgz \
-                     $KERNEL_IMAGE_NAME"
+ci-fairy minio login $CI_JOB_JWT
+FILES_TO_UPLOAD="lava-rootfs.tgz \
+                 $KERNEL_IMAGE_NAME"
 
-    if [[ -n $DEVICE_TREES ]]; then
-        FILES_TO_UPLOAD="$FILES_TO_UPLOAD $(basename -a $DEVICE_TREES)"
-    fi
-
-    for f in $FILES_TO_UPLOAD; do
-        ci-fairy minio cp /lava-files/$f \
-            minio://${MINIO_PATH}/$f
-    done
-
-    touch /lava-files/done
-    ci-fairy minio cp /lava-files/done minio://${MINIO_PATH}/done
+if [[ -n $DEVICE_TREES ]]; then
+    FILES_TO_UPLOAD="$FILES_TO_UPLOAD $(basename -a $DEVICE_TREES)"
 fi
 
+for f in $FILES_TO_UPLOAD; do
+    ci-fairy minio cp /lava-files/$f \
+             minio://${MINIO_PATH}/$f
+done
+
+touch /lava-files/done
+ci-fairy minio cp /lava-files/done minio://${MINIO_PATH}/done

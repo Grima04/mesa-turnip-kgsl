@@ -347,9 +347,6 @@ spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 wgl@wgl-multi-context-single-window,Fail
 wgl@wgl-multi-window-single-context,Fail
 wgl@wgl-sanity,Fail
-spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontcolor-flat-vertex,Fail
-spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontcolor-smooth-vertex,Fail
-spec@glsl-1.10@execution@interpolation@interpolation-none-gl_frontsecondarycolor-smooth-vertex,Fail
 spec@glsl-1.10@execution@interpolation@interpolation-none-other-flat-vertex,Fail
 spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Crash

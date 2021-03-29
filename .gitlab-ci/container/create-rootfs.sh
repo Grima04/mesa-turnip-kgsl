@@ -51,6 +51,7 @@ apt-get -y install --no-install-recommends \
     libxext6 \
     libxfixes3 \
     libxkbcommon0 \
+    libxrender1 \
     libxshmfence1 \
     libxxf86vm1 \
     netcat-openbsd \
