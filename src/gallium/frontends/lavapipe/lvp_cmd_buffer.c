@@ -339,7 +339,7 @@ state_setup_attachments(struct lvp_attachment_state *attachments,
          }
       }
       attachments[i].pending_clear_aspects = clear_aspects;
-      if (clear_values)
+      if (clear_aspects)
          attachments[i].clear_value = clear_values[i];
    }
 }
