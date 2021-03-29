@@ -490,6 +490,7 @@ struct choose_scoreboard {
         int last_unifa_write_tick;
         int last_uniforms_reset_tick;
         int last_thrsw_tick;
+        int last_branch_tick;
         bool tlb_locked;
         bool fixup_ldvary;
         int ldvary_count;
@@ -1076,6 +1077,16 @@ retry:
                     !qpu_inst_after_thrsw_valid_in_delay_slot(c, scoreboard,
                                                               n->inst)) {
                         continue;
+                }
+
+                /* Don't try to put a branch in the delay slots of another
+                 * branch or a unifa write.
+                 */
+                if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH) {
+                        if (scoreboard->last_branch_tick + 3 >= scoreboard->tick)
+                                continue;
+                        if (scoreboard->last_unifa_write_tick + 3 >= scoreboard->tick)
+                                continue;
                 }
 
                 /* If we're trying to pair with another instruction, check
@@ -1674,8 +1685,14 @@ emit_thrsw(struct v3d_compile *c,
         assert(inst->qpu.alu.add.op == V3D_QPU_A_NOP);
         assert(inst->qpu.alu.mul.op == V3D_QPU_M_NOP);
 
-        /* Don't try to emit a thrsw in the delay slots of a previous thrsw */
+        /* Don't try to emit a thrsw in the delay slots of a previous thrsw
+         * or branch.
+         */
         while (scoreboard->last_thrsw_tick + 2 >= scoreboard->tick) {
+                emit_nop(c, block, scoreboard);
+                time++;
+        }
+        while (scoreboard->last_branch_tick + 3 >= scoreboard->tick) {
                 emit_nop(c, block, scoreboard);
                 time++;
         }
@@ -1743,6 +1760,97 @@ emit_thrsw(struct v3d_compile *c,
                 free(inst);
 
         return time;
+}
+
+static bool
+qpu_inst_valid_in_branch_delay_slot(struct v3d_compile *c, struct qinst *inst)
+{
+        if (inst->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH)
+                return false;
+
+        if (inst->qpu.sig.thrsw)
+                return false;
+
+        if (v3d_qpu_writes_unifa(c->devinfo, &inst->qpu))
+                return false;
+
+        if (vir_has_uniform(inst))
+                return false;
+
+        return true;
+}
+
+static void
+emit_branch(struct v3d_compile *c,
+           struct qblock *block,
+           struct choose_scoreboard *scoreboard,
+           struct qinst *inst)
+{
+        assert(inst->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH);
+
+        /* We should've not picked up a branch for the delay slots of a previous
+         * thrsw, branch or unifa write instruction.
+         */
+        int branch_tick = scoreboard->tick;
+        assert(scoreboard->last_thrsw_tick + 2 < branch_tick);
+        assert(scoreboard->last_branch_tick + 3 < branch_tick);
+        assert(scoreboard->last_unifa_write_tick + 3 < branch_tick);
+
+        /* Insert the branch instruction */
+        insert_scheduled_instruction(c, block, scoreboard, inst);
+
+        /* Now see if we can move the branch instruction back into the
+         * instruction stream to fill its delay slots
+         */
+        int slots_filled = 0;
+        while (slots_filled < 3 && block->instructions.next != &inst->link) {
+                struct qinst *prev_inst = (struct qinst *) inst->link.prev;
+                assert(prev_inst->qpu.type != V3D_QPU_INSTR_TYPE_BRANCH);
+
+                /* Can't move the branch instruction if that would place it
+                 * in the delay slots of other instructions.
+                 */
+                if (scoreboard->last_branch_tick + 3 >=
+                    branch_tick - slots_filled - 1) {
+                        break;
+                }
+
+                if (scoreboard->last_thrsw_tick + 2 >=
+                    branch_tick - slots_filled - 1) {
+                        break;
+                }
+
+                if (scoreboard->last_unifa_write_tick + 3 >=
+                    branch_tick - slots_filled - 1) {
+                        break;
+                }
+
+                /* Can't move a conditional branch before the instruction
+                 * that writes the flags for its condition.
+                 */
+                if (v3d_qpu_writes_flags(&prev_inst->qpu) &&
+                    inst->qpu.branch.cond != V3D_QPU_BRANCH_COND_ALWAYS) {
+                        break;
+                }
+
+                if (!qpu_inst_valid_in_branch_delay_slot(c, prev_inst))
+                        break;
+
+                list_del(&prev_inst->link);
+                list_add(&prev_inst->link, &inst->link);
+                slots_filled++;
+        }
+
+        block->branch_qpu_ip = c->qpu_inst_count - 1 - slots_filled;
+        scoreboard->last_branch_tick = branch_tick - slots_filled;
+
+        /* Fill any remaining delay slots.
+         *
+         * FIXME: For unconditional branches we could fill these with the
+         * first instructions in the successor block.
+         */
+        for (int i = 0; i < 3 - slots_filled; i++)
+                emit_nop(c, block, scoreboard);
 }
 
 static bool
@@ -2025,23 +2133,11 @@ schedule_instructions(struct v3d_compile *c,
 
                 if (inst->sig.thrsw) {
                         time += emit_thrsw(c, block, scoreboard, qinst, false);
+                } else if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH) {
+                        emit_branch(c, block, scoreboard, qinst);
                 } else {
                         insert_scheduled_instruction(c, block,
                                                      scoreboard, qinst);
-
-                        if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH) {
-                                block->branch_qpu_ip = c->qpu_inst_count - 1;
-                                /* Fill the delay slots.
-                                 *
-                                 * We should fill these with actual instructions,
-                                 * instead, but that will probably need to be done
-                                 * after this, once we know what the leading
-                                 * instructions of the successors are (so we can
-                                 * handle A/B register file write latency)
-                                 */
-                                for (int i = 0; i < 3; i++)
-                                        emit_nop(c, block, scoreboard);
-                        }
                 }
         }
 
@@ -2111,11 +2207,15 @@ qpu_set_branch_targets(struct v3d_compile *c)
                 /* Walk back through the delay slots to find the branch
                  * instr.
                  */
+                struct qinst *branch = NULL;
                 struct list_head *entry = block->instructions.prev;
-                for (int i = 0; i < 3; i++)
+                for (int i = 0; i < 3; i++) {
                         entry = entry->prev;
-                struct qinst *branch = container_of(entry, struct qinst, link);
-                assert(branch->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH);
+                        branch = container_of(entry, struct qinst, link);
+                        if (branch->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH)
+                                break;
+                }
+                assert(branch && branch->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH);
 
                 /* Make sure that the if-we-don't-jump
                  * successor was scheduled just after the
@@ -2169,6 +2269,7 @@ v3d_qpu_schedule_instructions(struct v3d_compile *c)
         scoreboard.last_magic_sfu_write_tick = -10;
         scoreboard.last_uniforms_reset_tick = -10;
         scoreboard.last_thrsw_tick = -10;
+        scoreboard.last_branch_tick = -10;
         scoreboard.last_stallable_sfu_tick = -10;
 
         if (debug) {
