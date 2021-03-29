@@ -1863,7 +1863,7 @@ layout_qualifier_id:
              !state->EXT_geometry_shader_enable) {
             _mesa_glsl_error(& @3, state,
                              "GL_ARB_gpu_shader5 invocations "
-                             "qualifier specified", $3);
+                             "qualifier specified");
          }
       }
 
