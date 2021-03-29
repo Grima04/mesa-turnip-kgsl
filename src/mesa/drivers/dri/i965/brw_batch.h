@@ -130,7 +130,7 @@ brw_ptr_in_state_buffer(struct brw_batch *batch, void *p)
    brw->batch.map_next += (n)
 
 #define BEGIN_BATCH_BLT(n) do {                        \
-   assert(brw->screen->devinfo.gen < 6);               \
+   assert(brw->screen->devinfo.ver < 6);               \
    brw_batch_begin(brw, (n));                  \
    uint32_t *__map = brw->batch.map_next;              \
    brw->batch.map_next += (n)

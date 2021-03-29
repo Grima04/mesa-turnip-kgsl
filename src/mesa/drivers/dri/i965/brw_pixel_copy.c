@@ -203,7 +203,7 @@ brw_copypixels(struct gl_context *ctx,
    if (!_mesa_check_conditional_render(ctx))
       return;
 
-   if (brw->screen->devinfo.gen < 6 &&
+   if (brw->screen->devinfo.ver < 6 &&
        do_blit_copypixels(ctx, srcx, srcy, width, height, destx, desty, type))
       return;
 

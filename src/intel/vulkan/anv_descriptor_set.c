@@ -70,7 +70,7 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
       data = ANV_DESCRIPTOR_SURFACE_STATE;
-      if (device->info.gen < 9)
+      if (device->info.ver < 9)
          data |= ANV_DESCRIPTOR_IMAGE_PARAM;
       if (device->has_bindless_images)
          data |= ANV_DESCRIPTOR_STORAGE_IMAGE;
@@ -110,7 +110,7 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
     * VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT because they already must
     * have identity swizzle.
     */
-   if (device->info.gen == 7 && !device->info.is_haswell &&
+   if (device->info.ver == 7 && !device->info.is_haswell &&
        (type == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
         type == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER))
       data |= ANV_DESCRIPTOR_TEXTURE_SWIZZLE;

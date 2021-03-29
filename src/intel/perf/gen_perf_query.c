@@ -780,7 +780,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
           */
 
          int a_counter_in_bits = 32;
-         if (devinfo->gen >= 8)
+         if (devinfo->ver >= 8)
             a_counter_in_bits = 40;
 
          uint64_t overflow_period = pow(2, a_counter_in_bits) / (perf_cfg->sys_vars.n_eus *
@@ -1194,8 +1194,8 @@ static bool
 oa_report_ctx_id_valid(const struct gen_device_info *devinfo,
                        const uint32_t *report)
 {
-   assert(devinfo->gen >= 8);
-   if (devinfo->gen == 8)
+   assert(devinfo->ver >= 8);
+   if (devinfo->ver == 8)
       return (report[0] & (1 << 25)) != 0;
    return (report[0] & (1 << 16)) != 0;
 }
@@ -1247,7 +1247,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
    /* On Gen12+ OA reports are sourced from per context counters, so we don't
     * ever have to look at the global OA buffer. Yey \o/
     */
-   if (perf_ctx->devinfo->gen >= 12) {
+   if (perf_ctx->devinfo->ver >= 12) {
       last = start;
       goto end;
    }
@@ -1309,7 +1309,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
              * For Haswell we can rely on the HW to stop the progress
              * of OA counters while any other context is acctive.
              */
-            if (devinfo->gen >= 8) {
+            if (devinfo->ver >= 8) {
                /* Consider that the current report matches our context only if
                 * the report says the report ID is valid.
                 */

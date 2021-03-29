@@ -428,7 +428,7 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
        * Centroid interpolation doesn't mean anything on this hardware --
        * there is no multisampling.
        */
-      if (devinfo->gen < 6) {
+      if (devinfo->ver < 6) {
          var->data.centroid = false;
          var->data.sample = false;
       }
@@ -439,7 +439,7 @@ brw_nir_lower_fs_inputs(nir_shader *nir,
       lower_io_options |= nir_lower_io_force_sample_interpolation;
 
    nir_lower_io(nir, nir_var_shader_in, type_size_vec4, lower_io_options);
-   if (devinfo->gen >= 11)
+   if (devinfo->ver >= 11)
       nir_lower_interpolation(nir, ~0);
 
    nir_shader_instructions_pass(nir, lower_barycentric_at_offset,
@@ -548,7 +548,7 @@ brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
     * indirects as scratch all the time, we may easily exceed this limit
     * without having any fallback.
     */
-   if (is_scalar && devinfo->gen <= 7 && !devinfo->is_haswell)
+   if (is_scalar && devinfo->ver <= 7 && !devinfo->is_haswell)
       indirect_mask |= nir_var_function_temp;
 
    return indirect_mask;
@@ -630,7 +630,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
           nir->info.stage == MESA_SHADER_TESS_EVAL);
       OPT(nir_opt_peephole_select, 0, !is_vec4_tessellation, false);
       OPT(nir_opt_peephole_select, 8, !is_vec4_tessellation,
-          compiler->devinfo->gen >= 6);
+          compiler->devinfo->ver >= 6);
 
       OPT(nir_opt_intrinsics);
       OPT(nir_opt_idiv_const, 32);
@@ -708,9 +708,9 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
       case nir_op_flog2:
       case nir_op_fsin:
       case nir_op_fcos:
-         return devinfo->gen < 9 ? 32 : 0;
+         return devinfo->ver < 9 ? 32 : 0;
       default:
-         if (devinfo->gen >= 11) {
+         if (devinfo->ver >= 11) {
             if (nir_op_infos[alu->op].num_inputs >= 2 &&
                 alu->dest.dest.ssa.bit_size == 8)
                return 16;
@@ -739,7 +739,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
       case nir_intrinsic_quad_swap_horizontal:
       case nir_intrinsic_quad_swap_vertical:
       case nir_intrinsic_quad_swap_diagonal:
-         if (intrin->src[0].ssa->bit_size == 8 && devinfo->gen >= 11)
+         if (intrin->src[0].ssa->bit_size == 8 && devinfo->ver >= 11)
             return 16;
          return 0;
 
@@ -772,7 +772,7 @@ lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
 
    case nir_instr_type_phi: {
       nir_phi_instr *phi = nir_instr_as_phi(instr);
-      if (devinfo->gen >= 11 && phi->dest.ssa.bit_size == 8)
+      if (devinfo->ver >= 11 && phi->dest.ssa.bit_size == 8)
          return 16;
       return 0;
    }
@@ -811,10 +811,10 @@ brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
 
    /* See also brw_nir_trig_workarounds.py */
    if (compiler->precise_trig &&
-       !(devinfo->gen >= 10 || devinfo->is_kabylake))
+       !(devinfo->ver >= 10 || devinfo->is_kabylake))
       OPT(brw_nir_apply_trig_workarounds);
 
-   if (devinfo->gen >= 12)
+   if (devinfo->ver >= 12)
       OPT(brw_nir_clamp_image_1d_2d_array_sizes);
 
    static const nir_lower_tex_options tex_options = {
@@ -1106,7 +1106,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
    if (OPT(nir_lower_int64))
       brw_nir_optimize(nir, compiler, is_scalar, false);
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       /* Try and fuse multiply-adds */
       OPT(brw_nir_opt_peephole_ffma);
    }
@@ -1128,7 +1128,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
           nir->info.stage == MESA_SHADER_TESS_EVAL);
       OPT(nir_opt_peephole_select, 0, is_vec4_tessellation, false);
       OPT(nir_opt_peephole_select, 1, is_vec4_tessellation,
-          compiler->devinfo->gen >= 6);
+          compiler->devinfo->ver >= 6);
    }
 
    do {
@@ -1200,7 +1200,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
     * run it last because it stashes data in instr->pass_flags and we don't
     * want that to be squashed by other NIR passes.
     */
-   if (devinfo->gen <= 5)
+   if (devinfo->ver <= 5)
       brw_nir_analyze_boolean_resolves(nir);
 
    nir_sweep(nir);
@@ -1224,11 +1224,11 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    };
 
    /* Iron Lake and prior require lowering of all rectangle textures */
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       tex_options.lower_rect = true;
 
    /* Prior to Broadwell, our hardware can't actually do GL_CLAMP */
-   if (devinfo->gen < 8) {
+   if (devinfo->ver < 8) {
       tex_options.saturate_s = key_tex->gl_clamp_mask[0];
       tex_options.saturate_t = key_tex->gl_clamp_mask[1];
       tex_options.saturate_r = key_tex->gl_clamp_mask[2];
@@ -1245,7 +1245,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
    }
 
    /* Prior to Haswell, we have to lower gradients on shadow samplers */
-   tex_options.lower_txd_shadow = devinfo->gen < 8 && !devinfo->is_haswell;
+   tex_options.lower_txd_shadow = devinfo->ver < 8 && !devinfo->is_haswell;
 
    tex_options.lower_y_uv_external = key_tex->y_uv_image_mask;
    tex_options.lower_y_u_v_external = key_tex->y_u_v_image_mask;
@@ -1468,9 +1468,9 @@ brw_type_for_nir_type(const struct gen_device_info *devinfo, nir_alu_type type)
    case nir_type_float64:
       return BRW_REGISTER_TYPE_DF;
    case nir_type_int64:
-      return devinfo->gen < 8 ? BRW_REGISTER_TYPE_DF : BRW_REGISTER_TYPE_Q;
+      return devinfo->ver < 8 ? BRW_REGISTER_TYPE_DF : BRW_REGISTER_TYPE_Q;
    case nir_type_uint64:
-      return devinfo->gen < 8 ? BRW_REGISTER_TYPE_DF : BRW_REGISTER_TYPE_UQ;
+      return devinfo->ver < 8 ? BRW_REGISTER_TYPE_DF : BRW_REGISTER_TYPE_UQ;
    case nir_type_int16:
       return BRW_REGISTER_TYPE_W;
    case nir_type_uint16:

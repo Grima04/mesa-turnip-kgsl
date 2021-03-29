@@ -739,7 +739,7 @@ namespace brw {
       LRP(const dst_reg &dst, const src_reg &x, const src_reg &y,
           const src_reg &a) const
       {
-         if (shader->devinfo->gen >= 6 && shader->devinfo->gen <= 10) {
+         if (shader->devinfo->ver >= 6 && shader->devinfo->ver <= 10) {
             /* The LRP instruction actually does op1 * op0 + op2 * (1 - op0), so
              * we need to reorder the operands.
              */
@@ -855,10 +855,10 @@ namespace brw {
           * Gen7 relaxes most of the above restrictions, but still can't use IMM
           * operands to math
           */
-         if ((shader->devinfo->gen == 6 &&
+         if ((shader->devinfo->ver == 6 &&
               (src.file == IMM || src.file == UNIFORM ||
                src.abs || src.negate)) ||
-             (shader->devinfo->gen == 7 && src.file == IMM)) {
+             (shader->devinfo->ver == 7 && src.file == IMM)) {
             const dst_reg tmp = vgrf(src.type);
             MOV(tmp, src);
             return tmp;

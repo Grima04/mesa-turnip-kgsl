@@ -203,7 +203,7 @@ intel_aux_map_init(void *driver_ctx,
                    const struct gen_device_info *devinfo)
 {
    struct intel_aux_map_context *ctx;
-   if (devinfo->gen < 12)
+   if (devinfo->ver < 12)
       return NULL;
 
    ctx = ralloc(NULL, struct intel_aux_map_context);

@@ -60,7 +60,7 @@ brw_upload_binding_table(struct brw_context *brw,
 
    if (prog_data->binding_table.size_bytes == 0) {
       /* There are no surfaces; skip making the binding table altogether. */
-      if (stage_state->bind_bo_offset == 0 && devinfo->gen < 9)
+      if (stage_state->bind_bo_offset == 0 && devinfo->ver < 9)
          return;
 
       stage_state->bind_bo_offset = 0;
@@ -84,7 +84,7 @@ brw_upload_binding_table(struct brw_context *brw,
 
    brw->ctx.NewDriverState |= BRW_NEW_BINDING_TABLE_POINTERS;
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       BEGIN_BATCH(2);
       OUT_BATCH(packet_name << 16 | (2 - 2));
       /* Align SurfaceStateOffset[16:6] format to [15:5] PS Binding Table field

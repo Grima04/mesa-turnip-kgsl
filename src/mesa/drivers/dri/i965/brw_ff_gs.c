@@ -72,7 +72,7 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
     */
    brw_set_default_mask_control(&c.func, BRW_MASK_DISABLE);
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       unsigned num_verts;
       bool check_edge_flag;
       /* On Sandybridge, we use the GS for implementing transform feedback
@@ -172,7 +172,7 @@ brw_ff_gs_populate_key(struct brw_context *brw,
 
    struct gl_context *ctx = &brw->ctx;
 
-   assert(devinfo->gen < 7);
+   assert(devinfo->ver < 7);
 
    memset(key, 0, sizeof(*key));
 
@@ -191,7 +191,7 @@ brw_ff_gs_populate_key(struct brw_context *brw,
       key->pv_first = true;
    }
 
-   if (devinfo->gen == 6) {
+   if (devinfo->ver == 6) {
       /* On Gen6, GS is used for transform feedback. */
       /* BRW_NEW_TRANSFORM_FEEDBACK */
       if (_mesa_is_xfb_active_and_unpaused(ctx)) {

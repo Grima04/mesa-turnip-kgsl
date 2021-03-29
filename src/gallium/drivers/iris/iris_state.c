@@ -2397,7 +2397,7 @@ fill_surface_state(struct isl_device *isl_dev,
          iris_resource_get_clear_color(res, &clear_bo, &clear_offset);
       if (clear_bo) {
          f.clear_address = clear_bo->gtt_offset + clear_offset;
-         f.use_clear_address = isl_dev->info->gen > 9;
+         f.use_clear_address = isl_dev->info->ver > 9;
       }
    }
 

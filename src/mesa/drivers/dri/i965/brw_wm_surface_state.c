@@ -74,7 +74,7 @@ static const uint32_t pte_mocs[] = {
 uint32_t
 brw_get_bo_mocs(const struct gen_device_info *devinfo, struct brw_bo *bo)
 {
-   return (bo && bo->external ? pte_mocs : wb_mocs)[devinfo->gen];
+   return (bo && bo->external ? pte_mocs : wb_mocs)[devinfo->ver];
 }
 
 static void
@@ -196,7 +196,7 @@ brw_emit_surface_state(struct brw_context *brw,
        */
       assert((aux_offset & 0xfff) == 0);
 
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          uint64_t *aux_addr = state + brw->isl_dev.ss.aux_addr_offset;
          *aux_addr = brw_state_reloc(&brw->batch,
                                      *surf_offset +
@@ -531,12 +531,12 @@ static void brw_update_texture_surface(struct gl_context *ctx,
       /* Implement gen6 and gen7 gather work-around */
       bool need_green_to_blue = false;
       if (for_gather) {
-         if (devinfo->gen == 7 && (format == ISL_FORMAT_R32G32_FLOAT ||
+         if (devinfo->ver == 7 && (format == ISL_FORMAT_R32G32_FLOAT ||
                                    format == ISL_FORMAT_R32G32_SINT ||
                                    format == ISL_FORMAT_R32G32_UINT)) {
             format = ISL_FORMAT_R32G32_FLOAT_LD;
             need_green_to_blue = devinfo->is_haswell;
-         } else if (devinfo->gen == 6) {
+         } else if (devinfo->ver == 6) {
             /* Sandybridge's gather4 message is broken for integer formats.
              * To work around this, we pretend the surface is UNORM for
              * 8 or 16-bit formats, and emit shader instructions to recover
@@ -567,14 +567,14 @@ static void brw_update_texture_surface(struct gl_context *ctx,
       }
 
       if (obj->StencilSampling && firstImage->_BaseFormat == GL_DEPTH_STENCIL) {
-         if (devinfo->gen <= 7) {
+         if (devinfo->ver <= 7) {
             assert(mt->shadow_mt && !mt->stencil_mt->shadow_needs_update);
             mt = mt->shadow_mt;
          } else {
             mt = mt->stencil_mt;
          }
          format = ISL_FORMAT_R8_UINT;
-      } else if (devinfo->gen <= 7 && mt->format == MESA_FORMAT_S_UINT8) {
+      } else if (devinfo->ver <= 7 && mt->format == MESA_FORMAT_S_UINT8) {
          assert(mt->shadow_mt && !mt->shadow_needs_update);
          mt = mt->shadow_mt;
          format = ISL_FORMAT_R8_UINT;
@@ -603,7 +603,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
       /* On Ivy Bridge and earlier, we handle texture swizzle with shader
        * code.  The actual surface swizzle should be identity.
        */
-      if (devinfo->gen <= 7 && !devinfo->is_haswell)
+      if (devinfo->ver <= 7 && !devinfo->is_haswell)
          view.swizzle = ISL_SWIZZLE_IDENTITY;
 
       if (obj->Target == GL_TEXTURE_CUBE_MAP ||
@@ -849,7 +849,7 @@ emit_null_surface_state(struct brw_context *brw,
    const unsigned height  = fb ? _mesa_geometric_height(fb)  : 1;
    const unsigned samples = fb ? _mesa_geometric_samples(fb) : 1;
 
-   if (devinfo->gen != 6 || samples <= 1) {
+   if (devinfo->ver != 6 || samples <= 1) {
       isl_null_fill_state(&brw->isl_dev, surf,
                           isl_extent3d(width, height, 1));
       return;
@@ -973,7 +973,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
               (mt->surf.image_alignment_el.height == 4 ?
                   BRW_SURFACE_VERTICAL_ALIGN_ENABLE : 0));
 
-   if (devinfo->gen < 6) {
+   if (devinfo->ver < 6) {
       /* _NEW_COLOR */
       if (!ctx->Color.ColorLogicOpEnabled &&
           ctx->Color._AdvancedBlendMode == BLEND_NONE &&
@@ -1019,7 +1019,7 @@ update_renderbuffer_surfaces(struct brw_context *brw)
          struct gl_renderbuffer *rb = fb->_ColorDrawBuffers[i];
 
          if (brw_renderbuffer(rb)) {
-            surf_offsets[rt_start + i] = devinfo->gen >= 6 ?
+            surf_offsets[rt_start + i] = devinfo->ver >= 6 ?
                gen6_update_renderbuffer_surface(brw, rb, i, rt_start + i) :
                gen4_update_renderbuffer_surface(brw, rb, i, rt_start + i);
          } else {
@@ -1038,7 +1038,7 @@ update_renderbuffer_surfaces(struct brw_context *brw)
     *  is set due to new association of BTI, PS Scoreboard Stall bit must
     *  be set in this packet."
    */
-   if (devinfo->gen >= 11) {
+   if (devinfo->ver >= 11) {
       brw_emit_pipe_control_flush(brw,
                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                   PIPE_CONTROL_STALL_AT_SCOREBOARD);
@@ -1245,7 +1245,7 @@ brw_update_texture_surfaces(struct brw_context *brw)
    /* emit alternate set of surface state for gather. this
     * allows the surface format to be overriden for only the
     * gather4 messages. */
-   if (devinfo->gen < 8) {
+   if (devinfo->ver < 8) {
       if (vs && vs->info.uses_texture_gather)
          update_stage_texture_surfaces(brw, vs, &brw->vs.base, true, 0);
       if (tcs && tcs->info.uses_texture_gather)
@@ -1300,7 +1300,7 @@ brw_update_cs_texture_surfaces(struct brw_context *brw)
     * allows the surface format to be overriden for only the
     * gather4 messages.
     */
-   if (devinfo->gen < 8) {
+   if (devinfo->ver < 8) {
       if (cs && cs->info.uses_texture_gather)
          update_stage_texture_surfaces(brw, cs, &brw->cs.base, true, 0);
    }

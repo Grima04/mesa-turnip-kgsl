@@ -35,7 +35,7 @@
 bool
 brw_has_jip(const struct gen_device_info *devinfo, enum opcode opcode)
 {
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       return false;
 
    return opcode == BRW_OPCODE_IF ||
@@ -50,11 +50,11 @@ brw_has_jip(const struct gen_device_info *devinfo, enum opcode opcode)
 bool
 brw_has_uip(const struct gen_device_info *devinfo, enum opcode opcode)
 {
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       return false;
 
-   return (devinfo->gen >= 7 && opcode == BRW_OPCODE_IF) ||
-          (devinfo->gen >= 8 && opcode == BRW_OPCODE_ELSE) ||
+   return (devinfo->ver >= 7 && opcode == BRW_OPCODE_IF) ||
+          (devinfo->ver >= 8 && opcode == BRW_OPCODE_ELSE) ||
           opcode == BRW_OPCODE_BREAK ||
           opcode == BRW_OPCODE_CONTINUE ||
           opcode == BRW_OPCODE_HALT;
@@ -63,7 +63,7 @@ brw_has_uip(const struct gen_device_info *devinfo, enum opcode opcode)
 static bool
 has_branch_ctrl(const struct gen_device_info *devinfo, enum opcode opcode)
 {
-   if (devinfo->gen < 8)
+   if (devinfo->ver < 8)
       return false;
 
    return opcode == BRW_OPCODE_IF ||
@@ -92,7 +92,7 @@ is_send(unsigned opcode)
 static bool
 is_split_send(UNUSED const struct gen_device_info *devinfo, unsigned opcode)
 {
-   if (devinfo->gen >= 12)
+   if (devinfo->ver >= 12)
       return is_send(opcode);
    else
       return opcode == BRW_OPCODE_SENDS ||
@@ -393,9 +393,9 @@ static const char *const dp_rc_msg_type_gen9[16] = {
 static const char *const *
 dp_rc_msg_type(const struct gen_device_info *devinfo)
 {
-   return (devinfo->gen >= 9 ? dp_rc_msg_type_gen9 :
-           devinfo->gen >= 7 ? dp_rc_msg_type_gen7 :
-           devinfo->gen >= 6 ? dp_rc_msg_type_gen6 :
+   return (devinfo->ver >= 9 ? dp_rc_msg_type_gen9 :
+           devinfo->ver >= 7 ? dp_rc_msg_type_gen7 :
+           devinfo->ver >= 6 ? dp_rc_msg_type_gen6 :
            dp_write_port_msg_type);
 }
 
@@ -761,7 +761,7 @@ dest(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
       /* These are fixed for split sends */
       type = BRW_REGISTER_TYPE_UD;
       elem_size = 4;
-      if (devinfo->gen >= 12) {
+      if (devinfo->ver >= 12) {
          err |= reg(file, brw_inst_send_dst_reg_file(devinfo, inst),
                     brw_inst_dst_da_reg_nr(devinfo, inst));
          string(file, brw_reg_type_to_letters(type));
@@ -839,12 +839,12 @@ dest_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    unsigned subreg_nr;
    enum brw_reg_type type;
 
-   if (devinfo->gen < 10 && is_align1)
+   if (devinfo->ver < 10 && is_align1)
       return 0;
 
-   if (devinfo->gen == 6 && brw_inst_3src_a16_dst_reg_file(devinfo, inst))
+   if (devinfo->ver == 6 && brw_inst_3src_a16_dst_reg_file(devinfo, inst))
       reg_file = BRW_MESSAGE_REGISTER_FILE;
-   else if (devinfo->gen >= 12)
+   else if (devinfo->ver >= 12)
       reg_file = brw_inst_3src_a1_dst_reg_file(devinfo, inst);
    else if (is_align1 && brw_inst_3src_a1_dst_reg_file(devinfo, inst))
       reg_file = BRW_ARCHITECTURE_REGISTER_FILE;
@@ -904,7 +904,7 @@ src_da1(FILE *file,
 {
    int err = 0;
 
-   if (devinfo->gen >= 8 && is_logic_instruction(opcode))
+   if (devinfo->ver >= 8 && is_logic_instruction(opcode))
       err |= control(file, "bitnot", m_bitnot, _negate, NULL);
    else
       err |= control(file, "negate", m_negate, _negate, NULL);
@@ -936,7 +936,7 @@ src_ia1(FILE *file,
 {
    int err = 0;
 
-   if (devinfo->gen >= 8 && is_logic_instruction(opcode))
+   if (devinfo->ver >= 8 && is_logic_instruction(opcode))
       err |= control(file, "bitnot", m_bitnot, _negate, NULL);
    else
       err |= control(file, "negate", m_negate, _negate, NULL);
@@ -991,7 +991,7 @@ src_da16(FILE *file,
 {
    int err = 0;
 
-   if (devinfo->gen >= 8 && is_logic_instruction(opcode))
+   if (devinfo->ver >= 8 && is_logic_instruction(opcode))
       err |= control(file, "bitnot", m_bitnot, _negate, NULL);
    else
       err |= control(file, "negate", m_negate, _negate, NULL);
@@ -1023,7 +1023,7 @@ vstride_from_align1_3src_vstride(const struct gen_device_info *devinfo,
    switch (vstride) {
    case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_0: return BRW_VERTICAL_STRIDE_0;
    case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_2:
-      if (devinfo->gen >= 12)
+      if (devinfo->ver >= 12)
          return BRW_VERTICAL_STRIDE_1;
       else
          return BRW_VERTICAL_STRIDE_2;
@@ -1114,11 +1114,11 @@ src0_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_scalar_region;
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
-   if (devinfo->gen < 10 && is_align1)
+   if (devinfo->ver < 10 && is_align1)
       return 0;
 
    if (is_align1) {
-      if (devinfo->gen >= 12 && !brw_inst_3src_a1_src0_is_imm(devinfo, inst)) {
+      if (devinfo->ver >= 12 && !brw_inst_3src_a1_src0_is_imm(devinfo, inst)) {
          _file = brw_inst_3src_a1_src0_reg_file(devinfo, inst);
       } else if (brw_inst_3src_a1_src0_reg_file(devinfo, inst) ==
                  BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
@@ -1200,11 +1200,11 @@ src1_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_scalar_region;
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
-   if (devinfo->gen < 10 && is_align1)
+   if (devinfo->ver < 10 && is_align1)
       return 0;
 
    if (is_align1) {
-      if (devinfo->gen >= 12) {
+      if (devinfo->ver >= 12) {
          _file = brw_inst_3src_a1_src1_reg_file(devinfo, inst);
       } else if (brw_inst_3src_a1_src1_reg_file(devinfo, inst) ==
                  BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
@@ -1273,11 +1273,11 @@ src2_3src(FILE *file, const struct gen_device_info *devinfo, const brw_inst *ins
    bool is_scalar_region;
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
 
-   if (devinfo->gen < 10 && is_align1)
+   if (devinfo->ver < 10 && is_align1)
       return 0;
 
    if (is_align1) {
-      if (devinfo->gen >= 12 && !brw_inst_3src_a1_src2_is_imm(devinfo, inst)) {
+      if (devinfo->ver >= 12 && !brw_inst_3src_a1_src2_is_imm(devinfo, inst)) {
          _file = brw_inst_3src_a1_src2_reg_file(devinfo, inst);
       } else if (brw_inst_3src_a1_src2_reg_file(devinfo, inst) ==
                  BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE) {
@@ -1470,7 +1470,7 @@ static int
 src0(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst)
 {
    if (is_split_send(devinfo, brw_inst_opcode(devinfo, inst))) {
-      if (devinfo->gen >= 12) {
+      if (devinfo->ver >= 12) {
          return src_sends_da(file,
                              devinfo,
                              BRW_REGISTER_TYPE_UD,
@@ -1610,7 +1610,7 @@ qtr_ctrl(FILE *file, const struct gen_device_info *devinfo, const brw_inst *inst
 {
    int qtr_ctl = brw_inst_qtr_control(devinfo, inst);
    int exec_size = 1 << brw_inst_exec_size(devinfo, inst);
-   const unsigned nib_ctl = devinfo->gen < 7 ? 0 :
+   const unsigned nib_ctl = devinfo->ver < 7 ? 0 :
                             brw_inst_nib_control(devinfo, inst);
 
    if (exec_size < 8 || nib_ctl) {
@@ -1696,7 +1696,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       err |= control(file, "predicate inverse", pred_inv,
                      brw_inst_pred_inv(devinfo, inst), NULL);
       format(file, "f%"PRIu64".%"PRIu64,
-             devinfo->gen >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0,
+             devinfo->ver >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0,
              brw_inst_flag_subreg_nr(devinfo, inst));
       if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1) {
          err |= control(file, "predicate control align1", pred_ctrl_align1,
@@ -1736,12 +1736,12 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
        * control flow doesn't update flags.
        */
       if (brw_inst_cond_modifier(devinfo, inst) &&
-          (devinfo->gen < 6 || (opcode != BRW_OPCODE_SEL &&
+          (devinfo->ver < 6 || (opcode != BRW_OPCODE_SEL &&
                                 opcode != BRW_OPCODE_CSEL &&
                                 opcode != BRW_OPCODE_IF &&
                                 opcode != BRW_OPCODE_WHILE))) {
          format(file, ".f%"PRIu64".%"PRIu64,
-                devinfo->gen >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0,
+                devinfo->ver >= 7 ? brw_inst_flag_reg_nr(devinfo, inst) : 0,
                 brw_inst_flag_subreg_nr(devinfo, inst));
       }
    }
@@ -1753,7 +1753,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       string(file, ")");
    }
 
-   if (opcode == BRW_OPCODE_SEND && devinfo->gen < 6)
+   if (opcode == BRW_OPCODE_SEND && devinfo->ver < 6)
       format(file, " %"PRIu64, brw_inst_base_mrf(devinfo, inst));
 
    if (brw_has_uip(devinfo, opcode)) {
@@ -1767,7 +1767,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       write_label(file, devinfo, root_label, offset, brw_inst_uip(devinfo, inst));
    } else if (brw_has_jip(devinfo, opcode)) {
       int jip;
-      if (devinfo->gen >= 7) {
+      if (devinfo->ver >= 7) {
          jip = brw_inst_jip(devinfo, inst);
       } else {
          jip = brw_inst_gen6_jump_count(devinfo, inst);
@@ -1776,20 +1776,20 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       pad(file, 16);
       string(file, "JIP: ");
       write_label(file, devinfo, root_label, offset, jip);
-   } else if (devinfo->gen < 6 && (opcode == BRW_OPCODE_BREAK ||
+   } else if (devinfo->ver < 6 && (opcode == BRW_OPCODE_BREAK ||
                                    opcode == BRW_OPCODE_CONTINUE ||
                                    opcode == BRW_OPCODE_ELSE)) {
       pad(file, 16);
       format(file, "Jump: %d", brw_inst_gen4_jump_count(devinfo, inst));
       pad(file, 32);
       format(file, "Pop: %"PRIu64, brw_inst_gen4_pop_count(devinfo, inst));
-   } else if (devinfo->gen < 6 && (opcode == BRW_OPCODE_IF ||
+   } else if (devinfo->ver < 6 && (opcode == BRW_OPCODE_IF ||
                                    opcode == BRW_OPCODE_IFF ||
                                    opcode == BRW_OPCODE_HALT ||
                                    opcode == BRW_OPCODE_WHILE)) {
       pad(file, 16);
       format(file, "Jump: %d", brw_inst_gen4_jump_count(devinfo, inst));
-   } else if (devinfo->gen < 6 && opcode == BRW_OPCODE_ENDIF) {
+   } else if (devinfo->ver < 6 && opcode == BRW_OPCODE_ENDIF) {
       pad(file, 16);
       format(file, "Pop: %"PRIu64, brw_inst_gen4_pop_count(devinfo, inst));
    } else if (opcode == BRW_OPCODE_JMPI) {
@@ -1871,7 +1871,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       space = 0;
 
       fprintf(file, "            ");
-      err |= control(file, "SFID", devinfo->gen >= 6 ? gen6_sfid : gen4_sfid,
+      err |= control(file, "SFID", devinfo->ver >= 6 ? gen6_sfid : gen4_sfid,
                      sfid, &space);
       string(file, " MsgDesc:");
 
@@ -1893,7 +1893,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                            brw_inst_math_msg_precision(devinfo, inst), &space);
             break;
          case BRW_SFID_SAMPLER:
-            if (devinfo->gen >= 5) {
+            if (devinfo->ver >= 5) {
                err |= control(file, "sampler message", gen5_sampler_msg_type,
                               brw_sampler_desc_msg_type(devinfo, imm_desc),
                               &space);
@@ -1920,15 +1920,15 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
          case GEN6_SFID_DATAPORT_SAMPLER_CACHE:
          case GEN6_SFID_DATAPORT_CONSTANT_CACHE:
             /* aka BRW_SFID_DATAPORT_READ on Gen4-5 */
-            if (devinfo->gen >= 6) {
+            if (devinfo->ver >= 6) {
                format(file, " (%u, %u, %u, %u)",
                       brw_dp_desc_binding_table_index(devinfo, imm_desc),
                       brw_dp_desc_msg_control(devinfo, imm_desc),
                       brw_dp_desc_msg_type(devinfo, imm_desc),
-                      devinfo->gen >= 7 ? 0u :
+                      devinfo->ver >= 7 ? 0u :
                       brw_dp_write_desc_write_commit(devinfo, imm_desc));
             } else {
-               bool is_965 = devinfo->gen == 4 && !devinfo->is_g4x;
+               bool is_965 = devinfo->ver == 4 && !devinfo->is_g4x;
                err |= control(file, "DP read message type",
                               is_965 ? gen4_dp_read_port_msg_type :
                                        g45_dp_read_port_msg_type,
@@ -1951,17 +1951,17 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                            dp_rc_msg_type(devinfo), msg_type, &space);
 
             bool is_rt_write = msg_type ==
-               (devinfo->gen >= 6 ? GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE
+               (devinfo->ver >= 6 ? GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE
                                   : BRW_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE);
 
             if (is_rt_write) {
                err |= control(file, "RT message type", m_rt_write_subtype,
                               brw_inst_rt_message_type(devinfo, inst), &space);
-               if (devinfo->gen >= 6 && brw_inst_rt_slot_group(devinfo, inst))
+               if (devinfo->ver >= 6 && brw_inst_rt_slot_group(devinfo, inst))
                   string(file, " Hi");
                if (brw_dp_write_desc_last_render_target(devinfo, imm_desc))
                   string(file, " LastRT");
-               if (devinfo->gen < 7 &&
+               if (devinfo->ver < 7 &&
                    brw_dp_write_desc_write_commit(devinfo, imm_desc))
                   string(file, " WriteCommit");
             } else {
@@ -1982,11 +1982,11 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             space = 1;
 
             err |= control(file, "urb opcode",
-                           devinfo->gen >= 7 ? gen7_urb_opcode
+                           devinfo->ver >= 7 ? gen7_urb_opcode
                                              : gen5_urb_opcode,
                            opcode, &space);
 
-            if (devinfo->gen >= 7 &&
+            if (devinfo->ver >= 7 &&
                 brw_inst_urb_per_slot_offset(devinfo, inst)) {
                string(file, " per-slot");
             }
@@ -2001,13 +2001,13 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                               &space);
             }
 
-            if (devinfo->gen < 7) {
+            if (devinfo->ver < 7) {
                err |= control(file, "urb allocate", urb_allocate,
                               brw_inst_urb_allocate(devinfo, inst), &space);
                err |= control(file, "urb used", urb_used,
                               brw_inst_urb_used(devinfo, inst), &space);
             }
-            if (devinfo->gen < 8) {
+            if (devinfo->ver < 8) {
                err |= control(file, "urb complete", urb_complete,
                               brw_inst_urb_complete(devinfo, inst), &space);
             }
@@ -2022,7 +2022,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             break;
 
          case GEN7_SFID_DATAPORT_DATA_CACHE:
-            if (devinfo->gen >= 7) {
+            if (devinfo->ver >= 7) {
                format(file, " (");
 
                err |= control(file, "DP DC0 message type",
@@ -2049,7 +2049,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             break;
 
          case HSW_SFID_DATAPORT_DATA_CACHE_1: {
-            if (devinfo->gen >= 7) {
+            if (devinfo->ver >= 7) {
                format(file, " (");
 
                unsigned msg_ctrl = brw_dp_desc_msg_control(devinfo, imm_desc);
@@ -2103,7 +2103,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
          }
 
          case GEN7_SFID_PIXEL_INTERPOLATOR:
-            if (devinfo->gen >= 7) {
+            if (devinfo->ver >= 7) {
                format(file, " (%s, %s, 0x%02"PRIx64")",
                       brw_inst_pi_nopersp(devinfo, inst) ? "linear" : "persp",
                       pixel_interpolator_msg_types[brw_inst_pi_message_type(devinfo, inst)],
@@ -2148,7 +2148,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       space = 1;
       err |= control(file, "access mode", access_mode,
                      brw_inst_access_mode(devinfo, inst), &space);
-      if (devinfo->gen >= 6) {
+      if (devinfo->ver >= 6) {
          err |= control(file, "write enable control", wectrl,
                         brw_inst_mask_control(devinfo, inst), &space);
       } else {
@@ -2156,13 +2156,13 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                         brw_inst_mask_control(devinfo, inst), &space);
       }
 
-      if (devinfo->gen < 12) {
+      if (devinfo->ver < 12) {
          err |= control(file, "dependency control", dep_ctrl,
                         ((brw_inst_no_dd_check(devinfo, inst) << 1) |
                          brw_inst_no_dd_clear(devinfo, inst)), &space);
       }
 
-      if (devinfo->gen >= 6)
+      if (devinfo->ver >= 6)
          err |= qtr_ctrl(file, devinfo, inst);
       else {
          if (brw_inst_qtr_control(devinfo, inst) == BRW_COMPRESSION_COMPRESSED &&
@@ -2176,18 +2176,18 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
          }
       }
 
-      if (devinfo->gen >= 12)
+      if (devinfo->ver >= 12)
          err |= swsb(file, devinfo, inst);
 
       err |= control(file, "compaction", cmpt_ctrl, is_compacted, &space);
       err |= control(file, "thread control", thread_ctrl,
-                     (devinfo->gen >= 12 ? brw_inst_atomic_control(devinfo, inst) :
+                     (devinfo->ver >= 12 ? brw_inst_atomic_control(devinfo, inst) :
                                            brw_inst_thread_control(devinfo, inst)),
                      &space);
       if (has_branch_ctrl(devinfo, opcode)) {
          err |= control(file, "branch ctrl", branch_ctrl,
                         brw_inst_branch_control(devinfo, inst), &space);
-      } else if (devinfo->gen >= 6) {
+      } else if (devinfo->ver >= 6) {
          err |= control(file, "acc write control", accwr,
                         brw_inst_acc_wr_control(devinfo, inst), &space);
       }

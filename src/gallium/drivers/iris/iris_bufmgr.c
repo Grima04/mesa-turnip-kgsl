@@ -1866,7 +1866,7 @@ iris_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
     *  - Color Calc State Pointer
     */
    const uint64_t dynamic_pool_size =
-      (devinfo->gen >= 12 ? _2GB : _4GB_minus_1) - IRIS_BORDER_COLOR_POOL_SIZE;
+      (devinfo->ver >= 12 ? _2GB : _4GB_minus_1) - IRIS_BORDER_COLOR_POOL_SIZE;
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_DYNAMIC],
                       IRIS_MEMZONE_DYNAMIC_START + IRIS_BORDER_COLOR_POOL_SIZE,
                       dynamic_pool_size);

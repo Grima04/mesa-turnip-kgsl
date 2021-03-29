@@ -226,7 +226,7 @@ static void do_flatshade_triangle( struct brw_sf_compile *c )
    if (c->key.primitive == BRW_SF_PRIM_UNFILLED_TRIS)
       return;
 
-   if (p->devinfo->gen == 5)
+   if (p->devinfo->ver == 5)
        jmpi = 2;
 
    nr = count_flatshaded_attributes(c);
@@ -258,7 +258,7 @@ static void do_flatshade_line( struct brw_sf_compile *c )
    if (c->key.primitive == BRW_SF_PRIM_UNFILLED_TRIS)
       return;
 
-   if (p->devinfo->gen == 5)
+   if (p->devinfo->ver == 5)
        jmpi = 2;
 
    nr = count_flatshaded_attributes(c);

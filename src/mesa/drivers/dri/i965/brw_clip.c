@@ -114,7 +114,7 @@ brw_upload_clip_prog(struct brw_context *brw)
    if (ctx->Transform.ClipPlanesEnabled)
       key.nr_userclip = util_logbase2(ctx->Transform.ClipPlanesEnabled) + 1;
 
-   if (devinfo->gen == 5)
+   if (devinfo->ver == 5)
        key.clip_mode = BRW_CLIP_MODE_KERNEL_CLIP;
    else
        key.clip_mode = BRW_CLIP_MODE_NORMAL;

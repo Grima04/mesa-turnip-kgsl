@@ -269,9 +269,9 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_DEPTH_CLIP_DISABLE_SEPARATE:
    case PIPE_CAP_FRAGMENT_SHADER_INTERLOCK:
    case PIPE_CAP_ATOMIC_FLOAT_MINMAX:
-      return devinfo->gen >= 9;
+      return devinfo->ver >= 9;
    case PIPE_CAP_DEPTH_BOUNDS_TEST:
-      return devinfo->gen >= 12;
+      return devinfo->ver >= 12;
    case PIPE_CAP_MAX_DUAL_SOURCE_RENDER_TARGETS:
       return 1;
    case PIPE_CAP_MAX_RENDER_TARGETS:
@@ -399,7 +399,7 @@ iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
        * version 8 and 9, because generated VERTEX_BUFFER_STATEs are cached
        * separately.
        */
-      return devinfo->gen >= 11;
+      return devinfo->ver >= 11;
 
    default:
       return u_pipe_screen_get_param_defaults(pscreen, param);
@@ -786,7 +786,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
 
    p_atomic_set(&screen->refcount, 1);
 
-   if (screen->devinfo.gen < 8 || screen->devinfo.is_cherryview)
+   if (screen->devinfo.ver < 8 || screen->devinfo.is_cherryview)
       return NULL;
 
    bool bo_reuse = false;
@@ -836,7 +836,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    screen->compiler->supports_pull_constants = false;
    screen->compiler->supports_shader_constants = true;
    screen->compiler->compact_params = false;
-   screen->compiler->indirect_ubos_use_sampler = screen->devinfo.gen < 12;
+   screen->compiler->indirect_ubos_use_sampler = screen->devinfo.ver < 12;
 
    screen->l3_config_3d = iris_get_default_l3_config(&screen->devinfo, false);
    screen->l3_config_cs = iris_get_default_l3_config(&screen->devinfo, true);

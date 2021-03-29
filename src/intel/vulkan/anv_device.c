@@ -192,8 +192,8 @@ get_device_extensions(const struct anv_physical_device *device,
                       struct vk_device_extension_table *ext)
 {
    *ext = (struct vk_device_extension_table) {
-      .KHR_8bit_storage                      = device->info.gen >= 8,
-      .KHR_16bit_storage                     = device->info.gen >= 8,
+      .KHR_8bit_storage                      = device->info.ver >= 8,
+      .KHR_16bit_storage                     = device->info.ver >= 8,
       .KHR_bind_memory2                      = true,
       .KHR_buffer_device_address             = device->has_a64_buffer_access,
       .KHR_copy_commands2                    = true,
@@ -232,14 +232,14 @@ get_device_extensions(const struct anv_physical_device *device,
       .KHR_sampler_mirror_clamp_to_edge      = true,
       .KHR_sampler_ycbcr_conversion          = true,
       .KHR_separate_depth_stencil_layouts    = true,
-      .KHR_shader_atomic_int64               = device->info.gen >= 9 &&
+      .KHR_shader_atomic_int64               = device->info.ver >= 9 &&
                                                device->use_softpin,
       .KHR_shader_clock                      = true,
       .KHR_shader_draw_parameters            = true,
-      .KHR_shader_float16_int8               = device->info.gen >= 8,
-      .KHR_shader_float_controls             = device->info.gen >= 8,
+      .KHR_shader_float16_int8               = device->info.ver >= 8,
+      .KHR_shader_float_controls             = device->info.ver >= 8,
       .KHR_shader_non_semantic_info          = true,
-      .KHR_shader_subgroup_extended_types    = device->info.gen >= 8,
+      .KHR_shader_subgroup_extended_types    = device->info.ver >= 8,
       .KHR_shader_terminate_invocation       = true,
       .KHR_spirv_1_4                         = true,
       .KHR_storage_buffer_storage_class      = true,
@@ -256,10 +256,10 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_4444_formats                      = true,
       .EXT_buffer_device_address             = device->has_a64_buffer_access,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
-      .EXT_conditional_rendering             = device->info.gen >= 8 ||
+      .EXT_conditional_rendering             = device->info.ver >= 8 ||
                                                device->info.is_haswell,
-      .EXT_conservative_rasterization        = device->info.gen >= 9,
-      .EXT_custom_border_color               = device->info.gen >= 8,
+      .EXT_conservative_rasterization        = device->info.ver >= 9,
+      .EXT_custom_border_color               = device->info.ver >= 8,
       .EXT_depth_clip_enable                 = true,
       .EXT_descriptor_indexing               = device->has_a64_buffer_access &&
                                                device->has_bindless_images,
@@ -269,7 +269,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_extended_dynamic_state            = true,
       .EXT_external_memory_dma_buf           = true,
       .EXT_external_memory_host              = true,
-      .EXT_fragment_shader_interlock         = device->info.gen >= 9,
+      .EXT_fragment_shader_interlock         = device->info.ver >= 9,
       .EXT_global_priority                   = device->has_context_priority,
       .EXT_host_query_reset                  = true,
       .EXT_image_robustness                  = true,
@@ -280,19 +280,19 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_pci_bus_info                      = true,
       .EXT_pipeline_creation_cache_control   = true,
       .EXT_pipeline_creation_feedback        = true,
-      .EXT_post_depth_coverage               = device->info.gen >= 9,
+      .EXT_post_depth_coverage               = device->info.ver >= 9,
       .EXT_private_data                      = true,
 #ifdef ANDROID
       .EXT_queue_family_foreign              = ANDROID,
 #endif
       .EXT_robustness2                       = true,
       .EXT_sample_locations                  = true,
-      .EXT_sampler_filter_minmax             = device->info.gen >= 9,
+      .EXT_sampler_filter_minmax             = device->info.ver >= 9,
       .EXT_scalar_block_layout               = true,
       .EXT_separate_stencil_usage            = true,
       .EXT_shader_atomic_float               = true,
       .EXT_shader_demote_to_helper_invocation = true,
-      .EXT_shader_stencil_export             = device->info.gen >= 9,
+      .EXT_shader_stencil_export             = device->info.ver >= 9,
       .EXT_shader_subgroup_ballot            = true,
       .EXT_shader_subgroup_vote              = true,
       .EXT_shader_viewport_index_layer       = true,
@@ -310,7 +310,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .GOOGLE_user_type                      = true,
       .INTEL_performance_query               = device->perf &&
                                                device->perf->i915_perf_version >= 3,
-      .INTEL_shader_integer_functions2       = device->info.gen >= 8,
+      .INTEL_shader_integer_functions2       = device->info.ver >= 8,
       .NV_compute_shader_derivatives         = true,
    };
 }
@@ -356,7 +356,7 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
    /* We only allow 48-bit addresses with softpin because knowing the actual
     * address is required for the vertex cache flush workaround.
     */
-   device->supports_48bit_addresses = (device->info.gen >= 8) &&
+   device->supports_48bit_addresses = (device->info.ver >= 8) &&
                                       device->has_softpin &&
                                       device->gtt_size > (4ULL << 30 /* GiB */);
 
@@ -673,11 +673,11 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    if (devinfo.is_haswell) {
       mesa_logw("Haswell Vulkan support is incomplete");
-   } else if (devinfo.gen == 7 && !devinfo.is_baytrail) {
+   } else if (devinfo.ver == 7 && !devinfo.is_baytrail) {
       mesa_logw("Ivy Bridge Vulkan support is incomplete");
-   } else if (devinfo.gen == 7 && devinfo.is_baytrail) {
+   } else if (devinfo.ver == 7 && devinfo.is_baytrail) {
       mesa_logw("Bay Trail Vulkan support is incomplete");
-   } else if (devinfo.gen >= 8 && devinfo.gen <= 12) {
+   } else if (devinfo.ver >= 8 && devinfo.ver <= 12) {
       /* Gen8-12 fully supported */
    } else {
       result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
@@ -722,7 +722,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->pci_info.function = drm_device->businfo.pci->func;
 
    device->cmd_parser_version = -1;
-   if (device->info.gen == 7) {
+   if (device->info.ver == 7) {
       device->cmd_parser_version =
          anv_gem_get_param(fd, I915_PARAM_CMD_PARSER_VERSION);
       if (device->cmd_parser_version == -1) {
@@ -799,13 +799,13 @@ anv_physical_device_try_create(struct anv_instance *instance,
    /* We first got the A64 messages on broadwell and we can only use them if
     * we can pass addresses directly into the shader which requires softpin.
     */
-   device->has_a64_buffer_access = device->info.gen >= 8 &&
+   device->has_a64_buffer_access = device->info.ver >= 8 &&
                                    device->use_softpin;
 
    /* We first get bindless image access on Skylake and we can only really do
     * it if we don't have any relocations so we need softpin.
     */
-   device->has_bindless_images = device->info.gen >= 9 &&
+   device->has_bindless_images = device->info.ver >= 9 &&
                                  device->use_softpin;
 
    /* We've had bindless samplers since Ivy Bridge (forever in Vulkan terms)
@@ -813,7 +813,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
     * message header.  However, we've not bothered to wire it up for vec4 so
     * we leave it disabled on gen7.
     */
-   device->has_bindless_samplers = device->info.gen >= 8;
+   device->has_bindless_samplers = device->info.ver >= 8;
 
    device->has_implicit_ccs = device->info.has_aux_map;
 
@@ -854,10 +854,10 @@ anv_physical_device_try_create(struct anv_instance *instance,
    device->compiler->shader_perf_log = compiler_perf_log;
    device->compiler->supports_pull_constants = false;
    device->compiler->constant_buffer_0_is_relative =
-      device->info.gen < 8 || !device->has_context_isolation;
+      device->info.ver < 8 || !device->has_context_isolation;
    device->compiler->supports_shader_constants = true;
    device->compiler->compact_params = false;
-   device->compiler->indirect_ubos_use_sampler = device->info.gen < 12;
+   device->compiler->indirect_ubos_use_sampler = device->info.ver < 12;
 
    /* Broadwell PRM says:
     *
@@ -871,7 +871,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
     *    swizzling modifications."
     */
    bool swizzled =
-      device->info.gen < 8 && anv_gem_get_bit6_swizzle(fd, I915_TILING_X);
+      device->info.ver < 8 && anv_gem_get_bit6_swizzle(fd, I915_TILING_X);
 
    isl_device_init(&device->isl_dev, &device->info, swizzled);
 
@@ -1182,15 +1182,15 @@ void anv_GetPhysicalDeviceFeatures(
       .depthClamp                               = true,
       .depthBiasClamp                           = true,
       .fillModeNonSolid                         = true,
-      .depthBounds                              = pdevice->info.gen >= 12,
+      .depthBounds                              = pdevice->info.ver >= 12,
       .wideLines                                = true,
       .largePoints                              = true,
       .alphaToOne                               = true,
       .multiViewport                            = true,
       .samplerAnisotropy                        = true,
-      .textureCompressionETC2                   = pdevice->info.gen >= 8 ||
+      .textureCompressionETC2                   = pdevice->info.ver >= 8 ||
                                                   pdevice->info.is_baytrail,
-      .textureCompressionASTC_LDR               = pdevice->info.gen >= 9, /* FINISHME CHV */
+      .textureCompressionASTC_LDR               = pdevice->info.ver >= 9, /* FINISHME CHV */
       .textureCompressionBC                     = true,
       .occlusionQueryPrecise                    = true,
       .pipelineStatisticsQuery                  = true,
@@ -1207,11 +1207,11 @@ void anv_GetPhysicalDeviceFeatures(
       .shaderStorageImageArrayDynamicIndexing   = true,
       .shaderClipDistance                       = true,
       .shaderCullDistance                       = true,
-      .shaderFloat64                            = pdevice->info.gen >= 8 &&
+      .shaderFloat64                            = pdevice->info.ver >= 8 &&
                                                   pdevice->info.has_64bit_float,
-      .shaderInt64                              = pdevice->info.gen >= 8,
-      .shaderInt16                              = pdevice->info.gen >= 8,
-      .shaderResourceMinLod                     = pdevice->info.gen >= 9,
+      .shaderInt64                              = pdevice->info.ver >= 8,
+      .shaderInt16                              = pdevice->info.ver >= 8,
+      .shaderResourceMinLod                     = pdevice->info.ver >= 9,
       .variableMultisampleRate                  = true,
       .inheritedQueries                         = true,
    };
@@ -1237,9 +1237,9 @@ anv_get_physical_device_features_1_1(struct anv_physical_device *pdevice,
 {
    assert(f->sType == VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES);
 
-   f->storageBuffer16BitAccess            = pdevice->info.gen >= 8;
-   f->uniformAndStorageBuffer16BitAccess  = pdevice->info.gen >= 8;
-   f->storagePushConstant16               = pdevice->info.gen >= 8;
+   f->storageBuffer16BitAccess            = pdevice->info.ver >= 8;
+   f->uniformAndStorageBuffer16BitAccess  = pdevice->info.ver >= 8;
+   f->storagePushConstant16               = pdevice->info.ver >= 8;
    f->storageInputOutput16                = false;
    f->multiview                           = true;
    f->multiviewGeometryShader             = true;
@@ -1259,14 +1259,14 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
 
    f->samplerMirrorClampToEdge            = true;
    f->drawIndirectCount                   = true;
-   f->storageBuffer8BitAccess             = pdevice->info.gen >= 8;
-   f->uniformAndStorageBuffer8BitAccess   = pdevice->info.gen >= 8;
-   f->storagePushConstant8                = pdevice->info.gen >= 8;
-   f->shaderBufferInt64Atomics            = pdevice->info.gen >= 9 &&
+   f->storageBuffer8BitAccess             = pdevice->info.ver >= 8;
+   f->uniformAndStorageBuffer8BitAccess   = pdevice->info.ver >= 8;
+   f->storagePushConstant8                = pdevice->info.ver >= 8;
+   f->shaderBufferInt64Atomics            = pdevice->info.ver >= 9 &&
                                             pdevice->use_softpin;
    f->shaderSharedInt64Atomics            = false;
-   f->shaderFloat16                       = pdevice->info.gen >= 8;
-   f->shaderInt8                          = pdevice->info.gen >= 8;
+   f->shaderFloat16                       = pdevice->info.ver >= 8;
+   f->shaderInt8                          = pdevice->info.ver >= 8;
 
    bool descIndexing = pdevice->has_a64_buffer_access &&
                        pdevice->has_bindless_images;
@@ -1292,7 +1292,7 @@ anv_get_physical_device_features_1_2(struct anv_physical_device *pdevice,
    f->descriptorBindingVariableDescriptorCount           = descIndexing;
    f->runtimeDescriptorArray                             = descIndexing;
 
-   f->samplerFilterMinmax                 = pdevice->info.gen >= 9;
+   f->samplerFilterMinmax                 = pdevice->info.ver >= 9;
    f->scalarBlockLayout                   = true;
    f->imagelessFramebuffer                = true;
    f->uniformBufferStandardLayout         = true;
@@ -1388,9 +1388,9 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONDITIONAL_RENDERING_FEATURES_EXT: {
          VkPhysicalDeviceConditionalRenderingFeaturesEXT *features =
             (VkPhysicalDeviceConditionalRenderingFeaturesEXT*)ext;
-         features->conditionalRendering = pdevice->info.gen >= 8 ||
+         features->conditionalRendering = pdevice->info.ver >= 8 ||
                                           pdevice->info.is_haswell;
-         features->inheritedConditionalRendering = pdevice->info.gen >= 8 ||
+         features->inheritedConditionalRendering = pdevice->info.ver >= 8 ||
                                                    pdevice->info.is_haswell;
          break;
       }
@@ -1398,8 +1398,8 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
          VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
             (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
-         features->customBorderColors = pdevice->info.gen >= 8;
-         features->customBorderColorWithoutFormat = pdevice->info.gen >= 8;
+         features->customBorderColors = pdevice->info.ver >= 8;
+         features->customBorderColorWithoutFormat = pdevice->info.ver >= 8;
          break;
       }
 
@@ -1420,8 +1420,8 @@ void anv_GetPhysicalDeviceFeatures2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
          VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT *features =
             (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT *)ext;
-         features->fragmentShaderSampleInterlock = pdevice->info.gen >= 9;
-         features->fragmentShaderPixelInterlock = pdevice->info.gen >= 9;
+         features->fragmentShaderSampleInterlock = pdevice->info.ver >= 9;
+         features->fragmentShaderPixelInterlock = pdevice->info.ver >= 9;
          features->fragmentShaderShadingRateInterlock = false;
          break;
       }
@@ -1494,7 +1494,7 @@ void anv_GetPhysicalDeviceFeatures2(
           *
           * Fortunately, this isn't a case most people care about.
           */
-         features->smoothLines = pdevice->info.gen < 10;
+         features->smoothLines = pdevice->info.ver < 10;
          features->stippledRectangularLines = false;
          features->stippledBresenhamLines = true;
          features->stippledSmoothLines = false;
@@ -1769,7 +1769,7 @@ void anv_GetPhysicalDeviceProperties(
    const struct gen_device_info *devinfo = &pdevice->info;
 
    /* See assertions made when programming the buffer surface state. */
-   const uint32_t max_raw_buffer_sz = devinfo->gen >= 7 ?
+   const uint32_t max_raw_buffer_sz = devinfo->ver >= 7 ?
                                       (1ul << 30) : (1ul << 27);
 
    const uint32_t max_ssbos = pdevice->has_a64_buffer_access ? UINT16_MAX : 64;
@@ -1777,7 +1777,7 @@ void anv_GetPhysicalDeviceProperties(
       pdevice->has_bindless_images ? UINT16_MAX : 128;
    const uint32_t max_samplers =
       pdevice->has_bindless_samplers ? UINT16_MAX :
-      (devinfo->gen >= 8 || devinfo->is_haswell) ? 128 : 16;
+      (devinfo->ver >= 8 || devinfo->is_haswell) ? 128 : 16;
    const uint32_t max_images =
       pdevice->has_bindless_images ? UINT16_MAX : MAX_IMAGES;
 
@@ -1839,7 +1839,7 @@ void anv_GetPhysicalDeviceProperties(
       .maxTessellationEvaluationInputComponents = 128,
       .maxTessellationEvaluationOutputComponents = 128,
       .maxGeometryShaderInvocations             = 32,
-      .maxGeometryInputComponents               = devinfo->gen >= 8 ? 128 : 64,
+      .maxGeometryInputComponents               = devinfo->ver >= 8 ? 128 : 64,
       .maxGeometryOutputComponents              = 128,
       .maxGeometryOutputVertices                = 256,
       .maxGeometryTotalOutputComponents         = 1024,
@@ -1903,7 +1903,7 @@ void anv_GetPhysicalDeviceProperties(
       .pointSizeRange                           = { 0.125, 255.875 },
       .lineWidthRange                           = {
          0.0,
-         (devinfo->gen >= 9 || devinfo->is_cherryview) ?
+         (devinfo->ver >= 9 || devinfo->is_cherryview) ?
             2047.9921875 : 7.9921875,
       },
       .pointSizeGranularity                     = (1.0 / 8.0),
@@ -1956,7 +1956,7 @@ anv_get_physical_device_properties_1_1(struct anv_physical_device *pdevice,
                                     VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
                                     VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
                                     VK_SUBGROUP_FEATURE_QUAD_BIT;
-   if (pdevice->info.gen >= 8) {
+   if (pdevice->info.ver >= 8) {
       /* TODO: There's no technical reason why these can't be made to
        * work on gen7 but they don't at the moment so it's best to leave
        * the feature disabled than enabled and broken.
@@ -1964,7 +1964,7 @@ anv_get_physical_device_properties_1_1(struct anv_physical_device *pdevice,
       p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
                                         VK_SUBGROUP_FEATURE_CLUSTERED_BIT;
    }
-   p->subgroupQuadOperationsInAllStages = pdevice->info.gen >= 8;
+   p->subgroupQuadOperationsInAllStages = pdevice->info.ver >= 8;
 
    p->pointClippingBehavior      = VK_POINT_CLIPPING_BEHAVIOR_USER_CLIP_PLANES_ONLY;
    p->maxMultiviewViewCount      = 16;
@@ -2010,7 +2010,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
     * Restriction : Half-float denorms are always retained."
     */
    p->shaderDenormFlushToZeroFloat16         = false;
-   p->shaderDenormPreserveFloat16            = pdevice->info.gen > 8;
+   p->shaderDenormPreserveFloat16            = pdevice->info.ver > 8;
    p->shaderRoundingModeRTEFloat16           = true;
    p->shaderRoundingModeRTZFloat16           = true;
    p->shaderSignedZeroInfNanPreserveFloat16  = true;
@@ -2075,7 +2075,7 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
                                       VK_RESOLVE_MODE_MAX_BIT_KHR;
    /* Average doesn't make sense for stencil so we don't support that */
    p->supportedStencilResolveModes  = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT_KHR;
-   if (pdevice->info.gen >= 8) {
+   if (pdevice->info.ver >= 8) {
       /* The advanced stencil resolve modes currently require stencil
        * sampling be supported by the hardware.
        */
@@ -2085,8 +2085,8 @@ anv_get_physical_device_properties_1_2(struct anv_physical_device *pdevice,
    p->independentResolveNone  = true;
    p->independentResolve      = true;
 
-   p->filterMinmaxSingleComponentFormats  = pdevice->info.gen >= 9;
-   p->filterMinmaxImageComponentMapping   = pdevice->info.gen >= 9;
+   p->filterMinmaxSingleComponentFormats  = pdevice->info.ver >= 9;
+   p->filterMinmaxImageComponentMapping   = pdevice->info.ver >= 9;
 
    p->maxTimelineSemaphoreValueDifference = UINT64_MAX;
 
@@ -2459,7 +2459,7 @@ void anv_GetPhysicalDeviceProperties2(
          props->transformFeedbackRasterizationStreamSelect = false;
          /* This requires MI_MATH */
          props->transformFeedbackDraw = pdevice->info.is_haswell ||
-                                        pdevice->info.gen >= 8;
+                                        pdevice->info.ver >= 8;
          break;
       }
 
@@ -3128,7 +3128,7 @@ VkResult anv_CreateDevice(
     * command parser gets in the way and we have to fall back to growing
     * the batch.
     */
-   device->can_chain_batches = device->info.gen >= 8;
+   device->can_chain_batches = device->info.ver >= 8;
 
    device->robust_buffer_access = robust_buffer_access;
 
@@ -3176,7 +3176,7 @@ VkResult anv_CreateDevice(
    if (result != VK_SUCCESS)
       goto fail_general_state_pool;
 
-   if (device->info.gen >= 8) {
+   if (device->info.ver >= 8) {
       /* The border color pointer is limited to 24 bits, so we need to make
        * sure that any such color used at any point in the program doesn't
        * exceed that limit.
@@ -3256,7 +3256,7 @@ VkResult anv_CreateDevice(
                        isl_extent3d(1, 1, 1) /* This shouldn't matter */);
    assert(device->null_surface_state.offset == 0);
 
-   if (device->info.gen >= 10) {
+   if (device->info.ver >= 10) {
       result = anv_device_init_hiz_clear_value_bo(device);
       if (result != VK_SUCCESS)
          goto fail_trivial_batch_bo;
@@ -3282,7 +3282,7 @@ VkResult anv_CreateDevice(
    return VK_SUCCESS;
 
  fail_clear_value_bo:
-   if (device->info.gen >= 10)
+   if (device->info.ver >= 10)
       anv_device_release_bo(device, device->hiz_clear_bo);
    anv_scratch_pool_finish(device, &device->scratch_pool);
  fail_trivial_batch_bo:
@@ -3302,7 +3302,7 @@ VkResult anv_CreateDevice(
  fail_instruction_state_pool:
    anv_state_pool_finish(&device->instruction_state_pool);
  fail_dynamic_state_pool:
-   if (device->info.gen >= 8)
+   if (device->info.ver >= 8)
       anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_finish(&device->dynamic_state_pool);
  fail_general_state_pool:
@@ -3353,7 +3353,7 @@ void anv_DestroyDevice(
    /* We only need to free these to prevent valgrind errors.  The backing
     * BO will go away in a couple of lines so we don't actually leak.
     */
-   if (device->info.gen >= 8)
+   if (device->info.ver >= 8)
       anv_state_reserved_pool_finish(&device->custom_border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->border_colors);
    anv_state_pool_free(&device->dynamic_state_pool, device->slice_hash);
@@ -3363,7 +3363,7 @@ void anv_DestroyDevice(
 
    anv_device_release_bo(device, device->workaround_bo);
    anv_device_release_bo(device, device->trivial_batch_bo);
-   if (device->info.gen >= 10)
+   if (device->info.ver >= 10)
       anv_device_release_bo(device, device->hiz_clear_bo);
 
    if (device->info.has_aux_map) {

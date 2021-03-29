@@ -257,7 +257,7 @@ anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
                                      VkImageCreateFlags vk_create_flags,
                                      isl_tiling_flags_t *inout_primary_tiling_flags)
 {
-   if (devinfo->gen <= 8 &&
+   if (devinfo->ver <= 8 &&
        (vk_create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
        vk_tiling == VK_IMAGE_TILING_OPTIMAL) {
       /* We must fallback to a linear surface because we may not be able to
@@ -274,7 +274,7 @@ anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
       return true;
    }
 
-   if (devinfo->gen <= 7 &&
+   if (devinfo->ver <= 7 &&
        plane_format.aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
        (vk_plane_usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
       /* gen7 can't sample from W-tiled surfaces. */
@@ -379,7 +379,7 @@ add_aux_state_tracking_buffer(struct anv_device *device,
    assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE &&
           image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
 
-   const unsigned clear_color_state_size = device->info.gen >= 10 ?
+   const unsigned clear_color_state_size = device->info.ver >= 10 ?
       device->isl_dev.ss.clear_color_state_size :
       device->isl_dev.ss.clear_value_size;
 
@@ -442,7 +442,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (device->info.gen == 7) {
+      if (device->info.ver == 7) {
          anv_perf_warn(device, &image->base, "Implement gen7 HiZ");
          return VK_SUCCESS;
       }
@@ -452,7 +452,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (device->info.gen == 8 && image->samples > 1) {
+      if (device->info.ver == 8 && image->samples > 1) {
          anv_perf_warn(device, &image->base, "Enable gen8 multisampled HiZ");
          return VK_SUCCESS;
       }
@@ -478,10 +478,10 @@ add_aux_surface_if_supported(struct anv_device *device,
           *
           * TODO: This is a heuristic trade-off; we haven't tuned it at all.
           */
-         assert(device->info.gen >= 12);
+         assert(device->info.ver >= 12);
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS_WT;
       } else {
-         assert(device->info.gen >= 12);
+         assert(device->info.ver >= 12);
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS;
       }
 
@@ -526,7 +526,7 @@ add_aux_surface_if_supported(struct anv_device *device,
          return VK_SUCCESS;
       }
 
-      if (device->info.gen >= 12 && image->array_size > 1) {
+      if (device->info.ver >= 12 && image->array_size > 1) {
          /* HSD 14010672564: On TGL, if a block of fragment shader outputs
           * match the surface's clear color, the HW may convert them to
           * fast-clears. Anv only does clear color tracking for the first
@@ -565,7 +565,7 @@ add_aux_surface_if_supported(struct anv_device *device,
           * these formats.
           */
          image->planes[plane].aux_usage = ISL_AUX_USAGE_CCS_E;
-      } else if (device->info.gen >= 12) {
+      } else if (device->info.ver >= 12) {
          anv_perf_warn(device, &image->base,
                        "The CCS_D aux mode is not yet handled on "
                        "Gen12+. Not allocating a CCS buffer.");
@@ -1923,7 +1923,7 @@ anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
    /* We don't support MSAA fast-clears on Ivybridge or Bay Trail because they
     * lack the MI ALU which we need to determine the predicates.
     */
-   if (devinfo->gen == 7 && !devinfo->is_haswell && image->samples > 1)
+   if (devinfo->ver == 7 && !devinfo->is_haswell && image->samples > 1)
       return ANV_FAST_CLEAR_NONE;
 
    enum isl_aux_state aux_state =
@@ -1945,7 +1945,7 @@ anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
          return ANV_FAST_CLEAR_ANY;
       } else if (image->planes[plane].aux_usage == ISL_AUX_USAGE_MCS ||
                  image->planes[plane].aux_usage == ISL_AUX_USAGE_CCS_E) {
-         if (devinfo->gen >= 11) {
+         if (devinfo->ver >= 11) {
             /* On ICL and later, the sampler hardware uses a copy of the clear
              * value that is encoded as a pixel value.  Therefore, we can use
              * any clear color we like for sampling.
@@ -2038,7 +2038,7 @@ anv_image_fill_surface_state(struct anv_device *device,
     */
    if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
        aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
-      assert(device->info.gen == 7);
+      assert(device->info.ver == 7);
       assert(view_usage & ISL_SURF_USAGE_TEXTURE_BIT);
       surface = &image->planes[plane].shadow_surface;
    }
@@ -2047,14 +2047,14 @@ anv_image_fill_surface_state(struct anv_device *device,
       view.swizzle = anv_swizzle_for_render(view.swizzle);
 
    /* On Ivy Bridge and Bay Trail we do the swizzle in the shader */
-   if (device->info.gen == 7 && !device->info.is_haswell)
+   if (device->info.ver == 7 && !device->info.is_haswell)
       view.swizzle = ISL_SWIZZLE_IDENTITY;
 
    /* If this is a HiZ buffer we can sample from with a programmable clear
     * value (SKL+), define the clear value to the optimal constant.
     */
    union isl_color_value default_clear_color = { .u32 = { 0, } };
-   if (device->info.gen >= 9 && aspect == VK_IMAGE_ASPECT_DEPTH_BIT)
+   if (device->info.ver >= 9 && aspect == VK_IMAGE_ASPECT_DEPTH_BIT)
       default_clear_color.f32[0] = ANV_HZ_FC_VAL;
    if (!clear_color)
       clear_color = &default_clear_color;
@@ -2136,7 +2136,7 @@ anv_image_fill_surface_state(struct anv_device *device,
 
          isl_surf = &tmp_surf;
 
-         if (device->info.gen <= 8) {
+         if (device->info.ver <= 8) {
             assert(surface->isl.tiling == ISL_TILING_LINEAR);
             assert(tile_x_sa == 0);
             assert(tile_y_sa == 0);
@@ -2151,7 +2151,7 @@ anv_image_fill_surface_state(struct anv_device *device,
       state_inout->aux_address = aux_address;
 
       struct anv_address clear_address = ANV_NULL_ADDRESS;
-      if (device->info.gen >= 10 && isl_aux_usage_has_fast_clears(aux_usage)) {
+      if (device->info.ver >= 10 && isl_aux_usage_has_fast_clears(aux_usage)) {
          if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
             clear_address = (struct anv_address) {
                .bo = device->hiz_clear_bo,
@@ -2189,7 +2189,7 @@ anv_image_fill_surface_state(struct anv_device *device,
          state_inout->aux_address.offset |= *aux_addr_dw & 0xfff;
       }
 
-      if (device->info.gen >= 10 && clear_address.bo) {
+      if (device->info.ver >= 10 && clear_address.bo) {
          uint32_t *clear_addr_dw = state_inout->state.map +
                                    device->isl_dev.ss.clear_color_state_offset;
          assert((clear_address.offset & 0x3f) == 0);

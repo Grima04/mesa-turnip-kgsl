@@ -298,7 +298,7 @@ brw_save_primitives_written_counters(struct brw_context *brw,
    brw_emit_mi_flush(brw);
 
    /* Emit MI_STORE_REGISTER_MEM commands to write the values. */
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       for (int i = 0; i < streams; i++) {
          int offset = (streams * obj->counter.bo_end + i) * sizeof(uint64_t);
          brw_store_register_mem64(brw, obj->prim_count_bo,
@@ -396,7 +396,7 @@ brw_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct brw_transform_feedback_object *brw_obj =
       (struct brw_transform_feedback_object *) xfb_obj;
 
-   assert(brw->screen->devinfo.gen == 6);
+   assert(brw->screen->devinfo.ver == 6);
 
    if (ctx->_Shader->CurrentProgram[MESA_SHADER_GEOMETRY]) {
       /* BRW_NEW_GEOMETRY_PROGRAM */

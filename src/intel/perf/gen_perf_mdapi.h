@@ -136,7 +136,7 @@ static inline void gen_perf_query_mdapi_write_marker(void *data, uint32_t data_s
                                                      const struct gen_device_info *devinfo,
                                                      uint64_t value)
 {
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 8: {
       if (data_size < sizeof(struct gen8_mdapi_metrics))
          return;

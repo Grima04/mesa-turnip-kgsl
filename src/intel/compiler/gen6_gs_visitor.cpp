@@ -347,7 +347,7 @@ gen6_gs_visitor::emit_thread_end()
     * may need to unspill a register or load from an array.  Those
     * reads would use MRFs 21..23
     */
-   int max_usable_mrf = FIRST_SPILL_MRF(devinfo->gen);
+   int max_usable_mrf = FIRST_SPILL_MRF(devinfo->ver);
 
    /* Issue the FF_SYNC message and obtain the initial VUE handle. */
    this->current_annotation = "gen6 thread end: ff_sync";

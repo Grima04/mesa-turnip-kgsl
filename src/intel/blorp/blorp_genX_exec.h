@@ -417,7 +417,7 @@ blorp_emit_vertex_elements(struct blorp_batch *batch,
 {
    const unsigned num_varyings =
       params->wm_prog_data ? params->wm_prog_data->num_varying_inputs : 0;
-   bool need_ndc = batch->blorp->compiler->devinfo->gen <= 5;
+   bool need_ndc = batch->blorp->compiler->devinfo->ver <= 5;
    const unsigned num_elements = 2 + need_ndc + num_varyings;
 
    struct GENX(VERTEX_ELEMENT_STATE) ve[num_elements];

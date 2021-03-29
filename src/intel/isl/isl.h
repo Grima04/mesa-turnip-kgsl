@@ -60,13 +60,13 @@ struct brw_image_param;
  * You can define this as a compile-time constant in the CFLAGS. For example,
  * `gcc -DISL_GFX_VER(dev)=9 ...`.
  */
-#define ISL_GFX_VER(__dev) ((__dev)->info->gen)
-#define ISL_GFX_VERX10(__dev) ((__dev)->info->genx10)
+#define ISL_GFX_VER(__dev) ((__dev)->info->ver)
+#define ISL_GFX_VERX10(__dev) ((__dev)->info->verx10)
 #define ISL_GFX_VER_SANITIZE(__dev)
 #else
 #define ISL_GFX_VER_SANITIZE(__dev) \
-   (assert(ISL_GFX_VER(__dev) == (__dev)->info->gen) && \
-           ISL_GFX_VERX10(__dev) == (__dev)->info->genx10))
+   (assert(ISL_GFX_VER(__dev) == (__dev)->info->ver) && \
+           ISL_GFX_VERX10(__dev) == (__dev)->info->verx10))
 #endif
 
 #ifndef ISL_DEV_IS_G4X

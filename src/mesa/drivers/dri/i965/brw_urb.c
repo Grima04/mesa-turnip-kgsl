@@ -147,7 +147,7 @@ brw_calculate_urb_fence(struct brw_context *brw, unsigned csize,
 
       brw->urb.constrained = 0;
 
-      if (devinfo->gen == 5) {
+      if (devinfo->ver == 5) {
          brw->urb.nr_vs_entries = 128;
          brw->urb.nr_sf_entries = 48;
          if (check_urb_layout(brw)) {

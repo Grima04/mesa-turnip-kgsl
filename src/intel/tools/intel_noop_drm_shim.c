@@ -124,7 +124,7 @@ i915_ioctl_gem_context_getparam(int fd, unsigned long request, void *arg)
    struct drm_i915_gem_context_param *param = arg;
 
    if (param->param ==  I915_CONTEXT_PARAM_GTT_SIZE) {
-      if (i915.devinfo.gen >= 8 && !i915.devinfo.is_cherryview)
+      if (i915.devinfo.ver >= 8 && !i915.devinfo.is_cherryview)
          param->value = 1ull << 48;
       else
          param->value = 1ull << 31;
@@ -151,9 +151,9 @@ i915_ioctl_get_param(int fd, unsigned long request, void *arg)
       *gp->value = i915.devinfo.timestamp_frequency;
       return 0;
    case I915_PARAM_HAS_ALIASING_PPGTT:
-      if (i915.devinfo.gen < 6)
+      if (i915.devinfo.ver < 6)
          *gp->value = I915_GEM_PPGTT_NONE;
-      else if (i915.devinfo.gen <= 7)
+      else if (i915.devinfo.ver <= 7)
          *gp->value = I915_GEM_PPGTT_ALIASING;
       else
          *gp->value = I915_GEM_PPGTT_FULL;
@@ -318,7 +318,7 @@ i915_gem_get_aperture(int fd, unsigned long request, void *arg)
 {
    struct drm_i915_gem_get_aperture *aperture = arg;
 
-   if (i915.devinfo.gen >= 8 &&
+   if (i915.devinfo.ver >= 8 &&
        !i915.devinfo.is_cherryview) {
       aperture->aper_size = 1ull << 48;
       aperture->aper_available_size = 1ull << 48;

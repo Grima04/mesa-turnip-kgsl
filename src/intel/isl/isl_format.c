@@ -675,7 +675,7 @@ isl_format_for_pipe_format(enum pipe_format pf)
 static unsigned
 format_gen(const struct gen_device_info *devinfo)
 {
-   return devinfo->gen * 10 + (devinfo->is_g4x || devinfo->is_haswell) * 5;
+   return devinfo->ver * 10 + (devinfo->is_g4x || devinfo->is_haswell) * 5;
 }
 
 static bool
@@ -835,7 +835,7 @@ isl_format_supports_ccs_d(const struct gen_device_info *devinfo,
    /* Clear-only compression was first added on Ivy Bridge and was last
     * implemented on Ice lake (see BSpec: 43862).
     */
-   if (devinfo->gen < 7 || devinfo->gen > 11)
+   if (devinfo->ver < 7 || devinfo->ver > 11)
       return false;
 
    if (!isl_format_supports_rendering(devinfo, format))
@@ -897,8 +897,8 @@ isl_format_supports_multisampling(const struct gen_device_info *devinfo,
       /* On SKL+, HiZ is always single-sampled even when the primary surface
        * is multisampled.  See also isl_surf_get_hiz_surf().
        */
-      return devinfo->gen <= 8;
-   } else if (devinfo->gen < 7 && isl_format_get_layout(format)->bpb > 64) {
+      return devinfo->ver <= 8;
+   } else if (devinfo->ver < 7 && isl_format_get_layout(format)->bpb > 64) {
       return false;
    } else if (isl_format_is_compressed(format)) {
       return false;

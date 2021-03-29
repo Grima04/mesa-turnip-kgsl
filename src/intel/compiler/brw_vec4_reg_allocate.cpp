@@ -92,7 +92,7 @@ extern "C" void
 brw_vec4_alloc_reg_set(struct brw_compiler *compiler)
 {
    int base_reg_count =
-      compiler->devinfo->gen >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
+      compiler->devinfo->ver >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
 
    /* After running split_virtual_grfs(), almost all VGRFs will be of size 1.
     * SEND-from-GRF sources cannot be split, so we also need classes for each
@@ -114,7 +114,7 @@ brw_vec4_alloc_reg_set(struct brw_compiler *compiler)
    compiler->vec4_reg_set.ra_reg_to_grf = ralloc_array(compiler, uint8_t, ra_reg_count);
    ralloc_free(compiler->vec4_reg_set.regs);
    compiler->vec4_reg_set.regs = ra_alloc_reg_set(compiler, ra_reg_count, false);
-   if (compiler->devinfo->gen >= 6)
+   if (compiler->devinfo->ver >= 6)
       ra_set_allocate_round_robin(compiler->vec4_reg_set.regs);
    ralloc_free(compiler->vec4_reg_set.classes);
    compiler->vec4_reg_set.classes = ralloc_array(compiler, int, class_count);

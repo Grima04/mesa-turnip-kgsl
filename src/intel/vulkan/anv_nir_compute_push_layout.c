@@ -75,7 +75,7 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
    const bool has_push_intrinsic = push_start <= push_end;
 
    const bool push_ubo_ranges =
-      (pdevice->info.gen >= 8 || pdevice->info.is_haswell) &&
+      (pdevice->info.ver >= 8 || pdevice->info.is_haswell) &&
       has_const_ubo && nir->info.stage != MESA_SHADER_COMPUTE;
 
    if (push_ubo_ranges && robust_buffer_access) {

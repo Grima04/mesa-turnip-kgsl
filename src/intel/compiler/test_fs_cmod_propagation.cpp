@@ -76,8 +76,8 @@ void cmod_propagation_test::SetUp()
 
    v = new cmod_propagation_fs_visitor(compiler, ctx, prog_data, shader);
 
-   devinfo->gen = 7;
-   devinfo->verx10 = devinfo->gen * 10;
+   devinfo->ver = 7;
+   devinfo->verx10 = devinfo->ver * 10;
 }
 
 void cmod_propagation_test::TearDown()

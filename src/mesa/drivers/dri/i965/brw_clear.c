@@ -110,7 +110,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
    if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
       return false;
 
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       return false;
 
    if (!brw_renderbuffer_has_hiz(depth_irb))
@@ -151,7 +151,7 @@ brw_fast_clear_depth(struct gl_context *ctx)
        *        width of the map (LOD0) is not multiple of 16, fast clear
        *        optimization must be disabled.
        */
-      if (devinfo->gen == 6 &&
+      if (devinfo->ver == 6 &&
           (minify(mt->surf.phys_level0_sa.width,
                   depth_irb->mt_level - mt->first_level) % 16) != 0)
          return false;
@@ -269,7 +269,7 @@ brw_clear(struct gl_context *ctx, GLbitfield mask)
       mask &= ~BUFFER_BITS_COLOR;
    }
 
-   if (devinfo->gen >= 6 && (mask & BUFFER_BITS_DEPTH_STENCIL)) {
+   if (devinfo->ver >= 6 && (mask & BUFFER_BITS_DEPTH_STENCIL)) {
       brw_blorp_clear_depth_stencil(brw, fb, mask, partial_clear);
       debug_mask("blorp depth/stencil", mask & BUFFER_BITS_DEPTH_STENCIL);
       mask &= ~BUFFER_BITS_DEPTH_STENCIL;

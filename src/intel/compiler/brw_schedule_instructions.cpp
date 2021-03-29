@@ -934,7 +934,7 @@ schedule_node::schedule_node(backend_instruction *inst,
     */
    if (!sched->post_reg_alloc)
       this->latency = 1;
-   else if (devinfo->gen >= 6)
+   else if (devinfo->ver >= 6)
       set_latency_gen7(devinfo->is_haswell);
    else
       set_latency_gen4();
@@ -1101,7 +1101,7 @@ fs_instruction_scheduler::calculate_deps()
     * GRF registers.
     */
    schedule_node **last_grf_write;
-   schedule_node *last_mrf_write[BRW_MAX_MRF(v->devinfo->gen)];
+   schedule_node *last_mrf_write[BRW_MAX_MRF(v->devinfo->ver)];
    schedule_node *last_conditional_mod[8] = {};
    schedule_node *last_accumulator_write = NULL;
    /* Fixed HW registers are assumed to be separate from the virtual
@@ -1365,7 +1365,7 @@ void
 vec4_instruction_scheduler::calculate_deps()
 {
    schedule_node *last_grf_write[grf_count];
-   schedule_node *last_mrf_write[BRW_MAX_MRF(v->devinfo->gen)];
+   schedule_node *last_mrf_write[BRW_MAX_MRF(v->devinfo->ver)];
    schedule_node *last_conditional_mod = NULL;
    schedule_node *last_accumulator_write = NULL;
    /* Fixed HW registers are assumed to be separate from the virtual
@@ -1613,7 +1613,7 @@ fs_instruction_scheduler::choose_instruction_to_schedule()
              * then the MRFs for the next SEND, then the next SEND, then the
              * MRFs, etc., without ever consuming the results of a send.
              */
-            if (v->devinfo->gen < 7) {
+            if (v->devinfo->ver < 7) {
                fs_inst *chosen_inst = (fs_inst *)chosen->inst;
 
                /* We use size_written > 4 * exec_size as our test for the kind
@@ -1788,7 +1788,7 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
        * the next math instruction isn't going to make progress until the first
        * is done.
        */
-      if (devinfo->gen < 6 && chosen->inst->is_math()) {
+      if (devinfo->ver < 6 && chosen->inst->is_math()) {
          foreach_in_list(schedule_node, n, &instructions) {
             if (n->inst->is_math())
                n->unblocked_time = MAX2(n->unblocked_time,

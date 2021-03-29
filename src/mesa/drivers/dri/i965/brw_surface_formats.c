@@ -212,7 +212,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
    memset(&screen->mesa_format_supports_texture, 0,
           sizeof(screen->mesa_format_supports_texture));
 
-   int gen = devinfo->gen * 10;
+   int gen = devinfo->ver * 10;
    if (devinfo->is_g4x || devinfo->is_haswell)
       gen += 5;
 
@@ -433,10 +433,10 @@ brw_render_target_supported(struct brw_context *brw,
    /* Under some conditions, MSAA is not supported for formats whose width is
     * more than 64 bits.
     */
-   if (devinfo->gen < 8 &&
+   if (devinfo->ver < 8 &&
        rb->NumSamples > 0 && _mesa_get_format_bytes(format) > 8) {
       /* Gen6: MSAA on >64 bit formats is unsupported. */
-      if (devinfo->gen <= 6)
+      if (devinfo->ver <= 6)
          return false;
 
       /* Gen7: 8x MSAA on >64 bit formats is unsupported. */
@@ -527,7 +527,7 @@ brw_depth_format(struct brw_context *brw, mesa_format format)
    case MESA_FORMAT_Z_FLOAT32:
       return BRW_DEPTHFORMAT_D32_FLOAT;
    case MESA_FORMAT_Z24_UNORM_X8_UINT:
-      if (devinfo->gen >= 6) {
+      if (devinfo->ver >= 6) {
          return BRW_DEPTHFORMAT_D24_UNORM_X8_UINT;
       } else {
          /* Use D24_UNORM_S8, not D24_UNORM_X8.

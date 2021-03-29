@@ -74,7 +74,7 @@ clear_pad_bits(const struct gen_device_info *devinfo, brw_inst *inst)
       brw_inst_set_bits(inst, 127, 111, 0);
    }
 
-   if (devinfo->gen == 8 && !devinfo->is_cherryview &&
+   if (devinfo->ver == 8 && !devinfo->is_cherryview &&
        is_3src(devinfo, brw_inst_opcode(devinfo, inst))) {
       brw_inst_set_bits(inst, 105, 105, 0);
       brw_inst_set_bits(inst, 84, 84, 0);
@@ -94,7 +94,7 @@ skip_bit(const struct gen_device_info *devinfo, brw_inst *src, int bit)
       return true;
 
    if (is_3src(devinfo, brw_inst_opcode(devinfo, src))) {
-      if (devinfo->gen >= 9 || devinfo->is_cherryview) {
+      if (devinfo->ver >= 9 || devinfo->is_cherryview) {
          if (bit == 127)
             return true;
       } else {
@@ -114,14 +114,14 @@ skip_bit(const struct gen_device_info *devinfo, brw_inst *src, int bit)
       if (bit == 47)
          return true;
 
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          if (bit == 11)
             return true;
 
          if (bit == 95)
             return true;
       } else {
-         if (devinfo->gen < 7 && bit == 90)
+         if (devinfo->ver < 7 && bit == 90)
             return true;
 
          if (bit >= 91 && bit <= 95)
@@ -295,7 +295,7 @@ run_tests(const struct gen_device_info *devinfo)
 
       for (int align_16 = 0; align_16 <= 1; align_16++) {
          /* Align16 support is not present on Gen11+ */
-         if (devinfo->gen >= 11 && align_16)
+         if (devinfo->ver >= 11 && align_16)
             continue;
 
 	 struct brw_codegen *p = rzalloc(NULL, struct brw_codegen);
@@ -333,11 +333,11 @@ main(UNUSED int argc, UNUSED char **argv)
    struct gen_device_info *devinfo = (struct gen_device_info *)calloc(1, sizeof(*devinfo));
    bool fail = false;
 
-   for (devinfo->gen = 5; devinfo->gen <= 12; devinfo->gen++) {
-      if (devinfo->gen == 10)
+   for (devinfo->ver = 5; devinfo->ver <= 12; devinfo->ver++) {
+      if (devinfo->ver == 10)
          continue;
 
-      devinfo->verx10 = devinfo->gen * 10;
+      devinfo->verx10 = devinfo->ver * 10;
       fail |= run_tests(devinfo);
    }
 

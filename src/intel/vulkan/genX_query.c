@@ -527,7 +527,7 @@ VkResult genX(GetQueryPoolResults)(
                uint64_t result = slot[idx * 2 + 2] - slot[idx * 2 + 1];
 
                /* WaDividePSInvocationCountBy4:HSW,BDW */
-               if ((device->info.gen == 8 || device->info.is_haswell) &&
+               if ((device->info.ver == 8 || device->info.is_haswell) &&
                    (1 << stat) == VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT)
                   result >>= 2;
 
@@ -1430,7 +1430,7 @@ void genX(CmdCopyQueryPoolResults)(
                                                               idx * 16 + 8));
 
             /* WaDividePSInvocationCountBy4:HSW,BDW */
-            if ((cmd_buffer->device->info.gen == 8 ||
+            if ((cmd_buffer->device->info.ver == 8 ||
                  cmd_buffer->device->info.is_haswell) &&
                 (1 << stat) == VK_QUERY_PIPELINE_STATISTIC_FRAGMENT_SHADER_INVOCATIONS_BIT) {
                result = mi_ushr32_imm(&b, result, 2);

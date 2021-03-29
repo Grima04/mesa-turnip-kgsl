@@ -38,7 +38,7 @@ struct anv_measure_batch {
 void
 anv_measure_device_init(struct anv_physical_device *device)
 {
-   switch (device->info.genx10) {
+   switch (device->info.verx10) {
    case 125:
       device->cmd_emit_timestamp = &gen125_cmd_emit_timestamp;
       break;

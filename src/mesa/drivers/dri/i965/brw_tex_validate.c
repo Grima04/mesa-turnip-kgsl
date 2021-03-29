@@ -101,7 +101,7 @@ brw_finalize_mipmap_tree(struct brw_context *brw,
     *
     * FINISHME: Avoid doing this.
     */
-   assert(!tObj->Immutable || brw->screen->devinfo.gen < 6);
+   assert(!tObj->Immutable || brw->screen->devinfo.ver < 6);
 
    firstImage = brw_texture_image(tObj->Image[0][tObj->Attrib.BaseLevel]);
 

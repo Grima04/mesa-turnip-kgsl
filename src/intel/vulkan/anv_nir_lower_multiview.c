@@ -288,7 +288,7 @@ bool
 anv_check_for_primitive_replication(nir_shader **shaders,
                                     struct anv_graphics_pipeline *pipeline)
 {
-   assert(pipeline->base.device->info.gen >= 12);
+   assert(pipeline->base.device->info.ver >= 12);
 
    static int primitive_replication_max_views = -1;
    if (primitive_replication_max_views < 0) {

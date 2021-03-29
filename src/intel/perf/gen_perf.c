@@ -182,7 +182,7 @@ register_oa_config(struct gen_perf_config *perf,
       gen_perf_append_query_info(perf, 0);
 
    *registered_query = *query;
-   registered_query->oa_format = devinfo->gen >= 8 ?
+   registered_query->oa_format = devinfo->ver >= 8 ?
       I915_OA_FORMAT_A32u40_A4u32_B8_C8 : I915_OA_FORMAT_A45_B8_C8;
    registered_query->oa_metrics_set_id = config_id;
    DBG("metric set registered: id = %" PRIu64", guid = %s\n",
@@ -392,7 +392,7 @@ compute_topology_builtins(struct gen_perf_config *perf,
     */
    perf->sys_vars.subslice_mask = 0;
 
-   int bits_per_subslice = devinfo->gen == 11 ? 8 : 3;
+   int bits_per_subslice = devinfo->ver == 11 ? 8 : 3;
 
    for (int s = 0; s < util_last_bit(devinfo->slice_masks); s++) {
       for (int ss = 0; ss < (devinfo->subslice_slice_stride * 8); ss++) {
@@ -464,7 +464,7 @@ get_register_queries_function(const struct gen_device_info *devinfo)
       if (devinfo->gt == 3)
          return gen_oa_register_queries_cflgt3;
    }
-   if (devinfo->gen == 11) {
+   if (devinfo->ver == 11) {
       if (devinfo->is_elkhartlake)
          return gen_oa_register_queries_ehl;
       return gen_oa_register_queries_icl;
@@ -518,7 +518,7 @@ load_pipeline_statistic_metrics(struct gen_perf_config *perf_cfg,
    gen_perf_query_add_basic_stat_reg(query, VS_INVOCATION_COUNT,
                                      "N vertex shader invocations");
 
-   if (devinfo->gen == 6) {
+   if (devinfo->ver == 6) {
       gen_perf_query_add_stat_reg(query, GEN6_SO_PRIM_STORAGE_NEEDED, 1, 1,
                                   "SO_PRIM_STORAGE_NEEDED",
                                   "N geometry shader stream-out primitives (total)");
@@ -567,7 +567,7 @@ load_pipeline_statistic_metrics(struct gen_perf_config *perf_cfg,
    gen_perf_query_add_basic_stat_reg(query, CL_PRIMITIVES_COUNT,
                                      "N primitives leaving clipping");
 
-   if (devinfo->is_haswell || devinfo->gen == 8) {
+   if (devinfo->is_haswell || devinfo->ver == 8) {
       gen_perf_query_add_stat_reg(query, PS_INVOCATION_COUNT, 1, 4,
                                   "N fragment shader invocations",
                                   "N fragment shader invocations");
@@ -579,7 +579,7 @@ load_pipeline_statistic_metrics(struct gen_perf_config *perf_cfg,
    gen_perf_query_add_basic_stat_reg(query, PS_DEPTH_COUNT,
                                      "N z-pass fragments");
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       gen_perf_query_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
                                         "N compute shader invocations");
    }
@@ -1026,7 +1026,7 @@ gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
     * Documentation says this should be available on Gen9+ but experimentation
     * shows that Gen8 reports similar values, so we enable it there too.
     */
-   if (devinfo->gen < 8)
+   if (devinfo->ver < 8)
       return;
 
    gen8_read_report_clock_ratios(start,
@@ -1040,7 +1040,7 @@ gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
 static inline bool
 can_use_mi_rpc_bc_counters(const struct gen_device_info *devinfo)
 {
-   return devinfo->gen <= 11;
+   return devinfo->ver <= 11;
 }
 
 void
@@ -1116,7 +1116,7 @@ gen_perf_query_result_read_gt_frequency(struct gen_perf_query_result *result,
                                         const uint32_t start,
                                         const uint32_t end)
 {
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 7:
    case 8:
       result->gt_frequency[0] = GET_FIELD(start, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
@@ -1313,7 +1313,7 @@ gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
    add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_MI_RPC,
                       0, 256, 0);
 
-   if (devinfo->gen <= 11) {
+   if (devinfo->ver <= 11) {
       struct gen_perf_query_field *field =
          add_query_register(layout,
                             GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
@@ -1326,20 +1326,20 @@ gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
       field->mask = PERF_CNT_VALUE_MASK;
    }
 
-   if (devinfo->gen == 8 && !devinfo->is_cherryview) {
+   if (devinfo->ver == 8 && !devinfo->is_cherryview) {
       add_query_register(layout,
                          GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
                          GEN7_RPSTAT1, 4, 0);
    }
 
-   if (devinfo->gen >= 9) {
+   if (devinfo->ver >= 9) {
       add_query_register(layout,
                          GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
                          GEN9_RPSTAT0, 4, 0);
    }
 
    if (!can_use_mi_rpc_bc_counters(devinfo)) {
-      if (devinfo->gen >= 8 && devinfo->gen <= 11) {
+      if (devinfo->ver >= 8 && devinfo->ver <= 11) {
          for (uint32_t i = 0; i < GEN8_N_OA_PERF_B32; i++) {
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
                                GEN8_OA_PERF_B32(i), 4, i);
@@ -1348,7 +1348,7 @@ gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
                                GEN8_OA_PERF_C32(i), 4, i);
          }
-      } else if (devinfo->gen == 12) {
+      } else if (devinfo->ver == 12) {
          for (uint32_t i = 0; i < GEN12_N_OAG_PERF_B32; i++) {
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
                                GEN12_OAG_PERF_B32(i), 4, i);

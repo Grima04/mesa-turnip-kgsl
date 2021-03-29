@@ -44,7 +44,7 @@ copy_miptrees(struct brw_context *brw,
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->gen <= 5) {
+   if (devinfo->ver <= 5) {
       /* On gen4-5, try BLT first.
        *
        * Gen4-5 have a single ring for both 3D and BLT operations, so there's

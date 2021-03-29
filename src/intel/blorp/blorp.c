@@ -138,7 +138,7 @@ brw_blorp_surface_info_init(struct blorp_context *blorp,
    /* Sandy Bridge and earlier have a limit of a maximum of 512 layers for
     * layered rendering.
     */
-   if (is_render_target && blorp->isl_dev->info->gen <= 6)
+   if (is_render_target && blorp->isl_dev->info->ver <= 6)
       info->view.array_len = MIN2(info->view.array_len, 512);
 
    if (surf->tile_x_sa || surf->tile_y_sa) {
@@ -210,7 +210,7 @@ blorp_compile_fs(struct blorp_context *blorp, void *mem_ctx,
    nir_remove_dead_variables(nir, nir_var_shader_in, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
-   if (blorp->compiler->devinfo->gen < 6) {
+   if (blorp->compiler->devinfo->ver < 6) {
       if (nir->info.fs.uses_discard)
          wm_key->iz_lookup |= BRW_WM_IZ_PS_KILL_ALPHATEST_BIT;
 
@@ -281,7 +281,7 @@ blorp_ensure_sf_program(struct blorp_batch *batch,
    assert(params->wm_prog_data);
 
    /* Gen6+ doesn't need a strips and fans program */
-   if (blorp->compiler->devinfo->gen >= 6)
+   if (blorp->compiler->devinfo->ver >= 6)
       return true;
 
    struct blorp_sf_key key = {
@@ -400,7 +400,7 @@ blorp_hiz_op(struct blorp_batch *batch, struct blorp_surf *surf,
          /* TODO: What about MSAA? */
          params.depth.surf.logical_level0_px.width = params.x1;
          params.depth.surf.logical_level0_px.height = params.y1;
-      } else if (devinfo->gen >= 8 && devinfo->gen <= 9 &&
+      } else if (devinfo->ver >= 8 && devinfo->ver <= 9 &&
                  op == ISL_AUX_OP_AMBIGUATE) {
          /* On some platforms, it's not enough to just adjust the clear
           * rectangle when the LOD is greater than 0.

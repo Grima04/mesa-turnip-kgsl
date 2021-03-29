@@ -506,7 +506,7 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
     * can reliably do texture upload with BLORP so just don't claim support
     * for any of them.
     */
-   if (devinfo->gen == 7 && !devinfo->is_haswell &&
+   if (devinfo->ver == 7 && !devinfo->is_haswell &&
        (isl_layout->bpb == 24 || isl_layout->bpb == 48))
       return unsupported;
 
@@ -531,7 +531,7 @@ anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
    /* The B4G4R4A4 format isn't available prior to Broadwell so we have to fall
     * back to a format with a more complex swizzle.
     */
-   if (vk_format == VK_FORMAT_B4G4R4A4_UNORM_PACK16 && devinfo->gen < 8) {
+   if (vk_format == VK_FORMAT_B4G4R4A4_UNORM_PACK16 && devinfo->ver < 8) {
       plane_format.isl_format = ISL_FORMAT_B4G4R4A4_UNORM;
       plane_format.swizzle = ISL_SWIZZLE(GREEN, RED, ALPHA, BLUE);
    }
@@ -573,7 +573,7 @@ anv_get_image_format_features(const struct gen_device_info *devinfo,
       if (aspects & VK_IMAGE_ASPECT_DEPTH_BIT)
          flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 
-      if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && devinfo->gen >= 9)
+      if ((aspects & VK_IMAGE_ASPECT_DEPTH_BIT) && devinfo->ver >= 9)
          flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT_EXT;
 
       return flags;
@@ -606,14 +606,14 @@ anv_get_image_format_features(const struct gen_device_info *devinfo,
     *
     * TODO: Figure out the ASTC workarounds and re-enable on BSW.
     */
-   if (devinfo->gen < 9 &&
+   if (devinfo->ver < 9 &&
        isl_format_get_layout(plane_format.isl_format)->txc == ISL_TXC_ASTC)
       return 0;
 
    if (isl_format_supports_sampling(devinfo, plane_format.isl_format)) {
       flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT;
 
-      if (devinfo->gen >= 9)
+      if (devinfo->ver >= 9)
          flags |= VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT_EXT;
 
       if (isl_format_supports_filtering(devinfo, plane_format.isl_format))
@@ -982,7 +982,7 @@ anv_get_image_format_properties(
        * VkSubresourceLayout expects. Since we can't tell users how to make
        * sense of them, don't report them as available.
        */
-      if (devinfo->gen < 9 && info->tiling == VK_IMAGE_TILING_LINEAR)
+      if (devinfo->ver < 9 && info->tiling == VK_IMAGE_TILING_LINEAR)
          maxMipLevels = 1;
       else
          maxMipLevels = 12; /* log2(maxWidth) + 1 */
@@ -1118,9 +1118,9 @@ anv_get_image_format_properties(
     * has a 16 TB limitation.
     */
    uint64_t maxResourceSize = 0;
-   if (devinfo->gen < 9)
+   if (devinfo->ver < 9)
       maxResourceSize = (uint64_t) 1 << 31;
-   else if (devinfo->gen < 11)
+   else if (devinfo->ver < 11)
       maxResourceSize = (uint64_t) 1 << 38;
    else
       maxResourceSize = (uint64_t) 1 << 44;

@@ -293,19 +293,19 @@ brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
 {
    const struct hw_type *table;
 
-   if (devinfo->gen >= 12) {
+   if (devinfo->ver >= 12) {
       assert(type < ARRAY_SIZE(gen12_hw_type));
       table = gen12_hw_type;
-   } else if (devinfo->gen >= 11) {
+   } else if (devinfo->ver >= 11) {
       assert(type < ARRAY_SIZE(gen11_hw_type));
       table = gen11_hw_type;
-   } else if (devinfo->gen >= 8) {
+   } else if (devinfo->ver >= 8) {
       assert(type < ARRAY_SIZE(gen8_hw_type));
       table = gen8_hw_type;
-   } else if (devinfo->gen >= 7) {
+   } else if (devinfo->ver >= 7) {
       assert(type < ARRAY_SIZE(gen7_hw_type));
       table = gen7_hw_type;
-   } else if (devinfo->gen >= 6) {
+   } else if (devinfo->ver >= 6) {
       assert(type < ARRAY_SIZE(gen6_hw_type));
       table = gen6_hw_type;
    } else {
@@ -333,15 +333,15 @@ brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
 {
    const struct hw_type *table;
 
-   if (devinfo->gen >= 12) {
+   if (devinfo->ver >= 12) {
       table = gen12_hw_type;
-   } else if (devinfo->gen >= 11) {
+   } else if (devinfo->ver >= 11) {
       table = gen11_hw_type;
-   } else if (devinfo->gen >= 8) {
+   } else if (devinfo->ver >= 8) {
       table = gen8_hw_type;
-   } else if (devinfo->gen >= 7) {
+   } else if (devinfo->ver >= 7) {
       table = gen7_hw_type;
-   } else if (devinfo->gen >= 6) {
+   } else if (devinfo->ver >= 6) {
       table = gen6_hw_type;
    } else {
       table = gen4_hw_type;
@@ -373,10 +373,10 @@ brw_reg_type_to_a16_hw_3src_type(const struct gen_device_info *devinfo,
 {
    const struct hw_3src_type *table;
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       assert(type < ARRAY_SIZE(gen8_hw_3src_type));
       table = gen8_hw_3src_type;
-   } else if (devinfo->gen >= 7) {
+   } else if (devinfo->ver >= 7) {
       assert(type < ARRAY_SIZE(gen7_hw_3src_type));
       table = gen7_hw_3src_type;
    } else {
@@ -396,10 +396,10 @@ unsigned
 brw_reg_type_to_a1_hw_3src_type(const struct gen_device_info *devinfo,
                                 enum brw_reg_type type)
 {
-   if (devinfo->gen >= 12) {
+   if (devinfo->ver >= 12) {
       assert(type < ARRAY_SIZE(gen12_hw_3src_type));
       return gen12_hw_3src_type[type].reg_type;
-   } else if (devinfo->gen >= 11) {
+   } else if (devinfo->ver >= 11) {
       assert(type < ARRAY_SIZE(gen11_hw_3src_type));
       return gen11_hw_3src_type[type].reg_type;
    } else {
@@ -418,11 +418,11 @@ brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
 {
    const struct hw_3src_type *table = NULL;
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       table = gen8_hw_3src_type;
-   } else if (devinfo->gen >= 7) {
+   } else if (devinfo->ver >= 7) {
       table = gen7_hw_3src_type;
-   } else if (devinfo->gen >= 6) {
+   } else if (devinfo->ver >= 6) {
       table = gen6_hw_3src_type;
    }
 
@@ -442,8 +442,8 @@ enum brw_reg_type
 brw_a1_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
                                 unsigned hw_type, unsigned exec_type)
 {
-   const struct hw_3src_type *table = (devinfo->gen >= 12 ? gen12_hw_3src_type :
-                                       devinfo->gen >= 11 ? gen11_hw_3src_type :
+   const struct hw_3src_type *table = (devinfo->ver >= 12 ? gen12_hw_3src_type :
+                                       devinfo->ver >= 11 ? gen11_hw_3src_type :
                                        gen10_hw_3src_align1_type);
 
    for (enum brw_reg_type i = 0; i <= BRW_REGISTER_TYPE_LAST; i++) {

@@ -354,7 +354,7 @@ try_copy_propagate(const struct gen_device_info *devinfo,
 
    /* Reject cases that would violate register regioning restrictions. */
    if ((value.file == UNIFORM || value.swizzle != BRW_SWIZZLE_XYZW) &&
-       ((devinfo->gen == 6 && inst->is_math()) ||
+       ((devinfo->ver == 6 && inst->is_math()) ||
         inst->is_send_from_grf() ||
         inst->uses_indirect_addressing())) {
       return false;

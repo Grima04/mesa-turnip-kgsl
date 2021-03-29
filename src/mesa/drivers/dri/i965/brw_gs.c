@@ -43,7 +43,7 @@ assign_gs_binding_table_offsets(const struct gen_device_info *devinfo,
    /* In gen6 we reserve the first BRW_MAX_SOL_BINDINGS entries for transform
     * feedback surfaces.
     */
-   uint32_t reserved = devinfo->gen == 6 ? BRW_MAX_SOL_BINDINGS : 0;
+   uint32_t reserved = devinfo->ver == 6 ? BRW_MAX_SOL_BINDINGS : 0;
 
    brw_assign_common_binding_table_offsets(devinfo, prog,
                                            &prog_data->base.base, reserved);

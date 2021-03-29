@@ -242,9 +242,9 @@ get_fast_clear_rect(const struct isl_device *dev,
       /* The line alignment requirement for Y-tiled is halved at SKL and again
        * at TGL.
        */
-      if (dev->info->gen >= 12)
+      if (dev->info->ver >= 12)
          y_align *= 8;
-      else if (dev->info->gen >= 9)
+      else if (dev->info->ver >= 9)
          y_align *= 16;
       else
          y_align *= 32;
@@ -436,7 +436,7 @@ blorp_clear(struct blorp_batch *batch,
       use_simd16_replicated_data = false;
 
    /* Replicated clears don't work yet before gen6 */
-   if (batch->blorp->isl_dev->info->gen < 6)
+   if (batch->blorp->isl_dev->info->ver < 6)
       use_simd16_replicated_data = false;
 
    /* Constant color writes ignore everyting in blend and color calculator
@@ -480,7 +480,7 @@ blorp_clear(struct blorp_batch *batch,
       /* The MinLOD and MinimumArrayElement don't work properly for cube maps.
        * Convert them to a single slice on gen4.
        */
-      if (batch->blorp->isl_dev->info->gen == 4 &&
+      if (batch->blorp->isl_dev->info->ver == 4 &&
           (params.dst.surf.usage & ISL_SURF_USAGE_CUBE_BIT)) {
          blorp_surf_convert_to_single_slice(batch->blorp->isl_dev, &params.dst);
       }
@@ -763,9 +763,9 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
                           uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
 {
    /* This function currently doesn't support any gen prior to gen8 */
-   assert(devinfo->gen >= 8);
+   assert(devinfo->ver >= 8);
 
-   if (devinfo->gen == 8 && surf->format == ISL_FORMAT_R16_UNORM) {
+   if (devinfo->ver == 8 && surf->format == ISL_FORMAT_R16_UNORM) {
       /* Apply the D16 alignment restrictions. On BDW, HiZ has an 8x4 sample
        * block with the following property: as the number of samples increases,
        * the number of pixels representable by this block decreases by a factor
@@ -1108,11 +1108,11 @@ blorp_ccs_resolve(struct blorp_batch *batch,
    params.x1 = ALIGN(params.x1, x_scaledown) / x_scaledown;
    params.y1 = ALIGN(params.y1, y_scaledown) / y_scaledown;
 
-   if (batch->blorp->isl_dev->info->gen >= 10) {
+   if (batch->blorp->isl_dev->info->ver >= 10) {
       assert(resolve_op == ISL_AUX_OP_FULL_RESOLVE ||
              resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE ||
              resolve_op == ISL_AUX_OP_AMBIGUATE);
-   } else if (batch->blorp->isl_dev->info->gen >= 9) {
+   } else if (batch->blorp->isl_dev->info->ver >= 9) {
       assert(resolve_op == ISL_AUX_OP_FULL_RESOLVE ||
              resolve_op == ISL_AUX_OP_PARTIAL_RESOLVE);
    } else {
@@ -1192,7 +1192,7 @@ blorp_params_get_mcs_partial_resolve_kernel(struct blorp_batch *batch,
    nir_discard_if(&b, nir_inot(&b, is_clear));
 
    nir_ssa_def *clear_color = nir_load_var(&b, v_color);
-   if (blorp_key.indirect_clear_color && blorp->isl_dev->info->gen <= 8) {
+   if (blorp_key.indirect_clear_color && blorp->isl_dev->info->ver <= 8) {
       /* Gen7-8 clear colors are stored as single 0/1 bits */
       clear_color = nir_vec4(&b, blorp_nir_bit(&b, clear_color, 31),
                                  blorp_nir_bit(&b, clear_color, 30),
@@ -1236,7 +1236,7 @@ blorp_mcs_partial_resolve(struct blorp_batch *batch,
    blorp_params_init(&params);
    params.snapshot_type = INTEL_SNAPSHOT_MCS_PARTIAL_RESOLVE;
 
-   assert(batch->blorp->isl_dev->info->gen >= 7);
+   assert(batch->blorp->isl_dev->info->ver >= 7);
 
    params.x0 = 0;
    params.y0 = 0;

@@ -455,7 +455,7 @@ static inline unsigned
 sample_mask_flag_subreg(const fs_visitor *shader)
 {
    assert(shader->stage == MESA_SHADER_FRAGMENT);
-   return shader->devinfo->gen >= 7 ? 2 : 1;
+   return shader->devinfo->ver >= 7 ? 2 : 1;
 }
 
 /**

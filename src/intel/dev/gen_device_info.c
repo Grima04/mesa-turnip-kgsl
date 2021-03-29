@@ -84,13 +84,13 @@ gen_device_name_to_pci_device_id(const char *name)
 }
 
 static const struct gen_device_info gen_device_info_gen3 = {
-   .gen = 3,
+   .ver = 3,
    .simulator_id = -1,
    .cs_prefetch_size = 512,
 };
 
 static const struct gen_device_info gen_device_info_i965 = {
-   .gen = 4,
+   .ver = 4,
    .has_negative_rhw_bug = true,
    .num_slices = 1,
    .num_subslices = { 1, },
@@ -108,7 +108,7 @@ static const struct gen_device_info gen_device_info_i965 = {
 };
 
 static const struct gen_device_info gen_device_info_g4x = {
-   .gen = 4,
+   .ver = 4,
    .verx10 = 45,
    .has_pln = true,
    .has_compr4 = true,
@@ -130,7 +130,7 @@ static const struct gen_device_info gen_device_info_g4x = {
 };
 
 static const struct gen_device_info gen_device_info_ilk = {
-   .gen = 5,
+   .ver = 5,
    .has_pln = true,
    .has_compr4 = true,
    .has_surface_tile_offset = true,
@@ -150,7 +150,7 @@ static const struct gen_device_info gen_device_info_ilk = {
 };
 
 static const struct gen_device_info gen_device_info_snb_gt1 = {
-   .gen = 6,
+   .ver = 6,
    .gt = 1,
    .has_hiz_and_separate_stencil = true,
    .has_llc = true,
@@ -180,7 +180,7 @@ static const struct gen_device_info gen_device_info_snb_gt1 = {
 };
 
 static const struct gen_device_info gen_device_info_snb_gt2 = {
-   .gen = 6,
+   .ver = 6,
    .gt = 2,
    .has_hiz_and_separate_stencil = true,
    .has_llc = true,
@@ -210,7 +210,7 @@ static const struct gen_device_info gen_device_info_snb_gt2 = {
 };
 
 #define GEN7_FEATURES                               \
-   .gen = 7,                                        \
+   .ver = 7,                                        \
    .has_hiz_and_separate_stencil = true,            \
    .must_use_separate_stencil = true,               \
    .has_llc = true,                                 \
@@ -401,7 +401,7 @@ static const struct gen_device_info gen_device_info_hsw_gt3 = {
  * so keep things conservative for now and set has_sample_with_hiz = false.
  */
 #define GEN8_FEATURES                               \
-   .gen = 8,                                        \
+   .ver = 8,                                        \
    .has_hiz_and_separate_stencil = true,            \
    .has_resource_streamer = true,                   \
    .must_use_separate_stencil = true,               \
@@ -522,7 +522,7 @@ static const struct gen_device_info gen_device_info_chv = {
 };
 
 #define GEN9_HW_INFO                                \
-   .gen = 9,                                        \
+   .ver = 9,                                        \
    .max_vs_threads = 336,                           \
    .max_gs_threads = 336,                           \
    .max_tcs_threads = 336,                          \
@@ -807,7 +807,7 @@ static const struct gen_device_info gen_device_info_cfl_gt3 = {
 #define subslices(args...) { args, }
 
 #define GEN11_HW_INFO                               \
-   .gen = 11,                                       \
+   .ver = 11,                                       \
    .has_pln = false,                                \
    .max_vs_threads = 364,                           \
    .max_gs_threads = 224,                           \
@@ -926,7 +926,7 @@ static const struct gen_device_info gen_device_info_ehl_2x4 = {
    }
 
 #define GEN12_HW_INFO                               \
-   .gen = 12,                                       \
+   .ver = 12,                                       \
    .has_pln = false,                                \
    .has_sample_with_hiz = false,                    \
    .has_aux_map = true,                             \
@@ -1103,7 +1103,7 @@ update_from_topology(struct gen_device_info *devinfo,
    }
    assert(n_subslices > 0);
 
-   if (devinfo->gen >= 11) {
+   if (devinfo->ver >= 11) {
       /* On current ICL+ hardware we only have one slice. */
       assert(devinfo->slice_masks == 1);
 
@@ -1114,7 +1114,7 @@ update_from_topology(struct gen_device_info *devinfo,
        * each pixel pipe only takes 2 bits in the mask even though it's still
        * 4 subslices.
        */
-      const unsigned ppipe_bits = devinfo->gen >= 12 ? 2 : 4;
+      const unsigned ppipe_bits = devinfo->ver >= 12 ? 2 : 4;
       for (unsigned p = 0; p < GEN_DEVICE_MAX_PIXEL_PIPES; p++) {
          const unsigned ppipe_mask = BITFIELD_RANGE(p * ppipe_bits, ppipe_bits);
          devinfo->ppipe_subslices[p] =
@@ -1122,7 +1122,7 @@ update_from_topology(struct gen_device_info *devinfo,
       }
    }
 
-   if (devinfo->gen == 12 && devinfo->num_slices == 1) {
+   if (devinfo->ver == 12 && devinfo->num_slices == 1) {
       if (n_subslices >= 6) {
          assert(n_subslices == 6);
          devinfo->l3_banks = 8;
@@ -1260,7 +1260,7 @@ gen_get_device_info_from_pci_id(int pci_id,
     * calculated for a particular shader stage.
     */
 
-   switch(devinfo->gen) {
+   switch(devinfo->ver) {
    case 9:
       devinfo->max_wm_threads = 64 /* threads-per-PSD */
                               * devinfo->num_slices
@@ -1273,14 +1273,14 @@ gen_get_device_info_from_pci_id(int pci_id,
                               * 8; /* subslices per slice */
       break;
    default:
-      assert(devinfo->gen < 9);
+      assert(devinfo->ver < 9);
       break;
    }
 
    assert(devinfo->num_slices <= ARRAY_SIZE(devinfo->num_subslices));
 
    if (devinfo->verx10 == 0)
-      devinfo->verx10 = devinfo->gen * 10;
+      devinfo->verx10 = devinfo->ver * 10;
 
    devinfo->chipset_id = pci_id;
    return true;
@@ -1324,7 +1324,7 @@ getparam_topology(struct gen_device_info *devinfo, int fd)
    /* Only with Gen8+ are we starting to see devices with fusing that can only
     * be detected at runtime.
     */
-   if (devinfo->gen >= 8)
+   if (devinfo->ver >= 8)
       mesa_logw("Kernel 4.1 required to properly query GPU properties.");
 
    return false;
@@ -1444,7 +1444,7 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
       devinfo->no_hw = false;
    }
 
-   if (devinfo->gen == 10) {
+   if (devinfo->ver == 10) {
       mesa_loge("Gen10 support is redacted.");
       return false;
    }
@@ -1457,7 +1457,7 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
    if (getparam(fd, I915_PARAM_CS_TIMESTAMP_FREQUENCY,
                 &timestamp_frequency))
       devinfo->timestamp_frequency = timestamp_frequency;
-   else if (devinfo->gen >= 10) {
+   else if (devinfo->ver >= 10) {
       mesa_loge("Kernel 4.15 required to read the CS timestamp frequency.");
       return false;
    }
@@ -1466,7 +1466,7 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
       devinfo->revision = 0;
 
    if (!query_topology(devinfo, fd)) {
-      if (devinfo->gen >= 10) {
+      if (devinfo->ver >= 10) {
          /* topology uAPI required for CNL+ (kernel 4.17+) */
          return false;
       }

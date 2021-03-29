@@ -1609,7 +1609,7 @@ static inline void
 write_reloc(const struct anv_device *device, void *p, uint64_t v, bool flush)
 {
    unsigned reloc_size = 0;
-   if (device->info.gen >= 8) {
+   if (device->info.ver >= 8) {
       reloc_size = sizeof(uint64_t);
       *(uint64_t *)p = intel_canonical_address(v);
    } else {
@@ -3889,7 +3889,7 @@ anv_image_get_fast_clear_type_addr(const struct anv_device *device,
    struct anv_address addr =
       anv_image_get_clear_color_addr(device, image, aspect);
 
-   const unsigned clear_color_state_size = device->info.gen >= 10 ?
+   const unsigned clear_color_state_size = device->info.ver >= 10 ?
       device->isl_dev.ss.clear_color_state_size :
       device->isl_dev.ss.clear_value_size;
    return anv_address_add(addr, clear_color_state_size);
@@ -3951,7 +3951,7 @@ anv_can_sample_with_hiz(const struct gen_device_info * const devinfo,
     * far. Sampling fast-cleared blocks on BDW must also be handled with care
     * (see depth_stencil_attachment_compute_aux_usage() for more info).
     */
-   if (devinfo->gen != 8 && !devinfo->has_sample_with_hiz)
+   if (devinfo->ver != 8 && !devinfo->has_sample_with_hiz)
       return false;
 
    return image->samples == 1;

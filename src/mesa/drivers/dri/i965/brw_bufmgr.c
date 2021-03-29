@@ -1883,7 +1883,7 @@ brw_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
    /* The STATE_BASE_ADDRESS size field can only hold 1 page shy of 4GB */
    const uint64_t _4GB_minus_1 = _4GB - PAGE_SIZE;
 
-   if (devinfo->gen >= 8 && gtt_size > _4GB) {
+   if (devinfo->ver >= 8 && gtt_size > _4GB) {
       bufmgr->initial_kflags |= EXEC_OBJECT_SUPPORTS_48B_ADDRESS;
 
       /* Allocate VMA in userspace if we have softpin and full PPGTT. */
@@ -1899,7 +1899,7 @@ brw_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
           */
          util_vma_heap_init(&bufmgr->vma_allocator[BRW_MEMZONE_OTHER],
                             1 * _4GB, gtt_size - 2 * _4GB);
-      } else if (devinfo->gen >= 10) {
+      } else if (devinfo->ver >= 10) {
          /* Softpin landed in 4.5, but GVT used an aliasing PPGTT until
           * kernel commit 6b3816d69628becb7ff35978aa0751798b4a940a in
           * 4.14.  Gen10+ GVT hasn't landed yet, so it's not actually a

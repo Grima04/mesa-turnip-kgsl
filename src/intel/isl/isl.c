@@ -98,7 +98,7 @@ __isl_finishme(const char *file, int line, const char *fmt, ...)
 static void
 isl_device_setup_mocs(struct isl_device *dev)
 {
-   if (dev->info->gen >= 12) {
+   if (dev->info->ver >= 12) {
       if (dev->info->is_dg1) {
          /* L3CC=WB */
          dev->mocs.internal = 5 << 1;
@@ -116,12 +116,12 @@ isl_device_setup_mocs(struct isl_device *dev)
          /* L1 - HDC:L1 + L3 + LLC */
          dev->mocs.l1_hdc_l3_llc = 48 << 1;
       }
-   } else if (dev->info->gen >= 9) {
+   } else if (dev->info->ver >= 9) {
       /* TC=LLC/eLLC, LeCC=PTE, LRUM=3, L3CC=WB */
       dev->mocs.external = 1 << 1;
       /* TC=LLC/eLLC, LeCC=WB, LRUM=3, L3CC=WB */
       dev->mocs.internal = 2 << 1;
-   } else if (dev->info->gen >= 8) {
+   } else if (dev->info->ver >= 8) {
       /* MEMORY_OBJECT_CONTROL_STATE:
        * .MemoryTypeLLCeLLCCacheabilityControl = UCwithFenceifcoherentcycle,
        * .TargetCache = L3DefertoPATforLLCeLLCselection,
@@ -134,7 +134,7 @@ isl_device_setup_mocs(struct isl_device *dev)
        * .AgeforQUADLRU = 0
        */
       dev->mocs.internal = 0x78;
-   } else if (dev->info->gen >= 7) {
+   } else if (dev->info->ver >= 7) {
       if (dev->info->is_haswell) {
          /* MEMORY_OBJECT_CONTROL_STATE:
           * .LLCeLLCCacheabilityControlLLCCC             = 0,
@@ -167,7 +167,7 @@ isl_mocs(const struct isl_device *dev, isl_surf_usage_flags_t usage,
    if (external)
       return dev->mocs.external;
 
-   if (dev->info->gen >= 12 && !dev->info->is_dg1) {
+   if (dev->info->ver >= 12 && !dev->info->is_dg1) {
       if (usage & ISL_SURF_USAGE_STAGING_BIT)
          return dev->mocs.internal;
 
@@ -194,7 +194,7 @@ isl_device_init(struct isl_device *dev,
                 bool has_bit6_swizzling)
 {
    /* Gen8+ don't have bit6 swizzling, ensure callsite is not confused. */
-   assert(!(has_bit6_swizzling && info->gen >= 8));
+   assert(!(has_bit6_swizzling && info->ver >= 8));
 
    dev->info = info;
    dev->use_separate_stencil = ISL_GFX_VER(dev) >= 6;
@@ -2809,7 +2809,7 @@ isl_swizzle_supports_rendering(const struct gen_device_info *devinfo,
        *    order will be written."
        */
       return true;
-   } else if (devinfo->gen <= 7) {
+   } else if (devinfo->ver <= 7) {
       /* Ivy Bridge and early doesn't have any swizzling */
       return isl_swizzle_is_identity(swizzle);
    } else {

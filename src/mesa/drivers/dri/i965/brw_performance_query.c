@@ -378,7 +378,7 @@ brw_delete_perf_query(struct gl_context *ctx,
 static bool
 oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
 {
-   if (devinfo->gen >= 10) {
+   if (devinfo->ver >= 10) {
       /* topology uAPI required for CNL+ (kernel 4.17+) make a call to the api
        * to verify support
        */
@@ -394,7 +394,7 @@ oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
       return drmIoctl(fd, DRM_IOCTL_I915_QUERY, &query) == 0;
    }
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       /* 4.13+ api required for gen8 - gen9 */
       int mask;
       struct drm_i915_getparam gp = {
@@ -405,7 +405,7 @@ oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
       return drmIoctl(fd, DRM_IOCTL_I915_GETPARAM, &gp) == 0;
    }
 
-   if (devinfo->gen == 7)
+   if (devinfo->ver == 7)
       /* default topology values are correct for HSW */
       return true;
 

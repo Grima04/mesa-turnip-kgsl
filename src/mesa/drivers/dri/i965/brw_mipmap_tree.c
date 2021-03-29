@@ -200,7 +200,7 @@ brw_lower_compressed_format(struct brw_context *brw, mesa_format format)
    /* No need to lower ETC formats on these platforms,
     * they are supported natively.
     */
-   if (devinfo->gen >= 8 || devinfo->is_baytrail)
+   if (devinfo->ver >= 8 || devinfo->is_baytrail)
       return format;
 
    switch (format) {
@@ -338,7 +338,7 @@ need_to_retile_as_x(const struct brw_context *brw, uint64_t size,
     * BLT engine to support it.  Prior to Sandybridge, the BLT paths can't
     * handle Y-tiling, so we need to fall back to X.
     */
-   if (devinfo->gen < 6 && size >= brw->max_gtt_map_object_size &&
+   if (devinfo->ver < 6 && size >= brw->max_gtt_map_object_size &&
        tiling == ISL_TILING_Y0)
       return true;
 
@@ -484,11 +484,11 @@ miptree_create(struct brw_context *brw,
    isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
 
    /* TODO: This used to be because there wasn't BLORP to handle Y-tiling. */
-   if (devinfo->gen < 6 && _mesa_is_format_color_format(format))
+   if (devinfo->ver < 6 && _mesa_is_format_color_format(format))
       tiling_flags &= ~ISL_TILING_Y0_BIT;
 
    mesa_format mt_fmt = format;
-   if (!_mesa_is_format_color_format(format) && devinfo->gen >= 6) {
+   if (!_mesa_is_format_color_format(format) && devinfo->ver >= 6) {
       /* Fix up the Z miptree format for how we're splitting out separate
        * stencil. Gen7 expects there to be no stencil bits in its depth buffer.
        */
@@ -592,7 +592,7 @@ brw_miptree_create_for_bo(struct brw_context *brw,
 
    if ((base_format == GL_DEPTH_COMPONENT ||
         base_format == GL_DEPTH_STENCIL)) {
-      const mesa_format mt_fmt = (devinfo->gen < 6) ? format :
+      const mesa_format mt_fmt = (devinfo->ver < 6) ? format :
          brw_depth_format_for_depthstencil_format(format);
       mt = make_surface(brw, target, mt_fmt,
                         0, 0, width, height, depth, 1, ISL_TILING_Y0_BIT,
@@ -1302,7 +1302,7 @@ brw_miptree_copy_slice(struct brw_context *brw,
        dst_mt, dst_level, dst_layer,
        width, height);
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       /* On gen6 and above, we just use blorp.  It's faster than the blitter
        * and can handle everything without software fallbacks.
        */
@@ -1488,7 +1488,7 @@ brw_miptree_level_enable_hiz(struct brw_context *brw,
    assert(mt->aux_buf);
    assert(mt->surf.size_B > 0);
 
-   if (devinfo->gen >= 8 || devinfo->is_haswell) {
+   if (devinfo->ver >= 8 || devinfo->is_haswell) {
       uint32_t width = minify(mt->surf.phys_level0_sa.width, level);
       uint32_t height = minify(mt->surf.phys_level0_sa.height, level);
 
@@ -1738,7 +1738,7 @@ brw_miptree_check_color_resolve(const struct brw_context *brw,
       return;
 
    /* Fast color clear is supported for mipmapped surfaces only on Gen8+. */
-   assert(brw->screen->devinfo.gen >= 8 ||
+   assert(brw->screen->devinfo.ver >= 8 ||
           (level == 0 && mt->first_level == 0 && mt->last_level == 0));
 
    /* Compression of arrayed msaa surfaces is supported. */
@@ -1746,7 +1746,7 @@ brw_miptree_check_color_resolve(const struct brw_context *brw,
       return;
 
    /* Fast color clear is supported for non-msaa arrays only on Gen8+. */
-   assert(brw->screen->devinfo.gen >= 8 ||
+   assert(brw->screen->devinfo.ver >= 8 ||
           (layer == 0 &&
            mt->surf.logical_level0_px.depth == 1 &&
            mt->surf.logical_level0_px.array_len == 1));
@@ -1807,7 +1807,7 @@ brw_miptree_finish_write(struct brw_context *brw,
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (mt->format == MESA_FORMAT_S_UINT8 && devinfo->gen <= 7) {
+   if (mt->format == MESA_FORMAT_S_UINT8 && devinfo->ver <= 7) {
       mt->shadow_needs_update = true;
    } else if (brw_miptree_has_etc_shadow(brw, mt)) {
       mt->shadow_needs_update = true;
@@ -1910,7 +1910,7 @@ brw_miptree_texture_aux_usage(struct brw_context *brw,
                               enum isl_format view_format,
                               enum gen9_astc5x5_wa_tex_type astc5x5_wa_bits)
 {
-   assert(brw->screen->devinfo.gen == 9 || astc5x5_wa_bits == 0);
+   assert(brw->screen->devinfo.ver == 9 || astc5x5_wa_bits == 0);
 
    /* On gen9, ASTC 5x5 textures cannot live in the sampler cache along side
     * CCS or HiZ compressed textures.  See gen9_apply_astc5x5_wa_flush() for
@@ -2034,7 +2034,7 @@ brw_miptree_render_aux_usage(struct brw_context *brw,
        * formats.  However, there are issues with blending where it doesn't
        * properly apply the sRGB curve to the clear color when blending.
        */
-      if (devinfo->gen >= 9 && blend_enabled &&
+      if (devinfo->ver >= 9 && blend_enabled &&
           isl_format_is_srgb(render_format) &&
           !isl_color_value_is_zero_one(mt->fast_clear_color, render_format))
          return ISL_AUX_USAGE_NONE;
@@ -2289,16 +2289,16 @@ brw_update_r8stencil(struct brw_context *brw,
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   assert(devinfo->gen >= 7);
+   assert(devinfo->ver >= 7);
    struct brw_mipmap_tree *src =
       mt->format == MESA_FORMAT_S_UINT8 ? mt : mt->stencil_mt;
-   if (!src || devinfo->gen >= 8)
+   if (!src || devinfo->ver >= 8)
       return;
 
    assert(src->surf.size_B > 0);
 
    if (!mt->shadow_mt) {
-      assert(devinfo->gen > 6); /* Handle MIPTREE_LAYOUT_GEN6_HIZ_STENCIL */
+      assert(devinfo->ver > 6); /* Handle MIPTREE_LAYOUT_GEN6_HIZ_STENCIL */
       mt->shadow_mt = make_surface(
                             brw,
                             src->target,
@@ -2435,7 +2435,7 @@ brw_miptree_unmap_blit(struct brw_context *brw,
    brw_miptree_unmap_raw(map->linear_mt);
 
    if (map->mode & GL_MAP_WRITE_BIT) {
-      if (devinfo->gen >= 6) {
+      if (devinfo->ver >= 6) {
          brw_blorp_copy_miptrees(brw, map->linear_mt, 0, 0,
                                  mt, level, slice,
                                  0, 0, map->x, map->y, map->w, map->h);
@@ -2627,7 +2627,7 @@ brw_miptree_map_blit(struct brw_context *brw,
     * temporary buffer back out.
     */
    if (!(map->mode & GL_MAP_INVALIDATE_RANGE_BIT)) {
-      if (devinfo->gen >= 6) {
+      if (devinfo->ver >= 6) {
          brw_blorp_copy_miptrees(brw, mt, level, slice,
                                  map->linear_mt, 0, 0,
                                  map->x, map->y, 0, 0, map->w, map->h);
@@ -3037,9 +3037,9 @@ use_blitter_to_map(struct brw_context *brw,
        !mt->compressed &&
        (mt->surf.tiling == ISL_TILING_X ||
         /* Prior to Sandybridge, the blitter can't handle Y tiling */
-        (devinfo->gen >= 6 && mt->surf.tiling == ISL_TILING_Y0) ||
+        (devinfo->ver >= 6 && mt->surf.tiling == ISL_TILING_Y0) ||
         /* Fast copy blit on skl+ supports all tiling formats. */
-        devinfo->gen >= 9) &&
+        devinfo->ver >= 9) &&
        can_blit_slice(mt, map))
       return true;
 
@@ -3094,7 +3094,7 @@ brw_miptree_map(struct brw_context *brw,
       brw_miptree_map_depthstencil(brw, mt, map, level, slice);
    } else if (use_blitter_to_map(brw, mt, map)) {
       brw_miptree_map_blit(brw, mt, map, level, slice);
-   } else if (mt->surf.tiling != ISL_TILING_LINEAR && devinfo->gen > 4) {
+   } else if (mt->surf.tiling != ISL_TILING_LINEAR && devinfo->ver > 4) {
       brw_miptree_map_tiled_memcpy(brw, mt, map, level, slice);
 #if defined(USE_SSE41)
    } else if (!(mode & GL_MAP_WRITE_BIT) &&
@@ -3169,7 +3169,7 @@ get_isl_dim_layout(const struct gen_device_info *devinfo,
    switch (target) {
    case GL_TEXTURE_1D:
    case GL_TEXTURE_1D_ARRAY:
-      return (devinfo->gen >= 9 && tiling == ISL_TILING_LINEAR ?
+      return (devinfo->ver >= 9 && tiling == ISL_TILING_LINEAR ?
               ISL_DIM_LAYOUT_GEN9_1D : ISL_DIM_LAYOUT_GEN4_2D);
 
    case GL_TEXTURE_2D:
@@ -3182,11 +3182,11 @@ get_isl_dim_layout(const struct gen_device_info *devinfo,
 
    case GL_TEXTURE_CUBE_MAP:
    case GL_TEXTURE_CUBE_MAP_ARRAY:
-      return (devinfo->gen == 4 ? ISL_DIM_LAYOUT_GEN4_3D :
+      return (devinfo->ver == 4 ? ISL_DIM_LAYOUT_GEN4_3D :
               ISL_DIM_LAYOUT_GEN4_2D);
 
    case GL_TEXTURE_3D:
-      return (devinfo->gen >= 9 ?
+      return (devinfo->ver >= 9 ?
               ISL_DIM_LAYOUT_GEN4_2D : ISL_DIM_LAYOUT_GEN4_3D);
    }
 

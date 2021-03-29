@@ -158,7 +158,7 @@ disasm_annotate(struct disasm_info *disasm,
     * There's also only complication from emitting an annotation without
     * a corresponding hardware instruction to disassemble.
     */
-   if (devinfo->gen >= 6 && inst->opcode == BRW_OPCODE_DO) {
+   if (devinfo->ver >= 6 && inst->opcode == BRW_OPCODE_DO) {
       disasm->use_tail = true;
    }
 

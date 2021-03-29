@@ -39,7 +39,7 @@ brw_init_extensions(struct gl_context *ctx)
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   assert(devinfo->gen >= 4);
+   assert(devinfo->ver >= 4);
 
    ctx->Extensions.ARB_arrays_of_arrays = true;
    ctx->Extensions.ARB_buffer_storage = true;
@@ -144,18 +144,18 @@ brw_init_extensions(struct gl_context *ctx)
    ctx->Extensions.OES_texture_half_float = true;
    ctx->Extensions.OES_texture_half_float_linear = true;
 
-   if (devinfo->gen >= 8)
+   if (devinfo->ver >= 8)
       ctx->Const.GLSLVersion = 460;
    else if (devinfo->is_haswell && can_do_pipelined_register_writes(brw->screen))
       ctx->Const.GLSLVersion = 450;
-   else if (devinfo->gen >= 7 && can_do_pipelined_register_writes(brw->screen))
+   else if (devinfo->ver >= 7 && can_do_pipelined_register_writes(brw->screen))
       ctx->Const.GLSLVersion = 420;
-   else if (devinfo->gen >= 6)
+   else if (devinfo->ver >= 6)
       ctx->Const.GLSLVersion = 330;
    else
       ctx->Const.GLSLVersion = 120;
 
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       ctx->Const.GLSLVersionCompat = 130;
    else
       ctx->Const.GLSLVersionCompat = 120;
@@ -165,21 +165,21 @@ brw_init_extensions(struct gl_context *ctx)
    ctx->Extensions.EXT_shader_integer_mix = ctx->Const.GLSLVersion >= 130;
    ctx->Extensions.MESA_shader_integer_functions = ctx->Const.GLSLVersion >= 130;
 
-   if (devinfo->is_g4x || devinfo->gen >= 5) {
+   if (devinfo->is_g4x || devinfo->ver >= 5) {
       ctx->Extensions.EXT_shader_framebuffer_fetch_non_coherent = true;
       ctx->Extensions.KHR_blend_equation_advanced = true;
    }
 
-   if (devinfo->gen >= 5) {
+   if (devinfo->ver >= 5) {
       ctx->Extensions.ARB_texture_query_levels = ctx->Const.GLSLVersion >= 130;
       ctx->Extensions.ARB_texture_query_lod = true;
       ctx->Extensions.EXT_timer_query = true;
    }
 
-   if (devinfo->gen == 6)
+   if (devinfo->ver == 6)
       ctx->Extensions.ARB_transform_feedback2 = true;
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       ctx->Extensions.ARB_blend_func_extended =
          !driQueryOptionb(&brw->screen->optionCache, "disable_blend_func_extended");
       ctx->Extensions.ARB_conditional_render_inverted = true;
@@ -234,7 +234,7 @@ brw_init_extensions(struct gl_context *ctx)
 
    brw->predicate.supported = false;
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       ctx->Extensions.ARB_conservative_depth = true;
       ctx->Extensions.ARB_derivative_control = true;
       ctx->Extensions.ARB_framebuffer_no_attachments = true;
@@ -271,7 +271,7 @@ brw_init_extensions(struct gl_context *ctx)
              ctx->Const.MaxComputeWorkGroupSize[0] >= 1024) {
             ctx->Extensions.ARB_compute_shader = true;
             ctx->Extensions.ARB_ES3_1_compatibility =
-               devinfo->gen >= 8 || devinfo->is_haswell;
+               devinfo->ver >= 8 || devinfo->is_haswell;
             ctx->Extensions.NV_compute_shader_derivatives = true;
             ctx->Extensions.ARB_compute_variable_group_size = true;
          }
@@ -286,7 +286,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.ARB_spirv_extensions = true;
    }
 
-   if (devinfo->gen >= 8 || devinfo->is_haswell) {
+   if (devinfo->ver >= 8 || devinfo->is_haswell) {
       ctx->Extensions.ARB_stencil_texturing = true;
       ctx->Extensions.ARB_texture_stencil8 = true;
       ctx->Extensions.OES_geometry_shader = true;
@@ -294,7 +294,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.OES_viewport_array = true;
    }
 
-   if (devinfo->gen >= 8 || devinfo->is_haswell || devinfo->is_baytrail) {
+   if (devinfo->ver >= 8 || devinfo->is_haswell || devinfo->is_baytrail) {
       ctx->Extensions.ARB_robust_buffer_access_behavior = true;
    }
 
@@ -302,7 +302,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.ARB_query_buffer_object = true;
    }
 
-   if (devinfo->gen >= 8 || devinfo->is_baytrail) {
+   if (devinfo->ver >= 8 || devinfo->is_baytrail) {
       /* For now, we can't enable OES_texture_view on Gen 7 because of
        * some piglit failures coming from
        * piglit/tests/spec/arb_texture_view/rendering-formats.c that need
@@ -311,7 +311,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.OES_texture_view = true;
    }
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       /* We can safely enable OES_copy_image on Gen 7, since we emulate
        * the ETC2 support using the shadow_miptree to store the
        * compressed data.
@@ -322,10 +322,10 @@ brw_init_extensions(struct gl_context *ctx)
    /* Gen < 6 still uses the blitter. It's somewhat annoying to add support
     * for blackhole there... Does anybody actually care anymore anyway?
     */
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       ctx->Extensions.INTEL_blackhole_render = true;
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       ctx->Extensions.ARB_gpu_shader_int64 = true;
       /* requires ARB_gpu_shader_int64 */
       ctx->Extensions.ARB_shader_ballot = true;
@@ -337,7 +337,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.INTEL_shader_integer_functions2 = true;
    }
 
-   if (devinfo->gen >= 9) {
+   if (devinfo->ver >= 9) {
       ctx->Extensions.ANDROID_extension_pack_es31a = true;
       ctx->Extensions.AMD_depth_clamp_separate = true;
       ctx->Extensions.ARB_post_depth_coverage = true;
@@ -377,7 +377,7 @@ brw_init_extensions(struct gl_context *ctx)
    if (gen_device_info_is_9lp(devinfo))
       ctx->Extensions.KHR_texture_compression_astc_hdr = true;
 
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       ctx->Extensions.INTEL_performance_query = true;
 
    if (ctx->API != API_OPENGL_COMPAT ||

@@ -1075,7 +1075,7 @@ namespace {
 bool
 fs_visitor::lower_scoreboard()
 {
-   if (devinfo->gen >= 12) {
+   if (devinfo->ver >= 12) {
       const ordered_address *jps = ordered_inst_addresses(this);
       const dependency_list *deps0 = gather_inst_dependencies(this, jps);
       const dependency_list *deps1 = allocate_inst_dependencies(this, deps0);

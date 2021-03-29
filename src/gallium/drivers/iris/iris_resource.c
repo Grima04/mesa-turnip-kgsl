@@ -82,12 +82,12 @@ modifier_is_supported(const struct gen_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED:
       break;
    case I915_FORMAT_MOD_Y_TILED_CCS:
-      if (devinfo->gen <= 8 || devinfo->gen >= 12)
+      if (devinfo->ver <= 8 || devinfo->ver >= 12)
          return false;
       break;
    case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
    case I915_FORMAT_MOD_Y_TILED_GEN12_MC_CCS:
-      if (devinfo->gen != 12)
+      if (devinfo->ver != 12)
          return false;
       break;
    case DRM_FORMAT_MOD_INVALID:
@@ -295,7 +295,7 @@ iris_image_view_get_format(struct iris_context *ice,
        * limited number of formats), and if not possible, fall back
        * to untyped reads.
        */
-      if (devinfo->gen == 8 &&
+      if (devinfo->ver == 8 &&
           !isl_has_matching_typed_storage_image_format(devinfo, isl_fmt))
          return ISL_FORMAT_RAW;
       else
@@ -354,7 +354,7 @@ iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
    switch (target) {
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_1D_ARRAY:
-      return (devinfo->gen >= 9 && tiling == ISL_TILING_LINEAR ?
+      return (devinfo->ver >= 9 && tiling == ISL_TILING_LINEAR ?
               ISL_DIM_LAYOUT_GEN9_1D : ISL_DIM_LAYOUT_GEN4_2D);
 
    case PIPE_TEXTURE_2D:
@@ -365,7 +365,7 @@ iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
       return ISL_DIM_LAYOUT_GEN4_2D;
 
    case PIPE_TEXTURE_3D:
-      return (devinfo->gen >= 9 ?
+      return (devinfo->ver >= 9 ?
               ISL_DIM_LAYOUT_GEN4_2D : ISL_DIM_LAYOUT_GEN4_3D);
 
    case PIPE_MAX_TEXTURE_TYPES:
@@ -481,7 +481,7 @@ static unsigned
 iris_get_aux_clear_color_state_size(struct iris_screen *screen)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
-   return devinfo->gen >= 10 ? screen->isl_dev.ss.clear_color_state_size : 0;
+   return devinfo->ver >= 10 ? screen->isl_dev.ss.clear_color_state_size : 0;
 }
 
 static void
@@ -489,7 +489,7 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
                   enum isl_format format, unsigned plane)
 {
    const struct gen_device_info *devinfo = &screen->devinfo;
-   if (devinfo->gen >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
+   if (devinfo->ver >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
       void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
       assert(aux_map_ctx);
       const unsigned aux_offset = res->aux.extra_aux.surf.size_B > 0 ?
@@ -678,7 +678,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       res->aux.possible_usages |= 1 << ISL_AUX_USAGE_STC_CCS;
    } else if (has_ccs) {
       if (want_ccs_e_for_format(devinfo, res->surf.format)) {
-         res->aux.possible_usages |= devinfo->gen < 12 ?
+         res->aux.possible_usages |= devinfo->ver < 12 ?
             1 << ISL_AUX_USAGE_CCS_E : 1 << ISL_AUX_USAGE_GEN12_CCS_E;
       } else if (isl_format_supports_ccs_d(devinfo, res->surf.format)) {
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;

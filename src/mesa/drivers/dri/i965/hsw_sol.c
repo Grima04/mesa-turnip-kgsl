@@ -167,7 +167,7 @@ hsw_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
    brw_obj->primitive_mode = mode;
 
    /* Reset the SO buffer offsets to 0. */
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       brw_obj->zero_offsets = true;
    } else {
       BEGIN_BATCH(1 + 2 * BRW_MAX_XFB_STREAMS);

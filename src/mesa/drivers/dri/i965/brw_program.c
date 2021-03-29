@@ -130,7 +130,7 @@ brw_create_nir(struct brw_context *brw,
       /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gen8+. */
       static const gl_state_index16 tokens[STATE_LENGTH] =
          { STATE_TCS_PATCH_VERTICES_IN };
-      nir_lower_patch_vertices(nir, 0, devinfo->gen >= 8 ? tokens : NULL);
+      nir_lower_patch_vertices(nir, 0, devinfo->ver >= 8 ? tokens : NULL);
    }
 
    if (stage == MESA_SHADER_TESS_EVAL) {
@@ -350,7 +350,7 @@ brw_memory_barrier(struct gl_context *ctx, GLbitfield barriers)
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    unsigned bits = PIPE_CONTROL_DATA_CACHE_FLUSH | PIPE_CONTROL_CS_STALL;
-   assert(devinfo->gen >= 7 && devinfo->gen <= 11);
+   assert(devinfo->ver >= 7 && devinfo->ver <= 11);
 
    if (barriers & (GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT |
                    GL_ELEMENT_ARRAY_BARRIER_BIT |
@@ -376,7 +376,7 @@ brw_memory_barrier(struct gl_context *ctx, GLbitfield barriers)
    /* Typed surface messages are handled by the render cache on IVB, so we
     * need to flush it too.
     */
-   if (devinfo->gen == 7 && !devinfo->is_haswell)
+   if (devinfo->ver == 7 && !devinfo->is_haswell)
       bits |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
 
    brw_emit_pipe_control_flush(brw, bits);
@@ -389,7 +389,7 @@ brw_framebuffer_fetch_barrier(struct gl_context *ctx)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
    if (!ctx->Extensions.EXT_shader_framebuffer_fetch) {
-      if (devinfo->gen >= 6) {
+      if (devinfo->ver >= 6) {
          brw_emit_pipe_control_flush(brw,
                                      PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                      PIPE_CONTROL_CS_STALL);
@@ -473,13 +473,13 @@ brw_alloc_stage_scratch(struct brw_context *brw,
        * For, ICL, scratch space allocation is based on the number of threads
        * in the base configuration.
        */
-      if (devinfo->gen == 11)
+      if (devinfo->ver == 11)
          subslices = 8;
-      else if (devinfo->gen >= 9 && devinfo->gen < 11)
+      else if (devinfo->ver >= 9 && devinfo->ver < 11)
          subslices = 4 * brw->screen->devinfo.num_slices;
 
       unsigned scratch_ids_per_subslice;
-      if (devinfo->gen >= 11) {
+      if (devinfo->ver >= 11) {
          /* The MEDIA_VFE_STATE docs say:
           *
           *    "Starting with this configuration, the Maximum Number of
@@ -827,7 +827,7 @@ brw_setup_tex_for_precompile(const struct gen_device_info *devinfo,
                              struct brw_sampler_prog_key_data *tex,
                              const struct gl_program *prog)
 {
-   const bool has_shader_channel_select = devinfo->is_haswell || devinfo->gen >= 8;
+   const bool has_shader_channel_select = devinfo->is_haswell || devinfo->ver >= 8;
    unsigned sampler_count = util_last_bit(prog->SamplersUsed);
    for (unsigned i = 0; i < sampler_count; i++) {
       if (!has_shader_channel_select && (prog->ShadowSamplers & (1 << i))) {
@@ -885,7 +885,7 @@ brw_assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
    }
 
    if (prog->info.uses_texture_gather) {
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          stage_prog_data->binding_table.gather_texture_start =
             stage_prog_data->binding_table.texture_start;
       } else {

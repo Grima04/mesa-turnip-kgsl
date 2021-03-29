@@ -112,7 +112,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
 {
    struct iris_screen *screen = (struct iris_screen *) pscreen;
    const struct gen_device_info *devinfo = &screen->devinfo;
-   uint32_t max_samples = devinfo->gen == 8 ? 8 : 16;
+   uint32_t max_samples = devinfo->ver == 8 ? 8 : 16;
 
    if (sample_count > max_samples ||
        !util_is_power_of_two_or_zero(sample_count))
@@ -213,7 +213,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
     * a complex sampler workaround (see i965's gen9_apply_astc5x5_wa_flush).
     * Without it, st/mesa will emulate ASTC 5x5 via uncompressed textures.
     */
-   if (devinfo->gen == 9 && (format == ISL_FORMAT_ASTC_LDR_2D_5X5_FLT16 ||
+   if (devinfo->ver == 9 && (format == ISL_FORMAT_ASTC_LDR_2D_5X5_FLT16 ||
                              format == ISL_FORMAT_ASTC_LDR_2D_5X5_U8SRGB))
       return false;
 

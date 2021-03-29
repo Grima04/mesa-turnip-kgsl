@@ -117,7 +117,7 @@ generate_tex(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    int msg_type = -1;
 
-   if (devinfo->gen >= 5) {
+   if (devinfo->ver >= 5) {
       switch (inst->opcode) {
       case SHADER_OPCODE_TEX:
       case SHADER_OPCODE_TXL:
@@ -140,13 +140,13 @@ generate_tex(struct brw_codegen *p,
 	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
 	 break;
       case SHADER_OPCODE_TXF_CMS:
-         if (devinfo->gen >= 7)
+         if (devinfo->ver >= 7)
             msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS;
          else
             msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
          break;
       case SHADER_OPCODE_TXF_MCS:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
          break;
       case SHADER_OPCODE_TXS:
@@ -211,7 +211,7 @@ generate_tex(struct brw_codegen *p,
     * use an implied move from g0 to the first message register.
     */
    if (inst->header_size != 0) {
-      if (devinfo->gen < 6 && !inst->offset) {
+      if (devinfo->ver < 6 && !inst->offset) {
          /* Set up an implied move from g0 to the MRF. */
          src = brw_vec8_grf(0, 0);
       } else {
@@ -437,7 +437,7 @@ generate_gs_set_write_offset(struct brw_codegen *p,
    brw_push_insn_state(p);
    brw_set_default_access_mode(p, BRW_ALIGN_1);
    brw_set_default_mask_control(p, BRW_MASK_DISABLE);
-   assert(p->devinfo->gen >= 7 &&
+   assert(p->devinfo->ver >= 7 &&
           src1.file == BRW_IMMEDIATE_VALUE &&
           src1.type == BRW_REGISTER_TYPE_UD &&
           src1.ud <= USHRT_MAX);
@@ -1090,7 +1090,7 @@ generate_oword_dual_block_offsets(struct brw_codegen *p,
 {
    int second_vertex_offset;
 
-   if (p->devinfo->gen >= 6)
+   if (p->devinfo->ver >= 6)
       second_vertex_offset = 1;
    else
       second_vertex_offset = 16;
@@ -1156,16 +1156,16 @@ generate_scratch_read(struct brw_codegen *p,
 
    uint32_t msg_type;
 
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       msg_type = GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
-   else if (devinfo->gen == 5 || devinfo->is_g4x)
+   else if (devinfo->ver == 5 || devinfo->is_g4x)
       msg_type = G45_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
    else
       msg_type = BRW_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
 
    const unsigned target_cache =
-      devinfo->gen >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-      devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
+      devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
       BRW_SFID_DATAPORT_READ;
 
    /* Each of the 8 channel enables is considered for whether each
@@ -1175,7 +1175,7 @@ generate_scratch_read(struct brw_codegen *p,
    brw_inst_set_sfid(devinfo, send, target_cache);
    brw_set_dest(p, send, dst);
    brw_set_src0(p, send, header);
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       brw_inst_set_cond_modifier(devinfo, send, inst->base_mrf);
    brw_set_desc(p, send,
                 brw_message_desc(devinfo, 2, 1, true) |
@@ -1194,8 +1194,8 @@ generate_scratch_write(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->gen >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-       devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      (devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
+       devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
    struct brw_reg header = brw_vec8_grf(0, 0);
    bool write_commit;
@@ -1216,9 +1216,9 @@ generate_scratch_write(struct brw_codegen *p,
 
    uint32_t msg_type;
 
-   if (devinfo->gen >= 7)
+   if (devinfo->ver >= 7)
       msg_type = GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE;
-   else if (devinfo->gen == 6)
+   else if (devinfo->ver == 6)
       msg_type = GEN6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
    else
       msg_type = BRW_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
@@ -1230,7 +1230,7 @@ generate_scratch_write(struct brw_codegen *p,
     * guaranteed and write commits only matter for inter-thread
     * synchronization.
     */
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       write_commit = false;
    } else {
       /* The visitor set up our destination register to be g0.  This
@@ -1251,7 +1251,7 @@ generate_scratch_write(struct brw_codegen *p,
    brw_inst_set_sfid(p->devinfo, send, target_cache);
    brw_set_dest(p, send, dst);
    brw_set_src0(p, send, header);
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       brw_inst_set_cond_modifier(p->devinfo, send, inst->base_mrf);
    brw_set_desc(p, send,
                 brw_message_desc(devinfo, 3, write_commit, true) |
@@ -1272,7 +1272,7 @@ generate_pull_constant_load(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->gen >= 6 ? GEN6_SFID_DATAPORT_SAMPLER_CACHE :
+      (devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_SAMPLER_CACHE :
        BRW_SFID_DATAPORT_READ);
    assert(index.file == BRW_IMMEDIATE_VALUE &&
 	  index.type == BRW_REGISTER_TYPE_UD);
@@ -1282,7 +1282,7 @@ generate_pull_constant_load(struct brw_codegen *p,
 
    gen6_resolve_implied_move(p, &header, inst->base_mrf);
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       if (offset.file == BRW_IMMEDIATE_VALUE) {
          brw_MOV(p, retype(brw_message_reg(inst->base_mrf + 1),
                            BRW_REGISTER_TYPE_D),
@@ -1300,9 +1300,9 @@ generate_pull_constant_load(struct brw_codegen *p,
 
    uint32_t msg_type;
 
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       msg_type = GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
-   else if (devinfo->gen == 5 || devinfo->is_g4x)
+   else if (devinfo->ver == 5 || devinfo->is_g4x)
       msg_type = G45_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
    else
       msg_type = BRW_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
@@ -1314,7 +1314,7 @@ generate_pull_constant_load(struct brw_codegen *p,
    brw_inst_set_sfid(devinfo, send, target_cache);
    brw_set_dest(p, send, dst);
    brw_set_src0(p, send, header);
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       brw_inst_set_cond_modifier(p->devinfo, send, inst->base_mrf);
    brw_set_desc(p, send,
                 brw_message_desc(devinfo, 2, 1, true) |
@@ -1331,7 +1331,7 @@ generate_get_buffer_size(struct brw_codegen *p,
                          struct brw_reg src,
                          struct brw_reg surf_index)
 {
-   assert(p->devinfo->gen >= 7);
+   assert(p->devinfo->ver >= 7);
    assert(surf_index.type == BRW_REGISTER_TYPE_UD &&
           surf_index.file == BRW_IMMEDIATE_VALUE);
 
@@ -1409,7 +1409,7 @@ generate_mov_indirect(struct brw_codegen *p,
                       struct brw_reg indirect)
 {
    assert(indirect.type == BRW_REGISTER_TYPE_UD);
-   assert(p->devinfo->gen >= 6);
+   assert(p->devinfo->ver >= 6);
 
    unsigned imm_byte_offset = reg.nr * REG_SIZE + reg.subnr * (REG_SIZE / 2);
 
@@ -1522,7 +1522,7 @@ generate_code(struct brw_codegen *p,
                          inst->opcode != VEC4_OPCODE_SET_HIGH_32BIT;
 
       unsigned exec_size = inst->exec_size;
-      if (devinfo->gen == 7 && !devinfo->is_haswell && is_df)
+      if (devinfo->ver == 7 && !devinfo->is_haswell && is_df)
          exec_size *= 2;
 
       brw_set_default_exec_size(p, cvt(exec_size) - 1);
@@ -1530,7 +1530,7 @@ generate_code(struct brw_codegen *p,
       if (!inst->force_writemask_all)
          brw_set_default_group(p, inst->group);
 
-      assert(inst->base_mrf + inst->mlen <= BRW_MAX_MRF(devinfo->gen));
+      assert(inst->base_mrf + inst->mlen <= BRW_MAX_MRF(devinfo->ver));
       assert(inst->mlen <= BRW_MAX_MSG_LENGTH);
 
       unsigned pre_emit_nr_insn = p->nr_insn;
@@ -1551,7 +1551,7 @@ generate_code(struct brw_codegen *p,
          break;
 
       case BRW_OPCODE_MAD:
-         assert(devinfo->gen >= 6);
+         assert(devinfo->ver >= 6);
          brw_MAD(p, dst, src[0], src[1], src[2]);
          break;
 
@@ -1617,31 +1617,31 @@ generate_code(struct brw_codegen *p,
          break;
 
       case BRW_OPCODE_F32TO16:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_F32TO16(p, dst, src[0]);
          break;
 
       case BRW_OPCODE_F16TO32:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_F16TO32(p, dst, src[0]);
          break;
 
       case BRW_OPCODE_LRP:
-         assert(devinfo->gen >= 6);
+         assert(devinfo->ver >= 6);
          brw_LRP(p, dst, src[0], src[1], src[2]);
          break;
 
       case BRW_OPCODE_BFREV:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_BFREV(p, retype(dst, BRW_REGISTER_TYPE_UD),
                    retype(src[0], BRW_REGISTER_TYPE_UD));
          break;
       case BRW_OPCODE_FBH:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_FBH(p, retype(dst, src[0].type), src[0]);
          break;
       case BRW_OPCODE_FBL:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_FBL(p, retype(dst, BRW_REGISTER_TYPE_UD),
                  retype(src[0], BRW_REGISTER_TYPE_UD));
          break;
@@ -1649,16 +1649,16 @@ generate_code(struct brw_codegen *p,
          brw_LZD(p, dst, src[0]);
          break;
       case BRW_OPCODE_CBIT:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_CBIT(p, retype(dst, BRW_REGISTER_TYPE_UD),
                   retype(src[0], BRW_REGISTER_TYPE_UD));
          break;
       case BRW_OPCODE_ADDC:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_ADDC(p, dst, src[0], src[1]);
          break;
       case BRW_OPCODE_SUBB:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_SUBB(p, dst, src[0], src[1]);
          break;
       case BRW_OPCODE_MAC:
@@ -1666,23 +1666,23 @@ generate_code(struct brw_codegen *p,
          break;
 
       case BRW_OPCODE_BFE:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_BFE(p, dst, src[0], src[1], src[2]);
          break;
 
       case BRW_OPCODE_BFI1:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_BFI1(p, dst, src[0], src[1]);
          break;
       case BRW_OPCODE_BFI2:
-         assert(devinfo->gen >= 7);
+         assert(devinfo->ver >= 7);
          brw_BFI2(p, dst, src[0], src[1], src[2]);
          break;
 
       case BRW_OPCODE_IF:
          if (!inst->src[0].is_null()) {
             /* The instruction has an embedded compare (only allowed on gen6) */
-            assert(devinfo->gen == 6);
+            assert(devinfo->ver == 6);
             gen6_IF(p, inst->conditional_mod, src[0], src[1]);
          } else {
             brw_inst *if_inst = brw_IF(p, BRW_EXECUTE_8);
@@ -1723,10 +1723,10 @@ generate_code(struct brw_codegen *p,
       case SHADER_OPCODE_SIN:
       case SHADER_OPCODE_COS:
          assert(inst->conditional_mod == BRW_CONDITIONAL_NONE);
-         if (devinfo->gen >= 7) {
+         if (devinfo->ver >= 7) {
             gen6_math(p, dst, brw_math_function(inst->opcode), src[0],
                       brw_null_reg());
-         } else if (devinfo->gen == 6) {
+         } else if (devinfo->ver == 6) {
             generate_math_gen6(p, inst, dst, src[0], brw_null_reg());
          } else {
             generate_math1_gen4(p, inst, dst, src[0]);
@@ -1738,9 +1738,9 @@ generate_code(struct brw_codegen *p,
       case SHADER_OPCODE_INT_QUOTIENT:
       case SHADER_OPCODE_INT_REMAINDER:
          assert(inst->conditional_mod == BRW_CONDITIONAL_NONE);
-         if (devinfo->gen >= 7) {
+         if (devinfo->ver >= 7) {
             gen6_math(p, dst, brw_math_function(inst->opcode), src[0], src[1]);
-         } else if (devinfo->gen == 6) {
+         } else if (devinfo->ver == 6) {
             generate_math_gen6(p, inst, dst, src[0], src[1]);
          } else {
             generate_math2_gen4(p, inst, dst, src[0], src[1]);
@@ -1956,7 +1956,7 @@ generate_code(struct brw_codegen *p,
           * need to explicitly set stride 2, but 1.
           */
          struct brw_reg spread_dst;
-         if (devinfo->gen == 7 && !devinfo->is_haswell)
+         if (devinfo->ver == 7 && !devinfo->is_haswell)
             spread_dst = stride(dst, 8, 4, 1);
          else
             spread_dst = stride(dst, 8, 4, 2);

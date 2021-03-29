@@ -163,7 +163,7 @@ DECLARE_L3_LIST(dg1);
 static const struct intel_l3_list *
 get_l3_list(const struct gen_device_info *devinfo)
 {
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 7:
       return (devinfo->is_baytrail ? &vlv_l3_list : &ivb_l3_list);
 
@@ -262,10 +262,10 @@ intel_get_default_l3_weights(const struct gen_device_info *devinfo,
 {
    struct intel_l3_weights w = {{ 0 }};
 
-   w.w[INTEL_L3P_SLM] = devinfo->gen < 11 && needs_slm;
+   w.w[INTEL_L3P_SLM] = devinfo->ver < 11 && needs_slm;
    w.w[INTEL_L3P_URB] = 1.0;
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       w.w[INTEL_L3P_ALL] = 1.0;
    } else {
       w.w[INTEL_L3P_DC] = needs_dc ? 0.1 : 0;
@@ -285,7 +285,7 @@ intel_get_default_l3_config(const struct gen_device_info *devinfo)
     * default configuration.
     */
    const struct intel_l3_list *const list = get_l3_list(devinfo);
-   assert(list->length > 0 || devinfo->gen >= 12);
+   assert(list->length > 0 || devinfo->ver >= 12);
    if (list->length > 0) {
       const struct intel_l3_config *const cfg = &list->configs[0];
       assert(cfg == intel_get_l3_config(devinfo,
@@ -319,7 +319,7 @@ intel_get_l3_config(const struct gen_device_info *devinfo,
       }
    }
 
-   assert(cfg_best || devinfo->gen >= 12);
+   assert(cfg_best || devinfo->ver >= 12);
    return cfg_best;
 }
 
@@ -330,7 +330,7 @@ static unsigned
 get_l3_way_size(const struct gen_device_info *devinfo)
 {
    const unsigned way_size_per_bank =
-      (devinfo->gen >= 9 && devinfo->l3_banks == 1) || devinfo->gen >= 11 ?
+      (devinfo->ver >= 9 && devinfo->l3_banks == 1) || devinfo->ver >= 11 ?
       4 : 2;
 
    assert(devinfo->l3_banks);
@@ -344,7 +344,7 @@ get_l3_way_size(const struct gen_device_info *devinfo)
 static unsigned
 get_urb_size_scale(const struct gen_device_info *devinfo)
 {
-   return (devinfo->gen >= 8 ? devinfo->num_slices : 1);
+   return (devinfo->ver >= 8 ? devinfo->num_slices : 1);
 }
 
 unsigned
@@ -363,7 +363,7 @@ intel_get_l3_config_urb_size(const struct gen_device_info *devinfo,
     * allocation of the L3 data array to provide 3*384KB=1152KB for URB, but
     * only 1008KB of this will be used."
     */
-   const unsigned max = (devinfo->gen == 9 ? 1008 : ~0);
+   const unsigned max = (devinfo->ver == 9 ? 1008 : ~0);
    return MIN2(max, cfg->n[INTEL_L3P_URB] * get_l3_way_size(devinfo)) /
           get_urb_size_scale(devinfo);
 }

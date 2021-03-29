@@ -185,7 +185,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
 
       case nir_intrinsic_load_sample_mask_in:
          assert(v->stage == MESA_SHADER_FRAGMENT);
-         assert(v->devinfo->gen >= 7);
+         assert(v->devinfo->ver >= 7);
          reg = &v->nir_system_values[SYSTEM_VALUE_SAMPLE_MASK_IN];
          if (reg->file == BAD_FILE)
             *reg = *v->emit_samplemaskin_setup();
@@ -237,7 +237,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
              * a NOT instruction.
              */
             fs_reg inverted = negate(shifted);
-            if (v->devinfo->gen < 8) {
+            if (v->devinfo->ver < 8) {
                inverted = abld.vgrf(BRW_REGISTER_TYPE_UW);
                abld.NOT(inverted, shifted);
             }
@@ -374,7 +374,7 @@ fs_visitor::nir_emit_if(nir_if *if_stmt)
 
    bld.emit(BRW_OPCODE_ENDIF);
 
-   if (devinfo->gen < 7)
+   if (devinfo->ver < 7)
       limit_dispatch_width(16, "Non-uniform control flow unsupported "
                            "in SIMD32 mode.");
 }
@@ -388,7 +388,7 @@ fs_visitor::nir_emit_loop(nir_loop *loop)
 
    bld.emit(BRW_OPCODE_WHILE);
 
-   if (devinfo->gen < 7)
+   if (devinfo->ver < 7)
       limit_dispatch_width(16, "Non-uniform control flow unsupported "
                            "in SIMD32 mode.");
 }
@@ -534,7 +534,7 @@ fs_visitor::optimize_frontfacing_ternary(nir_alu_instr *instr,
 
    fs_reg tmp = vgrf(glsl_type::int_type);
 
-   if (devinfo->gen >= 12) {
+   if (devinfo->ver >= 12) {
       /* Bit 15 of g1.1 is 0 if the polygon is front facing. */
       fs_reg g1 = fs_reg(retype(brw_vec1_grf(1, 1), BRW_REGISTER_TYPE_W));
 
@@ -551,7 +551,7 @@ fs_visitor::optimize_frontfacing_ternary(nir_alu_instr *instr,
       if (value1 == -1.0f)
          bld.MOV(tmp, negate(tmp));
 
-   } else if (devinfo->gen >= 6) {
+   } else if (devinfo->ver >= 6) {
       /* Bit 15 of g0.0 is 0 if the polygon is front facing. */
       fs_reg g0 = fs_reg(retype(brw_vec1_grf(0, 0), BRW_REGISTER_TYPE_W));
 
@@ -757,7 +757,7 @@ fs_visitor::try_emit_b2fi_of_inot(const fs_builder &bld,
                                   fs_reg result,
                                   nir_alu_instr *instr)
 {
-   if (devinfo->gen < 6 || devinfo->gen >= 12)
+   if (devinfo->ver < 6 || devinfo->ver >= 12)
       return false;
 
    nir_alu_instr *inot_instr = nir_src_as_alu_instr(instr->src[0].src);
@@ -1204,7 +1204,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
       fs_reg tmp = bld.vgrf(result.type);
 
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          op[0] = resolve_source_modifiers(op[0]);
          op[1] = resolve_source_modifiers(op[1]);
       }
@@ -1255,7 +1255,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        * swapped.  The extension isn't enabled on those platforms, so don't
        * pretend to support the differences.
        */
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
 
       if (op[1].file == IMM)
          op[1] = ud ? brw_imm_uw(op[1].ud) : brw_imm_w(op[1].d);
@@ -1393,7 +1393,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    }
 
    case nir_op_inot:
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          nir_alu_instr *inot_src_instr = nir_src_as_alu_instr(instr->src[0].src);
 
          if (inot_src_instr != NULL &&
@@ -1453,19 +1453,19 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       bld.NOT(result, op[0]);
       break;
    case nir_op_ixor:
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          resolve_inot_sources(bld, instr, op);
       }
       bld.XOR(result, op[0], op[1]);
       break;
    case nir_op_ior:
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          resolve_inot_sources(bld, instr, op);
       }
       bld.OR(result, op[0], op[1]);
       break;
    case nir_op_iand:
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          resolve_inot_sources(bld, instr, op);
       }
       bld.AND(result, op[0], op[1]);
@@ -1539,7 +1539,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
    case nir_op_ftrunc:
       inst = bld.RNDZ(result, op[0]);
-      if (devinfo->gen < 6) {
+      if (devinfo->ver < 6) {
          set_condmod(BRW_CONDITIONAL_R, inst);
          set_predicate(BRW_PREDICATE_NORMAL,
                        bld.ADD(result, result, brw_imm_f(1.0f)));
@@ -1563,7 +1563,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
       break;
    case nir_op_fround_even:
       inst = bld.RNDE(result, op[0]);
-      if (devinfo->gen < 6) {
+      if (devinfo->ver < 6) {
          set_condmod(BRW_CONDITIONAL_R, inst);
          set_predicate(BRW_PREDICATE_NORMAL,
                        bld.ADD(result, result, brw_imm_f(1.0f)));
@@ -1689,7 +1689,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_ifind_msb: {
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
 
-      if (devinfo->gen < 7) {
+      if (devinfo->ver < 7) {
          emit_find_msb_using_lzd(bld, result, op[0], true);
       } else {
          bld.FBH(retype(result, BRW_REGISTER_TYPE_UD), op[0]);
@@ -1711,7 +1711,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    case nir_op_find_lsb:
       assert(nir_dest_bit_size(instr->dest.dest) < 64);
 
-      if (devinfo->gen < 7) {
+      if (devinfo->ver < 7) {
          fs_reg temp = vgrf(glsl_type::int_type);
 
          /* (x & -x) generates a value that consists of only the LSB of x.
@@ -1858,7 +1858,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
    /* If we need to do a boolean resolve, replace the result with -(x & 1)
     * to sign extend the low bit to 0/~0
     */
-   if (devinfo->gen <= 5 &&
+   if (devinfo->ver <= 5 &&
        !result.is_null() &&
        (instr->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) == BRW_NIR_BOOLEAN_NEEDS_RESOLVE) {
       fs_reg masked = vgrf(glsl_type::int_type);
@@ -1893,8 +1893,8 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
       break;
 
    case 64:
-      assert(devinfo->gen >= 7);
-      if (devinfo->gen == 7) {
+      assert(devinfo->ver >= 7);
+      if (devinfo->ver == 7) {
          /* We don't get 64-bit integer types until gen8 */
          for (unsigned i = 0; i < instr->def.num_components; i++) {
             bld.MOV(retype(offset(reg, bld, i), BRW_REGISTER_TYPE_DF),
@@ -1932,7 +1932,7 @@ fs_visitor::get_nir_src(const nir_src &src)
                    src.reg.base_offset * src.reg.reg->num_components);
    }
 
-   if (nir_src_bit_size(src) == 64 && devinfo->gen == 7) {
+   if (nir_src_bit_size(src) == 64 && devinfo->ver == 7) {
       /* The only 64-bit type available on gen7 is DF, so use that. */
       reg.type = BRW_REGISTER_TYPE_DF;
    } else {
@@ -2429,7 +2429,7 @@ fs_visitor::emit_gs_input_load(const fs_reg &dst,
 
       if (nir_src_is_const(vertex_src)) {
          unsigned vertex = nir_src_as_uint(vertex_src);
-         assert(devinfo->gen >= 9 || vertex <= 5);
+         assert(devinfo->ver >= 9 || vertex <= 5);
          bld.MOV(icp_handle,
                  retype(brw_vec1_grf(first_icp_handle + vertex / 8, vertex % 8),
                         BRW_REGISTER_TYPE_UD));
@@ -2713,7 +2713,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       /* Zero the message header */
       bld.exec_all().MOV(m0, brw_imm_ud(0u));
 
-      if (devinfo->gen < 11) {
+      if (devinfo->ver < 11) {
          /* Copy "Barrier ID" from r0.2, bits 16:13 */
          chanbld.AND(m0_2, retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
                      brw_imm_ud(INTEL_MASK(16, 13)));
@@ -2726,7 +2726,7 @@ fs_visitor::nir_emit_tcs_intrinsic(const fs_builder &bld,
       }
 
       /* Set the Barrier Count and the enable bit */
-      if (devinfo->gen < 11) {
+      if (devinfo->ver < 11) {
          chanbld.OR(m0_2, m0_2,
                     brw_imm_ud(tcs_prog_data->instances << 9 | (1 << 15)));
       } else {
@@ -3113,7 +3113,7 @@ fs_visitor::nir_emit_gs_intrinsic(const fs_builder &bld,
 static fs_reg
 fetch_render_target_array_index(const fs_builder &bld)
 {
-   if (bld.shader->devinfo->gen >= 12) {
+   if (bld.shader->devinfo->ver >= 12) {
       /* The render target array index is provided in the thread payload as
        * bits 26:16 of r1.1.
        */
@@ -3121,7 +3121,7 @@ fetch_render_target_array_index(const fs_builder &bld)
       bld.AND(idx, brw_uw1_reg(BRW_GENERAL_REGISTER_FILE, 1, 3),
               brw_imm_uw(0x7ff));
       return idx;
-   } else if (bld.shader->devinfo->gen >= 6) {
+   } else if (bld.shader->devinfo->ver >= 6) {
       /* The render target array index is provided in the thread payload as
        * bits 26:16 of r0.0.
        */
@@ -3186,7 +3186,7 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
     * be equivalent to the normal CMS fetch for lower multisampling modes.
     */
    const opcode op = !wm_key->multisample_fbo ? SHADER_OPCODE_TXF_LOGICAL :
-                     devinfo->gen >= 9 ? SHADER_OPCODE_TXF_CMS_W_LOGICAL :
+                     devinfo->ver >= 9 ? SHADER_OPCODE_TXF_CMS_W_LOGICAL :
                      SHADER_OPCODE_TXF_CMS_LOGICAL;
 
    /* Emit the instruction. */
@@ -3213,7 +3213,7 @@ fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
 static fs_inst *
 emit_coherent_fb_read(const fs_builder &bld, const fs_reg &dst, unsigned target)
 {
-   assert(bld.shader->devinfo->gen >= 9);
+   assert(bld.shader->devinfo->ver >= 9);
    fs_inst *inst = bld.emit(FS_OPCODE_FB_READ_LOGICAL, dst);
    inst->target = target;
    inst->size_written = 4 * inst->dst.component_size(inst->exec_size);
@@ -3384,7 +3384,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
 
          if (alu != NULL &&
              alu->op != nir_op_bcsel &&
-             (devinfo->gen > 5 ||
+             (devinfo->ver > 5 ||
               (alu->instr.pass_flags & BRW_NIR_BOOLEAN_MASK) != BRW_NIR_BOOLEAN_NEEDS_RESOLVE ||
               alu->op == nir_op_fneu32 || alu->op == nir_op_feq32 ||
               alu->op == nir_op_flt32 || alu->op == nir_op_fge32 ||
@@ -3449,7 +3449,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          jump->predicate = BRW_PREDICATE_ALIGN1_ANY4H;
       }
 
-      if (devinfo->gen < 7)
+      if (devinfo->ver < 7)
          limit_dispatch_width(
             16, "Fragment discard/demote not implemented in SIMD32 mode.\n");
       break;
@@ -3630,7 +3630,7 @@ fs_visitor::nir_emit_fs_intrinsic(const fs_builder &bld,
          interp.type = BRW_REGISTER_TYPE_F;
          dest.type = BRW_REGISTER_TYPE_F;
 
-         if (devinfo->gen < 6 && interp_mode == INTERP_MODE_SMOOTH) {
+         if (devinfo->ver < 6 && interp_mode == INTERP_MODE_SMOOTH) {
             fs_reg tmp = vgrf(glsl_type::float_type);
             bld.emit(FS_OPCODE_LINTERP, tmp, dst_xy, interp);
             bld.MUL(offset(dest, bld, i), tmp, this->pixel_w);
@@ -3733,7 +3733,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       break;
 
    case nir_intrinsic_load_shared: {
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
       assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
 
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
@@ -3770,7 +3770,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
    }
 
    case nir_intrinsic_store_shared: {
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
       assert(stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL);
 
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
@@ -4322,7 +4322,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
          slm_fence = false;
 
       /* Prior to Gen11, there's only L3 fence, so emit that instead. */
-      if (slm_fence && devinfo->gen < 11) {
+      if (slm_fence && devinfo->ver < 11) {
          slm_fence = false;
          l3_fence = true;
       }
@@ -4331,7 +4331,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * to flush it too.
        */
       const bool needs_render_fence =
-         devinfo->gen == 7 && !devinfo->is_haswell;
+         devinfo->ver == 7 && !devinfo->is_haswell;
 
       /* Be conservative in Gen11+ and always stall in a fence.  Since there
        * are two different fences, and shader might want to synchronize
@@ -4340,11 +4340,11 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
        * TODO: Use scope and visibility information for the barriers from NIR
        * to make a better decision on whether we need to stall.
        */
-      const bool stall = devinfo->gen >= 11 || needs_render_fence ||
+      const bool stall = devinfo->ver >= 11 || needs_render_fence ||
          instr->intrinsic == nir_intrinsic_end_invocation_interlock;
 
       const bool commit_enable = stall ||
-         devinfo->gen >= 10; /* HSD ES # 1404612949 */
+         devinfo->ver >= 10; /* HSD ES # 1404612949 */
 
       unsigned fence_regs_count = 0;
       fs_reg fence_regs[2] = {};
@@ -4584,7 +4584,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
    case nir_intrinsic_load_global:
    case nir_intrinsic_load_global_constant: {
-      assert(devinfo->gen >= 8);
+      assert(devinfo->ver >= 8);
 
       assert(nir_dest_bit_size(instr->dest) <= 32);
       assert(nir_intrinsic_align(instr) > 0);
@@ -4613,7 +4613,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_store_global:
-      assert(devinfo->gen >= 8);
+      assert(devinfo->ver >= 8);
 
       assert(nir_src_bit_size(instr->src[0]) <= 32);
       assert(nir_intrinsic_write_mask(instr) ==
@@ -4718,7 +4718,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_load_ssbo: {
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
 
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
@@ -4755,7 +4755,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_store_ssbo: {
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
 
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
@@ -4887,13 +4887,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_load_scratch: {
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
 
       assert(nir_dest_num_components(instr->dest) == 1);
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
 
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] =
             brw_imm_ud(GEN8_BTI_STATELESS_NON_COHERENT);
       } else {
@@ -4933,13 +4933,13 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    }
 
    case nir_intrinsic_store_scratch: {
-      assert(devinfo->gen >= 7);
+      assert(devinfo->ver >= 7);
 
       assert(nir_src_num_components(instr->src[0]) == 1);
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
 
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] =
             brw_imm_ud(GEN8_BTI_STATELESS_NON_COHERENT);
       } else {
@@ -5185,7 +5185,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
    case nir_intrinsic_quad_swap_horizontal: {
       const fs_reg value = get_nir_src(instr->src[0]);
       const fs_reg tmp = bld.vgrf(value.type);
-      if (devinfo->gen <= 7) {
+      if (devinfo->ver <= 7) {
          /* The hardware doesn't seem to support these crazy regions with
           * compressed instructions on gen7 and earlier so we fall back to
           * using quad swizzles.  Fortunately, we don't support 64-bit
@@ -5920,7 +5920,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (srcs[TEX_LOGICAL_SRC_MCS].file == BAD_FILE &&
        (instr->op == nir_texop_txf_ms ||
         instr->op == nir_texop_samples_identical)) {
-      if (devinfo->gen >= 7 &&
+      if (devinfo->ver >= 7 &&
           key_tex->compressed_multisample_layout_mask & (1 << texture)) {
          srcs[TEX_LOGICAL_SRC_MCS] =
             emit_mcs_fetch(srcs[TEX_LOGICAL_SRC_COORDINATE],
@@ -6017,7 +6017,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    inst->offset = header_bits;
 
    const unsigned dest_size = nir_tex_instr_dest_size(instr);
-   if (devinfo->gen >= 9 &&
+   if (devinfo->ver >= 9 &&
        instr->op != nir_texop_tg4 && instr->op != nir_texop_query_levels) {
       unsigned write_mask = instr->dest.is_ssa ?
                             nir_ssa_def_components_read(&instr->dest.ssa):
@@ -6032,7 +6032,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
    if (srcs[TEX_LOGICAL_SRC_SHADOW_C].file != BAD_FILE)
       inst->shadow_compare = true;
 
-   if (instr->op == nir_texop_tg4 && devinfo->gen == 6)
+   if (instr->op == nir_texop_tg4 && devinfo->ver == 6)
       emit_gen6_gather_wa(key_tex->gen6_gather_wa[texture], dst);
 
    fs_reg nir_dest[5];
@@ -6043,7 +6043,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       /* # levels is in .w */
       nir_dest[0] = offset(dst, bld, 3);
    } else if (instr->op == nir_texop_txs &&
-              dest_size >= 3 && devinfo->gen < 7) {
+              dest_size >= 3 && devinfo->ver < 7) {
       /* Gen4-6 return 0 instead of 1 for single layer surfaces. */
       fs_reg depth = offset(dst, bld, 2);
       nir_dest[2] = vgrf(glsl_type::int_type);
@@ -6198,9 +6198,9 @@ fs_reg
 setup_imm_df(const fs_builder &bld, double v)
 {
    const struct gen_device_info *devinfo = bld.shader->devinfo;
-   assert(devinfo->gen >= 7);
+   assert(devinfo->ver >= 7);
 
-   if (devinfo->gen >= 8)
+   if (devinfo->ver >= 8)
       return brw_imm_df(v);
 
    /* gen7.5 does not support DF immediates straighforward but the DIM

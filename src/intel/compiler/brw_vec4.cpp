@@ -238,7 +238,7 @@ vec4_instruction::size_read(unsigned arg) const
 bool
 vec4_instruction::can_do_source_mods(const struct gen_device_info *devinfo)
 {
-   if (devinfo->gen == 6 && is_math())
+   if (devinfo->ver == 6 && is_math())
       return false;
 
    if (is_send_from_grf())
@@ -296,7 +296,7 @@ vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
       /* The MATH instruction on Gen6 only executes in align1 mode, which does
        * not support writemasking.
        */
-      if (devinfo->gen == 6 && is_math())
+      if (devinfo->ver == 6 && is_math())
          return false;
 
       if (is_tex())
@@ -1008,7 +1008,7 @@ vec4_visitor::is_dep_ctrl_unsafe(const vec4_instruction *inst)
 
 #define IS_64BIT(reg) (reg.file != BAD_FILE && type_sz(reg.type) == 8)
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       if (IS_64BIT(inst->dst) || IS_64BIT(inst->src[0]) ||
           IS_64BIT(inst->src[1]) || IS_64BIT(inst->src[2]))
       return true;
@@ -1132,7 +1132,7 @@ vec4_instruction::can_reswizzle(const struct gen_device_info *devinfo,
    /* Gen6 MATH instructions can not execute in align16 mode, so swizzles
     * are not allowed.
     */
-   if (devinfo->gen == 6 && is_math() && swizzle != BRW_SWIZZLE_XYZW)
+   if (devinfo->ver == 6 && is_math() && swizzle != BRW_SWIZZLE_XYZW)
       return false;
 
    /* If we write to the flag register changing the swizzle would change
@@ -1303,7 +1303,7 @@ vec4_visitor::opt_register_coalesce()
                if (scan_inst->mlen)
                   break;
 
-               if (devinfo->gen == 6) {
+               if (devinfo->ver == 6) {
                   /* gen6 math instructions must have the destination be
                    * VGRF, so no compute-to-MRF for them.
                    */
@@ -1608,7 +1608,7 @@ vec4_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) c
    if (inst->conditional_mod) {
       fprintf(file, "%s", conditional_modifier[inst->conditional_mod]);
       if (!inst->predicate &&
-          (devinfo->gen < 5 || (inst->opcode != BRW_OPCODE_SEL &&
+          (devinfo->ver < 5 || (inst->opcode != BRW_OPCODE_SEL &&
                                 inst->opcode != BRW_OPCODE_CSEL &&
                                 inst->opcode != BRW_OPCODE_IF &&
                                 inst->opcode != BRW_OPCODE_WHILE))) {
@@ -1815,7 +1815,7 @@ vec4_visitor::setup_uniforms(int reg)
    /* The pre-gen6 VS requires that some push constants get loaded no
     * matter what, or the GPU would hang.
     */
-   if (devinfo->gen < 6 && this->uniforms == 0) {
+   if (devinfo->ver < 6 && this->uniforms == 0) {
       brw_stage_prog_data_add_params(stage_prog_data, 4);
       for (unsigned int i = 0; i < 4; i++) {
 	 unsigned int slot = this->uniforms * 4 + i;
@@ -1860,7 +1860,7 @@ vec4_vs_visitor::setup_payload(void)
 bool
 vec4_visitor::lower_minmax()
 {
-   assert(devinfo->gen < 6);
+   assert(devinfo->ver < 6);
 
    bool progress = false;
 
@@ -1898,7 +1898,7 @@ vec4_visitor::lower_minmax()
 src_reg
 vec4_visitor::get_timestamp()
 {
-   assert(devinfo->gen == 7);
+   assert(devinfo->ver == 7);
 
    src_reg ts = src_reg(brw_reg(BRW_ARCHITECTURE_REGISTER_FILE,
                                 BRW_ARF_TIMESTAMP,
@@ -2127,7 +2127,7 @@ vec4_visitor::convert_to_hw_regs()
 
       case MRF:
          reg = byte_offset(brw_message_reg(dst.nr), dst.offset);
-         assert((reg.nr & ~BRW_MRF_COMPR4) < BRW_MAX_MRF(devinfo->gen));
+         assert((reg.nr & ~BRW_MRF_COMPR4) < BRW_MAX_MRF(devinfo->ver));
          reg.type = dst.type;
          reg.writemask = dst.writemask;
          break;
@@ -2192,7 +2192,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
     * 2 registers. We only need to care about this in gen7 because that is the
     * only hardware that implements fp64 in Align16.
     */
-   if (devinfo->gen == 7 && inst->size_written > REG_SIZE) {
+   if (devinfo->ver == 7 && inst->size_written > REG_SIZE) {
       /* Align16 8-wide double-precision SEL does not work well. Verified
        * empirically.
        */
@@ -2227,7 +2227,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
     * compressed instruction bug in gen7, which is another reason to enforce
     * this limit).
     */
-   if (devinfo->gen == 7 && !devinfo->is_haswell &&
+   if (devinfo->ver == 7 && !devinfo->is_haswell &&
        (get_exec_type_size(inst) == 8 || type_sz(inst->dst.type) == 8))
       lowered_width = MIN2(lowered_width, 4);
 
@@ -2438,7 +2438,7 @@ vec4_visitor::is_supported_64bit_region(vec4_instruction *inst, unsigned arg)
    case BRW_SWIZZLE_YXWZ:
       return true;
    default:
-      return devinfo->gen == 7 && is_gen7_supported_64bit_swizzle(inst, arg);
+      return devinfo->ver == 7 && is_gen7_supported_64bit_swizzle(inst, arg);
    }
 }
 
@@ -2632,7 +2632,7 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
       }
 
       /* All gen7-specific supported swizzles require the vstride=0 exploit */
-      if (devinfo->gen == 7 && is_gen7_supported_64bit_swizzle(inst, arg))
+      if (devinfo->ver == 7 && is_gen7_supported_64bit_swizzle(inst, arg))
          hw_reg->vstride = BRW_VERTICAL_STRIDE_0;
 
       /* Any 64-bit source with an offset at 16B is intended to address the
@@ -2643,7 +2643,7 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
        *    execsize > 4
        */
       if (hw_reg->subnr % REG_SIZE == 16) {
-         assert(devinfo->gen == 7);
+         assert(devinfo->ver == 7);
          hw_reg->vstride = BRW_VERTICAL_STRIDE_0;
       }
 
@@ -2743,7 +2743,7 @@ vec4_visitor::run()
       OPT(dead_code_eliminate);
    }
 
-   if (devinfo->gen <= 5 && OPT(lower_minmax)) {
+   if (devinfo->ver <= 5 && OPT(lower_minmax)) {
       OPT(opt_cmod_propagation);
       OPT(opt_cse);
       OPT(opt_copy_propagation);
@@ -2931,7 +2931,7 @@ brw_compile_vs(const struct brw_compiler *compiler,
    const unsigned vue_entries =
       MAX2(nr_attribute_slots, (unsigned)prog_data->base.vue_map.num_slots);
 
-   if (compiler->devinfo->gen == 6) {
+   if (compiler->devinfo->ver == 6) {
       prog_data->base.urb_entry_size = DIV_ROUND_UP(vue_entries, 8);
    } else {
       prog_data->base.urb_entry_size = DIV_ROUND_UP(vue_entries, 4);

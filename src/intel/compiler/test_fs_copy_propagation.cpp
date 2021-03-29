@@ -66,8 +66,8 @@ void copy_propagation_test::SetUp()
 
    v = new copy_propagation_fs_visitor(compiler, ctx, prog_data, shader);
 
-   devinfo->gen = 4;
-   devinfo->verx10 = devinfo->gen * 10;
+   devinfo->ver = 4;
+   devinfo->verx10 = devinfo->ver * 10;
 }
 
 void copy_propagation_test::TearDown()

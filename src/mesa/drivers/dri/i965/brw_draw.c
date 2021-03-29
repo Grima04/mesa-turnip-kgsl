@@ -178,20 +178,20 @@ brw_emit_prim(struct brw_context *brw,
    int base_vertex_location = prim->basevertex;
 
    if (is_indexed) {
-      vertex_access_type = devinfo->gen >= 7 ?
+      vertex_access_type = devinfo->ver >= 7 ?
          GEN7_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM :
          GEN4_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM;
       start_vertex_location += brw->ib.start_vertex_offset;
       base_vertex_location += brw->vb.start_vertex_bias;
    } else {
-      vertex_access_type = devinfo->gen >= 7 ?
+      vertex_access_type = devinfo->ver >= 7 ?
          GEN7_3DPRIM_VERTEXBUFFER_ACCESS_SEQUENTIAL :
          GEN4_3DPRIM_VERTEXBUFFER_ACCESS_SEQUENTIAL;
       start_vertex_location += brw->vb.start_vertex_bias;
    }
 
    /* We only need to trim the primitive count on pre-Gen6. */
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       verts_per_instance = trim(prim->mode, prim->count);
    else
       verts_per_instance = prim->count;
@@ -255,9 +255,9 @@ brw_emit_prim(struct brw_context *brw,
       indirect_flag = 0;
    }
 
-   BEGIN_BATCH(devinfo->gen >= 7 ? 7 : 6);
+   BEGIN_BATCH(devinfo->ver >= 7 ? 7 : 6);
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       const int predicate_enable =
          (brw->predicate.state == BRW_PREDICATE_STATE_USE_BIT)
          ? GEN7_3DPRIM_PREDICATE_ENABLE : 0;
@@ -336,7 +336,7 @@ brw_merge_inputs(struct brw_context *brw)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    const struct gl_context *ctx = &brw->ctx;
 
-   if (devinfo->gen < 8 && !devinfo->is_haswell) {
+   if (devinfo->ver < 8 && !devinfo->is_haswell) {
       /* Prior to Haswell, the hardware can't natively support GL_FIXED or
        * 2_10_10_10_REV vertex formats.  Set appropriate workaround flags.
        */
@@ -433,7 +433,7 @@ static void
 gen9_apply_astc5x5_wa_flush(struct brw_context *brw,
                             enum gen9_astc5x5_wa_tex_type curr_mask)
 {
-   assert(brw->screen->devinfo.gen == 9);
+   assert(brw->screen->devinfo.ver == 9);
 
    if (((brw->gen9_astc5x5_wa_tex_mask & GEN9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
         (curr_mask & GEN9_ASTC5X5_WA_TEX_TYPE_AUX)) ||
@@ -511,7 +511,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
    int maxEnabledUnit = ctx->Texture._MaxEnabledTexImageUnit;
 
    enum gen9_astc5x5_wa_tex_type astc5x5_wa_bits = 0;
-   if (brw->screen->devinfo.gen == 9) {
+   if (brw->screen->devinfo.ver == 9) {
       /* In order to properly implement the ASTC 5x5 workaround for an
        * arbitrary draw or dispatch call, we have to walk the entire list of
        * textures looking for ASTC 5x5.  If there is any ASTC 5x5 in this draw
@@ -646,7 +646,7 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
       /* This is only used for non-coherent framebuffer fetch, so we don't
        * need to worry about CCS_E and can simply pass 'false' below.
        */
-      assert(brw->screen->devinfo.gen < 9);
+      assert(brw->screen->devinfo.ver < 9);
 
       for (unsigned i = 0; i < fb->_NumColorDrawBuffers; i++) {
          const struct brw_renderbuffer *irb =
@@ -932,7 +932,7 @@ gen9_emit_preempt_wa(struct brw_context *brw,
    ASSERTED const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
    /* Only apply these workarounds for gen9 */
-   assert(devinfo->gen == 9);
+   assert(devinfo->ver == 9);
 
    /* WaDisableMidObjectPreemptionForGSLineStripAdj
     *
@@ -1078,7 +1078,7 @@ brw_draw_single_prim(struct gl_context *ctx,
    brw->draw.derived_draw_params_bo = NULL;
    brw->draw.derived_draw_params_offset = 0;
 
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       brw_set_prim(brw, prim);
    else
       gen6_set_prim(brw, prim);
@@ -1095,7 +1095,7 @@ retry:
       brw_upload_render_state(brw);
    }
 
-   if (devinfo->gen == 9)
+   if (devinfo->ver == 9)
       gen9_emit_preempt_wa(brw, prim, num_instances);
 
    brw_emit_prim(brw, prim, brw->primitive, is_indexed, num_instances,

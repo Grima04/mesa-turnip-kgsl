@@ -720,7 +720,7 @@ brw_miptree_needs_fake_etc(struct brw_context *brw,
    bool is_etc = _mesa_is_format_etc2(mt->format) ||
                  (mt->format == MESA_FORMAT_ETC1_RGB8);
 
-   return devinfo->gen < 8 && !devinfo->is_baytrail && is_etc;
+   return devinfo->ver < 8 && !devinfo->is_baytrail && is_etc;
 }
 
 static inline bool

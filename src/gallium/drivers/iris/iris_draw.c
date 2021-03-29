@@ -267,7 +267,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
 
    iris_update_draw_info(ice, info);
 
-   if (devinfo->gen == 9)
+   if (devinfo->ver == 9)
       gen9_toggle_preemption(ice, batch, info);
 
    iris_update_compiled_shaders(ice);

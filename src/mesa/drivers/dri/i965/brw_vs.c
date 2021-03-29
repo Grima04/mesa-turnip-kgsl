@@ -80,7 +80,7 @@ brw_vs_outputs_written(struct brw_context *brw, struct brw_vs_prog_key *key,
       outputs_written |= BITFIELD64_BIT(VARYING_SLOT_EDGE);
    }
 
-   if (devinfo->gen < 6) {
+   if (devinfo->ver < 6) {
       /* Put dummy slots into the VUE for the SF to put the replaced
        * point sprite coords in.  We shouldn't need these dummy slots,
        * which take up precious URB space, but it would mean that the SF
@@ -275,7 +275,7 @@ brw_vs_populate_key(struct brw_context *brw,
          util_logbase2(ctx->Transform.ClipPlanesEnabled) + 1;
    }
 
-   if (devinfo->gen < 6) {
+   if (devinfo->ver < 6) {
       /* _NEW_POLYGON */
       key->copy_edgeflag = (ctx->Polygon.FrontMode != GL_FILL ||
                             ctx->Polygon.BackMode != GL_FILL);
@@ -294,7 +294,7 @@ brw_vs_populate_key(struct brw_context *brw,
    }
 
    /* BRW_NEW_VS_ATTRIB_WORKAROUNDS */
-   if (devinfo->gen < 8 && !devinfo->is_haswell) {
+   if (devinfo->ver < 8 && !devinfo->is_haswell) {
       memcpy(key->gl_attrib_wa_flags, brw->vb.attrib_wa_flags,
              sizeof(brw->vb.attrib_wa_flags));
    }

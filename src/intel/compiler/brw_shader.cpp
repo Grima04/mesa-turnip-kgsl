@@ -168,16 +168,16 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       /* The DO instruction doesn't exist on Gen6+, but we use it to mark the
        * start of a loop in the IR.
        */
-      if (devinfo->gen >= 6 && op == BRW_OPCODE_DO)
+      if (devinfo->ver >= 6 && op == BRW_OPCODE_DO)
          return "do";
 
       /* The following conversion opcodes doesn't exist on Gen8+, but we use
        * then to mark that we want to do the conversion.
        */
-      if (devinfo->gen > 7 && op == BRW_OPCODE_F32TO16)
+      if (devinfo->ver > 7 && op == BRW_OPCODE_F32TO16)
          return "f32to16";
 
-      if (devinfo->gen > 7 && op == BRW_OPCODE_F16TO32)
+      if (devinfo->ver > 7 && op == BRW_OPCODE_F16TO32)
          return "f16to32";
 
       assert(brw_opcode_desc(devinfo, op)->name);
@@ -1082,11 +1082,11 @@ bool
 backend_instruction::writes_accumulator_implicitly(const struct gen_device_info *devinfo) const
 {
    return writes_accumulator ||
-          (devinfo->gen < 6 &&
+          (devinfo->ver < 6 &&
            ((opcode >= BRW_OPCODE_ADD && opcode < BRW_OPCODE_NOP) ||
             (opcode >= FS_OPCODE_DDX_COARSE && opcode <= FS_OPCODE_LINTERP))) ||
           (opcode == FS_OPCODE_LINTERP &&
-           (!devinfo->has_pln || devinfo->gen <= 6));
+           (!devinfo->has_pln || devinfo->ver <= 6));
 }
 
 bool

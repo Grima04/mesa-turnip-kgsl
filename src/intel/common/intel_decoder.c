@@ -511,10 +511,10 @@ static int
 devinfo_to_gen(const struct gen_device_info *devinfo, bool x10)
 {
    if (devinfo->is_baytrail || devinfo->is_haswell) {
-      return devinfo->gen * 10 + 5;
+      return devinfo->ver * 10 + 5;
    }
 
-   return x10 ? devinfo->gen * 10 : devinfo->gen;
+   return x10 ? devinfo->ver * 10 : devinfo->ver;
 }
 
 static uint32_t zlib_inflate(const void *compressed_data,

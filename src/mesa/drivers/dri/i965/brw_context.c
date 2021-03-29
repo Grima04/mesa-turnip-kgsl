@@ -361,9 +361,9 @@ brw_init_driver_functions(struct brw_context *brw,
 
    brw_init_frag_prog_functions(functions);
    brw_init_common_queryobj_functions(functions);
-   if (devinfo->gen >= 8 || devinfo->is_haswell)
+   if (devinfo->ver >= 8 || devinfo->is_haswell)
       hsw_init_queryobj_functions(functions);
-   else if (devinfo->gen >= 6)
+   else if (devinfo->ver >= 6)
       gen6_init_queryobj_functions(functions);
    else
       gen4_init_queryobj_functions(functions);
@@ -381,7 +381,7 @@ brw_init_driver_functions(struct brw_context *brw,
       functions->EndTransformFeedback = hsw_end_transform_feedback;
       functions->PauseTransformFeedback = hsw_pause_transform_feedback;
       functions->ResumeTransformFeedback = hsw_resume_transform_feedback;
-   } else if (devinfo->gen >= 7) {
+   } else if (devinfo->ver >= 7) {
       functions->BeginTransformFeedback = gen7_begin_transform_feedback;
       functions->EndTransformFeedback = gen7_end_transform_feedback;
       functions->PauseTransformFeedback = gen7_pause_transform_feedback;
@@ -397,7 +397,7 @@ brw_init_driver_functions(struct brw_context *brw,
          brw_get_transform_feedback_vertex_count;
    }
 
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       functions->GetSamplePosition = gen6_get_sample_position;
 
    /* GL_ARB_get_program_binary */
@@ -424,18 +424,18 @@ brw_initialize_spirv_supported_capabilities(struct brw_context *brw)
     * you should enable the extension only on gen7+, but just in case let's
     * assert it.
     */
-   assert(devinfo->gen >= 7);
+   assert(devinfo->ver >= 7);
 
-   ctx->Const.SpirVCapabilities.atomic_storage = devinfo->gen >= 7;
+   ctx->Const.SpirVCapabilities.atomic_storage = devinfo->ver >= 7;
    ctx->Const.SpirVCapabilities.draw_parameters = true;
-   ctx->Const.SpirVCapabilities.float64 = devinfo->gen >= 8;
-   ctx->Const.SpirVCapabilities.geometry_streams = devinfo->gen >= 7;
+   ctx->Const.SpirVCapabilities.float64 = devinfo->ver >= 8;
+   ctx->Const.SpirVCapabilities.geometry_streams = devinfo->ver >= 7;
    ctx->Const.SpirVCapabilities.image_write_without_format = true;
-   ctx->Const.SpirVCapabilities.int64 = devinfo->gen >= 8;
+   ctx->Const.SpirVCapabilities.int64 = devinfo->ver >= 8;
    ctx->Const.SpirVCapabilities.tessellation = true;
-   ctx->Const.SpirVCapabilities.transform_feedback = devinfo->gen >= 7;
+   ctx->Const.SpirVCapabilities.transform_feedback = devinfo->ver >= 7;
    ctx->Const.SpirVCapabilities.variable_pointers = true;
-   ctx->Const.SpirVCapabilities.integer_functions2 = devinfo->gen >= 8;
+   ctx->Const.SpirVCapabilities.integer_functions2 = devinfo->ver >= 8;
 }
 
 static void
@@ -447,9 +447,9 @@ brw_initialize_context_constants(struct brw_context *brw)
 
    const bool stage_exists[MESA_SHADER_STAGES] = {
       [MESA_SHADER_VERTEX] = true,
-      [MESA_SHADER_TESS_CTRL] = devinfo->gen >= 7,
-      [MESA_SHADER_TESS_EVAL] = devinfo->gen >= 7,
-      [MESA_SHADER_GEOMETRY] = devinfo->gen >= 6,
+      [MESA_SHADER_TESS_CTRL] = devinfo->ver >= 7,
+      [MESA_SHADER_TESS_EVAL] = devinfo->ver >= 7,
+      [MESA_SHADER_GEOMETRY] = devinfo->ver >= 6,
       [MESA_SHADER_FRAGMENT] = true,
       [MESA_SHADER_COMPUTE] =
          (_mesa_is_desktop_gl(ctx) &&
@@ -465,7 +465,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    }
 
    unsigned max_samplers =
-      devinfo->gen >= 8 || devinfo->is_haswell ? BRW_MAX_TEX_UNIT : 16;
+      devinfo->ver >= 8 || devinfo->is_haswell ? BRW_MAX_TEX_UNIT : 16;
 
    ctx->Const.MaxDualSourceDrawBuffers = 1;
    ctx->Const.MaxDrawBuffers = BRW_MAX_DRAW_BUFFERS;
@@ -491,7 +491,7 @@ brw_initialize_context_constants(struct brw_context *brw)
 
    ctx->Const.MaxTextureCoordUnits = 8; /* Mesa limit */
    ctx->Const.MaxImageUnits = MAX_IMAGE_UNITS;
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       ctx->Const.MaxRenderbufferSize = 16384;
       ctx->Const.MaxTextureSize = 16384;
       ctx->Const.MaxCubeTextureLevels = 15; /* 16384 */
@@ -501,17 +501,17 @@ brw_initialize_context_constants(struct brw_context *brw)
       ctx->Const.MaxCubeTextureLevels = 14; /* 8192 */
    }
    ctx->Const.Max3DTextureLevels = 12; /* 2048 */
-   ctx->Const.MaxArrayTextureLayers = devinfo->gen >= 7 ? 2048 : 512;
+   ctx->Const.MaxArrayTextureLayers = devinfo->ver >= 7 ? 2048 : 512;
    ctx->Const.MaxTextureMbytes = 1536;
-   ctx->Const.MaxTextureRectSize = devinfo->gen >= 7 ? 16384 : 8192;
+   ctx->Const.MaxTextureRectSize = devinfo->ver >= 7 ? 16384 : 8192;
    ctx->Const.MaxTextureMaxAnisotropy = 16.0;
    ctx->Const.MaxTextureLodBias = 15.0;
    ctx->Const.StripTextureBorder = true;
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       ctx->Const.MaxProgramTextureGatherComponents = 4;
       ctx->Const.MinProgramTextureGatherOffset = -32;
       ctx->Const.MaxProgramTextureGatherOffset = 31;
-   } else if (devinfo->gen == 6) {
+   } else if (devinfo->ver == 6) {
       ctx->Const.MaxProgramTextureGatherComponents = 1;
       ctx->Const.MinProgramTextureGatherOffset = -8;
       ctx->Const.MaxProgramTextureGatherOffset = 7;
@@ -602,7 +602,7 @@ brw_initialize_context_constants(struct brw_context *brw)
 
    ctx->Const.MinLineWidth = 1.0;
    ctx->Const.MinLineWidthAA = 1.0;
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       ctx->Const.MaxLineWidth = 7.375;
       ctx->Const.MaxLineWidthAA = 7.375;
       ctx->Const.LineWidthGranularity = 0.125;
@@ -625,7 +625,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.MaxPointSizeAA = 255.0;
    ctx->Const.PointSizeGranularity = 1.0;
 
-   if (devinfo->gen >= 5 || devinfo->is_g4x)
+   if (devinfo->ver >= 5 || devinfo->is_g4x)
       ctx->Const.MaxClipPlanes = 8;
 
    ctx->Const.GLSLFragCoordIsSysVal = true;
@@ -680,7 +680,7 @@ brw_initialize_context_constants(struct brw_context *brw)
     * that affect provoking vertex decision. Always use last vertex
     * convention for quad primitive which works as expected for now.
     */
-   if (devinfo->gen >= 6)
+   if (devinfo->ver >= 6)
       ctx->Const.QuadsFollowProvokingVertexConvention = false;
 
    ctx->Const.NativeIntegers = true;
@@ -728,7 +728,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.TextureBufferOffsetAlignment = 16;
    ctx->Const.MaxTextureBufferSize = 128 * 1024 * 1024;
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       ctx->Const.MaxVarying = 32;
       ctx->Const.Program[MESA_SHADER_VERTEX].MaxOutputComponents = 128;
       ctx->Const.Program[MESA_SHADER_GEOMETRY].MaxInputComponents =
@@ -747,13 +747,13 @@ brw_initialize_context_constants(struct brw_context *brw)
          brw->screen->compiler->glsl_compiler_options[i];
    }
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       ctx->Const.MaxViewportWidth = 32768;
       ctx->Const.MaxViewportHeight = 32768;
    }
 
    /* ARB_viewport_array, OES_viewport_array */
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       ctx->Const.MaxViewports = GEN6_NUM_VIEWPORTS;
       ctx->Const.ViewportSubpixelBits = 8;
 
@@ -764,7 +764,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    }
 
    /* ARB_gpu_shader5 */
-   if (devinfo->gen >= 7)
+   if (devinfo->ver >= 7)
       ctx->Const.MaxVertexStreams = MIN2(4, MAX_VERTEX_STREAMS);
 
    /* ARB_framebuffer_no_attachments */
@@ -789,7 +789,7 @@ brw_initialize_context_constants(struct brw_context *brw)
     *
     * [1] glsl-1.40/uniform_buffer/vs-float-array-variable-index.shader_test
     */
-   if (devinfo->gen >= 7)
+   if (devinfo->ver >= 7)
       ctx->Const.UseSTD430AsDefaultPacking = true;
 
    if (!(ctx->Const.ContextFlags & GL_CONTEXT_FLAG_DEBUG_BIT))
@@ -835,7 +835,7 @@ brw_initialize_cs_context_constants(struct brw_context *brw)
    ctx->Const.MaxComputeSharedMemorySize = 64 * 1024;
 
    /* Constants used for ARB_compute_variable_group_size. */
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       assert(max_invocations >= 512);
       ctx->Const.MaxComputeVariableGroupSize[0] = max_invocations;
       ctx->Const.MaxComputeVariableGroupSize[1] = max_invocations;
@@ -861,7 +861,7 @@ brw_process_driconf_options(struct brw_context *brw)
    if (INTEL_DEBUG & DEBUG_NO_HIZ) {
        brw->has_hiz = false;
        /* On gen6, you can only do separate stencil with HIZ. */
-       if (devinfo->gen == 6)
+       if (devinfo->ver == 6)
           brw->has_separate_stencil = false;
    }
 
@@ -1065,7 +1065,7 @@ brw_create_context(gl_api api,
     * and also allows us to reduce how much state we have to emit.
     */
    brw->hw_ctx = brw_create_hw_context(brw->bufmgr);
-   if (!brw->hw_ctx && devinfo->gen >= 6) {
+   if (!brw->hw_ctx && devinfo->ver >= 6) {
       fprintf(stderr, "Failed to create hardware context.\n");
       brw_destroy_context(driContextPriv);
       return false;
@@ -1111,7 +1111,7 @@ brw_create_context(gl_api api,
 
    brw->urb.size = devinfo->urb.size;
 
-   if (devinfo->gen == 6)
+   if (devinfo->ver == 6)
       brw->urb.gs_present = false;
 
    brw->prim_restart.in_progress = false;
@@ -1394,7 +1394,7 @@ brw_resolve_for_dri2_flush(struct brw_context *brw,
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->gen < 6) {
+   if (devinfo->ver < 6) {
       /* MSAA and fast color clear are not supported, so don't waste time
        * checking whether a resolve is needed.
        */

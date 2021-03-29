@@ -106,7 +106,7 @@ fs_visitor::emit_dummy_fs()
    write = bld.emit(FS_OPCODE_FB_WRITE);
    write->eot = true;
    write->last_rt = true;
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       write->base_mrf = 2;
       write->mlen = 4 * reg_width;
    } else {
@@ -119,7 +119,7 @@ fs_visitor::emit_dummy_fs()
     * varying to avoid GPU hangs, so set that.
     */
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
-   wm_prog_data->num_varying_inputs = devinfo->gen < 6 ? 1 : 0;
+   wm_prog_data->num_varying_inputs = devinfo->ver < 6 ? 1 : 0;
    memset(wm_prog_data->urb_setup, -1,
           sizeof(wm_prog_data->urb_setup[0]) * VARYING_SLOT_MAX);
    brw_compute_urb_setup_index(wm_prog_data);
@@ -278,7 +278,7 @@ fs_visitor::emit_interpolation_setup_gen6()
       const fs_builder hbld = abld.group(MIN2(16, dispatch_width), i);
       struct brw_reg gi_uw = retype(brw_vec1_grf(1 + i, 0), BRW_REGISTER_TYPE_UW);
 
-      if (devinfo->gen >= 8 || dispatch_width == 8) {
+      if (devinfo->ver >= 8 || dispatch_width == 8) {
          /* The "Register Region Restrictions" page says for BDW (and newer,
           * presumably):
           *
@@ -478,7 +478,7 @@ fs_visitor::emit_fb_writes()
 
    fs_inst *inst = NULL;
 
-   if (source_depth_to_render_target && devinfo->gen == 6) {
+   if (source_depth_to_render_target && devinfo->ver == 6) {
       /* For outputting oDepth on gen6, SIMD8 writes have to be used.  This
        * would require SIMD8 moves of each half to message regs, e.g. by using
        * the SIMD lowering pass.  Unfortunately this is more difficult than it
@@ -503,7 +503,7 @@ fs_visitor::emit_fb_writes()
     */
    const bool replicate_alpha = key->alpha_test_replicate_alpha ||
       (key->nr_color_regions > 1 && key->alpha_to_coverage &&
-       (sample_mask.file == BAD_FILE || devinfo->gen == 6));
+       (sample_mask.file == BAD_FILE || devinfo->ver == 6));
 
    for (int target = 0; target < key->nr_color_regions; target++) {
       /* Skip over outputs that weren't written. */
@@ -514,7 +514,7 @@ fs_visitor::emit_fb_writes()
          ralloc_asprintf(this->mem_ctx, "FB write target %d", target));
 
       fs_reg src0_alpha;
-      if (devinfo->gen >= 6 && replicate_alpha && target != 0)
+      if (devinfo->ver >= 6 && replicate_alpha && target != 0)
          src0_alpha = offset(outputs[0], bld, 3);
 
       inst = emit_single_fb_write(abld, this->outputs[target],
@@ -546,7 +546,7 @@ fs_visitor::emit_fb_writes()
    inst->last_rt = true;
    inst->eot = true;
 
-   if (devinfo->gen >= 11 && devinfo->gen <= 12 &&
+   if (devinfo->ver >= 11 && devinfo->ver <= 12 &&
        prog_data->dual_src_blend) {
       /* The dual-source RT write messages fail to release the thread
        * dependency on ICL and TGL with SIMD32 dispatch, leading to hangs.
@@ -753,7 +753,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
          fs_inst *inst = abld.emit(opcode, reg_undef, payload);
 
          /* For ICL WA 1805992985 one needs additional write in the end. */
-         if (devinfo->gen == 11 && stage == MESA_SHADER_TESS_EVAL)
+         if (devinfo->ver == 11 && stage == MESA_SHADER_TESS_EVAL)
             inst->eot = false;
          else
             inst->eot = slot == last_slot && stage != MESA_SHADER_GEOMETRY;
@@ -801,7 +801,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
     * send cycle, which is a urb write with an eot must be 4 phases long and
     * all 8 lanes must valid.
     */
-   if (devinfo->gen == 11 && stage == MESA_SHADER_TESS_EVAL) {
+   if (devinfo->ver == 11 && stage == MESA_SHADER_TESS_EVAL) {
       fs_reg payload = fs_reg(VGRF, alloc.allocate(6), BRW_REGISTER_TYPE_UD);
 
       /* Workaround requires all 8 channels (lanes) to be valid. This is
@@ -842,7 +842,7 @@ fs_visitor::emit_urb_writes(const fs_reg &gs_vertex_count)
 void
 fs_visitor::emit_cs_terminate()
 {
-   assert(devinfo->gen >= 7);
+   assert(devinfo->ver >= 7);
 
    /* We can't directly send from g0, since sends with EOT have to use
     * g112-127. So, copy it to a virtual register, The register allocator will
@@ -862,7 +862,7 @@ void
 fs_visitor::emit_barrier()
 {
    uint32_t barrier_id_mask;
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 7:
    case 8:
       barrier_id_mask = 0x0f000000u; break;
@@ -959,7 +959,7 @@ fs_visitor::init()
    this->source_depth_to_render_target = false;
    this->runtime_check_aads_emit = false;
    this->first_non_payload_grf = 0;
-   this->max_grf = devinfo->gen >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
+   this->max_grf = devinfo->ver >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
 
    this->uniforms = 0;
    this->last_scratch = 0;

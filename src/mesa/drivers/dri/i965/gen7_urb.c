@@ -72,7 +72,7 @@ gen7_allocate_push_constants(struct brw_context *brw)
 
    unsigned avail_size = 16;
    unsigned multiplier =
-      (devinfo->gen >= 8 || (devinfo->is_haswell && devinfo->gt == 3)) ? 2 : 1;
+      (devinfo->ver >= 8 || (devinfo->is_haswell && devinfo->gt == 3)) ? 2 : 1;
 
    int stages = 2 + gs_present + 2 * tess_present;
 
@@ -173,7 +173,7 @@ gen7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
     *
     * No such restriction exists for Haswell or Baytrail.
     */
-   if (devinfo->gen < 8 && !devinfo->is_haswell && !devinfo->is_baytrail)
+   if (devinfo->ver < 8 && !devinfo->is_haswell && !devinfo->is_baytrail)
       gen7_emit_cs_stall_flush(brw);
 }
 
@@ -252,12 +252,12 @@ gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
                         tess_present, gs_present, entry_size,
                         entries, start, NULL, &constrained);
 
-   if (devinfo->gen == 7 && !devinfo->is_haswell && !devinfo->is_baytrail)
+   if (devinfo->ver == 7 && !devinfo->is_haswell && !devinfo->is_baytrail)
       gen7_emit_vs_workaround_flush(brw);
 
    BEGIN_BATCH(8);
    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
-      assert(devinfo->gen != 10 || entry_size[i] % 3);
+      assert(devinfo->ver != 10 || entry_size[i] % 3);
       OUT_BATCH((_3DSTATE_URB_VS + i) << 16 | (2 - 2));
       OUT_BATCH(entries[i] |
                 ((entry_size[i] - 1) << GEN7_URB_ENTRY_SIZE_SHIFT) |

@@ -549,7 +549,7 @@ namespace {
        * Register allocation ensures that, so don't move 127 around to avoid
        * breaking that property.
        */
-      if (v->devinfo->gen >= 8)
+      if (v->devinfo->ver >= 8)
          constrained[p.atom_of_reg(127)] = true;
 
       foreach_block_and_inst(block, fs_inst, inst, v->cfg) {
@@ -571,14 +571,14 @@ namespace {
           * source of the LINTERP instruction on Gen6, since pair-aligned
           * barycentrics allow the PLN instruction to be used.
           */
-         if (v->devinfo->has_pln && v->devinfo->gen <= 6 &&
+         if (v->devinfo->has_pln && v->devinfo->ver <= 6 &&
              inst->opcode == FS_OPCODE_LINTERP)
             constrained[p.atom_of_reg(reg_of(inst->src[0]))] = true;
 
          /* The location of the Gen7 MRF hack registers is hard-coded in the
           * rest of the compiler back-end.  Don't attempt to move them around.
           */
-         if (v->devinfo->gen >= 7) {
+         if (v->devinfo->ver >= 7) {
             assert(inst->dst.file != MRF);
 
             for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
@@ -599,7 +599,7 @@ namespace {
    bool
    is_conflict_optimized_out(const gen_device_info *devinfo, const fs_inst *inst)
    {
-      return devinfo->gen >= 9 &&
+      return devinfo->ver >= 9 &&
          ((is_grf(inst->src[0]) && (reg_of(inst->src[0]) == reg_of(inst->src[1]) ||
                                     reg_of(inst->src[0]) == reg_of(inst->src[2]))) ||
           reg_of(inst->src[1]) == reg_of(inst->src[2]));
@@ -911,7 +911,7 @@ fs_visitor::opt_bank_conflicts()
    assert(grf_used || !"Must be called after register allocation");
 
    /* No ternary instructions -- No bank conflicts. */
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       return false;
 
    const partitioning p = shader_reg_partitioning(this);

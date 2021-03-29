@@ -1455,18 +1455,18 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     * For, Gen11+, scratch space allocation is based on the number of threads
     * in the base configuration.
     */
-   if (devinfo->gen == 12)
+   if (devinfo->ver == 12)
       subslices = (devinfo->is_dg1 || devinfo->gt == 2 ? 6 : 2);
-   else if (devinfo->gen == 11)
+   else if (devinfo->ver == 11)
       subslices = 8;
-   else if (devinfo->gen >= 9)
+   else if (devinfo->ver >= 9)
       subslices = 4 * devinfo->num_slices;
 
    unsigned scratch_ids_per_subslice;
-   if (devinfo->gen >= 12) {
+   if (devinfo->ver >= 12) {
       /* Same as ICL below, but with 16 EUs. */
       scratch_ids_per_subslice = 16 * 8;
-   } else if (devinfo->gen == 11) {
+   } else if (devinfo->ver == 11) {
       /* The MEDIA_VFE_STATE docs say:
        *
        *    "Starting with this configuration, the Maximum Number of
@@ -1611,7 +1611,7 @@ anv_device_get_bo_align(struct anv_device *device,
                         enum anv_bo_alloc_flags alloc_flags)
 {
    /* Gen12 CCS surface addresses need to be 64K aligned. */
-   if (device->info.gen >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
+   if (device->info.ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
       return 64 * 1024;
 
    return 4096;

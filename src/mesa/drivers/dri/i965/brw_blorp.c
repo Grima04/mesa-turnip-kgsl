@@ -76,7 +76,7 @@ brw_blorp_init(struct brw_context *brw)
 
    brw->blorp.compiler = brw->screen->compiler;
 
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 4:
       if (devinfo->is_g4x) {
          brw->blorp.exec = gen45_blorp_exec;
@@ -182,7 +182,7 @@ blorp_surf_for_miptree(struct brw_context *brw,
    assert((surf->aux_usage == ISL_AUX_USAGE_NONE) ==
           (surf->aux_addr.buffer == NULL));
 
-   if (!is_render_target && brw->screen->devinfo.gen == 9)
+   if (!is_render_target && brw->screen->devinfo.ver == 9)
       gen9_apply_single_tex_astc5x5_wa(brw, mt->format, surf->aux_usage);
 
    /* ISL wants real levels, not offset ones. */
@@ -316,7 +316,7 @@ brw_blorp_blit_miptrees(struct brw_context *brw,
     * shouldn't affect rendering correctness, since the destination format is
     * R32_FLOAT, so only the contents of the red channel matters.
     */
-   if (devinfo->gen == 6 &&
+   if (devinfo->ver == 6 &&
        src_mt->surf.samples > 1 && dst_mt->surf.samples <= 1 &&
        src_mt->format == dst_mt->format &&
        (dst_format == MESA_FORMAT_L_FLOAT32 ||
@@ -659,7 +659,7 @@ try_blorp_blit(struct brw_context *brw,
       /* Blorp doesn't support combined depth stencil which is all we have
        * prior to gen6.
        */
-      if (devinfo->gen < 6)
+      if (devinfo->ver < 6)
          return false;
 
       src_irb =
@@ -1589,7 +1589,7 @@ brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
     * HiZ clear operations.  However, they also seem to be required for
     * resolve operations.
     */
-   if (devinfo->gen == 6) {
+   if (devinfo->ver == 6) {
       /* From the Sandy Bridge PRM, volume 2 part 1, page 313:
        *
        *   "If other rendering operations have preceded this clear, a
@@ -1601,7 +1601,7 @@ brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
                                    PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                    PIPE_CONTROL_CS_STALL);
-   } else if (devinfo->gen >= 7) {
+   } else if (devinfo->ver >= 7) {
       /*
        * From the Ivybridge PRM, volume 2, "Depth Buffer Clear":
        *
@@ -1646,7 +1646,7 @@ brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
     * HiZ clear operations.  However, they also seem to be required for
     * resolve operations.
     */
-   if (devinfo->gen == 6) {
+   if (devinfo->ver == 6) {
       /* From the Sandy Bridge PRM, volume 2 part 1, page 314:
        *
        *     "DevSNB, DevSNB-B{W/A}]: Depth buffer clear pass must be
@@ -1659,7 +1659,7 @@ brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
       brw_emit_pipe_control_flush(brw,
                                   PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                   PIPE_CONTROL_CS_STALL);
-   } else if (devinfo->gen >= 8) {
+   } else if (devinfo->ver >= 8) {
       /*
        * From the Broadwell PRM, volume 7, "Depth Buffer Clear":
        *

@@ -174,7 +174,7 @@ gen8_emit_pma_stall_workaround(struct brw_context *brw)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    uint32_t bits = 0;
 
-   if (devinfo->gen >= 9)
+   if (devinfo->ver >= 9)
       return;
 
    if (pma_fix_enable(brw))

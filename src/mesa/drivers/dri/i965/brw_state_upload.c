@@ -50,7 +50,7 @@ void
 brw_enable_obj_preemption(struct brw_context *brw, bool enable)
 {
    ASSERTED const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   assert(devinfo->gen >= 9);
+   assert(devinfo->ver >= 9);
 
    if (enable == brw->object_preemption)
       return;
@@ -161,12 +161,12 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
    if (!brw->hw_ctx)
       return;
 
-   if (devinfo->gen == 6)
+   if (devinfo->ver == 6)
       brw_emit_post_sync_nonzero_flush(brw);
 
    brw_upload_invariant_state(brw);
 
-   if (devinfo->gen == 11) {
+   if (devinfo->ver == 11) {
       /* The default behavior of bit 5 "Headerless Message for Pre-emptable
        * Contexts" in SAMPLER MODE register is set to 0, which means
        * headerless sampler messages are not allowed for pre-emptable
@@ -200,7 +200,7 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                               REG_MASK(GEN11_DISABLE_REPACKING_FOR_COMPRESSION));
    }
 
-   if (devinfo->gen == 9) {
+   if (devinfo->ver == 9) {
       /* Recommended optimizations for Victim Cache eviction and floating
        * point blending.
        */
@@ -213,7 +213,7 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                               GEN9_PARTIAL_RESOLVE_DISABLE_IN_VC);
    }
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       gen8_emit_3dstate_sample_pattern(brw);
 
       BEGIN_BATCH(5);
@@ -236,14 +236,14 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
     * This is only safe on kernels with context isolation support.
     */
    if (!compiler->constant_buffer_0_is_relative) {
-      if (devinfo->gen >= 9) {
+      if (devinfo->ver >= 9) {
          BEGIN_BATCH(3);
          OUT_BATCH(MI_LOAD_REGISTER_IMM | (3 - 2));
          OUT_BATCH(CS_DEBUG_MODE2);
          OUT_BATCH(REG_MASK(CSDBG2_CONSTANT_BUFFER_ADDRESS_OFFSET_DISABLE) |
                    CSDBG2_CONSTANT_BUFFER_ADDRESS_OFFSET_DISABLE);
          ADVANCE_BATCH();
-      } else if (devinfo->gen == 8) {
+      } else if (devinfo->ver == 8) {
          BEGIN_BATCH(3);
          OUT_BATCH(MI_LOAD_REGISTER_IMM | (3 - 2));
          OUT_BATCH(INSTPM);
@@ -255,10 +255,10 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
 
    brw->object_preemption = false;
 
-   if (devinfo->gen >= 10)
+   if (devinfo->ver >= 10)
       brw_enable_obj_preemption(brw, true);
 
-   if (devinfo->gen == 11)
+   if (devinfo->ver == 11)
       brw_upload_gen11_slice_hashing_state(brw);
 }
 
@@ -309,21 +309,21 @@ void brw_init_state( struct brw_context *brw )
 
    brw_init_caches(brw);
 
-   if (devinfo->gen >= 11)
+   if (devinfo->ver >= 11)
       gen11_init_atoms(brw);
-   else if (devinfo->gen >= 10)
+   else if (devinfo->ver >= 10)
       unreachable("Gen10 support dropped.");
-   else if (devinfo->gen >= 9)
+   else if (devinfo->ver >= 9)
       gen9_init_atoms(brw);
-   else if (devinfo->gen >= 8)
+   else if (devinfo->ver >= 8)
       gen8_init_atoms(brw);
    else if (devinfo->is_haswell)
       gen75_init_atoms(brw);
-   else if (devinfo->gen >= 7)
+   else if (devinfo->ver >= 7)
       gen7_init_atoms(brw);
-   else if (devinfo->gen >= 6)
+   else if (devinfo->ver >= 6)
       gen6_init_atoms(brw);
-   else if (devinfo->gen >= 5)
+   else if (devinfo->ver >= 5)
       gen5_init_atoms(brw);
    else if (devinfo->is_g4x)
       gen45_init_atoms(brw);
@@ -537,7 +537,7 @@ brw_upload_programs(struct brw_context *brw,
          brw_upload_gs_prog(brw);
       } else {
          brw->gs.base.prog_data = NULL;
-         if (devinfo->gen < 7)
+         if (devinfo->ver < 7)
             brw_upload_ff_gs_prog(brw);
       }
 
@@ -571,7 +571,7 @@ brw_upload_programs(struct brw_context *brw,
 
       brw_upload_wm_prog(brw);
 
-      if (devinfo->gen < 6) {
+      if (devinfo->ver < 6) {
          brw_upload_clip_prog(brw);
          brw_upload_sf_prog(brw);
       }
@@ -677,7 +677,7 @@ brw_upload_pipeline_state(struct brw_context *brw,
       return;
 
    /* Emit Sandybridge workaround flushes on every primitive, for safety. */
-   if (devinfo->gen == 6)
+   if (devinfo->ver == 6)
       brw_emit_post_sync_nonzero_flush(brw);
 
    brw_upload_programs(brw, pipeline);

@@ -161,7 +161,7 @@ aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, co
    aub->pci_id = pci_id;
    fail_if(!gen_get_device_info_from_pci_id(pci_id, &aub->devinfo),
            "failed to identify chipset=0x%x\n", pci_id);
-   aub->addr_bits = aub->devinfo.gen >= 8 ? 48 : 32;
+   aub->addr_bits = aub->devinfo.ver >= 8 ? 48 : 32;
 
    aub_write_header(aub, app_name);
 
@@ -478,9 +478,9 @@ get_context_init(const struct gen_device_info *devinfo,
       [I915_ENGINE_CLASS_VIDEO] = gen10_video_context_init,
    };
 
-   assert(devinfo->gen >= 8);
+   assert(devinfo->ver >= 8);
 
-   if (devinfo->gen <= 10)
+   if (devinfo->ver <= 10)
       gen8_contexts[engine_class](params, data, size);
    else
       gen10_contexts[engine_class](params, data, size);
@@ -743,7 +743,7 @@ aub_dump_ring_buffer_execlist(struct aub_file *aub,
 static void
 aub_dump_execlist(struct aub_file *aub, const struct engine *cs, uint64_t descriptor)
 {
-   if (aub->devinfo.gen >= 11) {
+   if (aub->devinfo.ver >= 11) {
       register_write_out(aub, cs->elsq_reg, descriptor & 0xFFFFFFFF);
       register_write_out(aub, cs->elsq_reg + sizeof(uint32_t), descriptor >> 32);
       register_write_out(aub, cs->control_reg, 1);
@@ -758,7 +758,7 @@ aub_dump_execlist(struct aub_file *aub, const struct engine *cs, uint64_t descri
    dword_out(aub, cs->status_reg);
    dword_out(aub, AUB_MEM_TRACE_REGISTER_SIZE_DWORD |
                   AUB_MEM_TRACE_REGISTER_SPACE_MMIO);
-   if (aub->devinfo.gen >= 11) {
+   if (aub->devinfo.ver >= 11) {
       dword_out(aub, 0x00000001);   /* mask lo */
       dword_out(aub, 0x00000000);   /* mask hi */
       dword_out(aub, 0x00000001);

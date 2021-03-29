@@ -1205,7 +1205,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
 
    /* Render target and texture hardware don't support W tiling until Gen8. */
    const bool rt_tiled_w = false;
-   const bool tex_tiled_w = devinfo->gen >= 8 && key->src_tiled_w;
+   const bool tex_tiled_w = devinfo->ver >= 8 && key->src_tiled_w;
 
    /* The address that data will be written to is determined by the
     * coordinates supplied to the WM thread and the tiling and sample count of
@@ -1360,7 +1360,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
        */
       src_pos = nir_f2i32(&b, nir_channels(&b, src_pos, 0x3));
 
-      if (devinfo->gen == 6) {
+      if (devinfo->ver == 6) {
          /* Because gen6 only supports 4x interleved MSAA, we can do all the
           * blending we need with a single linear-interpolated texture lookup
           * at the center of the sample. The texture coordinates to be odd
@@ -1642,12 +1642,12 @@ blorp_surf_retile_w_to_y(const struct isl_device *isl_dev,
     *
     * TODO: Are we sure we don't also need to fake it on gen6?
     */
-   if (isl_dev->info->gen > 6 &&
+   if (isl_dev->info->ver > 6 &&
        info->surf.msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
       blorp_surf_fake_interleaved_msaa(isl_dev, info);
    }
 
-   if (isl_dev->info->gen == 6) {
+   if (isl_dev->info->ver == 6) {
       /* Gen6 stencil buffers have a very large alignment coming in from the
        * miptree.  It's out-of-bounds for what the surface state can handle.
        * Since we have a single layer and level, it doesn't really matter as
@@ -1697,7 +1697,7 @@ static unsigned
 get_max_surface_size(const struct gen_device_info *devinfo,
                      const struct brw_blorp_surface_info *surf)
 {
-   const unsigned max = devinfo->gen >= 7 ? 16384 : 8192;
+   const unsigned max = devinfo->ver >= 7 ? 16384 : 8192;
    if (split_blorp_blit_debug && can_shrink_surface(surf))
       return max >> 4; /* A smaller restriction when debug is enabled */
    else
@@ -1805,7 +1805,7 @@ try_blorp_blit(struct blorp_batch *batch,
    const struct gen_device_info *devinfo = batch->blorp->isl_dev->info;
 
    if (params->dst.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) {
-      if (devinfo->gen >= 7) {
+      if (devinfo->ver >= 7) {
          /* We can render as depth on Gen5 but there's no real advantage since
           * it doesn't support MSAA or HiZ.  On Gen4, we can't always render
           * to depth due to issues with depth buffers and mip-mapping.  On
@@ -1819,7 +1819,7 @@ try_blorp_blit(struct blorp_batch *batch,
       }
    } else if (params->dst.surf.usage & ISL_SURF_USAGE_STENCIL_BIT) {
       assert(params->dst.surf.format == ISL_FORMAT_R8_UINT);
-      if (devinfo->gen >= 9) {
+      if (devinfo->ver >= 9) {
          wm_prog_key->dst_usage = ISL_SURF_USAGE_STENCIL_BIT;
       } else {
          wm_prog_key->dst_usage = ISL_SURF_USAGE_RENDER_TARGET_BIT;
@@ -1866,7 +1866,7 @@ try_blorp_blit(struct blorp_batch *batch,
                                    coords->y.mirror);
 
 
-   if (devinfo->gen == 4) {
+   if (devinfo->ver == 4) {
       /* The MinLOD and MinimumArrayElement don't work properly for cube maps.
        * Convert them to a single slice on gen4.
        */
@@ -1881,7 +1881,7 @@ try_blorp_blit(struct blorp_batch *batch,
       }
    }
 
-   if (devinfo->gen > 6 &&
+   if (devinfo->ver > 6 &&
        !isl_surf_usage_is_depth_or_stencil(wm_prog_key->dst_usage) &&
        params->dst.surf.msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
       assert(params->dst.surf.samples > 1);
@@ -1984,7 +1984,7 @@ try_blorp_blit(struct blorp_batch *batch,
       }
    }
 
-   if (devinfo->gen < 8 && params->src.surf.tiling == ISL_TILING_W) {
+   if (devinfo->ver < 8 && params->src.surf.tiling == ISL_TILING_W) {
       /* On Haswell and earlier, we have to fake W-tiled sources as Y-tiled.
        * Broadwell adds support for sampling from stencil.
        *
@@ -2024,7 +2024,7 @@ try_blorp_blit(struct blorp_batch *batch,
 
    if ((wm_prog_key->filter == BLORP_FILTER_AVERAGE ||
         wm_prog_key->filter == BLORP_FILTER_BILINEAR) &&
-       batch->blorp->isl_dev->info->gen <= 6) {
+       batch->blorp->isl_dev->info->ver <= 6) {
       /* Gen4-5 don't support non-normalized texture coordinates */
       wm_prog_key->src_coords_normalized = true;
       params->wm_inputs.src_inv_size[0] =
@@ -2073,7 +2073,7 @@ try_blorp_blit(struct blorp_batch *batch,
       params->dst.view.format = ISL_FORMAT_R32_UINT;
    }
 
-   if (devinfo->gen <= 7 && !devinfo->is_haswell &&
+   if (devinfo->ver <= 7 && !devinfo->is_haswell &&
        !isl_swizzle_is_identity(params->src.view.swizzle)) {
       wm_prog_key->src_swizzle = params->src.view.swizzle;
       params->src.view.swizzle = ISL_SWIZZLE_IDENTITY;
@@ -2341,7 +2341,7 @@ blorp_blit(struct blorp_batch *batch,
    if (dst_surf->surf->usage & ISL_SURF_USAGE_STENCIL_BIT) {
       assert(src_surf->surf->usage & ISL_SURF_USAGE_STENCIL_BIT);
       /* Prior to Broadwell, we can't render to R8_UINT */
-      if (batch->blorp->isl_dev->info->gen < 8) {
+      if (batch->blorp->isl_dev->info->ver < 8) {
          src_format = ISL_FORMAT_R8_UNORM;
          dst_format = ISL_FORMAT_R8_UNORM;
       }
@@ -2673,7 +2673,7 @@ blorp_copy(struct blorp_batch *batch,
       params.src.view.format = params.src.surf.format;
       params.dst.view.format = params.src.surf.format;
    } else if ((params.dst.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) &&
-              isl_dev->info->gen >= 7) {
+              isl_dev->info->ver >= 7) {
       /* On Gen7 and higher, we use actual depth writes for blits into depth
        * buffers so we need the real format.
        */
@@ -2849,7 +2849,7 @@ blorp_buffer_copy(struct blorp_batch *batch,
    uint64_t copy_size = size;
 
    /* This is maximum possible width/height our HW can handle */
-   uint64_t max_surface_dim = 1 << (devinfo->gen >= 7 ? 14 : 13);
+   uint64_t max_surface_dim = 1 << (devinfo->ver >= 7 ? 14 : 13);
 
    /* First, we compute the biggest format that can be used with the
     * given offsets and size.

@@ -586,7 +586,7 @@ emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
       GEN8_MI_BATCH_BUFFER_START_length - GEN8_MI_BATCH_BUFFER_START_length_bias;
 
    anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_START, bbs) {
-      bbs.DWordLength               = cmd_buffer->device->info.gen < 8 ?
+      bbs.DWordLength               = cmd_buffer->device->info.ver < 8 ?
                                       gen7_length : gen8_length;
       bbs.SecondLevelBatchBuffer    = Firstlevelbatch;
       bbs.AddressSpaceIndicator     = ASI_PPGTT;

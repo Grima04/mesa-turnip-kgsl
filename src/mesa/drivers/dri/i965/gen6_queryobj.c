@@ -83,7 +83,7 @@ write_primitives_generated(struct brw_context *brw,
 
    brw_emit_mi_flush(brw);
 
-   if (devinfo->gen >= 7 && stream > 0) {
+   if (devinfo->ver >= 7 && stream > 0) {
       brw_store_register_mem64(brw, query_bo,
                                GEN7_SO_PRIM_STORAGE_NEEDED(stream),
                                idx * sizeof(uint64_t));
@@ -101,7 +101,7 @@ write_xfb_primitives_written(struct brw_context *brw,
 
    brw_emit_mi_flush(brw);
 
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       brw_store_register_mem64(brw, bo, GEN7_SO_NUM_PRIMS_WRITTEN(stream),
                                idx * sizeof(uint64_t));
    } else {
@@ -124,7 +124,7 @@ write_xfb_overflow_streams(struct gl_context *ctx,
       int w_idx = 4 * i + idx;
       int g_idx = 4 * i + idx + 2;
 
-      if (devinfo->gen >= 7) {
+      if (devinfo->ver >= 7) {
          brw_store_register_mem64(brw, bo,
                                   GEN7_SO_NUM_PRIMS_WRITTEN(stream + i),
                                   g_idx * sizeof(uint64_t));
@@ -202,7 +202,7 @@ emit_pipeline_stat(struct brw_context *brw, struct brw_bo *bo,
    /* Gen6 GS code counts full primitives, that is, it won't count individual
     * triangles in a triangle strip. Use CL_INVOCATION_COUNT for that.
     */
-   if (devinfo->gen == 6 && target == GL_GEOMETRY_SHADER_PRIMITIVES_EMITTED_ARB)
+   if (devinfo->ver == 6 && target == GL_GEOMETRY_SHADER_PRIMITIVES_EMITTED_ARB)
       reg = CL_INVOCATION_COUNT;
    assert(reg != 0);
 
@@ -296,7 +296,7 @@ gen6_queryobj_get_results(struct gl_context *ctx,
        * and correctly emitted the number of pixel shader invocations, but,
        * whomever forgot to undo the multiply by 4.
        */
-      if (devinfo->gen == 8 || devinfo->is_haswell)
+      if (devinfo->ver == 8 || devinfo->is_haswell)
          query->Base.Result /= 4;
       break;
 

@@ -177,7 +177,7 @@ instdone_register_for_ring(const struct gen_device_info *devinfo,
 
    switch (class) {
    case I915_ENGINE_CLASS_RENDER:
-      if (devinfo->gen == 6)
+      if (devinfo->ver == 6)
          return "INSTDONE_2";
       else
          return "INSTDONE_1";
@@ -261,9 +261,9 @@ print_i965_fence(struct gen_device_info *devinfo, uint64_t fence)
 static void
 print_fence(struct gen_device_info *devinfo, uint64_t fence)
 {
-   if (devinfo->gen == 6 || devinfo->gen == 7) {
+   if (devinfo->ver == 6 || devinfo->ver == 7) {
       return print_snb_fence(devinfo, fence);
-   } else if (devinfo->gen == 4 || devinfo->gen == 5) {
+   } else if (devinfo->ver == 4 || devinfo->ver == 5) {
       return print_i965_fence(devinfo, fence);
    }
 }
@@ -273,7 +273,7 @@ print_fault_data(struct gen_device_info *devinfo, uint32_t data1, uint32_t data0
 {
    uint64_t address;
 
-   if (devinfo->gen < 8)
+   if (devinfo->ver < 8)
       return;
 
    address = ((uint64_t)(data0) << 12) | ((uint64_t)data1 & 0xf) << 44;
@@ -512,7 +512,7 @@ read_data_file(FILE *file)
                exit(EXIT_FAILURE);
             }
 
-            printf("Detected GEN%i chipset\n", devinfo.gen);
+            printf("Detected GEN%i chipset\n", devinfo.ver);
 
             if (xml_path == NULL)
                spec = intel_spec_load(&devinfo);

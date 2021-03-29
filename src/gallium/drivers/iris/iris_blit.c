@@ -302,7 +302,7 @@ tex_cache_flush_hack(struct iris_batch *batch,
     * Icelake (Gen11+) claims to fix this issue, but seems to still have
     * issues with ASTC formats.
     */
-   bool need_flush = devinfo->gen >= 11 ?
+   bool need_flush = devinfo->ver >= 11 ?
                      is_astc(surf_format) != is_astc(view_format) :
                      view_format != surf_format;
    if (!need_flush)
@@ -590,7 +590,7 @@ get_copy_region_aux_settings(struct iris_context *ice,
        *   blorp_copy isn't guaranteed to access the same components as the
        *   original format (e.g. A8_UNORM/R8_UINT).
        */
-      *out_clear_supported = (devinfo->gen >= 11 && !is_render_target) ||
+      *out_clear_supported = (devinfo->ver >= 11 && !is_render_target) ||
                              (res->aux.clear_color.u32[0] == 0 &&
                               res->aux.clear_color.u32[1] == 0 &&
                               res->aux.clear_color.u32[2] == 0 &&

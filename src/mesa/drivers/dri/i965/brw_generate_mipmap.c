@@ -45,7 +45,7 @@ brw_generate_mipmap(struct gl_context *ctx, GLenum target,
    unsigned last_level, first_layer, last_layer;
 
    /* Blorp doesn't handle combined depth/stencil surfaces on Gen4-5 yet. */
-   if (devinfo->gen <= 5 &&
+   if (devinfo->ver <= 5 &&
        (tex_obj->Image[0][base_level]->_BaseFormat == GL_DEPTH_COMPONENT ||
         tex_obj->Image[0][base_level]->_BaseFormat == GL_DEPTH_STENCIL)) {
       _mesa_meta_GenerateMipmap(ctx, target, tex_obj);

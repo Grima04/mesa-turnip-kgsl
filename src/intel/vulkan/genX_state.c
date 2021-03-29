@@ -311,7 +311,7 @@ init_render_queue_state(struct anv_queue *queue)
 void
 genX(init_physical_device_state)(ASSERTED struct anv_physical_device *device)
 {
-   assert(device->info.genx10 == GFX_VERx10);
+   assert(device->info.verx10 == GFX_VERx10);
 }
 
 VkResult

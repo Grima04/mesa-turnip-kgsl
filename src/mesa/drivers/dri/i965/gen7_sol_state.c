@@ -43,7 +43,7 @@ gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct brw_transform_feedback_object *brw_obj =
       (struct brw_transform_feedback_object *) obj;
 
-   assert(brw->screen->devinfo.gen == 7);
+   assert(brw->screen->devinfo.ver == 7);
 
    /* Store the starting value of the SO_NUM_PRIMS_WRITTEN counters. */
    brw_save_primitives_written_counters(brw, brw_obj);
@@ -106,7 +106,7 @@ gen7_pause_transform_feedback(struct gl_context *ctx,
    /* Flush any drawing so that the counters have the right values. */
    brw_emit_mi_flush(brw);
 
-   assert(brw->screen->devinfo.gen == 7);
+   assert(brw->screen->devinfo.ver == 7);
 
    /* Save the SOL buffer offset register values. */
    for (int i = 0; i < 4; i++) {
@@ -133,7 +133,7 @@ gen7_resume_transform_feedback(struct gl_context *ctx,
    struct brw_transform_feedback_object *brw_obj =
       (struct brw_transform_feedback_object *) obj;
 
-   assert(brw->screen->devinfo.gen == 7);
+   assert(brw->screen->devinfo.ver == 7);
 
    /* Reload the SOL buffer offset registers. */
    for (int i = 0; i < 4; i++) {

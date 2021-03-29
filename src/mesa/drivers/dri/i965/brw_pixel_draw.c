@@ -163,7 +163,7 @@ brw_drawpixels(struct gl_context *ctx,
       return;
    }
 
-   if (brw->screen->devinfo.gen < 6 &&
+   if (brw->screen->devinfo.ver < 6 &&
        unpack->BufferObj) {
       if (do_blit_drawpixels(ctx, x, y, width, height, format, type, unpack,
                              pixels)) {

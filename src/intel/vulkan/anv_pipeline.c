@@ -137,28 +137,28 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .descriptor_indexing = true,
          .device_group = true,
          .draw_parameters = true,
-         .float16 = pdevice->info.gen >= 8,
-         .float64 = pdevice->info.gen >= 8,
-         .fragment_shader_sample_interlock = pdevice->info.gen >= 9,
-         .fragment_shader_pixel_interlock = pdevice->info.gen >= 9,
+         .float16 = pdevice->info.ver >= 8,
+         .float64 = pdevice->info.ver >= 8,
+         .fragment_shader_sample_interlock = pdevice->info.ver >= 9,
+         .fragment_shader_pixel_interlock = pdevice->info.ver >= 9,
          .geometry_streams = true,
          .image_write_without_format = true,
-         .int8 = pdevice->info.gen >= 8,
-         .int16 = pdevice->info.gen >= 8,
-         .int64 = pdevice->info.gen >= 8,
-         .int64_atomics = pdevice->info.gen >= 9 && pdevice->use_softpin,
-         .integer_functions2 = pdevice->info.gen >= 8,
+         .int8 = pdevice->info.ver >= 8,
+         .int16 = pdevice->info.ver >= 8,
+         .int64 = pdevice->info.ver >= 8,
+         .int64_atomics = pdevice->info.ver >= 9 && pdevice->use_softpin,
+         .integer_functions2 = pdevice->info.ver >= 8,
          .min_lod = true,
          .multiview = true,
          .physical_storage_buffer_address = pdevice->has_a64_buffer_access,
-         .post_depth_coverage = pdevice->info.gen >= 9,
+         .post_depth_coverage = pdevice->info.ver >= 9,
          .runtime_descriptor_array = true,
-         .float_controls = pdevice->info.gen >= 8,
+         .float_controls = pdevice->info.ver >= 8,
          .shader_clock = true,
          .shader_viewport_index_layer = true,
-         .stencil_export = pdevice->info.gen >= 9,
-         .storage_8bit = pdevice->info.gen >= 8,
-         .storage_16bit = pdevice->info.gen >= 8,
+         .stencil_export = pdevice->info.ver >= 9,
+         .storage_8bit = pdevice->info.ver >= 8,
+         .storage_16bit = pdevice->info.ver >= 8,
          .subgroup_arithmetic = true,
          .subgroup_basic = true,
          .subgroup_ballot = true,
@@ -166,7 +166,7 @@ anv_shader_compile_to_nir(struct anv_device *device,
          .subgroup_shuffle = true,
          .subgroup_vote = true,
          .tessellation = true,
-         .transform_feedback = pdevice->info.gen >= 8,
+         .transform_feedback = pdevice->info.ver >= 8,
          .variable_pointers = true,
          .vk_memory_model = true,
          .vk_memory_model_device_scope = true,
@@ -381,7 +381,7 @@ populate_sampler_prog_key(const struct gen_device_info *devinfo,
     * so we can just use it unconditionally.  This may not be quite as
     * efficient but it saves us from recompiling.
     */
-   if (devinfo->gen >= 9)
+   if (devinfo->ver >= 9)
       key->msaa_16 = ~0;
 
    /* XXX: Handle texture swizzle on HSW- */
@@ -866,7 +866,7 @@ anv_pipeline_link_tcs(const struct brw_compiler *compiler,
    tcs_stage->key.tcs.tes_primitive_mode =
       tes_stage->nir->info.tess.primitive_mode;
    tcs_stage->key.tcs.quads_workaround =
-      compiler->devinfo->gen < 9 &&
+      compiler->devinfo->ver < 9 &&
       tes_stage->nir->info.tess.primitive_mode == 7 /* GL_QUADS */ &&
       tes_stage->nir->info.tess.spacing == TESS_SPACING_EQUAL;
 }
@@ -1450,7 +1450,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       next_stage = &stages[s];
    }
 
-   if (pipeline->base.device->info.gen >= 12 &&
+   if (pipeline->base.device->info.ver >= 12 &&
        pipeline->subpass->view_mask != 0) {
       /* For some pipelines HW Primitive Replication can be used instead of
        * instancing to implement Multiview.  This depend on how viewIndex is
@@ -1725,7 +1725,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          const unsigned chunk_size = 16;
          const unsigned shared_size = ALIGN(stage.nir->info.cs.shared_size, chunk_size);
          assert(shared_size <=
-                calculate_gen_slm_size(compiler->devinfo->gen, stage.nir->info.cs.shared_size));
+                calculate_gen_slm_size(compiler->devinfo->ver, stage.nir->info.cs.shared_size));
 
          NIR_PASS_V(stage.nir, nir_zero_initialize_shared_memory,
                     shared_size, chunk_size);

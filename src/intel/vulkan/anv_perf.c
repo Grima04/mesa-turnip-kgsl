@@ -43,7 +43,7 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
    /* We need self modifying batches. The i915 parser prevents it on
     * Gen7.5 :( maybe one day.
     */
-   if (devinfo->gen < 8)
+   if (devinfo->ver < 8)
       return;
 
    struct gen_perf_config *perf = gen_perf_new(NULL);
@@ -122,7 +122,7 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
    properties[p++] = metric_id;
 
    properties[p++] = DRM_I915_PERF_PROP_OA_FORMAT;
-   properties[p++] = device->info.gen >= 8 ?
+   properties[p++] = device->info.ver >= 8 ?
       I915_OA_FORMAT_A32u40_A4u32_B8_C8 :
       I915_OA_FORMAT_A45_B8_C8;
 

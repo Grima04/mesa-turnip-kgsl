@@ -38,7 +38,7 @@ brw_emit_pipe_control_flush(struct brw_context *brw, uint32_t flags)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->gen >= 6 &&
+   if (devinfo->ver >= 6 &&
        (flags & PIPE_CONTROL_CACHE_FLUSH_BITS) &&
        (flags & PIPE_CONTROL_CACHE_INVALIDATE_BITS)) {
       /* A pipe control command with flush and invalidate bits set
@@ -92,14 +92,14 @@ brw_emit_depth_stall_flushes(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   assert(devinfo->gen >= 6);
+   assert(devinfo->ver >= 6);
 
    /* Starting on BDW, these pipe controls are unnecessary.
     *
     *   WM HW will internally manage the draining pipe and flushing of the caches
     *   when this command is issued. The PIPE_CONTROL restrictions are removed.
     */
-   if (devinfo->gen >= 8)
+   if (devinfo->ver >= 8)
       return;
 
    brw_emit_pipe_control_flush(brw, PIPE_CONTROL_DEPTH_STALL);
@@ -120,7 +120,7 @@ gen7_emit_vs_workaround_flush(struct brw_context *brw)
 {
    ASSERTED const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   assert(devinfo->gen == 7);
+   assert(devinfo->ver == 7);
    brw_emit_pipe_control_write(brw,
                                PIPE_CONTROL_WRITE_IMMEDIATE
                                | PIPE_CONTROL_DEPTH_STALL,
@@ -274,7 +274,7 @@ brw_emit_end_of_pipe_sync(struct brw_context *brw, uint32_t flags)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       /* From Sandybridge PRM, volume 2, "1.7.3.1 Writing a Value to Memory":
        *
        *    "The most common action to perform upon reaching a synchronization
@@ -359,7 +359,7 @@ brw_emit_mi_flush(struct brw_context *brw)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
    int flags = PIPE_CONTROL_RENDER_TARGET_FLUSH;
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       flags |= PIPE_CONTROL_INSTRUCTION_INVALIDATE |
                PIPE_CONTROL_CONST_CACHE_INVALIDATE |
                PIPE_CONTROL_DATA_CACHE_FLUSH |
@@ -396,7 +396,7 @@ int
 brw_init_pipe_control(struct brw_context *brw,
                       const struct gen_device_info *devinfo)
 {
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 11:
       brw->vtbl.emit_raw_pipe_control = gen11_emit_raw_pipe_control;
       break;
@@ -426,7 +426,7 @@ brw_init_pipe_control(struct brw_context *brw,
       unreachable("Unhandled Gen.");
    }
 
-   if (devinfo->gen < 6)
+   if (devinfo->ver < 6)
       return 0;
 
    /* We can't just use brw_state_batch to get a chunk of space for

@@ -631,11 +631,11 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
 
    prog_data->invocations = nir->info.gs.invocations;
 
-   if (compiler->devinfo->gen >= 8)
+   if (compiler->devinfo->ver >= 8)
       nir_gs_count_vertices_and_primitives(
          nir, &prog_data->static_vertex_count, nullptr, 1u);
 
-   if (compiler->devinfo->gen >= 7) {
+   if (compiler->devinfo->ver >= 7) {
       if (nir->info.gs.output_primitive == GL_POINTS) {
          /* When the output type is points, the geometry shader may output data
           * to multiple streams, and EndPrimitive() has no effect.  So we
@@ -723,7 +723,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     *
     */
    unsigned output_vertex_size_bytes = prog_data->base.vue_map.num_slots * 16;
-   assert(compiler->devinfo->gen == 6 ||
+   assert(compiler->devinfo->ver == 6 ||
           output_vertex_size_bytes <= GEN7_MAX_GS_OUTPUT_VERTEX_SIZE_BYTES);
    prog_data->output_vertex_size_hwords =
       ALIGN(output_vertex_size_bytes, 32) / 32;
@@ -761,7 +761,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     * a single vertex. Also, gen6 does not have a control data header.
     */
    unsigned output_size_bytes;
-   if (compiler->devinfo->gen >= 7) {
+   if (compiler->devinfo->ver >= 7) {
       output_size_bytes =
          prog_data->output_vertex_size_hwords * 32 * nir->info.gs.vertices_out;
       output_size_bytes += 32 * prog_data->control_data_header_size_hwords;
@@ -772,7 +772,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    /* Broadwell stores "Vertex Count" as a full 8 DWord (32 byte) URB output,
     * which comes before the control header.
     */
-   if (compiler->devinfo->gen >= 8)
+   if (compiler->devinfo->ver >= 8)
       output_size_bytes += 32;
 
    /* Shaders can technically set max_vertices = 0, at which point we
@@ -783,7 +783,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
       output_size_bytes = 1;
 
    unsigned max_output_size_bytes = GEN7_MAX_GS_URB_ENTRY_SIZE_BYTES;
-   if (compiler->devinfo->gen == 6)
+   if (compiler->devinfo->ver == 6)
       max_output_size_bytes = GEN6_MAX_GS_URB_ENTRY_SIZE_BYTES;
    if (output_size_bytes > max_output_size_bytes)
       return NULL;
@@ -792,7 +792,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    /* URB entry sizes are stored as a multiple of 64 bytes in gen7+ and
     * a multiple of 128 bytes in gen6.
     */
-   if (compiler->devinfo->gen >= 7) {
+   if (compiler->devinfo->ver >= 7) {
       prog_data->base.urb_entry_size = ALIGN(output_size_bytes, 64) / 64;
    } else {
       prog_data->base.urb_entry_size = ALIGN(output_size_bytes, 128) / 128;
@@ -847,7 +847,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
       return NULL;
    }
 
-   if (compiler->devinfo->gen >= 7) {
+   if (compiler->devinfo->ver >= 7) {
       /* Compile the geometry shader in DUAL_OBJECT dispatch mode, if we can do
        * so without spilling. If the GS invocations count > 1, then we can't use
        * dual object mode.
@@ -918,7 +918,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     * mode is more performant when invocations > 1. Gen6 only supports
     * SINGLE mode.
     */
-   if (prog_data->invocations <= 1 || compiler->devinfo->gen < 7)
+   if (prog_data->invocations <= 1 || compiler->devinfo->ver < 7)
       prog_data->base.dispatch_mode = DISPATCH_MODE_4X1_SINGLE;
    else
       prog_data->base.dispatch_mode = DISPATCH_MODE_4X2_DUAL_INSTANCE;
@@ -926,7 +926,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    brw::vec4_gs_visitor *gs = NULL;
    const unsigned *ret = NULL;
 
-   if (compiler->devinfo->gen >= 7)
+   if (compiler->devinfo->ver >= 7)
       gs = new brw::vec4_gs_visitor(compiler, log_data, &c, prog_data,
                                     nir, mem_ctx, false /* no_spills */,
                                     shader_time_index, debug_enabled);

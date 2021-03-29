@@ -337,7 +337,7 @@ hsw_result_to_gpr0(struct gl_context *ctx, struct brw_query_object *query,
        * and correctly emitted the number of pixel shader invocations, but,
        * whomever forgot to undo the multiply by 4.
        */
-      if (devinfo->gen == 8 || devinfo->is_haswell)
+      if (devinfo->ver == 8 || devinfo->is_haswell)
          shr_gpr0_by_2_bits(brw);
       break;
    case GL_TIME_ELAPSED:
@@ -410,9 +410,9 @@ store_query_result_reg(struct brw_context *brw, struct brw_bo *bo,
                        const bool pipelined)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   uint32_t cmd_size = devinfo->gen >= 8 ? 4 : 3;
+   uint32_t cmd_size = devinfo->ver >= 8 ? 4 : 3;
    uint32_t dwords = (ptype == GL_INT || ptype == GL_UNSIGNED_INT) ? 1 : 2;
-   assert(devinfo->gen >= 6);
+   assert(devinfo->ver >= 6);
 
    BEGIN_BATCH(dwords * cmd_size);
    for (int i = 0; i < dwords; i++) {
@@ -420,7 +420,7 @@ store_query_result_reg(struct brw_context *brw, struct brw_bo *bo,
                 (pipelined ? MI_STORE_REGISTER_MEM_PREDICATE : 0) |
                 (cmd_size - 2));
       OUT_BATCH(reg + 4 * i);
-      if (devinfo->gen >= 8) {
+      if (devinfo->ver >= 8) {
          OUT_RELOC64(bo, RELOC_WRITE, offset + 4 * i);
       } else {
          OUT_RELOC(bo, RELOC_WRITE | RELOC_NEEDS_GGTT, offset + 4 * i);

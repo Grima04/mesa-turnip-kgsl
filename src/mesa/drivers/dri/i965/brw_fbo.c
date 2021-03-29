@@ -668,7 +668,7 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
    }
 
    if (depth_mt && stencil_mt) {
-      if (devinfo->gen >= 6) {
+      if (devinfo->ver >= 6) {
          const unsigned d_width = depth_mt->surf.phys_level0_sa.width;
          const unsigned d_height = depth_mt->surf.phys_level0_sa.height;
          const unsigned d_depth = depth_mt->surf.dim == ISL_SURF_DIM_3D ?
@@ -722,7 +722,7 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
                       "instead of S8\n",
                       _mesa_get_format_name(stencil_mt->format));
          }
-         if (devinfo->gen < 7 && !brw_renderbuffer_has_hiz(depthRb)) {
+         if (devinfo->ver < 7 && !brw_renderbuffer_has_hiz(depthRb)) {
             /* Before Gen7, separate depth and stencil buffers can be used
              * only if HiZ is enabled. From the Sandybridge PRM, Volume 2,
              * Part 1, Bit 3DSTATE_DEPTH_BUFFER.SeparateStencilBufferEnable:
@@ -904,7 +904,7 @@ brw_blit_framebuffer(struct gl_context *ctx,
    if (!_mesa_check_conditional_render(ctx))
       return;
 
-   if (devinfo->gen < 6) {
+   if (devinfo->ver < 6) {
       /* On gen4-5, try BLT first.
        *
        * Gen4-5 have a single ring for both 3D and BLT operations, so there's
@@ -937,7 +937,7 @@ brw_blit_framebuffer(struct gl_context *ctx,
    if (mask == 0x0)
       return;
 
-   if (devinfo->gen >= 8 && (mask & GL_STENCIL_BUFFER_BIT)) {
+   if (devinfo->ver >= 8 && (mask & GL_STENCIL_BUFFER_BIT)) {
       assert(!"Invalid blit");
    }
 
@@ -1016,7 +1016,7 @@ flush_depth_and_render_caches(struct brw_context *brw, struct brw_bo *bo)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       brw_emit_pipe_control_flush(brw,
                                   PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |

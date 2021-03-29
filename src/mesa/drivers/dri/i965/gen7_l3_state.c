@@ -115,12 +115,12 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
                                PIPE_CONTROL_DATA_CACHE_FLUSH |
                                PIPE_CONTROL_CS_STALL);
 
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       assert(!cfg->n[INTEL_L3P_IS] && !cfg->n[INTEL_L3P_C] && !cfg->n[INTEL_L3P_T]);
 
       const unsigned imm_data = (
-         (devinfo->gen < 11 && has_slm ? GEN8_L3CNTLREG_SLM_ENABLE : 0) |
-         (devinfo->gen == 11 ? GEN11_L3CNTLREG_USE_FULL_WAYS : 0) |
+         (devinfo->ver < 11 && has_slm ? GEN8_L3CNTLREG_SLM_ENABLE : 0) |
+         (devinfo->ver == 11 ? GEN11_L3CNTLREG_USE_FULL_WAYS : 0) |
          SET_FIELD(cfg->n[INTEL_L3P_URB], GEN8_L3CNTLREG_URB_ALLOC) |
          SET_FIELD(cfg->n[INTEL_L3P_RO], GEN8_L3CNTLREG_RO_ALLOC) |
          SET_FIELD(cfg->n[INTEL_L3P_DC], GEN8_L3CNTLREG_DC_ALLOC) |

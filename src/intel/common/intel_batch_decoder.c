@@ -572,7 +572,7 @@ decode_single_ksp(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
    struct intel_group *inst = intel_ctx_find_instruction(ctx, p);
 
    uint64_t ksp = 0;
-   bool is_simd8 = ctx->devinfo.gen >= 11; /* vertex shaders on Gen8+ only */
+   bool is_simd8 = ctx->devinfo.ver >= 11; /* vertex shaders on Gen8+ only */
    bool is_enabled = true;
 
    struct intel_field_iterator iter;

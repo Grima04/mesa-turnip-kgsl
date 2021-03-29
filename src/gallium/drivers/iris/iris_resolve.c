@@ -215,7 +215,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
       }
    }
 
-   if (devinfo->gen == 8 && nir->info.outputs_read != 0) {
+   if (devinfo->ver == 8 && nir->info.outputs_read != 0) {
       for (unsigned i = 0; i < cso_fb->nr_cbufs; i++) {
          if (cso_fb->cbufs[i]) {
             struct iris_surface *surf = (void *) cso_fb->cbufs[i];

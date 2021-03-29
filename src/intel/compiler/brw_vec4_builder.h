@@ -510,7 +510,7 @@ namespace brw {
       IF(const src_reg &src0, const src_reg &src1,
          brw_conditional_mod condition) const
       {
-         assert(shader->devinfo->gen == 6);
+         assert(shader->devinfo->ver == 6);
          return set_condmod(condition,
                             emit(BRW_OPCODE_IF,
                                  null_reg_d(),
@@ -528,7 +528,7 @@ namespace brw {
          /* The LRP instruction actually does op1 * op0 + op2 * (1 - op0), so
           * we need to reorder the operands.
           */
-         assert(shader->devinfo->gen >= 6 && shader->devinfo->gen <= 9);
+         assert(shader->devinfo->ver >= 6 && shader->devinfo->ver <= 9);
          return emit(BRW_OPCODE_LRP, dst, a, y, x);
       }
 
@@ -597,8 +597,8 @@ namespace brw {
           * For gen7, keep the operand as-is, except if immediate, which gen7 still
           * can't use.
           */
-         if (shader->devinfo->gen == 6 ||
-             (shader->devinfo->gen == 7 && src.file == IMM)) {
+         if (shader->devinfo->ver == 6 ||
+             (shader->devinfo->ver == 7 && src.file == IMM)) {
             const dst_reg tmp = vgrf(src.type);
             MOV(tmp, src);
             return src_reg(tmp);
@@ -613,13 +613,13 @@ namespace brw {
       instruction *
       fix_math_instruction(instruction *inst) const
       {
-         if (shader->devinfo->gen == 6 &&
+         if (shader->devinfo->ver == 6 &&
              inst->dst.writemask != WRITEMASK_XYZW) {
             const dst_reg tmp = vgrf(inst->dst.type);
             MOV(inst->dst, src_reg(tmp));
             inst->dst = tmp;
 
-         } else if (shader->devinfo->gen < 6) {
+         } else if (shader->devinfo->ver < 6) {
             const unsigned sources = (inst->src[1].file == BAD_FILE ? 1 : 2);
             inst->base_mrf = 1;
             inst->mlen = sources;

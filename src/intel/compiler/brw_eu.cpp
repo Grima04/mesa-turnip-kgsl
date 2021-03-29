@@ -205,7 +205,7 @@ brw_set_default_compression_control(struct brw_codegen *p,
       unreachable("not reached");
    }
 
-   if (p->devinfo->gen <= 6) {
+   if (p->devinfo->ver <= 6) {
       p->current->compressed =
          (compression_control == BRW_COMPRESSION_COMPRESSED);
    }
@@ -219,7 +219,7 @@ void
 brw_inst_set_compression(const struct gen_device_info *devinfo,
                          brw_inst *inst, bool on)
 {
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       /* No-op, the EU will figure out for us whether the instruction needs to
        * be compressed.
        */
@@ -251,12 +251,12 @@ void
 brw_inst_set_group(const struct gen_device_info *devinfo,
                    brw_inst *inst, unsigned group)
 {
-   if (devinfo->gen >= 7) {
+   if (devinfo->ver >= 7) {
       assert(group % 4 == 0 && group < 32);
       brw_inst_set_qtr_control(devinfo, inst, group / 8);
       brw_inst_set_nib_control(devinfo, inst, (group / 4) % 2);
 
-   } else if (devinfo->gen == 6) {
+   } else if (devinfo->ver == 6) {
       assert(group % 8 == 0 && group < 32);
       brw_inst_set_qtr_control(devinfo, inst, group / 8);
 
@@ -492,7 +492,7 @@ brw_label_assembly(const struct gen_device_info *devinfo,
             offset + brw_inst_jip(devinfo, inst) * to_bytes_scale, mem_ctx);
       } else if (brw_has_jip(devinfo, brw_inst_opcode(devinfo, inst))) {
          int jip;
-         if (devinfo->gen >= 7) {
+         if (devinfo->ver >= 7) {
             jip = brw_inst_jip(devinfo, inst);
          } else {
             jip = brw_inst_gen6_jump_count(devinfo, inst);

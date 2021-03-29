@@ -308,7 +308,7 @@ brw_texture_barrier(struct gl_context *ctx)
    struct brw_context *brw = brw_context(ctx);
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   if (devinfo->gen >= 6) {
+   if (devinfo->ver >= 6) {
       brw_emit_pipe_control_flush(brw,
                                   PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                                   PIPE_CONTROL_RENDER_TARGET_FLUSH |

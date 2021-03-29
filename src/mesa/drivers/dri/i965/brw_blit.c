@@ -84,8 +84,8 @@ set_blitter_tiling(struct brw_context *brw,
                    uint32_t *__map)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   const unsigned n_dwords = devinfo->gen >= 8 ? 5 : 4;
-   assert(devinfo->gen >= 6);
+   const unsigned n_dwords = devinfo->ver >= 8 ? 5 : 4;
+   assert(devinfo->ver >= 6);
 
    /* Idle the blitter before we update how tiling is interpreted. */
    OUT_BATCH(MI_FLUSH_DW | (n_dwords - 2));
@@ -107,7 +107,7 @@ set_blitter_tiling(struct brw_context *brw,
 #define BEGIN_BATCH_BLT_TILED(n, dst_y_tiled, src_y_tiled)              \
       unsigned set_tiling_batch_size = 0;                               \
       if (dst_y_tiled || src_y_tiled) {                                 \
-         if (devinfo->gen >= 8)                                         \
+         if (devinfo->ver >= 8)                                         \
             set_tiling_batch_size = 16;                                 \
          else                                                           \
             set_tiling_batch_size = 14;                                 \
@@ -204,7 +204,7 @@ alignment_valid(struct brw_context *brw, unsigned offset,
       return (offset & 4095) == 0;
 
    /* On Gen8+, linear buffers must be cacheline-aligned. */
-   if (devinfo->gen >= 8)
+   if (devinfo->ver >= 8)
       return (offset & 63) == 0;
 
    return true;
@@ -265,7 +265,7 @@ emit_copy_blit(struct brw_context *brw,
    uint32_t src_tile_w, src_tile_h;
    uint32_t dst_tile_w, dst_tile_h;
 
-   if ((dst_y_tiled || src_y_tiled) && devinfo->gen < 6)
+   if ((dst_y_tiled || src_y_tiled) && devinfo->ver < 6)
       return false;
 
    const unsigned bo_sizes = dst_buffer->size + src_buffer->size;
@@ -277,7 +277,7 @@ emit_copy_blit(struct brw_context *brw,
    if (!brw_batch_has_aperture_space(brw, bo_sizes))
       return false;
 
-   unsigned length = devinfo->gen >= 8 ? 10 : 8;
+   unsigned length = devinfo->ver >= 8 ? 10 : 8;
 
    brw_batch_require_space(brw, length * 4);
    DBG("%s src:buf(%p)/%d+%d %d,%d dst:buf(%p)/%d+%d %d,%d sz:%dx%d\n",
@@ -350,14 +350,14 @@ emit_copy_blit(struct brw_context *brw,
    OUT_BATCH(BR13 | (uint16_t)dst_pitch);
    OUT_BATCH(SET_FIELD(dst_y, BLT_Y) | SET_FIELD(dst_x, BLT_X));
    OUT_BATCH(SET_FIELD(dst_y2, BLT_Y) | SET_FIELD(dst_x2, BLT_X));
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       OUT_RELOC64(dst_buffer, RELOC_WRITE, dst_offset);
    } else {
       OUT_RELOC(dst_buffer, RELOC_WRITE, dst_offset);
    }
    OUT_BATCH(SET_FIELD(src_y, BLT_Y) | SET_FIELD(src_x, BLT_X));
    OUT_BATCH((uint16_t)src_pitch);
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       OUT_RELOC64(src_buffer, 0, src_offset);
    } else {
       OUT_RELOC(src_buffer, 0, src_offset);
@@ -649,7 +649,7 @@ brw_emit_immediate_color_expand_blit(struct brw_context *brw,
        __func__,
        dst_buffer, dst_pitch, dst_offset, x, y, w, h, src_size, dwords);
 
-   unsigned xy_setup_blt_length = devinfo->gen >= 8 ? 10 : 8;
+   unsigned xy_setup_blt_length = devinfo->ver >= 8 ? 10 : 8;
    brw_batch_require_space(brw, (xy_setup_blt_length * 4) +
                                         (3 * 4) + dwords * 4);
 
@@ -673,7 +673,7 @@ brw_emit_immediate_color_expand_blit(struct brw_context *brw,
    OUT_BATCH(br13);
    OUT_BATCH((0 << 16) | 0); /* clip x1, y1 */
    OUT_BATCH((100 << 16) | 100); /* clip x2, y2 */
-   if (devinfo->gen >= 8) {
+   if (devinfo->ver >= 8) {
       OUT_RELOC64(dst_buffer, RELOC_WRITE, dst_offset);
    } else {
       OUT_RELOC(dst_buffer, RELOC_WRITE, dst_offset);
@@ -681,7 +681,7 @@ brw_emit_immediate_color_expand_blit(struct brw_context *brw,
    OUT_BATCH(0); /* bg */
    OUT_BATCH(fg_color); /* fg */
    OUT_BATCH(0); /* pattern base addr */
-   if (devinfo->gen >= 8)
+   if (devinfo->ver >= 8)
       OUT_BATCH(0);
 
    OUT_BATCH(blit_cmd | ((3 - 2) + dwords));
@@ -737,7 +737,7 @@ brw_miptree_set_alpha_to_one(struct brw_context *brw,
    if (!brw_batch_has_aperture_space(brw, mt->bo->size))
       brw_batch_flush(brw);
 
-   unsigned length = devinfo->gen >= 8 ? 7 : 6;
+   unsigned length = devinfo->ver >= 8 ? 7 : 6;
    const bool dst_y_tiled = mt->surf.tiling == ISL_TILING_Y0;
 
    /* We need to split the blit into chunks that each fit within the blitter's
@@ -765,7 +765,7 @@ brw_miptree_set_alpha_to_one(struct brw_context *brw,
                    SET_FIELD(x + chunk_x, BLT_X));
          OUT_BATCH(SET_FIELD(y + chunk_y + chunk_h, BLT_Y) |
                    SET_FIELD(x + chunk_x + chunk_w, BLT_X));
-         if (devinfo->gen >= 8) {
+         if (devinfo->ver >= 8) {
             OUT_RELOC64(mt->bo, RELOC_WRITE, mt->offset + offset);
          } else {
             OUT_RELOC(mt->bo, RELOC_WRITE, mt->offset + offset);

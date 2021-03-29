@@ -37,7 +37,7 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
    (void) target;
    (void) internalFormat;
 
-   switch (devinfo->gen) {
+   switch (devinfo->ver) {
    case 11:
    case 10:
    case 9:
@@ -78,7 +78,7 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
       return 1;
 
    default:
-      assert(devinfo->gen < 6);
+      assert(devinfo->ver < 6);
       samples[0] = 1;
       return 1;
    }

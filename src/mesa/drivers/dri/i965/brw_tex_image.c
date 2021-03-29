@@ -246,7 +246,7 @@ brw_texsubimage_tiled_memcpy(struct gl_context * ctx,
     * parts of the memory aren't swizzled at all. Userspace just can't handle
     * that.
     */
-   if (devinfo->gen < 5 && brw->has_swizzling)
+   if (devinfo->ver < 5 && brw->has_swizzling)
       return false;
 
    int level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
@@ -798,7 +798,7 @@ brw_gettexsubimage_tiled_memcpy(struct gl_context *ctx,
     * parts of the memory aren't swizzled at all. Userspace just can't handle
     * that.
     */
-   if (devinfo->gen < 5 && brw->has_swizzling)
+   if (devinfo->ver < 5 && brw->has_swizzling)
       return false;
 
    int level = texImage->Level + texImage->TexObject->Attrib.MinLevel;
@@ -971,7 +971,7 @@ brw_compressedtexsubimage(struct gl_context *ctx, GLuint dims,
                         !_mesa_is_srgb_format(gl_format);
    struct brw_context *brw = (struct brw_context*) ctx;
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
-   if (devinfo->gen == 9 && !gen_device_info_is_9lp(devinfo) && is_linear_astc)
+   if (devinfo->ver == 9 && !gen_device_info_is_9lp(devinfo) && is_linear_astc)
       flush_astc_denorms(ctx, dims, texImage,
                          xoffset, yoffset, zoffset,
                          width, height, depth);
