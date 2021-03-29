@@ -49,7 +49,7 @@ isl_tiling_to_i915_tiling(enum isl_tiling tiling)
    case ISL_TILING_W:
    case ISL_TILING_Yf:
    case ISL_TILING_Ys:
-   case ISL_TILING_GEN12_CCS:
+   case ISL_TILING_GFX12_CCS:
       return I915_TILING_NONE;
    }
 
@@ -102,7 +102,7 @@ isl_drm_modifier_info_list[] = {
       .modifier = I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
       .name = "I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS",
       .tiling = ISL_TILING_Y0,
-      .aux_usage = ISL_AUX_USAGE_GEN12_CCS_E,
+      .aux_usage = ISL_AUX_USAGE_GFX12_CCS_E,
       .supports_clear_color = false,
    },
    {

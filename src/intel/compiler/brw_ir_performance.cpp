@@ -903,7 +903,7 @@ namespace {
       case SHADER_OPCODE_TG4:
       case SHADER_OPCODE_TG4_OFFSET:
       case SHADER_OPCODE_SAMPLEINFO:
-      case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
+      case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
          return calculate_desc(info, unit_sampler, 2, 0, 0, 0, 16 /* XXX */,
                                8 /* XXX */, 750 /* XXX */, 0, 0,
                                2 /* XXX */, 0);
@@ -948,9 +948,9 @@ namespace {
             abort();
          }
 
-      case SHADER_OPCODE_GEN4_SCRATCH_READ:
-      case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
-      case SHADER_OPCODE_GEN7_SCRATCH_READ:
+      case SHADER_OPCODE_GFX4_SCRATCH_READ:
+      case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
+      case SHADER_OPCODE_GFX7_SCRATCH_READ:
          return calculate_desc(info, unit_dp_dc, 2, 0, 0, 0, 8 /* XXX */,
                                10 /* XXX */, 100 /* XXX */, 0, 0, 0, 0);
 
@@ -989,12 +989,12 @@ namespace {
             abort();
 
       case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
-      case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
+      case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
          return calculate_desc(info, unit_dp_cc, 2, 0, 0, 0, 16 /* XXX */,
                                10 /* XXX */, 100 /* XXX */, 0, 0, 0, 0);
 
       case VS_OPCODE_PULL_CONSTANT_LOAD:
-      case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+      case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
          return calculate_desc(info, unit_sampler, 2, 0, 0, 0, 16,
                                8, 750, 0, 0, 2, 0);
 

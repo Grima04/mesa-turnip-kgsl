@@ -134,7 +134,7 @@ can_fast_clear_color(struct iris_context *ice,
     * to avoid stomping on other LODs.
     */
    if (level > 0 && util_format_get_blocksizebits(p_res->format) == 8 &&
-       res->aux.usage == ISL_AUX_USAGE_GEN12_CCS_E && p_res->width0 % 64) {
+       res->aux.usage == ISL_AUX_USAGE_GFX12_CCS_E && p_res->width0 % 64) {
       return false;
    }
 

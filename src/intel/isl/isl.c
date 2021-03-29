@@ -410,7 +410,7 @@ isl_tiling_get_info(enum isl_tiling tiling,
       phys_B = isl_extent2d(128, 32);
       break;
 
-   case ISL_TILING_GEN12_CCS:
+   case ISL_TILING_GFX12_CCS:
       /* From the Bspec, Gen Graphics > Gfx12 > Memory Data Formats > Memory
        * Compression > Memory Compression - Gfx12:
        *
@@ -516,7 +516,7 @@ isl_surf_choose_tiling(const struct isl_device *dev,
       UNUSED bool ivb_ccs = ISL_GFX_VER(dev) < 12 &&
                             tiling_flags == ISL_TILING_CCS_BIT;
       UNUSED bool tgl_ccs = ISL_GFX_VER(dev) >= 12 &&
-                            tiling_flags == ISL_TILING_GEN12_CCS_BIT;
+                            tiling_flags == ISL_TILING_GFX12_CCS_BIT;
       assert(ivb_ccs != tgl_ccs);
       *tiling = isl_tiling_flag_to_enum(tiling_flags);
       return true;
@@ -618,8 +618,8 @@ isl_choose_array_pitch_span(const struct isl_device *dev,
                             const struct isl_extent4d *phys_level0_sa)
 {
    switch (dim_layout) {
-   case ISL_DIM_LAYOUT_GEN9_1D:
-   case ISL_DIM_LAYOUT_GEN4_2D:
+   case ISL_DIM_LAYOUT_GFX9_1D:
+   case ISL_DIM_LAYOUT_GFX4_2D:
       if (ISL_GFX_VER(dev) >= 8) {
          /* QPitch becomes programmable in Broadwell. So choose the
           * most compact QPitch possible in order to conserve memory.
@@ -710,13 +710,13 @@ isl_choose_array_pitch_span(const struct isl_device *dev,
          return ISL_ARRAY_PITCH_SPAN_FULL;
       }
 
-   case ISL_DIM_LAYOUT_GEN4_3D:
+   case ISL_DIM_LAYOUT_GFX4_3D:
       /* The hardware will never use the QPitch. So choose the most
        * compact QPitch possible in order to conserve memory.
        */
       return ISL_ARRAY_PITCH_SPAN_COMPACT;
 
-   case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
+   case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
       /* Each array image in the gfx6 stencil of HiZ surface is compact in the
        * sense that every LOD is a compact array of the same size as LOD0.
        */
@@ -800,7 +800,7 @@ isl_surf_choose_dim_layout(const struct isl_device *dev,
    /* Sandy bridge needs a special layout for HiZ and stencil. */
    if (ISL_GFX_VER(dev) == 6 &&
        (tiling == ISL_TILING_W || tiling == ISL_TILING_HIZ))
-      return ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ;
+      return ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ;
 
    if (ISL_GFX_VER(dev) >= 9) {
       switch (logical_dim) {
@@ -816,16 +816,16 @@ isl_surf_choose_dim_layout(const struct isl_device *dev,
           *    can be defined as a 2D tiled surface (e.g. TileY or TileX) with
           *    a height of 0.
           *
-          * In other words, ISL_DIM_LAYOUT_GEN9_1D is only used for linear
-          * surfaces and, for tiled surfaces, ISL_DIM_LAYOUT_GEN4_2D is used.
+          * In other words, ISL_DIM_LAYOUT_GFX9_1D is only used for linear
+          * surfaces and, for tiled surfaces, ISL_DIM_LAYOUT_GFX4_2D is used.
           */
          if (tiling == ISL_TILING_LINEAR)
-            return ISL_DIM_LAYOUT_GEN9_1D;
+            return ISL_DIM_LAYOUT_GFX9_1D;
          else
-            return ISL_DIM_LAYOUT_GEN4_2D;
+            return ISL_DIM_LAYOUT_GFX4_2D;
       case ISL_SURF_DIM_2D:
       case ISL_SURF_DIM_3D:
-         return ISL_DIM_LAYOUT_GEN4_2D;
+         return ISL_DIM_LAYOUT_GFX4_2D;
       }
    } else {
       switch (logical_dim) {
@@ -839,16 +839,16 @@ isl_surf_choose_dim_layout(const struct isl_device *dev,
           * is not reduced for each MIP.
           */
          if (ISL_GFX_VER(dev) == 4 && (usage & ISL_SURF_USAGE_CUBE_BIT))
-            return ISL_DIM_LAYOUT_GEN4_3D;
+            return ISL_DIM_LAYOUT_GFX4_3D;
 
-         return ISL_DIM_LAYOUT_GEN4_2D;
+         return ISL_DIM_LAYOUT_GFX4_2D;
       case ISL_SURF_DIM_3D:
-         return ISL_DIM_LAYOUT_GEN4_3D;
+         return ISL_DIM_LAYOUT_GFX4_3D;
       }
    }
 
    unreachable("bad isl_surf_dim");
-   return ISL_DIM_LAYOUT_GEN4_2D;
+   return ISL_DIM_LAYOUT_GFX4_2D;
 }
 
 /**
@@ -875,12 +875,12 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
       assert(info->samples == 1);
 
       switch (dim_layout) {
-      case ISL_DIM_LAYOUT_GEN4_3D:
+      case ISL_DIM_LAYOUT_GFX4_3D:
          unreachable("bad isl_dim_layout");
 
-      case ISL_DIM_LAYOUT_GEN9_1D:
-      case ISL_DIM_LAYOUT_GEN4_2D:
-      case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
+      case ISL_DIM_LAYOUT_GFX9_1D:
+      case ISL_DIM_LAYOUT_GFX4_2D:
+      case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
          *phys_level0_sa = (struct isl_extent4d) {
             .w = info->width,
             .h = 1,
@@ -893,10 +893,10 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
 
    case ISL_SURF_DIM_2D:
       if (ISL_GFX_VER(dev) == 4 && (info->usage & ISL_SURF_USAGE_CUBE_BIT))
-         assert(dim_layout == ISL_DIM_LAYOUT_GEN4_3D);
+         assert(dim_layout == ISL_DIM_LAYOUT_GFX4_3D);
       else
-         assert(dim_layout == ISL_DIM_LAYOUT_GEN4_2D ||
-                dim_layout == ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ);
+         assert(dim_layout == ISL_DIM_LAYOUT_GFX4_2D ||
+                dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
 
       if (tiling == ISL_TILING_Ys && info->samples > 1)
          isl_finishme("%s:%s: multisample TileYs layout", __FILE__, __func__);
@@ -957,11 +957,11 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
       }
 
       switch (dim_layout) {
-      case ISL_DIM_LAYOUT_GEN9_1D:
-      case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
+      case ISL_DIM_LAYOUT_GFX9_1D:
+      case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
          unreachable("bad isl_dim_layout");
 
-      case ISL_DIM_LAYOUT_GEN4_2D:
+      case ISL_DIM_LAYOUT_GFX4_2D:
          assert(ISL_GFX_VER(dev) >= 9);
 
          *phys_level0_sa = (struct isl_extent4d) {
@@ -972,7 +972,7 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
          };
          break;
 
-      case ISL_DIM_LAYOUT_GEN4_3D:
+      case ISL_DIM_LAYOUT_GFX4_3D:
          assert(ISL_GFX_VER(dev) < 9);
          *phys_level0_sa = (struct isl_extent4d) {
             .w = info->width,
@@ -1093,7 +1093,7 @@ isl_calc_array_pitch_el_rows_gfx4_2d(
 
 /**
  * A variant of isl_calc_phys_slice0_extent_sa() specific to
- * ISL_DIM_LAYOUT_GEN4_2D.
+ * ISL_DIM_LAYOUT_GFX4_2D.
  */
 static void
 isl_calc_phys_slice0_extent_sa_gfx4_2d(
@@ -1196,7 +1196,7 @@ isl_calc_phys_total_extent_el_gfx4_2d(
 
 /**
  * A variant of isl_calc_phys_slice0_extent_sa() specific to
- * ISL_DIM_LAYOUT_GEN4_3D.
+ * ISL_DIM_LAYOUT_GFX4_3D.
  */
 static void
 isl_calc_phys_total_extent_el_gfx4_3d(
@@ -1260,7 +1260,7 @@ isl_calc_phys_total_extent_el_gfx4_3d(
 
 /**
  * A variant of isl_calc_phys_slice0_extent_sa() specific to
- * ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ.
+ * ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ.
  */
 static void
 isl_calc_phys_total_extent_el_gfx6_stencil_hiz(
@@ -1321,7 +1321,7 @@ isl_calc_phys_total_extent_el_gfx6_stencil_hiz(
 
 /**
  * A variant of isl_calc_phys_slice0_extent_sa() specific to
- * ISL_DIM_LAYOUT_GEN9_1D.
+ * ISL_DIM_LAYOUT_GFX9_1D.
  */
 static void
 isl_calc_phys_total_extent_el_gfx9_1d(
@@ -1373,21 +1373,21 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
                               struct isl_extent2d *total_extent_el)
 {
    switch (dim_layout) {
-   case ISL_DIM_LAYOUT_GEN9_1D:
+   case ISL_DIM_LAYOUT_GFX9_1D:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
       isl_calc_phys_total_extent_el_gfx9_1d(dev, info,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_el_rows,
                                             total_extent_el);
       return;
-   case ISL_DIM_LAYOUT_GEN4_2D:
+   case ISL_DIM_LAYOUT_GFX4_2D:
       isl_calc_phys_total_extent_el_gfx4_2d(dev, info, tile_info, msaa_layout,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_span,
                                             array_pitch_el_rows,
                                             total_extent_el);
       return;
-   case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
+   case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
       isl_calc_phys_total_extent_el_gfx6_stencil_hiz(dev, info, tile_info,
                                                      image_align_sa,
@@ -1395,7 +1395,7 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
                                                      array_pitch_el_rows,
                                                      total_extent_el);
       return;
-   case ISL_DIM_LAYOUT_GEN4_3D:
+   case ISL_DIM_LAYOUT_GFX4_3D:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
       isl_calc_phys_total_extent_el_gfx4_3d(dev, info,
                                             image_align_sa, phys_level0_sa,
@@ -1572,7 +1572,7 @@ isl_calc_row_pitch(const struct isl_device *dev,
    if (row_pitch_B == 0)
       return false;
 
-   if (dim_layout == ISL_DIM_LAYOUT_GEN9_1D) {
+   if (dim_layout == ISL_DIM_LAYOUT_GFX9_1D) {
       /* SurfacePitch is ignored for this layout. */
       goto done;
    }
@@ -1712,7 +1712,7 @@ isl_surf_init_s(const struct isl_device *dev,
        * pages. We currently don't assign the usage field like we do for main
        * surfaces, so just use 4K for now.
        */
-      if (tiling == ISL_TILING_GEN12_CCS)
+      if (tiling == ISL_TILING_GFX12_CCS)
          base_alignment_B = MAX(base_alignment_B, 4096);
 
       /* Gfx12+ requires that images be 64K-aligned if they're going to used
@@ -2118,11 +2118,11 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
    if (ISL_GFX_VER(dev) >= 12) {
       enum isl_format ccs_format;
       switch (isl_format_get_layout(surf->format)->bpb) {
-      case 8:     ccs_format = ISL_FORMAT_GEN12_CCS_8BPP_Y0;    break;
-      case 16:    ccs_format = ISL_FORMAT_GEN12_CCS_16BPP_Y0;   break;
-      case 32:    ccs_format = ISL_FORMAT_GEN12_CCS_32BPP_Y0;   break;
-      case 64:    ccs_format = ISL_FORMAT_GEN12_CCS_64BPP_Y0;   break;
-      case 128:   ccs_format = ISL_FORMAT_GEN12_CCS_128BPP_Y0;  break;
+      case 8:     ccs_format = ISL_FORMAT_GFX12_CCS_8BPP_Y0;    break;
+      case 16:    ccs_format = ISL_FORMAT_GFX12_CCS_16BPP_Y0;   break;
+      case 32:    ccs_format = ISL_FORMAT_GFX12_CCS_32BPP_Y0;   break;
+      case 64:    ccs_format = ISL_FORMAT_GFX12_CCS_64BPP_Y0;   break;
+      case 128:   ccs_format = ISL_FORMAT_GFX12_CCS_128BPP_Y0;  break;
       default:
          return false;
       }
@@ -2144,31 +2144,31 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
                        .samples = 1,
                        .row_pitch_B = row_pitch_B,
                        .usage = ISL_SURF_USAGE_CCS_BIT,
-                       .tiling_flags = ISL_TILING_GEN12_CCS_BIT);
+                       .tiling_flags = ISL_TILING_GFX12_CCS_BIT);
       assert(!ok || ccs_surf->size_B == surf->size_B / 256);
       return ok;
    } else {
       enum isl_format ccs_format;
       if (ISL_GFX_VER(dev) >= 9) {
          switch (isl_format_get_layout(surf->format)->bpb) {
-         case 32:    ccs_format = ISL_FORMAT_GEN9_CCS_32BPP;   break;
-         case 64:    ccs_format = ISL_FORMAT_GEN9_CCS_64BPP;   break;
-         case 128:   ccs_format = ISL_FORMAT_GEN9_CCS_128BPP;  break;
+         case 32:    ccs_format = ISL_FORMAT_GFX9_CCS_32BPP;   break;
+         case 64:    ccs_format = ISL_FORMAT_GFX9_CCS_64BPP;   break;
+         case 128:   ccs_format = ISL_FORMAT_GFX9_CCS_128BPP;  break;
          default:    unreachable("Unsupported CCS format");
             return false;
          }
       } else if (surf->tiling == ISL_TILING_Y0) {
          switch (isl_format_get_layout(surf->format)->bpb) {
-         case 32:    ccs_format = ISL_FORMAT_GEN7_CCS_32BPP_Y;    break;
-         case 64:    ccs_format = ISL_FORMAT_GEN7_CCS_64BPP_Y;    break;
-         case 128:   ccs_format = ISL_FORMAT_GEN7_CCS_128BPP_Y;   break;
+         case 32:    ccs_format = ISL_FORMAT_GFX7_CCS_32BPP_Y;    break;
+         case 64:    ccs_format = ISL_FORMAT_GFX7_CCS_64BPP_Y;    break;
+         case 128:   ccs_format = ISL_FORMAT_GFX7_CCS_128BPP_Y;   break;
          default:    unreachable("Unsupported CCS format");
          }
       } else if (surf->tiling == ISL_TILING_X) {
          switch (isl_format_get_layout(surf->format)->bpb) {
-         case 32:    ccs_format = ISL_FORMAT_GEN7_CCS_32BPP_X;    break;
-         case 64:    ccs_format = ISL_FORMAT_GEN7_CCS_64BPP_X;    break;
-         case 128:   ccs_format = ISL_FORMAT_GEN7_CCS_128BPP_X;   break;
+         case 32:    ccs_format = ISL_FORMAT_GFX7_CCS_32BPP_X;    break;
+         case 64:    ccs_format = ISL_FORMAT_GFX7_CCS_64BPP_X;    break;
+         case 128:   ccs_format = ISL_FORMAT_GFX7_CCS_128BPP_X;   break;
          default:    unreachable("Unsupported CCS format");
          }
       } else {
@@ -2307,7 +2307,7 @@ isl_emit_depth_stencil_hiz_s(const struct isl_device *dev, void *batch,
 
 /**
  * A variant of isl_surf_get_image_offset_sa() specific to
- * ISL_DIM_LAYOUT_GEN4_2D.
+ * ISL_DIM_LAYOUT_GFX4_2D.
  */
 static void
 get_image_offset_sa_gfx4_2d(const struct isl_surf *surf,
@@ -2349,7 +2349,7 @@ get_image_offset_sa_gfx4_2d(const struct isl_surf *surf,
 
 /**
  * A variant of isl_surf_get_image_offset_sa() specific to
- * ISL_DIM_LAYOUT_GEN4_3D.
+ * ISL_DIM_LAYOUT_GFX4_3D.
  */
 static void
 get_image_offset_sa_gfx4_3d(const struct isl_surf *surf,
@@ -2465,7 +2465,7 @@ get_image_offset_sa_gfx6_stencil_hiz(const struct isl_surf *surf,
 
 /**
  * A variant of isl_surf_get_image_offset_sa() specific to
- * ISL_DIM_LAYOUT_GEN9_1D.
+ * ISL_DIM_LAYOUT_GFX9_1D.
  */
 static void
 get_image_offset_sa_gfx9_1d(const struct isl_surf *surf,
@@ -2518,21 +2518,21 @@ isl_surf_get_image_offset_sa(const struct isl_surf *surf,
           < isl_minify(surf->logical_level0_px.depth, level));
 
    switch (surf->dim_layout) {
-   case ISL_DIM_LAYOUT_GEN9_1D:
+   case ISL_DIM_LAYOUT_GFX9_1D:
       get_image_offset_sa_gfx9_1d(surf, level, logical_array_layer,
                                   x_offset_sa, y_offset_sa);
       break;
-   case ISL_DIM_LAYOUT_GEN4_2D:
+   case ISL_DIM_LAYOUT_GFX4_2D:
       get_image_offset_sa_gfx4_2d(surf, level, logical_array_layer
                                   + logical_z_offset_px,
                                   x_offset_sa, y_offset_sa);
       break;
-   case ISL_DIM_LAYOUT_GEN4_3D:
+   case ISL_DIM_LAYOUT_GFX4_3D:
       get_image_offset_sa_gfx4_3d(surf, level, logical_array_layer +
                                   logical_z_offset_px,
                                   x_offset_sa, y_offset_sa);
       break;
-   case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
+   case ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ:
       get_image_offset_sa_gfx6_stencil_hiz(surf, level, logical_array_layer +
                                            logical_z_offset_px,
                                            x_offset_sa, y_offset_sa);

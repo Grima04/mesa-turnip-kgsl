@@ -506,7 +506,7 @@ generate_gs_svb_write(struct brw_codegen *p,
                  final_write ? src1 : brw_null_reg(), /* dest == src1 */
                  1, /* msg_reg_nr */
                  dst, /* src0 == previous dst */
-                 BRW_GEN6_SOL_BINDING_START + binding, /* binding_table_index */
+                 BRW_GFX6_SOL_BINDING_START + binding, /* binding_table_index */
                  final_write); /* send_commit_msg */
 
    /* Finally, wait for the write commit to occur so that we can proceed to
@@ -1774,12 +1774,12 @@ generate_code(struct brw_codegen *p,
          send_count++;
          break;
 
-      case SHADER_OPCODE_GEN4_SCRATCH_READ:
+      case SHADER_OPCODE_GFX4_SCRATCH_READ:
          generate_scratch_read(p, inst, dst, src[0]);
          fill_count++;
          break;
 
-      case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+      case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
          generate_scratch_write(p, inst, dst, src[0], src[1]);
          spill_count++;
          break;
@@ -1789,7 +1789,7 @@ generate_code(struct brw_codegen *p,
          send_count++;
          break;
 
-      case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+      case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
          generate_pull_constant_load_gfx7(p, inst, dst, src[0], src[1]);
          send_count++;
          break;

@@ -247,7 +247,7 @@ get_num_phys_layers(const struct isl_surf *surf, unsigned level)
    if (surf->dim != ISL_SURF_DIM_3D)
       return surf->phys_level0_sa.array_len;
 
-   if (surf->dim_layout == ISL_DIM_LAYOUT_GEN4_2D)
+   if (surf->dim_layout == ISL_DIM_LAYOUT_GFX4_2D)
       return minify(surf->phys_level0_sa.array_len, level);
 
    return minify(surf->phys_level0_sa.depth, level);
@@ -2298,7 +2298,7 @@ brw_update_r8stencil(struct brw_context *brw,
    assert(src->surf.size_B > 0);
 
    if (!mt->shadow_mt) {
-      assert(devinfo->ver > 6); /* Handle MIPTREE_LAYOUT_GEN6_HIZ_STENCIL */
+      assert(devinfo->ver > 6); /* Handle MIPTREE_LAYOUT_GFX6_HIZ_STENCIL */
       mt->shadow_mt = make_surface(
                             brw,
                             src->target,
@@ -3170,7 +3170,7 @@ get_isl_dim_layout(const struct gen_device_info *devinfo,
    case GL_TEXTURE_1D:
    case GL_TEXTURE_1D_ARRAY:
       return (devinfo->ver >= 9 && tiling == ISL_TILING_LINEAR ?
-              ISL_DIM_LAYOUT_GEN9_1D : ISL_DIM_LAYOUT_GEN4_2D);
+              ISL_DIM_LAYOUT_GFX9_1D : ISL_DIM_LAYOUT_GFX4_2D);
 
    case GL_TEXTURE_2D:
    case GL_TEXTURE_2D_ARRAY:
@@ -3178,16 +3178,16 @@ get_isl_dim_layout(const struct gen_device_info *devinfo,
    case GL_TEXTURE_2D_MULTISAMPLE:
    case GL_TEXTURE_2D_MULTISAMPLE_ARRAY:
    case GL_TEXTURE_EXTERNAL_OES:
-      return ISL_DIM_LAYOUT_GEN4_2D;
+      return ISL_DIM_LAYOUT_GFX4_2D;
 
    case GL_TEXTURE_CUBE_MAP:
    case GL_TEXTURE_CUBE_MAP_ARRAY:
-      return (devinfo->ver == 4 ? ISL_DIM_LAYOUT_GEN4_3D :
-              ISL_DIM_LAYOUT_GEN4_2D);
+      return (devinfo->ver == 4 ? ISL_DIM_LAYOUT_GFX4_3D :
+              ISL_DIM_LAYOUT_GFX4_2D);
 
    case GL_TEXTURE_3D:
       return (devinfo->ver >= 9 ?
-              ISL_DIM_LAYOUT_GEN4_2D : ISL_DIM_LAYOUT_GEN4_3D);
+              ISL_DIM_LAYOUT_GFX4_2D : ISL_DIM_LAYOUT_GFX4_3D);
    }
 
    unreachable("Invalid texture target");

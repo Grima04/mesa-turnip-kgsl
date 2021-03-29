@@ -91,7 +91,7 @@ static const uint32_t isl_to_gen_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_MC] = AUX_NONE,
    [ISL_AUX_USAGE_MCS] = AUX_CCS_E,
-   [ISL_AUX_USAGE_GEN12_CCS_E] = AUX_CCS_E,
+   [ISL_AUX_USAGE_GFX12_CCS_E] = AUX_CCS_E,
    [ISL_AUX_USAGE_CCS_E] = AUX_CCS_E,
    [ISL_AUX_USAGE_HIZ_CCS_WT] = AUX_CCS_E,
    [ISL_AUX_USAGE_MCS_CCS] = AUX_MCS_LCE,
@@ -150,7 +150,7 @@ get_image_alignment(const struct isl_surf *surf)
 {
    if (GFX_VER >= 9) {
       if (isl_tiling_is_std_y(surf->tiling) ||
-          surf->dim_layout == ISL_DIM_LAYOUT_GEN9_1D) {
+          surf->dim_layout == ISL_DIM_LAYOUT_GFX9_1D) {
          /* The hardware ignores the alignment values. Anyway, the surface's
           * true alignment is likely outside the enum range of HALIGN* and
           * VALIGN*.
@@ -184,7 +184,7 @@ get_qpitch(const struct isl_surf *surf)
    switch (surf->dim_layout) {
    default:
       unreachable("Bad isl_surf_dim");
-   case ISL_DIM_LAYOUT_GEN4_2D:
+   case ISL_DIM_LAYOUT_GFX4_2D:
       if (GFX_VER >= 9) {
          if (surf->dim == ISL_SURF_DIM_3D && surf->tiling == ISL_TILING_W) {
             /* This is rather annoying and completely undocumented.  It
@@ -212,7 +212,7 @@ get_qpitch(const struct isl_surf *surf)
           */
          return isl_surf_get_array_pitch_sa_rows(surf);
       }
-   case ISL_DIM_LAYOUT_GEN9_1D:
+   case ISL_DIM_LAYOUT_GFX9_1D:
       /* QPitch is usually expressed as rows of surface elements (where
        * a surface element is an compression block or a single surface
        * sample). Skylake 1D is an outlier.
@@ -224,8 +224,8 @@ get_qpitch(const struct isl_surf *surf)
        *    slices.
        */
       return isl_surf_get_array_pitch_el(surf);
-   case ISL_DIM_LAYOUT_GEN4_3D:
-      /* QPitch doesn't make sense for ISL_DIM_LAYOUT_GEN4_3D since it uses a
+   case ISL_DIM_LAYOUT_GFX4_3D:
+      /* QPitch doesn't make sense for ISL_DIM_LAYOUT_GFX4_3D since it uses a
        * different pitch at each LOD.  Also, the QPitch field is ignored for
        * these surfaces.  From the Broadwell PRM documentation for QPitch:
        *
@@ -476,7 +476,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #endif
 #endif
 
-   if (info->surf->dim_layout == ISL_DIM_LAYOUT_GEN9_1D) {
+   if (info->surf->dim_layout == ISL_DIM_LAYOUT_GFX9_1D) {
       /* For gfx9 1-D textures, surface pitch is ignored */
       s.SurfacePitch = 0;
    } else {
@@ -591,7 +591,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
       if (GFX_VER >= 12) {
          assert(info->aux_usage == ISL_AUX_USAGE_MCS ||
                 info->aux_usage == ISL_AUX_USAGE_CCS_E ||
-                info->aux_usage == ISL_AUX_USAGE_GEN12_CCS_E ||
+                info->aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
                 info->aux_usage == ISL_AUX_USAGE_MC ||
                 info->aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT ||
                 info->aux_usage == ISL_AUX_USAGE_MCS_CCS ||

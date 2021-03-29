@@ -359,11 +359,11 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case FS_OPCODE_PACK:
       return "pack";
 
-   case SHADER_OPCODE_GEN4_SCRATCH_READ:
+   case SHADER_OPCODE_GFX4_SCRATCH_READ:
       return "gfx4_scratch_read";
-   case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+   case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
       return "gfx4_scratch_write";
-   case SHADER_OPCODE_GEN7_SCRATCH_READ:
+   case SHADER_OPCODE_GFX7_SCRATCH_READ:
       return "gfx7_scratch_read";
    case SHADER_OPCODE_SCRATCH_HEADER:
       return "scratch_header";
@@ -441,9 +441,9 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
 
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
       return "uniform_pull_const";
-   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
+   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
       return "uniform_pull_const_gfx7";
-   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
+   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
       return "varying_pull_const_gfx4";
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL:
       return "varying_pull_const_logical";
@@ -468,7 +468,7 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "vs_urb_write";
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       return "pull_constant_load";
-   case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+   case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
       return "pull_constant_load_gfx7";
 
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
@@ -1100,7 +1100,7 @@ backend_instruction::has_side_effects() const
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case SHADER_OPCODE_UNTYPED_ATOMIC_LOGICAL:
    case SHADER_OPCODE_UNTYPED_ATOMIC_FLOAT_LOGICAL:
-   case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+   case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
    case SHADER_OPCODE_UNTYPED_SURFACE_WRITE_LOGICAL:
    case SHADER_OPCODE_A64_UNTYPED_WRITE_LOGICAL:

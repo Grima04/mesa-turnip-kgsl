@@ -1413,7 +1413,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
    struct isl_surf surf = surface->surf;
 
    if (surf.dim == ISL_SURF_DIM_1D &&
-       surf.dim_layout == ISL_DIM_LAYOUT_GEN4_2D) {
+       surf.dim_layout == ISL_DIM_LAYOUT_GFX4_2D) {
       assert(surf.logical_level0_px.height == 1);
       surf.dim = ISL_SURF_DIM_2D;
    }
@@ -1656,7 +1656,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
           * However, we have a special layout that allows us to make it work
           * anyway by manually offsetting to the specified miplevel.
           */
-         assert(info.hiz_surf->dim_layout == ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ);
+         assert(info.hiz_surf->dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
          uint32_t offset_B;
          isl_surf_get_image_offset_B_tile_sa(info.hiz_surf,
                                              info.view->base_level, 0, 0,
@@ -1682,7 +1682,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
        * However, we have a special layout that allows us to make it work
        * anyway by manually offsetting to the specified miplevel.
        */
-      assert(info.stencil_surf->dim_layout == ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ);
+      assert(info.stencil_surf->dim_layout == ISL_DIM_LAYOUT_GFX6_STENCIL_HIZ);
       uint32_t offset_B;
       isl_surf_get_image_offset_B_tile_sa(info.stencil_surf,
                                           info.view->base_level, 0, 0,

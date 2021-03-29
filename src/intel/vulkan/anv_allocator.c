@@ -1645,7 +1645,7 @@ anv_device_alloc_bo(struct anv_device *device,
       size = align_u64(size, 64 * 1024);
 
       /* See anv_bo::_ccs_size */
-      ccs_size = align_u64(DIV_ROUND_UP(size, INTEL_AUX_MAP_GEN12_CCS_SCALE), 4096);
+      ccs_size = align_u64(DIV_ROUND_UP(size, INTEL_AUX_MAP_GFX12_CCS_SCALE), 4096);
    }
 
    uint32_t gem_handle = anv_gem_create(device, size + ccs_size);

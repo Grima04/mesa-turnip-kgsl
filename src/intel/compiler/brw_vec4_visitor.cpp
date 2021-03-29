@@ -257,7 +257,7 @@ vec4_visitor::SCRATCH_READ(const dst_reg &dst, const src_reg &index)
 {
    vec4_instruction *inst;
 
-   inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GEN4_SCRATCH_READ,
+   inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GFX4_SCRATCH_READ,
 					dst, index);
    inst->base_mrf = FIRST_SPILL_MRF(devinfo->ver) + 1;
    inst->mlen = 2;
@@ -271,7 +271,7 @@ vec4_visitor::SCRATCH_WRITE(const dst_reg &dst, const src_reg &src,
 {
    vec4_instruction *inst;
 
-   inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GEN4_SCRATCH_WRITE,
+   inst = new(mem_ctx) vec4_instruction(SHADER_OPCODE_GFX4_SCRATCH_WRITE,
 					dst, src, index);
    inst->base_mrf = FIRST_SPILL_MRF(devinfo->ver);
    inst->mlen = 3;
@@ -752,7 +752,7 @@ vec4_visitor::emit_pull_constant_load_reg(dst_reg dst,
       else
          emit(pull);
 
-      pull = new(mem_ctx) vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD_GEN7,
+      pull = new(mem_ctx) vec4_instruction(VS_OPCODE_PULL_CONSTANT_LOAD_GFX7,
                                            dst,
                                            surf_index,
                                            src_reg(grf_offset));

@@ -252,8 +252,8 @@ fs_inst::is_control_source(unsigned arg) const
 {
    switch (opcode) {
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
-   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
-   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
+   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
+   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
       return arg == 0;
 
    case SHADER_OPCODE_BROADCAST:
@@ -317,7 +317,7 @@ fs_inst::is_payload(unsigned arg) const
    case SHADER_OPCODE_BARRIER:
       return arg == 0;
 
-   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
+   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
       return arg == 1;
 
    case SHADER_OPCODE_SEND:
@@ -988,7 +988,7 @@ fs_inst::size_read(int arg) const
          return 1;
       break;
 
-   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
+   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
       /* The payload is actually stored in src1 */
       if (arg == 1)
          return mlen * REG_SIZE;
@@ -1174,11 +1174,11 @@ fs_inst::implied_mrf_writes() const
    case FS_OPCODE_REP_FB_WRITE:
       return src[0].file == BAD_FILE ? 0 : 2;
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
-   case SHADER_OPCODE_GEN4_SCRATCH_READ:
+   case SHADER_OPCODE_GFX4_SCRATCH_READ:
       return 1;
-   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
+   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
       return mlen;
-   case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+   case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
       return mlen;
    default:
       unreachable("not reached");
@@ -3799,7 +3799,7 @@ fs_visitor::lower_uniform_pull_constant_loads()
          ubld.group(1, 0).MOV(component(payload, 2),
                               brw_imm_ud(inst->src[1].ud / 16));
 
-         inst->opcode = FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7;
+         inst->opcode = FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7;
          inst->src[1] = payload;
          inst->header_size = 1;
          inst->mlen = 1;
@@ -6103,7 +6103,7 @@ lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
 
       bld.MOV(byte_offset(payload, REG_SIZE), inst->src[1]);
 
-      inst->opcode = FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4;
+      inst->opcode = FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4;
       inst->resize_sources(1);
       inst->base_mrf = payload.nr;
       inst->header_size = 1;

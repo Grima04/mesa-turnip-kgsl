@@ -1281,7 +1281,7 @@ genX(upload_clip_state)(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
 
-   ctx->NewDriverState |= BRW_NEW_GEN4_UNIT_STATE;
+   ctx->NewDriverState |= BRW_NEW_GFX4_UNIT_STATE;
    brw_state_emit(brw, GENX(CLIP_STATE), 32, &brw->clip.state_offset, clip) {
       clip.KernelStartPointer = KSP(brw, brw->clip.prog_offset);
       clip.GRFRegisterCount =
@@ -1522,7 +1522,7 @@ genX(upload_sf)(struct brw_context *brw)
 #if GFX_VER < 6
    const struct brw_sf_prog_data *sf_prog_data = brw->sf.prog_data;
 
-   ctx->NewDriverState |= BRW_NEW_GEN4_UNIT_STATE;
+   ctx->NewDriverState |= BRW_NEW_GFX4_UNIT_STATE;
 
    brw_state_emit(brw, GENX(SF_STATE), 64, &brw->sf.state_offset, sf) {
       sf.KernelStartPointer = KSP(brw, brw->sf.prog_offset);
@@ -1819,7 +1819,7 @@ genX(upload_wm)(struct brw_context *brw)
 #if GFX_VER >= 6
    brw_batch_emit(brw, GENX(3DSTATE_WM), wm) {
 #else
-   ctx->NewDriverState |= BRW_NEW_GEN4_UNIT_STATE;
+   ctx->NewDriverState |= BRW_NEW_GFX4_UNIT_STATE;
    brw_state_emit(brw, GENX(WM_STATE), 64, &stage_state->state_offset, wm) {
 #endif
 
@@ -2161,7 +2161,7 @@ genX(upload_vs_state)(struct brw_context *brw)
 #if GFX_VER >= 6
    brw_batch_emit(brw, GENX(3DSTATE_VS), vs) {
 #else
-   ctx->NewDriverState |= BRW_NEW_GEN4_UNIT_STATE;
+   ctx->NewDriverState |= BRW_NEW_GFX4_UNIT_STATE;
    brw_state_emit(brw, GENX(VS_STATE), 32, &stage_state->state_offset, vs) {
 #endif
       INIT_THREAD_DISPATCH_FIELDS(vs, Vertex);
@@ -2599,7 +2599,7 @@ genX(upload_gs_state)(struct brw_context *brw)
 #if GFX_VER >= 6
    brw_batch_emit(brw, GENX(3DSTATE_GS), gs) {
 #else
-   ctx->NewDriverState |= BRW_NEW_GEN4_UNIT_STATE;
+   ctx->NewDriverState |= BRW_NEW_GFX4_UNIT_STATE;
    brw_state_emit(brw, GENX(GS_STATE), 32, &brw->ff_gs.state_offset, gs) {
 #endif
 
@@ -3407,7 +3407,7 @@ genX(upload_color_calc_state)(struct brw_context *brw)
 #endif
    }
 #else
-   brw->ctx.NewDriverState |= BRW_NEW_GEN4_UNIT_STATE;
+   brw->ctx.NewDriverState |= BRW_NEW_GFX4_UNIT_STATE;
 #endif
 }
 

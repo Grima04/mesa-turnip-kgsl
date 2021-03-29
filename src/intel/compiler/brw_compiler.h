@@ -577,7 +577,7 @@ struct brw_image_param {
 /**
  * Binding table index for the first gfx6 SOL binding.
  */
-#define BRW_GEN6_SOL_BINDING_START 0
+#define BRW_GFX6_SOL_BINDING_START 0
 
 /**
  * Stride in bytes between shader_time entries.

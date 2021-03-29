@@ -2331,17 +2331,17 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          generate_ddy(inst, dst, src[0]);
 	 break;
 
-      case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+      case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
 	 generate_scratch_write(inst, src[0]);
          spill_count++;
 	 break;
 
-      case SHADER_OPCODE_GEN4_SCRATCH_READ:
+      case SHADER_OPCODE_GFX4_SCRATCH_READ:
 	 generate_scratch_read(inst, dst);
          fill_count++;
 	 break;
 
-      case SHADER_OPCODE_GEN7_SCRATCH_READ:
+      case SHADER_OPCODE_GFX7_SCRATCH_READ:
 	 generate_scratch_read_gfx7(inst, dst);
          fill_count++;
 	 break;
@@ -2379,13 +2379,13 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          send_count++;
 	 break;
 
-      case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
+      case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
          assert(inst->force_writemask_all);
 	 generate_uniform_pull_constant_load_gfx7(inst, dst, src[0], src[1]);
          send_count++;
 	 break;
 
-      case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
+      case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
 	 generate_varying_pull_constant_load_gfx4(inst, dst, src[0]);
          send_count++;
 	 break;

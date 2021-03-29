@@ -151,7 +151,7 @@ vec4_instruction::is_send_from_grf() const
 {
    switch (opcode) {
    case SHADER_OPCODE_SHADER_TIME_ADD:
-   case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+   case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
    case VEC4_OPCODE_UNTYPED_ATOMIC:
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
@@ -215,7 +215,7 @@ vec4_instruction::size_read(unsigned arg) const
       if (arg == 0)
          return mlen * REG_SIZE;
       break;
-   case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+   case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
       if (arg == 1)
          return mlen * REG_SIZE;
       break;
@@ -274,7 +274,7 @@ bool
 vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
 {
    switch (opcode) {
-   case SHADER_OPCODE_GEN4_SCRATCH_READ:
+   case SHADER_OPCODE_GFX4_SCRATCH_READ:
    case VEC4_OPCODE_DOUBLE_TO_F32:
    case VEC4_OPCODE_DOUBLE_TO_D32:
    case VEC4_OPCODE_DOUBLE_TO_U32:
@@ -284,7 +284,7 @@ vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
    case VEC4_OPCODE_SET_LOW_32BIT:
    case VEC4_OPCODE_SET_HIGH_32BIT:
    case VS_OPCODE_PULL_CONSTANT_LOAD:
-   case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
+   case VS_OPCODE_PULL_CONSTANT_LOAD_GFX7:
    case TCS_OPCODE_SET_INPUT_URB_OFFSETS:
    case TCS_OPCODE_SET_OUTPUT_URB_OFFSETS:
    case TES_OPCODE_CREATE_INPUT_READ_HEADER:
@@ -349,9 +349,9 @@ vec4_instruction::implied_mrf_writes() const
       return 1;
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       return 2;
-   case SHADER_OPCODE_GEN4_SCRATCH_READ:
+   case SHADER_OPCODE_GFX4_SCRATCH_READ:
       return 2;
-   case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+   case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
       return 3;
    case GS_OPCODE_URB_WRITE:
    case GS_OPCODE_URB_WRITE_ALLOCATE:
@@ -2179,8 +2179,8 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
 {
    /* Do not split some instructions that require special handling */
    switch (inst->opcode) {
-   case SHADER_OPCODE_GEN4_SCRATCH_READ:
-   case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+   case SHADER_OPCODE_GFX4_SCRATCH_READ:
+   case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
       return inst->exec_size;
    default:
       break;

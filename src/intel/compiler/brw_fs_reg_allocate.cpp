@@ -704,8 +704,8 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
        * message as source. So as we will have an overlap for sure, we create
        * an interference between destination and grf127.
        */
-      if ((inst->opcode == SHADER_OPCODE_GEN7_SCRATCH_READ ||
-           inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_READ) &&
+      if ((inst->opcode == SHADER_OPCODE_GFX7_SCRATCH_READ ||
+           inst->opcode == SHADER_OPCODE_GFX4_SCRATCH_READ) &&
           inst->dst.file == VGRF)
          ra_add_node_interference(g, first_vgrf_node + inst->dst.nr,
                                      grf127_send_hack_node);
@@ -921,10 +921,10 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
           * the address as part of the message header, so we're better off
           * using plain old oword block reads.
           */
-         unspill_inst = bld.emit(SHADER_OPCODE_GEN7_SCRATCH_READ, dst);
+         unspill_inst = bld.emit(SHADER_OPCODE_GFX7_SCRATCH_READ, dst);
          unspill_inst->offset = spill_offset;
       } else {
-         unspill_inst = bld.emit(SHADER_OPCODE_GEN4_SCRATCH_READ, dst);
+         unspill_inst = bld.emit(SHADER_OPCODE_GFX4_SCRATCH_READ, dst);
          unspill_inst->offset = spill_offset;
          unspill_inst->base_mrf = spill_base_mrf(bld.shader);
          unspill_inst->mlen = 1; /* header contains offset */
@@ -972,7 +972,7 @@ fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
                               0 /* not a render target */,
                               false /* send_commit_msg */);
       } else {
-         spill_inst = bld.emit(SHADER_OPCODE_GEN4_SCRATCH_WRITE,
+         spill_inst = bld.emit(SHADER_OPCODE_GFX4_SCRATCH_WRITE,
                                bld.null_reg_f(), src);
          spill_inst->offset = spill_offset;
          spill_inst->mlen = 1 + reg_size; /* header, value */

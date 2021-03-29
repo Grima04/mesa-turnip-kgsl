@@ -523,7 +523,7 @@ fs_visitor::try_copy_propagate(fs_inst *inst, int arg, acp_entry *entry)
    }
 
    if (has_source_modifiers &&
-       inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_WRITE)
+       inst->opcode == SHADER_OPCODE_GFX4_SCRATCH_WRITE)
       return false;
 
    /* Some instructions implemented in the generator backend, such as

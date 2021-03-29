@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<genxml name="GEN125" gen="12.5">
+<genxml name="GFX125" gen="12.5">
 
   <enum name="3D_Color_Buffer_Blend_Factor" prefix="BLENDFACTOR">
     <value name="ONE" value="1"/>

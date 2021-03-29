@@ -59,7 +59,7 @@ enum modifier_priority {
    MODIFIER_PRIORITY_X,
    MODIFIER_PRIORITY_Y,
    MODIFIER_PRIORITY_Y_CCS,
-   MODIFIER_PRIORITY_Y_GEN12_RC_CCS,
+   MODIFIER_PRIORITY_Y_GFX12_RC_CCS,
 };
 
 static const uint64_t priority_to_modifier[] = {
@@ -68,7 +68,7 @@ static const uint64_t priority_to_modifier[] = {
    [MODIFIER_PRIORITY_X] = I915_FORMAT_MOD_X_TILED,
    [MODIFIER_PRIORITY_Y] = I915_FORMAT_MOD_Y_TILED,
    [MODIFIER_PRIORITY_Y_CCS] = I915_FORMAT_MOD_Y_TILED_CCS,
-   [MODIFIER_PRIORITY_Y_GEN12_RC_CCS] = I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
+   [MODIFIER_PRIORITY_Y_GFX12_RC_CCS] = I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS,
 };
 
 static bool
@@ -145,7 +145,7 @@ select_best_modifier(struct gen_device_info *devinfo, enum pipe_format pfmt,
 
       switch (modifiers[i]) {
       case I915_FORMAT_MOD_Y_TILED_GEN12_RC_CCS:
-         prio = MAX2(prio, MODIFIER_PRIORITY_Y_GEN12_RC_CCS);
+         prio = MAX2(prio, MODIFIER_PRIORITY_Y_GFX12_RC_CCS);
          break;
       case I915_FORMAT_MOD_Y_TILED_CCS:
          prio = MAX2(prio, MODIFIER_PRIORITY_Y_CCS);
@@ -355,18 +355,18 @@ iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
    case PIPE_TEXTURE_1D:
    case PIPE_TEXTURE_1D_ARRAY:
       return (devinfo->ver >= 9 && tiling == ISL_TILING_LINEAR ?
-              ISL_DIM_LAYOUT_GEN9_1D : ISL_DIM_LAYOUT_GEN4_2D);
+              ISL_DIM_LAYOUT_GFX9_1D : ISL_DIM_LAYOUT_GFX4_2D);
 
    case PIPE_TEXTURE_2D:
    case PIPE_TEXTURE_2D_ARRAY:
    case PIPE_TEXTURE_RECT:
    case PIPE_TEXTURE_CUBE:
    case PIPE_TEXTURE_CUBE_ARRAY:
-      return ISL_DIM_LAYOUT_GEN4_2D;
+      return ISL_DIM_LAYOUT_GFX4_2D;
 
    case PIPE_TEXTURE_3D:
       return (devinfo->ver >= 9 ?
-              ISL_DIM_LAYOUT_GEN4_2D : ISL_DIM_LAYOUT_GEN4_3D);
+              ISL_DIM_LAYOUT_GFX4_2D : ISL_DIM_LAYOUT_GFX4_3D);
 
    case PIPE_MAX_TEXTURE_TYPES:
    case PIPE_BUFFER:
@@ -628,7 +628,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
    assert(!res->mod_info ||
           res->mod_info->aux_usage == ISL_AUX_USAGE_NONE ||
           res->mod_info->aux_usage == ISL_AUX_USAGE_CCS_E ||
-          res->mod_info->aux_usage == ISL_AUX_USAGE_GEN12_CCS_E ||
+          res->mod_info->aux_usage == ISL_AUX_USAGE_GFX12_CCS_E ||
           res->mod_info->aux_usage == ISL_AUX_USAGE_MC);
 
    const bool has_mcs = !res->mod_info &&
@@ -679,7 +679,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
    } else if (has_ccs) {
       if (want_ccs_e_for_format(devinfo, res->surf.format)) {
          res->aux.possible_usages |= devinfo->ver < 12 ?
-            1 << ISL_AUX_USAGE_CCS_E : 1 << ISL_AUX_USAGE_GEN12_CCS_E;
+            1 << ISL_AUX_USAGE_CCS_E : 1 << ISL_AUX_USAGE_GFX12_CCS_E;
       } else if (isl_format_supports_ccs_d(devinfo, res->surf.format)) {
          res->aux.possible_usages |= 1 << ISL_AUX_USAGE_CCS_D;
       }
@@ -720,7 +720,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
       break;
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
-   case ISL_AUX_USAGE_GEN12_CCS_E:
+   case ISL_AUX_USAGE_GFX12_CCS_E:
    case ISL_AUX_USAGE_STC_CCS:
    case ISL_AUX_USAGE_MC:
       /* When CCS_E is used, we need to ensure that the CCS starts off in
@@ -1951,7 +1951,7 @@ iris_transfer_map(struct pipe_context *ctx,
 
    if (!map_would_stall &&
        res->aux.usage != ISL_AUX_USAGE_CCS_E &&
-       res->aux.usage != ISL_AUX_USAGE_GEN12_CCS_E) {
+       res->aux.usage != ISL_AUX_USAGE_GFX12_CCS_E) {
       no_gpu = true;
    }
 

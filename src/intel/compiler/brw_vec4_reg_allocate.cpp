@@ -330,8 +330,8 @@ can_use_scratch_for_source(const vec4_instruction *inst, unsigned i,
        * other registers (that won't read/write scratch_reg) do not stop us from
        * reusing scratch_reg for this instruction.
        */
-      if (prev_inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_WRITE ||
-          prev_inst->opcode == SHADER_OPCODE_GEN4_SCRATCH_READ)
+      if (prev_inst->opcode == SHADER_OPCODE_GFX4_SCRATCH_WRITE ||
+          prev_inst->opcode == SHADER_OPCODE_GFX4_SCRATCH_READ)
          continue;
 
       /* If the previous instruction does not write to scratch_reg, then check
@@ -466,8 +466,8 @@ vec4_visitor::evaluate_spill_costs(float *spill_costs, bool *no_spill)
          loop_scale /= 10;
          break;
 
-      case SHADER_OPCODE_GEN4_SCRATCH_READ:
-      case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+      case SHADER_OPCODE_GFX4_SCRATCH_READ:
+      case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
          for (int i = 0; i < 3; i++) {
             if (inst->src[i].file == VGRF)
                no_spill[inst->src[i].nr] = true;

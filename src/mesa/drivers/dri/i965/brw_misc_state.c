@@ -93,7 +93,7 @@ const struct brw_tracked_state brw_psp_urb_cbs = {
       .brw = BRW_NEW_BATCH |
              BRW_NEW_BLORP |
              BRW_NEW_FF_GS_PROG_DATA |
-             BRW_NEW_GEN4_UNIT_STATE |
+             BRW_NEW_GFX4_UNIT_STATE |
              BRW_NEW_STATE_BASE_ADDRESS |
              BRW_NEW_URB_FENCE,
    },

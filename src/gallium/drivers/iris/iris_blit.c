@@ -572,7 +572,7 @@ get_copy_region_aux_settings(struct iris_context *ice,
    case ISL_AUX_USAGE_MCS:
    case ISL_AUX_USAGE_MCS_CCS:
    case ISL_AUX_USAGE_CCS_E:
-   case ISL_AUX_USAGE_GEN12_CCS_E:
+   case ISL_AUX_USAGE_GFX12_CCS_E:
       *out_aux_usage = res->aux.usage;
 
       /* blorp_copy may reinterpret the surface format and has limited support

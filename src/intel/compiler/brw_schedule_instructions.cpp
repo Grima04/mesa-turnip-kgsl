@@ -322,9 +322,9 @@ schedule_node::set_latency_gfx7(bool is_haswell)
       latency = 100;
       break;
 
-   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
+   case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GFX4:
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
-   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
+   case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GFX7:
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       /* testing using varying-index pull constants:
        *
@@ -355,7 +355,7 @@ schedule_node::set_latency_gfx7(bool is_haswell)
       latency = 200;
       break;
 
-   case SHADER_OPCODE_GEN7_SCRATCH_READ:
+   case SHADER_OPCODE_GFX7_SCRATCH_READ:
       /* Testing a load from offset 0, that had been previously written:
        *
        * send(8) g114<1>UW g0<8,8,1>F data (0, 0, 0) mlen 1 rlen 1 { align1 WE_normal 1Q };

@@ -354,8 +354,8 @@ public:
       case VS_OPCODE_PULL_CONSTANT_LOAD:
       case GS_OPCODE_SET_PRIMITIVE_ID:
       case GS_OPCODE_GET_INSTANCE_ID:
-      case SHADER_OPCODE_GEN4_SCRATCH_READ:
-      case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
+      case SHADER_OPCODE_GFX4_SCRATCH_READ:
+      case SHADER_OPCODE_GFX4_SCRATCH_WRITE:
          return true;
       default:
          return false;

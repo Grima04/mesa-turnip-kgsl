@@ -39,7 +39,7 @@ blorp_shader_type_to_name(enum blorp_shader_type type)
       [BLORP_SHADER_TYPE_CLEAR]               = "BLORP-clear",
       [BLORP_SHADER_TYPE_MCS_PARTIAL_RESOLVE] = "BLORP-mcs-partial-resolve",
       [BLORP_SHADER_TYPE_LAYER_OFFSET_VS]     = "BLORP-layer-offset-vs",
-      [BLORP_SHADER_TYPE_GEN4_SF]             = "BLORP-gfx4-sf",
+      [BLORP_SHADER_TYPE_GFX4_SF]             = "BLORP-gfx4-sf",
    };
    assert(type < ARRAY_SIZE(shader_name));
 
@@ -267,7 +267,7 @@ blorp_compile_vs(struct blorp_context *blorp, void *mem_ctx,
 }
 
 struct blorp_sf_key {
-   enum blorp_shader_type shader_type; /* Must be BLORP_SHADER_TYPE_GEN4_SF */
+   enum blorp_shader_type shader_type; /* Must be BLORP_SHADER_TYPE_GFX4_SF */
 
    struct brw_sf_prog_key key;
 };
@@ -285,7 +285,7 @@ blorp_ensure_sf_program(struct blorp_batch *batch,
       return true;
 
    struct blorp_sf_key key = {
-      .shader_type = BLORP_SHADER_TYPE_GEN4_SF,
+      .shader_type = BLORP_SHADER_TYPE_GFX4_SF,
    };
 
    /* Everything gets compacted in vertex setup, so we just need a
