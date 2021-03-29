@@ -22,3 +22,6 @@ dEQP-GLES31.functional.separate_shader.random.119
 # Usually passes
 dEQP-GLES31.functional.separate_shader.random.13
 dEQP-GLES31.functional.separate_shader.interface.same_name_vertex_centroid_fragment_centroid
+
+# Flaky since running more of GLES31
+dEQP-GLES31.functional.texture.border_clamp.*
