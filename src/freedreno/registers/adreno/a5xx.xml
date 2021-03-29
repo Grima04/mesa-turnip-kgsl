@@ -2882,7 +2882,7 @@ different border-color states per texture..  Looks something like:
 0340: 3c003c00 3c003c00 00000000 00000000 00000000 00000000 00000000 00000000
 
 		 -->
-		<bitfield name="BCOLOR_OFFSET" low="4" high="31"/>
+		<bitfield name="BCOLOR_OFFSET" low="7" high="31"/>
 	</reg32>
 	<reg32 offset="3" name="3"/>
 </domain>
