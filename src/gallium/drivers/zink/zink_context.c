@@ -293,7 +293,9 @@ zink_context_destroy(struct pipe_context *pctx)
       debug_printf("vkQueueWaitIdle failed\n");
 
    util_blitter_destroy(ctx->blitter);
-   util_copy_framebuffer_state(&ctx->fb_state, NULL);
+   for (unsigned i = 0; i < ctx->fb_state.nr_cbufs; i++)
+      zink_surface_reference(screen, (struct zink_surface**)&ctx->fb_state.cbufs[i], NULL);
+   zink_surface_reference(screen, (struct zink_surface**)&ctx->fb_state.zsbuf, NULL);
 
    pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
    pipe_resource_reference(&ctx->dummy_xfb_buffer, NULL);
