@@ -160,10 +160,6 @@ _mesa_layout_parameters(struct asm_parser_state *state)
       for (inst = state->inst_head; inst != NULL; inst = inst->next) {
          for (unsigned i = 0; i < 3; i++) {
             if (inst->SrcReg[i].Base.RelAddr) {
-               unsigned begin = inst->SrcReg[i].Symbol->param_binding_begin;
-               if (state->prog->Parameters->Parameters[begin].Type != file)
-                  continue;
-
                /* Only attempt to add the to the new parameter list once.
                 */
                if (!inst->SrcReg[i].Symbol->pass1_done) {
@@ -192,7 +188,11 @@ _mesa_layout_parameters(struct asm_parser_state *state)
          }
       }
 
-      /* PASS 2:  Add sorted state variables. */
+      /* PASS 2: Add sorted state variables.  NOTE: This pass does **not**
+       * modify the instruction with the updated index.  The sorting step
+       * might invalidate the index that was calculated by
+       * _mesa_add_state_reference.  Instead, it relies on PASS 3 to do this.
+       */
       if (file == PROGRAM_STATE_VAR) {
          unsigned first_state_var = layout->NumParameters;
 
