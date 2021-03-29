@@ -60,7 +60,7 @@
  * and the documentation for 3DSTATE_PUSH_CONSTANT_ALLOC_xS.
  */
 static void
-gen7_allocate_push_constants(struct brw_context *brw)
+gfx7_allocate_push_constants(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
@@ -88,7 +88,7 @@ gen7_allocate_push_constants(struct brw_context *brw)
    unsigned gs_size = gs_present ? size_per_stage : 0;
    unsigned fs_size = avail_size - size_per_stage * (stages - 1);
 
-   gen7_emit_push_constant_state(brw, multiplier * vs_size,
+   gfx7_emit_push_constant_state(brw, multiplier * vs_size,
                                  multiplier * hs_size, multiplier * ds_size,
                                  multiplier * gs_size, multiplier * fs_size);
 
@@ -111,7 +111,7 @@ gen7_allocate_push_constants(struct brw_context *brw)
 }
 
 void
-gen7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
+gfx7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
                               unsigned hs_size, unsigned ds_size,
                               unsigned gs_size, unsigned fs_size)
 {
@@ -174,10 +174,10 @@ gen7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
     * No such restriction exists for Haswell or Baytrail.
     */
    if (devinfo->ver < 8 && !devinfo->is_haswell && !devinfo->is_baytrail)
-      gen7_emit_cs_stall_flush(brw);
+      gfx7_emit_cs_stall_flush(brw);
 }
 
-const struct brw_tracked_state gen7_push_constant_space = {
+const struct brw_tracked_state gfx7_push_constant_space = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_CONTEXT |
@@ -185,7 +185,7 @@ const struct brw_tracked_state gen7_push_constant_space = {
              BRW_NEW_GEOMETRY_PROGRAM |
              BRW_NEW_TESS_PROGRAMS,
    },
-   .emit = gen7_allocate_push_constants,
+   .emit = gfx7_allocate_push_constants,
 };
 
 static void
@@ -200,11 +200,11 @@ upload_urb(struct brw_context *brw)
    /* BRW_NEW_TES_PROG_DATA */
    const bool tess_present = brw->tes.base.prog_data;
 
-   gen7_upload_urb(brw, vs_size, gs_present, tess_present);
+   gfx7_upload_urb(brw, vs_size, gs_present, tess_present);
 }
 
 void
-gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
+gfx7_upload_urb(struct brw_context *brw, unsigned vs_size,
                 bool gs_present, bool tess_present)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -253,7 +253,7 @@ gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
                         entries, start, NULL, &constrained);
 
    if (devinfo->ver == 7 && !devinfo->is_haswell && !devinfo->is_baytrail)
-      gen7_emit_vs_workaround_flush(brw);
+      gfx7_emit_vs_workaround_flush(brw);
 
    BEGIN_BATCH(8);
    for (int i = MESA_SHADER_VERTEX; i <= MESA_SHADER_GEOMETRY; i++) {
@@ -266,7 +266,7 @@ gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
    ADVANCE_BATCH();
 }
 
-const struct brw_tracked_state gen7_urb = {
+const struct brw_tracked_state gfx7_urb = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BLORP |

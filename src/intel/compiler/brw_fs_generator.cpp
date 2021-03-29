@@ -446,7 +446,7 @@ fs_generator::generate_fb_read(fs_inst *inst, struct brw_reg dst,
    /* We assume that render targets start at binding table index 0. */
    const unsigned surf_index = inst->target;
 
-   gen9_fb_READ(p, dst, payload, surf_index,
+   gfx9_fb_READ(p, dst, payload, surf_index,
                 inst->header_size, inst->size_written / REG_SIZE,
                 prog_data->persample_dispatch);
 }
@@ -609,7 +609,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
    assert(devinfo->ver >= 8 || devinfo->is_haswell || type_sz(src.type) <= 4);
 
    /* Because we're using the address register, we're limited to 8-wide
-    * execution on gen7.  On gen8, we're limited to 16-wide by the address
+    * execution on gfx7.  On gfx8, we're limited to 16-wide by the address
     * register file and 8-wide for 64-bit types.  We could try and make this
     * instruction splittable higher up in the compiler but that gets weird
     * because it reads all of the channels regardless of execution size.  It's
@@ -946,7 +946,7 @@ fs_generator::generate_linterp(fs_inst *inst,
     *   |(x0, x1)|(x2, x3)|(y0, y1)|(y2, y3)| in SIMD16
     *    -----------------------------------
     *
-    * See also: emit_interpolation_setup_gen4().
+    * See also: emit_interpolation_setup_gfx4().
     */
    struct brw_reg delta_x = src[0];
    struct brw_reg delta_y = offset(src[0], inst->exec_size / 8);
@@ -954,7 +954,7 @@ fs_generator::generate_linterp(fs_inst *inst,
    brw_inst *i[2];
 
    /* nir_lower_interpolation() will do the lowering to MAD instructions for
-    * us on gen11+
+    * us on gfx11+
     */
    assert(devinfo->ver < 11);
 
@@ -968,7 +968,7 @@ fs_generator::generate_linterp(fs_inst *inst,
           *
           * This means that we need to split PLN into LINE+MAC on-the-fly.
           * Unfortunately, the inputs are laid out for PLN and not LINE+MAC so
-          * we have to split into SIMD8 pieces.  For gen4 (!has_pln), the
+          * we have to split into SIMD8 pieces.  For gfx4 (!has_pln), the
           * coordinate registers are laid out differently so we leave it as a
           * SIMD16 instruction.
           */
@@ -986,7 +986,7 @@ fs_generator::generate_linterp(fs_inst *inst,
                                       offset(delta_x, g * 2));
             brw_inst_set_group(devinfo, line, inst->group + g * 8);
 
-            /* LINE writes the accumulator automatically on gen4-5.  On Sandy
+            /* LINE writes the accumulator automatically on gfx4-5.  On Sandy
              * Bridge and later, we have to explicitly enable it.
              */
             if (devinfo->ver >= 6)
@@ -1101,11 +1101,11 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst,
    }
 
    /* Stomp the resinfo output type to UINT32.  On gens 4-5, the output type
-    * is set as part of the message descriptor.  On gen4, the PRM seems to
+    * is set as part of the message descriptor.  On gfx4, the PRM seems to
     * allow UINT32 and FLOAT32 (i965 PRM, Vol. 4 Section 4.8.1.1), but on
     * later gens UINT32 is required.  Once you hit Sandy Bridge, the bit is
     * gone from the message descriptor entirely and you just get UINT32 all
-    * the time regasrdless.  Since we can really only do non-UINT32 on gen4,
+    * the time regasrdless.  Since we can really only do non-UINT32 on gfx4,
     * just stomp it to UINT32 all the time.
     */
    if (inst->opcode == SHADER_OPCODE_TXS)
@@ -1369,7 +1369,7 @@ fs_generator::generate_ddx(const fs_inst *inst,
        * correctly for compressed instructions.  At least on Haswell and
        * Iron Lake, compressed ALIGN16 instructions do work.  Since we
        * would have to split to SIMD8 no matter which method we choose, we
-       * may as well use ALIGN16 on all platforms gen7 and earlier.
+       * may as well use ALIGN16 on all platforms gfx7 and earlier.
        */
       struct brw_reg src0 = stride(src, 4, 4, 1);
       struct brw_reg src1 = stride(src, 4, 4, 1);
@@ -1449,7 +1449,7 @@ fs_generator::generate_ddy(const fs_inst *inst,
           * correctly for compressed instructions.  At least on Haswell and
           * Iron Lake, compressed ALIGN16 instructions do work.  Since we
           * would have to split to SIMD8 no matter which method we choose, we
-          * may as well use ALIGN16 on all platforms gen7 and earlier.
+          * may as well use ALIGN16 on all platforms gfx7 and earlier.
           */
          struct brw_reg src0 = stride(src, 4, 4, 1);
          struct brw_reg src1 = stride(src, 4, 4, 1);
@@ -1526,11 +1526,11 @@ fs_generator::generate_scratch_read(fs_inst *inst, struct brw_reg dst)
 }
 
 void
-fs_generator::generate_scratch_read_gen7(fs_inst *inst, struct brw_reg dst)
+fs_generator::generate_scratch_read_gfx7(fs_inst *inst, struct brw_reg dst)
 {
    assert(inst->exec_size <= 16 || inst->force_writemask_all);
 
-   gen7_block_read_scratch(p, dst, inst->exec_size / 8, inst->offset);
+   gfx7_block_read_scratch(p, dst, inst->exec_size / 8, inst->offset);
 }
 
 /* The A32 messages take a buffer base address in header.5:[31:0] (See
@@ -1625,7 +1625,7 @@ fs_generator::generate_uniform_pull_constant_load(fs_inst *inst,
 }
 
 void
-fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
+fs_generator::generate_uniform_pull_constant_load_gfx7(fs_inst *inst,
                                                        struct brw_reg dst,
                                                        struct brw_reg index,
                                                        struct brw_reg payload)
@@ -1687,11 +1687,11 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
 }
 
 void
-fs_generator::generate_varying_pull_constant_load_gen4(fs_inst *inst,
+fs_generator::generate_varying_pull_constant_load_gfx4(fs_inst *inst,
                                                        struct brw_reg dst,
                                                        struct brw_reg index)
 {
-   assert(devinfo->ver < 7); /* Should use the gen7 variant. */
+   assert(devinfo->ver < 7); /* Should use the gfx7 variant. */
    assert(inst->header_size != 0);
    assert(inst->mlen);
 
@@ -1723,7 +1723,7 @@ fs_generator::generate_varying_pull_constant_load_gen4(fs_inst *inst,
    }
 
    struct brw_reg header = brw_vec8_grf(0, 0);
-   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+   gfx6_resolve_implied_move(p, &header, inst->base_mrf);
 
    brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
    brw_inst_set_compression(devinfo, send, false);
@@ -2000,7 +2000,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
       brw_set_default_access_mode(p, BRW_ALIGN_1);
       brw_set_default_predicate_control(p, inst->predicate);
       brw_set_default_predicate_inverse(p, inst->predicate_inverse);
-      /* On gen7 and above, hardware automatically adds the group onto the
+      /* On gfx7 and above, hardware automatically adds the group onto the
        * flag subregister number.  On Sandy Bridge and older, we have to do it
        * ourselves.
        */
@@ -2203,9 +2203,9 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       case BRW_OPCODE_IF:
 	 if (inst->src[0].file != BAD_FILE) {
-	    /* The instruction has an embedded compare (only allowed on gen6) */
+	    /* The instruction has an embedded compare (only allowed on gfx6) */
 	    assert(devinfo->ver == 6);
-	    gen6_IF(p, inst->conditional_mod, src[0], src[1]);
+	    gfx6_IF(p, inst->conditional_mod, src[0], src[1]);
 	 } else {
 	    brw_IF(p, brw_get_default_exec_size(p));
 	 }
@@ -2245,12 +2245,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 	 if (devinfo->ver >= 6) {
             assert(inst->mlen == 0);
             assert(devinfo->ver >= 7 || inst->exec_size == 8);
-            gen6_math(p, dst, brw_math_function(inst->opcode),
+            gfx6_math(p, dst, brw_math_function(inst->opcode),
                       src[0], brw_null_reg());
 	 } else {
             assert(inst->mlen >= 1);
             assert(devinfo->ver == 5 || devinfo->is_g4x || inst->exec_size == 8);
-            gen4_math(p, dst,
+            gfx4_math(p, dst,
                       brw_math_function(inst->opcode),
                       inst->base_mrf, src[0],
                       BRW_MATH_PRECISION_FULL);
@@ -2265,11 +2265,11 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
             assert(inst->mlen == 0);
             assert((devinfo->ver >= 7 && inst->opcode == SHADER_OPCODE_POW) ||
                    inst->exec_size == 8);
-            gen6_math(p, dst, brw_math_function(inst->opcode), src[0], src[1]);
+            gfx6_math(p, dst, brw_math_function(inst->opcode), src[0], src[1]);
          } else {
             assert(inst->mlen >= 1);
             assert(inst->exec_size == 8);
-            gen4_math(p, dst, brw_math_function(inst->opcode),
+            gfx4_math(p, dst, brw_math_function(inst->opcode),
                       inst->base_mrf, src[0],
                       BRW_MATH_PRECISION_FULL);
             send_count++;
@@ -2342,7 +2342,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 	 break;
 
       case SHADER_OPCODE_GEN7_SCRATCH_READ:
-	 generate_scratch_read_gen7(inst, dst);
+	 generate_scratch_read_gfx7(inst, dst);
          fill_count++;
 	 break;
 
@@ -2381,12 +2381,12 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
          assert(inst->force_writemask_all);
-	 generate_uniform_pull_constant_load_gen7(inst, dst, src[0], src[1]);
+	 generate_uniform_pull_constant_load_gfx7(inst, dst, src[0], src[1]);
          send_count++;
 	 break;
 
       case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
-	 generate_varying_pull_constant_load_gen4(inst, dst, src[0]);
+	 generate_varying_pull_constant_load_gfx4(inst, dst, src[0]);
          send_count++;
 	 break;
 

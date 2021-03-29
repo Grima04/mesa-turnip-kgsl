@@ -45,7 +45,7 @@ upload_sampler_state_pointers(struct brw_context *brw)
    ADVANCE_BATCH();
 }
 
-const struct brw_tracked_state gen6_sampler_state = {
+const struct brw_tracked_state gfx6_sampler_state = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BATCH |

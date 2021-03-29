@@ -246,7 +246,7 @@ const struct brw_tracked_state brw_gs_binding_table = {
  * which points at the batchbuffer containing the streamed batch state.
  */
 static void
-gen4_upload_binding_table_pointers(struct brw_context *brw)
+gfx4_upload_binding_table_pointers(struct brw_context *brw)
 {
    BEGIN_BATCH(6);
    OUT_BATCH(_3DSTATE_BINDING_TABLE_POINTERS << 16 | (6 - 2));
@@ -266,7 +266,7 @@ const struct brw_tracked_state brw_binding_table_pointers = {
              BRW_NEW_BINDING_TABLE_POINTERS |
              BRW_NEW_STATE_BASE_ADDRESS,
    },
-   .emit = gen4_upload_binding_table_pointers,
+   .emit = gfx4_upload_binding_table_pointers,
 };
 
 /**
@@ -276,7 +276,7 @@ const struct brw_tracked_state brw_binding_table_pointers = {
  * which points at the batchbuffer containing the streamed batch state.
  */
 static void
-gen6_upload_binding_table_pointers(struct brw_context *brw)
+gfx6_upload_binding_table_pointers(struct brw_context *brw)
 {
    BEGIN_BATCH(4);
    OUT_BATCH(_3DSTATE_BINDING_TABLE_POINTERS << 16 |
@@ -293,7 +293,7 @@ gen6_upload_binding_table_pointers(struct brw_context *brw)
    ADVANCE_BATCH();
 }
 
-const struct brw_tracked_state gen6_binding_table_pointers = {
+const struct brw_tracked_state gfx6_binding_table_pointers = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BATCH |
@@ -301,7 +301,7 @@ const struct brw_tracked_state gen6_binding_table_pointers = {
              BRW_NEW_BINDING_TABLE_POINTERS |
              BRW_NEW_STATE_BASE_ADDRESS,
    },
-   .emit = gen6_upload_binding_table_pointers,
+   .emit = gfx6_upload_binding_table_pointers,
 };
 
 /** @} */

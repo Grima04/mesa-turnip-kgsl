@@ -29,12 +29,12 @@
 using namespace brw;
 
 static void
-generate_math1_gen4(struct brw_codegen *p,
+generate_math1_gfx4(struct brw_codegen *p,
                     vec4_instruction *inst,
                     struct brw_reg dst,
                     struct brw_reg src)
 {
-   gen4_math(p,
+   gfx4_math(p,
 	     dst,
 	     brw_math_function(inst->opcode),
 	     inst->base_mrf,
@@ -43,7 +43,7 @@ generate_math1_gen4(struct brw_codegen *p,
 }
 
 static void
-check_gen6_math_src_arg(struct brw_reg src)
+check_gfx6_math_src_arg(struct brw_reg src)
 {
    /* Source swizzles are ignored. */
    assert(!src.abs);
@@ -52,7 +52,7 @@ check_gen6_math_src_arg(struct brw_reg src)
 }
 
 static void
-generate_math_gen6(struct brw_codegen *p,
+generate_math_gfx6(struct brw_codegen *p,
                    vec4_instruction *inst,
                    struct brw_reg dst,
                    struct brw_reg src0,
@@ -61,17 +61,17 @@ generate_math_gen6(struct brw_codegen *p,
    /* Can't do writemask because math can't be align16. */
    assert(dst.writemask == WRITEMASK_XYZW);
    /* Source swizzles are ignored. */
-   check_gen6_math_src_arg(src0);
+   check_gfx6_math_src_arg(src0);
    if (src1.file == BRW_GENERAL_REGISTER_FILE)
-      check_gen6_math_src_arg(src1);
+      check_gfx6_math_src_arg(src1);
 
    brw_set_default_access_mode(p, BRW_ALIGN_1);
-   gen6_math(p, dst, brw_math_function(inst->opcode), src0, src1);
+   gfx6_math(p, dst, brw_math_function(inst->opcode), src0, src1);
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 }
 
 static void
-generate_math2_gen4(struct brw_codegen *p,
+generate_math2_gfx4(struct brw_codegen *p,
                     vec4_instruction *inst,
                     struct brw_reg dst,
                     struct brw_reg src0,
@@ -96,7 +96,7 @@ generate_math2_gen4(struct brw_codegen *p,
    brw_MOV(p, retype(brw_message_reg(inst->base_mrf + 1), op1.type), op1);
    brw_pop_insn_state(p);
 
-   gen4_math(p,
+   gfx4_math(p,
 	     dst,
 	     brw_math_function(inst->opcode),
 	     inst->base_mrf,
@@ -261,11 +261,11 @@ generate_tex(struct brw_codegen *p,
    }
 
    /* Stomp the resinfo output type to UINT32.  On gens 4-5, the output type
-    * is set as part of the message descriptor.  On gen4, the PRM seems to
+    * is set as part of the message descriptor.  On gfx4, the PRM seems to
     * allow UINT32 and FLOAT32 (i965 PRM, Vol. 4 Section 4.8.1.1), but on
     * later gens UINT32 is required.  Once you hit Sandy Bridge, the bit is
     * gone from the message descriptor entirely and you just get UINT32 all
-    * the time regasrdless.  Since we can really only do non-UINT32 on gen4,
+    * the time regasrdless.  Since we can really only do non-UINT32 on gfx4,
     * just stomp it to UINT32 all the time.
     */
    if (inst->opcode == SHADER_OPCODE_TXS)
@@ -321,7 +321,7 @@ generate_tex(struct brw_codegen *p,
       brw_pop_insn_state(p);
 
       if (inst->base_mrf != -1)
-         gen6_resolve_implied_move(p, &src, inst->base_mrf);
+         gfx6_resolve_implied_move(p, &src, inst->base_mrf);
 
       /* dst = send(offset, a0.0 | <descriptor>) */
       brw_send_indirect_message(
@@ -725,7 +725,7 @@ generate_gs_ff_sync(struct brw_codegen *p,
 static void
 generate_gs_set_primitive_id(struct brw_codegen *p, struct brw_reg dst)
 {
-   /* In gen6, PrimitiveID is delivered in R0.1 of the payload */
+   /* In gfx6, PrimitiveID is delivered in R0.1 of the payload */
    struct brw_reg src = brw_vec8_grf(0, 0);
    brw_push_insn_state(p);
    brw_set_default_mask_control(p, BRW_MASK_DISABLE);
@@ -1149,7 +1149,7 @@ generate_scratch_read(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    struct brw_reg header = brw_vec8_grf(0, 0);
 
-   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+   gfx6_resolve_implied_move(p, &header, inst->base_mrf);
 
    generate_oword_dual_block_offsets(p, brw_message_reg(inst->base_mrf + 1),
 				     index);
@@ -1205,7 +1205,7 @@ generate_scratch_write(struct brw_codegen *p,
     */
    brw_set_default_predicate_control(p, BRW_PREDICATE_NONE);
 
-   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+   gfx6_resolve_implied_move(p, &header, inst->base_mrf);
 
    generate_oword_dual_block_offsets(p, brw_message_reg(inst->base_mrf + 1),
 				     index);
@@ -1225,7 +1225,7 @@ generate_scratch_write(struct brw_codegen *p,
 
    brw_set_default_predicate_control(p, inst->predicate);
 
-   /* Pre-gen6, we have to specify write commits to ensure ordering
+   /* Pre-gfx6, we have to specify write commits to ensure ordering
     * between reads and writes within a thread.  Afterwards, that's
     * guaranteed and write commits only matter for inter-thread
     * synchronization.
@@ -1280,7 +1280,7 @@ generate_pull_constant_load(struct brw_codegen *p,
 
    struct brw_reg header = brw_vec8_grf(0, 0);
 
-   gen6_resolve_implied_move(p, &header, inst->base_mrf);
+   gfx6_resolve_implied_move(p, &header, inst->base_mrf);
 
    if (devinfo->ver >= 6) {
       if (offset.file == BRW_IMMEDIATE_VALUE) {
@@ -1350,7 +1350,7 @@ generate_get_buffer_size(struct brw_codegen *p,
 }
 
 static void
-generate_pull_constant_load_gen7(struct brw_codegen *p,
+generate_pull_constant_load_gfx7(struct brw_codegen *p,
                                  vec4_instruction *inst,
                                  struct brw_reg dst,
                                  struct brw_reg surf_index,
@@ -1681,9 +1681,9 @@ generate_code(struct brw_codegen *p,
 
       case BRW_OPCODE_IF:
          if (!inst->src[0].is_null()) {
-            /* The instruction has an embedded compare (only allowed on gen6) */
+            /* The instruction has an embedded compare (only allowed on gfx6) */
             assert(devinfo->ver == 6);
-            gen6_IF(p, inst->conditional_mod, src[0], src[1]);
+            gfx6_IF(p, inst->conditional_mod, src[0], src[1]);
          } else {
             brw_inst *if_inst = brw_IF(p, BRW_EXECUTE_8);
             brw_inst_set_pred_control(p->devinfo, if_inst, inst->predicate);
@@ -1724,12 +1724,12 @@ generate_code(struct brw_codegen *p,
       case SHADER_OPCODE_COS:
          assert(inst->conditional_mod == BRW_CONDITIONAL_NONE);
          if (devinfo->ver >= 7) {
-            gen6_math(p, dst, brw_math_function(inst->opcode), src[0],
+            gfx6_math(p, dst, brw_math_function(inst->opcode), src[0],
                       brw_null_reg());
          } else if (devinfo->ver == 6) {
-            generate_math_gen6(p, inst, dst, src[0], brw_null_reg());
+            generate_math_gfx6(p, inst, dst, src[0], brw_null_reg());
          } else {
-            generate_math1_gen4(p, inst, dst, src[0]);
+            generate_math1_gfx4(p, inst, dst, src[0]);
             send_count++;
          }
          break;
@@ -1739,11 +1739,11 @@ generate_code(struct brw_codegen *p,
       case SHADER_OPCODE_INT_REMAINDER:
          assert(inst->conditional_mod == BRW_CONDITIONAL_NONE);
          if (devinfo->ver >= 7) {
-            gen6_math(p, dst, brw_math_function(inst->opcode), src[0], src[1]);
+            gfx6_math(p, dst, brw_math_function(inst->opcode), src[0], src[1]);
          } else if (devinfo->ver == 6) {
-            generate_math_gen6(p, inst, dst, src[0], src[1]);
+            generate_math_gfx6(p, inst, dst, src[0], src[1]);
          } else {
-            generate_math2_gen4(p, inst, dst, src[0], src[1]);
+            generate_math2_gfx4(p, inst, dst, src[0], src[1]);
             send_count++;
          }
          break;
@@ -1790,7 +1790,7 @@ generate_code(struct brw_codegen *p,
          break;
 
       case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
-         generate_pull_constant_load_gen7(p, inst, dst, src[0], src[1]);
+         generate_pull_constant_load_gfx7(p, inst, dst, src[0], src[1]);
          send_count++;
          break;
 

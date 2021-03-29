@@ -85,7 +85,7 @@ noop_scissor(struct gl_framebuffer *fb)
 }
 
 /**
- * Implements fast depth clears on gen6+.
+ * Implements fast depth clears on gfx6+.
  *
  * Fast clears basically work by setting a flag in each of the subspans
  * represented in the HiZ buffer that says "When you need the depth values for

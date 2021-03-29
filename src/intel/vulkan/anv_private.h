@@ -240,7 +240,7 @@ struct gen_perf_query_result;
  */
 #define ANV_PERF_QUERY_OFFSET_REG 0x2670 /* MI_ALU_REG14 */
 
-/* For gen12 we set the streamout buffers using 4 separate commands
+/* For gfx12 we set the streamout buffers using 4 separate commands
  * (3DSTATE_SO_BUFFER_INDEX_*) instead of 3DSTATE_SO_BUFFER. However the layout
  * of the 3DSTATE_SO_BUFFER_INDEX_* commands is identical to that of
  * 3DSTATE_SO_BUFFER apart from the SOBufferIndex field, so for now we use the
@@ -895,7 +895,7 @@ struct anv_physical_device {
     /** Amount of "GPU memory" we want to advertise
      *
      * Clearly, this value is bogus since Intel is a UMA architecture.  On
-     * gen7 platforms, we are limited by GTT size unless we want to implement
+     * gfx7 platforms, we are limited by GTT size unless we want to implement
      * fine-grained tracking and GTT splitting.  On Broadwell and above we are
      * practically unlimited.  However, we will never report more than 3/4 of
      * the total system ram to try and avoid running out of RAM.
@@ -2672,7 +2672,7 @@ struct anv_surface_state {
     *
     * This field is ANV_NULL_ADDRESS if and only if no aux surface exists.
     *
-    * With the exception of gen8, the bottom 12 bits of this address' offset
+    * With the exception of gfx8, the bottom 12 bits of this address' offset
     * include extra aux information.
     */
    struct anv_address aux_address;
@@ -2779,7 +2779,7 @@ struct anv_cmd_graphics_state {
       struct anv_buffer *index_buffer;
       uint32_t index_type; /**< 3DSTATE_INDEX_BUFFER.IndexFormat */
       uint32_t index_offset;
-   } gen7;
+   } gfx7;
 };
 
 /** State tracking for compute pipeline
@@ -2831,7 +2831,7 @@ struct anv_cmd_state {
    unsigned char                                push_sha1s[MESA_SHADER_STAGES][20];
 
    /**
-    * Whether or not the gen8 PMA fix is enabled.  We ensure that, at the top
+    * Whether or not the gfx8 PMA fix is enabled.  We ensure that, at the top
     * of any command buffer it is disabled by disabling it in EndCommandBuffer
     * and before invoking the secondary in ExecuteCommands.
     */
@@ -3023,10 +3023,10 @@ anv_cmd_buffer_alloc_dynamic_state(struct anv_cmd_buffer *cmd_buffer,
 VkResult
 anv_cmd_buffer_new_binding_table_block(struct anv_cmd_buffer *cmd_buffer);
 
-void gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer);
-void gen8_cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
+void gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer);
+void gfx8_cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
                                          bool depth_clamp_enable);
-void gen7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer);
+void gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer);
 
 void anv_cmd_buffer_setup_attachments(struct anv_cmd_buffer *cmd_buffer,
                                       struct anv_render_pass *pass,
@@ -3393,17 +3393,17 @@ struct anv_graphics_pipeline {
       uint32_t                                  depth_stencil_state[3];
       uint32_t                                  clip[4];
       uint32_t                                  xfb_bo_pitch[4];
-   } gen7;
+   } gfx7;
 
    struct {
       uint32_t                                  sf[4];
       uint32_t                                  raster[5];
       uint32_t                                  wm_depth_stencil[3];
-   } gen8;
+   } gfx8;
 
    struct {
       uint32_t                                  wm_depth_stencil[4];
-   } gen9;
+   } gfx9;
 };
 
 struct anv_compute_pipeline {
@@ -4271,7 +4271,7 @@ struct hsw_border_color {
    uint32_t _pad1[108];
 };
 
-struct gen8_border_color {
+struct gfx8_border_color {
    union {
       float float32[4];
       uint32_t uint32[4];
@@ -4532,28 +4532,28 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
                                VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL)
 
 #define anv_genX(devinfo, thing) ({             \
-   __typeof(&gen9_##thing) genX_thing;          \
+   __typeof(&gfx9_##thing) genX_thing;          \
    switch ((devinfo)->verx10) {                 \
    case 70:                                     \
-      genX_thing = &gen7_##thing;               \
+      genX_thing = &gfx7_##thing;               \
       break;                                    \
    case 75:                                     \
-      genX_thing = &gen75_##thing;              \
+      genX_thing = &gfx75_##thing;              \
       break;                                    \
    case 80:                                     \
-      genX_thing = &gen8_##thing;               \
+      genX_thing = &gfx8_##thing;               \
       break;                                    \
    case 90:                                     \
-      genX_thing = &gen9_##thing;               \
+      genX_thing = &gfx9_##thing;               \
       break;                                    \
    case 110:                                    \
-      genX_thing = &gen11_##thing;              \
+      genX_thing = &gfx11_##thing;              \
       break;                                    \
    case 120:                                    \
-      genX_thing = &gen12_##thing;              \
+      genX_thing = &gfx12_##thing;              \
       break;                                    \
    case 125:                                    \
-      genX_thing = &gen125_##thing;             \
+      genX_thing = &gfx125_##thing;             \
       break;                                    \
    default:                                     \
       unreachable("Unknown hardware generation"); \
@@ -4565,25 +4565,25 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 #ifdef genX
 #  include "anv_genX.h"
 #else
-#  define genX(x) gen7_##x
+#  define genX(x) gfx7_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen75_##x
+#  define genX(x) gfx75_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen8_##x
+#  define genX(x) gfx8_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen9_##x
+#  define genX(x) gfx9_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen11_##x
+#  define genX(x) gfx11_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen12_##x
+#  define genX(x) gfx12_##x
 #  include "anv_genX.h"
 #  undef genX
-#  define genX(x) gen125_##x
+#  define genX(x) gfx125_##x
 #  include "anv_genX.h"
 #  undef genX
 #endif

@@ -219,7 +219,7 @@ emit_pipeline_stat(struct brw_context *brw, struct brw_bo *bo,
  * Wait on the query object's BO and calculate the final result.
  */
 static void
-gen6_queryobj_get_results(struct gl_context *ctx,
+gfx6_queryobj_get_results(struct gl_context *ctx,
                           struct brw_query_object *query)
 {
    struct brw_context *brw = brw_context(ctx);
@@ -321,7 +321,7 @@ gen6_queryobj_get_results(struct gl_context *ctx,
  * recording data for the query.
  */
 static void
-gen6_begin_query(struct gl_context *ctx, struct gl_query_object *q)
+gfx6_begin_query(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_query_object *query = (struct brw_query_object *)q;
@@ -410,7 +410,7 @@ gen6_begin_query(struct gl_context *ctx, struct gl_query_object *q)
  * produce the final result.
  */
 static void
-gen6_end_query(struct gl_context *ctx, struct gl_query_object *q)
+gfx6_end_query(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_query_object *query = (struct brw_query_object *)q;
@@ -495,7 +495,7 @@ flush_batch_if_needed(struct brw_context *brw, struct brw_query_object *query)
  * Wait for a query result to become available and return it.  This is the
  * backing for glGetQueryObjectiv() with the GL_QUERY_RESULT pname.
  */
-static void gen6_wait_query(struct gl_context *ctx, struct gl_query_object *q)
+static void gfx6_wait_query(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_query_object *query = (struct brw_query_object *)q;
@@ -506,7 +506,7 @@ static void gen6_wait_query(struct gl_context *ctx, struct gl_query_object *q)
     */
    flush_batch_if_needed(brw, query);
 
-   gen6_queryobj_get_results(ctx, query);
+   gfx6_queryobj_get_results(ctx, query);
 }
 
 /**
@@ -515,7 +515,7 @@ static void gen6_wait_query(struct gl_context *ctx, struct gl_query_object *q)
  * Checks whether a query result is ready yet.  If not, flushes.
  * This is the backing for glGetQueryObjectiv()'s QUERY_RESULT_AVAILABLE pname.
  */
-static void gen6_check_query(struct gl_context *ctx, struct gl_query_object *q)
+static void gfx6_check_query(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_query_object *query = (struct brw_query_object *)q;
@@ -536,12 +536,12 @@ static void gen6_check_query(struct gl_context *ctx, struct gl_query_object *q)
    flush_batch_if_needed(brw, query);
 
    if (!brw_bo_busy(query->bo)) {
-      gen6_queryobj_get_results(ctx, query);
+      gfx6_queryobj_get_results(ctx, query);
    }
 }
 
 static void
-gen6_query_counter(struct gl_context *ctx, struct gl_query_object *q)
+gfx6_query_counter(struct gl_context *ctx, struct gl_query_object *q)
 {
    struct brw_context *brw = brw_context(ctx);
    struct brw_query_object *query = (struct brw_query_object *)q;
@@ -550,11 +550,11 @@ gen6_query_counter(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 /* Initialize Gen6+-specific query object functions. */
-void gen6_init_queryobj_functions(struct dd_function_table *functions)
+void gfx6_init_queryobj_functions(struct dd_function_table *functions)
 {
-   functions->BeginQuery = gen6_begin_query;
-   functions->EndQuery = gen6_end_query;
-   functions->CheckQuery = gen6_check_query;
-   functions->WaitQuery = gen6_wait_query;
-   functions->QueryCounter = gen6_query_counter;
+   functions->BeginQuery = gfx6_begin_query;
+   functions->EndQuery = gfx6_end_query;
+   functions->CheckQuery = gfx6_check_query;
+   functions->WaitQuery = gfx6_wait_query;
+   functions->QueryCounter = gfx6_query_counter;
 }

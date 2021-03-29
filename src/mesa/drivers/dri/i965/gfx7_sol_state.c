@@ -24,7 +24,7 @@
 /**
  * @file gfx7_sol_state.c
  *
- * Controls the stream output logic (SOL) stage of the gen7 hardware, which is
+ * Controls the stream output logic (SOL) stage of the gfx7 hardware, which is
  * used to implement GL_EXT_transform_feedback.
  */
 
@@ -36,7 +36,7 @@
 #include "main/transformfeedback.h"
 
 void
-gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
+gfx7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
                               struct gl_transform_feedback_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);
@@ -62,7 +62,7 @@ gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
 }
 
 void
-gen7_end_transform_feedback(struct gl_context *ctx,
+gfx7_end_transform_feedback(struct gl_context *ctx,
                             struct gl_transform_feedback_object *obj)
 {
    /* After EndTransformFeedback, it's likely that the client program will try
@@ -96,7 +96,7 @@ gen7_end_transform_feedback(struct gl_context *ctx,
 }
 
 void
-gen7_pause_transform_feedback(struct gl_context *ctx,
+gfx7_pause_transform_feedback(struct gl_context *ctx,
                               struct gl_transform_feedback_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);
@@ -126,7 +126,7 @@ gen7_pause_transform_feedback(struct gl_context *ctx,
 }
 
 void
-gen7_resume_transform_feedback(struct gl_context *ctx,
+gfx7_resume_transform_feedback(struct gl_context *ctx,
                                struct gl_transform_feedback_object *obj)
 {
    struct brw_context *brw = brw_context(ctx);

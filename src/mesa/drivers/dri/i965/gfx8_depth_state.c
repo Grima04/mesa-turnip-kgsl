@@ -130,7 +130,7 @@ pma_fix_enable(const struct brw_context *brw)
 }
 
 void
-gen8_write_pma_stall_bits(struct brw_context *brw, uint32_t pma_stall_bits)
+gfx8_write_pma_stall_bits(struct brw_context *brw, uint32_t pma_stall_bits)
 {
    /* If we haven't actually changed the value, bail now to avoid unnecessary
     * pipeline stalls and register writes.
@@ -169,7 +169,7 @@ gen8_write_pma_stall_bits(struct brw_context *brw, uint32_t pma_stall_bits)
 }
 
 static void
-gen8_emit_pma_stall_workaround(struct brw_context *brw)
+gfx8_emit_pma_stall_workaround(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    uint32_t bits = 0;
@@ -180,10 +180,10 @@ gen8_emit_pma_stall_workaround(struct brw_context *brw)
    if (pma_fix_enable(brw))
       bits |= GFX8_HIZ_NP_PMA_FIX_ENABLE | GFX8_HIZ_NP_EARLY_Z_FAILS_DISABLE;
 
-   gen8_write_pma_stall_bits(brw, bits);
+   gfx8_write_pma_stall_bits(brw, bits);
 }
 
-const struct brw_tracked_state gen8_pma_fix = {
+const struct brw_tracked_state gfx8_pma_fix = {
    .dirty = {
       .mesa = _NEW_BUFFERS |
               _NEW_COLOR |
@@ -193,5 +193,5 @@ const struct brw_tracked_state gen8_pma_fix = {
       .brw = BRW_NEW_BLORP |
              BRW_NEW_FS_PROG_DATA,
    },
-   .emit = gen8_emit_pma_stall_workaround
+   .emit = gfx8_emit_pma_stall_workaround
 };

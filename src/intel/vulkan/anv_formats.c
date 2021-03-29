@@ -1113,8 +1113,8 @@ anv_get_image_format_properties(
    }
 
    /* From the bspec section entitled "Surface Layout and Tiling",
-    * pre-gen9 has a 2 GB limitation of the size in bytes,
-    * gen9 and gen10 have a 256 GB limitation and gen11+
+    * pre-gfx9 has a 2 GB limitation of the size in bytes,
+    * gfx9 and gfx10 have a 256 GB limitation and gfx11+
     * has a 16 TB limitation.
     */
    uint64_t maxResourceSize = 0;

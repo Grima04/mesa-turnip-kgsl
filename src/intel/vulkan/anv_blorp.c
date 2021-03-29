@@ -98,25 +98,25 @@ anv_device_init_blorp(struct anv_device *device)
    device->blorp.upload_shader = upload_blorp_shader;
    switch (device->info.verx10) {
    case 70:
-      device->blorp.exec = gen7_blorp_exec;
+      device->blorp.exec = gfx7_blorp_exec;
       break;
    case 75:
-      device->blorp.exec = gen75_blorp_exec;
+      device->blorp.exec = gfx75_blorp_exec;
       break;
    case 80:
-      device->blorp.exec = gen8_blorp_exec;
+      device->blorp.exec = gfx8_blorp_exec;
       break;
    case 90:
-      device->blorp.exec = gen9_blorp_exec;
+      device->blorp.exec = gfx9_blorp_exec;
       break;
    case 110:
-      device->blorp.exec = gen11_blorp_exec;
+      device->blorp.exec = gfx11_blorp_exec;
       break;
    case 120:
-      device->blorp.exec = gen12_blorp_exec;
+      device->blorp.exec = gfx12_blorp_exec;
       break;
    case 125:
-      device->blorp.exec = gen125_blorp_exec;
+      device->blorp.exec = gfx125_blorp_exec;
       break;
    default:
       unreachable("Unknown hardware generation");

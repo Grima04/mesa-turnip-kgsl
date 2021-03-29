@@ -411,7 +411,7 @@ fs_inst::has_source_and_destination_hazard() const
        *
        * Now our destination for the first instruction overwrote the
        * second instruction's src0, and we get garbage for those 8
-       * pixels.  There's a similar issue for the pre-gen6
+       * pixels.  There's a similar issue for the pre-gfx6
        * pixel_x/pixel_y, which are registers of 16-bit values and thus
        * would get stomped by the first decode as well.
        */
@@ -1490,10 +1490,10 @@ fs_visitor::emit_sampleid_setup()
        * can assume 4x MSAA.  Disallow it on IVB+
        *
        * FINISHME: One day, we could come up with a way to do this that
-       * actually works on gen7.
+       * actually works on gfx7.
        */
       if (devinfo->ver >= 7)
-         limit_dispatch_width(16, "gl_SampleId is unsupported in SIMD32 on gen7");
+         limit_dispatch_width(16, "gl_SampleId is unsupported in SIMD32 on gfx7");
       abld.exec_all().group(8, 0).MOV(t2, brw_imm_v(0x32103210));
 
       /* This special instruction takes care of setting vstride=1,
@@ -3221,7 +3221,7 @@ fs_visitor::compute_to_mrf()
 	       break;
 
 	    if (devinfo->ver == 6) {
-	       /* gen6 math instructions must have the destination be
+	       /* gfx6 math instructions must have the destination be
 		* GRF, so no compute-to-MRF for them.
 		*/
 	       if (scan_inst->is_math()) {
@@ -3626,7 +3626,7 @@ clear_deps_for_inst_src(fs_inst *inst, bool *deps, int first_grf, int grf_len)
  *      same time that both consider ‘r3’ as the target of their final writes.
  */
 void
-fs_visitor::insert_gen4_pre_send_dependency_workarounds(bblock_t *block,
+fs_visitor::insert_gfx4_pre_send_dependency_workarounds(bblock_t *block,
                                                         fs_inst *inst)
 {
    int write_len = regs_written(inst);
@@ -3698,7 +3698,7 @@ fs_visitor::insert_gen4_pre_send_dependency_workarounds(bblock_t *block,
  *      instruction with a different destination register.
  */
 void
-fs_visitor::insert_gen4_post_send_dependency_workarounds(bblock_t *block, fs_inst *inst)
+fs_visitor::insert_gfx4_post_send_dependency_workarounds(bblock_t *block, fs_inst *inst)
 {
    int write_len = regs_written(inst);
    unsigned first_write_grf = inst->dst.nr;
@@ -3748,7 +3748,7 @@ fs_visitor::insert_gen4_post_send_dependency_workarounds(bblock_t *block, fs_ins
 }
 
 void
-fs_visitor::insert_gen4_send_dependency_workarounds()
+fs_visitor::insert_gfx4_send_dependency_workarounds()
 {
    if (devinfo->ver != 4 || devinfo->is_g4x)
       return;
@@ -3757,8 +3757,8 @@ fs_visitor::insert_gen4_send_dependency_workarounds()
 
    foreach_block_and_inst(block, fs_inst, inst, cfg) {
       if (inst->mlen != 0 && inst->dst.file == VGRF) {
-         insert_gen4_pre_send_dependency_workarounds(block, inst);
-         insert_gen4_post_send_dependency_workarounds(block, inst);
+         insert_gfx4_pre_send_dependency_workarounds(block, inst);
+         insert_gfx4_post_send_dependency_workarounds(block, inst);
          progress = true;
       }
    }
@@ -4476,13 +4476,13 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
    unsigned length = 0;
 
    if (devinfo->ver < 6) {
-      /* TODO: Support SIMD32 on gen4-5 */
+      /* TODO: Support SIMD32 on gfx4-5 */
       assert(bld.group() < 16);
 
-      /* For gen4-5, we always have a header consisting of g0 and g1.  We have
+      /* For gfx4-5, we always have a header consisting of g0 and g1.  We have
        * an implied MOV from g0,g1 to the start of the message.  The MOV from
        * g0 is handled by the hardware and the MOV from g1 is provided by the
-       * generator.  This is required because, on gen4-5, the generator may
+       * generator.  This is required because, on gfx4-5, the generator may
        * generate two write messages with different message lengths in order
        * to handle AA data properly.
        *
@@ -4634,8 +4634,8 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       assert(devinfo->ver >= 9);
       assert(bld.dispatch_width() == 8);
 
-      /* XXX: src_stencil is only available on gen9+. dst_depth is never
-       * available on gen9+. As such it's impossible to have both enabled at the
+      /* XXX: src_stencil is only available on gfx9+. dst_depth is never
+       * available on gfx9+. As such it's impossible to have both enabled at the
        * same time and therefore length cannot overrun the array.
        */
       assert(length < 15);
@@ -4752,7 +4752,7 @@ lower_fb_read_logical_send(const fs_builder &bld, fs_inst *inst)
 }
 
 static void
-lower_sampler_logical_send_gen4(const fs_builder &bld, fs_inst *inst, opcode op,
+lower_sampler_logical_send_gfx4(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &coordinate,
                                 const fs_reg &shadow_c,
                                 const fs_reg &lod, const fs_reg &lod2,
@@ -4859,7 +4859,7 @@ lower_sampler_logical_send_gen4(const fs_builder &bld, fs_inst *inst, opcode op,
 }
 
 static void
-lower_sampler_logical_send_gen5(const fs_builder &bld, fs_inst *inst, opcode op,
+lower_sampler_logical_send_gfx5(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &coordinate,
                                 const fs_reg &shadow_c,
                                 const fs_reg &lod, const fs_reg &lod2,
@@ -5025,7 +5025,7 @@ sampler_msg_type(const gen_device_info *devinfo,
 }
 
 static void
-lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
+lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 const fs_reg &coordinate,
                                 const fs_reg &shadow_c,
                                 fs_reg lod, const fs_reg &lod2,
@@ -5336,7 +5336,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                     sampler.file == IMM ? sampler.ud % 16 : 0,
                                     msg_type,
                                     simd_mode,
-                                    0 /* return_format unused on gen7+ */);
+                                    0 /* return_format unused on gfx7+ */);
       inst->src[0] = brw_imm_ud(0);
       inst->src[1] = brw_imm_ud(0); /* ex_desc */
    } else if (surface_handle.file != BAD_FILE) {
@@ -5347,7 +5347,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                     sampler.file == IMM ? sampler.ud % 16 : 0,
                                     msg_type,
                                     simd_mode,
-                                    0 /* return_format unused on gen7+ */);
+                                    0 /* return_format unused on gfx7+ */);
 
       /* For bindless samplers, the entire address is included in the message
        * header so we can leave the portion in the message descriptor 0.
@@ -5372,7 +5372,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
                                     0, /* sampler */
                                     msg_type,
                                     simd_mode,
-                                    0 /* return_format unused on gen7+ */);
+                                    0 /* return_format unused on gfx7+ */);
       const fs_builder ubld = bld.group(1, 0).exec_all();
       fs_reg desc = ubld.vgrf(BRW_REGISTER_TYPE_UD);
       if (surface.equals(sampler)) {
@@ -5435,7 +5435,7 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
    const unsigned grad_components = inst->src[TEX_LOGICAL_SRC_GRAD_COMPONENTS].ud;
 
    if (devinfo->ver >= 7) {
-      lower_sampler_logical_send_gen7(bld, inst, op, coordinate,
+      lower_sampler_logical_send_gfx7(bld, inst, op, coordinate,
                                       shadow_c, lod, lod2, min_lod,
                                       sample_index,
                                       mcs, surface, sampler,
@@ -5443,12 +5443,12 @@ lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
                                       tg4_offset,
                                       coord_components, grad_components);
    } else if (devinfo->ver >= 5) {
-      lower_sampler_logical_send_gen5(bld, inst, op, coordinate,
+      lower_sampler_logical_send_gfx5(bld, inst, op, coordinate,
                                       shadow_c, lod, lod2, sample_index,
                                       surface, sampler,
                                       coord_components, grad_components);
    } else {
-      lower_sampler_logical_send_gen4(bld, inst, op, coordinate,
+      lower_sampler_logical_send_gfx4(bld, inst, op, coordinate,
                                       shadow_c, lod, lod2,
                                       surface, sampler,
                                       coord_components, grad_components);
@@ -5598,7 +5598,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    unsigned mlen, ex_mlen = 0;
    if (devinfo->ver >= 9 &&
        (src.file == BAD_FILE || header.file == BAD_FILE)) {
-      /* We have split sends on gen9 and above */
+      /* We have split sends on gfx9 and above */
       if (header.file == BAD_FILE) {
          payload = bld.move_to_vgrf(addr, addr_sz);
          payload2 = bld.move_to_vgrf(src, src_sz);
@@ -6431,7 +6431,7 @@ static bool
 is_mixed_float_with_fp32_dst(const fs_inst *inst)
 {
    /* This opcode sometimes uses :W type on the source even if the operand is
-    * a :HF, because in gen7 there is no support for :HF, and thus it uses :W.
+    * a :HF, because in gfx7 there is no support for :HF, and thus it uses :W.
     */
    if (inst->opcode == BRW_OPCODE_F16TO32)
       return true;
@@ -6451,7 +6451,7 @@ static bool
 is_mixed_float_with_packed_fp16_dst(const fs_inst *inst)
 {
    /* This opcode sometimes uses :W type on the destination even if the
-    * destination is a :HF, because in gen7 there is no support for :HF, and
+    * destination is a :HF, because in gfx7 there is no support for :HF, and
     * thus it uses :W.
     */
    if (inst->opcode == BRW_OPCODE_F32TO16 &&
@@ -7669,7 +7669,7 @@ fs_visitor::dump_instruction(const backend_instruction *be_inst, FILE *file) con
 }
 
 void
-fs_visitor::setup_fs_payload_gen6()
+fs_visitor::setup_fs_payload_gfx6()
 {
    assert(stage == MESA_SHADER_FRAGMENT);
    struct brw_wm_prog_data *prog_data = brw_wm_prog_data(this->prog_data);
@@ -8276,7 +8276,7 @@ fs_visitor::allocate_registers(bool allow_spilling)
     * it inserts dead code that happens to have side effects, and it does
     * so based on the actual physical registers in use.
     */
-   insert_gen4_send_dependency_workarounds();
+   insert_gfx4_send_dependency_workarounds();
 
    if (failed)
       return;
@@ -8574,7 +8574,7 @@ fs_visitor::run_gs()
  * overhead.
  */
 static void
-gen9_ps_header_only_workaround(struct brw_wm_prog_data *wm_prog_data)
+gfx9_ps_header_only_workaround(struct brw_wm_prog_data *wm_prog_data)
 {
    if (wm_prog_data->num_varying_inputs)
       return;
@@ -8597,9 +8597,9 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
    assert(stage == MESA_SHADER_FRAGMENT);
 
    if (devinfo->ver >= 6)
-      setup_fs_payload_gen6();
+      setup_fs_payload_gfx6();
    else
-      setup_fs_payload_gen4();
+      setup_fs_payload_gfx4();
 
    if (0) {
       emit_dummy_fs();
@@ -8614,9 +8614,9 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
           BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_FRAG_COORD) ||
           (nir->info.outputs_read > 0 && !wm_key->coherent_fb_fetch)) {
          if (devinfo->ver < 6)
-            emit_interpolation_setup_gen4();
+            emit_interpolation_setup_gfx4();
          else
-            emit_interpolation_setup_gen6();
+            emit_interpolation_setup_gfx6();
       }
 
       /* We handle discards by keeping track of the still-live pixels in f0.1.
@@ -8657,7 +8657,7 @@ fs_visitor::run_fs(bool allow_spilling, bool do_rep_send)
       assign_curb_setup();
 
       if (devinfo->ver >= 9)
-         gen9_ps_header_only_workaround(wm_prog_data);
+         gfx9_ps_header_only_workaround(wm_prog_data);
 
       assign_urb_setup();
 
@@ -9044,7 +9044,7 @@ brw_nir_populate_wm_prog_data(const nir_shader *shader,
 }
 
 /**
- * Pre-gen6, the register file of the EUs was shared between threads,
+ * Pre-gfx6, the register file of the EUs was shared between threads,
  * and each thread used some subset allocated on a 16-register block
  * granularity.  The unit states wanted these block counts.
  */
@@ -9121,13 +9121,13 @@ brw_compile_fs(const struct brw_compiler *compiler,
       allow_spilling = false;
    }
 
-   /* Limit dispatch width to simd8 with dual source blending on gen8.
+   /* Limit dispatch width to simd8 with dual source blending on gfx8.
     * See: https://gitlab.freedesktop.org/mesa/mesa/-/issues/1917
     */
    if (devinfo->ver == 8 && prog_data->dual_src_blend &&
        !(INTEL_DEBUG & DEBUG_NO8)) {
       assert(!params->use_rep_send);
-      v8->limit_dispatch_width(8, "gen8 workaround: "
+      v8->limit_dispatch_width(8, "gfx8 workaround: "
                                "using SIMD8 when dual src blending.\n");
    }
 

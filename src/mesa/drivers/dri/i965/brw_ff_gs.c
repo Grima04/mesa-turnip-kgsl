@@ -105,7 +105,7 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
       default:
          unreachable("Unexpected primitive type in Gen6 SOL program.");
       }
-      gen6_sol_program(&c, key, num_verts, check_edge_flag);
+      gfx6_sol_program(&c, key, num_verts, check_edge_flag);
    } else {
       /* On Gen4-5, we use the GS to decompose certain types of primitives.
        * Note that primitives which don't require a GS program have already
@@ -222,7 +222,7 @@ brw_ff_gs_populate_key(struct brw_context *brw,
          }
       }
    } else {
-      /* Pre-gen6, GS is used to transform QUADLIST, QUADSTRIP, and LINELOOP
+      /* Pre-gfx6, GS is used to transform QUADLIST, QUADSTRIP, and LINELOOP
        * into simpler primitives.
        */
       key->need_gs_prog = (brw->primitive == _3DPRIM_QUADLIST ||

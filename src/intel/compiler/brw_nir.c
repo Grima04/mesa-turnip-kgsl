@@ -542,8 +542,8 @@ brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
     * using nir_lower_vars_to_explicit_types and nir_lower_explicit_io in
     * brw_postprocess_nir.
     *
-    * We haven't plumbed through the indirect scratch messages on gen6 or
-    * earlier so doing indirects via scratch doesn't work there. On gen7 and
+    * We haven't plumbed through the indirect scratch messages on gfx6 or
+    * earlier so doing indirects via scratch doesn't work there. On gfx7 and
     * earlier the scratch space size is limited to 12kB.  If we allowed
     * indirects as scratch all the time, we may easily exceed this limit
     * without having any fallback.

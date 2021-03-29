@@ -360,21 +360,21 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
       return "pack";
 
    case SHADER_OPCODE_GEN4_SCRATCH_READ:
-      return "gen4_scratch_read";
+      return "gfx4_scratch_read";
    case SHADER_OPCODE_GEN4_SCRATCH_WRITE:
-      return "gen4_scratch_write";
+      return "gfx4_scratch_write";
    case SHADER_OPCODE_GEN7_SCRATCH_READ:
-      return "gen7_scratch_read";
+      return "gfx7_scratch_read";
    case SHADER_OPCODE_SCRATCH_HEADER:
       return "scratch_header";
    case SHADER_OPCODE_URB_WRITE_SIMD8:
-      return "gen8_urb_write_simd8";
+      return "gfx8_urb_write_simd8";
    case SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT:
-      return "gen8_urb_write_simd8_per_slot";
+      return "gfx8_urb_write_simd8_per_slot";
    case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED:
-      return "gen8_urb_write_simd8_masked";
+      return "gfx8_urb_write_simd8_masked";
    case SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT:
-      return "gen8_urb_write_simd8_masked_per_slot";
+      return "gfx8_urb_write_simd8_masked_per_slot";
    case SHADER_OPCODE_URB_READ_SIMD8:
       return "urb_read_simd8";
    case SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT:
@@ -442,9 +442,9 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD:
       return "uniform_pull_const";
    case FS_OPCODE_UNIFORM_PULL_CONSTANT_LOAD_GEN7:
-      return "uniform_pull_const_gen7";
+      return "uniform_pull_const_gfx7";
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_GEN4:
-      return "varying_pull_const_gen4";
+      return "varying_pull_const_gfx4";
    case FS_OPCODE_VARYING_PULL_CONSTANT_LOAD_LOGICAL:
       return "varying_pull_const_logical";
 
@@ -469,7 +469,7 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
    case VS_OPCODE_PULL_CONSTANT_LOAD:
       return "pull_constant_load";
    case VS_OPCODE_PULL_CONSTANT_LOAD_GEN7:
-      return "pull_constant_load_gen7";
+      return "pull_constant_load_gfx7";
 
    case VS_OPCODE_UNPACK_FLAGS_SIMD4X2:
       return "unpack_flags_simd4x2";

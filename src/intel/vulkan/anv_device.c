@@ -811,7 +811,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
    /* We've had bindless samplers since Ivy Bridge (forever in Vulkan terms)
     * because it's just a matter of setting the sampler address in the sample
     * message header.  However, we've not bothered to wire it up for vec4 so
-    * we leave it disabled on gen7.
+    * we leave it disabled on gfx7.
     */
    device->has_bindless_samplers = device->info.ver >= 8;
 
@@ -1486,7 +1486,7 @@ void anv_GetPhysicalDeviceFeatures2(
             (VkPhysicalDeviceLineRasterizationFeaturesEXT *)ext;
          features->rectangularLines = true;
          features->bresenhamLines = true;
-         /* Support for Smooth lines with MSAA was removed on gen11.  From the
+         /* Support for Smooth lines with MSAA was removed on gfx11.  From the
           * BSpec section "Multisample ModesState" table for "AA Line Support
           * Requirements":
           *
@@ -1958,7 +1958,7 @@ anv_get_physical_device_properties_1_1(struct anv_physical_device *pdevice,
                                     VK_SUBGROUP_FEATURE_QUAD_BIT;
    if (pdevice->info.ver >= 8) {
       /* TODO: There's no technical reason why these can't be made to
-       * work on gen7 but they don't at the moment so it's best to leave
+       * work on gfx7 but they don't at the moment so it's best to leave
        * the feature disabled than enabled and broken.
        */
       p->subgroupSupportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
@@ -2716,7 +2716,7 @@ anv_device_init_border_colors(struct anv_device *device)
          anv_state_pool_emit_data(&device->dynamic_state_pool,
                                   sizeof(border_colors), 512, border_colors);
    } else {
-      static const struct gen8_border_color border_colors[] = {
+      static const struct gfx8_border_color border_colors[] = {
          [VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK] =  { .float32 = { 0.0, 0.0, 0.0, 0.0 } },
          [VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK] =       { .float32 = { 0.0, 0.0, 0.0, 1.0 } },
          [VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE] =       { .float32 = { 1.0, 1.0, 1.0, 1.0 } },
@@ -3186,7 +3186,7 @@ VkResult anv_CreateDevice(
       anv_state_reserved_pool_init(&device->custom_border_colors,
                                    &device->dynamic_state_pool,
                                    MAX_CUSTOM_BORDER_COLORS,
-                                   sizeof(struct gen8_border_color), 64);
+                                   sizeof(struct gfx8_border_color), 64);
    }
 
    result = anv_state_pool_init(&device->instruction_state_pool, device,

@@ -63,7 +63,7 @@ fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
  * Apply workarounds for Gen6 gather with UINT/SINT
  */
 void
-fs_visitor::emit_gen6_gather_wa(uint8_t wa, fs_reg dst)
+fs_visitor::emit_gfx6_gather_wa(uint8_t wa, fs_reg dst)
 {
    if (!wa)
       return;
@@ -153,7 +153,7 @@ fs_visitor::interp_reg(int location, int channel)
 
 /** Emits the interpolation for the varying inputs. */
 void
-fs_visitor::emit_interpolation_setup_gen4()
+fs_visitor::emit_interpolation_setup_gfx4()
 {
    struct brw_reg g1_uw = retype(brw_vec1_grf(1, 0), BRW_REGISTER_TYPE_UW);
 
@@ -267,7 +267,7 @@ fs_visitor::emit_shader_float_controls_execution_mode()
 
 /** Emits the interpolation for the varying inputs. */
 void
-fs_visitor::emit_interpolation_setup_gen6()
+fs_visitor::emit_interpolation_setup_gfx6()
 {
    fs_builder abld = bld.annotate("compute pixel centers");
 
@@ -318,7 +318,7 @@ fs_visitor::emit_interpolation_setup_gen6()
                   fs_reg(stride(suboffset(gi_uw, 5), 2, 4, 0)),
                   fs_reg(brw_imm_v(0x11001100)));
 
-         /* As of gen6, we can no longer mix float and int sources.  We have
+         /* As of gfx6, we can no longer mix float and int sources.  We have
           * to turn the integer pixel centers into floats for their actual
           * use.
           */
@@ -479,7 +479,7 @@ fs_visitor::emit_fb_writes()
    fs_inst *inst = NULL;
 
    if (source_depth_to_render_target && devinfo->ver == 6) {
-      /* For outputting oDepth on gen6, SIMD8 writes have to be used.  This
+      /* For outputting oDepth on gfx6, SIMD8 writes have to be used.  This
        * would require SIMD8 moves of each half to message regs, e.g. by using
        * the SIMD lowering pass.  Unfortunately this is more difficult than it
        * sounds because the SIMD8 single-source message lacks channel selects

@@ -455,7 +455,7 @@ namespace brw {
           *
           * CMP null<d> src0<f> src1<f>
           *
-          * Original gen4 does type conversion to the destination type
+          * Original gfx4 does type conversion to the destination type
           * before comparison, producing garbage results for floating
           * point comparisons.
           *
@@ -480,7 +480,7 @@ namespace brw {
           *
           * CMPN null<d> src0<f> src1<f>
           *
-          * Original gen4 does type conversion to the destination type
+          * Original gfx4 does type conversion to the destination type
           * before comparison, producing garbage results for floating
           * point comparisons.
           *
@@ -587,14 +587,14 @@ namespace brw {
       src_reg
       fix_math_operand(const src_reg &src) const
       {
-         /* The gen6 math instruction ignores the source modifiers --
+         /* The gfx6 math instruction ignores the source modifiers --
           * swizzle, abs, negate, and at least some parts of the register
           * region description.
           *
           * Rather than trying to enumerate all these cases, *always* expand the
-          * operand to a temp GRF for gen6.
+          * operand to a temp GRF for gfx6.
           *
-          * For gen7, keep the operand as-is, except if immediate, which gen7 still
+          * For gfx7, keep the operand as-is, except if immediate, which gfx7 still
           * can't use.
           */
          if (shader->devinfo->ver == 6 ||

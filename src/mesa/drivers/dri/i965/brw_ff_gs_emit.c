@@ -334,7 +334,7 @@ void brw_ff_gs_lines(struct brw_ff_gs_compile *c)
  * (transform feedback).
  */
 void
-gen6_sol_program(struct brw_ff_gs_compile *c, struct brw_ff_gs_prog_key *key,
+gfx6_sol_program(struct brw_ff_gs_compile *c, struct brw_ff_gs_prog_key *key,
                  unsigned num_verts, bool check_edge_flags)
 {
    struct brw_codegen *p = &c->func;

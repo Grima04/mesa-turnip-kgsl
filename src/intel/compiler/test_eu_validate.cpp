@@ -153,9 +153,9 @@ TEST_P(validation_test, src1_null_reg)
 TEST_P(validation_test, math_src0_null_reg)
 {
    if (devinfo.ver >= 6) {
-      gen6_math(p, g0, BRW_MATH_FUNCTION_SIN, null, null);
+      gfx6_math(p, g0, BRW_MATH_FUNCTION_SIN, null, null);
    } else {
-      gen4_math(p, g0, BRW_MATH_FUNCTION_SIN, 0, null, BRW_MATH_PRECISION_FULL);
+      gfx4_math(p, g0, BRW_MATH_FUNCTION_SIN, 0, null, BRW_MATH_PRECISION_FULL);
    }
 
    EXPECT_FALSE(validate(p));
@@ -164,11 +164,11 @@ TEST_P(validation_test, math_src0_null_reg)
 TEST_P(validation_test, math_src1_null_reg)
 {
    if (devinfo.ver >= 6) {
-      gen6_math(p, g0, BRW_MATH_FUNCTION_POW, g0, null);
+      gfx6_math(p, g0, BRW_MATH_FUNCTION_POW, g0, null);
       EXPECT_FALSE(validate(p));
    } else {
       /* Math instructions on Gen4/5 are actually SEND messages with payloads.
-       * src1 is an immediate message descriptor set by gen4_math.
+       * src1 is an immediate message descriptor set by gfx4_math.
        */
    }
 }
@@ -247,9 +247,9 @@ TEST_P(validation_test, invalid_file_encoding)
    clear_instructions(p);
 
    if (devinfo.ver < 6) {
-      gen4_math(p, g0, BRW_MATH_FUNCTION_SIN, 0, g0, BRW_MATH_PRECISION_FULL);
+      gfx4_math(p, g0, BRW_MATH_FUNCTION_SIN, 0, g0, BRW_MATH_PRECISION_FULL);
    } else {
-      gen6_math(p, g0, BRW_MATH_FUNCTION_SIN, g0, null);
+      gfx6_math(p, g0, BRW_MATH_FUNCTION_SIN, g0, null);
    }
    brw_inst_set_src0_file_type(&devinfo, last_inst, BRW_MESSAGE_REGISTER_FILE, BRW_REGISTER_TYPE_F);
 
@@ -1016,13 +1016,13 @@ TEST_P(validation_test, dst_elements_must_be_evenly_split_between_registers)
    clear_instructions(p);
 
    if (devinfo.ver >= 6) {
-      gen6_math(p, g0, BRW_MATH_FUNCTION_SIN, g0, null);
+      gfx6_math(p, g0, BRW_MATH_FUNCTION_SIN, g0, null);
 
       EXPECT_TRUE(validate(p));
 
       clear_instructions(p);
 
-      gen6_math(p, g0, BRW_MATH_FUNCTION_SIN, g0, null);
+      gfx6_math(p, g0, BRW_MATH_FUNCTION_SIN, g0, null);
       brw_inst_set_dst_da1_subreg_nr(&devinfo, last_inst, 4);
 
       EXPECT_FALSE(validate(p));
@@ -1310,7 +1310,7 @@ TEST_P(validation_test, half_float_conversion)
       unsigned dst_stride;
       unsigned dst_subnr;
       bool expected_result_bdw;
-      bool expected_result_chv_gen9;
+      bool expected_result_chv_gfx9;
    } inst[] = {
 #define INST_C(dst_type, src_type, dst_stride, dst_subnr, expected_result)  \
       {                                                                     \
@@ -1322,14 +1322,14 @@ TEST_P(validation_test, half_float_conversion)
          expected_result,                                                   \
       }
 #define INST_S(dst_type, src_type, dst_stride, dst_subnr,                   \
-               expected_result_bdw, expected_result_chv_gen9)               \
+               expected_result_bdw, expected_result_chv_gfx9)               \
       {                                                                     \
          BRW_REGISTER_TYPE_##dst_type,                                      \
          BRW_REGISTER_TYPE_##src_type,                                      \
          BRW_HORIZONTAL_STRIDE_##dst_stride,                                \
          dst_subnr,                                                         \
          expected_result_bdw,                                               \
-         expected_result_chv_gen9,                                          \
+         expected_result_chv_gfx9,                                          \
       }
 
       /* MOV to half-float destination */
@@ -1417,7 +1417,7 @@ TEST_P(validation_test, half_float_conversion)
       }
 
       if (devinfo.is_cherryview || devinfo.ver >= 9)
-         EXPECT_EQ(inst[i].expected_result_chv_gen9, validate(p));
+         EXPECT_EQ(inst[i].expected_result_chv_gfx9, validate(p));
       else
          EXPECT_EQ(inst[i].expected_result_bdw, validate(p));
 
@@ -1733,12 +1733,12 @@ TEST_P(validation_test, mixed_float_align1_math_strided_fp16_inputs)
 #undef INST
    };
 
-   /* No half-float math in gen8 */
+   /* No half-float math in gfx8 */
    if (devinfo.ver < 9)
       return;
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      gen6_math(p, retype(g0, inst[i].dst_type),
+      gfx6_math(p, retype(g0, inst[i].dst_type),
                    BRW_MATH_FUNCTION_POW,
                    retype(g0, inst[i].src0_type),
                    retype(g0, inst[i].src1_type));
@@ -2034,14 +2034,14 @@ TEST_P(validation_test, mixed_float_align16_math_packed_format)
 #undef INST
    };
 
-   /* Align16 Math for mixed float mode is not supported in gen8 */
+   /* Align16 Math for mixed float mode is not supported in gfx8 */
    if (devinfo.ver < 9 || devinfo.ver >= 11)
       return;
 
    brw_set_default_access_mode(p, BRW_ALIGN_16);
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      gen6_math(p, retype(g0, inst[i].dst_type),
+      gfx6_math(p, retype(g0, inst[i].dst_type),
                    BRW_MATH_FUNCTION_POW,
                    retype(g0, inst[i].src0_type),
                    retype(g0, inst[i].src1_type));
@@ -2819,7 +2819,7 @@ TEST_P(validation_test, qword_low_power_no_depctrl)
    }
 }
 
-TEST_P(validation_test, gen11_no_byte_src_1_2)
+TEST_P(validation_test, gfx11_no_byte_src_1_2)
 {
    static const struct {
       enum opcode opcode;

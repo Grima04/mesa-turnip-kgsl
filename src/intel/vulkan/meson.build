@@ -25,10 +25,10 @@ anv_entrypoints = custom_target(
   command : [
     prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--proto', '--weak',
     '--out-h', '@OUTPUT0@', '--out-c', '@OUTPUT1@', '--prefix', 'anv',
-    '--device-prefix', 'gen7', '--device-prefix', 'gen75',
-    '--device-prefix', 'gen8', '--device-prefix', 'gen9',
-    '--device-prefix', 'gen11', '--device-prefix', 'gen12',
-    '--device-prefix', 'gen125',
+    '--device-prefix', 'gfx7', '--device-prefix', 'gfx75',
+    '--device-prefix', 'gfx8', '--device-prefix', 'gfx9',
+    '--device-prefix', 'gfx11', '--device-prefix', 'gfx12',
+    '--device-prefix', 'gfx125',
   ],
 )
 

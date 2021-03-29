@@ -572,7 +572,7 @@ brw_emit_select_pipeline(struct brw_context *brw, enum brw_pipeline pipeline)
        *   operation and then a dummy DRAW after every MI_SET_CONTEXT and
        *   after any PIPELINE_SELECT that is enabling 3D mode.
        */
-      gen7_emit_cs_stall_flush(brw);
+      gfx7_emit_cs_stall_flush(brw);
 
       BEGIN_BATCH(7);
       OUT_BATCH(CMD_3D_PRIM << 16 | (7 - 2));
@@ -731,7 +731,7 @@ brw_upload_invariant_state(struct brw_context *brw)
  * Define the base addresses which some state is referenced from.
  *
  * This allows us to avoid having to emit relocations for the objects,
- * and is actually required for binding table pointers on gen6.
+ * and is actually required for binding table pointers on gfx6.
  *
  * Surface state base address covers binding table pointers and
  * surface state objects, but not the surfaces that the surface state

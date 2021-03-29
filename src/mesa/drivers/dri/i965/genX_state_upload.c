@@ -616,7 +616,7 @@ genX(emit_vertices)(struct brw_context *brw)
     */
 #if GFX_VER >= 6
    assert(nr_elements <= 34);
-   const struct brw_vertex_element *gen6_edgeflag_input = NULL;
+   const struct brw_vertex_element *gfx6_edgeflag_input = NULL;
 #else
    assert(nr_elements <= 18);
 #endif
@@ -643,7 +643,7 @@ genX(emit_vertices)(struct brw_context *brw)
       assert(!(is_passthru_format(format) && uses_edge_flag));
 #endif
 
-      /* The gen4 driver expects edgeflag to come in as a float, and passes
+      /* The gfx4 driver expects edgeflag to come in as a float, and passes
        * that float on to the tests in the clipper.  Mesa's current vertex
        * attribute value for EdgeFlag is stored as a float, which works out.
        * glEdgeFlagPointer, on the other hand, gives us an unnormalized
@@ -655,7 +655,7 @@ genX(emit_vertices)(struct brw_context *brw)
        */
 #if GFX_VER >= 6
       if (input == &brw->vb.inputs[VERT_ATTRIB_EDGEFLAG]) {
-         gen6_edgeflag_input = input;
+         gfx6_edgeflag_input = input;
          continue;
       }
 #endif
@@ -788,16 +788,16 @@ genX(emit_vertices)(struct brw_context *brw)
    }
 
 #if GFX_VER >= 6
-   if (gen6_edgeflag_input) {
-      const struct gl_vertex_format *glformat = gen6_edgeflag_input->glformat;
+   if (gfx6_edgeflag_input) {
+      const struct gl_vertex_format *glformat = gfx6_edgeflag_input->glformat;
       const uint32_t format = brw_get_vertex_surface_type(brw, glformat);
 
       struct GENX(VERTEX_ELEMENT_STATE) elem_state = {
          .Valid = true,
-         .VertexBufferIndex = gen6_edgeflag_input->buffer,
+         .VertexBufferIndex = gfx6_edgeflag_input->buffer,
          .EdgeFlagEnable = true,
          .SourceElementFormat = format,
-         .SourceElementOffset = gen6_edgeflag_input->offset,
+         .SourceElementOffset = gfx6_edgeflag_input->offset,
          .Component0Control = VFCOMP_STORE_SRC,
          .Component1Control = VFCOMP_STORE_0,
          .Component2Control = VFCOMP_STORE_0,
@@ -819,7 +819,7 @@ genX(emit_vertices)(struct brw_context *brw)
        * above so we need to compensate for that in the element indices used
        * below.
        */
-      if (input == gen6_edgeflag_input)
+      if (input == gfx6_edgeflag_input)
          element_index = nr_elements - 1;
       else
          element_index = j++;
@@ -1798,7 +1798,7 @@ genX(upload_wm)(struct brw_context *brw)
    UNUSED const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
 #if GFX_VER == 6
-   /* We can't fold this into gen6_upload_wm_push_constants(), because
+   /* We can't fold this into gfx6_upload_wm_push_constants(), because
     * according to the SNB PRM, vol 2 part 1 section 7.2.2
     * (3DSTATE_CONSTANT_PS [DevSNB]):
     *
@@ -1808,7 +1808,7 @@ genX(upload_wm)(struct brw_context *brw)
       if (wm_prog_data->base.nr_params != 0) {
          wmcp.Buffer0Valid = true;
          /* Pointer to the WM constant buffer.  Covered by the set of
-          * state flags from gen6_upload_wm_push_constants.
+          * state flags from gfx6_upload_wm_push_constants.
           */
          wmcp.ConstantBody.PointertoConstantBuffer0 = stage_state->push_const_offset;
          wmcp.ConstantBody.ConstantBuffer0ReadLength = stage_state->push_const_size - 1;
@@ -1830,7 +1830,7 @@ genX(upload_wm)(struct brw_context *brw)
 #endif
 
 #if GFX_VER == 4
-      /* On gen4, we only have one shader kernel */
+      /* On gfx4, we only have one shader kernel */
       if (brw_wm_state_has_ksp(wm, 0)) {
          assert(brw_wm_prog_data_prog_offset(wm_prog_data, wm, 0) == 0);
          wm.KernelStartPointer0 = KSP(brw, stage_state->prog_offset);
@@ -1839,7 +1839,7 @@ genX(upload_wm)(struct brw_context *brw)
             brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, wm, 0);
       }
 #elif GFX_VER == 5
-      /* On gen5, we have multiple shader kernels but only one GRF start
+      /* On gfx5, we have multiple shader kernels but only one GRF start
        * register for all kernels
        */
       wm.KernelStartPointer0 = stage_state->prog_offset +
@@ -1856,7 +1856,7 @@ genX(upload_wm)(struct brw_context *brw)
       wm.DispatchGRFStartRegisterForConstantSetupData0 =
          wm_prog_data->base.dispatch_grf_start_reg;
 
-      /* Dispatch GRF Start should be the same for all shaders on gen5 */
+      /* Dispatch GRF Start should be the same for all shaders on gfx5 */
       if (brw_wm_state_has_ksp(wm, 1)) {
          assert(wm_prog_data->base.dispatch_grf_start_reg ==
                 brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, wm, 1));
@@ -1866,7 +1866,7 @@ genX(upload_wm)(struct brw_context *brw)
                 brw_wm_prog_data_dispatch_grf_start_reg(wm_prog_data, wm, 2));
       }
 #elif GFX_VER == 6
-      /* On gen6, we have multiple shader kernels and we no longer specify a
+      /* On gfx6, we have multiple shader kernels and we no longer specify a
        * register count for each one.
        */
       wm.KernelStartPointer0 = stage_state->prog_offset +
@@ -2027,7 +2027,7 @@ genX(upload_wm)(struct brw_context *brw)
        * seem to have an effect on the HW-assisted coherency mechanism which we
        * don't need, and the rasterization-related UAV_ONLY flag and the
        * DISPATCH_ENABLE bit can be set independently from it.
-       * C.f. gen8_upload_ps_extra().
+       * C.f. gfx8_upload_ps_extra().
        *
        * BRW_NEW_FRAGMENT_PROGRAM | BRW_NEW_FS_PROG_DATA | _NEW_BUFFERS |
        * _NEW_COLOR
@@ -2156,7 +2156,7 @@ genX(upload_vs_state)(struct brw_context *brw)
 #endif
 
    if (GFX_VER == 7 && devinfo->is_ivybridge)
-      gen7_emit_vs_workaround_flush(brw);
+      gfx7_emit_vs_workaround_flush(brw);
 
 #if GFX_VER >= 6
    brw_batch_emit(brw, GENX(3DSTATE_VS), vs) {
@@ -2593,7 +2593,7 @@ genX(upload_gs_state)(struct brw_context *brw)
     * Stall" bit set.
     */
    if (devinfo->gt == 2 && brw->gs.enabled != active)
-      gen7_emit_cs_stall_flush(brw);
+      gfx7_emit_cs_stall_flush(brw);
 #endif
 
 #if GFX_VER >= 6
@@ -2658,10 +2658,10 @@ genX(upload_gs_state)(struct brw_context *brw)
             gs.SVBIPayloadEnable = _mesa_is_xfb_active_and_unpaused(ctx);
 
          /* GFX6_GS_SPF_MODE and GFX6_GS_VECTOR_MASK_ENABLE are enabled as it
-          * was previously done for gen6.
+          * was previously done for gfx6.
           *
           * TODO: test with both disabled to see if the HW is behaving
-          * as expected, like in gen7.
+          * as expected, like in gfx7.
           */
          gs.SingleProgramFlow = true;
          gs.VectorMaskEnable = true;
@@ -2692,7 +2692,7 @@ genX(upload_gs_state)(struct brw_context *brw)
 
 #if GFX_VER <= 6
       if (!active && brw->ff_gs.prog_active) {
-         /* In gen6, transform feedback for the VS stage is done with an
+         /* In gfx6, transform feedback for the VS stage is done with an
           * ad-hoc GS program. This function provides the needed 3DSTATE_GS
           * for this.
           */
@@ -3094,7 +3094,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
 
    if (GFX_VERx10 == 70 && !devinfo->is_baytrail &&
        stage_states[MESA_SHADER_VERTEX]->push_constants_dirty)
-      gen7_emit_vs_workaround_flush(brw);
+      gfx7_emit_vs_workaround_flush(brw);
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
       struct brw_stage_state *stage_state = stage_states[stage];
@@ -3196,7 +3196,7 @@ genX(upload_vs_push_constants)(struct brw_context *brw)
    /* BRW_NEW_VS_PROG_DATA */
    const struct brw_stage_prog_data *prog_data = brw->vs.base.prog_data;
 
-   gen6_upload_push_constants(brw, vp, prog_data, stage_state);
+   gfx6_upload_push_constants(brw, vp, prog_data, stage_state);
 }
 
 static const struct brw_tracked_state genX(vs_push_constants) = {
@@ -3222,7 +3222,7 @@ genX(upload_gs_push_constants)(struct brw_context *brw)
    /* BRW_NEW_GS_PROG_DATA */
    struct brw_stage_prog_data *prog_data = brw->gs.base.prog_data;
 
-   gen6_upload_push_constants(brw, gp, prog_data, stage_state);
+   gfx6_upload_push_constants(brw, gp, prog_data, stage_state);
 }
 
 static const struct brw_tracked_state genX(gs_push_constants) = {
@@ -3246,7 +3246,7 @@ genX(upload_wm_push_constants)(struct brw_context *brw)
    /* BRW_NEW_FS_PROG_DATA */
    const struct brw_stage_prog_data *prog_data = brw->wm.base.prog_data;
 
-   gen6_upload_push_constants(brw, fp, prog_data, stage_state);
+   gfx6_upload_push_constants(brw, fp, prog_data, stage_state);
 }
 
 static const struct brw_tracked_state genX(wm_push_constants) = {
@@ -3891,7 +3891,7 @@ genX(upload_ps)(struct brw_context *brw)
 #endif
 
       /* 3DSTATE_PS expects the number of threads per PSD, which is always 64
-       * for pre Gen11 and 128 for gen11+; On gen11+ If a programmed value is
+       * for pre Gen11 and 128 for gfx11+; On gfx11+ If a programmed value is
        * k, it implies 2(k+1) threads. It implicitly scales for different GT
        * levels (which have some # of PSDs).
        *
@@ -4148,7 +4148,7 @@ genX(upload_tes_push_constants)(struct brw_context *brw)
 
    /* BRW_NEW_TES_PROG_DATA */
    const struct brw_stage_prog_data *prog_data = brw->tes.base.prog_data;
-   gen6_upload_push_constants(brw, tep, prog_data, stage_state);
+   gfx6_upload_push_constants(brw, tep, prog_data, stage_state);
 }
 
 static const struct brw_tracked_state genX(tes_push_constants) = {
@@ -4172,7 +4172,7 @@ genX(upload_tcs_push_constants)(struct brw_context *brw)
    /* BRW_NEW_TCS_PROG_DATA */
    const struct brw_stage_prog_data *prog_data = brw->tcs.base.prog_data;
 
-   gen6_upload_push_constants(brw, tcp, prog_data, stage_state);
+   gfx6_upload_push_constants(brw, tcp, prog_data, stage_state);
 }
 
 static const struct brw_tracked_state genX(tcs_push_constants) = {
@@ -4344,7 +4344,7 @@ genX(upload_cs_state)(struct brw_context *brw)
       /* We are uploading duplicated copies of push constant uniforms for each
        * thread. Although the local id data needs to vary per thread, it won't
        * change for other uniform data. Unfortunately this duplication is
-       * required for gen7. As of Haswell, this duplication can be avoided,
+       * required for gfx7. As of Haswell, this duplication can be avoided,
        * but this older mechanism with duplicated data continues to work.
        *
        * FINISHME: As of Haswell, we could make use of the
@@ -4927,7 +4927,7 @@ genX(emit_sampler_state_pointers_xs)(UNUSED struct brw_context *brw,
    /* Ivybridge requires a workaround flush before VS packets. */
    if (GFX_VERx10 == 70 &&
        stage_state->stage == MESA_SHADER_VERTEX) {
-      gen7_emit_vs_workaround_flush(brw);
+      gfx7_emit_vs_workaround_flush(brw);
    }
 
    brw_batch_emit(brw, GENX(3DSTATE_SAMPLER_STATE_POINTERS_VS), ptr) {
@@ -5651,7 +5651,7 @@ genX(init_atoms)(struct brw_context *brw)
 
       &genX(cc_vp),
 
-      &gen6_urb,
+      &gfx6_urb,
       &genX(blend_state),         /* must do before cc unit */
       &genX(color_calc_state),    /* must do before cc unit */
       &genX(depth_stencil_state), /* must do before cc unit */
@@ -5669,18 +5669,18 @@ genX(init_atoms)(struct brw_context *brw)
       &brw_gs_ubo_surfaces,
       &brw_wm_pull_constants,
       &brw_wm_ubo_surfaces,
-      &gen6_renderbuffer_surfaces,
+      &gfx6_renderbuffer_surfaces,
       &brw_renderbuffer_read_surfaces,
       &brw_texture_surfaces,
-      &gen6_sol_surface,
+      &gfx6_sol_surface,
       &brw_vs_binding_table,
-      &gen6_gs_binding_table,
+      &gfx6_gs_binding_table,
       &brw_wm_binding_table,
 
       &genX(fs_samplers),
       &genX(vs_samplers),
       &genX(gs_samplers),
-      &gen6_sampler_state,
+      &gfx6_sampler_state,
       &genX(multisample_state),
 
       &genX(vs_state),
@@ -5691,7 +5691,7 @@ genX(init_atoms)(struct brw_context *brw)
 
       &genX(scissor_state),
 
-      &gen6_binding_table_pointers,
+      &gfx6_binding_table_pointers,
 
       &brw_depthbuffer,
 
@@ -5716,9 +5716,9 @@ genX(init_atoms)(struct brw_context *brw)
       &genX(cc_vp),
       &genX(sf_clip_viewport),
 
-      &gen7_l3_state,
-      &gen7_push_constant_space,
-      &gen7_urb,
+      &gfx7_l3_state,
+      &gfx7_push_constant_space,
+      &gfx7_urb,
 #if GFX_VERx10 == 75
       &genX(cc_and_blend_state),
 #else
@@ -5752,7 +5752,7 @@ genX(init_atoms)(struct brw_context *brw)
       &brw_gs_ubo_surfaces,
       &brw_wm_pull_constants,
       &brw_wm_ubo_surfaces,
-      &gen6_renderbuffer_surfaces,
+      &gfx6_renderbuffer_surfaces,
       &brw_renderbuffer_read_surfaces,
       &brw_texture_surfaces,
 
@@ -5810,9 +5810,9 @@ genX(init_atoms)(struct brw_context *brw)
       &genX(cc_vp),
       &genX(sf_clip_viewport),
 
-      &gen7_l3_state,
-      &gen7_push_constant_space,
-      &gen7_urb,
+      &gfx7_l3_state,
+      &gfx7_push_constant_space,
+      &gfx7_urb,
       &genX(blend_state),
       &genX(color_calc_state),
 
@@ -5841,7 +5841,7 @@ genX(init_atoms)(struct brw_context *brw)
       &brw_gs_ubo_surfaces,
       &brw_wm_pull_constants,
       &brw_wm_ubo_surfaces,
-      &gen6_renderbuffer_surfaces,
+      &gfx6_renderbuffer_surfaces,
       &brw_renderbuffer_read_surfaces,
       &brw_texture_surfaces,
 
@@ -5894,7 +5894,7 @@ genX(init_atoms)(struct brw_context *brw)
       &genX(vertices),
 
       &genX(cut_index),
-      &gen8_pma_fix,
+      &gfx8_pma_fix,
    };
 #endif
 
@@ -5905,7 +5905,7 @@ genX(init_atoms)(struct brw_context *brw)
 #if GFX_VER >= 7
    static const struct brw_tracked_state *compute_atoms[] =
    {
-      &gen7_l3_state,
+      &gfx7_l3_state,
       &brw_cs_image_surfaces,
       &genX(cs_push_constants),
       &genX(cs_pull_constants),

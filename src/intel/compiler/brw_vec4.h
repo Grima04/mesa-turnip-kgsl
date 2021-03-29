@@ -270,7 +270,7 @@ public:
 
    src_reg emit_mcs_fetch(const glsl_type *coordinate_type, src_reg coordinate,
                           src_reg surface);
-   void emit_gen6_gather_wa(uint8_t wa, dst_reg dst);
+   void emit_gfx6_gather_wa(uint8_t wa, dst_reg dst);
 
    void emit_ndc_computation();
    void emit_psiz_and_flags(dst_reg reg);

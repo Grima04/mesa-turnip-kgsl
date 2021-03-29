@@ -180,7 +180,7 @@ brw_codegen_wm_prog(struct brw_context *brw,
 }
 
 static uint8_t
-gen6_gather_workaround(GLenum internalformat)
+gfx6_gather_workaround(GLenum internalformat)
 {
    switch (internalformat) {
    case GL_R8I: return WA_SIGN | WA_8BIT;
@@ -279,7 +279,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
           * UNORM/FLOAT instead and fix it in the shader.
           */
          if (devinfo->ver == 6 && prog->info.uses_texture_gather) {
-            key->gen6_gather_wa[s] = gen6_gather_workaround(img->InternalFormat);
+            key->gfx6_gather_wa[s] = gfx6_gather_workaround(img->InternalFormat);
          }
 
          /* If this is a multisample sampler, and uses the CMS MSAA layout,
@@ -289,7 +289,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
          struct brw_texture_object *intel_tex =
             brw_texture_object((struct gl_texture_object *)t);
 
-         /* From gen9 onwards some single sampled buffers can also be
+         /* From gfx9 onwards some single sampled buffers can also be
           * compressed. These don't need ld2dms sampling along with mcs fetch.
           */
          if (intel_tex->mt->aux_usage == ISL_AUX_USAGE_MCS) {
@@ -519,7 +519,7 @@ brw_wm_populate_key(struct brw_context *brw, struct brw_wm_prog_key *key)
    }
 
    /* _NEW_COLOR | _NEW_BUFFERS */
-   /* Pre-gen6, the hardware alpha test always used each render
+   /* Pre-gfx6, the hardware alpha test always used each render
     * target's alpha to do alpha test, as opposed to render target 0's alpha
     * like GL requires.  Fix that by building the alpha test into the
     * shader, and we'll skip enabling the fixed function alpha test.

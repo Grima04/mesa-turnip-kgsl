@@ -346,7 +346,7 @@ try_copy_propagate(const struct gen_device_info *devinfo,
 
    bool has_source_modifiers = value.negate || value.abs;
 
-   /* gen6 math and gen7+ SENDs from GRFs ignore source modifiers on
+   /* gfx6 math and gfx7+ SENDs from GRFs ignore source modifiers on
     * instructions.
     */
    if (has_source_modifiers && !inst->can_do_source_mods(devinfo))

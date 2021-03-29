@@ -579,7 +579,7 @@ get_copy_region_aux_settings(struct iris_context *ice,
        * for adjusting the clear color, so clear support may only be enabled
        * in some cases:
        *
-       * - On gen11+, the clear color is indirect and comes in two forms: a
+       * - On gfx11+, the clear color is indirect and comes in two forms: a
        *   32bpc representation used for rendering and a pixel representation
        *   used for sampling. blorp_copy doesn't change indirect clear colors,
        *   so clears are only supported in the sampling case.

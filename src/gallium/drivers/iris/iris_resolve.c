@@ -351,7 +351,7 @@ iris_cache_flush_for_render(struct iris_batch *batch,
     *
     * Even though it's not obvious, this can easily happen in practice.
     * Suppose a client is blending on a surface with sRGB encode enabled on
-    * gen9.  This implies that you get AUX_USAGE_CCS_D at best.  If the client
+    * gfx9.  This implies that you get AUX_USAGE_CCS_D at best.  If the client
     * then disables sRGB decode and continues blending we will flip on
     * AUX_USAGE_CCS_E without doing any sort of resolve in-between (this is
     * perfectly valid since CCS_E is a subset of CCS_D).  However, this means
@@ -897,11 +897,11 @@ iris_image_view_aux_usage(struct iris_context *ice,
 static bool
 isl_formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
 {
-   /* On gen8 and earlier, the hardware was only capable of handling 0/1 clear
+   /* On gfx8 and earlier, the hardware was only capable of handling 0/1 clear
     * values so sRGB curve application was a no-op for all fast-clearable
     * formats.
     *
-    * On gen9+, the hardware supports arbitrary clear values.  For sRGB clear
+    * On gfx9+, the hardware supports arbitrary clear values.  For sRGB clear
     * values, the hardware interprets the floats, not as what would be
     * returned from the sampler (or written by the shader), but as being
     * between format conversion and sRGB curve application.  This means that
@@ -985,7 +985,7 @@ iris_resource_render_aux_usage(struct iris_context *ice,
    case ISL_AUX_USAGE_CCS_D:
    case ISL_AUX_USAGE_CCS_E:
    case ISL_AUX_USAGE_GEN12_CCS_E:
-      /* Disable CCS for some cases of texture-view rendering. On gen12, HW
+      /* Disable CCS for some cases of texture-view rendering. On gfx12, HW
        * may convert some subregions of shader output to fast-cleared blocks
        * if CCS is enabled and the shader output matches the clear color.
        * Existing fast-cleared blocks are correctly interpreted by the clear

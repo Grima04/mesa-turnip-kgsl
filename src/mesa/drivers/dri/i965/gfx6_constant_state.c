@@ -114,7 +114,7 @@ brw_populate_constant_data(struct brw_context *brw,
 
 /**
  * Creates a streamed BO containing the push constants for the VS or GS on
- * gen6+.
+ * gfx6+.
  *
  * Push constants are constant values (such as GLSL uniforms) that are
  * pre-loaded into a shader stage's register space at thread spawn time.
@@ -125,10 +125,10 @@ brw_populate_constant_data(struct brw_context *brw,
  * to be usable for the VS.  Plus, currently we always use pull constants
  * instead of push constants when doing variable-index array access.
  *
- * See brw_curbe.c for the equivalent gen4/5 code.
+ * See brw_curbe.c for the equivalent gfx4/5 code.
  */
 void
-gen6_upload_push_constants(struct brw_context *brw,
+gfx6_upload_push_constants(struct brw_context *brw,
                            const struct gl_program *prog,
                            const struct brw_stage_prog_data *prog_data,
                            struct brw_stage_state *stage_state)
@@ -225,8 +225,8 @@ gen6_upload_push_constants(struct brw_context *brw,
  * (which is easiest to support using pull constants, and avoids filling
  * register space with mostly-unused data).
  *
- * Compare this path to brw_curbe.c for gen4/5 push constants, and
- * gfx6_vs_state.c for gen6+ push constants.
+ * Compare this path to brw_curbe.c for gfx4/5 push constants, and
+ * gfx6_vs_state.c for gfx6+ push constants.
  */
 void
 brw_upload_pull_constants(struct brw_context *brw,
@@ -283,14 +283,14 @@ brw_upload_pull_constants(struct brw_context *brw,
 }
 
 /**
- * Creates a region containing the push constants for the CS on gen7+.
+ * Creates a region containing the push constants for the CS on gfx7+.
  *
  * Push constants are constant values (such as GLSL uniforms) that are
  * pre-loaded into a shader stage's register space at thread spawn time.
  *
  * For other stages, see brw_curbe.c:brw_upload_constant_buffer for the
- * equivalent gen4/5 code and gfx6_vs_state.c:gen6_upload_push_constants for
- * gen6+.
+ * equivalent gfx4/5 code and gfx6_vs_state.c:gfx6_upload_push_constants for
+ * gfx6+.
  */
 void
 brw_upload_cs_push_constants(struct brw_context *brw,

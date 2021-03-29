@@ -123,16 +123,16 @@ brw_inst_##name(const struct gen_device_info *devinfo, const brw_inst *inst)  \
 }
 
 /* A macro for fields which moved as of Gen8+. */
-#define F8(name, gen4_high, gen4_low, gen8_high, gen8_low, \
-           gen12_high, gen12_low)                          \
+#define F8(name, gfx4_high, gfx4_low, gfx8_high, gfx8_low, \
+           gfx12_high, gfx12_low)                          \
 FF(name,                                                   \
-   /* 4:   */ gen4_high, gen4_low,                         \
-   /* 4.5: */ gen4_high, gen4_low,                         \
-   /* 5:   */ gen4_high, gen4_low,                         \
-   /* 6:   */ gen4_high, gen4_low,                         \
-   /* 7:   */ gen4_high, gen4_low,                         \
-   /* 8:   */ gen8_high, gen8_low,                         \
-   /* 12:  */ gen12_high, gen12_low);
+   /* 4:   */ gfx4_high, gfx4_low,                         \
+   /* 4.5: */ gfx4_high, gfx4_low,                         \
+   /* 5:   */ gfx4_high, gfx4_low,                         \
+   /* 6:   */ gfx4_high, gfx4_low,                         \
+   /* 7:   */ gfx4_high, gfx4_low,                         \
+   /* 8:   */ gfx8_high, gfx8_low,                         \
+   /* 12:  */ gfx12_high, gfx12_low);
 
 /* Macro for fields that gained extra discontiguous MSBs in Gen12 (specified
  * by hi12ex-lo12ex).
@@ -444,8 +444,8 @@ static inline void                                                            \
 brw_inst_set_3src_a1_##reg##_type(const struct gen_device_info *devinfo,      \
                                   brw_inst *inst, enum brw_reg_type type)     \
 {                                                                             \
-   UNUSED enum gen10_align1_3src_exec_type exec_type =                        \
-      (enum gen10_align1_3src_exec_type) brw_inst_3src_a1_exec_type(devinfo,  \
+   UNUSED enum gfx10_align1_3src_exec_type exec_type =                        \
+      (enum gfx10_align1_3src_exec_type) brw_inst_3src_a1_exec_type(devinfo,  \
                                                                     inst);    \
    if (brw_reg_type_is_floating_point(type)) {                                \
       assert(exec_type == BRW_ALIGN1_3SRC_EXEC_TYPE_FLOAT);                   \
@@ -460,8 +460,8 @@ static inline enum brw_reg_type                                               \
 brw_inst_3src_a1_##reg##_type(const struct gen_device_info *devinfo,          \
                               const brw_inst *inst)                           \
 {                                                                             \
-   enum gen10_align1_3src_exec_type exec_type =                               \
-      (enum gen10_align1_3src_exec_type) brw_inst_3src_a1_exec_type(devinfo,  \
+   enum gfx10_align1_3src_exec_type exec_type =                               \
+      (enum gfx10_align1_3src_exec_type) brw_inst_3src_a1_exec_type(devinfo,  \
                                                                     inst);    \
    unsigned hw_type = brw_inst_3src_a1_##reg##_hw_type(devinfo, inst);        \
    return brw_a1_hw_3src_type_to_reg_type(devinfo, hw_type, exec_type);       \
@@ -603,9 +603,9 @@ brw_inst_##name(const struct gen_device_info *devinfo, const brw_inst *inst)  \
    return brw_inst_bits(inst, high, low);                                     \
 }
 
-FJ(gen6_jump_count,  63,  48, devinfo->ver == 6)
-FJ(gen4_jump_count, 111,  96, devinfo->ver < 6)
-FC(gen4_pop_count,  /* 4+ */ 115, 112, /* 12+ */ -1, -1, devinfo->ver < 6)
+FJ(gfx6_jump_count,  63,  48, devinfo->ver == 6)
+FJ(gfx4_jump_count, 111,  96, devinfo->ver < 6)
+FC(gfx4_pop_count,  /* 4+ */ 115, 112, /* 12+ */ -1, -1, devinfo->ver < 6)
 /** @} */
 
 /**
@@ -1354,14 +1354,14 @@ brw_compact_inst_set_bits(brw_compact_inst *inst, unsigned high, unsigned low,
    inst->data = (inst->data & ~mask) | (value << low);
 }
 
-#define FC(name, high, low, gen12_high, gen12_low, assertions)     \
+#define FC(name, high, low, gfx12_high, gfx12_low, assertions)     \
 static inline void                                                 \
 brw_compact_inst_set_##name(const struct gen_device_info *devinfo, \
                             brw_compact_inst *inst, unsigned v)    \
 {                                                                  \
    assert(assertions);                                             \
    if (devinfo->ver >= 12)                                         \
-      brw_compact_inst_set_bits(inst, gen12_high, gen12_low, v);   \
+      brw_compact_inst_set_bits(inst, gfx12_high, gfx12_low, v);   \
    else                                                            \
       brw_compact_inst_set_bits(inst, high, low, v);               \
 }                                                                  \
@@ -1371,7 +1371,7 @@ brw_compact_inst_##name(const struct gen_device_info *devinfo,     \
 {                                                                  \
    assert(assertions);                                             \
    if (devinfo->ver >= 12)                                         \
-      return brw_compact_inst_bits(inst, gen12_high, gen12_low);   \
+      return brw_compact_inst_bits(inst, gfx12_high, gfx12_low);   \
    else                                                            \
       return brw_compact_inst_bits(inst, high, low);               \
 }
@@ -1379,8 +1379,8 @@ brw_compact_inst_##name(const struct gen_device_info *devinfo,     \
 /* A simple macro for fields which stay in the same place on all generations
  * except for Gen12.
  */
-#define F(name, high, low, gen12_high, gen12_low)       \
-   FC(name, high, low, gen12_high, gen12_low, true)
+#define F(name, high, low, gfx12_high, gfx12_low)       \
+   FC(name, high, low, gfx12_high, gfx12_low, true)
 
 F(src1_reg_nr,      /* 4+ */ 63, 56, /* 12+ */ 63, 56)
 F(src0_reg_nr,      /* 4+ */ 55, 48, /* 12+ */ 47, 40)

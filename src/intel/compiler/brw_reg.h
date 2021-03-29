@@ -61,7 +61,7 @@ struct gen_device_info;
 /**
  * First GRF used for the MRF hack.
  *
- * On gen7, MRFs are no longer used, and contiguous GRFs are used instead.  We
+ * On gfx7, MRFs are no longer used, and contiguous GRFs are used instead.  We
  * haven't converted our compiler to be aware of this, so it asks for MRFs and
  * brw_eu_emit.c quietly converts them to be accesses of the top GRFs.  The
  * register allocators have to be careful of this to avoid corrupting the "MRF"s
@@ -418,7 +418,7 @@ brw_reg(enum brw_reg_file file,
    else if (file == BRW_ARCHITECTURE_REGISTER_FILE)
       assert(nr <= BRW_ARF_TIMESTAMP);
    /* Asserting on the MRF register number requires to know the hardware gen
-    * (gen6 has 24 MRF registers), which we don't know here, so we assert
+    * (gfx6 has 24 MRF registers), which we don't know here, so we assert
     * for that in the generators and in brw_eu_emit.c
     */
 

@@ -160,17 +160,17 @@ i915_ioctl_get_param(int fd, unsigned long request, void *arg)
       return 0;
 
    case I915_PARAM_NUM_FENCES_AVAIL:
-      *gp->value = 8; /* gen2/3 value, unused in brw/iris */
+      *gp->value = 8; /* gfx2/3 value, unused in brw/iris */
       return 0;
 
    case I915_PARAM_HAS_BLT:
-      *gp->value = 1; /* gen2/3 value, unused in brw/iris */
+      *gp->value = 1; /* gfx2/3 value, unused in brw/iris */
       return 0;
 
    case I915_PARAM_HAS_BSD:
    case I915_PARAM_HAS_LLC:
    case I915_PARAM_HAS_VEBOX:
-      *gp->value = 0; /* gen2/3 value, unused in brw/iris */
+      *gp->value = 0; /* gfx2/3 value, unused in brw/iris */
       return 0;
 
    case I915_PARAM_HAS_GEM:

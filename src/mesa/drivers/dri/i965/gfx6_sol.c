@@ -36,7 +36,7 @@
 #include "util/u_memory.h"
 
 static void
-gen6_update_sol_surfaces(struct brw_context *brw)
+gfx6_update_sol_surfaces(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
    bool xfb_active = _mesa_is_xfb_active_and_unpaused(ctx);
@@ -80,14 +80,14 @@ gen6_update_sol_surfaces(struct brw_context *brw)
    brw->ctx.NewDriverState |= BRW_NEW_SURFACES;
 }
 
-const struct brw_tracked_state gen6_sol_surface = {
+const struct brw_tracked_state gfx6_sol_surface = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BATCH |
              BRW_NEW_BLORP |
              BRW_NEW_TRANSFORM_FEEDBACK,
    },
-   .emit = gen6_update_sol_surfaces,
+   .emit = gfx6_update_sol_surfaces,
 };
 
 /**
@@ -172,7 +172,7 @@ brw_gs_upload_binding_table(struct brw_context *brw)
    brw->ctx.NewDriverState |= BRW_NEW_BINDING_TABLE_POINTERS;
 }
 
-const struct brw_tracked_state gen6_gs_binding_table = {
+const struct brw_tracked_state gfx6_gs_binding_table = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BATCH |

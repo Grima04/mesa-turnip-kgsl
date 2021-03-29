@@ -25,7 +25,7 @@
 #include "isl_priv.h"
 
 bool
-isl_gen8_choose_msaa_layout(const struct isl_device *dev,
+isl_gfx8_choose_msaa_layout(const struct isl_device *dev,
                             const struct isl_surf_init_info *info,
                             enum isl_tiling tiling,
                             enum isl_msaa_layout *msaa_layout)
@@ -88,7 +88,7 @@ isl_gen8_choose_msaa_layout(const struct isl_device *dev,
 }
 
 void
-isl_gen8_choose_image_alignment_el(const struct isl_device *dev,
+isl_gfx8_choose_image_alignment_el(const struct isl_device *dev,
                                    const struct isl_surf_init_info *restrict info,
                                    enum isl_tiling tiling,
                                    enum isl_dim_layout dim_layout,

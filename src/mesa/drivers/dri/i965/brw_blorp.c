@@ -79,32 +79,32 @@ brw_blorp_init(struct brw_context *brw)
    switch (devinfo->ver) {
    case 4:
       if (devinfo->is_g4x) {
-         brw->blorp.exec = gen45_blorp_exec;
+         brw->blorp.exec = gfx45_blorp_exec;
       } else {
-         brw->blorp.exec = gen4_blorp_exec;
+         brw->blorp.exec = gfx4_blorp_exec;
       }
       break;
    case 5:
-      brw->blorp.exec = gen5_blorp_exec;
+      brw->blorp.exec = gfx5_blorp_exec;
       break;
    case 6:
-      brw->blorp.exec = gen6_blorp_exec;
+      brw->blorp.exec = gfx6_blorp_exec;
       break;
    case 7:
       if (devinfo->is_haswell) {
-         brw->blorp.exec = gen75_blorp_exec;
+         brw->blorp.exec = gfx75_blorp_exec;
       } else {
-         brw->blorp.exec = gen7_blorp_exec;
+         brw->blorp.exec = gfx7_blorp_exec;
       }
       break;
    case 8:
-      brw->blorp.exec = gen8_blorp_exec;
+      brw->blorp.exec = gfx8_blorp_exec;
       break;
    case 9:
-      brw->blorp.exec = gen9_blorp_exec;
+      brw->blorp.exec = gfx9_blorp_exec;
       break;
    case 11:
-      brw->blorp.exec = gen11_blorp_exec;
+      brw->blorp.exec = gfx11_blorp_exec;
       break;
 
    default:
@@ -183,7 +183,7 @@ blorp_surf_for_miptree(struct brw_context *brw,
           (surf->aux_addr.buffer == NULL));
 
    if (!is_render_target && brw->screen->devinfo.ver == 9)
-      gen9_apply_single_tex_astc5x5_wa(brw, mt->format, surf->aux_usage);
+      gfx9_apply_single_tex_astc5x5_wa(brw, mt->format, surf->aux_usage);
 
    /* ISL wants real levels, not offset ones. */
    *level -= mt->first_level;
@@ -657,7 +657,7 @@ try_blorp_blit(struct brw_context *brw,
       break;
    case GL_STENCIL_BUFFER_BIT:
       /* Blorp doesn't support combined depth stencil which is all we have
-       * prior to gen6.
+       * prior to gfx6.
        */
       if (devinfo->ver < 6)
          return false;

@@ -920,7 +920,7 @@ vec4_visitor::move_push_constants_to_pull_constants()
    int pull_constant_loc[this->uniforms];
 
    /* Only allow 32 registers (256 uniform components) as push constants,
-    * which is the limit on gen6.
+    * which is the limit on gfx6.
     *
     * If changing this value, note the limitation about total_regs in
     * brw_curbe.c.
@@ -1304,7 +1304,7 @@ vec4_visitor::opt_register_coalesce()
                   break;
 
                if (devinfo->ver == 6) {
-                  /* gen6 math instructions must have the destination be
+                  /* gfx6 math instructions must have the destination be
                    * VGRF, so no compute-to-MRF for them.
                    */
                   if (scan_inst->is_math()) {
@@ -1812,7 +1812,7 @@ vec4_visitor::setup_uniforms(int reg)
 {
    prog_data->base.dispatch_grf_start_reg = reg;
 
-   /* The pre-gen6 VS requires that some push constants get loaded no
+   /* The pre-gfx6 VS requires that some push constants get loaded no
     * matter what, or the GPU would hang.
     */
    if (devinfo->ver < 6 && this->uniforms == 0) {
@@ -2189,7 +2189,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    unsigned lowered_width = MIN2(16, inst->exec_size);
 
    /* We need to split some cases of double-precision instructions that write
-    * 2 registers. We only need to care about this in gen7 because that is the
+    * 2 registers. We only need to care about this in gfx7 because that is the
     * only hardware that implements fp64 in Align16.
     */
    if (devinfo->ver == 7 && inst->size_written > REG_SIZE) {
@@ -2212,7 +2212,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
             lowered_width = MIN2(lowered_width, 4);
 
          /* Interleaved attribute setups use a vertical stride of 0, which
-          * makes them hit the associated instruction decompression bug in gen7.
+          * makes them hit the associated instruction decompression bug in gfx7.
           * Split them to prevent this.
           */
          if (inst->src[i].file == ATTR &&
@@ -2224,7 +2224,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    /* IvyBridge can manage a maximum of 4 DFs per SIMD4x2 instruction, since
     * it doesn't support compression in Align16 mode, no matter if it has
     * force_writemask_all enabled or disabled (the latter is affected by the
-    * compressed instruction bug in gen7, which is another reason to enforce
+    * compressed instruction bug in gfx7, which is another reason to enforce
     * this limit).
     */
    if (devinfo->ver == 7 && !devinfo->is_haswell &&
@@ -2384,7 +2384,7 @@ scalarize_predicate(brw_predicate predicate, unsigned writemask)
  * handful of additional swizzles natively.
  */
 static bool
-is_gen7_supported_64bit_swizzle(vec4_instruction *inst, unsigned arg)
+is_gfx7_supported_64bit_swizzle(vec4_instruction *inst, unsigned arg)
 {
    switch (inst->src[arg].swizzle) {
    case BRW_SWIZZLE_XXXX:
@@ -2438,7 +2438,7 @@ vec4_visitor::is_supported_64bit_region(vec4_instruction *inst, unsigned arg)
    case BRW_SWIZZLE_YXWZ:
       return true;
    default:
-      return devinfo->ver == 7 && is_gen7_supported_64bit_swizzle(inst, arg);
+      return devinfo->ver == 7 && is_gfx7_supported_64bit_swizzle(inst, arg);
    }
 }
 
@@ -2599,7 +2599,7 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
    hw_reg->width = BRW_WIDTH_2;
 
    if (is_supported_64bit_region(inst, arg) &&
-       !is_gen7_supported_64bit_swizzle(inst, arg)) {
+       !is_gfx7_supported_64bit_swizzle(inst, arg)) {
       /* Supported 64-bit swizzles are those such that their first two
        * components, when expanded to 32-bit swizzles, match the semantics
        * of the original 64-bit swizzle with 2-wide row regioning.
@@ -2614,9 +2614,9 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
        * 1. An unsupported swizzle, which should be single-value thanks to the
        *    scalarization pass.
        *
-       * 2. A gen7 supported swizzle. These can be single-value or double-value
+       * 2. A gfx7 supported swizzle. These can be single-value or double-value
        *    swizzles. If the latter, they are never cross-dvec2 channels. For
-       *    these we always need to activate the gen7 vstride=0 exploit.
+       *    these we always need to activate the gfx7 vstride=0 exploit.
        */
       unsigned swizzle0 = BRW_GET_SWZ(reg.swizzle, 0);
       unsigned swizzle1 = BRW_GET_SWZ(reg.swizzle, 1);
@@ -2631,15 +2631,15 @@ vec4_visitor::apply_logical_swizzle(struct brw_reg *hw_reg,
          swizzle1 -= 2;
       }
 
-      /* All gen7-specific supported swizzles require the vstride=0 exploit */
-      if (devinfo->ver == 7 && is_gen7_supported_64bit_swizzle(inst, arg))
+      /* All gfx7-specific supported swizzles require the vstride=0 exploit */
+      if (devinfo->ver == 7 && is_gfx7_supported_64bit_swizzle(inst, arg))
          hw_reg->vstride = BRW_VERTICAL_STRIDE_0;
 
       /* Any 64-bit source with an offset at 16B is intended to address the
        * second half of a register and needs a vertical stride of 0 so we:
        *
        * 1. Don't violate register region restrictions.
-       * 2. Activate the gen7 instruction decompresion bug exploit when
+       * 2. Activate the gfx7 instruction decompresion bug exploit when
        *    execsize > 4
        */
       if (hw_reg->subnr % REG_SIZE == 16) {

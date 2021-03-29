@@ -26,7 +26,7 @@
 #include "isl_priv.h"
 
 void
-isl_gen12_choose_image_alignment_el(const struct isl_device *dev,
+isl_gfx12_choose_image_alignment_el(const struct isl_device *dev,
                                     const struct isl_surf_init_info *restrict info,
                                     enum isl_tiling tiling,
                                     enum isl_dim_layout dim_layout,
@@ -66,7 +66,7 @@ isl_gen12_choose_image_alignment_el(const struct isl_device *dev,
    } else if (isl_surf_usage_is_stencil(info->usage)) {
       *image_align_el = isl_extent3d(16, 8, 1);
    } else {
-      isl_gen9_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx9_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                          msaa_layout, image_align_el);
    }
 }

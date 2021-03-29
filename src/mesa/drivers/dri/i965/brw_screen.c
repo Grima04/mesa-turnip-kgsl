@@ -2111,22 +2111,22 @@ brw_detect_pipelined_so(struct brw_screen *screen)
 const int*
 brw_supported_msaa_modes(const struct brw_screen  *screen)
 {
-   static const int gen9_modes[] = {16, 8, 4, 2, 0, -1};
-   static const int gen8_modes[] = {8, 4, 2, 0, -1};
-   static const int gen7_modes[] = {8, 4, 0, -1};
-   static const int gen6_modes[] = {4, 0, -1};
-   static const int gen4_modes[] = {0, -1};
+   static const int gfx9_modes[] = {16, 8, 4, 2, 0, -1};
+   static const int gfx8_modes[] = {8, 4, 2, 0, -1};
+   static const int gfx7_modes[] = {8, 4, 0, -1};
+   static const int gfx6_modes[] = {4, 0, -1};
+   static const int gfx4_modes[] = {0, -1};
 
    if (screen->devinfo.ver >= 9) {
-      return gen9_modes;
+      return gfx9_modes;
    } else if (screen->devinfo.ver >= 8) {
-      return gen8_modes;
+      return gfx8_modes;
    } else if (screen->devinfo.ver >= 7) {
-      return gen7_modes;
+      return gfx7_modes;
    } else if (screen->devinfo.ver == 6) {
-      return gen6_modes;
+      return gfx6_modes;
    } else {
-      return gen4_modes;
+      return gfx4_modes;
    }
 }
 
@@ -2354,21 +2354,21 @@ brw_screen_make_configs(__DRIscreen *dri_screen)
       }
 
       if (devinfo->ver >= 9) {
-         static const uint8_t multisample_samples_gen9[] = {2, 4, 8, 16};
-         multisample_samples = multisample_samples_gen9;
-         num_msaa_modes = ARRAY_SIZE(multisample_samples_gen9);
+         static const uint8_t multisample_samples_gfx9[] = {2, 4, 8, 16};
+         multisample_samples = multisample_samples_gfx9;
+         num_msaa_modes = ARRAY_SIZE(multisample_samples_gfx9);
       } else if (devinfo->ver == 8) {
-         static const uint8_t multisample_samples_gen8[] = {2, 4, 8};
-         multisample_samples = multisample_samples_gen8;
-         num_msaa_modes = ARRAY_SIZE(multisample_samples_gen8);
+         static const uint8_t multisample_samples_gfx8[] = {2, 4, 8};
+         multisample_samples = multisample_samples_gfx8;
+         num_msaa_modes = ARRAY_SIZE(multisample_samples_gfx8);
       } else if (devinfo->ver == 7) {
-         static const uint8_t multisample_samples_gen7[] = {4, 8};
-         multisample_samples = multisample_samples_gen7;
-         num_msaa_modes = ARRAY_SIZE(multisample_samples_gen7);
+         static const uint8_t multisample_samples_gfx7[] = {4, 8};
+         multisample_samples = multisample_samples_gfx7;
+         num_msaa_modes = ARRAY_SIZE(multisample_samples_gfx7);
       } else if (devinfo->ver == 6) {
-         static const uint8_t multisample_samples_gen6[] = {4};
-         multisample_samples = multisample_samples_gen6;
-         num_msaa_modes = ARRAY_SIZE(multisample_samples_gen6);
+         static const uint8_t multisample_samples_gfx6[] = {4};
+         multisample_samples = multisample_samples_gfx6;
+         num_msaa_modes = ARRAY_SIZE(multisample_samples_gfx6);
       }
 
       new_configs = driCreateConfigs(formats[i],
@@ -2547,7 +2547,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    screen->no_hw = devinfo->no_hw;
 
    if (devinfo->ver >= 12) {
-      fprintf(stderr, "gen12 and newer are not supported on i965\n");
+      fprintf(stderr, "gfx12 and newer are not supported on i965\n");
       return NULL;
    }
 
@@ -2558,7 +2558,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
 
    if ((INTEL_DEBUG & DEBUG_SHADER_TIME) && devinfo->ver < 7) {
       fprintf(stderr,
-              "shader_time debugging requires gen7 (Ivybridge) or better.\n");
+              "shader_time debugging requires gfx7 (Ivybridge) or better.\n");
       intel_debug &= ~DEBUG_SHADER_TIME;
    }
 

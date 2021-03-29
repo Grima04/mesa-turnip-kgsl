@@ -359,7 +359,7 @@ struct brw_blorp_blit_prog_key
  * \name BLORP internals
  * \{
  *
- * Used internally by gen6_blorp_exec() and gen7_blorp_exec().
+ * Used internally by gfx6_blorp_exec() and gfx7_blorp_exec().
  */
 
 void brw_blorp_init_wm_prog_key(struct brw_wm_prog_key *wm_key);

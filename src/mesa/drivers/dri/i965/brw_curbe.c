@@ -31,11 +31,11 @@
 
 /** @file brw_curbe.c
  *
- * Push constant handling for gen4/5.
+ * Push constant handling for gfx4/5.
  *
  * Push constants are constant values (such as GLSL uniforms) that are
  * pre-loaded into a shader stage's register space at thread spawn time.  On
- * gen4 and gen5, we create a blob in memory containing all the push constants
+ * gfx4 and gfx5, we create a blob in memory containing all the push constants
  * for all the stages in order.  At CMD_CONST_BUFFER time that blob is loaded
  * into URB space as a constant URB entry (CURBE) so that it can be accessed
  * quickly at thread setup time.  Each individual fixed function unit's state
@@ -45,8 +45,8 @@
  * how many CURBEs can be loaded into the hardware at once before a pipeline
  * stall occurs at CMD_CONST_BUFFER time.
  *
- * On gen6+, constant handling becomes a much simpler set of per-unit state.
- * See gen6_upload_vec4_push_constants() in gfx6_vs_state.c for that code.
+ * On gfx6+, constant handling becomes a much simpler set of per-unit state.
+ * See gfx6_upload_vec4_push_constants() in gfx6_vs_state.c for that code.
  */
 
 
@@ -95,7 +95,7 @@ static void calculate_curbe_offsets( struct brw_context *brw )
    total_regs = nr_fp_regs + nr_vp_regs + nr_clip_regs;
 
    /* The CURBE allocation size is limited to 32 512-bit units (128 EU
-    * registers, or 1024 floats).  See CS_URB_STATE in the gen4 or gen5
+    * registers, or 1024 floats).  See CS_URB_STATE in the gfx4 or gfx5
     * (volume 1, part 1) PRMs.
     *
     * Note that in brw_fs.cpp we're only loading up to 16 EU registers of
@@ -295,7 +295,7 @@ brw_upload_constant_buffer(struct brw_context *brw)
     */
 
 emit:
-   /* BRW_NEW_URB_FENCE: From the gen4 PRM, volume 1, section 3.9.8
+   /* BRW_NEW_URB_FENCE: From the gfx4 PRM, volume 1, section 3.9.8
     * (CONSTANT_BUFFER (CURBE Load)):
     *
     *     "Modifying the CS URB allocation via URB_FENCE invalidates any

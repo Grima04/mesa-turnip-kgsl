@@ -63,8 +63,8 @@ class schedule_node : public exec_node
 {
 public:
    schedule_node(backend_instruction *inst, instruction_scheduler *sched);
-   void set_latency_gen4();
-   void set_latency_gen7(bool is_haswell);
+   void set_latency_gfx4();
+   void set_latency_gfx7(bool is_haswell);
 
    backend_instruction *inst;
    schedule_node **children;
@@ -115,7 +115,7 @@ exit_unblocked_time(const schedule_node *n)
 }
 
 void
-schedule_node::set_latency_gen4()
+schedule_node::set_latency_gfx4()
 {
    int chans = 8;
    int math_latency = 22;
@@ -153,7 +153,7 @@ schedule_node::set_latency_gen4()
 }
 
 void
-schedule_node::set_latency_gen7(bool is_haswell)
+schedule_node::set_latency_gfx7(bool is_haswell)
 {
    switch (inst->opcode) {
    case BRW_OPCODE_MAD:
@@ -935,9 +935,9 @@ schedule_node::schedule_node(backend_instruction *inst,
    if (!sched->post_reg_alloc)
       this->latency = 1;
    else if (devinfo->ver >= 6)
-      set_latency_gen7(devinfo->is_haswell);
+      set_latency_gfx7(devinfo->is_haswell);
    else
-      set_latency_gen4();
+      set_latency_gfx4();
 }
 
 void
@@ -1784,7 +1784,7 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
       cand_generation++;
 
       /* Shared resource: the mathbox.  There's one mathbox per EU on Gen6+
-       * but it's more limited pre-gen6, so if we send something off to it then
+       * but it's more limited pre-gfx6, so if we send something off to it then
        * the next math instruction isn't going to make progress until the first
        * is done.
        */

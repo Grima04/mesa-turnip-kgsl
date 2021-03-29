@@ -836,7 +836,7 @@ calculate_pixel_hashing_table(unsigned n, unsigned m,
 
 #if GFX_VER == 11
 static void
-gen11_upload_pixel_hashing_tables(struct iris_batch *batch)
+gfx11_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    assert(devinfo->ppipe_subslices[2] == 0);
@@ -872,7 +872,7 @@ gen11_upload_pixel_hashing_tables(struct iris_batch *batch)
 }
 #elif GFX_VERx10 == 120
 static void
-gen12_upload_pixel_hashing_tables(struct iris_batch *batch)
+gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    /* For each n calculate ppipes_of[n], equal to the number of pixel pipes
@@ -1033,11 +1033,11 @@ iris_init_render_context(struct iris_batch *batch)
       }
    }
 
-   gen11_upload_pixel_hashing_tables(batch);
+   gfx11_upload_pixel_hashing_tables(batch);
 #endif
 
 #if GFX_VERx10 == 120
-   gen12_upload_pixel_hashing_tables(batch);
+   gfx12_upload_pixel_hashing_tables(batch);
 #endif
 
    /* 3DSTATE_DRAWING_RECTANGLE is non-pipelined, so we want to avoid
@@ -2787,7 +2787,7 @@ iris_set_shader_images(struct pipe_context *ctx,
 
          enum isl_format isl_fmt = iris_image_view_get_format(ice, img);
 
-         /* Render compression with images supported on gen12+ only. */
+         /* Render compression with images supported on gfx12+ only. */
          unsigned aux_usages = GFX_VER >= 12 ? res->aux.possible_usages :
             1 << ISL_AUX_USAGE_NONE;
 
@@ -4581,7 +4581,7 @@ iris_store_cs_state(const struct gen_device_info *devinfo,
        * preemption.
        *
        * We still have issues with mid-thread preemption (it was already
-       * disabled by the kernel on gen11, due to missing workarounds). It's
+       * disabled by the kernel on gfx11, due to missing workarounds). It's
        * possible that we are just missing some workarounds, and could enable
        * it later, but for now let's disable it to fix a GPU in compute in Car
        * Chase (and possibly more).
@@ -4745,8 +4745,8 @@ update_clear_value(struct iris_context *ice,
    UNUSED struct isl_device *isl_dev = &batch->screen->isl_dev;
    UNUSED unsigned aux_modes = all_aux_modes;
 
-   /* We only need to update the clear color in the surface state for gen8 and
-    * gen9. Newer gens can read it directly from the clear color state buffer.
+   /* We only need to update the clear color in the surface state for gfx8 and
+    * gfx9. Newer gens can read it directly from the clear color state buffer.
     */
 #if GFX_VER == 9
    /* Skip updating the ISL_AUX_USAGE_NONE surface state */
@@ -6824,7 +6824,7 @@ iris_upload_compute_walker(struct iris_context *ice,
 
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
-         /* TODO: Enable gen12-hp scratch support*/
+         /* TODO: Enable gfx12-hp scratch support*/
          assert(prog_data->total_scratch == 0);
 
          cfe.MaximumNumberofThreads =
@@ -7802,7 +7802,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
  * We don't put this in the vtable because it's only used on Gen9.
  */
 void
-gen9_toggle_preemption(struct iris_context *ice,
+gfx9_toggle_preemption(struct iris_context *ice,
                        struct iris_batch *batch,
                        const struct pipe_draw_info *draw)
 {

@@ -46,7 +46,7 @@ clamp_int64(int64_t x, int64_t min, int64_t max)
 }
 
 void
-gen7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
+gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
    uint32_t count = cmd_buffer->state.gfx.dynamic.scissor.count;
@@ -165,9 +165,9 @@ void genX(CmdBindIndexBuffer)(
    cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_INDEX_BUFFER;
    if (GFX_VERx10 == 75)
       cmd_buffer->state.restart_index = restart_index_for_type(indexType);
-   cmd_buffer->state.gfx.gen7.index_buffer = buffer;
-   cmd_buffer->state.gfx.gen7.index_type = vk_to_gen_index_type(indexType);
-   cmd_buffer->state.gfx.gen7.index_offset = offset;
+   cmd_buffer->state.gfx.gfx7.index_buffer = buffer;
+   cmd_buffer->state.gfx.gfx7.index_type = vk_to_gen_index_type(indexType);
+   cmd_buffer->state.gfx.gfx7.index_offset = offset;
 }
 
 static uint32_t
@@ -225,7 +225,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       };
       GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);
 
-      anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gen7.sf);
+      anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gfx7.sf);
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_BLEND_CONSTANTS |
@@ -297,7 +297,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
       struct anv_state ds_state =
          anv_cmd_buffer_merge_dynamic(cmd_buffer, depth_stencil_dw,
-                                      pipeline->gen7.depth_stencil_state,
+                                      pipeline->gfx7.depth_stencil_state,
                                       GENX(DEPTH_STENCIL_STATE_length), 64);
 
       anv_batch_emit(&cmd_buffer->batch,
@@ -306,11 +306,11 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       }
    }
 
-   if (cmd_buffer->state.gfx.gen7.index_buffer &&
+   if (cmd_buffer->state.gfx.gfx7.index_buffer &&
        cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
                                       ANV_CMD_DIRTY_INDEX_BUFFER)) {
-      struct anv_buffer *buffer = cmd_buffer->state.gfx.gen7.index_buffer;
-      uint32_t offset = cmd_buffer->state.gfx.gen7.index_offset;
+      struct anv_buffer *buffer = cmd_buffer->state.gfx.gfx7.index_buffer;
+      uint32_t offset = cmd_buffer->state.gfx.gfx7.index_offset;
 
 #if GFX_VERx10 == 75
       anv_batch_emit(&cmd_buffer->batch, GFX75_3DSTATE_VF, vf) {
@@ -323,7 +323,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 #if GFX_VERx10 != 75
          ib.CutIndexEnable        = pipeline->primitive_restart;
 #endif
-         ib.IndexFormat           = cmd_buffer->state.gfx.gen7.index_type;
+         ib.IndexFormat           = cmd_buffer->state.gfx.gfx7.index_type;
          ib.MOCS                  = anv_mocs(cmd_buffer->device,
                                              buffer->address.bo,
                                              ISL_SURF_USAGE_INDEX_BUFFER_BIT);
@@ -359,5 +359,5 @@ void
 genX(cmd_buffer_enable_pma_fix)(struct anv_cmd_buffer *cmd_buffer,
                                 bool enable)
 {
-   /* The NP PMA fix doesn't exist on gen7 */
+   /* The NP PMA fix doesn't exist on gfx7 */
 }

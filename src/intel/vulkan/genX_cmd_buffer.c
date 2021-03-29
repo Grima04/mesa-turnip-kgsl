@@ -93,7 +93,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
     *  mode by putting the pipeline temporarily in 3D mode.
     */
-   uint32_t gen12_wa_pipeline = cmd_buffer->state.current_pipeline;
+   uint32_t gfx12_wa_pipeline = cmd_buffer->state.current_pipeline;
    genX(flush_pipeline_select_3d)(cmd_buffer);
 #endif
 
@@ -145,7 +145,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       sba.DynamicStateBufferSizeModifyEnable    = true;
       sba.InstructionBuffersizeModifyEnable     = true;
 #  else
-      /* On gen7, we have upper bounds instead.  According to the docs,
+      /* On gfx7, we have upper bounds instead.  According to the docs,
        * setting an upper bound of zero means that no bounds checking is
        * performed so, in theory, we should be able to leave them zero.
        * However, border color is broken and the GPU bounds-checks anyway.
@@ -189,8 +189,8 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
     *
     *  Put the pipeline back into its current mode.
     */
-   if (gen12_wa_pipeline != UINT32_MAX)
-      genX(flush_pipeline_select)(cmd_buffer, gen12_wa_pipeline);
+   if (gfx12_wa_pipeline != UINT32_MAX)
+      genX(flush_pipeline_select)(cmd_buffer, gfx12_wa_pipeline);
 #endif
 
    /* After re-setting the surface state base address, we have to do some
@@ -399,7 +399,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
                           float depth_clear_value,
                           VkRect2D render_area)
 {
-   /* We don't do any HiZ or depth fast-clears on gen7 yet */
+   /* We don't do any HiZ or depth fast-clears on gfx7 yet */
    if (GFX_VER == 7)
       return false;
 
@@ -432,9 +432,9 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
    if (depth_clear_value != ANV_HZ_FC_VAL)
       return false;
 
-   /* Only gen9+ supports returning ANV_HZ_FC_VAL when sampling a fast-cleared
+   /* Only gfx9+ supports returning ANV_HZ_FC_VAL when sampling a fast-cleared
     * portion of a HiZ buffer. Testing has revealed that Gen8 only supports
-    * returning 0.0f. Gens prior to gen8 do not support this feature at all.
+    * returning 0.0f. Gens prior to gfx8 do not support this feature at all.
     */
    if (GFX_VER == 8 && anv_can_sample_with_hiz(&device->info, iview->image))
       return false;
@@ -637,7 +637,7 @@ transition_stencil_buffer(struct anv_cmd_buffer *cmd_buffer,
    uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                               VK_IMAGE_ASPECT_STENCIL_BIT);
 
-   /* On gen7, we have to store a texturable version of the stencil buffer in
+   /* On gfx7, we have to store a texturable version of the stencil buffer in
     * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
     * forth at strategic points. Stencil writes are only allowed in following
     * layouts:
@@ -869,7 +869,7 @@ anv_cmd_simple_resolve_predicate(struct anv_cmd_buffer *cmd_buffer,
    if (level > 0 || array_layer > 0)
       return;
 
-   /* On gen8, we don't have a concept of default clear colors because we
+   /* On gfx8, we don't have a concept of default clear colors because we
     * can't sample from CCS surfaces.  It's enough to just load the fast clear
     * state into the predicate register.
     */
@@ -1042,7 +1042,7 @@ genX(copy_fast_clear_dwords)(struct anv_cmd_buffer *cmd_buffer,
    unsigned copy_size = cmd_buffer->device->isl_dev.ss.clear_value_size;
 
 #if GFX_VER == 7
-   /* On gen7, the combination of commands used here(MI_LOAD_REGISTER_MEM
+   /* On gfx7, the combination of commands used here(MI_LOAD_REGISTER_MEM
     * and MI_STORE_REGISTER_MEM) can cause GPU hangs if any rendering is
     * in-flight when they are issued even if the memory touched is not
     * currently active for rendering.  The weird bit is that it is not the
@@ -1612,9 +1612,9 @@ genX(BeginCommandBuffer)(
     * blorp at least once per primary command buffer so it shouldn't be
     * wasted.
     *
-    * There is also a workaround on gen8 which requires us to invalidate the
+    * There is also a workaround on gfx8 which requires us to invalidate the
     * VF cache occasionally.  It's easier if we can assume we start with a
-    * fresh cache (See also genX(cmd_buffer_set_binding_for_gen8_vb_flush).)
+    * fresh cache (See also genX(cmd_buffer_set_binding_for_gfx8_vb_flush).)
     */
    cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_VF_CACHE_INVALIDATE_BIT;
 
@@ -2197,7 +2197,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
        *    prior to the PIPE_CONTROL with VF Cache Invalidation Enable set to
        *    a 1."
        *
-       * This appears to hang Broadwell, so we restrict it to just gen9.
+       * This appears to hang Broadwell, so we restrict it to just gfx9.
        */
       if (GFX_VER == 9 && (bits & ANV_PIPE_VF_CACHE_INVALIDATE_BIT))
          anv_batch_emit(&cmd_buffer->batch, GENX(PIPE_CONTROL), pipe);
@@ -3317,7 +3317,7 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
 
    GENX(3DSTATE_CLIP_pack)(NULL, dwords, &clip);
    anv_batch_emit_merge(&cmd_buffer->batch, dwords,
-                        pipeline->gen7.clip);
+                        pipeline->gfx7.clip);
 }
 
 void
@@ -3407,7 +3407,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
          }
 
 #if GFX_VER >= 8 && GFX_VER <= 9
-         genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer, vb,
+         genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer, vb,
                                                         state.BufferStartingAddress,
                                                         state.BufferSize);
 #endif
@@ -3455,7 +3455,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                 * we trust in SurfaceEndAddress = SurfaceBaseAddress = 0 (the
                 * default for an empty SO_BUFFER packet) to disable them.
                 */
-               sob.SurfacePitch = pipeline->gen7.xfb_bo_pitch[idx];
+               sob.SurfacePitch = pipeline->gfx7.xfb_bo_pitch[idx];
                sob.SurfaceEndAddress = anv_address_add(xfb->buffer->address,
                                                        xfb->offset + xfb->size);
 #endif
@@ -3537,17 +3537,17 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer_emit_clip(cmd_buffer);
 
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_VIEWPORT)
-      gen8_cmd_buffer_emit_viewport(cmd_buffer);
+      gfx8_cmd_buffer_emit_viewport(cmd_buffer);
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_VIEWPORT |
                                   ANV_CMD_DIRTY_PIPELINE)) {
-      gen8_cmd_buffer_emit_depth_viewport(cmd_buffer,
+      gfx8_cmd_buffer_emit_depth_viewport(cmd_buffer,
                                           pipeline->depth_clamp_enable);
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_DYNAMIC_SCISSOR |
                                       ANV_CMD_DIRTY_RENDER_TARGETS))
-      gen7_cmd_buffer_emit_scissor(cmd_buffer);
+      gfx7_cmd_buffer_emit_scissor(cmd_buffer);
 
    genX(cmd_buffer_flush_dynamic_state)(cmd_buffer);
 }
@@ -3577,7 +3577,7 @@ emit_vertex_bo(struct anv_cmd_buffer *cmd_buffer,
 #endif
       });
 
-   genX(cmd_buffer_set_binding_for_gen8_vb_flush)(cmd_buffer,
+   genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(cmd_buffer,
                                                   index, addr, size);
 }
 
@@ -3627,7 +3627,7 @@ emit_draw_index(struct anv_cmd_buffer *cmd_buffer, uint32_t draw_index)
 }
 
 static void
-update_dirty_vbs_for_gen8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
+update_dirty_vbs_for_gfx8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
                                    uint32_t access_type)
 {
    struct anv_graphics_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
@@ -3640,7 +3640,7 @@ update_dirty_vbs_for_gen8_vb_flush(struct anv_cmd_buffer *cmd_buffer,
    if (vs_prog_data->uses_drawid)
       vb_used |= 1ull << ANV_DRAWID_VB_INDEX;
 
-   genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)(cmd_buffer,
+   genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(cmd_buffer,
                                                        access_type == RANDOM,
                                                        vb_used);
 }
@@ -3700,7 +3700,7 @@ void genX(CmdDraw)(
       prim.BaseVertexLocation       = 0;
    }
 
-   update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
+   update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 }
 
 void genX(CmdDrawIndexed)(
@@ -3760,7 +3760,7 @@ void genX(CmdDrawIndexed)(
       prim.BaseVertexLocation       = vertexOffset;
    }
 
-   update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
+   update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 }
 
 /* Auto-Draw / Indirect Registers */
@@ -3837,7 +3837,7 @@ void genX(CmdDrawIndirectByteCountEXT)(
       prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
    }
 
-   update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
+   update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 #endif /* GFX_VERx10 >= 75 */
 }
 
@@ -3922,7 +3922,7 @@ void genX(CmdDrawIndirect)(
          prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
-      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
+      update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
       offset += stride;
    }
@@ -3972,7 +3972,7 @@ void genX(CmdDrawIndexedIndirect)(
          prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
-      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
+      update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
       offset += stride;
    }
@@ -4125,7 +4125,7 @@ void genX(CmdDrawIndirectCount)(
          prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
-      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, SEQUENTIAL);
+      update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, SEQUENTIAL);
 
       offset += stride;
    }
@@ -4197,7 +4197,7 @@ void genX(CmdDrawIndexedIndirectCount)(
          prim.PrimitiveTopologyType    = cmd_buffer->state.gfx.primitive_topology;
       }
 
-      update_dirty_vbs_for_gen8_vb_flush(cmd_buffer, RANDOM);
+      update_dirty_vbs_for_gfx8_vb_flush(cmd_buffer, RANDOM);
 
       offset += stride;
    }
@@ -4822,7 +4822,7 @@ genX(flush_pipeline_select_gpgpu)(struct anv_cmd_buffer *cmd_buffer)
 }
 
 void
-genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
+genX(cmd_buffer_emit_gfx7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
 {
    if (GFX_VER >= 8)
       return;
@@ -4865,7 +4865,7 @@ genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
  * bindings and flushing if the cache ever ends up with a range in the cache
  * that would exceed 4 GiB.  This is implemented in three parts:
  *
- *    1. genX(cmd_buffer_set_binding_for_gen8_vb_flush)() which must be called
+ *    1. genX(cmd_buffer_set_binding_for_gfx8_vb_flush)() which must be called
  *       every time a 3DSTATE_VERTEX_BUFFER packet is emitted and informs the
  *       tracking code of the new binding.  If this new binding would cause
  *       the cache to have a too-large range on the next draw call, a pipeline
@@ -4874,14 +4874,14 @@ genX(cmd_buffer_emit_gen7_depth_flush)(struct anv_cmd_buffer *cmd_buffer)
  *    2. genX(cmd_buffer_apply_pipe_flushes)() resets the cache tracking to
  *       empty whenever we emit a VF invalidate.
  *
- *    3. genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)() must be called
+ *    3. genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)() must be called
  *       after every 3DPRIMITIVE and copies the bound range into the dirty
  *       range for each used buffer.  This has to be a separate step because
  *       we don't always re-bind all buffers and so 1. can't know which
  *       buffers are actually bound.
  */
 void
-genX(cmd_buffer_set_binding_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer,
+genX(cmd_buffer_set_binding_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer,
                                                int vb_index,
                                                struct anv_address vb_address,
                                                uint32_t vb_size)
@@ -4930,7 +4930,7 @@ genX(cmd_buffer_set_binding_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer
 }
 
 void
-genX(cmd_buffer_update_dirty_vbs_for_gen8_vb_flush)(struct anv_cmd_buffer *cmd_buffer,
+genX(cmd_buffer_update_dirty_vbs_for_gfx8_vb_flush)(struct anv_cmd_buffer *cmd_buffer,
                                                     uint32_t access_type,
                                                     uint64_t vb_used)
 {
@@ -5066,7 +5066,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
 
    /* FIXME: Width and Height are wrong */
 
-   genX(cmd_buffer_emit_gen7_depth_flush)(cmd_buffer);
+   genX(cmd_buffer_emit_gfx7_depth_flush)(cmd_buffer);
 
    uint32_t *dw = anv_batch_emit_dwords(&cmd_buffer->batch,
                                         device->isl_dev.ds.size / 4);
@@ -5208,7 +5208,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
     * different views.  If the client asks for instancing, we need to use the
     * Instance Data Step Rate to ensure that we repeat the client's
     * per-instance data once for each view.  Since this bit is in
-    * VERTEX_BUFFER_STATE on gen7, we need to dirty vertex buffers at the top
+    * VERTEX_BUFFER_STATE on gfx7, we need to dirty vertex buffers at the top
     * of each subpass.
     */
    if (GFX_VER == 7)
@@ -5874,7 +5874,7 @@ cmd_buffer_end_subpass(struct anv_cmd_buffer *cmd_buffer)
    }
 
 #if GFX_VER == 7
-   /* On gen7, we have to store a texturable version of the stencil buffer in
+   /* On gfx7, we have to store a texturable version of the stencil buffer in
     * a shadow whenever VK_IMAGE_USAGE_SAMPLED_BIT is set and copy back and
     * forth at strategic points. Stencil writes are only allowed in following
     * layouts:
@@ -6221,7 +6221,7 @@ void genX(CmdWaitEvents)(
       }
    }
 #else
-   anv_finishme("Implement events on gen7");
+   anv_finishme("Implement events on gfx7");
 #endif
 
    genX(CmdPipelineBarrier)(commandBuffer, srcStageMask, destStageMask,

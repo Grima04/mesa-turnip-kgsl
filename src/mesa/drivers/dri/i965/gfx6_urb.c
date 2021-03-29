@@ -47,7 +47,7 @@
  * (See the Sandybridge PRM, Volume 2, Part 1, Section 1.4.7: 3DSTATE_URB.)
  */
 void
-gen6_upload_urb(struct brw_context *brw, unsigned vs_size,
+gfx6_upload_urb(struct brw_context *brw, unsigned vs_size,
                 bool gs_present, unsigned gs_size)
 {
    int nr_vs_entries, nr_gs_entries;
@@ -136,10 +136,10 @@ upload_urb(struct brw_context *brw)
       assert(gs_size >= 1);
    }
 
-   gen6_upload_urb(brw, vs_size, gs_present, gs_size);
+   gfx6_upload_urb(brw, vs_size, gs_present, gs_size);
 }
 
-const struct brw_tracked_state gen6_urb = {
+const struct brw_tracked_state gfx6_urb = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BLORP |

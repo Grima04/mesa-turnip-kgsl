@@ -63,7 +63,7 @@ brw_query_samples_for_format(struct gl_context *ctx, GLenum target,
           *  internalformat is RGBA16F, R32F, RG32F, or RGBA32F."
           *
           * In brw_render_target_supported, we prevent formats with a size
-          * greater than 8 bytes from using 8x MSAA on gen7.
+          * greater than 8 bytes from using 8x MSAA on gfx7.
           */
          samples[0] = 4;
          return 1;

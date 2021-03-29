@@ -281,9 +281,9 @@ public:
 
    enum brw_urb_write_flags urb_write_flags;
 
-   unsigned sol_binding; /**< gen6: SOL binding table index */
-   bool sol_final_write; /**< gen6: send commit message */
-   unsigned sol_vertex; /**< gen6: used for setting dst index in SVB header */
+   unsigned sol_binding; /**< gfx6: SOL binding table index */
+   bool sol_final_write; /**< gfx6: send commit message */
+   unsigned sol_vertex; /**< gfx6: used for setting dst index in SVB header */
 
    bool is_send_from_grf() const;
    unsigned size_read(unsigned arg) const;

@@ -30,7 +30,7 @@
  * for the standard tiling formats Yf and Ys.
  */
 static void
-gen9_calc_std_image_alignment_sa(const struct isl_device *dev,
+gfx9_calc_std_image_alignment_sa(const struct isl_device *dev,
                                  const struct isl_surf_init_info *restrict info,
                                  enum isl_tiling tiling,
                                  enum isl_msaa_layout msaa_layout,
@@ -97,7 +97,7 @@ gen9_calc_std_image_alignment_sa(const struct isl_device *dev,
 }
 
 void
-isl_gen9_choose_image_alignment_el(const struct isl_device *dev,
+isl_gfx9_choose_image_alignment_el(const struct isl_device *dev,
                                    const struct isl_surf_init_info *restrict info,
                                    enum isl_tiling tiling,
                                    enum isl_dim_layout dim_layout,
@@ -167,7 +167,7 @@ isl_gen9_choose_image_alignment_el(const struct isl_device *dev,
 
    if (isl_tiling_is_std_y(tiling)) {
       struct isl_extent3d image_align_sa;
-      gen9_calc_std_image_alignment_sa(dev, info, tiling, msaa_layout,
+      gfx9_calc_std_image_alignment_sa(dev, info, tiling, msaa_layout,
                                      &image_align_sa);
 
       *image_align_el = isl_extent3d_sa_to_el(info->format, image_align_sa);
@@ -196,6 +196,6 @@ isl_gen9_choose_image_alignment_el(const struct isl_device *dev,
       return;
    }
 
-   isl_gen8_choose_image_alignment_el(dev, info, tiling, dim_layout,
+   isl_gfx8_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                       msaa_layout, image_align_el);
 }

@@ -395,7 +395,7 @@ oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
    }
 
    if (devinfo->ver >= 8) {
-      /* 4.13+ api required for gen8 - gen9 */
+      /* 4.13+ api required for gfx8 - gfx9 */
       int mask;
       struct drm_i915_getparam gp = {
          .param = I915_PARAM_SLICE_MASK,

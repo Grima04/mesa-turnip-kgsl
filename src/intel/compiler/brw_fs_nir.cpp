@@ -1030,8 +1030,8 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
        *
        * But if we want to use that opcode, we need to provide support on
        * different optimizations and lowerings. As right now HF support is
-       * only for gen8+, it will be better to use directly the MOV, and use
-       * BRW_OPCODE_F32TO16 when/if we work for HF support on gen7.
+       * only for gfx8+, it will be better to use directly the MOV, and use
+       * BRW_OPCODE_F32TO16 when/if we work for HF support on gfx7.
        */
       assert(type_sz(op[0].type) < 8); /* brw_nir_lower_conversions */
       inst = bld.MOV(result, op[0]);
@@ -1895,7 +1895,7 @@ fs_visitor::nir_emit_load_const(const fs_builder &bld,
    case 64:
       assert(devinfo->ver >= 7);
       if (devinfo->ver == 7) {
-         /* We don't get 64-bit integer types until gen8 */
+         /* We don't get 64-bit integer types until gfx8 */
          for (unsigned i = 0; i < instr->def.num_components; i++) {
             bld.MOV(retype(offset(reg, bld, i), BRW_REGISTER_TYPE_DF),
                     setup_imm_df(bld, instr->value[i].f64));
@@ -1933,7 +1933,7 @@ fs_visitor::get_nir_src(const nir_src &src)
    }
 
    if (nir_src_bit_size(src) == 64 && devinfo->ver == 7) {
-      /* The only 64-bit type available on gen7 is DF, so use that. */
+      /* The only 64-bit type available on gfx7 is DF, so use that. */
       reg.type = BRW_REGISTER_TYPE_DF;
    } else {
       /* To avoid floating-point denorm flushing problems, set the type by
@@ -1951,8 +1951,8 @@ fs_visitor::get_nir_src(const nir_src &src)
  * Return an IMM for constants; otherwise call get_nir_src() as normal.
  *
  * This function should not be called on any value which may be 64 bits.
- * We could theoretically support 64-bit on gen8+ but we choose not to
- * because it wouldn't work in general (no gen7 support) and there are
+ * We could theoretically support 64-bit on gfx8+ but we choose not to
+ * because it wouldn't work in general (no gfx7 support) and there are
  * enough restrictions in 64-bit immediates that you can't take the return
  * value and treat it the same as the result of get_nir_src().
  */
@@ -5187,9 +5187,9 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const fs_reg tmp = bld.vgrf(value.type);
       if (devinfo->ver <= 7) {
          /* The hardware doesn't seem to support these crazy regions with
-          * compressed instructions on gen7 and earlier so we fall back to
+          * compressed instructions on gfx7 and earlier so we fall back to
           * using quad swizzles.  Fortunately, we don't support 64-bit
-          * anything in Vulkan on gen7.
+          * anything in Vulkan on gfx7.
           */
          assert(nir_src_bit_size(instr->src[0]) == 32);
          const fs_builder ubld = bld.exec_all();
@@ -6033,7 +6033,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       inst->shadow_compare = true;
 
    if (instr->op == nir_texop_tg4 && devinfo->ver == 6)
-      emit_gen6_gather_wa(key_tex->gen6_gather_wa[texture], dst);
+      emit_gfx6_gather_wa(key_tex->gfx6_gather_wa[texture], dst);
 
    fs_reg nir_dest[5];
    for (unsigned i = 0; i < dest_size; i++)
@@ -6203,7 +6203,7 @@ setup_imm_df(const fs_builder &bld, double v)
    if (devinfo->ver >= 8)
       return brw_imm_df(v);
 
-   /* gen7.5 does not support DF immediates straighforward but the DIM
+   /* gfx7.5 does not support DF immediates straighforward but the DIM
     * instruction allows to set the 64-bit immediate value.
     */
    if (devinfo->is_haswell) {
@@ -6213,13 +6213,13 @@ setup_imm_df(const fs_builder &bld, double v)
       return component(dst, 0);
    }
 
-   /* gen7 does not support DF immediates, so we generate a 64-bit constant by
+   /* gfx7 does not support DF immediates, so we generate a 64-bit constant by
     * writing the low 32-bit of the constant to suboffset 0 of a VGRF and
     * the high 32-bit to suboffset 4 and then applying a stride of 0.
     *
     * Alternatively, we could also produce a normal VGRF (without stride 0)
     * by writing to all the channels in the VGRF, however, that would hit the
-    * gen7 bug where we have to split writes that span more than 1 register
+    * gfx7 bug where we have to split writes that span more than 1 register
     * into instructions with a width of 4 (otherwise the write to the second
     * register written runs into an execmask hardware bug) which isn't very
     * nice.

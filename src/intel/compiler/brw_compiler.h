@@ -179,7 +179,7 @@ brw_shader_stage_is_bindless(gl_shader_stage stage)
  *  @{
  */
 
-enum PACKED gen6_gather_sampler_wa {
+enum PACKED gfx6_gather_sampler_wa {
    WA_SIGN = 1,      /* whether we need to sign extend */
    WA_8BIT = 2,      /* if we have an 8bit format needing wa */
    WA_16BIT = 4,     /* if we have a 16bit format needing wa */
@@ -216,7 +216,7 @@ struct brw_sampler_prog_key_data {
    /**
     * For Sandybridge, which shader w/a we need for gather quirks.
     */
-   enum gen6_gather_sampler_wa gen6_gather_wa[MAX_SAMPLERS];
+   enum gfx6_gather_sampler_wa gfx6_gather_wa[MAX_SAMPLERS];
 
    /**
     * Texture units that have a YUV image bound.
@@ -575,7 +575,7 @@ struct brw_image_param {
 #define BRW_MAX_SOL_BINDINGS 64
 
 /**
- * Binding table index for the first gen6 SOL binding.
+ * Binding table index for the first gfx6 SOL binding.
  */
 #define BRW_GEN6_SOL_BINDING_START 0
 
@@ -852,7 +852,7 @@ struct brw_wm_prog_data {
 
    /**
     * Mask of which interpolation modes are required by the fragment shader.
-    * Used in hardware setup on gen6+.
+    * Used in hardware setup on gfx6+.
     */
    uint32_t barycentric_interp_modes;
 
@@ -1054,8 +1054,8 @@ typedef enum
 /**
  * We always program SF to start reading at an offset of 1 (2 varying slots)
  * from the start of the vertex URB entry.  This causes it to skip:
- * - VARYING_SLOT_PSIZ and BRW_VARYING_SLOT_NDC on gen4-5
- * - VARYING_SLOT_PSIZ and VARYING_SLOT_POS on gen6+
+ * - VARYING_SLOT_PSIZ and BRW_VARYING_SLOT_NDC on gfx4-5
+ * - VARYING_SLOT_PSIZ and VARYING_SLOT_POS on gfx6+
  */
 #define BRW_SF_URB_ENTRY_READ_OFFSET 1
 

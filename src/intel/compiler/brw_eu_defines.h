@@ -157,14 +157,14 @@ enum PACKED brw_horizontal_stride {
    BRW_HORIZONTAL_STRIDE_4 = 3,
 };
 
-enum PACKED gen10_align1_3src_src_horizontal_stride {
+enum PACKED gfx10_align1_3src_src_horizontal_stride {
    BRW_ALIGN1_3SRC_SRC_HORIZONTAL_STRIDE_0 = 0,
    BRW_ALIGN1_3SRC_SRC_HORIZONTAL_STRIDE_1 = 1,
    BRW_ALIGN1_3SRC_SRC_HORIZONTAL_STRIDE_2 = 2,
    BRW_ALIGN1_3SRC_SRC_HORIZONTAL_STRIDE_4 = 3,
 };
 
-enum PACKED gen10_align1_3src_dst_horizontal_stride {
+enum PACKED gfx10_align1_3src_dst_horizontal_stride {
    BRW_ALIGN1_3SRC_DST_HORIZONTAL_STRIDE_1 = 0,
    BRW_ALIGN1_3SRC_DST_HORIZONTAL_STRIDE_2 = 1,
 };
@@ -610,7 +610,7 @@ enum opcode {
 
    /**
     * Write geometry shader output data to the URB and request a new URB
-    * handle (gen6).
+    * handle (gfx6).
     *
     * This opcode doesn't do an implied move from R0 to the first MRF.
     */
@@ -690,7 +690,7 @@ enum opcode {
    GS_OPCODE_GET_INSTANCE_ID,
 
    /**
-    * Send a FF_SYNC message to allocate initial URB handles (gen6).
+    * Send a FF_SYNC message to allocate initial URB handles (gfx6).
     *
     * - dst will be used as the writeback register for the FF_SYNC operation.
     *
@@ -709,7 +709,7 @@ enum opcode {
    GS_OPCODE_FF_SYNC,
 
    /**
-    * Move r0.1 (which holds PrimitiveID information in gen6) to a separate
+    * Move r0.1 (which holds PrimitiveID information in gfx6) to a separate
     * register.
     *
     * - dst is the GRF where PrimitiveID information will be moved.
@@ -718,7 +718,7 @@ enum opcode {
 
    /**
     * Write transform feedback data to the SVB by sending a SVB WRITE message.
-    * Used in gen6.
+    * Used in gfx6.
     *
     * - dst is the MRF register containing the message header.
     *
@@ -730,7 +730,7 @@ enum opcode {
 
    /**
     * Set destination index in the SVB write message payload (M0.5). Used
-    * in gen6 for transform feedback.
+    * in gfx6 for transform feedback.
     *
     * - dst is the header to save the destination indices for SVB WRITE.
     * - src is the register that holds the destination indices value.
@@ -739,7 +739,7 @@ enum opcode {
 
    /**
     * Prepare Mx.0 subregister for being used in the FF_SYNC message header.
-    * Used in gen6 for transform feedback.
+    * Used in gfx6 for transform feedback.
     *
     * - dst will hold the register with the final Mx.0 value.
     *
@@ -987,7 +987,7 @@ enum PACKED brw_reg_file {
    BAD_FILE,
 };
 
-enum PACKED gen10_align1_3src_reg_file {
+enum PACKED gfx10_align1_3src_reg_file {
    BRW_ALIGN1_3SRC_GENERAL_REGISTER_FILE = 0,
    BRW_ALIGN1_3SRC_IMMEDIATE_VALUE       = 1, /* src0, src2 */
    BRW_ALIGN1_3SRC_ACCUMULATOR           = 1, /* dest, src1 */
@@ -998,7 +998,7 @@ enum PACKED gen10_align1_3src_reg_file {
  * on float or integer types. The register arguments have fields that offer
  * more fine control their respective types.
  */
-enum PACKED gen10_align1_3src_exec_type {
+enum PACKED gfx10_align1_3src_exec_type {
    BRW_ALIGN1_3SRC_EXEC_TYPE_INT   = 0,
    BRW_ALIGN1_3SRC_EXEC_TYPE_FLOAT = 1,
 };
@@ -1041,7 +1041,7 @@ enum PACKED brw_vertical_stride {
    BRW_VERTICAL_STRIDE_ONE_DIMENSIONAL = 0xF,
 };
 
-enum PACKED gen10_align1_3src_vertical_stride {
+enum PACKED gfx10_align1_3src_vertical_stride {
    BRW_ALIGN1_3SRC_VERTICAL_STRIDE_0 = 0,
    BRW_ALIGN1_3SRC_VERTICAL_STRIDE_1 = 1,
    BRW_ALIGN1_3SRC_VERTICAL_STRIDE_2 = 1,
@@ -1530,8 +1530,8 @@ enum brw_message_target {
 #define BRW_MATH_FUNCTION_RSQ                              5
 #define BRW_MATH_FUNCTION_SIN                              6
 #define BRW_MATH_FUNCTION_COS                              7
-#define BRW_MATH_FUNCTION_SINCOS                           8 /* gen4, gen5 */
-#define BRW_MATH_FUNCTION_FDIV                             9 /* gen6+ */
+#define BRW_MATH_FUNCTION_SINCOS                           8 /* gfx4, gfx5 */
+#define BRW_MATH_FUNCTION_FDIV                             9 /* gfx6+ */
 #define BRW_MATH_FUNCTION_POW                              10
 #define BRW_MATH_FUNCTION_INT_DIV_QUOTIENT_AND_REMAINDER   11
 #define BRW_MATH_FUNCTION_INT_DIV_QUOTIENT                 12

@@ -548,8 +548,8 @@ enum isl_dim_layout {
 
    /**
     * Special layout used for HiZ and stencil on Sandy Bridge to work around
-    * the hardware's lack of mipmap support.  On gen6, HiZ and stencil buffers
-    * work the same as on gen7+ except that they don't technically support
+    * the hardware's lack of mipmap support.  On gfx6, HiZ and stencil buffers
+    * work the same as on gfx7+ except that they don't technically support
     * mipmapping.  That does not, however, stop us from doing it.  As far as
     * Sandy Bridge hardware is concerned, HiZ and stencil always operates on a
     * single miplevel 2D (possibly array) image.  The dimensions of that image
@@ -1418,7 +1418,7 @@ struct isl_surf_fill_state_info {
    uint64_t clear_address;
 
    /**
-    * Surface write disables for gen4-5
+    * Surface write disables for gfx4-5
     */
    isl_channel_mask_t write_disables;
 

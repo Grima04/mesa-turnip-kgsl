@@ -202,7 +202,7 @@ update_urb_size(struct brw_context *brw, const struct intel_l3_config *cfg)
       brw->ctx.NewDriverState |= BRW_NEW_URB_SIZE;
 
       /* If we change the total URB size, reset the individual stage sizes to
-       * zero so that, even if there is no URB size change, gen7_upload_urb
+       * zero so that, even if there is no URB size change, gfx7_upload_urb
        * still re-emits 3DSTATE_URB_*.
        */
       brw->urb.vsize = 0;
@@ -249,7 +249,7 @@ brw_emit_l3_state(struct brw_context *brw)
    }
 }
 
-const struct brw_tracked_state gen7_l3_state = {
+const struct brw_tracked_state gfx7_l3_state = {
    .dirty = {
       .mesa = 0,
       .brw = BRW_NEW_BATCH |
@@ -298,7 +298,7 @@ const struct brw_tracked_state gen7_l3_state = {
  * be reproduced easily on IVB in our CI system.
  */
 void
-gen7_restore_default_l3_config(struct brw_context *brw)
+gfx7_restore_default_l3_config(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    const struct intel_l3_config *const cfg = intel_get_default_l3_config(devinfo);

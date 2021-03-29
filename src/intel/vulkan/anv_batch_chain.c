@@ -569,8 +569,8 @@ static void
 emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
                         struct anv_bo *bo, uint32_t offset)
 {
-   /* In gen8+ the address field grew to two dwords to accomodate 48 bit
-    * offsets. The high 16 bits are in the last dword, so we can use the gen8
+   /* In gfx8+ the address field grew to two dwords to accomodate 48 bit
+    * offsets. The high 16 bits are in the last dword, so we can use the gfx8
     * version in either case, as long as we set the instruction length in the
     * header accordingly.  This means that we always emit three dwords here
     * and all the padding and adjustment we do in this file works for all
@@ -580,14 +580,14 @@ emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
 #define GFX7_MI_BATCH_BUFFER_START_length      2
 #define GFX7_MI_BATCH_BUFFER_START_length_bias      2
 
-   const uint32_t gen7_length =
+   const uint32_t gfx7_length =
       GFX7_MI_BATCH_BUFFER_START_length - GFX7_MI_BATCH_BUFFER_START_length_bias;
-   const uint32_t gen8_length =
+   const uint32_t gfx8_length =
       GFX8_MI_BATCH_BUFFER_START_length - GFX8_MI_BATCH_BUFFER_START_length_bias;
 
    anv_batch_emit(&cmd_buffer->batch, GFX8_MI_BATCH_BUFFER_START, bbs) {
       bbs.DWordLength               = cmd_buffer->device->info.ver < 8 ?
-                                      gen7_length : gen8_length;
+                                      gfx7_length : gfx8_length;
       bbs.SecondLevelBatchBuffer    = Firstlevelbatch;
       bbs.AddressSpaceIndicator     = ASI_PPGTT;
       bbs.BatchBufferStartAddress   = (struct anv_address) { bo, offset };

@@ -523,9 +523,9 @@ isl_surf_choose_tiling(const struct isl_device *dev,
    }
 
    if (ISL_GFX_VER(dev) >= 6) {
-      isl_gen6_filter_tiling(dev, info, &tiling_flags);
+      isl_gfx6_filter_tiling(dev, info, &tiling_flags);
    } else {
-      isl_gen4_filter_tiling(dev, info, &tiling_flags);
+      isl_gfx4_filter_tiling(dev, info, &tiling_flags);
    }
 
    #define CHOOSE(__tiling) \
@@ -569,13 +569,13 @@ isl_choose_msaa_layout(const struct isl_device *dev,
                  enum isl_msaa_layout *msaa_layout)
 {
    if (ISL_GFX_VER(dev) >= 8) {
-      return isl_gen8_choose_msaa_layout(dev, info, tiling, msaa_layout);
+      return isl_gfx8_choose_msaa_layout(dev, info, tiling, msaa_layout);
    } else if (ISL_GFX_VER(dev) >= 7) {
-      return isl_gen7_choose_msaa_layout(dev, info, tiling, msaa_layout);
+      return isl_gfx7_choose_msaa_layout(dev, info, tiling, msaa_layout);
    } else if (ISL_GFX_VER(dev) >= 6) {
-      return isl_gen6_choose_msaa_layout(dev, info, tiling, msaa_layout);
+      return isl_gfx6_choose_msaa_layout(dev, info, tiling, msaa_layout);
    } else {
-      return isl_gen4_choose_msaa_layout(dev, info, tiling, msaa_layout);
+      return isl_gfx4_choose_msaa_layout(dev, info, tiling, msaa_layout);
    }
 }
 
@@ -717,7 +717,7 @@ isl_choose_array_pitch_span(const struct isl_device *dev,
       return ISL_ARRAY_PITCH_SPAN_COMPACT;
 
    case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
-      /* Each array image in the gen6 stencil of HiZ surface is compact in the
+      /* Each array image in the gfx6 stencil of HiZ surface is compact in the
        * sense that every LOD is a compact array of the same size as LOD0.
        */
       return ISL_ARRAY_PITCH_SPAN_COMPACT;
@@ -756,12 +756,12 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
          /* HiZ surfaces on Sandy Bridge are packed tightly. */
          *image_align_el = isl_extent3d(1, 1, 1);
       } else if (ISL_GFX_VER(dev) < 12) {
-         /* On gen7+, HiZ surfaces are always aligned to 16x8 pixels in the
+         /* On gfx7+, HiZ surfaces are always aligned to 16x8 pixels in the
           * primary surface which works out to 2x2 HiZ elments.
           */
          *image_align_el = isl_extent3d(2, 2, 1);
       } else {
-         /* On gen12+, HiZ surfaces are always aligned to 16x16 pixels in the
+         /* On gfx12+, HiZ surfaces are always aligned to 16x16 pixels in the
           * primary surface which works out to 2x4 HiZ elments.
           * TODO: Verify
           */
@@ -771,22 +771,22 @@ isl_choose_image_alignment_el(const struct isl_device *dev,
    }
 
    if (ISL_GFX_VER(dev) >= 12) {
-      isl_gen12_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx12_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                           msaa_layout, image_align_el);
    } else if (ISL_GFX_VER(dev) >= 9) {
-      isl_gen9_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx9_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                          msaa_layout, image_align_el);
    } else if (ISL_GFX_VER(dev) >= 8) {
-      isl_gen8_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx8_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                          msaa_layout, image_align_el);
    } else if (ISL_GFX_VER(dev) >= 7) {
-      isl_gen7_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx7_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                           msaa_layout, image_align_el);
    } else if (ISL_GFX_VER(dev) >= 6) {
-      isl_gen6_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx6_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                          msaa_layout, image_align_el);
    } else {
-      isl_gen4_choose_image_alignment_el(dev, info, tiling, dim_layout,
+      isl_gfx4_choose_image_alignment_el(dev, info, tiling, dim_layout,
                                          msaa_layout, image_align_el);
    }
 }
@@ -991,7 +991,7 @@ isl_calc_phys_level0_extent_sa(const struct isl_device *dev,
  * surface elements.
  */
 static uint32_t
-isl_calc_array_pitch_el_rows_gen4_2d(
+isl_calc_array_pitch_el_rows_gfx4_2d(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
       const struct isl_tile_info *tile_info,
@@ -1096,7 +1096,7 @@ isl_calc_array_pitch_el_rows_gen4_2d(
  * ISL_DIM_LAYOUT_GEN4_2D.
  */
 static void
-isl_calc_phys_slice0_extent_sa_gen4_2d(
+isl_calc_phys_slice0_extent_sa_gfx4_2d(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
       enum isl_msaa_layout msaa_layout,
@@ -1165,7 +1165,7 @@ isl_calc_phys_slice0_extent_sa_gen4_2d(
 }
 
 static void
-isl_calc_phys_total_extent_el_gen4_2d(
+isl_calc_phys_total_extent_el_gfx4_2d(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
       const struct isl_tile_info *tile_info,
@@ -1179,11 +1179,11 @@ isl_calc_phys_total_extent_el_gen4_2d(
    const struct isl_format_layout *fmtl = isl_format_get_layout(info->format);
 
    struct isl_extent2d phys_slice0_sa;
-   isl_calc_phys_slice0_extent_sa_gen4_2d(dev, info, msaa_layout,
+   isl_calc_phys_slice0_extent_sa_gfx4_2d(dev, info, msaa_layout,
                                           image_align_sa, phys_level0_sa,
                                           &phys_slice0_sa);
    *array_pitch_el_rows =
-      isl_calc_array_pitch_el_rows_gen4_2d(dev, info, tile_info,
+      isl_calc_array_pitch_el_rows_gfx4_2d(dev, info, tile_info,
                                            image_align_sa, phys_level0_sa,
                                            array_pitch_span,
                                            &phys_slice0_sa);
@@ -1199,7 +1199,7 @@ isl_calc_phys_total_extent_el_gen4_2d(
  * ISL_DIM_LAYOUT_GEN4_3D.
  */
 static void
-isl_calc_phys_total_extent_el_gen4_3d(
+isl_calc_phys_total_extent_el_gfx4_3d(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
       const struct isl_extent3d *image_align_sa,
@@ -1263,7 +1263,7 @@ isl_calc_phys_total_extent_el_gen4_3d(
  * ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ.
  */
 static void
-isl_calc_phys_total_extent_el_gen6_stencil_hiz(
+isl_calc_phys_total_extent_el_gfx6_stencil_hiz(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
       const struct isl_tile_info *tile_info,
@@ -1324,7 +1324,7 @@ isl_calc_phys_total_extent_el_gen6_stencil_hiz(
  * ISL_DIM_LAYOUT_GEN9_1D.
  */
 static void
-isl_calc_phys_total_extent_el_gen9_1d(
+isl_calc_phys_total_extent_el_gfx9_1d(
       const struct isl_device *dev,
       const struct isl_surf_init_info *restrict info,
       const struct isl_extent3d *image_align_sa,
@@ -1375,13 +1375,13 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
    switch (dim_layout) {
    case ISL_DIM_LAYOUT_GEN9_1D:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
-      isl_calc_phys_total_extent_el_gen9_1d(dev, info,
+      isl_calc_phys_total_extent_el_gfx9_1d(dev, info,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_el_rows,
                                             total_extent_el);
       return;
    case ISL_DIM_LAYOUT_GEN4_2D:
-      isl_calc_phys_total_extent_el_gen4_2d(dev, info, tile_info, msaa_layout,
+      isl_calc_phys_total_extent_el_gfx4_2d(dev, info, tile_info, msaa_layout,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_span,
                                             array_pitch_el_rows,
@@ -1389,7 +1389,7 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
       return;
    case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
-      isl_calc_phys_total_extent_el_gen6_stencil_hiz(dev, info, tile_info,
+      isl_calc_phys_total_extent_el_gfx6_stencil_hiz(dev, info, tile_info,
                                                      image_align_sa,
                                                      phys_level0_sa,
                                                      array_pitch_el_rows,
@@ -1397,7 +1397,7 @@ isl_calc_phys_total_extent_el(const struct isl_device *dev,
       return;
    case ISL_DIM_LAYOUT_GEN4_3D:
       assert(array_pitch_span == ISL_ARRAY_PITCH_SPAN_COMPACT);
-      isl_calc_phys_total_extent_el_gen4_3d(dev, info,
+      isl_calc_phys_total_extent_el_gfx4_3d(dev, info,
                                             image_align_sa, phys_level0_sa,
                                             array_pitch_el_rows,
                                             total_extent_el);
@@ -1736,7 +1736,7 @@ isl_surf_init_s(const struct isl_device *dev,
        *     surfaces are also restricted to a maximum size in bytes. This
        *     maximum is 2 GB for all products and all surface types."
        *
-       * This comment is applicable to all Pre-gen9 platforms.
+       * This comment is applicable to all Pre-gfx9 platforms.
        */
       if (size_B > (uint64_t) 1 << 31)
          return false;
@@ -1750,7 +1750,7 @@ isl_surf_init_s(const struct isl_device *dev,
       if (size_B > (uint64_t) 1 << 38)
          return false;
    } else {
-      /* gen11+ platforms raised this limit to 2^44 bytes. */
+      /* gfx11+ platforms raised this limit to 2^44 bytes. */
       if (size_B > (uint64_t) 1 << 44)
          return false;
    }
@@ -2047,7 +2047,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
          return false;
 
       /* The PRM doesn't say this explicitly, but fast-clears don't appear to
-       * work for 3D textures until gen9 where the layout of 3D textures
+       * work for 3D textures until gfx9 where the layout of 3D textures
        * changes to match 2D array textures.
        */
       if (ISL_GFX_VER(dev) <= 8 && surf->dim != ISL_SURF_DIM_2D)
@@ -2058,7 +2058,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
        *
        *    "Support is for non-mip-mapped and non-array surface types only."
        *
-       * This restriction is lifted on gen8+.  Technically, it may be possible
+       * This restriction is lifted on gfx8+.  Technically, it may be possible
        * to create a CCS for an arrayed or mipmapped image and only enable
        * CCS_D when rendering to the base slice.  However, there is no
        * documentation tell us what the hardware would do in that case or what
@@ -2193,36 +2193,36 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
 #define isl_genX_call(dev, func, ...)              \
    switch (ISL_GFX_VERX10(dev)) {                  \
    case 40:                                        \
-      isl_gen4_##func(__VA_ARGS__);                \
+      isl_gfx4_##func(__VA_ARGS__);                \
       break;                                       \
    case 45:                                        \
-      /* G45 surface state is the same as gen5 */  \
+      /* G45 surface state is the same as gfx5 */  \
    case 50:                                        \
-      isl_gen5_##func(__VA_ARGS__);                \
+      isl_gfx5_##func(__VA_ARGS__);                \
       break;                                       \
    case 60:                                        \
-      isl_gen6_##func(__VA_ARGS__);                \
+      isl_gfx6_##func(__VA_ARGS__);                \
       break;                                       \
    case 70:                                        \
-      isl_gen7_##func(__VA_ARGS__);                \
+      isl_gfx7_##func(__VA_ARGS__);                \
       break;                                       \
    case 75:                                        \
-      isl_gen75_##func(__VA_ARGS__);               \
+      isl_gfx75_##func(__VA_ARGS__);               \
       break;                                       \
    case 80:                                        \
-      isl_gen8_##func(__VA_ARGS__);                \
+      isl_gfx8_##func(__VA_ARGS__);                \
       break;                                       \
    case 90:                                        \
-      isl_gen9_##func(__VA_ARGS__);                \
+      isl_gfx9_##func(__VA_ARGS__);                \
       break;                                       \
    case 110:                                       \
-      isl_gen11_##func(__VA_ARGS__);               \
+      isl_gfx11_##func(__VA_ARGS__);               \
       break;                                       \
    case 120:                                       \
-      isl_gen12_##func(__VA_ARGS__);               \
+      isl_gfx12_##func(__VA_ARGS__);               \
       break;                                       \
    case 125:                                       \
-      isl_gen125_##func(__VA_ARGS__);              \
+      isl_gfx125_##func(__VA_ARGS__);              \
       break;                                       \
    default:                                        \
       assert(!"Unknown hardware generation");      \
@@ -2310,7 +2310,7 @@ isl_emit_depth_stencil_hiz_s(const struct isl_device *dev, void *batch,
  * ISL_DIM_LAYOUT_GEN4_2D.
  */
 static void
-get_image_offset_sa_gen4_2d(const struct isl_surf *surf,
+get_image_offset_sa_gfx4_2d(const struct isl_surf *surf,
                             uint32_t level, uint32_t logical_array_layer,
                             uint32_t *x_offset_sa,
                             uint32_t *y_offset_sa)
@@ -2352,7 +2352,7 @@ get_image_offset_sa_gen4_2d(const struct isl_surf *surf,
  * ISL_DIM_LAYOUT_GEN4_3D.
  */
 static void
-get_image_offset_sa_gen4_3d(const struct isl_surf *surf,
+get_image_offset_sa_gfx4_3d(const struct isl_surf *surf,
                             uint32_t level, uint32_t logical_z_offset_px,
                             uint32_t *x_offset_sa,
                             uint32_t *y_offset_sa)
@@ -2405,7 +2405,7 @@ get_image_offset_sa_gen4_3d(const struct isl_surf *surf,
 }
 
 static void
-get_image_offset_sa_gen6_stencil_hiz(const struct isl_surf *surf,
+get_image_offset_sa_gfx6_stencil_hiz(const struct isl_surf *surf,
                                      uint32_t level,
                                      uint32_t logical_array_layer,
                                      uint32_t *x_offset_sa,
@@ -2468,7 +2468,7 @@ get_image_offset_sa_gen6_stencil_hiz(const struct isl_surf *surf,
  * ISL_DIM_LAYOUT_GEN9_1D.
  */
 static void
-get_image_offset_sa_gen9_1d(const struct isl_surf *surf,
+get_image_offset_sa_gfx9_1d(const struct isl_surf *surf,
                             uint32_t level, uint32_t layer,
                             uint32_t *x_offset_sa,
                             uint32_t *y_offset_sa)
@@ -2519,21 +2519,21 @@ isl_surf_get_image_offset_sa(const struct isl_surf *surf,
 
    switch (surf->dim_layout) {
    case ISL_DIM_LAYOUT_GEN9_1D:
-      get_image_offset_sa_gen9_1d(surf, level, logical_array_layer,
+      get_image_offset_sa_gfx9_1d(surf, level, logical_array_layer,
                                   x_offset_sa, y_offset_sa);
       break;
    case ISL_DIM_LAYOUT_GEN4_2D:
-      get_image_offset_sa_gen4_2d(surf, level, logical_array_layer
+      get_image_offset_sa_gfx4_2d(surf, level, logical_array_layer
                                   + logical_z_offset_px,
                                   x_offset_sa, y_offset_sa);
       break;
    case ISL_DIM_LAYOUT_GEN4_3D:
-      get_image_offset_sa_gen4_3d(surf, level, logical_array_layer +
+      get_image_offset_sa_gfx4_3d(surf, level, logical_array_layer +
                                   logical_z_offset_px,
                                   x_offset_sa, y_offset_sa);
       break;
    case ISL_DIM_LAYOUT_GEN6_STENCIL_HIZ:
-      get_image_offset_sa_gen6_stencil_hiz(surf, level, logical_array_layer +
+      get_image_offset_sa_gfx6_stencil_hiz(surf, level, logical_array_layer +
                                            logical_z_offset_px,
                                            x_offset_sa, y_offset_sa);
       break;
@@ -2752,10 +2752,10 @@ uint32_t
 isl_surf_get_depth_format(const struct isl_device *dev,
                           const struct isl_surf *surf)
 {
-   /* Support for separate stencil buffers began in gen5. Support for
-    * interleaved depthstencil buffers ceased in gen7. The intermediate gens,
-    * those that supported separate and interleaved stencil, were gen5 and
-    * gen6.
+   /* Support for separate stencil buffers began in gfx5. Support for
+    * interleaved depthstencil buffers ceased in gfx7. The intermediate gens,
+    * those that supported separate and interleaved stencil, were gfx5 and
+    * gfx6.
     *
     * For a list of all available formats, see the Sandybridge PRM >> Volume
     * 2 Part 1: 3D/Media - 3D Pipeline >> 3DSTATE_DEPTH_BUFFER >> Surface

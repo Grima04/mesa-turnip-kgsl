@@ -394,7 +394,7 @@ make_surface(struct brw_context *brw, GLenum target, mesa_format format,
       goto fail;
 
    /* Depth surfaces are always Y-tiled and stencil is always W-tiled, although
-    * on gen7 platforms we also need to create Y-tiled copies of stencil for
+    * on gfx7 platforms we also need to create Y-tiled copies of stencil for
     * texturing since the hardware can't sample from W-tiled surfaces. For
     * everything else, check for corner cases needing special treatment.
     */
@@ -746,7 +746,7 @@ create_ccs_buf_for_image(struct brw_context *brw,
       return false;
    }
 
-   /* On gen10+ we start using an extra space in the aux buffer to store the
+   /* On gfx10+ we start using an extra space in the aux buffer to store the
     * indirect clear color. However, if we imported an image from the window
     * system with CCS, we don't have the extra space at the end of the aux
     * buffer. So create a new bo here that will store that clear color.
@@ -845,7 +845,7 @@ brw_miptree_create_for_dri_image(struct brw_context *brw,
    mt->drm_modifier = image->modifier;
 
    /* From "OES_EGL_image" error reporting. We report GL_INVALID_OPERATION
-    * for EGL images from non-tile aligned sufaces in gen4 hw and earlier which has
+    * for EGL images from non-tile aligned sufaces in gfx4 hw and earlier which has
     * trouble resolving back to destination image due to alignment issues.
     */
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
@@ -1303,7 +1303,7 @@ brw_miptree_copy_slice(struct brw_context *brw,
        width, height);
 
    if (devinfo->ver >= 6) {
-      /* On gen6 and above, we just use blorp.  It's faster than the blitter
+      /* On gfx6 and above, we just use blorp.  It's faster than the blitter
        * and can handle everything without software fallbacks.
        */
       brw_blorp_copy_miptrees(brw,
@@ -1567,7 +1567,7 @@ brw_miptree_alloc_aux(struct brw_context *brw, struct brw_mipmap_tree *mt)
        * A CCS value of 0 indicates that the corresponding block is in the
        * pass-through state which is what we want.
        *
-       * For CCS_D, do the same thing. On gen9+, this avoids having any
+       * For CCS_D, do the same thing. On gfx9+, this avoids having any
        * undefined bits in the aux buffer.
        */
       initial_state = ISL_AUX_STATE_PASS_THROUGH;
@@ -1646,7 +1646,7 @@ brw_miptree_sample_with_hiz(struct brw_context *brw,
     */
    return (mt->surf.samples == 1 &&
            mt->target != GL_TEXTURE_3D &&
-           mt->target != GL_TEXTURE_1D /* gen9+ restriction */);
+           mt->target != GL_TEXTURE_1D /* gfx9+ restriction */);
 }
 
 static bool
@@ -1908,12 +1908,12 @@ enum isl_aux_usage
 brw_miptree_texture_aux_usage(struct brw_context *brw,
                               struct brw_mipmap_tree *mt,
                               enum isl_format view_format,
-                              enum gen9_astc5x5_wa_tex_type astc5x5_wa_bits)
+                              enum gfx9_astc5x5_wa_tex_type astc5x5_wa_bits)
 {
    assert(brw->screen->devinfo.ver == 9 || astc5x5_wa_bits == 0);
 
-   /* On gen9, ASTC 5x5 textures cannot live in the sampler cache along side
-    * CCS or HiZ compressed textures.  See gen9_apply_astc5x5_wa_flush() for
+   /* On gfx9, ASTC 5x5 textures cannot live in the sampler cache along side
+    * CCS or HiZ compressed textures.  See gfx9_apply_astc5x5_wa_flush() for
     * details.
     */
    if ((astc5x5_wa_bits & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
@@ -1958,11 +1958,11 @@ brw_miptree_texture_aux_usage(struct brw_context *brw,
 static bool
 isl_formats_are_fast_clear_compatible(enum isl_format a, enum isl_format b)
 {
-   /* On gen8 and earlier, the hardware was only capable of handling 0/1 clear
+   /* On gfx8 and earlier, the hardware was only capable of handling 0/1 clear
     * values so sRGB curve application was a no-op for all fast-clearable
     * formats.
     *
-    * On gen9+, the hardware supports arbitrary clear values.  For sRGB clear
+    * On gfx9+, the hardware supports arbitrary clear values.  For sRGB clear
     * values, the hardware interprets the floats, not as what would be
     * returned from the sampler (or written by the shader), but as being
     * between format conversion and sRGB curve application.  This means that
@@ -1978,7 +1978,7 @@ brw_miptree_prepare_texture(struct brw_context *brw,
                             enum isl_format view_format,
                             uint32_t start_level, uint32_t num_levels,
                             uint32_t start_layer, uint32_t num_layers,
-                            enum gen9_astc5x5_wa_tex_type astc5x5_wa_bits)
+                            enum gfx9_astc5x5_wa_tex_type astc5x5_wa_bits)
 {
    enum isl_aux_usage aux_usage =
       brw_miptree_texture_aux_usage(brw, mt, view_format, astc5x5_wa_bits);
@@ -2030,7 +2030,7 @@ brw_miptree_render_aux_usage(struct brw_context *brw,
          return ISL_AUX_USAGE_NONE;
       }
 
-      /* gen9+ hardware technically supports non-0/1 clear colors with sRGB
+      /* gfx9+ hardware technically supports non-0/1 clear colors with sRGB
        * formats.  However, there are issues with blending where it doesn't
        * properly apply the sRGB curve to the clear color when blending.
        */
@@ -2822,7 +2822,7 @@ brw_miptree_map_s8(struct brw_context *brw,
  * Mapping functions for packed depth/stencil miptrees backed by real separate
  * miptrees for depth and stencil.
  *
- * On gen7, and to support HiZ pre-gen7, we have to have the stencil buffer
+ * On gfx7, and to support HiZ pre-gfx7, we have to have the stencil buffer
  * separate from the depth buffer.  Yet at the GL API level, we have to expose
  * packed depth/stencil textures and FBO attachments, and Mesa core expects to
  * be able to map that memory for texture storage and glReadPixels-type

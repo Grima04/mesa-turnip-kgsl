@@ -364,9 +364,9 @@ brw_init_driver_functions(struct brw_context *brw,
    if (devinfo->ver >= 8 || devinfo->is_haswell)
       hsw_init_queryobj_functions(functions);
    else if (devinfo->ver >= 6)
-      gen6_init_queryobj_functions(functions);
+      gfx6_init_queryobj_functions(functions);
    else
-      gen4_init_queryobj_functions(functions);
+      gfx4_init_queryobj_functions(functions);
    brw_init_compute_functions(functions);
    brw_init_conditional_render_functions(functions);
 
@@ -382,10 +382,10 @@ brw_init_driver_functions(struct brw_context *brw,
       functions->PauseTransformFeedback = hsw_pause_transform_feedback;
       functions->ResumeTransformFeedback = hsw_resume_transform_feedback;
    } else if (devinfo->ver >= 7) {
-      functions->BeginTransformFeedback = gen7_begin_transform_feedback;
-      functions->EndTransformFeedback = gen7_end_transform_feedback;
-      functions->PauseTransformFeedback = gen7_pause_transform_feedback;
-      functions->ResumeTransformFeedback = gen7_resume_transform_feedback;
+      functions->BeginTransformFeedback = gfx7_begin_transform_feedback;
+      functions->EndTransformFeedback = gfx7_end_transform_feedback;
+      functions->PauseTransformFeedback = gfx7_pause_transform_feedback;
+      functions->ResumeTransformFeedback = gfx7_resume_transform_feedback;
       functions->GetTransformFeedbackVertexCount =
          brw_get_transform_feedback_vertex_count;
    } else {
@@ -398,7 +398,7 @@ brw_init_driver_functions(struct brw_context *brw,
    }
 
    if (devinfo->ver >= 6)
-      functions->GetSamplePosition = gen6_get_sample_position;
+      functions->GetSamplePosition = gfx6_get_sample_position;
 
    /* GL_ARB_get_program_binary */
    brw_program_binary_init(brw->screen->deviceID);
@@ -420,8 +420,8 @@ brw_initialize_spirv_supported_capabilities(struct brw_context *brw)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
 
-   /* The following SPIR-V capabilities are only supported on gen7+. In theory
-    * you should enable the extension only on gen7+, but just in case let's
+   /* The following SPIR-V capabilities are only supported on gfx7+. In theory
+    * you should enable the extension only on gfx7+, but just in case let's
     * assert it.
     */
    assert(devinfo->ver >= 7);
@@ -703,7 +703,7 @@ brw_initialize_context_constants(struct brw_context *brw)
     */
    ctx->Const.UniformBooleanTrue = ~0;
 
-   /* From the gen4 PRM, volume 4 page 127:
+   /* From the gfx4 PRM, volume 4 page 127:
     *
     *     "For SURFTYPE_BUFFER non-rendertarget surfaces, this field specifies
     *      the base address of the first element of the surface, computed in
@@ -860,7 +860,7 @@ brw_process_driconf_options(struct brw_context *brw)
 
    if (INTEL_DEBUG & DEBUG_NO_HIZ) {
        brw->has_hiz = false;
-       /* On gen6, you can only do separate stencil with HIZ. */
+       /* On gfx6, you can only do separate stencil with HIZ. */
        if (devinfo->ver == 6)
           brw->has_separate_stencil = false;
    }
@@ -1020,7 +1020,7 @@ brw_create_context(gl_api api,
 
    /* Initialize the software rasterizer and helper modules.
     *
-    * As of GL 3.1 core, the gen4+ driver doesn't need the swrast context for
+    * As of GL 3.1 core, the gfx4+ driver doesn't need the swrast context for
     * software fallbacks (which we have to support on legacy GL to do weird
     * glDrawPixels(), glBitmap(), and other functions).
     */

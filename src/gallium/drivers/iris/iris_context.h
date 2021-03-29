@@ -993,7 +993,7 @@ int iris_get_driver_query_group_info(struct pipe_screen *pscreen,
                                      struct pipe_driver_query_group_info *info);
 
 /* iris_state.c */
-void gen9_toggle_preemption(struct iris_context *ice,
+void gfx9_toggle_preemption(struct iris_context *ice,
                             struct iris_batch *batch,
                             const struct pipe_draw_info *draw);
 
@@ -1002,34 +1002,34 @@ void gen9_toggle_preemption(struct iris_context *ice,
 #ifdef genX
 #  include "iris_genx_protos.h"
 #else
-#  define genX(x) gen4_##x
+#  define genX(x) gfx4_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen5_##x
+#  define genX(x) gfx5_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen6_##x
+#  define genX(x) gfx6_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen7_##x
+#  define genX(x) gfx7_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen75_##x
+#  define genX(x) gfx75_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen8_##x
+#  define genX(x) gfx8_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen9_##x
+#  define genX(x) gfx9_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen11_##x
+#  define genX(x) gfx11_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen12_##x
+#  define genX(x) gfx12_##x
 #  include "iris_genx_protos.h"
 #  undef genX
-#  define genX(x) gen125_##x
+#  define genX(x) gfx125_##x
 #  include "iris_genx_protos.h"
 #  undef genX
 #endif

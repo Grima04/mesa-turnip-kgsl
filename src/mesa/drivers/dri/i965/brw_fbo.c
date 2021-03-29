@@ -905,7 +905,7 @@ brw_blit_framebuffer(struct gl_context *ctx,
       return;
 
    if (devinfo->ver < 6) {
-      /* On gen4-5, try BLT first.
+      /* On gfx4-5, try BLT first.
        *
        * Gen4-5 have a single ring for both 3D and BLT operations, so there's
        * no inter-ring synchronization issues like on Gen6+.  It is apparently
@@ -1061,7 +1061,7 @@ brw_cache_flush_for_render(struct brw_context *brw, struct brw_bo *bo,
     *
     * Even though it's not obvious, this can easily happen in practice.
     * Suppose a client is blending on a surface with sRGB encode enabled on
-    * gen9.  This implies that you get AUX_USAGE_CCS_D at best.  If the client
+    * gfx9.  This implies that you get AUX_USAGE_CCS_D at best.  If the client
     * then disables sRGB decode and continues blending we will flip on
     * AUX_USAGE_CCS_E without doing any sort of resolve in-between (this is
     * perfectly valid since CCS_E is a subset of CCS_D).  However, this means

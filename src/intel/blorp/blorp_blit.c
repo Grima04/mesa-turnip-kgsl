@@ -1361,7 +1361,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
       src_pos = nir_f2i32(&b, nir_channels(&b, src_pos, 0x3));
 
       if (devinfo->ver == 6) {
-         /* Because gen6 only supports 4x interleved MSAA, we can do all the
+         /* Because gfx6 only supports 4x interleved MSAA, we can do all the
           * blending we need with a single linear-interpolated texture lookup
           * at the center of the sample. The texture coordinates to be odd
           * integers so that they correspond to the center of a 2x2 block
@@ -1637,10 +1637,10 @@ blorp_surf_retile_w_to_y(const struct isl_device *isl_dev,
    /* First, we need to convert it to a simple 1-level 1-layer 2-D surface */
    blorp_surf_convert_to_single_slice(isl_dev, info);
 
-   /* On gen7+, we don't have interleaved multisampling for color render
+   /* On gfx7+, we don't have interleaved multisampling for color render
     * targets so we have to fake it.
     *
-    * TODO: Are we sure we don't also need to fake it on gen6?
+    * TODO: Are we sure we don't also need to fake it on gfx6?
     */
    if (isl_dev->info->ver > 6 &&
        info->surf.msaa_layout == ISL_MSAA_LAYOUT_INTERLEAVED) {
@@ -1868,7 +1868,7 @@ try_blorp_blit(struct blorp_batch *batch,
 
    if (devinfo->ver == 4) {
       /* The MinLOD and MinimumArrayElement don't work properly for cube maps.
-       * Convert them to a single slice on gen4.
+       * Convert them to a single slice on gfx4.
        */
       if (params->dst.surf.usage & ISL_SURF_USAGE_CUBE_BIT) {
          blorp_surf_convert_to_single_slice(batch->blorp->isl_dev, &params->dst);

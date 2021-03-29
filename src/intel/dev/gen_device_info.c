@@ -83,7 +83,7 @@ gen_device_name_to_pci_device_id(const char *name)
    return -1;
 }
 
-static const struct gen_device_info gen_device_info_gen3 = {
+static const struct gen_device_info gen_device_info_gfx3 = {
    .ver = 3,
    .simulator_id = -1,
    .cs_prefetch_size = 512,
@@ -1236,7 +1236,7 @@ gen_get_device_info_from_pci_id(int pci_id,
 
 #undef CHIPSET
 #define CHIPSET(id, fam_str, name) \
-      case id: *devinfo = gen_device_info_gen3; break;
+      case id: *devinfo = gen_device_info_gfx3; break;
 #include "pci_ids/i915_pci_ids.h"
 
    default:
@@ -1300,7 +1300,7 @@ gen_get_device_name(int devid)
 }
 
 /**
- * for gen8/gen9, SLICE_MASK/SUBSLICE_MASK can be used to compute the topology
+ * for gfx8/gfx9, SLICE_MASK/SUBSLICE_MASK can be used to compute the topology
  * (kernel 4.13+)
  */
 static bool
@@ -1471,7 +1471,7 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
          return false;
       }
 
-      /* else use the kernel 4.13+ api for gen8+.  For older kernels, topology
+      /* else use the kernel 4.13+ api for gfx8+.  For older kernels, topology
        * will be wrong, affecting GPU metrics. In this case, fail silently.
        */
       getparam_topology(devinfo, fd);

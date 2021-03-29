@@ -40,25 +40,25 @@ anv_measure_device_init(struct anv_physical_device *device)
 {
    switch (device->info.verx10) {
    case 125:
-      device->cmd_emit_timestamp = &gen125_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx125_cmd_emit_timestamp;
       break;
    case 120:
-      device->cmd_emit_timestamp = &gen12_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx12_cmd_emit_timestamp;
       break;
    case 110:
-      device->cmd_emit_timestamp = &gen11_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx11_cmd_emit_timestamp;
       break;
    case 90:
-      device->cmd_emit_timestamp = &gen9_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx9_cmd_emit_timestamp;
       break;
    case 80:
-      device->cmd_emit_timestamp = &gen8_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx8_cmd_emit_timestamp;
       break;
    case 75:
-      device->cmd_emit_timestamp = &gen75_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx75_cmd_emit_timestamp;
       break;
    case 70:
-      device->cmd_emit_timestamp = &gen7_cmd_emit_timestamp;
+      device->cmd_emit_timestamp = &gfx7_cmd_emit_timestamp;
       break;
    default:
       assert(false);

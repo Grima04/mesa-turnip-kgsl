@@ -289,7 +289,7 @@ static const char *const end_of_thread[2] = {
 };
 
 /* SFIDs on Gen4-5 */
-static const char *const gen4_sfid[16] = {
+static const char *const gfx4_sfid[16] = {
    [BRW_SFID_NULL]            = "null",
    [BRW_SFID_MATH]            = "math",
    [BRW_SFID_SAMPLER]         = "sampler",
@@ -301,7 +301,7 @@ static const char *const gen4_sfid[16] = {
    [BRW_SFID_VME]             = "vme",
 };
 
-static const char *const gen6_sfid[16] = {
+static const char *const gfx6_sfid[16] = {
    [BRW_SFID_NULL]                     = "null",
    [BRW_SFID_MATH]                     = "math",
    [BRW_SFID_SAMPLER]                  = "sampler",
@@ -318,7 +318,7 @@ static const char *const gen6_sfid[16] = {
    [GEN_RT_SFID_RAY_TRACE_ACCELERATOR] = "rt accel",
 };
 
-static const char *const gen7_gateway_subfuncid[8] = {
+static const char *const gfx7_gateway_subfuncid[8] = {
    [BRW_MESSAGE_GATEWAY_SFID_OPEN_GATEWAY] = "open",
    [BRW_MESSAGE_GATEWAY_SFID_CLOSE_GATEWAY] = "close",
    [BRW_MESSAGE_GATEWAY_SFID_FORWARD_MSG] = "forward msg",
@@ -328,7 +328,7 @@ static const char *const gen7_gateway_subfuncid[8] = {
    [BRW_MESSAGE_GATEWAY_SFID_MMIO_READ_WRITE] = "mmio read/write",
 };
 
-static const char *const gen4_dp_read_port_msg_type[4] = {
+static const char *const gfx4_dp_read_port_msg_type[4] = {
    [0b00] = "OWord Block Read",
    [0b01] = "OWord Dual Block Read",
    [0b10] = "Media Block Read",
@@ -355,7 +355,7 @@ static const char *const dp_write_port_msg_type[8] = {
    [0b111] = "flush render cache",
 };
 
-static const char *const dp_rc_msg_type_gen6[16] = {
+static const char *const dp_rc_msg_type_gfx6[16] = {
    [BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ] = "OWORD block read",
    [GFX6_DATAPORT_READ_MESSAGE_RENDER_UNORM_READ] = "RT UNORM read",
    [GFX6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ] = "OWORD dual block read",
@@ -375,7 +375,7 @@ static const char *const dp_rc_msg_type_gen6[16] = {
    [GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_UNORM_WRITE] = "RT UNORM write",
 };
 
-static const char *const dp_rc_msg_type_gen7[16] = {
+static const char *const dp_rc_msg_type_gfx7[16] = {
    [GFX7_DATAPORT_RC_MEDIA_BLOCK_READ] = "media block read",
    [GFX7_DATAPORT_RC_TYPED_SURFACE_READ] = "typed surface read",
    [GFX7_DATAPORT_RC_TYPED_ATOMIC_OP] = "typed atomic op",
@@ -385,7 +385,7 @@ static const char *const dp_rc_msg_type_gen7[16] = {
    [GFX7_DATAPORT_RC_TYPED_SURFACE_WRITE] = "typed surface write"
 };
 
-static const char *const dp_rc_msg_type_gen9[16] = {
+static const char *const dp_rc_msg_type_gfx9[16] = {
    [GFX9_DATAPORT_RC_RENDER_TARGET_WRITE] = "RT write",
    [GFX9_DATAPORT_RC_RENDER_TARGET_READ] = "RT read"
 };
@@ -393,9 +393,9 @@ static const char *const dp_rc_msg_type_gen9[16] = {
 static const char *const *
 dp_rc_msg_type(const struct gen_device_info *devinfo)
 {
-   return (devinfo->ver >= 9 ? dp_rc_msg_type_gen9 :
-           devinfo->ver >= 7 ? dp_rc_msg_type_gen7 :
-           devinfo->ver >= 6 ? dp_rc_msg_type_gen6 :
+   return (devinfo->ver >= 9 ? dp_rc_msg_type_gfx9 :
+           devinfo->ver >= 7 ? dp_rc_msg_type_gfx7 :
+           devinfo->ver >= 6 ? dp_rc_msg_type_gfx6 :
            dp_write_port_msg_type);
 }
 
@@ -409,7 +409,7 @@ static const char *const m_rt_write_subtype[] = {
    [0b111] = "SIMD16/RepData-111", /* no idea how this is different than 1 */
 };
 
-static const char *const dp_dc0_msg_type_gen7[16] = {
+static const char *const dp_dc0_msg_type_gfx7[16] = {
    [GFX7_DATAPORT_DC_OWORD_BLOCK_READ] = "DC OWORD block read",
    [GFX7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ] =
       "DC unaligned OWORD block read",
@@ -535,12 +535,12 @@ static const char *const math_precision[2] = {
    [1] = "partial_precision"
 };
 
-static const char *const gen5_urb_opcode[] = {
+static const char *const gfx5_urb_opcode[] = {
    [0] = "urb_write",
    [1] = "ff_sync",
 };
 
-static const char *const gen7_urb_opcode[] = {
+static const char *const gfx7_urb_opcode[] = {
    [BRW_URB_OPCODE_WRITE_HWORD] = "write HWord",
    [BRW_URB_OPCODE_WRITE_OWORD] = "write OWord",
    [BRW_URB_OPCODE_READ_HWORD] = "read HWord",
@@ -574,7 +574,7 @@ static const char *const urb_complete[2] = {
    [1] = "complete"
 };
 
-static const char *const gen5_sampler_msg_type[] = {
+static const char *const gfx5_sampler_msg_type[] = {
    [GFX5_SAMPLER_MESSAGE_SAMPLE]              = "sample",
    [GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS]         = "sample_b",
    [GFX5_SAMPLER_MESSAGE_SAMPLE_LOD]          = "sample_l",
@@ -600,7 +600,7 @@ static const char *const gen5_sampler_msg_type[] = {
    [GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DSS]       = "ld2dss",
 };
 
-static const char *const gen5_sampler_simd_mode[4] = {
+static const char *const gfx5_sampler_simd_mode[4] = {
    [BRW_SAMPLER_SIMD_MODE_SIMD4X2]   = "SIMD4x2",
    [BRW_SAMPLER_SIMD_MODE_SIMD8]     = "SIMD8",
    [BRW_SAMPLER_SIMD_MODE_SIMD16]    = "SIMD16",
@@ -1018,7 +1018,7 @@ src_da16(FILE *file,
 
 static enum brw_vertical_stride
 vstride_from_align1_3src_vstride(const struct gen_device_info *devinfo,
-                                 enum gen10_align1_3src_vertical_stride vstride)
+                                 enum gfx10_align1_3src_vertical_stride vstride)
 {
    switch (vstride) {
    case BRW_ALIGN1_3SRC_VERTICAL_STRIDE_0: return BRW_VERTICAL_STRIDE_0;
@@ -1035,7 +1035,7 @@ vstride_from_align1_3src_vstride(const struct gen_device_info *devinfo,
 }
 
 static enum brw_horizontal_stride
-hstride_from_align1_3src_hstride(enum gen10_align1_3src_src_horizontal_stride hstride)
+hstride_from_align1_3src_hstride(enum gfx10_align1_3src_src_horizontal_stride hstride)
 {
    switch (hstride) {
    case BRW_ALIGN1_3SRC_SRC_HORIZONTAL_STRIDE_0: return BRW_HORIZONTAL_STRIDE_0;
@@ -1048,7 +1048,7 @@ hstride_from_align1_3src_hstride(enum gen10_align1_3src_src_horizontal_stride hs
 }
 
 static enum brw_vertical_stride
-vstride_from_align1_3src_hstride(enum gen10_align1_3src_src_horizontal_stride hstride)
+vstride_from_align1_3src_hstride(enum gfx10_align1_3src_src_horizontal_stride hstride)
 {
    switch (hstride) {
    case BRW_ALIGN1_3SRC_SRC_HORIZONTAL_STRIDE_0: return BRW_VERTICAL_STRIDE_0;
@@ -1732,7 +1732,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                      brw_inst_cond_modifier(devinfo, inst), NULL);
 
       /* If we're using the conditional modifier, print which flags reg is
-       * used for it.  Note that on gen6+, the embedded-condition SEL and
+       * used for it.  Note that on gfx6+, the embedded-condition SEL and
        * control flow doesn't update flags.
        */
       if (brw_inst_cond_modifier(devinfo, inst) &&
@@ -1770,7 +1770,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       if (devinfo->ver >= 7) {
          jip = brw_inst_jip(devinfo, inst);
       } else {
-         jip = brw_inst_gen6_jump_count(devinfo, inst);
+         jip = brw_inst_gfx6_jump_count(devinfo, inst);
       }
 
       pad(file, 16);
@@ -1780,18 +1780,18 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                                    opcode == BRW_OPCODE_CONTINUE ||
                                    opcode == BRW_OPCODE_ELSE)) {
       pad(file, 16);
-      format(file, "Jump: %d", brw_inst_gen4_jump_count(devinfo, inst));
+      format(file, "Jump: %d", brw_inst_gfx4_jump_count(devinfo, inst));
       pad(file, 32);
-      format(file, "Pop: %"PRIu64, brw_inst_gen4_pop_count(devinfo, inst));
+      format(file, "Pop: %"PRIu64, brw_inst_gfx4_pop_count(devinfo, inst));
    } else if (devinfo->ver < 6 && (opcode == BRW_OPCODE_IF ||
                                    opcode == BRW_OPCODE_IFF ||
                                    opcode == BRW_OPCODE_HALT ||
                                    opcode == BRW_OPCODE_WHILE)) {
       pad(file, 16);
-      format(file, "Jump: %d", brw_inst_gen4_jump_count(devinfo, inst));
+      format(file, "Jump: %d", brw_inst_gfx4_jump_count(devinfo, inst));
    } else if (devinfo->ver < 6 && opcode == BRW_OPCODE_ENDIF) {
       pad(file, 16);
-      format(file, "Pop: %"PRIu64, brw_inst_gen4_pop_count(devinfo, inst));
+      format(file, "Pop: %"PRIu64, brw_inst_gfx4_pop_count(devinfo, inst));
    } else if (opcode == BRW_OPCODE_JMPI) {
       pad(file, 16);
       err |= src1(file, devinfo, inst);
@@ -1871,7 +1871,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
       space = 0;
 
       fprintf(file, "            ");
-      err |= control(file, "SFID", devinfo->ver >= 6 ? gen6_sfid : gen4_sfid,
+      err |= control(file, "SFID", devinfo->ver >= 6 ? gfx6_sfid : gfx4_sfid,
                      sfid, &space);
       string(file, " MsgDesc:");
 
@@ -1894,10 +1894,10 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             break;
          case BRW_SFID_SAMPLER:
             if (devinfo->ver >= 5) {
-               err |= control(file, "sampler message", gen5_sampler_msg_type,
+               err |= control(file, "sampler message", gfx5_sampler_msg_type,
                               brw_sampler_desc_msg_type(devinfo, imm_desc),
                               &space);
-               err |= control(file, "sampler simd mode", gen5_sampler_simd_mode,
+               err |= control(file, "sampler simd mode", gfx5_sampler_simd_mode,
                               brw_sampler_desc_simd_mode(devinfo, imm_desc),
                               &space);
                format(file, " Surface = %u Sampler = %u",
@@ -1930,7 +1930,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             } else {
                bool is_965 = devinfo->ver == 4 && !devinfo->is_g4x;
                err |= control(file, "DP read message type",
-                              is_965 ? gen4_dp_read_port_msg_type :
+                              is_965 ? gfx4_dp_read_port_msg_type :
                                        g45_dp_read_port_msg_type,
                               brw_dp_read_desc_msg_type(devinfo, imm_desc),
                               &space);
@@ -1982,8 +1982,8 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             space = 1;
 
             err |= control(file, "urb opcode",
-                           devinfo->ver >= 7 ? gen7_urb_opcode
-                                             : gen5_urb_opcode,
+                           devinfo->ver >= 7 ? gfx7_urb_opcode
+                                             : gfx5_urb_opcode,
                            opcode, &space);
 
             if (devinfo->ver >= 7 &&
@@ -2018,7 +2018,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
 
          case BRW_SFID_MESSAGE_GATEWAY:
             format(file, " (%s)",
-                   gen7_gateway_subfuncid[brw_inst_gateway_subfuncid(devinfo, inst)]);
+                   gfx7_gateway_subfuncid[brw_inst_gateway_subfuncid(devinfo, inst)]);
             break;
 
          case GFX7_SFID_DATAPORT_DATA_CACHE:
@@ -2026,7 +2026,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                format(file, " (");
 
                err |= control(file, "DP DC0 message type",
-                              dp_dc0_msg_type_gen7,
+                              dp_dc0_msg_type_gfx7,
                               brw_dp_desc_msg_type(devinfo, imm_desc), &space);
 
                format(file, ", %u, ",

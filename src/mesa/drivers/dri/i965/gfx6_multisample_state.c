@@ -29,7 +29,7 @@
 #include "main/framebuffer.h"
 
 void
-gen6_get_sample_position(struct gl_context *ctx,
+gfx6_get_sample_position(struct gl_context *ctx,
                          struct gl_framebuffer *fb,
                          GLuint index, GLfloat *result)
 {

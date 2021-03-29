@@ -132,7 +132,7 @@ uint32_t
 isl_drm_modifier_get_score(const struct gen_device_info *devinfo,
                            uint64_t modifier)
 {
-   /* FINISHME: Add gen12 modifiers */
+   /* FINISHME: Add gfx12 modifiers */
    switch (modifier) {
    default:
       return 0;

@@ -31,7 +31,7 @@ extern "C" {
 #endif
 
 void
-isl_gen9_choose_image_alignment_el(const struct isl_device *dev,
+isl_gfx9_choose_image_alignment_el(const struct isl_device *dev,
                                    const struct isl_surf_init_info *restrict info,
                                    enum isl_tiling tiling,
                                    enum isl_dim_layout dim_layout,

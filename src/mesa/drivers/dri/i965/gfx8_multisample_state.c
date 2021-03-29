@@ -31,7 +31,7 @@
  * 3DSTATE_SAMPLE_PATTERN
  */
 void
-gen8_emit_3dstate_sample_pattern(struct brw_context *brw)
+gfx8_emit_3dstate_sample_pattern(struct brw_context *brw)
 {
    BEGIN_BATCH(9);
    OUT_BATCH(_3DSTATE_SAMPLE_PATTERN << 16 | (9 - 2));

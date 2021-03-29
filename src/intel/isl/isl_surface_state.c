@@ -335,7 +335,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.Width = info->surf->logical_level0_px.width - 1;
    s.Height = info->surf->logical_level0_px.height - 1;
 
-   /* In the gen6 PRM Volume 1 Part 1: Graphics Core, Section 7.18.3.7.1
+   /* In the gfx6 PRM Volume 1 Part 1: Graphics Core, Section 7.18.3.7.1
     * (Surface Arrays For all surfaces other than separate stencil buffer):
     *
     * "[DevSNB] Errata: Sampler MSAA Qpitch will be 4 greater than the value
@@ -477,7 +477,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 #endif
 
    if (info->surf->dim_layout == ISL_DIM_LAYOUT_GEN9_1D) {
-      /* For gen9 1-D textures, surface pitch is ignored */
+      /* For gfx9 1-D textures, surface pitch is ignored */
       s.SurfacePitch = 0;
    } else {
       s.SurfacePitch = info->surf->row_pitch_B - 1;
@@ -614,7 +614,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
        * and the data port.  Testing seems to indicate that the data port
        * completely ignores the AuxiliarySurfaceMode field.
        *
-       * On gen12 HDC supports compression.
+       * On gfx12 HDC supports compression.
        */
       if (GFX_VER < 12)
          assert(!(info->view->usage & ISL_SURF_USAGE_STORAGE_BIT));

@@ -528,7 +528,7 @@ anv_raster_polygon_mode(struct anv_graphics_pipeline *pipeline,
 
 #if GFX_VER <= 7
 static uint32_t
-gen7_ms_rast_mode(struct anv_graphics_pipeline *pipeline,
+gfx7_ms_rast_mode(struct anv_graphics_pipeline *pipeline,
                   const VkPipelineInputAssemblyStateCreateInfo *ia_info,
                   const VkPipelineRasterizationStateCreateInfo *rs_info,
                   const VkPipelineMultisampleStateCreateInfo *ms_info)
@@ -647,9 +647,9 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
     */
 #if GFX_VER >= 8
    if (raster_mode == VK_POLYGON_MODE_LINE) {
-      /* Unfortunately, configuring our line rasterization hardware on gen8
+      /* Unfortunately, configuring our line rasterization hardware on gfx8
        * and later is rather painful.  Instead of giving us bits to tell the
-       * hardware what line mode to use like we had on gen7, we now have an
+       * hardware what line mode to use like we had on gfx7, we now have an
        * arcane combination of API Mode and MSAA enable bits which do things
        * in a table which are expected to magically put the hardware into the
        * right mode for your API.  Sadly, Vulkan isn't any of the APIs the
@@ -686,7 +686,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.ForceMultisampling = false;
 #else
    raster.MultisampleRasterizationMode =
-      gen7_ms_rast_mode(pipeline, ia_info, rs_info, ms_info);
+      gfx7_ms_rast_mode(pipeline, ia_info, rs_info, ms_info);
 #endif
 
    if (raster_mode == VK_POLYGON_MODE_LINE &&
@@ -742,11 +742,11 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
 #endif
 
 #if GFX_VER >= 8
-   GENX(3DSTATE_SF_pack)(NULL, pipeline->gen8.sf, &sf);
-   GENX(3DSTATE_RASTER_pack)(NULL, pipeline->gen8.raster, &raster);
+   GENX(3DSTATE_SF_pack)(NULL, pipeline->gfx8.sf, &sf);
+   GENX(3DSTATE_RASTER_pack)(NULL, pipeline->gfx8.raster, &raster);
 #else
 #  undef raster
-   GENX(3DSTATE_SF_pack)(NULL, &pipeline->gen7.sf, &sf);
+   GENX(3DSTATE_SF_pack)(NULL, &pipeline->gfx7.sf, &sf);
 #endif
 }
 
@@ -1029,11 +1029,11 @@ emit_ds_state(struct anv_graphics_pipeline *pipeline,
               const struct anv_subpass *subpass)
 {
 #if GFX_VER == 7
-#  define depth_stencil_dw pipeline->gen7.depth_stencil_state
+#  define depth_stencil_dw pipeline->gfx7.depth_stencil_state
 #elif GFX_VER == 8
-#  define depth_stencil_dw pipeline->gen8.wm_depth_stencil
+#  define depth_stencil_dw pipeline->gfx8.wm_depth_stencil
 #else
-#  define depth_stencil_dw pipeline->gen9.wm_depth_stencil
+#  define depth_stencil_dw pipeline->gfx9.wm_depth_stencil
 #endif
 
    if (pCreateInfo == NULL) {
@@ -1388,7 +1388,7 @@ emit_3dstate_clip(struct anv_graphics_pipeline *pipeline,
        BRW_BARYCENTRIC_NONPERSPECTIVE_BITS) != 0 : 0;
 #endif
 
-   GENX(3DSTATE_CLIP_pack)(NULL, pipeline->gen7.clip, &clip);
+   GENX(3DSTATE_CLIP_pack)(NULL, pipeline->gfx7.clip, &clip);
 }
 
 static void
@@ -1425,10 +1425,10 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
          so.Buffer2SurfacePitch = xfb_info->buffers[2].stride;
          so.Buffer3SurfacePitch = xfb_info->buffers[3].stride;
 #else
-         pipeline->gen7.xfb_bo_pitch[0] = xfb_info->buffers[0].stride;
-         pipeline->gen7.xfb_bo_pitch[1] = xfb_info->buffers[1].stride;
-         pipeline->gen7.xfb_bo_pitch[2] = xfb_info->buffers[2].stride;
-         pipeline->gen7.xfb_bo_pitch[3] = xfb_info->buffers[3].stride;
+         pipeline->gfx7.xfb_bo_pitch[0] = xfb_info->buffers[0].stride;
+         pipeline->gfx7.xfb_bo_pitch[1] = xfb_info->buffers[1].stride;
+         pipeline->gfx7.xfb_bo_pitch[2] = xfb_info->buffers[2].stride;
+         pipeline->gfx7.xfb_bo_pitch[3] = xfb_info->buffers[3].stride;
 
          /* On Gen7, the SO buffer enables live in 3DSTATE_STREAMOUT which
           * is a bit inconvenient because we don't know what buffers will
@@ -1637,7 +1637,7 @@ emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
           * which the VUE handle reference count would overflow resulting in
           * internal reference counting bugs.  My (Jason's) best guess is that
           * this bug cropped back up on SKL GT4 when we suddenly had more
-          * threads in play than any previous gen9 hardware.
+          * threads in play than any previous gfx9 hardware.
           *
           * What we do know for sure is that setting this bit when
           * tessellation shaders are in use fixes a GPU hang in Batman: Arkham
@@ -1982,7 +1982,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline, struct anv_subpass *subp
             wm.MultisampleDispatchMode = MSDISPMODE_PERSAMPLE;
          }
          wm.MultisampleRasterizationMode =
-            gen7_ms_rast_mode(pipeline, ia, raster, multisample);
+            gfx7_ms_rast_mode(pipeline, ia, raster, multisample);
 #endif
 
          wm.LineStippleEnable = line && line->stippledLineEnable;
@@ -2002,7 +2002,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
    if (!anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT)) {
       anv_batch_emit(&pipeline->base.batch, GENX(3DSTATE_PS), ps) {
 #if GFX_VER == 7
-         /* Even if no fragments are ever dispatched, gen7 hardware hangs if
+         /* Even if no fragments are ever dispatched, gfx7 hardware hangs if
           * we don't at least set the maximum number of threads.
           */
          ps.MaximumNumberofThreads = devinfo->max_wm_threads - 1;
@@ -2186,7 +2186,7 @@ compute_kill_pixel(struct anv_graphics_pipeline *pipeline,
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
    /* This computes the KillPixel portion of the computation for whether or
-    * not we want to enable the PMA fix on gen8 or gen9.  It's given by this
+    * not we want to enable the PMA fix on gfx8 or gfx9.  It's given by this
     * chunk of the giant formula:
     *
     *    (3DSTATE_PS_EXTRA::PixelShaderKillsPixels ||
@@ -2339,7 +2339,7 @@ genX(graphics_pipeline_create)(
     * Stall" bit set.
     */
    if (!device->info.is_haswell && !device->info.is_baytrail)
-      gen7_emit_vs_workaround_flush(brw);
+      gfx7_emit_vs_workaround_flush(brw);
 #endif
 
    emit_3dstate_vs(pipeline);
@@ -2385,7 +2385,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
          devinfo->max_cs_threads * subslices - 1;
-      /* TODO: Enable gen12-hp scratch support*/
+      /* TODO: Enable gfx12-hp scratch support*/
       assert(get_scratch_space(cs_bin) == 0);
    }
 }
@@ -2484,7 +2484,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
        * preemption.
        *
        * We still have issues with mid-thread preemption (it was already
-       * disabled by the kernel on gen11, due to missing workarounds). It's
+       * disabled by the kernel on gfx11, due to missing workarounds). It's
        * possible that we are just missing some workarounds, and could enable
        * it later, but for now let's disable it to fix a GPU in compute in Car
        * Chase (and possibly more).

@@ -40,7 +40,7 @@
 #define  GFX9_RPSTAT0_PREV_GT_FREQ_MASK    INTEL_MASK(8, 0)
 
 /* Programmable perf 64bits counters (used for GTRequestQueueFull counter on
- * gen7-11)
+ * gfx7-11)
  */
 #define PERF_CNT_1_DW0                     0x91b8
 #define PERF_CNT_2_DW0                     0x91c0

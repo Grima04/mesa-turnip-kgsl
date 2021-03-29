@@ -95,7 +95,7 @@ anv_descriptor_data_for_type(const struct anv_physical_device *device,
       unreachable("Unsupported descriptor type");
    }
 
-   /* On gen8 and above when we have softpin enabled, we also need to push
+   /* On gfx8 and above when we have softpin enabled, we also need to push
     * SSBO address ranges so that we can use A64 messages in the shader.
     */
    if (device->has_a64_buffer_access &&

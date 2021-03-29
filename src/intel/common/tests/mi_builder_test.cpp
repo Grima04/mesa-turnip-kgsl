@@ -213,7 +213,7 @@ mi_builder_test::SetUp()
    ctx_id = ctx_create.ctx_id;
 
    if (GFX_VER >= 8) {
-      /* On gen8+, we require softpin */
+      /* On gfx8+, we require softpin */
       int has_softpin;
       drm_i915_getparam getparam = drm_i915_getparam();
       getparam.param = I915_PARAM_HAS_EXEC_SOFTPIN;
@@ -309,7 +309,7 @@ mi_builder_test::submit_batch()
    objects[0].handle = data_bo_handle;
    objects[0].relocation_count = 0;
    objects[0].relocs_ptr = 0;
-#if GFX_VER >= 8 /* On gen8+, we pin everything */
+#if GFX_VER >= 8 /* On gfx8+, we pin everything */
    objects[0].flags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |
                       EXEC_OBJECT_PINNED |
                       EXEC_OBJECT_WRITE;
@@ -320,7 +320,7 @@ mi_builder_test::submit_batch()
 #endif
 
    objects[1].handle = batch_bo_handle;
-#if GFX_VER >= 8 /* On gen8+, we don't use relocations */
+#if GFX_VER >= 8 /* On gfx8+, we don't use relocations */
    objects[1].relocation_count = 0;
    objects[1].relocs_ptr = 0;
    objects[1].flags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS |

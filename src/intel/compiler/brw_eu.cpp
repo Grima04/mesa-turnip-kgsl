@@ -495,7 +495,7 @@ brw_label_assembly(const struct gen_device_info *devinfo,
          if (devinfo->ver >= 7) {
             jip = brw_inst_jip(devinfo, inst);
          } else {
-            jip = brw_inst_gen6_jump_count(devinfo, inst);
+            jip = brw_inst_gfx6_jump_count(devinfo, inst);
          }
 
          brw_create_label(&root_label, offset + jip * to_bytes_scale, mem_ctx);

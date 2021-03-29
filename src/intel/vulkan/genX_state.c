@@ -711,7 +711,7 @@ VkResult genX(CreateSampler)(
             (VkSamplerCustomBorderColorCreateInfoEXT *) ext;
          if (sampler->custom_border_color.map == NULL)
             break;
-         struct gen8_border_color *cbc = sampler->custom_border_color.map;
+         struct gfx8_border_color *cbc = sampler->custom_border_color.map;
          if (custom_border_color->format == VK_FORMAT_B4G4R4A4_UNORM_PACK16) {
             /* B4G4R4A4_UNORM_PACK16 is treated as R4G4B4A4_UNORM_PACK16 with
              * a swizzle, but this does not carry over to the sampler for

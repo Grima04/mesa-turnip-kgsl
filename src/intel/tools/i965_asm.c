@@ -153,7 +153,7 @@ i965_postprocess_labels()
                   if (p->devinfo->ver >= 7) {
                      brw_inst_set_jip(p->devinfo, inst, relative_offset);
                   } else if (p->devinfo->ver == 6) {
-                     brw_inst_set_gen6_jump_count(p->devinfo, inst, relative_offset);
+                     brw_inst_set_gfx6_jump_count(p->devinfo, inst, relative_offset);
                   }
                   break;
                case BRW_OPCODE_BREAK:

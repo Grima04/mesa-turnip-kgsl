@@ -435,7 +435,7 @@ blorp_clear(struct blorp_batch *batch,
    if (surf->surf->tiling == ISL_TILING_LINEAR)
       use_simd16_replicated_data = false;
 
-   /* Replicated clears don't work yet before gen6 */
+   /* Replicated clears don't work yet before gfx6 */
    if (batch->blorp->isl_dev->info->ver < 6)
       use_simd16_replicated_data = false;
 
@@ -478,7 +478,7 @@ blorp_clear(struct blorp_batch *batch,
       }
 
       /* The MinLOD and MinimumArrayElement don't work properly for cube maps.
-       * Convert them to a single slice on gen4.
+       * Convert them to a single slice on gfx4.
        */
       if (batch->blorp->isl_dev->info->ver == 4 &&
           (params.dst.surf.usage & ISL_SURF_USAGE_CUBE_BIT)) {
@@ -498,7 +498,7 @@ blorp_clear(struct blorp_batch *batch,
       }
 
       if (params.dst.tile_x_sa || params.dst.tile_y_sa) {
-         /* Either we're on gen4 where there is no multisampling or the
+         /* Either we're on gfx4 where there is no multisampling or the
           * surface is compressed which also implies no multisampling.
           * Therefore, sa == px and we don't need to do a conversion.
           */
@@ -762,7 +762,7 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
                           uint32_t level, uint32_t layer,
                           uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
 {
-   /* This function currently doesn't support any gen prior to gen8 */
+   /* This function currently doesn't support any gen prior to gfx8 */
    assert(devinfo->ver >= 8);
 
    if (devinfo->ver == 8 && surf->format == ISL_FORMAT_R16_UNORM) {
@@ -895,7 +895,7 @@ blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
    blorp_params_init(&params);
    params.snapshot_type = INTEL_SNAPSHOT_HIZ_CLEAR;
 
-   /* This requires WM_HZ_OP which only exists on gen8+ */
+   /* This requires WM_HZ_OP which only exists on gfx8+ */
    assert(ISL_GFX_VER(batch->blorp->isl_dev) >= 8);
 
    params.hiz_op = ISL_AUX_OP_FAST_CLEAR;
@@ -948,7 +948,7 @@ blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
  * tagged as cleared so the depth clear value is not actually needed.
  */
 void
-blorp_gen8_hiz_clear_attachments(struct blorp_batch *batch,
+blorp_gfx8_hiz_clear_attachments(struct blorp_batch *batch,
                                  uint32_t num_samples,
                                  uint32_t x0, uint32_t y0,
                                  uint32_t x1, uint32_t y1,
@@ -1273,7 +1273,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
                     uint32_t level, uint32_t layer)
 {
    if (ISL_GFX_VER(batch->blorp->isl_dev) >= 10) {
-      /* On gen10 and above, we have a hardware resolve op for this */
+      /* On gfx10 and above, we have a hardware resolve op for this */
       return blorp_ccs_resolve(batch, surf, level, layer, 1,
                                surf->surf->format, ISL_AUX_OP_AMBIGUATE);
    }
@@ -1366,7 +1366,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
       width_cl = DIV_ROUND_UP(width_el, x_el_per_cl);
       height_cl = DIV_ROUND_UP(height_el, y_el_per_cl);
    } else {
-      /* On gen7, the CCS tiling is not so nice.  However, there we are
+      /* On gfx7, the CCS tiling is not so nice.  However, there we are
        * guaranteed that we only have a single level and slice so we don't
        * have to worry about it and can just align to a whole tile.
        */

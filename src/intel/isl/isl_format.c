@@ -69,9 +69,9 @@ struct surface_format_info {
  *
  * Y*: 45
  * Y+: 45 (g45/gm45)
- * Y~: 50 (gen5)
- * Y^: 60 (gen6)
- * Y#: 70 (gen7)
+ * Y~: 50 (gfx5)
+ * Y^: 60 (gfx6)
+ * Y#: 70 (gfx7)
  *
  * The abbreviations in the header below are:
  * smpl  - Sampling Engine
@@ -83,7 +83,7 @@ struct surface_format_info {
  * VB    - Input Vertex Buffer
  * SO    - Steamed Output Vertex Buffers (transform feedback)
  * color - Color Processing
- * ccs_e - Lossless Compression Support (gen9+ only)
+ * ccs_e - Lossless Compression Support (gfx9+ only)
  * sf    - Surface Format
  *
  * See page 88 of the Sandybridge PRM VOL4_Part1 PDF.
@@ -297,7 +297,7 @@ static const struct surface_format_info format_info[] = {
    SF(  x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   PLANAR_420_8)
    /* The format enum for R8G8B8_UNORM_SRGB first shows up in the HSW PRM but
     * empirical testing indicates that it doesn't actually sRGB decode and
-    * acts identical to R8G8B8_UNORM.  It does work on gen8+.
+    * acts identical to R8G8B8_UNORM.  It does work on gfx8+.
     */
    SF( 80,  80,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   R8G8B8_UNORM_SRGB)
    SF( 80,  80,   x,   x,   x,   x,   x,   x,   x,   x,   x,   x,   ETC1_RGB8)

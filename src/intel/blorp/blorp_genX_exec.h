@@ -653,7 +653,7 @@ blorp_emit_sampler_state(struct blorp_batch *batch)
 }
 
 /* What follows is the code for setting up a "pipeline" on Sandy Bridge and
- * later hardware.  This file will be included by i965 for gen4-5 as well, so
+ * later hardware.  This file will be included by i965 for gfx4-5 as well, so
  * this code is guarded by GFX_VER >= 6.
  */
 #if GFX_VER >= 6
@@ -861,7 +861,7 @@ blorp_emit_ps_config(struct blorp_batch *batch,
       }
 
       /* 3DSTATE_PS expects the number of threads per PSD, which is always 64
-       * for pre Gen11 and 128 for gen11+; On gen11+ If a programmed value is
+       * for pre Gen11 and 128 for gfx11+; On gfx11+ If a programmed value is
        * k, it implies 2(k+1) threads. It implicitly scales for different GT
        * levels (which have some # of PSDs).
        *
@@ -1286,7 +1286,7 @@ blorp_emit_pipeline(struct blorp_batch *batch,
     * The HiZ op doesn't use BLEND_STATE or COLOR_CALC_STATE.
     *
     * The dynamic state emit helpers emit their own STATE_POINTERS packets on
-    * gen7+.  However, on gen6 and earlier, they're all lumpped together in
+    * gfx7+.  However, on gfx6 and earlier, they're all lumpped together in
     * one CC_STATE_POINTERS packet so we have to emit that here.
     */
    blorp_emit(batch, GENX(3DSTATE_CC_STATE_POINTERS), cc) {
@@ -1427,7 +1427,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
 
    enum isl_aux_usage aux_usage = surface->aux_usage;
 
-   /* On gen12, implicit CCS has no aux buffer */
+   /* On gfx12, implicit CCS has no aux buffer */
    bool use_aux_address = (aux_usage != ISL_AUX_USAGE_NONE) &&
                           (surface->aux_addr.buffer != NULL);
 
@@ -1465,7 +1465,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
                        surface->addr, 0);
 
    if (use_aux_address) {
-      /* On gen7 and prior, the bottom 12 bits of the MCS base address are
+      /* On gfx7 and prior, the bottom 12 bits of the MCS base address are
        * used to store other information.  This should be ok, however, because
        * surface buffer addresses are always 4K page alinged.
        */
@@ -1493,7 +1493,7 @@ blorp_emit_surface_state(struct blorp_batch *batch,
                            isl_dev->ss.clear_value_size);
       }
 #else
-      unreachable("Fast clears are only supported on gen7+");
+      unreachable("Fast clears are only supported on gfx7+");
 #endif
    }
 
@@ -1718,7 +1718,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
  * clearing operations without such information.
  * */
 static void
-blorp_emit_gen8_hiz_op(struct blorp_batch *batch,
+blorp_emit_gfx8_hiz_op(struct blorp_batch *batch,
                        const struct blorp_params *params)
 {
    /* We should be performing an operation on a depth or stencil buffer.
@@ -1966,7 +1966,7 @@ blorp_exec(struct blorp_batch *batch, const struct blorp_params *params)
 
 #if GFX_VER >= 8
    if (params->hiz_op != ISL_AUX_OP_NONE) {
-      blorp_emit_gen8_hiz_op(batch, params);
+      blorp_emit_gfx8_hiz_op(batch, params);
       return;
    }
 #endif

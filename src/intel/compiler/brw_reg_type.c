@@ -91,7 +91,7 @@ enum hw_imm_type {
 static const struct hw_type {
    enum hw_reg_type reg_type;
    enum hw_imm_type imm_type;
-} gen4_hw_type[] = {
+} gfx4_hw_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = {     INVALID, INVALID             },
 
    [BRW_REGISTER_TYPE_F]  = { BRW_HW_REG_TYPE_F,   BRW_HW_IMM_TYPE_F   },
@@ -104,7 +104,7 @@ static const struct hw_type {
    [BRW_REGISTER_TYPE_B]  = { BRW_HW_REG_TYPE_B,   INVALID             },
    [BRW_REGISTER_TYPE_UB] = { BRW_HW_REG_TYPE_UB,  INVALID             },
    [BRW_REGISTER_TYPE_V]  = { INVALID,             BRW_HW_IMM_TYPE_V   },
-}, gen6_hw_type[] = {
+}, gfx6_hw_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = {     INVALID, INVALID             },
 
    [BRW_REGISTER_TYPE_F]  = { BRW_HW_REG_TYPE_F,   BRW_HW_IMM_TYPE_F   },
@@ -118,7 +118,7 @@ static const struct hw_type {
    [BRW_REGISTER_TYPE_UB] = { BRW_HW_REG_TYPE_UB,  INVALID             },
    [BRW_REGISTER_TYPE_V]  = { INVALID,             BRW_HW_IMM_TYPE_V   },
    [BRW_REGISTER_TYPE_UV] = { INVALID,             BRW_HW_IMM_TYPE_UV  },
-}, gen7_hw_type[] = {
+}, gfx7_hw_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = {     INVALID, INVALID             },
 
    [BRW_REGISTER_TYPE_DF] = { GFX7_HW_REG_TYPE_DF, INVALID             },
@@ -133,7 +133,7 @@ static const struct hw_type {
    [BRW_REGISTER_TYPE_UB] = { BRW_HW_REG_TYPE_UB,  INVALID             },
    [BRW_REGISTER_TYPE_V]  = { INVALID,             BRW_HW_IMM_TYPE_V   },
    [BRW_REGISTER_TYPE_UV] = { INVALID,             BRW_HW_IMM_TYPE_UV  },
-}, gen8_hw_type[] = {
+}, gfx8_hw_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = {     INVALID, INVALID             },
 
    [BRW_REGISTER_TYPE_DF] = { GFX7_HW_REG_TYPE_DF, GFX8_HW_IMM_TYPE_DF },
@@ -151,7 +151,7 @@ static const struct hw_type {
    [BRW_REGISTER_TYPE_UB] = { BRW_HW_REG_TYPE_UB,  INVALID             },
    [BRW_REGISTER_TYPE_V]  = { INVALID,             BRW_HW_IMM_TYPE_V   },
    [BRW_REGISTER_TYPE_UV] = { INVALID,             BRW_HW_IMM_TYPE_UV  },
-}, gen11_hw_type[] = {
+}, gfx11_hw_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = {      INVALID, INVALID              },
 
    [BRW_REGISTER_TYPE_NF] = { GFX11_HW_REG_TYPE_NF, INVALID              },
@@ -167,7 +167,7 @@ static const struct hw_type {
    [BRW_REGISTER_TYPE_UB] = { GFX11_HW_REG_TYPE_UB, INVALID              },
    [BRW_REGISTER_TYPE_V]  = { INVALID,              GFX11_HW_IMM_TYPE_V  },
    [BRW_REGISTER_TYPE_UV] = { INVALID,              GFX11_HW_IMM_TYPE_UV },
-}, gen12_hw_type[] = {
+}, gfx12_hw_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = {            INVALID, INVALID                    },
 
    [BRW_REGISTER_TYPE_F]  = { GFX12_HW_REG_TYPE_FLOAT(2), GFX12_HW_REG_TYPE_FLOAT(2) },
@@ -219,19 +219,19 @@ enum hw_3src_reg_type {
 
 static const struct hw_3src_type {
    enum hw_3src_reg_type reg_type;
-   enum gen10_align1_3src_exec_type exec_type;
-} gen6_hw_3src_type[] = {
+   enum gfx10_align1_3src_exec_type exec_type;
+} gfx6_hw_3src_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
 
    [BRW_REGISTER_TYPE_F]  = { GFX7_3SRC_TYPE_F  },
-}, gen7_hw_3src_type[] = {
+}, gfx7_hw_3src_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
 
    [BRW_REGISTER_TYPE_F]  = { GFX7_3SRC_TYPE_F  },
    [BRW_REGISTER_TYPE_D]  = { GFX7_3SRC_TYPE_D  },
    [BRW_REGISTER_TYPE_UD] = { GFX7_3SRC_TYPE_UD },
    [BRW_REGISTER_TYPE_DF] = { GFX7_3SRC_TYPE_DF },
-}, gen8_hw_3src_type[] = {
+}, gfx8_hw_3src_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
 
    [BRW_REGISTER_TYPE_F]  = { GFX7_3SRC_TYPE_F  },
@@ -239,7 +239,7 @@ static const struct hw_3src_type {
    [BRW_REGISTER_TYPE_UD] = { GFX7_3SRC_TYPE_UD },
    [BRW_REGISTER_TYPE_DF] = { GFX7_3SRC_TYPE_DF },
    [BRW_REGISTER_TYPE_HF] = { GFX8_3SRC_TYPE_HF },
-}, gen10_hw_3src_align1_type[] = {
+}, gfx10_hw_3src_align1_type[] = {
 #define E(x) BRW_ALIGN1_3SRC_EXEC_TYPE_##x
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
 
@@ -253,7 +253,7 @@ static const struct hw_3src_type {
    [BRW_REGISTER_TYPE_UW] = { GFX10_ALIGN1_3SRC_REG_TYPE_UW, E(INT)   },
    [BRW_REGISTER_TYPE_B]  = { GFX10_ALIGN1_3SRC_REG_TYPE_B,  E(INT)   },
    [BRW_REGISTER_TYPE_UB] = { GFX10_ALIGN1_3SRC_REG_TYPE_UB, E(INT)   },
-}, gen11_hw_3src_type[] = {
+}, gfx11_hw_3src_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
 
    [BRW_REGISTER_TYPE_NF] = { GFX11_ALIGN1_3SRC_REG_TYPE_NF, E(FLOAT) },
@@ -266,7 +266,7 @@ static const struct hw_3src_type {
    [BRW_REGISTER_TYPE_UW] = { GFX10_ALIGN1_3SRC_REG_TYPE_UW, E(INT)   },
    [BRW_REGISTER_TYPE_B]  = { GFX10_ALIGN1_3SRC_REG_TYPE_B,  E(INT)   },
    [BRW_REGISTER_TYPE_UB] = { GFX10_ALIGN1_3SRC_REG_TYPE_UB, E(INT)   },
-}, gen12_hw_3src_type[] = {
+}, gfx12_hw_3src_type[] = {
    [0 ... BRW_REGISTER_TYPE_LAST] = { INVALID },
 
    [BRW_REGISTER_TYPE_F]  = { GFX12_HW_REG_TYPE_UINT(2),     E(FLOAT), },
@@ -294,23 +294,23 @@ brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
    const struct hw_type *table;
 
    if (devinfo->ver >= 12) {
-      assert(type < ARRAY_SIZE(gen12_hw_type));
-      table = gen12_hw_type;
+      assert(type < ARRAY_SIZE(gfx12_hw_type));
+      table = gfx12_hw_type;
    } else if (devinfo->ver >= 11) {
-      assert(type < ARRAY_SIZE(gen11_hw_type));
-      table = gen11_hw_type;
+      assert(type < ARRAY_SIZE(gfx11_hw_type));
+      table = gfx11_hw_type;
    } else if (devinfo->ver >= 8) {
-      assert(type < ARRAY_SIZE(gen8_hw_type));
-      table = gen8_hw_type;
+      assert(type < ARRAY_SIZE(gfx8_hw_type));
+      table = gfx8_hw_type;
    } else if (devinfo->ver >= 7) {
-      assert(type < ARRAY_SIZE(gen7_hw_type));
-      table = gen7_hw_type;
+      assert(type < ARRAY_SIZE(gfx7_hw_type));
+      table = gfx7_hw_type;
    } else if (devinfo->ver >= 6) {
-      assert(type < ARRAY_SIZE(gen6_hw_type));
-      table = gen6_hw_type;
+      assert(type < ARRAY_SIZE(gfx6_hw_type));
+      table = gfx6_hw_type;
    } else {
-      assert(type < ARRAY_SIZE(gen4_hw_type));
-      table = gen4_hw_type;
+      assert(type < ARRAY_SIZE(gfx4_hw_type));
+      table = gfx4_hw_type;
    }
 
    if (file == BRW_IMMEDIATE_VALUE) {
@@ -334,17 +334,17 @@ brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
    const struct hw_type *table;
 
    if (devinfo->ver >= 12) {
-      table = gen12_hw_type;
+      table = gfx12_hw_type;
    } else if (devinfo->ver >= 11) {
-      table = gen11_hw_type;
+      table = gfx11_hw_type;
    } else if (devinfo->ver >= 8) {
-      table = gen8_hw_type;
+      table = gfx8_hw_type;
    } else if (devinfo->ver >= 7) {
-      table = gen7_hw_type;
+      table = gfx7_hw_type;
    } else if (devinfo->ver >= 6) {
-      table = gen6_hw_type;
+      table = gfx6_hw_type;
    } else {
-      table = gen4_hw_type;
+      table = gfx4_hw_type;
    }
 
    if (file == BRW_IMMEDIATE_VALUE) {
@@ -374,14 +374,14 @@ brw_reg_type_to_a16_hw_3src_type(const struct gen_device_info *devinfo,
    const struct hw_3src_type *table;
 
    if (devinfo->ver >= 8) {
-      assert(type < ARRAY_SIZE(gen8_hw_3src_type));
-      table = gen8_hw_3src_type;
+      assert(type < ARRAY_SIZE(gfx8_hw_3src_type));
+      table = gfx8_hw_3src_type;
    } else if (devinfo->ver >= 7) {
-      assert(type < ARRAY_SIZE(gen7_hw_3src_type));
-      table = gen7_hw_3src_type;
+      assert(type < ARRAY_SIZE(gfx7_hw_3src_type));
+      table = gfx7_hw_3src_type;
    } else {
-      assert(type < ARRAY_SIZE(gen6_hw_3src_type));
-      table = gen6_hw_3src_type;
+      assert(type < ARRAY_SIZE(gfx6_hw_3src_type));
+      table = gfx6_hw_3src_type;
    }
 
    assert(table[type].reg_type != (enum hw_3src_reg_type)INVALID);
@@ -397,14 +397,14 @@ brw_reg_type_to_a1_hw_3src_type(const struct gen_device_info *devinfo,
                                 enum brw_reg_type type)
 {
    if (devinfo->ver >= 12) {
-      assert(type < ARRAY_SIZE(gen12_hw_3src_type));
-      return gen12_hw_3src_type[type].reg_type;
+      assert(type < ARRAY_SIZE(gfx12_hw_3src_type));
+      return gfx12_hw_3src_type[type].reg_type;
    } else if (devinfo->ver >= 11) {
-      assert(type < ARRAY_SIZE(gen11_hw_3src_type));
-      return gen11_hw_3src_type[type].reg_type;
+      assert(type < ARRAY_SIZE(gfx11_hw_3src_type));
+      return gfx11_hw_3src_type[type].reg_type;
    } else {
-      assert(type < ARRAY_SIZE(gen10_hw_3src_align1_type));
-      return gen10_hw_3src_align1_type[type].reg_type;
+      assert(type < ARRAY_SIZE(gfx10_hw_3src_align1_type));
+      return gfx10_hw_3src_align1_type[type].reg_type;
    }
 }
 
@@ -419,11 +419,11 @@ brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
    const struct hw_3src_type *table = NULL;
 
    if (devinfo->ver >= 8) {
-      table = gen8_hw_3src_type;
+      table = gfx8_hw_3src_type;
    } else if (devinfo->ver >= 7) {
-      table = gen7_hw_3src_type;
+      table = gfx7_hw_3src_type;
    } else if (devinfo->ver >= 6) {
-      table = gen6_hw_3src_type;
+      table = gfx6_hw_3src_type;
    }
 
    for (enum brw_reg_type i = 0; i <= BRW_REGISTER_TYPE_LAST; i++) {
@@ -442,9 +442,9 @@ enum brw_reg_type
 brw_a1_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
                                 unsigned hw_type, unsigned exec_type)
 {
-   const struct hw_3src_type *table = (devinfo->ver >= 12 ? gen12_hw_3src_type :
-                                       devinfo->ver >= 11 ? gen11_hw_3src_type :
-                                       gen10_hw_3src_align1_type);
+   const struct hw_3src_type *table = (devinfo->ver >= 12 ? gfx12_hw_3src_type :
+                                       devinfo->ver >= 11 ? gfx11_hw_3src_type :
+                                       gfx10_hw_3src_align1_type);
 
    for (enum brw_reg_type i = 0; i <= BRW_REGISTER_TYPE_LAST; i++) {
       if (table[i].reg_type == hw_type &&

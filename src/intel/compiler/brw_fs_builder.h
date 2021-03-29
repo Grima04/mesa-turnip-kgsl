@@ -663,7 +663,7 @@ namespace brw {
           *
           * CMP null<d> src0<f> src1<f>
           *
-          * Original gen4 does type conversion to the destination type
+          * Original gfx4 does type conversion to the destination type
           * before comparison, producing garbage results for floating
           * point comparisons.
           *
@@ -688,7 +688,7 @@ namespace brw {
           *
           * CMP null<d> src0<f> src1<f>
           *
-          * Original gen4 does type conversion to the destination type
+          * Original gfx4 does type conversion to the destination type
           * before comparison, producing garbage results for floating
           * point comparisons.
           *
@@ -844,7 +844,7 @@ namespace brw {
       src_reg
       fix_math_operand(const src_reg &src) const
       {
-         /* Can't do hstride == 0 args on gen6 math, so expand it out. We
+         /* Can't do hstride == 0 args on gfx6 math, so expand it out. We
           * might be able to do better by doing execsize = 1 math and then
           * expanding that result out, but we would need to be careful with
           * masking.

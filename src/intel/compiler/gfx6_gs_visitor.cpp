@@ -35,7 +35,7 @@
 namespace brw {
 
 void
-gen6_gs_visitor::emit_prolog()
+gfx6_gs_visitor::emit_prolog()
 {
    vec4_gs_visitor::emit_prolog();
 
@@ -44,7 +44,7 @@ gen6_gs_visitor::emit_prolog()
     * can write to the URB simultaneously and the FF_SYNC message provides the
     * synchronization mechanism for this, so using this message effectively
     * stalls the thread until it is its turn to write to the URB. Because of
-    * this, the best way to implement geometry shader algorithms in gen6 is to
+    * this, the best way to implement geometry shader algorithms in gfx6 is to
     * execute the algorithm before the FF_SYNC message to maximize parallelism.
     *
     * To achieve this we buffer the geometry shader outputs for each emitted
@@ -60,7 +60,7 @@ gen6_gs_visitor::emit_prolog()
     * flags for the next vertex come right after the data items and flags for
     * the previous vertex.
     */
-   this->current_annotation = "gen6 prolog";
+   this->current_annotation = "gfx6 prolog";
    this->vertex_output = src_reg(this,
                                  glsl_type::uint_type,
                                  (prog_data->vue_map.num_slots + 1) *
@@ -137,9 +137,9 @@ gen6_gs_visitor::emit_prolog()
 }
 
 void
-gen6_gs_visitor::gs_emit_vertex(int stream_id)
+gfx6_gs_visitor::gs_emit_vertex(int stream_id)
 {
-   this->current_annotation = "gen6 emit vertex";
+   this->current_annotation = "gfx6 emit vertex";
 
    /* Buffer all output slots for this vertex in vertex_output */
    for (int slot = 0; slot < prog_data->vue_map.num_slots; ++slot) {
@@ -201,9 +201,9 @@ gen6_gs_visitor::gs_emit_vertex(int stream_id)
 }
 
 void
-gen6_gs_visitor::gs_end_primitive()
+gfx6_gs_visitor::gs_end_primitive()
 {
-   this->current_annotation = "gen6 end primitive";
+   this->current_annotation = "gfx6 end primitive";
    /* Calling EndPrimitive() is optional for point output. In this case we set
     * the PrimEnd flag when we process EmitVertex().
     */
@@ -251,9 +251,9 @@ gen6_gs_visitor::gs_end_primitive()
 }
 
 void
-gen6_gs_visitor::emit_urb_write_header(int mrf)
+gfx6_gs_visitor::emit_urb_write_header(int mrf)
 {
-   this->current_annotation = "gen6 urb header";
+   this->current_annotation = "gfx6 urb header";
    /* Compute offset of the flags for the current vertex in vertex_output and
     * write them in dw2 of the message header.
     *
@@ -287,7 +287,7 @@ align_interleaved_urb_mlen(unsigned mlen)
 }
 
 void
-gen6_gs_visitor::emit_urb_write_opcode(bool complete, int base_mrf,
+gfx6_gs_visitor::emit_urb_write_opcode(bool complete, int base_mrf,
                                        int last_mrf, int urb_offset)
 {
    vec4_instruction *inst = NULL;
@@ -317,7 +317,7 @@ gen6_gs_visitor::emit_urb_write_opcode(bool complete, int base_mrf,
 }
 
 void
-gen6_gs_visitor::emit_thread_end()
+gfx6_gs_visitor::emit_thread_end()
 {
    /* Make sure the current primitive is ended: we know it is not ended when
     * first_vertex is not zero. This is only relevant for outputs other than
@@ -350,7 +350,7 @@ gen6_gs_visitor::emit_thread_end()
    int max_usable_mrf = FIRST_SPILL_MRF(devinfo->ver);
 
    /* Issue the FF_SYNC message and obtain the initial VUE handle. */
-   this->current_annotation = "gen6 thread end: ff_sync";
+   this->current_annotation = "gfx6 thread end: ff_sync";
 
    vec4_instruction *inst = NULL;
    if (prog->info.has_transform_feedback_varyings) {
@@ -372,12 +372,12 @@ gen6_gs_visitor::emit_thread_end()
    emit(IF(BRW_PREDICATE_NORMAL));
    {
       /* Loop over all buffered vertices and emit URB write messages */
-      this->current_annotation = "gen6 thread end: urb writes init";
+      this->current_annotation = "gfx6 thread end: urb writes init";
       src_reg vertex(this, glsl_type::uint_type);
       emit(MOV(dst_reg(vertex), brw_imm_ud(0u)));
       emit(MOV(dst_reg(this->vertex_output_offset), brw_imm_ud(0u)));
 
-      this->current_annotation = "gen6 thread end: urb writes";
+      this->current_annotation = "gfx6 thread end: urb writes";
       emit(BRW_OPCODE_DO);
       {
          emit(CMP(dst_null_d(), vertex, this->vertex_count, BRW_CONDITIONAL_GE));
@@ -453,7 +453,7 @@ gen6_gs_visitor::emit_thread_end()
 
    /* Finally, emit EOT message.
     *
-    * In gen6 we need to end the thread differently depending on whether we have
+    * In gfx6 we need to end the thread differently depending on whether we have
     * emitted at least one vertex or not. In case we did, the EOT message must
     * always include the COMPLETE flag or else the GPU hangs. If we have not
     * produced any output we can't use the COMPLETE flag.
@@ -466,7 +466,7 @@ gen6_gs_visitor::emit_thread_end()
     * which works for both cases by setting the COMPLETE and UNUSED flags in
     * the EOT message.
     */
-   this->current_annotation = "gen6 thread end: EOT";
+   this->current_annotation = "gfx6 thread end: EOT";
 
    if (prog->info.has_transform_feedback_varyings) {
       /* When emitting EOT, set SONumPrimsWritten Increment Value. */
@@ -483,7 +483,7 @@ gen6_gs_visitor::emit_thread_end()
 }
 
 void
-gen6_gs_visitor::setup_payload()
+gfx6_gs_visitor::setup_payload()
 {
    int attribute_map[BRW_VARYING_SLOT_COUNT * MAX_GS_INPUT_VERTICES];
 
@@ -522,7 +522,7 @@ gen6_gs_visitor::setup_payload()
 }
 
 void
-gen6_gs_visitor::xfb_setup()
+gfx6_gs_visitor::xfb_setup()
 {
    static const unsigned swizzle_for_offset[4] = {
       BRW_SWIZZLE4(0, 1, 2, 3),
@@ -556,7 +556,7 @@ gen6_gs_visitor::xfb_setup()
 }
 
 void
-gen6_gs_visitor::xfb_write()
+gfx6_gs_visitor::xfb_write()
 {
    unsigned num_verts;
 
@@ -587,7 +587,7 @@ gen6_gs_visitor::xfb_write()
       unreachable("Unexpected primitive type in Gen6 SOL program.");
    }
 
-   this->current_annotation = "gen6 thread end: svb writes init";
+   this->current_annotation = "gfx6 thread end: svb writes init";
 
    emit(MOV(dst_reg(this->vertex_output_offset), brw_imm_ud(0u)));
    emit(MOV(dst_reg(this->sol_prim_written), brw_imm_ud(0u)));
@@ -604,7 +604,7 @@ gen6_gs_visitor::xfb_write()
    emit(ADD(dst_reg(sol_temp), this->svbi, brw_imm_ud(num_verts)));
 
    /* Compare SVBI calculated number with the maximum value, which is
-    * in R1.4 (previously saved in this->max_svbi) for gen6.
+    * in R1.4 (previously saved in this->max_svbi) for gfx6.
     */
    emit(CMP(dst_null_d(), sol_temp, this->max_svbi, BRW_CONDITIONAL_LE));
    emit(IF(BRW_PREDICATE_NORMAL));
@@ -636,7 +636,7 @@ gen6_gs_visitor::xfb_write()
 }
 
 void
-gen6_gs_visitor::xfb_program(unsigned vertex, unsigned num_verts)
+gfx6_gs_visitor::xfb_program(unsigned vertex, unsigned num_verts)
 {
    unsigned binding;
    unsigned num_bindings = gs_prog_data->num_transform_feedback_bindings;
@@ -654,7 +654,7 @@ gen6_gs_visitor::xfb_program(unsigned vertex, unsigned num_verts)
       /* Avoid overwriting MRF 1 as it is used as URB write message header */
       dst_reg mrf_reg(MRF, 2);
 
-      this->current_annotation = "gen6: emit SOL vertex data";
+      this->current_annotation = "gfx6: emit SOL vertex data";
       /* For each vertex, generate code to output each varying using the
        * appropriate binding table entry.
        */
@@ -712,7 +712,7 @@ gen6_gs_visitor::xfb_program(unsigned vertex, unsigned num_verts)
 }
 
 int
-gen6_gs_visitor::get_vertex_output_offset_for_varying(int vertex, int varying)
+gfx6_gs_visitor::get_vertex_output_offset_for_varying(int vertex, int varying)
 {
    /* Find the output slot assigned to this varying.
     *

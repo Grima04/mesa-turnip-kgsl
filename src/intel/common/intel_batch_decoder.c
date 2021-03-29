@@ -749,7 +749,7 @@ decode_3dstate_constant(struct intel_batch_decode_ctx *ctx, const uint32_t *p)
 }
 
 static void
-decode_gen6_3dstate_binding_table_pointers(struct intel_batch_decode_ctx *ctx,
+decode_gfx6_3dstate_binding_table_pointers(struct intel_batch_decode_ctx *ctx,
                                            const uint32_t *p)
 {
    fprintf(ctx->fp, "VS Binding Table:\n");
@@ -777,7 +777,7 @@ decode_3dstate_sampler_state_pointers(struct intel_batch_decode_ctx *ctx,
 }
 
 static void
-decode_3dstate_sampler_state_pointers_gen6(struct intel_batch_decode_ctx *ctx,
+decode_3dstate_sampler_state_pointers_gfx6(struct intel_batch_decode_ctx *ctx,
                                            const uint32_t *p)
 {
    dump_samplers(ctx, p[1], 1);
@@ -1136,7 +1136,7 @@ struct custom_decoder {
    { "3DSTATE_CONSTANT_DS", decode_3dstate_constant },
    { "3DSTATE_CONSTANT_ALL", decode_3dstate_constant_all },
 
-   { "3DSTATE_BINDING_TABLE_POINTERS", decode_gen6_3dstate_binding_table_pointers },
+   { "3DSTATE_BINDING_TABLE_POINTERS", decode_gfx6_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_VS", decode_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_HS", decode_3dstate_binding_table_pointers },
    { "3DSTATE_BINDING_TABLE_POINTERS_DS", decode_3dstate_binding_table_pointers },
@@ -1148,7 +1148,7 @@ struct custom_decoder {
    { "3DSTATE_SAMPLER_STATE_POINTERS_DS", decode_3dstate_sampler_state_pointers },
    { "3DSTATE_SAMPLER_STATE_POINTERS_GS", decode_3dstate_sampler_state_pointers },
    { "3DSTATE_SAMPLER_STATE_POINTERS_PS", decode_3dstate_sampler_state_pointers },
-   { "3DSTATE_SAMPLER_STATE_POINTERS", decode_3dstate_sampler_state_pointers_gen6 },
+   { "3DSTATE_SAMPLER_STATE_POINTERS", decode_3dstate_sampler_state_pointers_gfx6 },
 
    { "3DSTATE_VIEWPORT_STATE_POINTERS_CC", decode_3dstate_viewport_state_pointers_cc },
    { "3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP", decode_3dstate_viewport_state_pointers_sf_clip },

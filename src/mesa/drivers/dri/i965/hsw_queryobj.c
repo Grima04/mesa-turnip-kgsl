@@ -481,6 +481,6 @@ hsw_store_query_result(struct gl_context *ctx, struct gl_query_object *q,
 /* Initialize hsw+-specific query object functions. */
 void hsw_init_queryobj_functions(struct dd_function_table *functions)
 {
-   gen6_init_queryobj_functions(functions);
+   gfx6_init_queryobj_functions(functions);
    functions->StoreQueryResult = hsw_store_query_result;
 }

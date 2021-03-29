@@ -109,8 +109,8 @@ brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
     * to write into.  We currently always ask for 4 registers, but we may
     * convert that to use less some day.
     *
-    * Additionally, on gen5 we need aligned pairs of registers for the PLN
-    * instruction, and on gen4 we need 8 contiguous regs for workaround simd16
+    * Additionally, on gfx5 we need aligned pairs of registers for the PLN
+    * instruction, and on gfx4 we need 8 contiguous regs for workaround simd16
     * texturing.
     */
    const int class_count = MAX_VGRF_SIZE;
@@ -525,7 +525,7 @@ private:
  * Sets the mrf_used array to indicate which MRFs are used by the shader IR
  *
  * This is used in assign_regs() to decide which of the GRFs that we use as
- * MRFs on gen7 get normally register allocated, and in register spilling to
+ * MRFs on gfx7 get normally register allocated, and in register spilling to
  * see if we can actually use MRFs to do spills without overwriting normal MRF
  * contents.
  */
@@ -1140,8 +1140,8 @@ fs_reg_alloc::spill_reg(unsigned spill_reg)
 
    /* Spills may use MRFs 13-15 in the SIMD16 case.  Our texturing is done
     * using up to 11 MRFs starting from either m1 or m2, and fb writes can use
-    * up to m13 (gen6+ simd16: 2 header + 8 color + 2 src0alpha + 2 omask) or
-    * m15 (gen4-5 simd16: 2 header + 8 color + 1 aads + 2 src depth + 2 dst
+    * up to m13 (gfx6+ simd16: 2 header + 8 color + 2 src0alpha + 2 omask) or
+    * m15 (gfx4-5 simd16: 2 header + 8 color + 1 aads + 2 src depth + 2 dst
     * depth), starting from m1.  In summary: We may not be able to spill in
     * SIMD16 mode, because we'd stomp the FB writes.
     */

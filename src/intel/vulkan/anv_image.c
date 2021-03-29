@@ -261,7 +261,7 @@ anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
        (vk_create_flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) &&
        vk_tiling == VK_IMAGE_TILING_OPTIMAL) {
       /* We must fallback to a linear surface because we may not be able to
-       * correctly handle the offsets if tiled. (On gen9,
+       * correctly handle the offsets if tiled. (On gfx9,
        * RENDER_SURFACE_STATE::X/Y Offset are sufficient). To prevent garbage
        * performance while texturing, we maintain a tiled shadow surface.
        */
@@ -277,7 +277,7 @@ anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
    if (devinfo->ver <= 7 &&
        plane_format.aspect == VK_IMAGE_ASPECT_STENCIL_BIT &&
        (vk_plane_usage & VK_IMAGE_USAGE_SAMPLED_BIT)) {
-      /* gen7 can't sample from W-tiled surfaces. */
+      /* gfx7 can't sample from W-tiled surfaces. */
       return true;
    }
 
@@ -333,7 +333,7 @@ anv_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
  *
  *  * 1 or 4 dwords (depending on hardware generation) for the clear color
  *  * 1 dword for the anv_fast_clear_type of the clear color
- *  * On gen9+, 1 dword per level and layer of the image (3D levels count
+ *  * On gfx9+, 1 dword per level and layer of the image (3D levels count
  *    multiple layers) in level-major order for compression state.
  *
  * For the purpose of discoverability, the algorithm used to manage
@@ -361,7 +361,7 @@ anv_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
  * See anv_layout_to_aux_usage and anv_layout_to_fast_clear_type functions for
  * details on exactly what is allowed in what layouts.
  *
- * On gen7-9, we do not have a concept of indirect clear colors in hardware.
+ * On gfx7-9, we do not have a concept of indirect clear colors in hardware.
  * In order to deal with this, we have to do some clear color management.
  *
  *  * For LOAD_OP_LOAD at the top of a renderpass, we have to copy the clear
@@ -434,7 +434,7 @@ add_aux_surface_if_supported(struct anv_device *device,
        */
        assert(!(image->usage & VK_IMAGE_USAGE_STORAGE_BIT));
 
-      /* Allow the user to control HiZ enabling. Disable by default on gen7
+      /* Allow the user to control HiZ enabling. Disable by default on gfx7
        * because resolves are not currently implemented pre-BDW.
        */
       if (!(image->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
@@ -443,7 +443,7 @@ add_aux_surface_if_supported(struct anv_device *device,
       }
 
       if (device->info.ver == 7) {
-         anv_perf_warn(device, &image->base, "Implement gen7 HiZ");
+         anv_perf_warn(device, &image->base, "Implement gfx7 HiZ");
          return VK_SUCCESS;
       }
 
@@ -453,7 +453,7 @@ add_aux_surface_if_supported(struct anv_device *device,
       }
 
       if (device->info.ver == 8 && image->samples > 1) {
-         anv_perf_warn(device, &image->base, "Enable gen8 multisampled HiZ");
+         anv_perf_warn(device, &image->base, "Enable gfx8 multisampled HiZ");
          return VK_SUCCESS;
       }
 
@@ -2033,7 +2033,7 @@ anv_image_fill_surface_state(struct anv_device *device,
       surface = &image->planes[plane].shadow_surface;
    }
 
-   /* For texturing from stencil on gen7, we have to sample from a shadow
+   /* For texturing from stencil on gfx7, we have to sample from a shadow
     * surface because we don't support W-tiling in the sampler.
     */
    if (anv_surface_is_valid(&image->planes[plane].shadow_surface) &&
@@ -2178,7 +2178,7 @@ anv_image_fill_surface_state(struct anv_device *device,
                           .x_offset_sa = tile_x_sa,
                           .y_offset_sa = tile_y_sa);
 
-      /* With the exception of gen8, the bottom 12 bits of the MCS base address
+      /* With the exception of gfx8, the bottom 12 bits of the MCS base address
        * are used to store other information.  This should be ok, however,
        * because the surface buffer addresses are always 4K page aligned.
        */

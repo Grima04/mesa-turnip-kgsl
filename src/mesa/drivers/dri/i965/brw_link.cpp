@@ -125,7 +125,7 @@ process_glsl_ir(struct brw_context *brw,
 
    lower_instructions(shader->ir, instructions_to_lower);
 
-   /* Pre-gen6 HW can only nest if-statements 16 deep.  Beyond this,
+   /* Pre-gfx6 HW can only nest if-statements 16 deep.  Beyond this,
     * if-statements need to be flattened.
     */
    if (devinfo->ver < 6)

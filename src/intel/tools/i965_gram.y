@@ -829,7 +829,7 @@ mathinstruction:
 	predicate MATH saturate math_function execsize dst src srcimm instoptions
 	{
 		brw_set_default_access_mode(p, $9.access_mode);
-		gen6_math(p, $6, $4, $7, $8);
+		gfx6_math(p, $6, $4, $7, $8);
 		i965_asm_set_instruction_options(p, $9);
 		brw_inst_set_exec_size(p->devinfo, brw_last_inst, $5);
 		brw_inst_set_saturate(p->devinfo, brw_last_inst, $3);
@@ -1137,7 +1137,7 @@ branchinstruction:
 		brw_set_src0(p, brw_last_inst, retype(brw_null_reg(),
 					BRW_REGISTER_TYPE_D));
 		brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
-		brw_inst_set_gen4_pop_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_pop_count(p->devinfo, brw_last_inst, $4);
 
 		brw_inst_set_thread_control(p->devinfo, brw_last_inst,
 						BRW_THREAD_SWITCH);
@@ -1181,8 +1181,8 @@ branchinstruction:
 		brw_set_dest(p, brw_last_inst, brw_ip_reg());
 		brw_set_src0(p, brw_last_inst, brw_ip_reg());
 		brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
-		brw_inst_set_gen4_jump_count(p->devinfo, brw_last_inst, $3);
-		brw_inst_set_gen4_pop_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_jump_count(p->devinfo, brw_last_inst, $3);
+		brw_inst_set_gfx4_pop_count(p->devinfo, brw_last_inst, $4);
 
 		if (!p->single_program_flow)
 			brw_inst_set_thread_control(p->devinfo, brw_last_inst,
@@ -1232,8 +1232,8 @@ branchinstruction:
 		brw_set_dest(p, brw_last_inst, brw_ip_reg());
 		brw_set_src0(p, brw_last_inst, brw_ip_reg());
 		brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
-		brw_inst_set_gen4_jump_count(p->devinfo, brw_last_inst, $4);
-		brw_inst_set_gen4_pop_count(p->devinfo, brw_last_inst, $5);
+		brw_inst_set_gfx4_jump_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_pop_count(p->devinfo, brw_last_inst, $5);
 
 		if (!p->single_program_flow)
 			brw_inst_set_thread_control(p->devinfo, brw_last_inst,
@@ -1282,7 +1282,7 @@ branchinstruction:
 
 		brw_set_dest(p, brw_last_inst, brw_ip_reg());
 		brw_set_src0(p, brw_last_inst, brw_ip_reg());
-		brw_inst_set_gen4_jump_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_jump_count(p->devinfo, brw_last_inst, $4);
 		brw_set_src1(p, brw_last_inst, brw_imm_d($4));
 
 		if (!p->single_program_flow)
@@ -1327,8 +1327,8 @@ breakinstruction:
 		brw_set_dest(p, brw_last_inst, brw_ip_reg());
 		brw_set_src0(p, brw_last_inst, brw_ip_reg());
 		brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
-		brw_inst_set_gen4_jump_count(p->devinfo, brw_last_inst, $4);
-		brw_inst_set_gen4_pop_count(p->devinfo, brw_last_inst, $5);
+		brw_inst_set_gfx4_jump_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_pop_count(p->devinfo, brw_last_inst, $5);
 
 		brw_pop_insn_state(p);
 	}
@@ -1383,8 +1383,8 @@ breakinstruction:
 		brw_set_src0(p, brw_last_inst, brw_ip_reg());
 		brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
 
-		brw_inst_set_gen4_jump_count(p->devinfo, brw_last_inst, $4);
-		brw_inst_set_gen4_pop_count(p->devinfo, brw_last_inst, $5);
+		brw_inst_set_gfx4_jump_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_pop_count(p->devinfo, brw_last_inst, $5);
 
 		brw_pop_insn_state(p);
 	}
@@ -1435,8 +1435,8 @@ loopinstruction:
 		brw_set_dest(p, brw_last_inst, brw_ip_reg());
 		brw_set_src0(p, brw_last_inst, brw_ip_reg());
 		brw_set_src1(p, brw_last_inst, brw_imm_d(0x0));
-		brw_inst_set_gen4_jump_count(p->devinfo, brw_last_inst, $4);
-		brw_inst_set_gen4_pop_count(p->devinfo, brw_last_inst, 0);
+		brw_inst_set_gfx4_jump_count(p->devinfo, brw_last_inst, $4);
+		brw_inst_set_gfx4_pop_count(p->devinfo, brw_last_inst, 0);
 
 		brw_pop_insn_state(p);
 	}

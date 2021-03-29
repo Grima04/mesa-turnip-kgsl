@@ -31,18 +31,18 @@ extern "C" {
 #endif
 
 void
-isl_gen6_filter_tiling(const struct isl_device *dev,
+isl_gfx6_filter_tiling(const struct isl_device *dev,
                        const struct isl_surf_init_info *restrict info,
                        isl_tiling_flags_t *flags);
 
 bool
-isl_gen7_choose_msaa_layout(const struct isl_device *dev,
+isl_gfx7_choose_msaa_layout(const struct isl_device *dev,
                             const struct isl_surf_init_info *info,
                             enum isl_tiling tiling,
                             enum isl_msaa_layout *msaa_layout);
 
 void
-isl_gen7_choose_image_alignment_el(const struct isl_device *dev,
+isl_gfx7_choose_image_alignment_el(const struct isl_device *dev,
                                    const struct isl_surf_init_info *restrict info,
                                    enum isl_tiling tiling,
                                    enum isl_dim_layout dim_layout,

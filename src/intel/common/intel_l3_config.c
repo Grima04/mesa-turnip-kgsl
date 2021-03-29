@@ -40,7 +40,7 @@ struct intel_l3_list {
 
 /**
  * IVB/HSW validated L3 configurations.  The first entry will be used as
- * default by gen7_restore_default_l3_config(), otherwise the ordering is
+ * default by gfx7_restore_default_l3_config(), otherwise the ordering is
  * unimportant.
  */
 static const struct intel_l3_config ivb_l3_configs[] = {

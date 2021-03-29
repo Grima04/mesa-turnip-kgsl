@@ -239,10 +239,10 @@ LOCAL_GENERATED_SOURCES := $(addprefix $(intermediates)/,$(VULKAN_GENERATED_FILE
 
 ANV_VK_ENTRYPOINTS_GEN_ARGS= \
 	--proto --weak --prefix anv \
-	--device-prefix gen7 --device-prefix gen75 \
-	--device-prefix gen8 --device-prefix gen9 \
-	--device-prefix gen11 --device-prefix gen12 \
-	--device-prefix gen125
+	--device-prefix gfx7 --device-prefix gfx75 \
+	--device-prefix gfx8 --device-prefix gfx9 \
+	--device-prefix gfx11 --device-prefix gfx12 \
+	--device-prefix gfx125
 
 $(intermediates)/vulkan/anv_entrypoints.c: $(VK_ENTRYPOINTS_GEN_SCRIPT) \
 					   $(VULKAN_API_XML)

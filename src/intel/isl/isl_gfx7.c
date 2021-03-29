@@ -25,7 +25,7 @@
 #include "isl_priv.h"
 
 static bool
-gen7_format_needs_valign2(const struct isl_device *dev,
+gfx7_format_needs_valign2(const struct isl_device *dev,
                           enum isl_format format)
 {
    assert(ISL_GFX_VER(dev) == 7);
@@ -46,7 +46,7 @@ gen7_format_needs_valign2(const struct isl_device *dev,
 }
 
 bool
-isl_gen7_choose_msaa_layout(const struct isl_device *dev,
+isl_gfx7_choose_msaa_layout(const struct isl_device *dev,
                             const struct isl_surf_init_info *info,
                             enum isl_tiling tiling,
                             enum isl_msaa_layout *msaa_layout)
@@ -103,7 +103,7 @@ isl_gen7_choose_msaa_layout(const struct isl_device *dev,
     */
 
    /* Multisampling requires vertical alignment of four. */
-   if (info->samples > 1 && gen7_format_needs_valign2(dev, info->format))
+   if (info->samples > 1 && gfx7_format_needs_valign2(dev, info->format))
       return false;
 
    /* More obvious restrictions */
@@ -189,7 +189,7 @@ isl_gen7_choose_msaa_layout(const struct isl_device *dev,
  * flags except ISL_TILING_X_BIT and ISL_TILING_LINEAR_BIT.
  */
 void
-isl_gen6_filter_tiling(const struct isl_device *dev,
+isl_gfx6_filter_tiling(const struct isl_device *dev,
                        const struct isl_surf_init_info *restrict info,
                        isl_tiling_flags_t *flags)
 {
@@ -286,7 +286,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
 
    /* workaround */
    if (ISL_GFX_VER(dev) == 7 &&
-       gen7_format_needs_valign2(dev, info->format) &&
+       gfx7_format_needs_valign2(dev, info->format) &&
        (info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
        info->samples == 1) {
       /* Y tiling is illegal. From the Ivybridge PRM, Vol4 Part1 2.12.2.1,
@@ -333,7 +333,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
 }
 
 void
-isl_gen7_choose_image_alignment_el(const struct isl_device *dev,
+isl_gfx7_choose_image_alignment_el(const struct isl_device *dev,
                                    const struct isl_surf_init_info *restrict info,
                                    enum isl_tiling tiling,
                                    enum isl_dim_layout dim_layout,
@@ -418,7 +418,7 @@ isl_gen7_choose_image_alignment_el(const struct isl_device *dev,
        (info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT))
       require_valign4 = true;
 
-   assert(!(require_valign4 && gen7_format_needs_valign2(dev, info->format)));
+   assert(!(require_valign4 && gfx7_format_needs_valign2(dev, info->format)));
 
    /* We default to VALIGN_2 because it uses the least memory. */
    const uint32_t valign = require_valign4 ? 4 : 2;

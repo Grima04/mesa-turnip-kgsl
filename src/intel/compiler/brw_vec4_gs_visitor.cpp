@@ -664,7 +664,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
             nir->info.gs.uses_end_primitive ? 1 : 0;
       }
    } else {
-      /* There are no control data bits in gen6. */
+      /* There are no control data bits in gfx6. */
       c.control_data_bits_per_vertex = 0;
    }
    c.control_data_header_size_bits =
@@ -755,10 +755,10 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     * number of output vertices.  So we'll just calculate the amount of space
     * we need, and if it's too large, fail to compile.
     *
-    * The above is for gen7+ where we have a single URB entry that will hold
-    * all the output. In gen6, we will have to allocate URB entries for every
+    * The above is for gfx7+ where we have a single URB entry that will hold
+    * all the output. In gfx6, we will have to allocate URB entries for every
     * vertex we emit, so our URB entries only need to be large enough to hold
-    * a single vertex. Also, gen6 does not have a control data header.
+    * a single vertex. Also, gfx6 does not have a control data header.
     */
    unsigned output_size_bytes;
    if (compiler->devinfo->ver >= 7) {
@@ -789,8 +789,8 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
       return NULL;
 
 
-   /* URB entry sizes are stored as a multiple of 64 bytes in gen7+ and
-    * a multiple of 128 bytes in gen6.
+   /* URB entry sizes are stored as a multiple of 64 bytes in gfx7+ and
+    * a multiple of 128 bytes in gfx6.
     */
    if (compiler->devinfo->ver >= 7) {
       prog_data->base.urb_entry_size = ALIGN(output_size_bytes, 64) / 64;
@@ -931,7 +931,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
                                     nir, mem_ctx, false /* no_spills */,
                                     shader_time_index, debug_enabled);
    else
-      gs = new brw::gen6_gs_visitor(compiler, log_data, &c, prog_data, prog,
+      gs = new brw::gfx6_gs_visitor(compiler, log_data, &c, prog_data, prog,
                                     nir, mem_ctx, false /* no_spills */,
                                     shader_time_index, debug_enabled);
 

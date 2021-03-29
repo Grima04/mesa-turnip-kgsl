@@ -81,45 +81,45 @@ extern const struct brw_tracked_state brw_psp_urb_cbs;
 
 extern const struct brw_tracked_state brw_indices;
 extern const struct brw_tracked_state brw_index_buffer;
-extern const struct brw_tracked_state gen7_cs_push_constants;
-extern const struct brw_tracked_state gen6_binding_table_pointers;
-extern const struct brw_tracked_state gen6_gs_binding_table;
-extern const struct brw_tracked_state gen6_renderbuffer_surfaces;
-extern const struct brw_tracked_state gen6_sampler_state;
-extern const struct brw_tracked_state gen6_sol_surface;
-extern const struct brw_tracked_state gen6_sf_vp;
-extern const struct brw_tracked_state gen6_urb;
-extern const struct brw_tracked_state gen7_l3_state;
-extern const struct brw_tracked_state gen7_push_constant_space;
-extern const struct brw_tracked_state gen7_urb;
-extern const struct brw_tracked_state gen8_pma_fix;
+extern const struct brw_tracked_state gfx7_cs_push_constants;
+extern const struct brw_tracked_state gfx6_binding_table_pointers;
+extern const struct brw_tracked_state gfx6_gs_binding_table;
+extern const struct brw_tracked_state gfx6_renderbuffer_surfaces;
+extern const struct brw_tracked_state gfx6_sampler_state;
+extern const struct brw_tracked_state gfx6_sol_surface;
+extern const struct brw_tracked_state gfx6_sf_vp;
+extern const struct brw_tracked_state gfx6_urb;
+extern const struct brw_tracked_state gfx7_l3_state;
+extern const struct brw_tracked_state gfx7_push_constant_space;
+extern const struct brw_tracked_state gfx7_urb;
+extern const struct brw_tracked_state gfx8_pma_fix;
 extern const struct brw_tracked_state brw_cs_work_groups_surface;
 
-void gen4_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx4_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                 struct brw_bo *bo, uint32_t offset,
                                 uint64_t imm);
-void gen45_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx45_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                  struct brw_bo *bo, uint32_t offset,
                                  uint64_t imm);
-void gen5_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx5_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                 struct brw_bo *bo, uint32_t offset,
                                 uint64_t imm);
-void gen6_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx6_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                 struct brw_bo *bo, uint32_t offset,
                                 uint64_t imm);
-void gen7_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx7_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                 struct brw_bo *bo, uint32_t offset,
                                 uint64_t imm);
-void gen75_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx75_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                  struct brw_bo *bo, uint32_t offset,
                                  uint64_t imm);
-void gen8_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx8_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                 struct brw_bo *bo, uint32_t offset,
                                 uint64_t imm);
-void gen9_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx9_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                 struct brw_bo *bo, uint32_t offset,
                                 uint64_t imm);
-void gen11_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
+void gfx11_emit_raw_pipe_control(struct brw_context *brw, uint32_t flags,
                                  struct brw_bo *bo, uint32_t offset,
                                  uint64_t imm);
 
@@ -145,7 +145,7 @@ brw_depthbuffer_format(struct brw_context *brw);
 void brw_upload_state_base_address(struct brw_context *brw);
 
 /* gfx8_depth_state.c */
-void gen8_write_pma_stall_bits(struct brw_context *brw,
+void gfx8_write_pma_stall_bits(struct brw_context *brw,
                                uint32_t pma_stall_bits);
 
 /* brw_disk_cache.c */
@@ -279,7 +279,7 @@ brw_upload_cs_push_constants(struct brw_context *brw,
 
 /* gfx7_vs_state.c */
 void
-gen7_upload_constant_state(struct brw_context *brw,
+gfx7_upload_constant_state(struct brw_context *brw,
                            const struct brw_stage_state *stage_state,
                            bool active, unsigned opcode);
 
@@ -294,7 +294,7 @@ bool brw_is_drawing_lines(const struct brw_context *brw);
 
 /* gfx7_l3_state.c */
 void
-gen7_restore_default_l3_config(struct brw_context *brw);
+gfx7_restore_default_l3_config(struct brw_context *brw);
 
 static inline bool
 use_state_point_size(const struct brw_context *brw)
@@ -349,15 +349,15 @@ void brw_copy_pipeline_atoms(struct brw_context *brw,
                              enum brw_pipeline pipeline,
                              const struct brw_tracked_state **atoms,
                              int num_atoms);
-void gen4_init_atoms(struct brw_context *brw);
-void gen45_init_atoms(struct brw_context *brw);
-void gen5_init_atoms(struct brw_context *brw);
-void gen6_init_atoms(struct brw_context *brw);
-void gen7_init_atoms(struct brw_context *brw);
-void gen75_init_atoms(struct brw_context *brw);
-void gen8_init_atoms(struct brw_context *brw);
-void gen9_init_atoms(struct brw_context *brw);
-void gen11_init_atoms(struct brw_context *brw);
+void gfx4_init_atoms(struct brw_context *brw);
+void gfx45_init_atoms(struct brw_context *brw);
+void gfx5_init_atoms(struct brw_context *brw);
+void gfx6_init_atoms(struct brw_context *brw);
+void gfx7_init_atoms(struct brw_context *brw);
+void gfx75_init_atoms(struct brw_context *brw);
+void gfx8_init_atoms(struct brw_context *brw);
+void gfx9_init_atoms(struct brw_context *brw);
+void gfx11_init_atoms(struct brw_context *brw);
 
 /* Memory Object Control State:
  * Specifying zero for L3 means "uncached in L3", at least on Haswell

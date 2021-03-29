@@ -210,7 +210,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
    }
 
    /* TODO: Support ASTC 5x5 on Gen9 properly.  This means implementing
-    * a complex sampler workaround (see i965's gen9_apply_astc5x5_wa_flush).
+    * a complex sampler workaround (see i965's gfx9_apply_astc5x5_wa_flush).
     * Without it, st/mesa will emulate ASTC 5x5 via uncompressed textures.
     */
    if (devinfo->ver == 9 && (format == ISL_FORMAT_ASTC_LDR_2D_5X5_FLT16 ||

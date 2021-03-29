@@ -61,19 +61,19 @@
 #define genX_call(devinfo, func, ...)             \
    switch ((devinfo)->verx10) {                   \
    case 125:                                      \
-      gen125_##func(__VA_ARGS__);                 \
+      gfx125_##func(__VA_ARGS__);                 \
       break;                                      \
    case 120:                                      \
-      gen12_##func(__VA_ARGS__);                  \
+      gfx12_##func(__VA_ARGS__);                  \
       break;                                      \
    case 110:                                      \
-      gen11_##func(__VA_ARGS__);                  \
+      gfx11_##func(__VA_ARGS__);                  \
       break;                                      \
    case 90:                                       \
-      gen9_##func(__VA_ARGS__);                   \
+      gfx9_##func(__VA_ARGS__);                   \
       break;                                      \
    case 80:                                       \
-      gen8_##func(__VA_ARGS__);                   \
+      gfx8_##func(__VA_ARGS__);                   \
       break;                                      \
    default:                                       \
       unreachable("Unknown hardware generation"); \

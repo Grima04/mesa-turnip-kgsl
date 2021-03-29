@@ -984,7 +984,7 @@ accumulate_uint40(int a_index,
 }
 
 static void
-gen8_read_report_clock_ratios(const uint32_t *report,
+gfx8_read_report_clock_ratios(const uint32_t *report,
                               uint64_t *slice_freq_hz,
                               uint64_t *unslice_freq_hz)
 {
@@ -1029,10 +1029,10 @@ gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
    if (devinfo->ver < 8)
       return;
 
-   gen8_read_report_clock_ratios(start,
+   gfx8_read_report_clock_ratios(start,
                                  &result->slice_frequency[0],
                                  &result->unslice_frequency[0]);
-   gen8_read_report_clock_ratios(end,
+   gfx8_read_report_clock_ratios(end,
                                  &result->slice_frequency[1],
                                  &result->unslice_frequency[1]);
 }

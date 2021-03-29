@@ -186,7 +186,7 @@ brw_emit_surface_state(struct brw_context *brw,
                        .clear_address = clear_offset,
                        .x_offset_sa = tile_x, .y_offset_sa = tile_y);
    if (aux_surf) {
-      /* On gen7 and prior, the upper 20 bits of surface state DWORD 6 are the
+      /* On gfx7 and prior, the upper 20 bits of surface state DWORD 6 are the
        * upper 20 bits of the GPU address of the MCS buffer; the lower 12 bits
        * contain other control information.  Since buffer addresses are always
        * on 4k boundaries (and thus have their lower 12 bits zero), we can use
@@ -227,7 +227,7 @@ brw_emit_surface_state(struct brw_context *brw,
 }
 
 static uint32_t
-gen6_update_renderbuffer_surface(struct brw_context *brw,
+gfx6_update_renderbuffer_surface(struct brw_context *brw,
                                  struct gl_renderbuffer *rb,
                                  unsigned unit,
                                  uint32_t surf_index)
@@ -528,7 +528,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
                                                     for_txf ? GL_DECODE_EXT :
                                                     sampler->Attrib.sRGBDecode);
 
-      /* Implement gen6 and gen7 gather work-around */
+      /* Implement gfx6 and gfx7 gather work-around */
       bool need_green_to_blue = false;
       if (for_gather) {
          if (devinfo->ver == 7 && (format == ISL_FORMAT_R32G32_FLOAT ||
@@ -612,7 +612,7 @@ static void brw_update_texture_surface(struct gl_context *ctx,
 
       enum isl_aux_usage aux_usage =
          brw_miptree_texture_aux_usage(brw, mt, format,
-                                       brw->gen9_astc5x5_wa_tex_mask);
+                                       brw->gfx9_astc5x5_wa_tex_mask);
 
       brw_emit_surface_state(brw, mt, mt->target, view, aux_usage,
                              surf_offset, surf_index,
@@ -901,7 +901,7 @@ emit_null_surface_state(struct brw_context *brw,
  * usable for further buffers when doing ARB_draw_buffer support.
  */
 static uint32_t
-gen4_update_renderbuffer_surface(struct brw_context *brw,
+gfx4_update_renderbuffer_surface(struct brw_context *brw,
                                  struct gl_renderbuffer *rb,
                                  unsigned unit,
                                  uint32_t surf_index)
@@ -922,7 +922,7 @@ gen4_update_renderbuffer_surface(struct brw_context *brw,
       brw_renderbuffer_get_tile_offsets(irb, &tile_x, &tile_y);
 
       if (tile_x != 0 || tile_y != 0) {
-         /* Original gen4 hardware couldn't draw to a non-tile-aligned
+         /* Original gfx4 hardware couldn't draw to a non-tile-aligned
           * destination in a miptree unless you actually setup your renderbuffer
           * as a miptree and used the fragile lod/array_index/etc. controls to
           * select the image.  So, instead, we just make a new single-level
@@ -1020,8 +1020,8 @@ update_renderbuffer_surfaces(struct brw_context *brw)
 
          if (brw_renderbuffer(rb)) {
             surf_offsets[rt_start + i] = devinfo->ver >= 6 ?
-               gen6_update_renderbuffer_surface(brw, rb, i, rt_start + i) :
-               gen4_update_renderbuffer_surface(brw, rb, i, rt_start + i);
+               gfx6_update_renderbuffer_surface(brw, rb, i, rt_start + i) :
+               gfx4_update_renderbuffer_surface(brw, rb, i, rt_start + i);
          } else {
             emit_null_surface_state(brw, fb, &surf_offsets[rt_start + i]);
          }
@@ -1056,7 +1056,7 @@ const struct brw_tracked_state brw_renderbuffer_surfaces = {
    .emit = update_renderbuffer_surfaces,
 };
 
-const struct brw_tracked_state gen6_renderbuffer_surfaces = {
+const struct brw_tracked_state gfx6_renderbuffer_surfaces = {
    .dirty = {
       .mesa = _NEW_BUFFERS,
       .brw = BRW_NEW_BATCH |
@@ -1119,7 +1119,7 @@ update_renderbuffer_read_surfaces(struct brw_context *brw)
 
             enum isl_aux_usage aux_usage =
                brw_miptree_texture_aux_usage(brw, irb->mt, format,
-                                             brw->gen9_astc5x5_wa_tex_mask);
+                                             brw->gfx9_astc5x5_wa_tex_mask);
             if (brw->draw_aux_usage[i] == ISL_AUX_USAGE_NONE)
                aux_usage = ISL_AUX_USAGE_NONE;
 

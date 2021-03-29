@@ -235,7 +235,7 @@ vec4_visitor::CMP(dst_reg dst, src_reg src0, src_reg src1,
     *
     * CMP null<d> src0<f> src1<f>
     *
-    * Original gen4 does type conversion to the destination type before
+    * Original gfx4 does type conversion to the destination type before
     * comparison, producing garbage results for floating point comparisons.
     *
     * The destination type doesn't matter on newer generations, so we set the
@@ -311,14 +311,14 @@ vec4_visitor::fix_math_operand(const src_reg &src)
    if (devinfo->ver < 6 || src.file == BAD_FILE)
       return src;
 
-   /* The gen6 math instruction ignores the source modifiers --
+   /* The gfx6 math instruction ignores the source modifiers --
     * swizzle, abs, negate, and at least some parts of the register
     * region description.
     *
     * Rather than trying to enumerate all these cases, *always* expand the
-    * operand to a temp GRF for gen6.
+    * operand to a temp GRF for gfx6.
     *
-    * For gen7, keep the operand as-is, except if immediate, which gen7 still
+    * For gfx7, keep the operand as-is, except if immediate, which gfx7 still
     * can't use.
     */
 
@@ -383,7 +383,7 @@ vec4_visitor::emit_pack_half_2x16(dst_reg dst, src_reg src0)
     * code, I chose instead to remain in align16 mode in defiance of the hw
     * docs).
     *
-    * I've [chadv] experimentally confirmed that, on gen7 hardware and the
+    * I've [chadv] experimentally confirmed that, on gfx7 hardware and the
     * simulator, emitting a f32to16 in align16 mode with UD as destination
     * data type is safe. The behavior differs from that specified in the PRM
     * in that the upper word of each destination channel is cleared to 0.
@@ -450,7 +450,7 @@ vec4_visitor::emit_unpack_half_2x16(dst_reg dst, src_reg src0)
     * emitting align1 instructions for unpackHalf2x16 failed to pass the
     * Piglit tests, so I gave up.
     *
-    * I've verified that, on gen7 hardware and the simulator, it is safe to
+    * I've verified that, on gfx7 hardware and the simulator, it is safe to
     * emit f16to32 in align16 mode with UD as source data type.
     */
 
@@ -1006,7 +1006,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
    }
 
    if (devinfo->ver == 6 && op == ir_tg4) {
-      emit_gen6_gather_wa(key_tex->gen6_gather_wa[surface], inst->dst);
+      emit_gfx6_gather_wa(key_tex->gfx6_gather_wa[surface], inst->dst);
    }
 
    if (op == ir_query_levels) {
@@ -1022,7 +1022,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
  * Apply workarounds for Gen6 gather with UINT/SINT
  */
 void
-vec4_visitor::emit_gen6_gather_wa(uint8_t wa, dst_reg dst)
+vec4_visitor::emit_gfx6_gather_wa(uint8_t wa, dst_reg dst)
 {
    if (!wa)
       return;
@@ -1285,7 +1285,7 @@ vec4_visitor::emit_vertex()
    int max_usable_mrf = FIRST_SPILL_MRF(devinfo->ver);
 
    /* The following assertion verifies that max_usable_mrf causes an
-    * even-numbered amount of URB write data, which will meet gen6's
+    * even-numbered amount of URB write data, which will meet gfx6's
     * requirements for length alignment.
     */
    assert ((max_usable_mrf - base_mrf) % 2 == 0);
@@ -1344,7 +1344,7 @@ vec4_visitor::get_scratch_offset(bblock_t *block, vec4_instruction *inst,
     */
    int message_header_scale = 2;
 
-   /* Pre-gen6, the message header uses byte offsets instead of vec4
+   /* Pre-gfx6, the message header uses byte offsets instead of vec4
     * (16-byte) offset units.
     */
    if (devinfo->ver < 6)

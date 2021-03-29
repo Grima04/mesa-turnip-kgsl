@@ -252,7 +252,7 @@ gen_f0_0_MOV_GRF_GRF(struct brw_codegen *p)
    brw_pop_insn_state(p);
 }
 
-/* The handling of f0.1 vs f0.0 changes between gen6 and gen7.  Explicitly test
+/* The handling of f0.1 vs f0.0 changes between gfx6 and gfx7.  Explicitly test
  * it, so that we run the fuzzing can run over all the other bits that might
  * interact with it.
  */

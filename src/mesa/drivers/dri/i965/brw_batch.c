@@ -167,7 +167,7 @@ brw_batch_init(struct brw_context *brw)
    batch->use_batch_first =
       screen->kernel_features & KERNEL_ALLOWS_EXEC_BATCH_FIRST;
 
-   /* PIPE_CONTROL needs a w/a but only on gen6 */
+   /* PIPE_CONTROL needs a w/a but only on gfx6 */
    batch->valid_reloc_flags = EXEC_OBJECT_WRITE;
    if (devinfo->ver == 6)
       batch->valid_reloc_flags |= EXEC_OBJECT_NEEDS_GTT;
@@ -619,7 +619,7 @@ brw_finish_batch(struct brw_context *brw)
     */
    if (devinfo->ver >= 7 &&
        !(brw->screen->kernel_features & KERNEL_ALLOWS_CONTEXT_ISOLATION))
-      gen7_restore_default_l3_config(brw);
+      gfx7_restore_default_l3_config(brw);
 
    if (devinfo->is_haswell) {
       /* From the Haswell PRM, Volume 2b, Command Reference: Instructions,
@@ -644,7 +644,7 @@ brw_finish_batch(struct brw_context *brw)
 
    /* Do not restore push constant packets during context restore. */
    if (devinfo->ver >= 7)
-      gen7_emit_isp_disable(brw);
+      gfx7_emit_isp_disable(brw);
 
    /* Emit MI_BATCH_BUFFER_END to finish our batch.  Note that execbuf2
     * requires our batch size to be QWord aligned, so we pad it out if

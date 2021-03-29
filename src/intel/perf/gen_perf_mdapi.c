@@ -39,7 +39,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
 {
    switch (devinfo->ver) {
    case 7: {
-      struct gen7_mdapi_metrics *mdapi_data = (struct gen7_mdapi_metrics *) data;
+      struct gfx7_mdapi_metrics *mdapi_data = (struct gfx7_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
          return 0;
@@ -66,7 +66,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       return sizeof(*mdapi_data);
    }
    case 8: {
-      struct gen8_mdapi_metrics *mdapi_data = (struct gen8_mdapi_metrics *) data;
+      struct gfx8_mdapi_metrics *mdapi_data = (struct gfx8_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
          return 0;
@@ -100,7 +100,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
    case 9:
    case 11:
    case 12:{
-      struct gen9_mdapi_metrics *mdapi_data = (struct gen9_mdapi_metrics *) data;
+      struct gfx9_mdapi_metrics *mdapi_data = (struct gfx9_mdapi_metrics *) data;
 
       if (data_size < sizeof(*mdapi_data))
          return 0;
@@ -245,7 +245,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
       query = gen_perf_append_query_info(perf, 1 + 45 + 16 + 7);
       query->oa_format = I915_OA_FORMAT_A45_B8_C8;
 
-      struct gen7_mdapi_metrics metric_data;
+      struct gfx7_mdapi_metrics metric_data;
       query->data_size = sizeof(metric_data);
 
       MDAPI_QUERY_ADD_COUNTER(query, metric_data, TotalTime, UINT64);
@@ -270,7 +270,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
       query = gen_perf_append_query_info(perf, 2 + 36 + 16 + 16);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
-      struct gen8_mdapi_metrics metric_data;
+      struct gfx8_mdapi_metrics metric_data;
       query->data_size = sizeof(metric_data);
 
       MDAPI_QUERY_ADD_COUNTER(query, metric_data, TotalTime, UINT64);
@@ -307,7 +307,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
       query = gen_perf_append_query_info(perf, 2 + 36 + 16 + 16 + 16 + 2);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
-      struct gen9_mdapi_metrics metric_data;
+      struct gfx9_mdapi_metrics metric_data;
       query->data_size = sizeof(metric_data);
 
       MDAPI_QUERY_ADD_COUNTER(query, metric_data, TotalTime, UINT64);

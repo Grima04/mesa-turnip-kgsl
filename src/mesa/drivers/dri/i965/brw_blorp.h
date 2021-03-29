@@ -111,23 +111,23 @@ brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
              unsigned int level, unsigned int start_layer,
              unsigned int num_layers, enum isl_aux_op op);
 
-void gen4_blorp_exec(struct blorp_batch *batch,
+void gfx4_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);
-void gen45_blorp_exec(struct blorp_batch *batch,
+void gfx45_blorp_exec(struct blorp_batch *batch,
                       const struct blorp_params *params);
-void gen5_blorp_exec(struct blorp_batch *batch,
+void gfx5_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);
-void gen6_blorp_exec(struct blorp_batch *batch,
+void gfx6_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);
-void gen7_blorp_exec(struct blorp_batch *batch,
+void gfx7_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);
-void gen75_blorp_exec(struct blorp_batch *batch,
+void gfx75_blorp_exec(struct blorp_batch *batch,
                       const struct blorp_params *params);
-void gen8_blorp_exec(struct blorp_batch *batch,
+void gfx8_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);
-void gen9_blorp_exec(struct blorp_batch *batch,
+void gfx9_blorp_exec(struct blorp_batch *batch,
                      const struct blorp_params *params);
-void gen11_blorp_exec(struct blorp_batch *batch,
+void gfx11_blorp_exec(struct blorp_batch *batch,
                       const struct blorp_params *params);
 
 #ifdef __cplusplus

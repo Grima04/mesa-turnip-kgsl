@@ -1860,7 +1860,7 @@ iris_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
    util_vma_heap_init(&bufmgr->vma_allocator[IRIS_MEMZONE_SURFACE],
                       IRIS_MEMZONE_SURFACE_START,
                       _4GB_minus_1 - IRIS_MAX_BINDERS * IRIS_BINDER_SIZE);
-   /* TODO: Why does limiting to 2GB help some state items on gen12?
+   /* TODO: Why does limiting to 2GB help some state items on gfx12?
     *  - CC Viewport Pointer
     *  - Blend State Pointer
     *  - Color Calc State Pointer

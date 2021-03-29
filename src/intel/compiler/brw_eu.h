@@ -54,7 +54,7 @@ struct brw_insn_state {
    /* Group in units of channels */
    unsigned group:5;
 
-   /* Compression control on gen4-5 */
+   /* Compression control on gfx4-5 */
    bool compressed:1;
 
    /* One of BRW_MASK_* */
@@ -129,7 +129,7 @@ struct brw_codegen {
     */
    int *loop_stack;
    /**
-    * pre-gen6, the BREAK and CONT instructions had to tell how many IF/ENDIF
+    * pre-gfx6, the BREAK and CONT instructions had to tell how many IF/ENDIF
     * blocks they were popping out of, to fix up the mask stack.  This tracks
     * the IF/ENDIF nesting in each current nested loop level.
     */
@@ -202,7 +202,7 @@ brw_inst *brw_next_insn(struct brw_codegen *p, unsigned opcode);
 void brw_set_dest(struct brw_codegen *p, brw_inst *insn, struct brw_reg dest);
 void brw_set_src0(struct brw_codegen *p, brw_inst *insn, struct brw_reg reg);
 
-void gen6_resolve_implied_move(struct brw_codegen *p,
+void gfx6_resolve_implied_move(struct brw_codegen *p,
 			       struct brw_reg *src,
 			       unsigned msg_reg_nr);
 
@@ -446,7 +446,7 @@ brw_dp_desc(const struct gen_device_info *devinfo,
             unsigned msg_type,
             unsigned msg_control)
 {
-   /* Prior to gen6, things are too inconsistent; use the dp_read/write_desc
+   /* Prior to gfx6, things are too inconsistent; use the dp_read/write_desc
     * helpers instead.
     */
    assert(devinfo->ver >= 6);
@@ -1155,7 +1155,7 @@ brw_inst *brw_fb_WRITE(struct brw_codegen *p,
                        bool last_render_target,
                        bool header_present);
 
-brw_inst *gen9_fb_READ(struct brw_codegen *p,
+brw_inst *gfx9_fb_READ(struct brw_codegen *p,
                        struct brw_reg dst,
                        struct brw_reg payload,
                        unsigned binding_table_index,
@@ -1180,14 +1180,14 @@ void brw_adjust_sampler_state_pointer(struct brw_codegen *p,
                                       struct brw_reg header,
                                       struct brw_reg sampler_index);
 
-void gen4_math(struct brw_codegen *p,
+void gfx4_math(struct brw_codegen *p,
 	       struct brw_reg dest,
 	       unsigned function,
 	       unsigned msg_reg_nr,
 	       struct brw_reg src,
 	       unsigned precision );
 
-void gen6_math(struct brw_codegen *p,
+void gfx6_math(struct brw_codegen *p,
 	       struct brw_reg dest,
 	       unsigned function,
 	       struct brw_reg src0,
@@ -1212,7 +1212,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
 				   int num_regs,
 				   unsigned offset);
 
-void gen7_block_read_scratch(struct brw_codegen *p,
+void gfx7_block_read_scratch(struct brw_codegen *p,
                              struct brw_reg dest,
                              int num_regs,
                              unsigned offset);
@@ -1251,7 +1251,7 @@ void brw_barrier(struct brw_codegen *p, struct brw_reg src);
  * channel.
  */
 brw_inst *brw_IF(struct brw_codegen *p, unsigned execute_size);
-brw_inst *gen6_IF(struct brw_codegen *p, enum brw_conditional_mod conditional,
+brw_inst *gfx6_IF(struct brw_codegen *p, enum brw_conditional_mod conditional,
                   struct brw_reg src0, struct brw_reg src1);
 
 void brw_ELSE(struct brw_codegen *p);

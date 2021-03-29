@@ -777,7 +777,7 @@ enum brw_wrap_mode {
 # define GFX6_CLIP_MAX_VP_INDEX_MASK			INTEL_MASK(3, 0)
 
 #define _3DSTATE_SF				0x7813 /* GFX6+ */
-/* DW1 (for gen6) */
+/* DW1 (for gfx6) */
 # define GFX6_SF_NUM_OUTPUTS_SHIFT			22
 # define GFX6_SF_SWIZZLE_ENABLE				(1 << 21)
 # define GFX6_SF_POINT_SPRITE_UPPERLEFT			(0 << 20)
@@ -881,13 +881,13 @@ enum brw_wrap_mode {
 # define GFX7_SBE_URB_ENTRY_READ_LENGTH_SHIFT		11
 # define GFX7_SBE_URB_ENTRY_READ_OFFSET_SHIFT		4
 # define GFX8_SBE_URB_ENTRY_READ_OFFSET_SHIFT		5
-/* DW2-9: Attribute setup (same as DW8-15 of gen6 _3DSTATE_SF) */
+/* DW2-9: Attribute setup (same as DW8-15 of gfx6 _3DSTATE_SF) */
 /* DW10: Point sprite texture coordinate enables */
 /* DW11: Constant interpolation enables */
 /* DW12: attr 0-7 wrap shortest enables */
 /* DW13: attr 8-16 wrap shortest enables */
 
-/* DW4-5: Attribute active components (gen9) */
+/* DW4-5: Attribute active components (gfx9) */
 #define GFX9_SBE_ACTIVE_COMPONENT_NONE			0
 #define GFX9_SBE_ACTIVE_COMPONENT_XY			1
 #define GFX9_SBE_ACTIVE_COMPONENT_XYZ			2

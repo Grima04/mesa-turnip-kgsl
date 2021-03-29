@@ -274,7 +274,7 @@ blorp_emit_urb_config(struct blorp_batch *batch,
    struct brw_context *brw = batch->driver_batch;
 
 #if GFX_VER == 6
-   gen6_upload_urb(brw, vs_entry_size, false, 0);
+   gfx6_upload_urb(brw, vs_entry_size, false, 0);
 #else
    /* We calculate it now and emit later. */
    brw_calculate_urb_fence(brw, 0, vs_entry_size, sf_entry_size);
@@ -342,7 +342,7 @@ retry:
    brw_upload_state_base_address(brw);
 
 #if GFX_VER >= 8
-   gen7_l3_state.emit(brw);
+   gfx7_l3_state.emit(brw);
 #endif
 
 #if GFX_VER >= 6
@@ -350,7 +350,7 @@ retry:
 #endif
 
 #if GFX_VER == 8
-   gen8_write_pma_stall_bits(brw, 0);
+   gfx8_write_pma_stall_bits(brw, 0);
 #endif
 
    const unsigned scale = params->fast_clear_op ? UINT_MAX : 1;

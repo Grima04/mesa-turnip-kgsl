@@ -36,10 +36,10 @@ extern "C" {
 
 struct drm_i915_query_topology_info;
 
-#define GEN_DEVICE_MAX_SLICES           (6)  /* Maximum on gen10 */
-#define GEN_DEVICE_MAX_SUBSLICES        (8)  /* Maximum on gen11 */
-#define GEN_DEVICE_MAX_EUS_PER_SUBSLICE (16) /* Maximum on gen12 */
-#define GEN_DEVICE_MAX_PIXEL_PIPES      (3)  /* Maximum on gen12 */
+#define GEN_DEVICE_MAX_SLICES           (6)  /* Maximum on gfx10 */
+#define GEN_DEVICE_MAX_SUBSLICES        (8)  /* Maximum on gfx11 */
+#define GEN_DEVICE_MAX_EUS_PER_SUBSLICE (16) /* Maximum on gfx12 */
+#define GEN_DEVICE_MAX_PIXEL_PIPES      (3)  /* Maximum on gfx12 */
 
 /**
  * Intel hardware information and quirks

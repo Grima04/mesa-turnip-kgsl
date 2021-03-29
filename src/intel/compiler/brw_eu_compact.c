@@ -223,7 +223,7 @@ static const uint16_t g45_src_index_table[32] = {
    0b111101110100,
 };
 
-static const uint32_t gen6_control_index_table[32] = {
+static const uint32_t gfx6_control_index_table[32] = {
    0b00000000000000000,
    0b01000000000000000,
    0b00110000000000000,
@@ -258,7 +258,7 @@ static const uint32_t gen6_control_index_table[32] = {
    0b00100000000001001,
 };
 
-static const uint32_t gen6_datatype_table[32] = {
+static const uint32_t gfx6_datatype_table[32] = {
    0b001001110000000000,
    0b001000110000100000,
    0b001001110000000001,
@@ -293,7 +293,7 @@ static const uint32_t gen6_datatype_table[32] = {
    0b001000001110111110,
 };
 
-static const uint16_t gen6_subreg_table[32] = {
+static const uint16_t gfx6_subreg_table[32] = {
    0b000000000000000,
    0b000000000000100,
    0b000000110000000,
@@ -328,7 +328,7 @@ static const uint16_t gen6_subreg_table[32] = {
    0b000110000000000,
 };
 
-static const uint16_t gen6_src_index_table[32] = {
+static const uint16_t gfx6_src_index_table[32] = {
    0b000000000000,
    0b010110001000,
    0b010001101000,
@@ -363,7 +363,7 @@ static const uint16_t gen6_src_index_table[32] = {
    0b001101010000,
 };
 
-static const uint32_t gen7_control_index_table[32] = {
+static const uint32_t gfx7_control_index_table[32] = {
    0b0000000000000000010,
    0b0000100000000000000,
    0b0000100000000000001,
@@ -398,7 +398,7 @@ static const uint32_t gen7_control_index_table[32] = {
    0b0101000000100000000,
 };
 
-static const uint32_t gen7_datatype_table[32] = {
+static const uint32_t gfx7_datatype_table[32] = {
    0b001000000000000001,
    0b001000000000100000,
    0b001000000000100001,
@@ -433,7 +433,7 @@ static const uint32_t gen7_datatype_table[32] = {
    0b001010110100101000,
 };
 
-static const uint16_t gen7_subreg_table[32] = {
+static const uint16_t gfx7_subreg_table[32] = {
    0b000000000000000,
    0b000000000000001,
    0b000000000001000,
@@ -468,7 +468,7 @@ static const uint16_t gen7_subreg_table[32] = {
    0b111000000011100,
 };
 
-static const uint16_t gen7_src_index_table[32] = {
+static const uint16_t gfx7_src_index_table[32] = {
    0b000000000000,
    0b000000000010,
    0b000000010000,
@@ -503,7 +503,7 @@ static const uint16_t gen7_src_index_table[32] = {
    0b010110001000,
 };
 
-static const uint32_t gen8_control_index_table[32] = {
+static const uint32_t gfx8_control_index_table[32] = {
    0b0000000000000000010,
    0b0000100000000000000,
    0b0000100000000000001,
@@ -538,7 +538,7 @@ static const uint32_t gen8_control_index_table[32] = {
    0b0101000000100000000,
 };
 
-static const uint32_t gen8_datatype_table[32] = {
+static const uint32_t gfx8_datatype_table[32] = {
    0b001000000000000000001,
    0b001000000000001000000,
    0b001000000000001000001,
@@ -573,7 +573,7 @@ static const uint32_t gen8_datatype_table[32] = {
    0b001001011001001001000,
 };
 
-static const uint16_t gen8_subreg_table[32] = {
+static const uint16_t gfx8_subreg_table[32] = {
    0b000000000000000,
    0b000000000000001,
    0b000000000001000,
@@ -608,7 +608,7 @@ static const uint16_t gen8_subreg_table[32] = {
    0b111000000011100,
 };
 
-static const uint16_t gen8_src_index_table[32] = {
+static const uint16_t gfx8_src_index_table[32] = {
    0b000000000000,
    0b000000000010,
    0b000000010000,
@@ -643,7 +643,7 @@ static const uint16_t gen8_src_index_table[32] = {
    0b010110001000,
 };
 
-static const uint32_t gen11_datatype_table[32] = {
+static const uint32_t gfx11_datatype_table[32] = {
    0b001000000000000000001,
    0b001000000000001000000,
    0b001000000000001000001,
@@ -678,7 +678,7 @@ static const uint32_t gen11_datatype_table[32] = {
    0b001001011001001001000,
 };
 
-static const uint32_t gen12_control_index_table[32] = {
+static const uint32_t gfx12_control_index_table[32] = {
    0b000000000000000000100, /* 	       (16|M0)                            */
    0b000000000000000000011, /* 	       (8|M0)                             */
    0b000000010000000000000, /* 	(W)    (1|M0)                             */
@@ -713,7 +713,7 @@ static const uint32_t gen12_control_index_table[32] = {
    0b000000010000000100100, /* 	(W)    (16|M16)                           */
 };
 
-static const uint32_t gen12_datatype_table[32] = {
+static const uint32_t gfx12_datatype_table[32] = {
    0b11010110100101010100, /* grf<1>:f  grf:f  grf:f  */
    0b00000110100101010100, /* grf<1>:f  grf:f  arf:ub */
    0b00000010101101010100, /* grf<1>:f  imm:f  arf:ub */
@@ -748,7 +748,7 @@ static const uint32_t gen12_datatype_table[32] = {
    0b00000010100101010100, /* grf<1>:f  arf:f  arf:ub */
 };
 
-static const uint16_t gen12_subreg_table[32] = {
+static const uint16_t gfx12_subreg_table[32] = {
    0b000000000000000, /* .0  .0  .0  */
    0b100000000000000, /* .0  .0  .16 */
    0b001000000000000, /* .0  .0  .4  */
@@ -783,7 +783,7 @@ static const uint16_t gen12_subreg_table[32] = {
    0b110001100000000, /* .0  .24 .24 */
 };
 
-static const uint16_t gen12_src0_index_table[16] = {
+static const uint16_t gfx12_src0_index_table[16] = {
    0b010001100100, /*       r<8;8,1>  */
    0b000000000000, /*       r<0;1,0>  */
    0b010001100110, /*      -r<8;8,1>  */
@@ -802,7 +802,7 @@ static const uint16_t gen12_src0_index_table[16] = {
    0b111100010000, /*       r[a]<1,0> */
 };
 
-static const uint16_t gen12_src1_index_table[16] = {
+static const uint16_t gfx12_src1_index_table[16] = {
    0b000100011001, /*       r<8;8,1> */
    0b000000000000, /*       r<0;1,0> */
    0b100100011001, /*      -r<8;8,1> */
@@ -827,7 +827,7 @@ static const uint16_t gen12_src1_index_table[16] = {
  *
  * The low 24 bits have the same mappings on both hardware.
  */
-static const uint32_t gen8_3src_control_index_table[4] = {
+static const uint32_t gfx8_3src_control_index_table[4] = {
    0b00100000000110000000000001,
    0b00000000000110000000000001,
    0b00000000001000000000000001,
@@ -841,14 +841,14 @@ static const uint32_t gen8_3src_control_index_table[4] = {
  * The low 44 bits have the same mappings on both hardware, and since the high
  * three bits on Broadwell are zero, we can reuse Cherryview's table.
  */
-static const uint64_t gen8_3src_source_index_table[4] = {
+static const uint64_t gfx8_3src_source_index_table[4] = {
    0b0000001110010011100100111001000001111000000000000,
    0b0000001110010011100100111001000001111000000000010,
    0b0000001110010011100100111001000001111000000001000,
    0b0000001110010011100100111001000001111000000100000,
 };
 
-static const uint64_t gen12_3src_control_index_table[32] = {
+static const uint64_t gfx12_3src_control_index_table[32] = {
    0b000001001010010101000000000000000100, /*      (16|M0)       grf<1>:f   :f  :f  :f */
    0b000001001010010101000000000000000011, /*      (8|M0)        grf<1>:f   :f  :f  :f */
    0b000001001000010101000000000000000011, /*      (8|M0)        arf<1>:f   :f  :f  :f */
@@ -883,7 +883,7 @@ static const uint64_t gen12_3src_control_index_table[32] = {
    0b000001001000010101010000000000000011, /*      (8|M0)   (sat)arf<1>:f   :f  :f  :f */
 };
 
-static const uint32_t gen12_3src_source_index_table[32] = {
+static const uint32_t gfx12_3src_source_index_table[32] = {
    0b100101100001100000000, /*  grf<0;0>   grf<8;1>  grf<0> */
    0b100101100001001000010, /*  arf<4;1>   grf<8;1>  grf<0> */
    0b101101100001101000011, /*  grf<8;1>   grf<8;1>  grf<1> */
@@ -918,7 +918,7 @@ static const uint32_t gen12_3src_source_index_table[32] = {
    0b101001100101101000011, /*  grf<8;1>   arf<8;1> -grf<1> */
 };
 
-static const uint32_t gen12_3src_subreg_table[32] = {
+static const uint32_t gfx12_3src_subreg_table[32] = {
    0b00000000000000000000, /* .0  .0  .0  .0  */
    0b00100000000000000000, /* .0  .0  .0  .4  */
    0b00000000000110000000, /* .0  .12 .0  .0  */
@@ -993,7 +993,7 @@ set_control_index(const struct compaction_state *c,
       uncompacted = (brw_inst_bits(src, 31, 31) << 16) | /*  1b */
                     (brw_inst_bits(src, 23,  8));        /* 16b */
 
-      /* On gen7, the flag register and subregister numbers are integrated into
+      /* On gfx7, the flag register and subregister numbers are integrated into
        * the control index.
        */
       if (devinfo->ver == 7)
@@ -1093,14 +1093,14 @@ set_src0_index(const struct compaction_state *c, brw_compact_inst *dst,
    int table_len;
 
    if (devinfo->ver >= 12) {
-      table_len = ARRAY_SIZE(gen12_src0_index_table);
+      table_len = ARRAY_SIZE(gfx12_src0_index_table);
       uncompacted = (brw_inst_bits(src, 87, 84) << 8) | /*  4b */
                     (brw_inst_bits(src, 83, 81) << 5) | /*  3b */
                     (brw_inst_bits(src, 80, 80) << 4) | /*  1b */
                     (brw_inst_bits(src, 65, 64) << 2) | /*  2b */
                     (brw_inst_bits(src, 45, 44));       /*  2b */
    } else {
-      table_len = ARRAY_SIZE(gen8_src_index_table);
+      table_len = ARRAY_SIZE(gfx8_src_index_table);
       uncompacted = brw_inst_bits(src, 88, 77);         /* 12b */
    }
 
@@ -1133,14 +1133,14 @@ set_src1_index(const struct compaction_state *c, brw_compact_inst *dst,
       int table_len;
 
       if (devinfo->ver >= 12) {
-         table_len = ARRAY_SIZE(gen12_src0_index_table);
+         table_len = ARRAY_SIZE(gfx12_src0_index_table);
          uncompacted = (brw_inst_bits(src, 121, 120) << 10) | /*  2b */
                        (brw_inst_bits(src, 119, 116) <<  6) | /*  4b */
                        (brw_inst_bits(src, 115, 113) <<  3) | /*  3b */
                        (brw_inst_bits(src, 112, 112) <<  2) | /*  1b */
                        (brw_inst_bits(src,  97,  96));        /*  2b */
       } else {
-         table_len = ARRAY_SIZE(gen8_src_index_table);
+         table_len = ARRAY_SIZE(gfx8_src_index_table);
          uncompacted = brw_inst_bits(src, 120, 109);          /* 12b */
       }
 
@@ -1182,8 +1182,8 @@ set_3src_control_index(const struct gen_device_info *devinfo,
          (brw_inst_bits(src, 21, 19) <<  3) | /*  3b */
          (brw_inst_bits(src, 18, 16));        /*  3b */
 
-      for (unsigned i = 0; i < ARRAY_SIZE(gen12_3src_control_index_table); i++) {
-         if (gen12_3src_control_index_table[i] == uncompacted) {
+      for (unsigned i = 0; i < ARRAY_SIZE(gfx12_3src_control_index_table); i++) {
+         if (gfx12_3src_control_index_table[i] == uncompacted) {
             brw_compact_inst_set_3src_control_index(devinfo, dst, i);
             return true;
          }
@@ -1198,8 +1198,8 @@ set_3src_control_index(const struct gen_device_info *devinfo,
             brw_inst_bits(src, 36, 35) << 24;  /*  2b */
       }
 
-      for (unsigned i = 0; i < ARRAY_SIZE(gen8_3src_control_index_table); i++) {
-         if (gen8_3src_control_index_table[i] == uncompacted) {
+      for (unsigned i = 0; i < ARRAY_SIZE(gfx8_3src_control_index_table); i++) {
+         if (gfx8_3src_control_index_table[i] == uncompacted) {
             brw_compact_inst_set_3src_control_index(devinfo, dst, i);
             return true;
          }
@@ -1233,8 +1233,8 @@ set_3src_source_index(const struct gen_device_info *devinfo,
          (brw_inst_bits(src,  43,  43) <<  1) | /*  1b */
          (brw_inst_bits(src,  35,  35));        /*  1b */
 
-      for (unsigned i = 0; i < ARRAY_SIZE(gen12_3src_source_index_table); i++) {
-         if (gen12_3src_source_index_table[i] == uncompacted) {
+      for (unsigned i = 0; i < ARRAY_SIZE(gfx12_3src_source_index_table); i++) {
+         if (gfx12_3src_source_index_table[i] == uncompacted) {
             brw_compact_inst_set_3src_source_index(devinfo, dst, i);
             return true;
          }
@@ -1258,8 +1258,8 @@ set_3src_source_index(const struct gen_device_info *devinfo,
             (brw_inst_bits(src, 104, 104) << 44);  /* 1b */
       }
 
-      for (unsigned i = 0; i < ARRAY_SIZE(gen8_3src_source_index_table); i++) {
-         if (gen8_3src_source_index_table[i] == uncompacted) {
+      for (unsigned i = 0; i < ARRAY_SIZE(gfx8_3src_source_index_table); i++) {
+         if (gfx8_3src_source_index_table[i] == uncompacted) {
             brw_compact_inst_set_3src_source_index(devinfo, dst, i);
             return true;
          }
@@ -1281,8 +1281,8 @@ set_3src_subreg_index(const struct gen_device_info *devinfo,
       (brw_inst_bits(src,  71,  67) <<  5) | /*  5b */
       (brw_inst_bits(src,  55,  51));        /*  5b */
 
-   for (unsigned i = 0; i < ARRAY_SIZE(gen12_3src_subreg_table); i++) {
-      if (gen12_3src_subreg_table[i] == uncompacted) {
+   for (unsigned i = 0; i < ARRAY_SIZE(gfx12_3src_subreg_table); i++) {
+      if (gfx12_3src_subreg_table[i] == uncompacted) {
          brw_compact_inst_set_3src_subreg_index(devinfo, dst, i);
 	 return true;
       }
@@ -1887,7 +1887,7 @@ set_uncompacted_3src_control_index(const struct compaction_state *c,
 
    if (devinfo->ver >= 12) {
       uint64_t compacted = brw_compact_inst_3src_control_index(devinfo, src);
-      uint64_t uncompacted = gen12_3src_control_index_table[compacted];
+      uint64_t uncompacted = gfx12_3src_control_index_table[compacted];
 
       brw_inst_set_bits(dst, 95, 92, (uncompacted >> 32));
       brw_inst_set_bits(dst, 90, 88, (uncompacted >> 29) & 0x7);
@@ -1909,7 +1909,7 @@ set_uncompacted_3src_control_index(const struct compaction_state *c,
       brw_inst_set_bits(dst, 18, 16, (uncompacted >>  0) & 0x7);
    } else {
       uint32_t compacted = brw_compact_inst_3src_control_index(devinfo, src);
-      uint32_t uncompacted = gen8_3src_control_index_table[compacted];
+      uint32_t uncompacted = gfx8_3src_control_index_table[compacted];
 
       brw_inst_set_bits(dst, 34, 32, (uncompacted >> 21) & 0x7);
       brw_inst_set_bits(dst, 28,  8, (uncompacted >>  0) & 0x1fffff);
@@ -1928,7 +1928,7 @@ set_uncompacted_3src_source_index(const struct gen_device_info *devinfo,
    uint32_t compacted = brw_compact_inst_3src_source_index(devinfo, src);
 
    if (devinfo->ver >= 12) {
-      uint32_t uncompacted = gen12_3src_source_index_table[compacted];
+      uint32_t uncompacted = gfx12_3src_source_index_table[compacted];
 
       brw_inst_set_bits(dst, 114, 114, (uncompacted >> 20));
       brw_inst_set_bits(dst, 113, 112, (uncompacted >> 18) & 0x3);
@@ -1946,7 +1946,7 @@ set_uncompacted_3src_source_index(const struct gen_device_info *devinfo,
       brw_inst_set_bits(dst,  43,  43, (uncompacted >>  1) & 0x1);
       brw_inst_set_bits(dst,  35,  35, (uncompacted >>  0) & 0x1);
    } else {
-      uint64_t uncompacted = gen8_3src_source_index_table[compacted];
+      uint64_t uncompacted = gfx8_3src_source_index_table[compacted];
 
       brw_inst_set_bits(dst,  83,  83, (uncompacted >> 43) & 0x1);
       brw_inst_set_bits(dst, 114, 107, (uncompacted >> 35) & 0xff);
@@ -1972,7 +1972,7 @@ set_uncompacted_3src_subreg_index(const struct gen_device_info *devinfo,
    assert(devinfo->ver >= 12);
 
    uint32_t compacted = brw_compact_inst_3src_subreg_index(devinfo, src);
-   uint32_t uncompacted = gen12_3src_subreg_table[compacted];
+   uint32_t uncompacted = gfx12_3src_subreg_table[compacted];
 
    brw_inst_set_bits(dst, 119, 115, (uncompacted >> 15));
    brw_inst_set_bits(dst, 103,  99, (uncompacted >> 10) & 0x1f);
@@ -2165,7 +2165,7 @@ update_uip_jip(const struct gen_device_info *devinfo, brw_inst *insn,
 }
 
 static void
-update_gen4_jump_count(const struct gen_device_info *devinfo, brw_inst *insn,
+update_gfx4_jump_count(const struct gen_device_info *devinfo, brw_inst *insn,
                        int this_old_ip, int *compacted_counts)
 {
    assert(devinfo->ver == 5 || devinfo->is_g4x);
@@ -2176,7 +2176,7 @@ update_gen4_jump_count(const struct gen_device_info *devinfo, brw_inst *insn,
     */
    int shift = devinfo->is_g4x ? 1 : 0;
 
-   int jump_count_compacted = brw_inst_gen4_jump_count(devinfo, insn) << shift;
+   int jump_count_compacted = brw_inst_gfx4_jump_count(devinfo, insn) << shift;
 
    int target_old_ip = this_old_ip + (jump_count_compacted / 2);
 
@@ -2184,7 +2184,7 @@ update_gen4_jump_count(const struct gen_device_info *devinfo, brw_inst *insn,
    int target_compacted_count = compacted_counts[target_old_ip];
 
    jump_count_compacted -= (target_compacted_count - this_compacted_count);
-   brw_inst_set_gen4_jump_count(devinfo, insn, jump_count_compacted >> shift);
+   brw_inst_set_gfx4_jump_count(devinfo, insn, jump_count_compacted >> shift);
 }
 
 static void
@@ -2195,62 +2195,62 @@ compaction_state_init(struct compaction_state *c,
    assert(g45_datatype_table[ARRAY_SIZE(g45_datatype_table) - 1] != 0);
    assert(g45_subreg_table[ARRAY_SIZE(g45_subreg_table) - 1] != 0);
    assert(g45_src_index_table[ARRAY_SIZE(g45_src_index_table) - 1] != 0);
-   assert(gen6_control_index_table[ARRAY_SIZE(gen6_control_index_table) - 1] != 0);
-   assert(gen6_datatype_table[ARRAY_SIZE(gen6_datatype_table) - 1] != 0);
-   assert(gen6_subreg_table[ARRAY_SIZE(gen6_subreg_table) - 1] != 0);
-   assert(gen6_src_index_table[ARRAY_SIZE(gen6_src_index_table) - 1] != 0);
-   assert(gen7_control_index_table[ARRAY_SIZE(gen7_control_index_table) - 1] != 0);
-   assert(gen7_datatype_table[ARRAY_SIZE(gen7_datatype_table) - 1] != 0);
-   assert(gen7_subreg_table[ARRAY_SIZE(gen7_subreg_table) - 1] != 0);
-   assert(gen7_src_index_table[ARRAY_SIZE(gen7_src_index_table) - 1] != 0);
-   assert(gen8_control_index_table[ARRAY_SIZE(gen8_control_index_table) - 1] != 0);
-   assert(gen8_datatype_table[ARRAY_SIZE(gen8_datatype_table) - 1] != 0);
-   assert(gen8_subreg_table[ARRAY_SIZE(gen8_subreg_table) - 1] != 0);
-   assert(gen8_src_index_table[ARRAY_SIZE(gen8_src_index_table) - 1] != 0);
-   assert(gen11_datatype_table[ARRAY_SIZE(gen11_datatype_table) - 1] != 0);
-   assert(gen12_control_index_table[ARRAY_SIZE(gen12_control_index_table) - 1] != 0);
-   assert(gen12_datatype_table[ARRAY_SIZE(gen12_datatype_table) - 1] != 0);
-   assert(gen12_subreg_table[ARRAY_SIZE(gen12_subreg_table) - 1] != 0);
-   assert(gen12_src0_index_table[ARRAY_SIZE(gen12_src0_index_table) - 1] != 0);
-   assert(gen12_src1_index_table[ARRAY_SIZE(gen12_src1_index_table) - 1] != 0);
+   assert(gfx6_control_index_table[ARRAY_SIZE(gfx6_control_index_table) - 1] != 0);
+   assert(gfx6_datatype_table[ARRAY_SIZE(gfx6_datatype_table) - 1] != 0);
+   assert(gfx6_subreg_table[ARRAY_SIZE(gfx6_subreg_table) - 1] != 0);
+   assert(gfx6_src_index_table[ARRAY_SIZE(gfx6_src_index_table) - 1] != 0);
+   assert(gfx7_control_index_table[ARRAY_SIZE(gfx7_control_index_table) - 1] != 0);
+   assert(gfx7_datatype_table[ARRAY_SIZE(gfx7_datatype_table) - 1] != 0);
+   assert(gfx7_subreg_table[ARRAY_SIZE(gfx7_subreg_table) - 1] != 0);
+   assert(gfx7_src_index_table[ARRAY_SIZE(gfx7_src_index_table) - 1] != 0);
+   assert(gfx8_control_index_table[ARRAY_SIZE(gfx8_control_index_table) - 1] != 0);
+   assert(gfx8_datatype_table[ARRAY_SIZE(gfx8_datatype_table) - 1] != 0);
+   assert(gfx8_subreg_table[ARRAY_SIZE(gfx8_subreg_table) - 1] != 0);
+   assert(gfx8_src_index_table[ARRAY_SIZE(gfx8_src_index_table) - 1] != 0);
+   assert(gfx11_datatype_table[ARRAY_SIZE(gfx11_datatype_table) - 1] != 0);
+   assert(gfx12_control_index_table[ARRAY_SIZE(gfx12_control_index_table) - 1] != 0);
+   assert(gfx12_datatype_table[ARRAY_SIZE(gfx12_datatype_table) - 1] != 0);
+   assert(gfx12_subreg_table[ARRAY_SIZE(gfx12_subreg_table) - 1] != 0);
+   assert(gfx12_src0_index_table[ARRAY_SIZE(gfx12_src0_index_table) - 1] != 0);
+   assert(gfx12_src1_index_table[ARRAY_SIZE(gfx12_src1_index_table) - 1] != 0);
 
    c->devinfo = devinfo;
    switch (devinfo->ver) {
    case 12:
-      c->control_index_table = gen12_control_index_table;;
-      c->datatype_table = gen12_datatype_table;
-      c->subreg_table = gen12_subreg_table;
-      c->src0_index_table = gen12_src0_index_table;
-      c->src1_index_table = gen12_src1_index_table;
+      c->control_index_table = gfx12_control_index_table;;
+      c->datatype_table = gfx12_datatype_table;
+      c->subreg_table = gfx12_subreg_table;
+      c->src0_index_table = gfx12_src0_index_table;
+      c->src1_index_table = gfx12_src1_index_table;
       break;
    case 11:
-      c->control_index_table = gen8_control_index_table;
-      c->datatype_table = gen11_datatype_table;
-      c->subreg_table = gen8_subreg_table;
-      c->src0_index_table = gen8_src_index_table;
-      c->src1_index_table = gen8_src_index_table;
+      c->control_index_table = gfx8_control_index_table;
+      c->datatype_table = gfx11_datatype_table;
+      c->subreg_table = gfx8_subreg_table;
+      c->src0_index_table = gfx8_src_index_table;
+      c->src1_index_table = gfx8_src_index_table;
       break;
    case 9:
    case 8:
-      c->control_index_table = gen8_control_index_table;
-      c->datatype_table = gen8_datatype_table;
-      c->subreg_table = gen8_subreg_table;
-      c->src0_index_table = gen8_src_index_table;
-      c->src1_index_table = gen8_src_index_table;
+      c->control_index_table = gfx8_control_index_table;
+      c->datatype_table = gfx8_datatype_table;
+      c->subreg_table = gfx8_subreg_table;
+      c->src0_index_table = gfx8_src_index_table;
+      c->src1_index_table = gfx8_src_index_table;
       break;
    case 7:
-      c->control_index_table = gen7_control_index_table;
-      c->datatype_table = gen7_datatype_table;
-      c->subreg_table = gen7_subreg_table;
-      c->src0_index_table = gen7_src_index_table;
-      c->src1_index_table = gen7_src_index_table;
+      c->control_index_table = gfx7_control_index_table;
+      c->datatype_table = gfx7_datatype_table;
+      c->subreg_table = gfx7_subreg_table;
+      c->src0_index_table = gfx7_src_index_table;
+      c->src1_index_table = gfx7_src_index_table;
       break;
    case 6:
-      c->control_index_table = gen6_control_index_table;
-      c->datatype_table = gen6_datatype_table;
-      c->subreg_table = gen6_subreg_table;
-      c->src0_index_table = gen6_src_index_table;
-      c->src1_index_table = gen6_src_index_table;
+      c->control_index_table = gfx6_control_index_table;
+      c->datatype_table = gfx6_datatype_table;
+      c->subreg_table = gfx6_subreg_table;
+      c->src0_index_table = gfx6_src_index_table;
+      c->src1_index_table = gfx6_src_index_table;
       break;
    case 5:
    case 4:
@@ -2362,7 +2362,7 @@ brw_compact_instructions(struct brw_codegen *p, int start_offset,
          if (devinfo->ver >= 6) {
             update_uip_jip(devinfo, insn, this_old_ip, compacted_counts);
          } else {
-            update_gen4_jump_count(devinfo, insn, this_old_ip,
+            update_gfx4_jump_count(devinfo, insn, this_old_ip,
                                    compacted_counts);
          }
          break;
@@ -2391,14 +2391,14 @@ brw_compact_instructions(struct brw_codegen *p, int start_offset,
             assert(!brw_inst_cmpt_control(devinfo, insn));
 
             /* Jump Count is in units of compacted instructions on Gen6. */
-            int jump_count_compacted = brw_inst_gen6_jump_count(devinfo, insn);
+            int jump_count_compacted = brw_inst_gfx6_jump_count(devinfo, insn);
 
             int target_old_ip = this_old_ip + (jump_count_compacted / 2);
             int target_compacted_count = compacted_counts[target_old_ip];
             jump_count_compacted -= (target_compacted_count - this_compacted_count);
-            brw_inst_set_gen6_jump_count(devinfo, insn, jump_count_compacted);
+            brw_inst_set_gfx6_jump_count(devinfo, insn, jump_count_compacted);
          } else {
-            update_gen4_jump_count(devinfo, insn, this_old_ip,
+            update_gfx4_jump_count(devinfo, insn, this_old_ip,
                                    compacted_counts);
          }
          break;

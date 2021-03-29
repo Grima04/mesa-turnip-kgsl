@@ -611,7 +611,7 @@ void brw_init_common_queryobj_functions(struct dd_function_table *functions)
 }
 
 /* Initialize Gen4/5-specific query object functions. */
-void gen4_init_queryobj_functions(struct dd_function_table *functions)
+void gfx4_init_queryobj_functions(struct dd_function_table *functions)
 {
    functions->BeginQuery = brw_begin_query;
    functions->EndQuery = brw_end_query;

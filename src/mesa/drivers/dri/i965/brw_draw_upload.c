@@ -232,7 +232,7 @@ double_types(int size, GLboolean doubles)
     * Also included on BDW PRM, Volume 7, page 470, table "Source Element
     * Formats Supported in VF Unit"
     *
-    * Previous PRMs don't include those references, so for gen7 we can't use
+    * Previous PRMs don't include those references, so for gfx7 we can't use
     * PASSTHRU formats directly. But in any case, we prefer to return passthru
     * even in that case, because that reflects what we want to achieve, even
     * if we would need to workaround on gen < 8.
@@ -454,7 +454,7 @@ brw_prepare_vertices(struct brw_context *brw)
 
    /* _NEW_POLYGON
     *
-    * On gen6+, edge flags don't end up in the VUE (either in or out of the
+    * On gfx6+, edge flags don't end up in the VUE (either in or out of the
     * VS).  Instead, they're uploaded as the last vertex element, and the data
     * is passed sideband through the fixed function units.  So, we need to
     * prepare the vertex buffer for it, but it's not present in inputs_read.

@@ -132,8 +132,8 @@ public:
    bool run_bs(bool allow_spilling);
    void optimize();
    void allocate_registers(bool allow_spilling);
-   void setup_fs_payload_gen4();
-   void setup_fs_payload_gen6();
+   void setup_fs_payload_gfx4();
+   void setup_fs_payload_gfx6();
    void setup_vs_payload();
    void setup_gs_payload();
    void setup_cs_payload();
@@ -180,10 +180,10 @@ public:
    bool remove_extra_rounding_modes();
 
    void schedule_instructions(instruction_scheduler_mode mode);
-   void insert_gen4_send_dependency_workarounds();
-   void insert_gen4_pre_send_dependency_workarounds(bblock_t *block,
+   void insert_gfx4_send_dependency_workarounds();
+   void insert_gfx4_pre_send_dependency_workarounds(bblock_t *block,
                                                     fs_inst *inst);
-   void insert_gen4_post_send_dependency_workarounds(bblock_t *block,
+   void insert_gfx4_post_send_dependency_workarounds(bblock_t *block,
                                                      fs_inst *inst);
    void vfail(const char *msg, va_list args);
    void fail(const char *msg, ...);
@@ -208,13 +208,13 @@ public:
    fs_reg *emit_samplepos_setup();
    fs_reg *emit_sampleid_setup();
    fs_reg *emit_samplemaskin_setup();
-   void emit_interpolation_setup_gen4();
-   void emit_interpolation_setup_gen6();
+   void emit_interpolation_setup_gfx4();
+   void emit_interpolation_setup_gfx6();
    void compute_sample_position(fs_reg dst, fs_reg int_sample_pos);
    fs_reg emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
                          const fs_reg &texture,
                          const fs_reg &texture_handle);
-   void emit_gen6_gather_wa(uint8_t wa, fs_reg dst);
+   void emit_gfx6_gather_wa(uint8_t wa, fs_reg dst);
    fs_reg resolve_source_modifiers(const fs_reg &src);
    void emit_fsign(const class brw::fs_builder &, const nir_alu_instr *instr,
                    fs_reg result, fs_reg *op, unsigned fsign_src);
@@ -513,16 +513,16 @@ private:
                      struct brw_reg dst, struct brw_reg src);
    void generate_scratch_write(fs_inst *inst, struct brw_reg src);
    void generate_scratch_read(fs_inst *inst, struct brw_reg dst);
-   void generate_scratch_read_gen7(fs_inst *inst, struct brw_reg dst);
+   void generate_scratch_read_gfx7(fs_inst *inst, struct brw_reg dst);
    void generate_scratch_header(fs_inst *inst, struct brw_reg dst);
    void generate_uniform_pull_constant_load(fs_inst *inst, struct brw_reg dst,
                                             struct brw_reg index,
                                             struct brw_reg offset);
-   void generate_uniform_pull_constant_load_gen7(fs_inst *inst,
+   void generate_uniform_pull_constant_load_gfx7(fs_inst *inst,
                                                  struct brw_reg dst,
                                                  struct brw_reg surf_index,
                                                  struct brw_reg payload);
-   void generate_varying_pull_constant_load_gen4(fs_inst *inst,
+   void generate_varying_pull_constant_load_gfx4(fs_inst *inst,
                                                  struct brw_reg dst,
                                                  struct brw_reg index);
    void generate_mov_dispatch_to_flags(fs_inst *inst);

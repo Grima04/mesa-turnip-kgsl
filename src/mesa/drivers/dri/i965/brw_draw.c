@@ -113,7 +113,7 @@ brw_set_prim(struct brw_context *brw, const struct _mesa_prim *prim)
 }
 
 static void
-gen6_set_prim(struct brw_context *brw, const struct _mesa_prim *prim)
+gfx6_set_prim(struct brw_context *brw, const struct _mesa_prim *prim)
 {
    const struct gl_context *ctx = &brw->ctx;
    uint32_t hw_prim;
@@ -430,24 +430,24 @@ brw_disable_rb_aux_buffer(struct brw_context *brw,
  * ignore the possibility and hope for the best.
  */
 static void
-gen9_apply_astc5x5_wa_flush(struct brw_context *brw,
-                            enum gen9_astc5x5_wa_tex_type curr_mask)
+gfx9_apply_astc5x5_wa_flush(struct brw_context *brw,
+                            enum gfx9_astc5x5_wa_tex_type curr_mask)
 {
    assert(brw->screen->devinfo.ver == 9);
 
-   if (((brw->gen9_astc5x5_wa_tex_mask & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
+   if (((brw->gfx9_astc5x5_wa_tex_mask & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
         (curr_mask & GFX9_ASTC5X5_WA_TEX_TYPE_AUX)) ||
-       ((brw->gen9_astc5x5_wa_tex_mask & GFX9_ASTC5X5_WA_TEX_TYPE_AUX) &&
+       ((brw->gfx9_astc5x5_wa_tex_mask & GFX9_ASTC5X5_WA_TEX_TYPE_AUX) &&
         (curr_mask & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5))) {
       brw_emit_pipe_control_flush(brw, PIPE_CONTROL_CS_STALL);
       brw_emit_pipe_control_flush(brw, PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
    }
 
-   brw->gen9_astc5x5_wa_tex_mask = curr_mask;
+   brw->gfx9_astc5x5_wa_tex_mask = curr_mask;
 }
 
-static enum gen9_astc5x5_wa_tex_type
-gen9_astc5x5_wa_bits(mesa_format format, enum isl_aux_usage aux_usage)
+static enum gfx9_astc5x5_wa_tex_type
+gfx9_astc5x5_wa_bits(mesa_format format, enum isl_aux_usage aux_usage)
 {
    if (aux_usage != ISL_AUX_USAGE_NONE &&
        aux_usage != ISL_AUX_USAGE_MCS)
@@ -460,15 +460,15 @@ gen9_astc5x5_wa_bits(mesa_format format, enum isl_aux_usage aux_usage)
    return 0;
 }
 
-/* Helper for the gen9 ASTC 5x5 workaround.  This version exists for BLORP's
+/* Helper for the gfx9 ASTC 5x5 workaround.  This version exists for BLORP's
  * use-cases where only a single texture is bound.
  */
 void
-gen9_apply_single_tex_astc5x5_wa(struct brw_context *brw,
+gfx9_apply_single_tex_astc5x5_wa(struct brw_context *brw,
                                  mesa_format format,
                                  enum isl_aux_usage aux_usage)
 {
-   gen9_apply_astc5x5_wa_flush(brw, gen9_astc5x5_wa_bits(format, aux_usage));
+   gfx9_apply_astc5x5_wa_flush(brw, gfx9_astc5x5_wa_bits(format, aux_usage));
 }
 
 static void
@@ -510,7 +510,7 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
 
    int maxEnabledUnit = ctx->Texture._MaxEnabledTexImageUnit;
 
-   enum gen9_astc5x5_wa_tex_type astc5x5_wa_bits = 0;
+   enum gfx9_astc5x5_wa_tex_type astc5x5_wa_bits = 0;
    if (brw->screen->devinfo.ver == 9) {
       /* In order to properly implement the ASTC 5x5 workaround for an
        * arbitrary draw or dispatch call, we have to walk the entire list of
@@ -525,10 +525,10 @@ brw_predraw_resolve_inputs(struct brw_context *brw, bool rendering,
          if (!tex_obj || !tex_obj->mt)
             continue;
 
-         astc5x5_wa_bits |= gen9_astc5x5_wa_bits(tex_obj->_Format,
+         astc5x5_wa_bits |= gfx9_astc5x5_wa_bits(tex_obj->_Format,
                                                  tex_obj->mt->aux_usage);
       }
-      gen9_apply_astc5x5_wa_flush(brw, astc5x5_wa_bits);
+      gfx9_apply_astc5x5_wa_flush(brw, astc5x5_wa_bits);
    }
 
    /* Resolve depth buffer and render cache of each enabled texture. */
@@ -656,7 +656,7 @@ brw_predraw_resolve_framebuffer(struct brw_context *brw,
             brw_miptree_prepare_texture(brw, irb->mt, irb->mt->surf.format,
                                         irb->mt_level, 1,
                                         irb->mt_layer, irb->layer_count,
-                                        brw->gen9_astc5x5_wa_tex_mask);
+                                        brw->gfx9_astc5x5_wa_tex_mask);
          }
       }
    }
@@ -925,13 +925,13 @@ brw_finish_drawing(struct gl_context *ctx)
  *    - WA#0798
  */
 static void
-gen9_emit_preempt_wa(struct brw_context *brw,
+gfx9_emit_preempt_wa(struct brw_context *brw,
                      const struct _mesa_prim *prim, GLuint num_instances)
 {
    bool object_preemption = true;
    ASSERTED const struct gen_device_info *devinfo = &brw->screen->devinfo;
 
-   /* Only apply these workarounds for gen9 */
+   /* Only apply these workarounds for gfx9 */
    assert(devinfo->ver == 9);
 
    /* WaDisableMidObjectPreemptionForGSLineStripAdj
@@ -1081,7 +1081,7 @@ brw_draw_single_prim(struct gl_context *ctx,
    if (devinfo->ver < 6)
       brw_set_prim(brw, prim);
    else
-      gen6_set_prim(brw, prim);
+      gfx6_set_prim(brw, prim);
 
 retry:
 
@@ -1096,7 +1096,7 @@ retry:
    }
 
    if (devinfo->ver == 9)
-      gen9_emit_preempt_wa(brw, prim, num_instances);
+      gfx9_emit_preempt_wa(brw, prim, num_instances);
 
    brw_emit_prim(brw, prim, brw->primitive, is_indexed, num_instances,
                  base_instance, xfb_obj, stream, is_indirect,

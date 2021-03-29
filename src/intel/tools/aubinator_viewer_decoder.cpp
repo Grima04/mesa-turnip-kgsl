@@ -618,7 +618,7 @@ decode_3dstate_sampler_state_pointers(struct aub_viewer_decode_ctx *ctx,
 }
 
 static void
-decode_3dstate_sampler_state_pointers_gen6(struct aub_viewer_decode_ctx *ctx,
+decode_3dstate_sampler_state_pointers_gfx6(struct aub_viewer_decode_ctx *ctx,
                                            struct intel_group *inst,
                                            const uint32_t *p)
 {
@@ -864,7 +864,7 @@ struct custom_decoder {
    { "3DSTATE_SAMPLER_STATE_POINTERS_DS", decode_3dstate_sampler_state_pointers, AUB_DECODE_STAGE_DS, },
    { "3DSTATE_SAMPLER_STATE_POINTERS_HS", decode_3dstate_sampler_state_pointers, AUB_DECODE_STAGE_HS, },
    { "3DSTATE_SAMPLER_STATE_POINTERS_PS", decode_3dstate_sampler_state_pointers, AUB_DECODE_STAGE_PS, },
-   { "3DSTATE_SAMPLER_STATE_POINTERS", decode_3dstate_sampler_state_pointers_gen6 },
+   { "3DSTATE_SAMPLER_STATE_POINTERS", decode_3dstate_sampler_state_pointers_gfx6 },
 
    { "3DSTATE_VIEWPORT_STATE_POINTERS_CC", decode_3dstate_viewport_state_pointers_cc },
    { "3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP", decode_3dstate_viewport_state_pointers_sf_clip },

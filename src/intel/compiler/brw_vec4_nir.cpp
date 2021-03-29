@@ -285,7 +285,7 @@ setup_imm_df(const vec4_builder &bld, double v)
    const gen_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->ver == 7);
 
-   /* gen7.5 does not support DF immediates straighforward but the DIM
+   /* gfx7.5 does not support DF immediates straighforward but the DIM
     * instruction allows to set the 64-bit immediate value.
     */
    if (devinfo->is_haswell) {
@@ -295,7 +295,7 @@ setup_imm_df(const vec4_builder &bld, double v)
       return swizzle(src_reg(dst), BRW_SWIZZLE_XXXX);
    }
 
-   /* gen7 does not support DF immediates */
+   /* gfx7 does not support DF immediates */
    union {
       double d;
       struct {

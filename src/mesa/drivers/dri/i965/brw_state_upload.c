@@ -69,7 +69,7 @@ brw_enable_obj_preemption(struct brw_context *brw, bool enable)
 }
 
 static void
-brw_upload_gen11_slice_hashing_state(struct brw_context *brw)
+brw_upload_gfx11_slice_hashing_state(struct brw_context *brw)
 {
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    int subslices_delta =
@@ -130,7 +130,7 @@ brw_upload_gen11_slice_hashing_state(struct brw_context *brw)
    OUT_RELOC(brw->batch.state.bo, 0, hash_address | 1);
    ADVANCE_BATCH();
 
-   /* From gen10/gen11 workaround table in h/w specs:
+   /* From gfx10/gfx11 workaround table in h/w specs:
     *
     *    "On 3DSTATE_3D_MODE, driver must always program bits 31:16 of DW1
     *     a value of 0xFFFF"
@@ -214,7 +214,7 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
    }
 
    if (devinfo->ver >= 8) {
-      gen8_emit_3dstate_sample_pattern(brw);
+      gfx8_emit_3dstate_sample_pattern(brw);
 
       BEGIN_BATCH(5);
       OUT_BATCH(_3DSTATE_WM_HZ_OP << 16 | (5 - 2));
@@ -259,7 +259,7 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
       brw_enable_obj_preemption(brw, true);
 
    if (devinfo->ver == 11)
-      brw_upload_gen11_slice_hashing_state(brw);
+      brw_upload_gfx11_slice_hashing_state(brw);
 }
 
 static inline const struct brw_tracked_state *
@@ -310,25 +310,25 @@ void brw_init_state( struct brw_context *brw )
    brw_init_caches(brw);
 
    if (devinfo->ver >= 11)
-      gen11_init_atoms(brw);
+      gfx11_init_atoms(brw);
    else if (devinfo->ver >= 10)
       unreachable("Gen10 support dropped.");
    else if (devinfo->ver >= 9)
-      gen9_init_atoms(brw);
+      gfx9_init_atoms(brw);
    else if (devinfo->ver >= 8)
-      gen8_init_atoms(brw);
+      gfx8_init_atoms(brw);
    else if (devinfo->is_haswell)
-      gen75_init_atoms(brw);
+      gfx75_init_atoms(brw);
    else if (devinfo->ver >= 7)
-      gen7_init_atoms(brw);
+      gfx7_init_atoms(brw);
    else if (devinfo->ver >= 6)
-      gen6_init_atoms(brw);
+      gfx6_init_atoms(brw);
    else if (devinfo->ver >= 5)
-      gen5_init_atoms(brw);
+      gfx5_init_atoms(brw);
    else if (devinfo->is_g4x)
-      gen45_init_atoms(brw);
+      gfx45_init_atoms(brw);
    else
-      gen4_init_atoms(brw);
+      gfx4_init_atoms(brw);
 
    brw_upload_initial_gpu_state(brw);
 

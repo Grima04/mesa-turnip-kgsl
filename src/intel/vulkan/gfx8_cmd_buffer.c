@@ -35,7 +35,7 @@
 
 #if GFX_VER == 8
 void
-gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
+gfx8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_framebuffer *fb = cmd_buffer->state.framebuffer;
    uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
@@ -47,8 +47,8 @@ gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
    for (uint32_t i = 0; i < count; i++) {
       const VkViewport *vp = &viewports[i];
 
-      /* The gen7 state struct has just the matrix and guardband fields, the
-       * gen8 struct adds the min/max viewport fields. */
+      /* The gfx7 state struct has just the matrix and guardband fields, the
+       * gfx8 struct adds the min/max viewport fields. */
       struct GENX(SF_CLIP_VIEWPORT) sfv = {
          .ViewportMatrixElementm00 = vp->width / 2,
          .ViewportMatrixElementm11 = vp->height / 2,
@@ -92,7 +92,7 @@ gen8_cmd_buffer_emit_viewport(struct anv_cmd_buffer *cmd_buffer)
 }
 
 void
-gen8_cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
+gfx8_cmd_buffer_emit_depth_viewport(struct anv_cmd_buffer *cmd_buffer,
                                     bool depth_clamp_enable)
 {
    uint32_t count = cmd_buffer->state.gfx.dynamic.viewport.count;
@@ -436,7 +436,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       sf.LineWidth = d->line_width,
 #endif
       GENX(3DSTATE_SF_pack)(NULL, sf_dw, &sf);
-      anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gen8.sf);
+      anv_batch_emit_merge(&cmd_buffer->batch, sf_dw, pipeline->gfx8.sf);
    }
 
    if (cmd_buffer->state.gfx.dirty & (ANV_CMD_DIRTY_PIPELINE |
@@ -454,12 +454,12 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
-                           pipeline->gen8.raster);
+                           pipeline->gfx8.raster);
    }
 
-   /* Stencil reference values moved from COLOR_CALC_STATE in gen8 to
-    * 3DSTATE_WM_DEPTH_STENCIL in gen9. That means the dirty bits gets split
-    * across different state packets for gen8 and gen9. We handle that by
+   /* Stencil reference values moved from COLOR_CALC_STATE in gfx8 to
+    * 3DSTATE_WM_DEPTH_STENCIL in gfx9. That means the dirty bits gets split
+    * across different state packets for gfx8 and gfx9. We handle that by
     * using a big old #if switch here.
     */
 #if GFX_VER == 8
@@ -526,7 +526,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                                           &wm_depth_stencil);
 
       anv_batch_emit_merge(&cmd_buffer->batch, wm_depth_stencil_dw,
-                           pipeline->gen8.wm_depth_stencil);
+                           pipeline->gfx8.wm_depth_stencil);
 
       genX(cmd_buffer_enable_pma_fix)(cmd_buffer,
                                       want_depth_pma_fix(cmd_buffer));
@@ -595,7 +595,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, dwords, &wm_depth_stencil);
 
       anv_batch_emit_merge(&cmd_buffer->batch, dwords,
-                           pipeline->gen9.wm_depth_stencil);
+                           pipeline->gfx9.wm_depth_stencil);
 
       genX(cmd_buffer_enable_pma_fix)(cmd_buffer,
                                       want_stencil_pma_fix(cmd_buffer));
