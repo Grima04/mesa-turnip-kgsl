@@ -1894,11 +1894,11 @@ layout_qualifier_id:
       if ($$.flags.q.uniform && !state->has_uniform_buffer_objects()) {
          _mesa_glsl_error(& @1, state,
                           "#version 140 / GL_ARB_uniform_buffer_object "
-                          "layout qualifier `%s' is used", $1);
+                          "layout qualifier `uniform' is used");
       } else if ($$.flags.q.uniform && state->ARB_uniform_buffer_object_warn) {
          _mesa_glsl_warning(& @1, state,
                             "#version 140 / GL_ARB_uniform_buffer_object "
-                            "layout qualifier `%s' is used", $1);
+                            "layout qualifier `uniform' is used");
       }
    }
    ;
