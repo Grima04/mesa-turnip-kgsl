@@ -88,34 +88,41 @@ unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying)
    case VARYING_SLOT_POS:
       return 0;
    default:
-      /* Since some shader stages use the the highest used IO index
+      /* Since some shader stages use the highest used IO index
        * to determine the size to allocate for inputs/outputs
        * (in LDS, tess and GS rings). GENERIC should be placed right
        * after POSITION to make that size as small as possible.
        */
-      if (semantic >= VARYING_SLOT_VAR0 &&
-          semantic < VARYING_SLOT_VAR0 + SI_MAX_IO_GENERIC)
-         return 1 + (semantic - VARYING_SLOT_VAR0);
+      if (semantic >= VARYING_SLOT_VAR0 && semantic <= VARYING_SLOT_VAR31)
+         return 1 + (semantic - VARYING_SLOT_VAR0); /* 1..32 */
+
+      /* Put 16-bit GLES varyings after 32-bit varyings. They can use the same indices as
+       * legacy desktop GL varyings because they are mutually exclusive.
+       */
+      if (semantic >= VARYING_SLOT_VAR0_16BIT && semantic <= VARYING_SLOT_VAR15_16BIT)
+         return 33 + (semantic - VARYING_SLOT_VAR0_16BIT); /* 33..48 */
 
       assert(!"invalid generic index");
       return 0;
+
+   /* Legacy desktop GL varyings. */
    case VARYING_SLOT_FOGC:
-      return SI_MAX_IO_GENERIC + 1;
+      return 33;
    case VARYING_SLOT_COL0:
-      return SI_MAX_IO_GENERIC + 2;
+      return 34;
    case VARYING_SLOT_COL1:
-      return SI_MAX_IO_GENERIC + 3;
+      return 35;
    case VARYING_SLOT_BFC0:
       /* If it's a varying, COLOR and BCOLOR alias. */
       if (is_varying)
-         return SI_MAX_IO_GENERIC + 2;
+         return 34;
       else
-         return SI_MAX_IO_GENERIC + 4;
+         return 36;
    case VARYING_SLOT_BFC1:
       if (is_varying)
-         return SI_MAX_IO_GENERIC + 3;
+         return 35;
       else
-         return SI_MAX_IO_GENERIC + 5;
+         return 37;
    case VARYING_SLOT_TEX0:
    case VARYING_SLOT_TEX1:
    case VARYING_SLOT_TEX2:
@@ -124,26 +131,25 @@ unsigned si_shader_io_get_unique_index(unsigned semantic, bool is_varying)
    case VARYING_SLOT_TEX5:
    case VARYING_SLOT_TEX6:
    case VARYING_SLOT_TEX7:
-      return SI_MAX_IO_GENERIC + 6 + (semantic - VARYING_SLOT_TEX0);
-
-   /* These are rarely used between LS and HS or ES and GS. */
-   case VARYING_SLOT_CLIP_DIST0:
-      return SI_MAX_IO_GENERIC + 6 + 8;
-   case VARYING_SLOT_CLIP_DIST1:
-      return SI_MAX_IO_GENERIC + 6 + 8 + 1;
+      return 38 + (semantic - VARYING_SLOT_TEX0);
    case VARYING_SLOT_CLIP_VERTEX:
-      return SI_MAX_IO_GENERIC + 6 + 8 + 2;
+      return 46;
+
+   /* Varyings present in both GLES and desktop GL must start at 49 after 16-bit varyings. */
+   case VARYING_SLOT_CLIP_DIST0:
+      return 49;
+   case VARYING_SLOT_CLIP_DIST1:
+      return 50;
    case VARYING_SLOT_PSIZ:
-      return SI_MAX_IO_GENERIC + 6 + 8 + 3;
+      return 51;
 
    /* These can't be written by LS, HS, and ES. */
    case VARYING_SLOT_LAYER:
-      return SI_MAX_IO_GENERIC + 6 + 8 + 4;
+      return 52;
    case VARYING_SLOT_VIEWPORT:
-      return SI_MAX_IO_GENERIC + 6 + 8 + 5;
+      return 53;
    case VARYING_SLOT_PRIMITIVE_ID:
-      STATIC_ASSERT(SI_MAX_IO_GENERIC + 6 + 8 + 6 <= 63);
-      return SI_MAX_IO_GENERIC + 6 + 8 + 6;
+      return 54;
    }
 }
 

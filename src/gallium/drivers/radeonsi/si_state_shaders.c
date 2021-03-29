@@ -2565,7 +2565,7 @@ static void si_init_shader_selector_async(void *job, int thread_index)
             unsigned semantic = sel->info.output_semantic[i];
             unsigned id;
 
-            if (semantic < VARYING_SLOT_MAX &&
+            if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                 semantic != VARYING_SLOT_POS &&
                 semantic != VARYING_SLOT_PSIZ &&
                 semantic != VARYING_SLOT_CLIP_VERTEX &&
@@ -2734,7 +2734,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
              semantic == VARYING_SLOT_TESS_LEVEL_OUTER ||
              (semantic >= VARYING_SLOT_PATCH0 && semantic < VARYING_SLOT_TESS_MAX)) {
             sel->patch_outputs_written |= 1ull << si_shader_io_get_unique_index_patch(semantic);
-         } else if (semantic < VARYING_SLOT_MAX &&
+         } else if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
                     semantic != VARYING_SLOT_EDGE) {
             sel->outputs_written |= 1ull << si_shader_io_get_unique_index(semantic, false);
             sel->outputs_written_before_ps |= 1ull
@@ -2807,7 +2807,7 @@ static void *si_create_shader_selector(struct pipe_context *ctx,
       for (i = 0; i < sel->info.num_inputs; i++) {
          unsigned semantic = sel->info.input_semantic[i];
 
-         if (semantic < VARYING_SLOT_MAX &&
+         if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
              semantic != VARYING_SLOT_PNTC) {
             sel->inputs_read |= 1ull << si_shader_io_get_unique_index(semantic, true);
          }

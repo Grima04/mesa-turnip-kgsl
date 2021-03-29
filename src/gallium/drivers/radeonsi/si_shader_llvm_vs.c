@@ -476,7 +476,7 @@ static void si_build_param_exports(struct si_shader_context *ctx,
             continue;
       }
 
-      if (semantic < VARYING_SLOT_VAR0 + SI_MAX_IO_GENERIC &&
+      if ((semantic <= VARYING_SLOT_VAR31 || semantic >= VARYING_SLOT_VAR0_16BIT) &&
           shader->key.opt.kill_outputs &
              (1ull << si_shader_io_get_unique_index(semantic, true)))
          continue;

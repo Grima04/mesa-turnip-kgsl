@@ -156,11 +156,6 @@ struct si_context;
 #define SI_MAX_ATTRIBS    16
 #define SI_MAX_VS_OUTPUTS 40
 
-/* Shader IO unique indices are supported for VARYING_SLOT_VARn with an
- * index smaller than this.
- */
-#define SI_MAX_IO_GENERIC 32
-
 #define SI_NGG_PRIM_EDGE_FLAG_BITS ((1 << 9) | (1 << 19) | (1 << 29))
 
 /* SGPR user data indices */
