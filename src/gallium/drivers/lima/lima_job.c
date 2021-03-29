@@ -835,18 +835,29 @@ lima_pack_pp_frame_reg(struct lima_job *job, uint32_t *frame_reg,
 {
    struct lima_context *ctx = job->ctx;
    struct lima_job_fb_info *fb = &job->fb;
+   struct pipe_surface *cbuf = job->key.cbuf;
    struct lima_pp_frame_reg *frame = (void *)frame_reg;
    struct lima_screen *screen = lima_screen(ctx->base.screen);
    int wb_idx = 0;
 
    frame->render_address = screen->pp_buffer->va + pp_frame_rsw_offset;
    frame->flags = 0x02;
+   if (cbuf && util_format_is_float(cbuf->format)) {
+      frame->flags |= 0x01; /* enable fp16 */
+      frame->clear_value_color   = (uint32_t)(job->clear.color_16pc & 0xffffffffUL);
+      frame->clear_value_color_1 = (uint32_t)(job->clear.color_16pc >> 32);
+      frame->clear_value_color_2 = 0;
+      frame->clear_value_color_3 = 0;
+   }
+   else {
+      frame->clear_value_color   = job->clear.color_8pc;
+      frame->clear_value_color_1 = job->clear.color_8pc;
+      frame->clear_value_color_2 = job->clear.color_8pc;
+      frame->clear_value_color_3 = job->clear.color_8pc;
+   }
+
    frame->clear_value_depth = job->clear.depth;
    frame->clear_value_stencil = job->clear.stencil;
-   frame->clear_value_color = job->clear.color_8pc;
-   frame->clear_value_color_1 = job->clear.color_8pc;
-   frame->clear_value_color_2 = job->clear.color_8pc;
-   frame->clear_value_color_3 = job->clear.color_8pc;
    frame->one = 1;
 
    frame->width = fb->width - 1;
@@ -870,7 +881,7 @@ lima_pack_pp_frame_reg(struct lima_job *job, uint32_t *frame_reg,
    /* Set default layout to 8888 */
    frame->channel_layout = 0x8888;
 
-   if (job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0))
+   if (cbuf && (job->resolve & PIPE_CLEAR_COLOR0))
       lima_pack_wb_cbuf_reg(job, frame_reg, wb_reg, wb_idx++);
 
    if (job->key.zsbuf &&
