@@ -33,6 +33,8 @@ import xml.etree.ElementTree as et
 from collections import OrderedDict, namedtuple
 from mako.template import Template
 
+# Mesa-local imports must be declared in meson variable
+# '{file_without_suffix}_depend_files'.
 from vk_extensions import *
 
 # We generate a static hash table for entry point lookup
