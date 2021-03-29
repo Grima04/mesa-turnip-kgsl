@@ -538,6 +538,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
    struct si_clear_info info[8 * 2 + 1]; /* MRTs * (CMASK + DCC) + ZS */
    unsigned num_clears = 0;
    unsigned clear_types = 0;
+   bool fb_too_small = fb->width * fb->height * fb->layers <= 512 * 512;
 
    /* This function is broken in BE, so just disable this path for now */
 #if UTIL_ARCH_BIG_ENDIAN
@@ -591,8 +592,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
        *
        * This helps on both dGPUs and APUs, even small APUs like Mullins.
        */
-      bool too_small = tex->buffer.b.b.nr_samples <= 1 &&
-                       tex->buffer.b.b.width0 * tex->buffer.b.b.height0 <= 512 * 512;
+      bool too_small = tex->buffer.b.b.nr_samples <= 1 && fb_too_small;
       bool eliminate_needed = false;
       bool fmask_decompress_needed = false;
 
@@ -843,12 +843,13 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
                                  zstex->surface.meta_offset, zstex->surface.meta_size, clear_value);
             clear_types |= SI_CLEAR_TYPE_HTILE;
          }
-      } else if (num_clears) {
+      } else if (num_clears || !fb_too_small) {
          /* This is where the HTILE buffer clear is done.
           *
-          * If there is no clear scheduled, we should use the draw-based clear that is without
-          * waits. If there is some other clear scheduled, we will have to wait anyway, so add
-          * the HTILE buffer clear to the batch here.
+          * If there is no clear scheduled and the framebuffer size is too small, we should use
+          * the draw-based clear that is without waits. If there is some other clear scheduled,
+          * we will have to wait anyway, so add the HTILE buffer clear to the batch here.
+          * If the framebuffer size is large enough, use this codepath too.
           */
          uint64_t htile_offset = zstex->surface.meta_offset;
          unsigned htile_size = 0;
