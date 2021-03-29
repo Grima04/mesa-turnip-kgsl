@@ -1117,7 +1117,7 @@ vlVaExportSurfaceHandle(VADriverContextP ctx,
 
    if (flags & VA_EXPORT_SURFACE_COMPOSED_LAYERS) {
       uint32_t drm_format = pipe_format_to_drm_format(surf->buffer->buffer_format);
-      if (drm_format == DRM_FORMAT_MOD_INVALID) {
+      if (drm_format == DRM_FORMAT_INVALID) {
          ret = VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
          goto fail;
       }
