@@ -6584,9 +6584,25 @@ iris_upload_render_state(struct iris_context *ice,
    iris_use_pinned_bo(batch, ice->state.binder.bo, false,
                       IRIS_DOMAIN_NONE);
 
+   if (!batch->contains_draw) {
+      if (GFX_VER == 12) {
+         /* Re-emit constants when starting a new batch buffer in order to
+          * work around push constant corruption on context switch.
+          *
+          * XXX - Provide hardware spec quotation when available.
+          */
+         ice->state.stage_dirty |= (IRIS_STAGE_DIRTY_CONSTANTS_VS  |
+                                    IRIS_STAGE_DIRTY_CONSTANTS_TCS |
+                                    IRIS_STAGE_DIRTY_CONSTANTS_TES |
+                                    IRIS_STAGE_DIRTY_CONSTANTS_GS  |
+                                    IRIS_STAGE_DIRTY_CONSTANTS_FS);
+      }
+      batch->contains_draw = true;
+   }
+
    if (!batch->contains_draw_with_next_seqno) {
       iris_restore_render_saved_bos(ice, batch, draw);
-      batch->contains_draw_with_next_seqno = batch->contains_draw = true;
+      batch->contains_draw_with_next_seqno = true;
    }
 
    iris_upload_dirty_render_state(ice, batch, draw);
