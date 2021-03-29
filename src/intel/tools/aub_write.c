@@ -170,7 +170,7 @@ aub_file_init(struct aub_file *aub, FILE *file, FILE *debug, uint16_t pci_id, co
    aub->pml4.phys_addr = aub->phys_addrs_allocator++ << 12;
 
    mem_trace_memory_write_header_out(aub, aub->ggtt_addrs_allocator++,
-                                     GEN8_PTE_SIZE,
+                                     GFX8_PTE_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
                                      "GGTT PT");
    dword_out(aub, 1);
@@ -190,7 +190,7 @@ aub_file_finish(struct aub_file *aub)
 uint32_t
 aub_gtt_size(struct aub_file *aub)
 {
-   return NUM_PT_ENTRIES * (aub->addr_bits > 32 ? GEN8_PTE_SIZE : PTE_SIZE);
+   return NUM_PT_ENTRIES * (aub->addr_bits > 32 ? GFX8_PTE_SIZE : PTE_SIZE);
 }
 
 static void
@@ -405,8 +405,8 @@ aub_map_ggtt(struct aub_file *aub, uint64_t virt_addr, uint64_t size)
    }
 
    mem_trace_memory_write_header_out(aub,
-                                     (virt_addr >> 12) * GEN8_PTE_SIZE,
-                                     ggtt_ptes * GEN8_PTE_SIZE,
+                                     (virt_addr >> 12) * GFX8_PTE_SIZE,
+                                     ggtt_ptes * GFX8_PTE_SIZE,
                                      AUB_MEM_TRACE_MEMORY_ADDRESS_SPACE_GGTT_ENTRY,
                                      "GGTT PT");
    for (uint32_t i = 0; i < ggtt_ptes; i++) {

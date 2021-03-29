@@ -302,12 +302,12 @@ brw_save_primitives_written_counters(struct brw_context *brw,
       for (int i = 0; i < streams; i++) {
          int offset = (streams * obj->counter.bo_end + i) * sizeof(uint64_t);
          brw_store_register_mem64(brw, obj->prim_count_bo,
-                                  GEN7_SO_NUM_PRIMS_WRITTEN(i),
+                                  GFX7_SO_NUM_PRIMS_WRITTEN(i),
                                   offset);
       }
    } else {
       brw_store_register_mem64(brw, obj->prim_count_bo,
-                               GEN6_SO_NUM_PRIMS_WRITTEN,
+                               GFX6_SO_NUM_PRIMS_WRITTEN,
                                obj->counter.bo_end * sizeof(uint64_t));
    }
 

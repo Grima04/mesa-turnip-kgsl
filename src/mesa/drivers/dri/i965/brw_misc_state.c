@@ -646,9 +646,9 @@ brw_emit_hashing_mode(struct brw_context *brw, unsigned width,
           * single slice hashing block is minimal, largely eliminating this
           * effect.
           */
-         GEN9_SLICE_HASHING_32x32,
+         GFX9_SLICE_HASHING_32x32,
          /* Finest slice hashing mode available. */
-         GEN9_SLICE_HASHING_NORMAL
+         GFX9_SLICE_HASHING_NORMAL
       };
       const uint32_t subslice_hashing[] = {
          /* The 16x16 subslice hashing mode is used on non-LLC platforms to
@@ -658,10 +658,10 @@ brw_emit_hashing_mode(struct brw_context *brw, unsigned width,
           * cost of greater subslice imbalance for primitives of dimensions
           * approximately intermediate between 16x4 and 16x16.
           */
-         (devinfo->has_llc ? GEN9_SUBSLICE_HASHING_16x4 :
-                             GEN9_SUBSLICE_HASHING_16x16),
+         (devinfo->has_llc ? GFX9_SUBSLICE_HASHING_16x4 :
+                             GFX9_SUBSLICE_HASHING_16x16),
          /* Finest subslice hashing mode available. */
-         GEN9_SUBSLICE_HASHING_8x4
+         GFX9_SUBSLICE_HASHING_8x4
       };
       /* Dimensions of the smallest hashing block of a given hashing mode.  If
        * the rendering area is smaller than this there can't possibly be any
@@ -677,14 +677,14 @@ brw_emit_hashing_mode(struct brw_context *brw, unsigned width,
       if (width > min_size[idx][0] || height > min_size[idx][1]) {
          const uint32_t gt_mode =
             (devinfo->num_slices == 1 ? 0 :
-             GEN9_SLICE_HASHING_MASK_BITS | slice_hashing[idx]) |
-            GEN9_SUBSLICE_HASHING_MASK_BITS | subslice_hashing[idx];
+             GFX9_SLICE_HASHING_MASK_BITS | slice_hashing[idx]) |
+            GFX9_SUBSLICE_HASHING_MASK_BITS | subslice_hashing[idx];
 
          brw_emit_pipe_control_flush(brw,
                                      PIPE_CONTROL_STALL_AT_SCOREBOARD |
                                      PIPE_CONTROL_CS_STALL);
 
-         brw_load_register_imm32(brw, GEN7_GT_MODE, gt_mode);
+         brw_load_register_imm32(brw, GFX7_GT_MODE, gt_mode);
 
          brw->current_hash_scale = scale;
       }
@@ -830,7 +830,7 @@ brw_upload_state_base_address(struct brw_context *brw)
       }
       ADVANCE_BATCH();
    } else if (devinfo->ver >= 6) {
-      uint8_t mocs = devinfo->ver == 7 ? GEN7_MOCS_L3 : 0;
+      uint8_t mocs = devinfo->ver == 7 ? GFX7_MOCS_L3 : 0;
 
        BEGIN_BATCH(10);
        OUT_BATCH(CMD_STATE_BASE_ADDRESS << 16 | (10 - 2));

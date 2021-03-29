@@ -1675,9 +1675,9 @@ fs_visitor::assign_curb_setup()
 
          fs_inst *send = ubld.group(send_width, 0).emit(SHADER_OPCODE_SEND,
                                                         dest, srcs, 4);
-         send->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
-         send->desc = brw_dp_desc(devinfo, GEN8_BTI_STATELESS_NON_COHERENT,
-                                  GEN7_DATAPORT_DC_OWORD_BLOCK_READ,
+         send->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
+         send->desc = brw_dp_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
+                                  GFX7_DATAPORT_DC_OWORD_BLOCK_READ,
                                   BRW_DATAPORT_OWORD_BLOCK_OWORDS(num_regs * 2));
          send->header_size = 1;
          send->mlen = 1;
@@ -4660,7 +4660,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
       inst->desc =
          (inst->group / 16) << 11 | /* rt slot group */
          brw_dp_write_desc(devinfo, inst->target, msg_ctl,
-                           GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE,
+                           GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE,
                            inst->last_rt, false);
 
       uint32_t ex_desc = 0;
@@ -4677,7 +4677,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
 
       inst->opcode = SHADER_OPCODE_SEND;
       inst->resize_sources(3);
-      inst->sfid = GEN6_SFID_DATAPORT_RENDER_CACHE;
+      inst->sfid = GFX6_SFID_DATAPORT_RENDER_CACHE;
       inst->src[0] = brw_imm_ud(0);
       inst->src[1] = brw_imm_ud(0);
       inst->src[2] = payload;
@@ -4971,54 +4971,54 @@ sampler_msg_type(const gen_device_info *devinfo,
    assert(devinfo->ver >= 5);
    switch (opcode) {
    case SHADER_OPCODE_TEX:
-      return shadow_compare ? GEN5_SAMPLER_MESSAGE_SAMPLE_COMPARE :
-                              GEN5_SAMPLER_MESSAGE_SAMPLE;
+      return shadow_compare ? GFX5_SAMPLER_MESSAGE_SAMPLE_COMPARE :
+                              GFX5_SAMPLER_MESSAGE_SAMPLE;
    case FS_OPCODE_TXB:
-      return shadow_compare ? GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE :
-                              GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS;
+      return shadow_compare ? GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE :
+                              GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS;
    case SHADER_OPCODE_TXL:
-      return shadow_compare ? GEN5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE :
-                              GEN5_SAMPLER_MESSAGE_SAMPLE_LOD;
+      return shadow_compare ? GFX5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE :
+                              GFX5_SAMPLER_MESSAGE_SAMPLE_LOD;
    case SHADER_OPCODE_TXL_LZ:
-      return shadow_compare ? GEN9_SAMPLER_MESSAGE_SAMPLE_C_LZ :
-                              GEN9_SAMPLER_MESSAGE_SAMPLE_LZ;
+      return shadow_compare ? GFX9_SAMPLER_MESSAGE_SAMPLE_C_LZ :
+                              GFX9_SAMPLER_MESSAGE_SAMPLE_LZ;
    case SHADER_OPCODE_TXS:
    case SHADER_OPCODE_IMAGE_SIZE_LOGICAL:
-      return GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
+      return GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
    case SHADER_OPCODE_TXD:
       assert(!shadow_compare || devinfo->ver >= 8 || devinfo->is_haswell);
       return shadow_compare ? HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE :
-                              GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
+                              GFX5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
    case SHADER_OPCODE_TXF:
-      return GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+      return GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
    case SHADER_OPCODE_TXF_LZ:
       assert(devinfo->ver >= 9);
-      return GEN9_SAMPLER_MESSAGE_SAMPLE_LD_LZ;
+      return GFX9_SAMPLER_MESSAGE_SAMPLE_LD_LZ;
    case SHADER_OPCODE_TXF_CMS_W:
       assert(devinfo->ver >= 9);
-      return GEN9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W;
+      return GFX9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W;
    case SHADER_OPCODE_TXF_CMS:
-      return devinfo->ver >= 7 ? GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS :
-                                 GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+      return devinfo->ver >= 7 ? GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DMS :
+                                 GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
    case SHADER_OPCODE_TXF_UMS:
       assert(devinfo->ver >= 7);
-      return GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DSS;
+      return GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DSS;
    case SHADER_OPCODE_TXF_MCS:
       assert(devinfo->ver >= 7);
-      return GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
+      return GFX7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
    case SHADER_OPCODE_LOD:
-      return GEN5_SAMPLER_MESSAGE_LOD;
+      return GFX5_SAMPLER_MESSAGE_LOD;
    case SHADER_OPCODE_TG4:
       assert(devinfo->ver >= 7);
-      return shadow_compare ? GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C :
-                              GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
+      return shadow_compare ? GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C :
+                              GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
       break;
    case SHADER_OPCODE_TG4_OFFSET:
       assert(devinfo->ver >= 7);
-      return shadow_compare ? GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C :
-                              GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO;
+      return shadow_compare ? GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C :
+                              GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO;
    case SHADER_OPCODE_SAMPLEINFO:
-      return GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
+      return GFX6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
    default:
       unreachable("not reached");
    }
@@ -5343,7 +5343,7 @@ lower_sampler_logical_send_gen7(const fs_builder &bld, fs_inst *inst, opcode op,
       /* Bindless surface */
       assert(devinfo->ver >= 9);
       inst->desc = brw_sampler_desc(devinfo,
-                                    GEN9_BTI_BINDLESS,
+                                    GFX9_BTI_BINDLESS,
                                     sampler.file == IMM ? sampler.ud % 16 : 0,
                                     msg_type,
                                     simd_mode,
@@ -5510,7 +5510,7 @@ setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
    } else if (surface_handle.file != BAD_FILE) {
       /* Bindless surface */
       assert(devinfo->ver >= 9);
-      inst->desc = desc | GEN9_BTI_BINDLESS;
+      inst->desc = desc | GFX9_BTI_BINDLESS;
       inst->src[0] = brw_imm_ud(0);
 
       /* We assume that the driver provided the handle in the top 20 bits so
@@ -5560,7 +5560,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 
    const bool is_stateless =
       surface.file == IMM && (surface.ud == BRW_BTI_STATELESS ||
-                              surface.ud == GEN8_BTI_STATELESS_NON_COHERENT);
+                              surface.ud == GFX8_BTI_STATELESS_NON_COHERENT);
 
    const bool has_side_effects = inst->has_side_effects();
 
@@ -5646,13 +5646,13 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
    case SHADER_OPCODE_BYTE_SCATTERED_WRITE_LOGICAL:
    case SHADER_OPCODE_BYTE_SCATTERED_READ_LOGICAL:
       /* Byte scattered opcodes go through the normal data cache */
-      sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+      sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
       break;
 
    case SHADER_OPCODE_DWORD_SCATTERED_READ_LOGICAL:
    case SHADER_OPCODE_DWORD_SCATTERED_WRITE_LOGICAL:
-      sfid =  devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-              devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      sfid =  devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
+              devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
                                   BRW_DATAPORT_READ_TARGET_RENDER_CACHE;
       break;
 
@@ -5665,7 +5665,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
        */
       sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
               HSW_SFID_DATAPORT_DATA_CACHE_1 :
-              GEN7_SFID_DATAPORT_DATA_CACHE);
+              GFX7_SFID_DATAPORT_DATA_CACHE);
       break;
 
    case SHADER_OPCODE_TYPED_SURFACE_READ_LOGICAL:
@@ -5676,7 +5676,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
        */
       sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
               HSW_SFID_DATAPORT_DATA_CACHE_1 :
-              GEN6_SFID_DATAPORT_RENDER_CACHE);
+              GFX6_SFID_DATAPORT_RENDER_CACHE);
       break;
 
    default:
@@ -5792,7 +5792,7 @@ lower_surface_block_logical_send(const fs_builder &bld, fs_inst *inst)
 
    const bool is_stateless =
       surface.file == IMM && (surface.ud == BRW_BTI_STATELESS ||
-                              surface.ud == GEN8_BTI_STATELESS_NON_COHERENT);
+                              surface.ud == GFX8_BTI_STATELESS_NON_COHERENT);
 
    const bool has_side_effects = inst->has_side_effects();
 
@@ -5831,7 +5831,7 @@ lower_surface_block_logical_send(const fs_builder &bld, fs_inst *inst)
    inst->send_has_side_effects = has_side_effects;
    inst->send_is_volatile = !has_side_effects;
 
-   inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+   inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
 
    const uint32_t desc = brw_dp_oword_block_rw_desc(devinfo, align_16B,
                                                     arg.ud, write);
@@ -6061,17 +6061,17 @@ lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
 
          inst->sfid = BRW_SFID_SAMPLER;
          inst->desc |= brw_sampler_desc(devinfo, 0, 0,
-                                        GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
+                                        GFX5_SAMPLER_MESSAGE_SAMPLE_LD,
                                         simd_mode, 0);
       } else if (alignment >= 4) {
          inst->sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
                        HSW_SFID_DATAPORT_DATA_CACHE_1 :
-                       GEN7_SFID_DATAPORT_DATA_CACHE);
+                       GFX7_SFID_DATAPORT_DATA_CACHE);
          inst->desc |= brw_dp_untyped_surface_rw_desc(devinfo, inst->exec_size,
                                                       4, /* num_channels */
                                                       false   /* write */);
       } else {
-         inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          inst->desc |= brw_dp_byte_scattered_rw_desc(devinfo, inst->exec_size,
                                                      32,     /* bit_size */
                                                      false   /* write */);
@@ -7706,7 +7706,7 @@ fs_visitor::setup_fs_payload_gen6()
          payload.num_regs += payload_width / 8;
       }
 
-      /* R29-30: interpolated W set if GEN6_WM_USES_SOURCE_W. */
+      /* R29-30: interpolated W set if GFX6_WM_USES_SOURCE_W. */
       if (prog_data->uses_src_w) {
          payload.source_w_reg[j] = payload.num_regs;
          payload.num_regs += payload_width / 8;

@@ -267,7 +267,7 @@ isl_device_init(struct isl_device *dev,
    }
 
    if (ISL_GFX_VER(dev) >= 12) {
-      dev->ds.size += GEN12_MI_LOAD_REGISTER_IMM_length * 4 * 2;
+      dev->ds.size += GFX12_MI_LOAD_REGISTER_IMM_length * 4 * 2;
    }
 
    isl_device_setup_mocs(dev);
@@ -1246,7 +1246,7 @@ isl_calc_phys_total_extent_el_gen4_3d(
       total_h += level_h * max_layers_vert;
    }
 
-   /* GEN4_3D layouts don't really have an array pitch since each LOD has a
+   /* GFX4_3D layouts don't really have an array pitch since each LOD has a
     * different number of horizontal and vertical layers.  We have to set it
     * to something, so at least make it true for LOD0.
     */

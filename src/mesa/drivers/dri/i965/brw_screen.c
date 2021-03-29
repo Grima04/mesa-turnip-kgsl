@@ -2099,7 +2099,7 @@ brw_detect_pipelined_so(struct brw_screen *screen)
     * statistics registers), and we already reset it to zero before using it.
     */
    return brw_detect_pipelined_register(screen,
-                                          GEN7_SO_WRITE_OFFSET(0),
+                                          GFX7_SO_WRITE_OFFSET(0),
                                           0x1337d0d0,
                                           false);
 }
@@ -2845,7 +2845,7 @@ brw_allocate_buffer(__DRIscreen *dri_screen,
    if (buffer == NULL)
       return NULL;
 
-   /* The front and back buffers are color buffers, which are X tiled. GEN9+
+   /* The front and back buffers are color buffers, which are X tiled. GFX9+
     * supports Y tiled and compressed buffers, but there is no way to plumb that
     * through to here. */
    uint32_t pitch;

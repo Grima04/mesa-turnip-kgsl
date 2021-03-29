@@ -476,7 +476,7 @@ anv_batch_bo_link(struct anv_cmd_buffer *cmd_buffer,
                   uint32_t next_bbo_offset)
 {
    const uint32_t bb_start_offset =
-      prev_bbo->length - GEN8_MI_BATCH_BUFFER_START_length * 4;
+      prev_bbo->length - GFX8_MI_BATCH_BUFFER_START_length * 4;
    ASSERTED const uint32_t *bb_start = prev_bbo->bo->map + bb_start_offset;
 
    /* Make sure we're looking at a MI_BATCH_BUFFER_START */
@@ -577,15 +577,15 @@ emit_batch_buffer_start(struct anv_cmd_buffer *cmd_buffer,
     * gens.
     */
 
-#define GEN7_MI_BATCH_BUFFER_START_length      2
-#define GEN7_MI_BATCH_BUFFER_START_length_bias      2
+#define GFX7_MI_BATCH_BUFFER_START_length      2
+#define GFX7_MI_BATCH_BUFFER_START_length_bias      2
 
    const uint32_t gen7_length =
-      GEN7_MI_BATCH_BUFFER_START_length - GEN7_MI_BATCH_BUFFER_START_length_bias;
+      GFX7_MI_BATCH_BUFFER_START_length - GFX7_MI_BATCH_BUFFER_START_length_bias;
    const uint32_t gen8_length =
-      GEN8_MI_BATCH_BUFFER_START_length - GEN8_MI_BATCH_BUFFER_START_length_bias;
+      GFX8_MI_BATCH_BUFFER_START_length - GFX8_MI_BATCH_BUFFER_START_length_bias;
 
-   anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_START, bbs) {
+   anv_batch_emit(&cmd_buffer->batch, GFX8_MI_BATCH_BUFFER_START, bbs) {
       bbs.DWordLength               = cmd_buffer->device->info.ver < 8 ?
                                       gen7_length : gen8_length;
       bbs.SecondLevelBatchBuffer    = Firstlevelbatch;
@@ -606,7 +606,7 @@ cmd_buffer_chain_to_batch_bo(struct anv_cmd_buffer *cmd_buffer,
     * have room for the chaining command.  Since we're about to emit the
     * chaining command, let's set it back where it should go.
     */
-   batch->end += GEN8_MI_BATCH_BUFFER_START_length * 4;
+   batch->end += GFX8_MI_BATCH_BUFFER_START_length * 4;
    assert(batch->end == current_bbo->bo->map + current_bbo->bo->size);
 
    emit_batch_buffer_start(cmd_buffer, bbo->bo, 0);
@@ -627,8 +627,8 @@ anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
    struct anv_batch_bo *first_bbo =
       list_first_entry(&cmd_buffer_to->batch_bos, struct anv_batch_bo, link);
 
-   struct GEN8_MI_BATCH_BUFFER_START gen_bb_start = {
-      __anv_cmd_header(GEN8_MI_BATCH_BUFFER_START),
+   struct GFX8_MI_BATCH_BUFFER_START gen_bb_start = {
+      __anv_cmd_header(GFX8_MI_BATCH_BUFFER_START),
       .SecondLevelBatchBuffer    = Firstlevelbatch,
       .AddressSpaceIndicator     = ASI_PPGTT,
       .BatchBufferStartAddress   = (struct anv_address) { first_bbo->bo, 0 },
@@ -640,7 +640,7 @@ anv_cmd_buffer_record_chain_submit(struct anv_cmd_buffer *cmd_buffer_from,
       .alloc  = &cmd_buffer_from->pool->alloc,
    };
 
-   __anv_cmd_pack(GEN8_MI_BATCH_BUFFER_START)(&local_batch, bb_start, &gen_bb_start);
+   __anv_cmd_pack(GFX8_MI_BATCH_BUFFER_START)(&local_batch, bb_start, &gen_bb_start);
 
    last_bbo->chained = true;
 }
@@ -655,8 +655,8 @@ anv_cmd_buffer_record_end_submit(struct anv_cmd_buffer *cmd_buffer)
    last_bbo->chained = false;
 
    uint32_t *batch = cmd_buffer->batch_end;
-   anv_pack_struct(batch, GEN8_MI_BATCH_BUFFER_END,
-                   __anv_cmd_header(GEN8_MI_BATCH_BUFFER_END));
+   anv_pack_struct(batch, GFX8_MI_BATCH_BUFFER_END,
+                   __anv_cmd_header(GFX8_MI_BATCH_BUFFER_END));
 }
 
 static VkResult
@@ -680,7 +680,7 @@ anv_cmd_buffer_chain_batch(struct anv_batch *batch, void *_data)
 
    list_addtail(&new_bbo->link, &cmd_buffer->batch_bos);
 
-   anv_batch_bo_start(new_bbo, batch, GEN8_MI_BATCH_BUFFER_START_length * 4);
+   anv_batch_bo_start(new_bbo, batch, GFX8_MI_BATCH_BUFFER_START_length * 4);
 
    return VK_SUCCESS;
 }
@@ -692,7 +692,7 @@ anv_cmd_buffer_grow_batch(struct anv_batch *batch, void *_data)
    struct anv_batch_bo *bbo = anv_cmd_buffer_current_batch_bo(cmd_buffer);
 
    anv_batch_bo_grow(cmd_buffer, bbo, &cmd_buffer->batch, 4096,
-                     GEN8_MI_BATCH_BUFFER_START_length * 4);
+                     GFX8_MI_BATCH_BUFFER_START_length * 4);
 
    return VK_SUCCESS;
 }
@@ -851,7 +851,7 @@ anv_cmd_buffer_init_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
    }
 
    anv_batch_bo_start(batch_bo, &cmd_buffer->batch,
-                      GEN8_MI_BATCH_BUFFER_START_length * 4);
+                      GFX8_MI_BATCH_BUFFER_START_length * 4);
 
    int success = u_vector_init(&cmd_buffer->seen_bbos,
                                  sizeof(struct anv_bo *),
@@ -924,7 +924,7 @@ anv_cmd_buffer_reset_batch_bo_chain(struct anv_cmd_buffer *cmd_buffer)
 
    anv_batch_bo_start(anv_cmd_buffer_current_batch_bo(cmd_buffer),
                       &cmd_buffer->batch,
-                      GEN8_MI_BATCH_BUFFER_START_length * 4);
+                      GFX8_MI_BATCH_BUFFER_START_length * 4);
 
    while (u_vector_length(&cmd_buffer->bt_block_states) > 1) {
       struct anv_state *bt_block = u_vector_remove(&cmd_buffer->bt_block_states);
@@ -957,7 +957,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
        * that padding before we end the batch; otherwise, we may end up
        * with our BATCH_BUFFER_END in another BO.
        */
-      cmd_buffer->batch.end += GEN8_MI_BATCH_BUFFER_START_length * 4;
+      cmd_buffer->batch.end += GFX8_MI_BATCH_BUFFER_START_length * 4;
       assert(cmd_buffer->batch.start == batch_bo->bo->map);
       assert(cmd_buffer->batch.end == batch_bo->bo->map + batch_bo->bo->size);
 
@@ -971,11 +971,11 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
       if (batch_bo->chained)
          emit_batch_buffer_start(cmd_buffer, batch_bo->bo, 0);
       else
-         anv_batch_emit(&cmd_buffer->batch, GEN8_MI_BATCH_BUFFER_END, bbe);
+         anv_batch_emit(&cmd_buffer->batch, GFX8_MI_BATCH_BUFFER_END, bbe);
 
       /* Round batch up to an even number of dwords. */
       if ((cmd_buffer->batch.next - cmd_buffer->batch.start) & 4)
-         anv_batch_emit(&cmd_buffer->batch, GEN8_MI_NOOP, noop);
+         anv_batch_emit(&cmd_buffer->batch, GFX8_MI_NOOP, noop);
 
       cmd_buffer->exec_mode = ANV_CMD_BUFFER_EXEC_MODE_PRIMARY;
    } else {
@@ -1003,16 +1003,16 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
                cmd_buffer->batch.next - cmd_buffer->batch.start;
 
             for (int32_t i = 0; i < (prefetch_len - batch_len); i += 4)
-               anv_batch_emit(&cmd_buffer->batch, GEN8_MI_NOOP, noop);
+               anv_batch_emit(&cmd_buffer->batch, GFX8_MI_NOOP, noop);
          }
 
          void *jump_addr =
             anv_batch_emitn(&cmd_buffer->batch,
-                            GEN8_MI_BATCH_BUFFER_START_length,
-                            GEN8_MI_BATCH_BUFFER_START,
+                            GFX8_MI_BATCH_BUFFER_START_length,
+                            GFX8_MI_BATCH_BUFFER_START,
                             .AddressSpaceIndicator = ASI_PPGTT,
                             .SecondLevelBatchBuffer = Firstlevelbatch) +
-            (GEN8_MI_BATCH_BUFFER_START_BatchBufferStartAddress_start / 8);
+            (GFX8_MI_BATCH_BUFFER_START_BatchBufferStartAddress_start / 8);
          cmd_buffer->return_addr = anv_batch_address(&cmd_buffer->batch, jump_addr);
 
          /* The emit above may have caused us to chain batch buffers which
@@ -1040,7 +1040,7 @@ anv_cmd_buffer_end_batch_buffer(struct anv_cmd_buffer *cmd_buffer)
           * have room for the chaining command.  Since we're about to emit the
           * chaining command, let's set it back where it should go.
           */
-         cmd_buffer->batch.end += GEN8_MI_BATCH_BUFFER_START_length * 4;
+         cmd_buffer->batch.end += GFX8_MI_BATCH_BUFFER_START_length * 4;
          assert(cmd_buffer->batch.start == batch_bo->bo->map);
          assert(cmd_buffer->batch.end == batch_bo->bo->map + batch_bo->bo->size);
 
@@ -1082,7 +1082,7 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
       struct anv_batch_bo *bbo = anv_cmd_buffer_current_batch_bo(primary);
       unsigned length = secondary->batch.end - secondary->batch.start;
       anv_batch_bo_grow(primary, bbo, &primary->batch, length,
-                        GEN8_MI_BATCH_BUFFER_START_length * 4);
+                        GFX8_MI_BATCH_BUFFER_START_length * 4);
       anv_batch_emit_batch(&primary->batch, &secondary->batch);
       break;
    }
@@ -1126,7 +1126,7 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
       list_splicetail(&copy_list, &primary->batch_bos);
 
       anv_batch_bo_continue(last_bbo, &primary->batch,
-                            GEN8_MI_BATCH_BUFFER_START_length * 4);
+                            GFX8_MI_BATCH_BUFFER_START_length * 4);
       break;
    }
    case ANV_CMD_BUFFER_EXEC_MODE_CALL_AND_RETURN: {
@@ -1135,10 +1135,10 @@ anv_cmd_buffer_add_secondary(struct anv_cmd_buffer *primary,
 
       uint64_t *write_return_addr =
          anv_batch_emitn(&primary->batch,
-                         GEN8_MI_STORE_DATA_IMM_length + 1 /* QWord write */,
-                         GEN8_MI_STORE_DATA_IMM,
+                         GFX8_MI_STORE_DATA_IMM_length + 1 /* QWord write */,
+                         GFX8_MI_STORE_DATA_IMM,
                          .Address = secondary->return_addr)
-         + (GEN8_MI_STORE_DATA_IMM_ImmediateData_start / 8);
+         + (GFX8_MI_STORE_DATA_IMM_ImmediateData_start / 8);
 
       emit_batch_buffer_start(primary, first_bbo->bo, 0);
 
@@ -1822,7 +1822,7 @@ setup_empty_execbuf(struct anv_execbuf *execbuf, struct anv_queue *queue)
       .buffers_ptr = (uintptr_t) execbuf->objects,
       .buffer_count = execbuf->bo_count,
       .batch_start_offset = 0,
-      .batch_len = 8, /* GEN7_MI_BATCH_BUFFER_END and NOOP */
+      .batch_len = 8, /* GFX7_MI_BATCH_BUFFER_END and NOOP */
       .flags = I915_EXEC_HANDLE_LUT | queue->exec_flags | I915_EXEC_NO_RELOC,
       .rsvd1 = device->context_id,
       .rsvd2 = 0,

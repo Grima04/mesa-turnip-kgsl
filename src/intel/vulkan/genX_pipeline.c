@@ -289,7 +289,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
     *    3DSTATE_SAMPLER_STATE_POINTER_VS command.  Only one PIPE_CONTROL
     *    needs to be sent before any combination of VS associated 3DSTATE."
     */
-   anv_batch_emit(batch, GEN7_PIPE_CONTROL, pc) {
+   anv_batch_emit(batch, GFX7_PIPE_CONTROL, pc) {
       pc.DepthStallEnable  = true;
       pc.PostSyncOperation = WriteImmediateData;
       pc.Address           = device->workaround_address;
@@ -705,7 +705,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.ScissorRectangleEnable = true;
 
 #if GFX_VER >= 9
-   /* GEN9+ splits ViewportZClipTestEnable into near and far enable bits */
+   /* GFX9+ splits ViewportZClipTestEnable into near and far enable bits */
    raster.ViewportZFarClipTestEnable = pipeline->depth_clip_enable;
    raster.ViewportZNearClipTestEnable = pipeline->depth_clip_enable;
 #elif GFX_VER >= 8

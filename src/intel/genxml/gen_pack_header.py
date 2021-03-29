@@ -516,8 +516,8 @@ class Parser(object):
 
     def gen_prefix(self, name):
         if name[0] == "_":
-            return 'GEN%s%s' % (self.gen, name)
-        return 'GEN%s_%s' % (self.gen, name)
+            return 'GFX%s%s' % (self.gen, name)
+        return 'GFX%s_%s' % (self.gen, name)
 
     def gen_guard(self):
         return self.gen_prefix("PACK_H")

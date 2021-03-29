@@ -503,7 +503,7 @@ translate_tex_format(struct brw_context *brw,
        * processing sRGBs, which are incompatible with this mode.
        */
       if (ctx->Extensions.KHR_texture_compression_astc_hdr)
-         isl_fmt |= GEN9_SURFACE_ASTC_HDR_FORMAT_BIT;
+         isl_fmt |= GFX9_SURFACE_ASTC_HDR_FORMAT_BIT;
 
       return isl_fmt;
    }

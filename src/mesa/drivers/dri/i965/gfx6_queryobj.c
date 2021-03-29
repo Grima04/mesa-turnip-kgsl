@@ -85,7 +85,7 @@ write_primitives_generated(struct brw_context *brw,
 
    if (devinfo->ver >= 7 && stream > 0) {
       brw_store_register_mem64(brw, query_bo,
-                               GEN7_SO_PRIM_STORAGE_NEEDED(stream),
+                               GFX7_SO_PRIM_STORAGE_NEEDED(stream),
                                idx * sizeof(uint64_t));
    } else {
       brw_store_register_mem64(brw, query_bo, CL_INVOCATION_COUNT,
@@ -102,10 +102,10 @@ write_xfb_primitives_written(struct brw_context *brw,
    brw_emit_mi_flush(brw);
 
    if (devinfo->ver >= 7) {
-      brw_store_register_mem64(brw, bo, GEN7_SO_NUM_PRIMS_WRITTEN(stream),
+      brw_store_register_mem64(brw, bo, GFX7_SO_NUM_PRIMS_WRITTEN(stream),
                                idx * sizeof(uint64_t));
    } else {
-      brw_store_register_mem64(brw, bo, GEN6_SO_NUM_PRIMS_WRITTEN,
+      brw_store_register_mem64(brw, bo, GFX6_SO_NUM_PRIMS_WRITTEN,
                                idx * sizeof(uint64_t));
    }
 }
@@ -126,17 +126,17 @@ write_xfb_overflow_streams(struct gl_context *ctx,
 
       if (devinfo->ver >= 7) {
          brw_store_register_mem64(brw, bo,
-                                  GEN7_SO_NUM_PRIMS_WRITTEN(stream + i),
+                                  GFX7_SO_NUM_PRIMS_WRITTEN(stream + i),
                                   g_idx * sizeof(uint64_t));
          brw_store_register_mem64(brw, bo,
-                                  GEN7_SO_PRIM_STORAGE_NEEDED(stream + i),
+                                  GFX7_SO_PRIM_STORAGE_NEEDED(stream + i),
                                   w_idx * sizeof(uint64_t));
       } else {
          brw_store_register_mem64(brw, bo,
-                                  GEN6_SO_NUM_PRIMS_WRITTEN,
+                                  GFX6_SO_NUM_PRIMS_WRITTEN,
                                   g_idx * sizeof(uint64_t));
          brw_store_register_mem64(brw, bo,
-                                  GEN6_SO_PRIM_STORAGE_NEEDED,
+                                  GFX6_SO_PRIM_STORAGE_NEEDED,
                                   w_idx * sizeof(uint64_t));
       }
    }

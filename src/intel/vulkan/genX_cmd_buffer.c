@@ -2179,7 +2179,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
           * 3DPRIMITIVE when needed anyway.
           */
          anv_batch_emit(&cmd_buffer->batch, GENX(MI_LOAD_REGISTER_MEM), lrm) {
-            lrm.RegisterAddress  = 0x243C; /* GEN7_3DPRIM_START_INSTANCE */
+            lrm.RegisterAddress  = 0x243C; /* GFX7_3DPRIM_START_INSTANCE */
             lrm.MemoryAddress = cmd_buffer->device->workaround_address;
          }
       }
@@ -3764,12 +3764,12 @@ void genX(CmdDrawIndexed)(
 }
 
 /* Auto-Draw / Indirect Registers */
-#define GEN7_3DPRIM_END_OFFSET          0x2420
-#define GEN7_3DPRIM_START_VERTEX        0x2430
-#define GEN7_3DPRIM_VERTEX_COUNT        0x2434
-#define GEN7_3DPRIM_INSTANCE_COUNT      0x2438
-#define GEN7_3DPRIM_START_INSTANCE      0x243C
-#define GEN7_3DPRIM_BASE_VERTEX         0x2440
+#define GFX7_3DPRIM_END_OFFSET          0x2420
+#define GFX7_3DPRIM_START_VERTEX        0x2430
+#define GFX7_3DPRIM_VERTEX_COUNT        0x2434
+#define GFX7_3DPRIM_INSTANCE_COUNT      0x2438
+#define GFX7_3DPRIM_START_INSTANCE      0x243C
+#define GFX7_3DPRIM_BASE_VERTEX         0x2440
 
 void genX(CmdDrawIndirectByteCountEXT)(
     VkCommandBuffer                             commandBuffer,
@@ -3824,12 +3824,12 @@ void genX(CmdDrawIndirectByteCountEXT)(
    if (counterOffset)
       count = mi_isub(&b, count, mi_imm(counterOffset));
    count = mi_udiv32_imm(&b, count, vertexStride);
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_VERTEX_COUNT), count);
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_VERTEX_COUNT), count);
 
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_START_VERTEX), mi_imm(firstVertex));
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT), mi_imm(instanceCount));
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_START_INSTANCE), mi_imm(firstInstance));
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_BASE_VERTEX), mi_imm(0));
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_START_VERTEX), mi_imm(firstVertex));
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_INSTANCE_COUNT), mi_imm(instanceCount));
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_START_INSTANCE), mi_imm(firstInstance));
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_BASE_VERTEX), mi_imm(0));
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DPRIMITIVE), prim) {
       prim.IndirectParameterEnable  = true;
@@ -3849,7 +3849,7 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
    struct mi_builder b;
    mi_builder_init(&b, &cmd_buffer->device->info, &cmd_buffer->batch);
 
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_VERTEX_COUNT),
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_VERTEX_COUNT),
                 mi_mem32(anv_address_add(addr, 0)));
 
    struct mi_value instance_count = mi_mem32(anv_address_add(addr, 4));
@@ -3862,20 +3862,20 @@ load_indirect_parameters(struct anv_cmd_buffer *cmd_buffer,
                    "MI_MATH is not supported on Ivy Bridge");
 #endif
    }
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_INSTANCE_COUNT), instance_count);
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_INSTANCE_COUNT), instance_count);
 
-   mi_store(&b, mi_reg32(GEN7_3DPRIM_START_VERTEX),
+   mi_store(&b, mi_reg32(GFX7_3DPRIM_START_VERTEX),
                 mi_mem32(anv_address_add(addr, 8)));
 
    if (indexed) {
-      mi_store(&b, mi_reg32(GEN7_3DPRIM_BASE_VERTEX),
+      mi_store(&b, mi_reg32(GFX7_3DPRIM_BASE_VERTEX),
                    mi_mem32(anv_address_add(addr, 12)));
-      mi_store(&b, mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+      mi_store(&b, mi_reg32(GFX7_3DPRIM_START_INSTANCE),
                    mi_mem32(anv_address_add(addr, 16)));
    } else {
-      mi_store(&b, mi_reg32(GEN7_3DPRIM_START_INSTANCE),
+      mi_store(&b, mi_reg32(GFX7_3DPRIM_START_INSTANCE),
                    mi_mem32(anv_address_add(addr, 12)));
-      mi_store(&b, mi_reg32(GEN7_3DPRIM_BASE_VERTEX), mi_imm(0));
+      mi_store(&b, mi_reg32(GFX7_3DPRIM_BASE_VERTEX), mi_imm(0));
    }
 }
 

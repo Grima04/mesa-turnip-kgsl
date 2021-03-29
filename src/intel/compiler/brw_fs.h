@@ -379,7 +379,7 @@ public:
    fs_reg outputs[VARYING_SLOT_MAX];
    fs_reg dual_src_output;
    int first_non_payload_grf;
-   /** Either BRW_MAX_GRF or GEN7_MRF_HACK_START */
+   /** Either BRW_MAX_GRF or GFX7_MRF_HACK_START */
    unsigned max_grf;
 
    fs_reg *nir_locals;

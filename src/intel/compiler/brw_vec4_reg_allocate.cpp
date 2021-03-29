@@ -92,7 +92,7 @@ extern "C" void
 brw_vec4_alloc_reg_set(struct brw_compiler *compiler)
 {
    int base_reg_count =
-      compiler->devinfo->ver >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
+      compiler->devinfo->ver >= 7 ? GFX7_MRF_HACK_START : BRW_MAX_GRF;
 
    /* After running split_virtual_grfs(), almost all VGRFs will be of size 1.
     * SEND-from-GRF sources cannot be split, so we also need classes for each

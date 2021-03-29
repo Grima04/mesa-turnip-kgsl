@@ -1066,14 +1066,14 @@ sharedfunction:
 	| URB 		        { $$ = BRW_SFID_URB; }
 	| THREAD_SPAWNER 	{ $$ = BRW_SFID_THREAD_SPAWNER; }
 	| VME 		        { $$ = BRW_SFID_VME; }
-	| RENDER 	        { $$ = GEN6_SFID_DATAPORT_RENDER_CACHE; }
-	| CONST 	        { $$ = GEN6_SFID_DATAPORT_CONSTANT_CACHE; }
-	| DATA 		        { $$ = GEN7_SFID_DATAPORT_DATA_CACHE; }
-	| PIXEL_INTERP 	        { $$ = GEN7_SFID_PIXEL_INTERPOLATOR; }
+	| RENDER 	        { $$ = GFX6_SFID_DATAPORT_RENDER_CACHE; }
+	| CONST 	        { $$ = GFX6_SFID_DATAPORT_CONSTANT_CACHE; }
+	| DATA 		        { $$ = GFX7_SFID_DATAPORT_DATA_CACHE; }
+	| PIXEL_INTERP 	        { $$ = GFX7_SFID_PIXEL_INTERPOLATOR; }
 	| DP_DATA_1 	        { $$ = HSW_SFID_DATAPORT_DATA_CACHE_1; }
 	| CRE 		        { $$ = HSW_SFID_CRE; }
 	| SAMPLER	        { $$ = BRW_SFID_SAMPLER; }
-	| DP_SAMPLER	        { $$ = GEN6_SFID_DATAPORT_SAMPLER_CACHE; }
+	| DP_SAMPLER	        { $$ = GFX6_SFID_DATAPORT_SAMPLER_CACHE; }
 	;
 
 exp2:

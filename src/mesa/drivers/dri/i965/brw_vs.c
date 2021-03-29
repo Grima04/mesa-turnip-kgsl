@@ -177,7 +177,7 @@ brw_codegen_vs_prog(struct brw_context *brw,
    }
 
 
-   /* Emit GEN4 code.
+   /* Emit GFX4 code.
     */
    struct brw_compile_vs_params params = {
       .nir = nir,

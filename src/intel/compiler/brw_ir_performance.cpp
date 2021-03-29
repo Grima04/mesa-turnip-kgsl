@@ -929,14 +929,14 @@ namespace {
       case SHADER_OPCODE_MEMORY_FENCE:
       case SHADER_OPCODE_INTERLOCK:
          switch (info.sfid) {
-         case GEN6_SFID_DATAPORT_RENDER_CACHE:
+         case GFX6_SFID_DATAPORT_RENDER_CACHE:
             if (devinfo->ver >= 7)
                return calculate_desc(info, unit_dp_rc, 2, 0, 0, 30 /* XXX */, 0,
                                      10 /* XXX */, 300 /* XXX */, 0, 0, 0, 0);
             else
                abort();
 
-         case GEN7_SFID_DATAPORT_DATA_CACHE:
+         case GFX7_SFID_DATAPORT_DATA_CACHE:
          case HSW_SFID_DATAPORT_DATA_CACHE_1:
             if (devinfo->ver >= 7)
                return calculate_desc(info, unit_dp_dc, 2, 0, 0, 30 /* XXX */, 0,
@@ -1024,10 +1024,10 @@ namespace {
 
       case SHADER_OPCODE_SEND:
          switch (info.sfid) {
-         case GEN6_SFID_DATAPORT_RENDER_CACHE:
+         case GFX6_SFID_DATAPORT_RENDER_CACHE:
             if (devinfo->ver >= 7) {
                switch (brw_dp_desc_msg_type(devinfo, info.desc)) {
-               case GEN7_DATAPORT_RC_TYPED_ATOMIC_OP:
+               case GFX7_DATAPORT_RC_TYPED_ATOMIC_OP:
                   return calculate_desc(info, unit_dp_rc, 2, 0, 0,
                                         30 /* XXX */, 450 /* XXX */,
                                         10 /* XXX */, 100 /* XXX */,
@@ -1052,7 +1052,7 @@ namespace {
             else
                abort();
          }
-         case GEN7_SFID_DATAPORT_DATA_CACHE:
+         case GFX7_SFID_DATAPORT_DATA_CACHE:
          case HSW_SFID_DATAPORT_DATA_CACHE_1:
             if (devinfo->ver >= 8 || devinfo->is_haswell) {
                switch (brw_dp_desc_msg_type(devinfo, info.desc)) {
@@ -1073,7 +1073,7 @@ namespace {
                }
             } else if (devinfo->ver >= 7) {
                switch (brw_dp_desc_msg_type(devinfo, info.desc)) {
-               case GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP:
+               case GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP:
                   return calculate_desc(info, unit_dp_dc, 2, 0, 0,
                                         30 /* XXX */, 400 /* XXX */,
                                         10 /* XXX */, 100 /* XXX */,
@@ -1190,7 +1190,7 @@ namespace {
          return dependency_id(dependency_id_grf0 + i);
 
       } else if (r.file == MRF && devinfo->ver >= 7) {
-         const unsigned i = GEN7_MRF_HACK_START +
+         const unsigned i = GFX7_MRF_HACK_START +
                             r.nr + r.offset / REG_SIZE + delta;
          assert(i < dependency_id_mrf0 - dependency_id_grf0);
          return dependency_id(dependency_id_grf0 + i);

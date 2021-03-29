@@ -771,7 +771,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
    node_count += payload_node_count;
    if (devinfo->ver >= 7 && devinfo->ver < 9 && allow_spilling) {
       first_mrf_hack_node = node_count;
-      node_count += BRW_MAX_GRF - GEN7_MRF_HACK_START;
+      node_count += BRW_MAX_GRF - GFX7_MRF_HACK_START;
    } else {
       first_mrf_hack_node = -1;
    }
@@ -826,7 +826,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
        */
       for (int i = 0; i < BRW_MAX_MRF(devinfo->ver); i++) {
          ra_set_node_reg(g, first_mrf_hack_node + i,
-                            GEN7_MRF_HACK_START + i);
+                            GFX7_MRF_HACK_START + i);
       }
    }
 
@@ -907,9 +907,9 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
          unspill_inst->size_written = reg_size * REG_SIZE;
          unspill_inst->send_has_side_effects = false;
          unspill_inst->send_is_volatile = true;
-         unspill_inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         unspill_inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          unspill_inst->desc =
-            brw_dp_read_desc(devinfo, GEN8_BTI_STATELESS_NON_COHERENT,
+            brw_dp_read_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
                              BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8),
                              BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
                              BRW_DATAPORT_READ_TARGET_RENDER_CACHE);
@@ -964,11 +964,11 @@ fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
          spill_inst->header_size = 1;
          spill_inst->send_has_side_effects = true;
          spill_inst->send_is_volatile = false;
-         spill_inst->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         spill_inst->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
          spill_inst->desc =
-            brw_dp_write_desc(devinfo, GEN8_BTI_STATELESS_NON_COHERENT,
+            brw_dp_write_desc(devinfo, GFX8_BTI_STATELESS_NON_COHERENT,
                               BRW_DATAPORT_OWORD_BLOCK_DWORDS(reg_size * 8),
-                              GEN6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE,
+                              GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE,
                               0 /* not a render target */,
                               false /* send_commit_msg */);
       } else {

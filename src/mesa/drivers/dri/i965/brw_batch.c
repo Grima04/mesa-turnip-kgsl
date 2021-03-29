@@ -1104,7 +1104,7 @@ load_sized_register_mem(struct brw_context *brw,
    if (devinfo->ver >= 8) {
       BEGIN_BATCH(4 * size);
       for (i = 0; i < size; i++) {
-         OUT_BATCH(GEN7_MI_LOAD_REGISTER_MEM | (4 - 2));
+         OUT_BATCH(GFX7_MI_LOAD_REGISTER_MEM | (4 - 2));
          OUT_BATCH(reg + i * 4);
          OUT_RELOC64(bo, 0, offset + i * 4);
       }
@@ -1112,7 +1112,7 @@ load_sized_register_mem(struct brw_context *brw,
    } else {
       BEGIN_BATCH(3 * size);
       for (i = 0; i < size; i++) {
-         OUT_BATCH(GEN7_MI_LOAD_REGISTER_MEM | (3 - 2));
+         OUT_BATCH(GFX7_MI_LOAD_REGISTER_MEM | (3 - 2));
          OUT_BATCH(reg + i * 4);
          OUT_RELOC(bo, 0, offset + i * 4);
       }

@@ -338,7 +338,7 @@ brw_emit_end_of_pipe_sync(struct brw_context *brw, uint32_t flags)
           * always re-load all of the indirect draw registers right before
           * 3DPRIMITIVE when needed anyway.
           */
-         brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE,
+         brw_load_register_mem(brw, GFX7_3DPRIM_START_INSTANCE,
                                brw->workaround_bo, brw->workaround_bo_offset);
       }
    } else {

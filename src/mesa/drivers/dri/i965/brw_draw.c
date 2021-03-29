@@ -179,14 +179,14 @@ brw_emit_prim(struct brw_context *brw,
 
    if (is_indexed) {
       vertex_access_type = devinfo->ver >= 7 ?
-         GEN7_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM :
-         GEN4_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM;
+         GFX7_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM :
+         GFX4_3DPRIM_VERTEXBUFFER_ACCESS_RANDOM;
       start_vertex_location += brw->ib.start_vertex_offset;
       base_vertex_location += brw->vb.start_vertex_bias;
    } else {
       vertex_access_type = devinfo->ver >= 7 ?
-         GEN7_3DPRIM_VERTEXBUFFER_ACCESS_SEQUENTIAL :
-         GEN4_3DPRIM_VERTEXBUFFER_ACCESS_SEQUENTIAL;
+         GFX7_3DPRIM_VERTEXBUFFER_ACCESS_SEQUENTIAL :
+         GFX4_3DPRIM_VERTEXBUFFER_ACCESS_SEQUENTIAL;
       start_vertex_location += brw->vb.start_vertex_bias;
    }
 
@@ -210,20 +210,20 @@ brw_emit_prim(struct brw_context *brw,
 
    /* If indirect, emit a bunch of loads from the indirect BO. */
    if (xfb_obj) {
-      indirect_flag = GEN7_3DPRIM_INDIRECT_PARAMETER_ENABLE;
+      indirect_flag = GFX7_3DPRIM_INDIRECT_PARAMETER_ENABLE;
 
-      brw_load_register_mem(brw, GEN7_3DPRIM_VERTEX_COUNT,
+      brw_load_register_mem(brw, GFX7_3DPRIM_VERTEX_COUNT,
                             xfb_obj->prim_count_bo,
                             stream * sizeof(uint32_t));
       BEGIN_BATCH(9);
       OUT_BATCH(MI_LOAD_REGISTER_IMM | (9 - 2));
-      OUT_BATCH(GEN7_3DPRIM_INSTANCE_COUNT);
+      OUT_BATCH(GFX7_3DPRIM_INSTANCE_COUNT);
       OUT_BATCH(num_instances);
-      OUT_BATCH(GEN7_3DPRIM_START_VERTEX);
+      OUT_BATCH(GFX7_3DPRIM_START_VERTEX);
       OUT_BATCH(0);
-      OUT_BATCH(GEN7_3DPRIM_BASE_VERTEX);
+      OUT_BATCH(GFX7_3DPRIM_BASE_VERTEX);
       OUT_BATCH(0);
-      OUT_BATCH(GEN7_3DPRIM_START_INSTANCE);
+      OUT_BATCH(GFX7_3DPRIM_START_INSTANCE);
       OUT_BATCH(0);
       ADVANCE_BATCH();
    } else if (is_indirect) {
@@ -232,24 +232,24 @@ brw_emit_prim(struct brw_context *brw,
             brw_buffer_object(indirect_buffer),
             indirect_offset, 5 * sizeof(GLuint), false);
 
-      indirect_flag = GEN7_3DPRIM_INDIRECT_PARAMETER_ENABLE;
+      indirect_flag = GFX7_3DPRIM_INDIRECT_PARAMETER_ENABLE;
 
-      brw_load_register_mem(brw, GEN7_3DPRIM_VERTEX_COUNT, bo,
+      brw_load_register_mem(brw, GFX7_3DPRIM_VERTEX_COUNT, bo,
                             indirect_offset + 0);
-      brw_load_register_mem(brw, GEN7_3DPRIM_INSTANCE_COUNT, bo,
+      brw_load_register_mem(brw, GFX7_3DPRIM_INSTANCE_COUNT, bo,
                             indirect_offset + 4);
 
-      brw_load_register_mem(brw, GEN7_3DPRIM_START_VERTEX, bo,
+      brw_load_register_mem(brw, GFX7_3DPRIM_START_VERTEX, bo,
                             indirect_offset + 8);
       if (is_indexed) {
-         brw_load_register_mem(brw, GEN7_3DPRIM_BASE_VERTEX, bo,
+         brw_load_register_mem(brw, GFX7_3DPRIM_BASE_VERTEX, bo,
                                indirect_offset + 12);
-         brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
+         brw_load_register_mem(brw, GFX7_3DPRIM_START_INSTANCE, bo,
                                indirect_offset + 16);
       } else {
-         brw_load_register_mem(brw, GEN7_3DPRIM_START_INSTANCE, bo,
+         brw_load_register_mem(brw, GFX7_3DPRIM_START_INSTANCE, bo,
                                indirect_offset + 12);
-         brw_load_register_imm32(brw, GEN7_3DPRIM_BASE_VERTEX, 0);
+         brw_load_register_imm32(brw, GFX7_3DPRIM_BASE_VERTEX, 0);
       }
    } else {
       indirect_flag = 0;
@@ -260,13 +260,13 @@ brw_emit_prim(struct brw_context *brw,
    if (devinfo->ver >= 7) {
       const int predicate_enable =
          (brw->predicate.state == BRW_PREDICATE_STATE_USE_BIT)
-         ? GEN7_3DPRIM_PREDICATE_ENABLE : 0;
+         ? GFX7_3DPRIM_PREDICATE_ENABLE : 0;
 
       OUT_BATCH(CMD_3D_PRIM << 16 | (7 - 2) | indirect_flag | predicate_enable);
       OUT_BATCH(hw_prim | vertex_access_type);
    } else {
       OUT_BATCH(CMD_3D_PRIM << 16 | (6 - 2) |
-                hw_prim << GEN4_3DPRIM_TOPOLOGY_TYPE_SHIFT |
+                hw_prim << GFX4_3DPRIM_TOPOLOGY_TYPE_SHIFT |
                 vertex_access_type);
    }
    OUT_BATCH(verts_per_instance);
@@ -435,10 +435,10 @@ gen9_apply_astc5x5_wa_flush(struct brw_context *brw,
 {
    assert(brw->screen->devinfo.ver == 9);
 
-   if (((brw->gen9_astc5x5_wa_tex_mask & GEN9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
-        (curr_mask & GEN9_ASTC5X5_WA_TEX_TYPE_AUX)) ||
-       ((brw->gen9_astc5x5_wa_tex_mask & GEN9_ASTC5X5_WA_TEX_TYPE_AUX) &&
-        (curr_mask & GEN9_ASTC5X5_WA_TEX_TYPE_ASTC5x5))) {
+   if (((brw->gen9_astc5x5_wa_tex_mask & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
+        (curr_mask & GFX9_ASTC5X5_WA_TEX_TYPE_AUX)) ||
+       ((brw->gen9_astc5x5_wa_tex_mask & GFX9_ASTC5X5_WA_TEX_TYPE_AUX) &&
+        (curr_mask & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5))) {
       brw_emit_pipe_control_flush(brw, PIPE_CONTROL_CS_STALL);
       brw_emit_pipe_control_flush(brw, PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE);
    }
@@ -451,11 +451,11 @@ gen9_astc5x5_wa_bits(mesa_format format, enum isl_aux_usage aux_usage)
 {
    if (aux_usage != ISL_AUX_USAGE_NONE &&
        aux_usage != ISL_AUX_USAGE_MCS)
-      return GEN9_ASTC5X5_WA_TEX_TYPE_AUX;
+      return GFX9_ASTC5X5_WA_TEX_TYPE_AUX;
 
    if (format == MESA_FORMAT_RGBA_ASTC_5x5 ||
        format == MESA_FORMAT_SRGB8_ALPHA8_ASTC_5x5)
-      return GEN9_ASTC5X5_WA_TEX_TYPE_ASTC5x5;
+      return GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5;
 
    return 0;
 }
@@ -1207,11 +1207,11 @@ brw_draw_prims(struct gl_context *ctx,
 
          BEGIN_BATCH(1);
          if (i == 0 && brw->predicate.state != BRW_PREDICATE_STATE_USE_BIT) {
-            OUT_BATCH(GEN7_MI_PREDICATE | MI_PREDICATE_LOADOP_LOADINV |
+            OUT_BATCH(GFX7_MI_PREDICATE | MI_PREDICATE_LOADOP_LOADINV |
                       MI_PREDICATE_COMBINEOP_SET |
                       MI_PREDICATE_COMPAREOP_SRCS_EQUAL);
          } else {
-            OUT_BATCH(GEN7_MI_PREDICATE |
+            OUT_BATCH(GFX7_MI_PREDICATE |
                       MI_PREDICATE_LOADOP_LOAD | MI_PREDICATE_COMBINEOP_XOR |
                       MI_PREDICATE_COMPAREOP_SRCS_EQUAL);
          }

@@ -271,7 +271,7 @@ genX(emit_vertex_buffer_state)(struct brw_context *brw,
 #elif GFX_VER == 8
       .MOCS = BDW_MOCS_WB,
 #elif GFX_VER == 7
-      .MOCS = GEN7_MOCS_L3,
+      .MOCS = GFX7_MOCS_L3,
 #endif
    };
 
@@ -2621,7 +2621,7 @@ genX(upload_gs_state)(struct brw_context *brw)
          gs.ControlDataFormat = gs_prog_data->control_data_format;
 #endif
 
-         /* Note: the meaning of the GEN7_GS_REORDER_TRAILING bit changes between
+         /* Note: the meaning of the GFX7_GS_REORDER_TRAILING bit changes between
           * Ivy Bridge and Haswell.
           *
           * On Ivy Bridge, setting this bit causes the vertices of a triangle
@@ -2657,7 +2657,7 @@ genX(upload_gs_state)(struct brw_context *brw)
          if (gs_prog->info.has_transform_feedback_varyings)
             gs.SVBIPayloadEnable = _mesa_is_xfb_active_and_unpaused(ctx);
 
-         /* GEN6_GS_SPF_MODE and GEN6_GS_VECTOR_MASK_ENABLE are enabled as it
+         /* GFX6_GS_SPF_MODE and GFX6_GS_VECTOR_MASK_ENABLE are enabled as it
           * was previously done for gen6.
           *
           * TODO: test with both disabled to see if the HW is behaving
@@ -3082,7 +3082,7 @@ genX(upload_push_constant_packets)(struct brw_context *brw)
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
 
-   UNUSED uint32_t mocs = GFX_VER < 8 ? GEN7_MOCS_L3 : 0;
+   UNUSED uint32_t mocs = GFX_VER < 8 ? GFX7_MOCS_L3 : 0;
 
    struct brw_stage_state *stage_states[] = {
       &brw->vs.base,
@@ -4712,8 +4712,8 @@ genX(upload_ps_extra)(struct brw_context *brw)
        * in the 3DSTATE_WM command on Gen7), and because in some cases it will
        * determine whether the hardware skips execution of the fragment shader
        * or not via the ThreadDispatchEnable signal.  However if we know that
-       * GEN8_PS_BLEND_HAS_WRITEABLE_RT is going to be set and
-       * GEN8_PSX_PIXEL_SHADER_NO_RT_WRITE is not set it shouldn't make any
+       * GFX8_PS_BLEND_HAS_WRITEABLE_RT is going to be set and
+       * GFX8_PSX_PIXEL_SHADER_NO_RT_WRITE is not set it shouldn't make any
        * difference so we may just disable it here.
        *
        * Gen8 hardware tries to compute ThreadDispatchEnable for us but doesn't

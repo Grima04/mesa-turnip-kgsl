@@ -519,35 +519,35 @@ load_pipeline_statistic_metrics(struct gen_perf_config *perf_cfg,
                                      "N vertex shader invocations");
 
    if (devinfo->ver == 6) {
-      gen_perf_query_add_stat_reg(query, GEN6_SO_PRIM_STORAGE_NEEDED, 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX6_SO_PRIM_STORAGE_NEEDED, 1, 1,
                                   "SO_PRIM_STORAGE_NEEDED",
                                   "N geometry shader stream-out primitives (total)");
-      gen_perf_query_add_stat_reg(query, GEN6_SO_NUM_PRIMS_WRITTEN, 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX6_SO_NUM_PRIMS_WRITTEN, 1, 1,
                                   "SO_NUM_PRIMS_WRITTEN",
                                   "N geometry shader stream-out primitives (written)");
    } else {
-      gen_perf_query_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(0), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(0), 1, 1,
                                   "SO_PRIM_STORAGE_NEEDED (Stream 0)",
                                   "N stream-out (stream 0) primitives (total)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(1), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(1), 1, 1,
                                   "SO_PRIM_STORAGE_NEEDED (Stream 1)",
                                   "N stream-out (stream 1) primitives (total)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(2), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(2), 1, 1,
                                   "SO_PRIM_STORAGE_NEEDED (Stream 2)",
                                   "N stream-out (stream 2) primitives (total)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_PRIM_STORAGE_NEEDED(3), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(3), 1, 1,
                                   "SO_PRIM_STORAGE_NEEDED (Stream 3)",
                                   "N stream-out (stream 3) primitives (total)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(0), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(0), 1, 1,
                                   "SO_NUM_PRIMS_WRITTEN (Stream 0)",
                                   "N stream-out (stream 0) primitives (written)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(1), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(1), 1, 1,
                                   "SO_NUM_PRIMS_WRITTEN (Stream 1)",
                                   "N stream-out (stream 1) primitives (written)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(2), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(2), 1, 1,
                                   "SO_NUM_PRIMS_WRITTEN (Stream 2)",
                                   "N stream-out (stream 2) primitives (written)");
-      gen_perf_query_add_stat_reg(query, GEN7_SO_NUM_PRIMS_WRITTEN(3), 1, 1,
+      gen_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(3), 1, 1,
                                   "SO_NUM_PRIMS_WRITTEN (Stream 3)",
                                   "N stream-out (stream 3) primitives (written)");
    }
@@ -1119,14 +1119,14 @@ gen_perf_query_result_read_gt_frequency(struct gen_perf_query_result *result,
    switch (devinfo->ver) {
    case 7:
    case 8:
-      result->gt_frequency[0] = GET_FIELD(start, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
-      result->gt_frequency[1] = GET_FIELD(end, GEN7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
+      result->gt_frequency[0] = GET_FIELD(start, GFX7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
+      result->gt_frequency[1] = GET_FIELD(end, GFX7_RPSTAT1_CURR_GT_FREQ) * 50ULL;
       break;
    case 9:
    case 11:
    case 12:
-      result->gt_frequency[0] = GET_FIELD(start, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
-      result->gt_frequency[1] = GET_FIELD(end, GEN9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
+      result->gt_frequency[0] = GET_FIELD(start, GFX9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
+      result->gt_frequency[1] = GET_FIELD(end, GFX9_RPSTAT0_CURR_GT_FREQ) * 50ULL / 3ULL;
       break;
    default:
       unreachable("unexpected gen");
@@ -1329,33 +1329,33 @@ gen_perf_init_query_fields(struct gen_perf_config *perf_cfg,
    if (devinfo->ver == 8 && !devinfo->is_cherryview) {
       add_query_register(layout,
                          GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
-                         GEN7_RPSTAT1, 4, 0);
+                         GFX7_RPSTAT1, 4, 0);
    }
 
    if (devinfo->ver >= 9) {
       add_query_register(layout,
                          GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
-                         GEN9_RPSTAT0, 4, 0);
+                         GFX9_RPSTAT0, 4, 0);
    }
 
    if (!can_use_mi_rpc_bc_counters(devinfo)) {
       if (devinfo->ver >= 8 && devinfo->ver <= 11) {
-         for (uint32_t i = 0; i < GEN8_N_OA_PERF_B32; i++) {
+         for (uint32_t i = 0; i < GFX8_N_OA_PERF_B32; i++) {
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
-                               GEN8_OA_PERF_B32(i), 4, i);
+                               GFX8_OA_PERF_B32(i), 4, i);
          }
-         for (uint32_t i = 0; i < GEN8_N_OA_PERF_C32; i++) {
+         for (uint32_t i = 0; i < GFX8_N_OA_PERF_C32; i++) {
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
-                               GEN8_OA_PERF_C32(i), 4, i);
+                               GFX8_OA_PERF_C32(i), 4, i);
          }
       } else if (devinfo->ver == 12) {
-         for (uint32_t i = 0; i < GEN12_N_OAG_PERF_B32; i++) {
+         for (uint32_t i = 0; i < GFX12_N_OAG_PERF_B32; i++) {
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
-                               GEN12_OAG_PERF_B32(i), 4, i);
+                               GFX12_OAG_PERF_B32(i), 4, i);
          }
-         for (uint32_t i = 0; i < GEN12_N_OAG_PERF_C32; i++) {
+         for (uint32_t i = 0; i < GFX12_N_OAG_PERF_C32; i++) {
             add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
-                               GEN12_OAG_PERF_C32(i), 4, i);
+                               GFX12_OAG_PERF_C32(i), 4, i);
          }
       }
    }

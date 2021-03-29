@@ -81,7 +81,7 @@ gen7_convert_mrf_to_grf(struct brw_codegen *p, struct brw_reg *reg)
    const struct gen_device_info *devinfo = p->devinfo;
    if (devinfo->ver >= 7 && reg->file == BRW_MESSAGE_REGISTER_FILE) {
       reg->file = BRW_GENERAL_REGISTER_FILE;
-      reg->nr += GEN7_MRF_HACK_START;
+      reg->nr += GFX7_MRF_HACK_START;
    }
 }
 
@@ -600,7 +600,7 @@ gen7_set_dp_scratch_message(struct brw_codegen *p,
    brw_set_desc(p, inst, brw_message_desc(
                    devinfo, mlen, rlen, header_present));
 
-   brw_inst_set_sfid(devinfo, inst, GEN7_SFID_DATAPORT_DATA_CACHE);
+   brw_inst_set_sfid(devinfo, inst, GFX7_SFID_DATAPORT_DATA_CACHE);
    brw_inst_set_dp_category(devinfo, inst, 1); /* Scratch Block Read/Write msgs */
    brw_inst_set_scratch_read_write(devinfo, inst, write);
    brw_inst_set_scratch_type(devinfo, inst, dword);
@@ -2114,7 +2114,7 @@ brw_scratch_surface_idx(const struct brw_codegen *p)
 {
    /* The scratch space is thread-local so IA coherency is unnecessary. */
    if (p->devinfo->ver >= 8)
-      return GEN8_BTI_STATELESS_NON_COHERENT;
+      return GFX8_BTI_STATELESS_NON_COHERENT;
    else
       return BRW_BTI_STATELESS;
 }
@@ -2133,8 +2133,8 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-       devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      (devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
+       devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
    const struct tgl_swsb swsb = brw_get_default_swsb(p);
    uint32_t msg_type;
@@ -2216,7 +2216,7 @@ void brw_oword_block_write_scratch(struct brw_codegen *p,
       }
 
       if (devinfo->ver >= 6)
-	 msg_type = GEN6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE;
+	 msg_type = GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE;
       else
 	 msg_type = BRW_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE;
 
@@ -2266,8 +2266,8 @@ brw_oword_block_read_scratch(struct brw_codegen *p,
 
    const unsigned rlen = num_regs;
    const unsigned target_cache =
-      (devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-       devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      (devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
+       devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_READ);
 
    {
@@ -2359,7 +2359,7 @@ void brw_oword_block_read(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_CONSTANT_CACHE :
+      (devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_CONSTANT_CACHE :
        BRW_SFID_DATAPORT_READ);
    const unsigned exec_size = 1 << brw_get_default_exec_size(p);
    const struct tgl_swsb swsb = brw_get_default_swsb(p);
@@ -2431,7 +2431,7 @@ brw_fb_WRITE(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      (devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
    brw_inst *insn;
    unsigned msg_type;
@@ -2454,7 +2454,7 @@ brw_fb_WRITE(struct brw_codegen *p,
       /* headerless version, just submit color payload */
       src0 = payload;
 
-      msg_type = GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE;
+      msg_type = GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE;
    } else {
       assert(payload.file == BRW_MESSAGE_REGISTER_FILE);
       brw_inst_set_base_mrf(devinfo, insn, payload.nr);
@@ -2491,7 +2491,7 @@ gen9_fb_READ(struct brw_codegen *p,
       brw_get_default_exec_size(p) == BRW_EXECUTE_16 ? 0 : 1;
    brw_inst *insn = next_insn(p, BRW_OPCODE_SENDC);
 
-   brw_inst_set_sfid(devinfo, insn, GEN6_SFID_DATAPORT_RENDER_CACHE);
+   brw_inst_set_sfid(devinfo, insn, GFX6_SFID_DATAPORT_RENDER_CACHE);
    brw_set_dest(p, insn, dst);
    brw_set_src0(p, insn, payload);
    brw_set_desc(
@@ -2499,7 +2499,7 @@ gen9_fb_READ(struct brw_codegen *p,
       brw_message_desc(devinfo, msg_length, response_length, true) |
       brw_dp_read_desc(devinfo, binding_table_index,
                        per_sample << 5 | msg_subtype,
-                       GEN9_DATAPORT_RC_RENDER_TARGET_READ,
+                       GFX9_DATAPORT_RC_RENDER_TARGET_READ,
                        BRW_DATAPORT_READ_TARGET_RENDER_CACHE));
    brw_inst_set_rt_slot_group(devinfo, insn, brw_get_default_group(p) / 16);
 
@@ -3077,8 +3077,8 @@ brw_svb_write(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-       devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      (devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
+       devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
    brw_inst *insn;
 
@@ -3092,7 +3092,7 @@ brw_svb_write(struct brw_codegen *p,
                 brw_message_desc(devinfo, 1, send_commit_msg, true) |
                 brw_dp_write_desc(devinfo, binding_table_index,
                                   0, /* msg_control: ignored */
-                                  GEN6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE,
+                                  GFX6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE,
                                   0, /* last_render_target: ignored */
                                   send_commit_msg)); /* send_commit_msg */
 }
@@ -3122,7 +3122,7 @@ brw_untyped_atomic(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
-                          GEN7_SFID_DATAPORT_DATA_CACHE);
+                          GFX7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* SIMD4x2 untyped atomic instructions only exist on HSW+ */
    const bool has_simd4x2 = devinfo->ver >= 8 || devinfo->is_haswell;
@@ -3157,7 +3157,7 @@ brw_untyped_surface_read(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
-                          GEN7_SFID_DATAPORT_DATA_CACHE);
+                          GFX7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    const unsigned exec_size = align1 ? 1 << brw_get_default_exec_size(p) : 0;
    const unsigned response_length =
@@ -3180,7 +3180,7 @@ brw_untyped_surface_write(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
-                          GEN7_SFID_DATAPORT_DATA_CACHE);
+                          GFX7_SFID_DATAPORT_DATA_CACHE);
    const bool align1 = brw_get_default_access_mode(p) == BRW_ALIGN_1;
    /* SIMD4x2 untyped surface write instructions only exist on HSW+ */
    const bool has_simd4x2 = devinfo->ver >= 8 || devinfo->is_haswell;
@@ -3211,11 +3211,11 @@ brw_set_memory_fence_message(struct brw_codegen *p,
    brw_inst_set_sfid(devinfo, insn, sfid);
 
    switch (sfid) {
-   case GEN6_SFID_DATAPORT_RENDER_CACHE:
-      brw_inst_set_dp_msg_type(devinfo, insn, GEN7_DATAPORT_RC_MEMORY_FENCE);
+   case GFX6_SFID_DATAPORT_RENDER_CACHE:
+      brw_inst_set_dp_msg_type(devinfo, insn, GFX7_DATAPORT_RC_MEMORY_FENCE);
       break;
-   case GEN7_SFID_DATAPORT_DATA_CACHE:
-      brw_inst_set_dp_msg_type(devinfo, insn, GEN7_DATAPORT_DC_MEMORY_FENCE);
+   case GFX7_SFID_DATAPORT_DATA_CACHE:
+      brw_inst_set_dp_msg_type(devinfo, insn, GFX7_DATAPORT_DC_MEMORY_FENCE);
       break;
    default:
       unreachable("Not reached");
@@ -3276,7 +3276,7 @@ brw_pixel_interpolator_query(struct brw_codegen *p,
     * if data is actually immediate.
     */
    brw_send_indirect_message(p,
-                             GEN7_SFID_PIXEL_INTERPOLATOR,
+                             GFX7_SFID_PIXEL_INTERPOLATOR,
                              dest,
                              mrf,
                              vec1(data),
@@ -3564,7 +3564,7 @@ void brw_shader_time_add(struct brw_codegen *p,
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned sfid = (devinfo->ver >= 8 || devinfo->is_haswell ?
                           HSW_SFID_DATAPORT_DATA_CACHE_1 :
-                          GEN7_SFID_DATAPORT_DATA_CACHE);
+                          GFX7_SFID_DATAPORT_DATA_CACHE);
    assert(devinfo->ver >= 7);
 
    brw_push_insn_state(p);

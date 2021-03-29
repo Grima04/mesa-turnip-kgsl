@@ -501,7 +501,7 @@ vec4_gs_visitor::gs_emit_vertex(int stream_id)
     */
    if (c->control_data_header_size_bits > 0 &&
        gs_prog_data->control_data_format ==
-          GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_SID) {
+          GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_SID) {
        this->current_annotation = "emit vertex: Stream control data bits";
        set_stream_control_data_bits(stream_id);
    }
@@ -517,7 +517,7 @@ vec4_gs_visitor::gs_end_primitive()
     * output type is points, in which case EndPrimitive() is a no-op.
     */
    if (gs_prog_data->control_data_format !=
-       GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT) {
+       GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT) {
       return;
    }
 
@@ -641,7 +641,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
           * to multiple streams, and EndPrimitive() has no effect.  So we
           * configure the hardware to interpret the control data as stream ID.
           */
-         prog_data->control_data_format = GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_SID;
+         prog_data->control_data_format = GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_SID;
 
          /* We only have to emit control bits if we are using non-zero streams */
          if (nir->info.gs.active_stream_mask != (1 << 0))
@@ -655,7 +655,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
           * streams is not supported.  So we configure the hardware to interpret
           * the control data as EndPrimitive information (a.k.a. "cut bits").
           */
-         prog_data->control_data_format = GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT;
+         prog_data->control_data_format = GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT;
 
          /* We only need to output control data if the shader actually calls
           * EndPrimitive().
@@ -724,7 +724,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     */
    unsigned output_vertex_size_bytes = prog_data->base.vue_map.num_slots * 16;
    assert(compiler->devinfo->ver == 6 ||
-          output_vertex_size_bytes <= GEN7_MAX_GS_OUTPUT_VERTEX_SIZE_BYTES);
+          output_vertex_size_bytes <= GFX7_MAX_GS_OUTPUT_VERTEX_SIZE_BYTES);
    prog_data->output_vertex_size_hwords =
       ALIGN(output_vertex_size_bytes, 32) / 32;
 
@@ -782,9 +782,9 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
    if (output_size_bytes == 0)
       output_size_bytes = 1;
 
-   unsigned max_output_size_bytes = GEN7_MAX_GS_URB_ENTRY_SIZE_BYTES;
+   unsigned max_output_size_bytes = GFX7_MAX_GS_URB_ENTRY_SIZE_BYTES;
    if (compiler->devinfo->ver == 6)
-      max_output_size_bytes = GEN6_MAX_GS_URB_ENTRY_SIZE_BYTES;
+      max_output_size_bytes = GFX6_MAX_GS_URB_ENTRY_SIZE_BYTES;
    if (output_size_bytes > max_output_size_bytes)
       return NULL;
 

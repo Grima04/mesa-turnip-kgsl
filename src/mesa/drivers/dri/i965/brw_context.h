@@ -90,7 +90,7 @@ extern "C" {
  * R0 - GRF register 0.  Typically holds control information used when
  * sending messages to other threads.
  *
- * EU or GEN4 EU: The name of the programmable subsystem of the
+ * EU or GFX4 EU: The name of the programmable subsystem of the
  * i965 hardware.  Threads are executed by the EU, the registers
  * described above are part of the EU architecture.
  *
@@ -172,8 +172,8 @@ enum brw_cache_id {
 };
 
 enum gen9_astc5x5_wa_tex_type {
-   GEN9_ASTC5X5_WA_TEX_TYPE_ASTC5x5 = 1 << 0,
-   GEN9_ASTC5X5_WA_TEX_TYPE_AUX     = 1 << 1,
+   GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5 = 1 << 0,
+   GFX9_ASTC5X5_WA_TEX_TYPE_AUX     = 1 << 1,
 };
 
 enum brw_state_id {

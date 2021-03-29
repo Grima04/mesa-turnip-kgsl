@@ -763,8 +763,8 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
          /* The period_exponent gives a sampling period as follows:
           *   sample_period = timestamp_period * 2^(period_exponent + 1)
           *
-          * The timestamps increments every 80ns (HSW), ~52ns (GEN9LP) or
-          * ~83ns (GEN8/9).
+          * The timestamps increments every 80ns (HSW), ~52ns (GFX9LP) or
+          * ~83ns (GFX8/9).
           *
           * The counter overflow period is derived from the EuActive counter
           * which reads a counter that increments by the number of clock

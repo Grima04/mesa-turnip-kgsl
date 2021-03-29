@@ -438,7 +438,7 @@ brw_compile_tcs(const struct brw_compiler *compiler,
                         num_per_vertex_slots * 16;
 
    assert(output_size_bytes >= 1);
-   if (output_size_bytes > GEN7_MAX_HS_URB_ENTRY_SIZE_BYTES)
+   if (output_size_bytes > GFX7_MAX_HS_URB_ENTRY_SIZE_BYTES)
       return NULL;
 
    /* URB entry sizes are stored as a multiple of 64 bytes. */

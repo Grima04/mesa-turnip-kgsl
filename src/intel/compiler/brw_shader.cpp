@@ -1333,7 +1333,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
    unsigned output_size_bytes = prog_data->base.vue_map.num_slots * 4 * 4;
 
    assert(output_size_bytes >= 1);
-   if (output_size_bytes > GEN7_MAX_DS_URB_ENTRY_SIZE_BYTES) {
+   if (output_size_bytes > GFX7_MAX_DS_URB_ENTRY_SIZE_BYTES) {
       if (error_str)
          *error_str = ralloc_strdup(mem_ctx, "DS outputs exceed maximum size");
       return NULL;

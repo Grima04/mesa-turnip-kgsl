@@ -67,7 +67,7 @@ struct gen_device_info;
  * register allocators have to be careful of this to avoid corrupting the "MRF"s
  * with actual GRF allocations.
  */
-#define GEN7_MRF_HACK_START 112
+#define GFX7_MRF_HACK_START 112
 
 /** Number of message register file registers */
 #define BRW_MAX_MRF(gen) (gen == 6 ? 24 : 16)

@@ -368,13 +368,13 @@ schedule_node::set_latency_gen7(bool is_haswell)
       break;
 
    case VEC4_OPCODE_UNTYPED_ATOMIC:
-      /* See GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP */
+      /* See GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP */
       latency = 14000;
       break;
 
    case VEC4_OPCODE_UNTYPED_SURFACE_READ:
    case VEC4_OPCODE_UNTYPED_SURFACE_WRITE:
-      /* See also GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ */
+      /* See also GFX7_DATAPORT_DC_UNTYPED_SURFACE_READ */
       latency = is_haswell ? 300 : 600;
       break;
 
@@ -383,8 +383,8 @@ schedule_node::set_latency_gen7(bool is_haswell)
       case BRW_SFID_SAMPLER: {
          unsigned msg_type = (inst->desc >> 12) & 0x1f;
          switch (msg_type) {
-         case GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO:
-         case GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO:
+         case GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO:
+         case GFX6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO:
             /* See also SHADER_OPCODE_TXS */
             latency = 100;
             break;
@@ -397,22 +397,22 @@ schedule_node::set_latency_gen7(bool is_haswell)
          break;
       }
 
-      case GEN6_SFID_DATAPORT_RENDER_CACHE:
+      case GFX6_SFID_DATAPORT_RENDER_CACHE:
          switch ((inst->desc >> 14) & 0x1f) {
-         case GEN7_DATAPORT_RC_TYPED_SURFACE_WRITE:
-         case GEN7_DATAPORT_RC_TYPED_SURFACE_READ:
+         case GFX7_DATAPORT_RC_TYPED_SURFACE_WRITE:
+         case GFX7_DATAPORT_RC_TYPED_SURFACE_READ:
             /* See also SHADER_OPCODE_TYPED_SURFACE_READ */
             assert(!is_haswell);
             latency = 600;
             break;
 
-         case GEN7_DATAPORT_RC_TYPED_ATOMIC_OP:
+         case GFX7_DATAPORT_RC_TYPED_ATOMIC_OP:
             /* See also SHADER_OPCODE_TYPED_ATOMIC */
             assert(!is_haswell);
             latency = 14000;
             break;
 
-         case GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE:
+         case GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE:
             /* completely fabricated number */
             latency = 600;
             break;
@@ -422,19 +422,19 @@ schedule_node::set_latency_gen7(bool is_haswell)
          }
          break;
 
-      case GEN7_SFID_DATAPORT_DATA_CACHE:
+      case GFX7_SFID_DATAPORT_DATA_CACHE:
          switch ((inst->desc >> 14) & 0x1f) {
          case BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ:
-         case GEN7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ:
-         case GEN6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE:
+         case GFX7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ:
+         case GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE:
             /* We have no data for this but assume it's a little faster than
              * untyped surface read/write.
              */
             latency = 200;
             break;
 
-         case GEN7_DATAPORT_DC_DWORD_SCATTERED_READ:
-         case GEN6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE:
+         case GFX7_DATAPORT_DC_DWORD_SCATTERED_READ:
+         case GFX6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE:
          case HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_READ:
          case HSW_DATAPORT_DC_PORT0_BYTE_SCATTERED_WRITE:
             /* We have no data for this but assume it's roughly the same as
@@ -443,8 +443,8 @@ schedule_node::set_latency_gen7(bool is_haswell)
             latency = 300;
             break;
 
-         case GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ:
-         case GEN7_DATAPORT_DC_UNTYPED_SURFACE_WRITE:
+         case GFX7_DATAPORT_DC_UNTYPED_SURFACE_READ:
+         case GFX7_DATAPORT_DC_UNTYPED_SURFACE_WRITE:
             /* Test code:
              *   mov(8)    g112<1>UD       0x00000000UD       { align1 WE_all 1Q };
              *   mov(1)    g112.7<1>UD     g1.7<0,1,0>UD      { align1 WE_all };
@@ -468,7 +468,7 @@ schedule_node::set_latency_gen7(bool is_haswell)
             latency = 600;
             break;
 
-         case GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP:
+         case GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP:
             /* Test code:
              *   mov(8)    g112<1>ud       0x00000000ud       { align1 WE_all 1Q };
              *   mov(1)    g112.7<1>ud     g1.7<0,1,0>ud      { align1 WE_all };
@@ -498,13 +498,13 @@ schedule_node::set_latency_gen7(bool is_haswell)
          case HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_WRITE:
          case HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_READ:
          case HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE:
-         case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE:
-         case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ:
-         case GEN8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE:
-         case GEN9_DATAPORT_DC_PORT1_A64_SCATTERED_READ:
-         case GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ:
-         case GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE:
-            /* See also GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ */
+         case GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE:
+         case GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ:
+         case GFX8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE:
+         case GFX9_DATAPORT_DC_PORT1_A64_SCATTERED_READ:
+         case GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ:
+         case GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE:
+            /* See also GFX7_DATAPORT_DC_UNTYPED_SURFACE_READ */
             latency = 300;
             break;
 
@@ -512,12 +512,12 @@ schedule_node::set_latency_gen7(bool is_haswell)
          case HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP_SIMD4X2:
          case HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP_SIMD4X2:
          case HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP:
-         case GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP:
-         case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP:
-         case GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP:
-         case GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP:
-         case GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP:
-            /* See also GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP */
+         case GFX9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP:
+         case GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP:
+         case GFX9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP:
+         case GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP:
+         case GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP:
+            /* See also GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP */
             latency = 14000;
             break;
 

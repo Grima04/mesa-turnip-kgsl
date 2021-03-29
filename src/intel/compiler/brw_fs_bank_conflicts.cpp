@@ -582,7 +582,7 @@ namespace {
             assert(inst->dst.file != MRF);
 
             for (unsigned i = 0; i < inst->implied_mrf_writes(); i++) {
-               const unsigned reg = GEN7_MRF_HACK_START + inst->base_mrf + i;
+               const unsigned reg = GFX7_MRF_HACK_START + inst->base_mrf + i;
                constrained[p.atom_of_reg(reg)] = true;
             }
          }

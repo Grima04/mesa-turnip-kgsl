@@ -64,7 +64,7 @@ save_prim_start_values(struct brw_context *brw,
    /* Emit MI_STORE_REGISTER_MEM commands to write the values. */
    for (int i = 0; i < BRW_MAX_XFB_STREAMS; i++) {
       brw_store_register_mem64(brw, obj->prim_count_bo,
-                               GEN7_SO_NUM_PRIMS_WRITTEN(i),
+                               GFX7_SO_NUM_PRIMS_WRITTEN(i),
                                START_OFFSET + i * sizeof(uint64_t));
    }
 }
@@ -99,7 +99,7 @@ tally_prims_written(struct brw_context *brw,
                                  START_OFFSET + i * sizeof(uint64_t));
          /* GPR2 = Ending Snapshot */
          brw_load_register_reg64(brw, HSW_CS_GPR(2),
-                                 GEN7_SO_NUM_PRIMS_WRITTEN(i));
+                                 GFX7_SO_NUM_PRIMS_WRITTEN(i));
 
          BEGIN_BATCH(9);
          OUT_BATCH(HSW_MI_MATH | (9 - 2));
@@ -173,7 +173,7 @@ hsw_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
       BEGIN_BATCH(1 + 2 * BRW_MAX_XFB_STREAMS);
       OUT_BATCH(MI_LOAD_REGISTER_IMM | (1 + 2 * BRW_MAX_XFB_STREAMS - 2));
       for (int i = 0; i < BRW_MAX_XFB_STREAMS; i++) {
-         OUT_BATCH(GEN7_SO_WRITE_OFFSET(i));
+         OUT_BATCH(GFX7_SO_WRITE_OFFSET(i));
          OUT_BATCH(0);
       }
       ADVANCE_BATCH();
@@ -207,7 +207,7 @@ hsw_pause_transform_feedback(struct gl_context *ctx,
       for (int i = 0; i < BRW_MAX_XFB_STREAMS; i++) {
          BEGIN_BATCH(3);
          OUT_BATCH(MI_STORE_REGISTER_MEM | (3 - 2));
-         OUT_BATCH(GEN7_SO_WRITE_OFFSET(i));
+         OUT_BATCH(GFX7_SO_WRITE_OFFSET(i));
          OUT_RELOC(brw_obj->offset_bo, RELOC_WRITE, i * sizeof(uint32_t));
          ADVANCE_BATCH();
       }
@@ -233,8 +233,8 @@ hsw_resume_transform_feedback(struct gl_context *ctx,
       /* Reload the SOL buffer offset registers. */
       for (int i = 0; i < BRW_MAX_XFB_STREAMS; i++) {
          BEGIN_BATCH(3);
-         OUT_BATCH(GEN7_MI_LOAD_REGISTER_MEM | (3 - 2));
-         OUT_BATCH(GEN7_SO_WRITE_OFFSET(i));
+         OUT_BATCH(GFX7_MI_LOAD_REGISTER_MEM | (3 - 2));
+         OUT_BATCH(GFX7_SO_WRITE_OFFSET(i));
          OUT_RELOC(brw_obj->offset_bo, RELOC_WRITE, i * sizeof(uint32_t));
          ADVANCE_BATCH();
       }

@@ -125,7 +125,7 @@ gen6_gs_visitor::emit_prolog()
     *
     * So, what we do is to place PrimitiveID information in r1, which is always
     * delivered as part of the payload, but its only populated with data
-    * relevant for transform feedback when we set GEN6_GS_SVBI_PAYLOAD_ENABLE
+    * relevant for transform feedback when we set GFX6_GS_SVBI_PAYLOAD_ENABLE
     * in the 3DSTATE_GS state packet. That information can be obtained by other
     * means though, so we can safely use r1 for this purpose.
     */
@@ -505,7 +505,7 @@ gen6_gs_visitor::setup_payload()
    reg++;
 
    /* r1 is always part of the payload and it holds information relevant
-    * for transform feedback when we set the GEN6_GS_SVBI_PAYLOAD_ENABLE bit in
+    * for transform feedback when we set the GFX6_GS_SVBI_PAYLOAD_ENABLE bit in
     * the 3DSTATE_GS packet. We will overwrite it with the PrimitiveID
     * information (and move the original value to a virtual register if
     * necessary).

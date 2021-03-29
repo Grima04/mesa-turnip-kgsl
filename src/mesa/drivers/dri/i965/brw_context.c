@@ -754,7 +754,7 @@ brw_initialize_context_constants(struct brw_context *brw)
 
    /* ARB_viewport_array, OES_viewport_array */
    if (devinfo->ver >= 6) {
-      ctx->Const.MaxViewports = GEN6_NUM_VIEWPORTS;
+      ctx->Const.MaxViewports = GFX6_NUM_VIEWPORTS;
       ctx->Const.ViewportSubpixelBits = 8;
 
       /* Cast to float before negating because MaxViewportWidth is unsigned.

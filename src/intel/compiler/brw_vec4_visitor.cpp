@@ -1785,7 +1785,7 @@ vec4_visitor::vec4_visitor(const struct brw_compiler *compiler,
 
    memset(this->output_num_components, 0, sizeof(this->output_num_components));
 
-   this->max_grf = devinfo->ver >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
+   this->max_grf = devinfo->ver >= 7 ? GFX7_MRF_HACK_START : BRW_MAX_GRF;
 
    this->uniforms = 0;
 

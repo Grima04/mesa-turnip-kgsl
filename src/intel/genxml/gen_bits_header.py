@@ -148,7 +148,7 @@ class Gen(object):
         if token[0] == '_':
             token = token[1:]
 
-        return 'GEN{}_{}'.format(gen, token)
+        return 'GFX{}_{}'.format(gen, token)
 
 class Container(object):
 

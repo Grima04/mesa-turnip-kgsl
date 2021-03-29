@@ -1490,7 +1490,7 @@ void anv_GetPhysicalDeviceFeatures2(
           * BSpec section "Multisample ModesState" table for "AA Line Support
           * Requirements":
           *
-          *    GEN10:BUG:######## 	NUM_MULTISAMPLES == 1
+          *    GFX10:BUG:######## 	NUM_MULTISAMPLES == 1
           *
           * Fortunately, this isn't a case most people care about.
           */
@@ -2747,8 +2747,8 @@ anv_device_init_trivial_batch(struct anv_device *device)
       .end = device->trivial_batch_bo->map + 4096,
    };
 
-   anv_batch_emit(&batch, GEN7_MI_BATCH_BUFFER_END, bbe);
-   anv_batch_emit(&batch, GEN7_MI_NOOP, noop);
+   anv_batch_emit(&batch, GFX7_MI_BATCH_BUFFER_END, bbe);
+   anv_batch_emit(&batch, GFX7_MI_NOOP, noop);
 
    if (!device->info.has_llc)
       gen_clflush_range(batch.start, batch.next - batch.start);

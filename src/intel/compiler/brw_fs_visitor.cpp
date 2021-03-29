@@ -959,7 +959,7 @@ fs_visitor::init()
    this->source_depth_to_render_target = false;
    this->runtime_check_aads_emit = false;
    this->first_non_payload_grf = 0;
-   this->max_grf = devinfo->ver >= 7 ? GEN7_MRF_HACK_START : BRW_MAX_GRF;
+   this->max_grf = devinfo->ver >= 7 ? GFX7_MRF_HACK_START : BRW_MAX_GRF;
 
    this->uniforms = 0;
    this->last_scratch = 0;

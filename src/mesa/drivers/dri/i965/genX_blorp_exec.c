@@ -195,7 +195,7 @@ blorp_alloc_vertex_buffer(struct blorp_batch *batch, uint32_t size,
 #elif GFX_VER == 8
       .mocs = BDW_MOCS_WB,
 #elif GFX_VER == 7
-      .mocs = GEN7_MOCS_L3,
+      .mocs = GFX7_MOCS_L3,
 #elif GFX_VER > 6
 #error "Missing MOCS setting!"
 #endif

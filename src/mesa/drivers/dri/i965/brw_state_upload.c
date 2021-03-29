@@ -59,11 +59,11 @@ brw_enable_obj_preemption(struct brw_context *brw, bool enable)
    brw_emit_end_of_pipe_sync(brw, PIPE_CONTROL_RENDER_TARGET_FLUSH);
 
    bool replay_mode = enable ?
-      GEN9_REPLAY_MODE_MIDOBJECT : GEN9_REPLAY_MODE_MIDBUFFER;
+      GFX9_REPLAY_MODE_MIDOBJECT : GFX9_REPLAY_MODE_MIDBUFFER;
 
    /* enable object level preemption */
    brw_load_register_imm32(brw, CS_CHICKEN1,
-                           replay_mode | GEN9_REPLAY_MODE_MASK);
+                           replay_mode | GFX9_REPLAY_MODE_MASK);
 
    brw->object_preemption = enable;
 }
@@ -77,7 +77,7 @@ brw_upload_gen11_slice_hashing_state(struct brw_context *brw)
    if (subslices_delta == 0)
       return;
 
-   unsigned size = GEN11_SLICE_HASH_TABLE_length * 4;
+   unsigned size = GFX11_SLICE_HASH_TABLE_length * 4;
    uint32_t hash_address;
 
    uint32_t *map = brw_state_batch(brw, size, 64, &hash_address);
@@ -115,7 +115,7 @@ brw_upload_gen11_slice_hashing_state(struct brw_context *brw)
     * pixel pipe 1. When pixel pipe 0 has more subslices, then a similar table
     * with 0's and 1's inverted is used.
     */
-   for (int i = 0; i < GEN11_SLICE_HASH_TABLE_length; i++) {
+   for (int i = 0; i < GFX11_SLICE_HASH_TABLE_length; i++) {
       uint32_t dw = 0;
 
       for (int j = 0; j < 8; j++) {
@@ -172,7 +172,7 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
        * headerless sampler messages are not allowed for pre-emptable
        * contexts. Set the bit 5 to 1 to allow them.
        */
-      brw_load_register_imm32(brw, GEN11_SAMPLER_MODE,
+      brw_load_register_imm32(brw, GFX11_SAMPLER_MODE,
                               HEADERLESS_MESSAGE_FOR_PREEMPTABLE_CONTEXTS_MASK |
                               HEADERLESS_MESSAGE_FOR_PREEMPTABLE_CONTEXTS);
 
@@ -187,30 +187,30 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
        * in L3CNTLREG register. The default setting of the bit is not the
        * desirable behavior.
        */
-      brw_load_register_imm32(brw, GEN8_L3CNTLREG,
-                              GEN8_L3CNTLREG_EDBC_NO_HANG);
+      brw_load_register_imm32(brw, GFX8_L3CNTLREG,
+                              GFX8_L3CNTLREG_EDBC_NO_HANG);
    }
 
    /* hardware specification recommends disabling repacking for
     * the compatibility with decompression mechanism in display controller.
     */
    if (devinfo->disable_ccs_repack) {
-      brw_load_register_imm32(brw, GEN7_CACHE_MODE_0,
-                              GEN11_DISABLE_REPACKING_FOR_COMPRESSION |
-                              REG_MASK(GEN11_DISABLE_REPACKING_FOR_COMPRESSION));
+      brw_load_register_imm32(brw, GFX7_CACHE_MODE_0,
+                              GFX11_DISABLE_REPACKING_FOR_COMPRESSION |
+                              REG_MASK(GFX11_DISABLE_REPACKING_FOR_COMPRESSION));
    }
 
    if (devinfo->ver == 9) {
       /* Recommended optimizations for Victim Cache eviction and floating
        * point blending.
        */
-      brw_load_register_imm32(brw, GEN7_CACHE_MODE_1,
-                              REG_MASK(GEN9_FLOAT_BLEND_OPTIMIZATION_ENABLE) |
-                              REG_MASK(GEN9_MSC_RAW_HAZARD_AVOIDANCE_BIT) |
-                              REG_MASK(GEN9_PARTIAL_RESOLVE_DISABLE_IN_VC) |
-                              GEN9_FLOAT_BLEND_OPTIMIZATION_ENABLE |
-                              GEN9_MSC_RAW_HAZARD_AVOIDANCE_BIT |
-                              GEN9_PARTIAL_RESOLVE_DISABLE_IN_VC);
+      brw_load_register_imm32(brw, GFX7_CACHE_MODE_1,
+                              REG_MASK(GFX9_FLOAT_BLEND_OPTIMIZATION_ENABLE) |
+                              REG_MASK(GFX9_MSC_RAW_HAZARD_AVOIDANCE_BIT) |
+                              REG_MASK(GFX9_PARTIAL_RESOLVE_DISABLE_IN_VC) |
+                              GFX9_FLOAT_BLEND_OPTIMIZATION_ENABLE |
+                              GFX9_MSC_RAW_HAZARD_AVOIDANCE_BIT |
+                              GFX9_PARTIAL_RESOLVE_DISABLE_IN_VC);
    }
 
    if (devinfo->ver >= 8) {

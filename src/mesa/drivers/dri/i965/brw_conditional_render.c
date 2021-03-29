@@ -117,7 +117,7 @@ set_predicate_for_result(struct brw_context *brw,
          load_op = MI_PREDICATE_LOADOP_LOADINV;
 
       BEGIN_BATCH(1);
-      OUT_BATCH(GEN7_MI_PREDICATE |
+      OUT_BATCH(GFX7_MI_PREDICATE |
                 load_op |
                 MI_PREDICATE_COMBINEOP_SET |
                 MI_PREDICATE_COMPAREOP_SRCS_EQUAL);

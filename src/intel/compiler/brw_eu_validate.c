@@ -254,8 +254,8 @@ num_sources_from_inst(const struct gen_device_info *devinfo,
    case BRW_MATH_FUNCTION_SIN:
    case BRW_MATH_FUNCTION_COS:
    case BRW_MATH_FUNCTION_SINCOS:
-   case GEN8_MATH_FUNCTION_INVM:
-   case GEN8_MATH_FUNCTION_RSQRTM:
+   case GFX8_MATH_FUNCTION_INVM:
+   case GFX8_MATH_FUNCTION_RSQRTM:
       return 1;
    case BRW_MATH_FUNCTION_FDIV:
    case BRW_MATH_FUNCTION_POW:

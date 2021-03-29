@@ -706,7 +706,7 @@ vec4_visitor::nir_emit_intrinsic(nir_intrinsic_instr *instr)
       const dst_reg tmp = bld.vgrf(BRW_REGISTER_TYPE_UD);
       vec4_instruction *fence =
          bld.emit(SHADER_OPCODE_MEMORY_FENCE, tmp, brw_vec8_grf(0, 0));
-      fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+      fence->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
       break;
    }
 

@@ -47,7 +47,7 @@
  * Manages the division of the URB space between the various fixed-function
  * units.
  *
- * See the Thread Initiation Management section of the GEN4 B-Spec, and
+ * See the Thread Initiation Management section of the GFX4 B-Spec, and
  * the individual *_STATE structures for restrictions on numbers of
  * entries and threads.
  */

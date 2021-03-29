@@ -308,11 +308,11 @@ static const char *const gen6_sfid[16] = {
    [BRW_SFID_MESSAGE_GATEWAY]          = "gateway",
    [BRW_SFID_URB]                      = "urb",
    [BRW_SFID_THREAD_SPAWNER]           = "thread_spawner",
-   [GEN6_SFID_DATAPORT_SAMPLER_CACHE]  = "dp_sampler",
-   [GEN6_SFID_DATAPORT_RENDER_CACHE]   = "render",
-   [GEN6_SFID_DATAPORT_CONSTANT_CACHE] = "const",
-   [GEN7_SFID_DATAPORT_DATA_CACHE]     = "data",
-   [GEN7_SFID_PIXEL_INTERPOLATOR]      = "pixel interp",
+   [GFX6_SFID_DATAPORT_SAMPLER_CACHE]  = "dp_sampler",
+   [GFX6_SFID_DATAPORT_RENDER_CACHE]   = "render",
+   [GFX6_SFID_DATAPORT_CONSTANT_CACHE] = "const",
+   [GFX7_SFID_DATAPORT_DATA_CACHE]     = "data",
+   [GFX7_SFID_PIXEL_INTERPOLATOR]      = "pixel interp",
    [HSW_SFID_DATAPORT_DATA_CACHE_1]    = "dp data 1",
    [HSW_SFID_CRE]                      = "cre",
    [GEN_RT_SFID_RAY_TRACE_ACCELERATOR] = "rt accel",
@@ -357,37 +357,37 @@ static const char *const dp_write_port_msg_type[8] = {
 
 static const char *const dp_rc_msg_type_gen6[16] = {
    [BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ] = "OWORD block read",
-   [GEN6_DATAPORT_READ_MESSAGE_RENDER_UNORM_READ] = "RT UNORM read",
-   [GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ] = "OWORD dual block read",
-   [GEN6_DATAPORT_READ_MESSAGE_MEDIA_BLOCK_READ] = "media block read",
-   [GEN6_DATAPORT_READ_MESSAGE_OWORD_UNALIGN_BLOCK_READ] =
+   [GFX6_DATAPORT_READ_MESSAGE_RENDER_UNORM_READ] = "RT UNORM read",
+   [GFX6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ] = "OWORD dual block read",
+   [GFX6_DATAPORT_READ_MESSAGE_MEDIA_BLOCK_READ] = "media block read",
+   [GFX6_DATAPORT_READ_MESSAGE_OWORD_UNALIGN_BLOCK_READ] =
       "OWORD unaligned block read",
-   [GEN6_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ] = "DWORD scattered read",
-   [GEN6_DATAPORT_WRITE_MESSAGE_DWORD_ATOMIC_WRITE] = "DWORD atomic write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE] = "OWORD block write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE] =
+   [GFX6_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ] = "DWORD scattered read",
+   [GFX6_DATAPORT_WRITE_MESSAGE_DWORD_ATOMIC_WRITE] = "DWORD atomic write",
+   [GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE] = "OWORD block write",
+   [GFX6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE] =
       "OWORD dual block write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_MEDIA_BLOCK_WRITE] = "media block write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE] =
+   [GFX6_DATAPORT_WRITE_MESSAGE_MEDIA_BLOCK_WRITE] = "media block write",
+   [GFX6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE] =
       "DWORD scattered write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE] = "RT write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE] = "streamed VB write",
-   [GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_UNORM_WRITE] = "RT UNORM write",
+   [GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE] = "RT write",
+   [GFX6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE] = "streamed VB write",
+   [GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_UNORM_WRITE] = "RT UNORM write",
 };
 
 static const char *const dp_rc_msg_type_gen7[16] = {
-   [GEN7_DATAPORT_RC_MEDIA_BLOCK_READ] = "media block read",
-   [GEN7_DATAPORT_RC_TYPED_SURFACE_READ] = "typed surface read",
-   [GEN7_DATAPORT_RC_TYPED_ATOMIC_OP] = "typed atomic op",
-   [GEN7_DATAPORT_RC_MEMORY_FENCE] = "memory fence",
-   [GEN7_DATAPORT_RC_MEDIA_BLOCK_WRITE] = "media block write",
-   [GEN7_DATAPORT_RC_RENDER_TARGET_WRITE] = "RT write",
-   [GEN7_DATAPORT_RC_TYPED_SURFACE_WRITE] = "typed surface write"
+   [GFX7_DATAPORT_RC_MEDIA_BLOCK_READ] = "media block read",
+   [GFX7_DATAPORT_RC_TYPED_SURFACE_READ] = "typed surface read",
+   [GFX7_DATAPORT_RC_TYPED_ATOMIC_OP] = "typed atomic op",
+   [GFX7_DATAPORT_RC_MEMORY_FENCE] = "memory fence",
+   [GFX7_DATAPORT_RC_MEDIA_BLOCK_WRITE] = "media block write",
+   [GFX7_DATAPORT_RC_RENDER_TARGET_WRITE] = "RT write",
+   [GFX7_DATAPORT_RC_TYPED_SURFACE_WRITE] = "typed surface write"
 };
 
 static const char *const dp_rc_msg_type_gen9[16] = {
-   [GEN9_DATAPORT_RC_RENDER_TARGET_WRITE] = "RT write",
-   [GEN9_DATAPORT_RC_RENDER_TARGET_READ] = "RT read"
+   [GFX9_DATAPORT_RC_RENDER_TARGET_WRITE] = "RT write",
+   [GFX9_DATAPORT_RC_RENDER_TARGET_READ] = "RT read"
 };
 
 static const char *const *
@@ -410,20 +410,20 @@ static const char *const m_rt_write_subtype[] = {
 };
 
 static const char *const dp_dc0_msg_type_gen7[16] = {
-   [GEN7_DATAPORT_DC_OWORD_BLOCK_READ] = "DC OWORD block read",
-   [GEN7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ] =
+   [GFX7_DATAPORT_DC_OWORD_BLOCK_READ] = "DC OWORD block read",
+   [GFX7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ] =
       "DC unaligned OWORD block read",
-   [GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_READ] = "DC OWORD dual block read",
-   [GEN7_DATAPORT_DC_DWORD_SCATTERED_READ] = "DC DWORD scattered read",
-   [GEN7_DATAPORT_DC_BYTE_SCATTERED_READ] = "DC byte scattered read",
-   [GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ] = "DC untyped surface read",
-   [GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP] = "DC untyped atomic",
-   [GEN7_DATAPORT_DC_MEMORY_FENCE] = "DC mfence",
-   [GEN7_DATAPORT_DC_OWORD_BLOCK_WRITE] = "DC OWORD block write",
-   [GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE] = "DC OWORD dual block write",
-   [GEN7_DATAPORT_DC_DWORD_SCATTERED_WRITE] = "DC DWORD scatterd write",
-   [GEN7_DATAPORT_DC_BYTE_SCATTERED_WRITE] = "DC byte scattered write",
-   [GEN7_DATAPORT_DC_UNTYPED_SURFACE_WRITE] = "DC untyped surface write",
+   [GFX7_DATAPORT_DC_OWORD_DUAL_BLOCK_READ] = "DC OWORD dual block read",
+   [GFX7_DATAPORT_DC_DWORD_SCATTERED_READ] = "DC DWORD scattered read",
+   [GFX7_DATAPORT_DC_BYTE_SCATTERED_READ] = "DC byte scattered read",
+   [GFX7_DATAPORT_DC_UNTYPED_SURFACE_READ] = "DC untyped surface read",
+   [GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP] = "DC untyped atomic",
+   [GFX7_DATAPORT_DC_MEMORY_FENCE] = "DC mfence",
+   [GFX7_DATAPORT_DC_OWORD_BLOCK_WRITE] = "DC OWORD block write",
+   [GFX7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE] = "DC OWORD dual block write",
+   [GFX7_DATAPORT_DC_DWORD_SCATTERED_WRITE] = "DC DWORD scatterd write",
+   [GFX7_DATAPORT_DC_BYTE_SCATTERED_WRITE] = "DC byte scattered write",
+   [GFX7_DATAPORT_DC_UNTYPED_SURFACE_WRITE] = "DC untyped surface write",
 };
 
 static const char *const dp_dc1_msg_type_hsw[32] = {
@@ -441,20 +441,20 @@ static const char *const dp_dc1_msg_type_hsw[32] = {
    [HSW_DATAPORT_DC_PORT1_ATOMIC_COUNTER_OP_SIMD4X2] =
       "DC 4x2 atomic counter op",
    [HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE] = "DC typed surface write",
-   [GEN9_DATAPORT_DC_PORT1_A64_SCATTERED_READ] = "DC A64 scattered read",
-   [GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ] = "DC A64 untyped surface read",
-   [GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP] = "DC A64 untyped atomic op",
-   [GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ] = "DC A64 oword block read",
-   [GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE] = "DC A64 oword block write",
-   [GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE] = "DC A64 untyped surface write",
-   [GEN8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE] = "DC A64 scattered write",
-   [GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP] =
+   [GFX9_DATAPORT_DC_PORT1_A64_SCATTERED_READ] = "DC A64 scattered read",
+   [GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ] = "DC A64 untyped surface read",
+   [GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP] = "DC A64 untyped atomic op",
+   [GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ] = "DC A64 oword block read",
+   [GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE] = "DC A64 oword block write",
+   [GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE] = "DC A64 untyped surface write",
+   [GFX8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE] = "DC A64 scattered write",
+   [GFX9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP] =
       "DC untyped atomic float op",
-   [GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP] =
+   [GFX9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP] =
       "DC A64 untyped atomic float op",
-   [GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP] =
+   [GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP] =
       "DC A64 untyped atomic half-integer op",
-   [GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP] =
+   [GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP] =
       "DC A64 untyped atomic half-float op",
 };
 
@@ -483,10 +483,10 @@ static const char *const aop_float[4] = {
 };
 
 static const char * const pixel_interpolator_msg_types[4] = {
-    [GEN7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET] = "per_message_offset",
-    [GEN7_PIXEL_INTERPOLATOR_LOC_SAMPLE] = "sample_position",
-    [GEN7_PIXEL_INTERPOLATOR_LOC_CENTROID] = "centroid",
-    [GEN7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET] = "per_slot_offset",
+    [GFX7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET] = "per_message_offset",
+    [GFX7_PIXEL_INTERPOLATOR_LOC_SAMPLE] = "sample_position",
+    [GFX7_PIXEL_INTERPOLATOR_LOC_CENTROID] = "centroid",
+    [GFX7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET] = "per_slot_offset",
 };
 
 static const char *const math_function[16] = {
@@ -503,8 +503,8 @@ static const char *const math_function[16] = {
    [BRW_MATH_FUNCTION_INT_DIV_QUOTIENT_AND_REMAINDER] = "intdivmod",
    [BRW_MATH_FUNCTION_INT_DIV_QUOTIENT]  = "intdiv",
    [BRW_MATH_FUNCTION_INT_DIV_REMAINDER] = "intmod",
-   [GEN8_MATH_FUNCTION_INVM]  = "invm",
-   [GEN8_MATH_FUNCTION_RSQRTM] = "rsqrtm",
+   [GFX8_MATH_FUNCTION_INVM]  = "invm",
+   [GFX8_MATH_FUNCTION_RSQRTM] = "rsqrtm",
 };
 
 static const char *const sync_function[16] = {
@@ -545,11 +545,11 @@ static const char *const gen7_urb_opcode[] = {
    [BRW_URB_OPCODE_WRITE_OWORD] = "write OWord",
    [BRW_URB_OPCODE_READ_HWORD] = "read HWord",
    [BRW_URB_OPCODE_READ_OWORD] = "read OWord",
-   [GEN7_URB_OPCODE_ATOMIC_MOV] = "atomic mov",  /* Gen7+ */
-   [GEN7_URB_OPCODE_ATOMIC_INC] = "atomic inc",  /* Gen7+ */
-   [GEN8_URB_OPCODE_ATOMIC_ADD] = "atomic add",  /* Gen8+ */
-   [GEN8_URB_OPCODE_SIMD8_WRITE] = "SIMD8 write", /* Gen8+ */
-   [GEN8_URB_OPCODE_SIMD8_READ] = "SIMD8 read",  /* Gen8+ */
+   [GFX7_URB_OPCODE_ATOMIC_MOV] = "atomic mov",  /* Gen7+ */
+   [GFX7_URB_OPCODE_ATOMIC_INC] = "atomic inc",  /* Gen7+ */
+   [GFX8_URB_OPCODE_ATOMIC_ADD] = "atomic add",  /* Gen8+ */
+   [GFX8_URB_OPCODE_SIMD8_WRITE] = "SIMD8 write", /* Gen8+ */
+   [GFX8_URB_OPCODE_SIMD8_READ] = "SIMD8 read",  /* Gen8+ */
    /* [9-15] - reserved */
 };
 
@@ -575,29 +575,29 @@ static const char *const urb_complete[2] = {
 };
 
 static const char *const gen5_sampler_msg_type[] = {
-   [GEN5_SAMPLER_MESSAGE_SAMPLE]              = "sample",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS]         = "sample_b",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_LOD]          = "sample_l",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_COMPARE]      = "sample_c",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS]       = "sample_d",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE] = "sample_b_c",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE]  = "sample_l_c",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_LD]           = "ld",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4]      = "gather4",
-   [GEN5_SAMPLER_MESSAGE_LOD]                 = "lod",
-   [GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO]      = "resinfo",
-   [GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO]   = "sampleinfo",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C]    = "gather4_c",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO]   = "gather4_po",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C] = "gather4_po_c",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE]              = "sample",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS]         = "sample_b",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_LOD]          = "sample_l",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_COMPARE]      = "sample_c",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_DERIVS]       = "sample_d",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE] = "sample_b_c",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE]  = "sample_l_c",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_LD]           = "ld",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4]      = "gather4",
+   [GFX5_SAMPLER_MESSAGE_LOD]                 = "lod",
+   [GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO]      = "resinfo",
+   [GFX6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO]   = "sampleinfo",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C]    = "gather4_c",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO]   = "gather4_po",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C] = "gather4_po_c",
    [HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE] = "sample_d_c",
-   [GEN9_SAMPLER_MESSAGE_SAMPLE_LZ]           = "sample_lz",
-   [GEN9_SAMPLER_MESSAGE_SAMPLE_C_LZ]         = "sample_c_lz",
-   [GEN9_SAMPLER_MESSAGE_SAMPLE_LD_LZ]        = "ld_lz",
-   [GEN9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W]     = "ld2dms_w",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS]       = "ld_mcs",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS]       = "ld2dms",
-   [GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DSS]       = "ld2dss",
+   [GFX9_SAMPLER_MESSAGE_SAMPLE_LZ]           = "sample_lz",
+   [GFX9_SAMPLER_MESSAGE_SAMPLE_C_LZ]         = "sample_c_lz",
+   [GFX9_SAMPLER_MESSAGE_SAMPLE_LD_LZ]        = "ld_lz",
+   [GFX9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W]     = "ld2dms_w",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_LD_MCS]       = "ld_mcs",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DMS]       = "ld2dms",
+   [GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DSS]       = "ld2dss",
 };
 
 static const char *const gen5_sampler_simd_mode[4] = {
@@ -1060,7 +1060,7 @@ vstride_from_align1_3src_hstride(enum gen10_align1_3src_src_horizontal_stride hs
    }
 }
 
-/* From "GEN10 Regioning Rules for Align1 Ternary Operations" in the
+/* From "GFX10 Regioning Rules for Align1 Ternary Operations" in the
  * "Register Region Restrictions" documentation
  */
 static enum brw_width
@@ -1917,8 +1917,8 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                string(file, ")");
             }
             break;
-         case GEN6_SFID_DATAPORT_SAMPLER_CACHE:
-         case GEN6_SFID_DATAPORT_CONSTANT_CACHE:
+         case GFX6_SFID_DATAPORT_SAMPLER_CACHE:
+         case GFX6_SFID_DATAPORT_CONSTANT_CACHE:
             /* aka BRW_SFID_DATAPORT_READ on Gen4-5 */
             if (devinfo->ver >= 6) {
                format(file, " (%u, %u, %u, %u)",
@@ -1943,7 +1943,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             }
             break;
 
-         case GEN6_SFID_DATAPORT_RENDER_CACHE: {
+         case GFX6_SFID_DATAPORT_RENDER_CACHE: {
             /* aka BRW_SFID_DATAPORT_WRITE on Gen4-5 */
             unsigned msg_type = brw_dp_write_desc_msg_type(devinfo, imm_desc);
 
@@ -1951,7 +1951,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                            dp_rc_msg_type(devinfo), msg_type, &space);
 
             bool is_rt_write = msg_type ==
-               (devinfo->ver >= 6 ? GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE
+               (devinfo->ver >= 6 ? GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE
                                   : BRW_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE);
 
             if (is_rt_write) {
@@ -1991,8 +1991,8 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                string(file, " per-slot");
             }
 
-            if (opcode == GEN8_URB_OPCODE_SIMD8_WRITE ||
-                opcode == GEN8_URB_OPCODE_SIMD8_READ) {
+            if (opcode == GFX8_URB_OPCODE_SIMD8_WRITE ||
+                opcode == GFX8_URB_OPCODE_SIMD8_READ) {
                if (brw_inst_urb_channel_mask_present(devinfo, inst))
                   string(file, " masked");
             } else {
@@ -2021,7 +2021,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                    gen7_gateway_subfuncid[brw_inst_gateway_subfuncid(devinfo, inst)]);
             break;
 
-         case GEN7_SFID_DATAPORT_DATA_CACHE:
+         case GFX7_SFID_DATAPORT_DATA_CACHE:
             if (devinfo->ver >= 7) {
                format(file, " (");
 
@@ -2033,7 +2033,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                       brw_dp_desc_binding_table_index(devinfo, imm_desc));
 
                switch (brw_inst_dp_msg_type(devinfo, inst)) {
-               case GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP:
+               case GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP:
                   control(file, "atomic op", aop,
                           brw_dp_desc_msg_control(devinfo, imm_desc) & 0xf,
                           &space);
@@ -2070,24 +2070,24 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
                case HSW_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_OP_SIMD4X2:
                case HSW_DATAPORT_DC_PORT1_TYPED_ATOMIC_OP_SIMD4X2:
                case HSW_DATAPORT_DC_PORT1_ATOMIC_COUNTER_OP_SIMD4X2:
-               case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP:
-               case GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP:
+               case GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP:
+               case GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP:
                   control(file, "atomic op", aop, msg_ctrl & 0xf, &space);
                   break;
                case HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_READ:
                case HSW_DATAPORT_DC_PORT1_UNTYPED_SURFACE_WRITE:
                case HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_READ:
                case HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE:
-               case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE:
-               case GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ: {
+               case GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE:
+               case GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ: {
                   static const char *simd_modes[] = { "4x2", "16", "8" };
                   format(file, "SIMD%s, Mask = 0x%x",
                          simd_modes[msg_ctrl >> 4], msg_ctrl & 0xf);
                   break;
                }
-               case GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP:
-               case GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP:
-               case GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP:
+               case GFX9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP:
+               case GFX9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP:
+               case GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP:
                   format(file, "SIMD%d,", (msg_ctrl & (1 << 4)) ? 8 : 16);
                   control(file, "atomic float op", aop_float, msg_ctrl & 0xf,
                           &space);
@@ -2102,7 +2102,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             break;
          }
 
-         case GEN7_SFID_PIXEL_INTERPOLATOR:
+         case GFX7_SFID_PIXEL_INTERPOLATOR:
             if (devinfo->ver >= 7) {
                format(file, " (%s, %s, 0x%02"PRIx64")",
                       brw_inst_pi_nopersp(devinfo, inst) ? "linear" : "persp",

@@ -250,7 +250,7 @@ load_clip_distance(struct brw_clip_compile *c, struct brw_indirect vtx,
 }
 
 
-/* Use mesa's clipping algorithms, translated to GEN4 assembly.
+/* Use mesa's clipping algorithms, translated to GFX4 assembly.
  */
 void brw_clip_tri( struct brw_clip_compile *c )
 {

@@ -70,7 +70,7 @@ gen7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
        * 0, the clamps below produce 0 for xmin, ymin, xmax, ymax, which isn't
        * what we want. Just special case empty clips and produce a canonical
        * empty clip. */
-      static const struct GEN7_SCISSOR_RECT empty_scissor = {
+      static const struct GFX7_SCISSOR_RECT empty_scissor = {
          .ScissorRectangleYMin = 1,
          .ScissorRectangleXMin = 1,
          .ScissorRectangleYMax = 0,
@@ -103,7 +103,7 @@ gen7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
          x_max = clamp_int64((uint64_t) x_max, 0, fb->width - 1);
       }
 
-      struct GEN7_SCISSOR_RECT scissor = {
+      struct GFX7_SCISSOR_RECT scissor = {
          .ScissorRectangleYMin = y_min,
          .ScissorRectangleXMin = x_min,
          .ScissorRectangleYMax = y_max,
@@ -111,15 +111,15 @@ gen7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
       };
 
       if (s->extent.width <= 0 || s->extent.height <= 0) {
-         GEN7_SCISSOR_RECT_pack(NULL, scissor_state.map + i * 8,
+         GFX7_SCISSOR_RECT_pack(NULL, scissor_state.map + i * 8,
                                 &empty_scissor);
       } else {
-         GEN7_SCISSOR_RECT_pack(NULL, scissor_state.map + i * 8, &scissor);
+         GFX7_SCISSOR_RECT_pack(NULL, scissor_state.map + i * 8, &scissor);
       }
    }
 
    anv_batch_emit(&cmd_buffer->batch,
-                  GEN7_3DSTATE_SCISSOR_STATE_POINTERS, ssp) {
+                  GFX7_3DSTATE_SCISSOR_STATE_POINTERS, ssp) {
       ssp.ScissorRectPointer = scissor_state.offset;
    }
 }
@@ -313,7 +313,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       uint32_t offset = cmd_buffer->state.gfx.gen7.index_offset;
 
 #if GFX_VERx10 == 75
-      anv_batch_emit(&cmd_buffer->batch, GEN75_3DSTATE_VF, vf) {
+      anv_batch_emit(&cmd_buffer->batch, GFX75_3DSTATE_VF, vf) {
          vf.IndexedDrawCutIndexEnable  = pipeline->primitive_restart;
          vf.CutIndex                   = cmd_buffer->state.restart_index;
       }

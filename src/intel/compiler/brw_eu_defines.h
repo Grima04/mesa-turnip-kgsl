@@ -88,8 +88,8 @@
 
 #define BRW_SPRITE_POINT_ENABLE  16
 
-# define GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT		0
-# define GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_SID		1
+# define GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT		0
+# define GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_SID		1
 
 /* Execution Unit (EU) defines
  */
@@ -111,12 +111,12 @@ enum brw_compression {
    BRW_COMPRESSION_COMPRESSED = 2,
 };
 
-#define GEN6_COMPRESSION_1Q		0
-#define GEN6_COMPRESSION_2Q		1
-#define GEN6_COMPRESSION_3Q		2
-#define GEN6_COMPRESSION_4Q		3
-#define GEN6_COMPRESSION_1H		0
-#define GEN6_COMPRESSION_2H		2
+#define GFX6_COMPRESSION_1Q		0
+#define GFX6_COMPRESSION_2Q		1
+#define GFX6_COMPRESSION_3Q		2
+#define GFX6_COMPRESSION_4Q		3
+#define GFX6_COMPRESSION_1H		0
+#define GFX6_COMPRESSION_2H		2
 
 enum PACKED brw_conditional_mod {
    BRW_CONDITIONAL_NONE = 0,
@@ -466,7 +466,7 @@ enum opcode {
     * Source 1: Immediate bool to indicate whether control is returned to the
     *           thread only after the fence has been honored.
     * Source 2: Immediate byte indicating which memory to fence.  Zero means
-    *           global memory; GEN7_BTI_SLM means SLM (for Gen11+ only).
+    *           global memory; GFX7_BTI_SLM means SLM (for Gen11+ only).
     *
     * Vec4 backend only uses Source 0.
     */
@@ -872,7 +872,7 @@ enum fb_write_logical_srcs {
    FB_WRITE_LOGICAL_SRC_COLOR1,      /* for dual source blend messages */
    FB_WRITE_LOGICAL_SRC_SRC0_ALPHA,
    FB_WRITE_LOGICAL_SRC_SRC_DEPTH,   /* gl_FragDepth */
-   FB_WRITE_LOGICAL_SRC_DST_DEPTH,   /* GEN4-5: passthrough from thread */
+   FB_WRITE_LOGICAL_SRC_DST_DEPTH,   /* GFX4-5: passthrough from thread */
    FB_WRITE_LOGICAL_SRC_SRC_STENCIL, /* gl_FragStencilRefARB */
    FB_WRITE_LOGICAL_SRC_OMASK,       /* Sample Mask (gl_SampleMask) */
    FB_WRITE_LOGICAL_SRC_COMPONENTS,  /* REQUIRED */
@@ -1235,12 +1235,12 @@ enum brw_message_target {
    BRW_SFID_THREAD_SPAWNER           = 7,
    BRW_SFID_VME                      = 8,
 
-   GEN6_SFID_DATAPORT_SAMPLER_CACHE  = 4,
-   GEN6_SFID_DATAPORT_RENDER_CACHE   = 5,
-   GEN6_SFID_DATAPORT_CONSTANT_CACHE = 9,
+   GFX6_SFID_DATAPORT_SAMPLER_CACHE  = 4,
+   GFX6_SFID_DATAPORT_RENDER_CACHE   = 5,
+   GFX6_SFID_DATAPORT_CONSTANT_CACHE = 9,
 
-   GEN7_SFID_DATAPORT_DATA_CACHE     = 10,
-   GEN7_SFID_PIXEL_INTERPOLATOR      = 11,
+   GFX7_SFID_DATAPORT_DATA_CACHE     = 10,
+   GFX7_SFID_PIXEL_INTERPOLATOR      = 11,
    HSW_SFID_DATAPORT_DATA_CACHE_1    = 12,
    HSW_SFID_CRE                      = 13,
 
@@ -1248,7 +1248,7 @@ enum brw_message_target {
    GEN_RT_SFID_RAY_TRACE_ACCELERATOR = 8,
 };
 
-#define GEN7_MESSAGE_TARGET_DP_DATA_CACHE     10
+#define GFX7_MESSAGE_TARGET_DP_DATA_CACHE     10
 
 #define BRW_SAMPLER_RETURN_FORMAT_FLOAT32     0
 #define BRW_SAMPLER_RETURN_FORMAT_UINT32      2
@@ -1273,53 +1273,53 @@ enum brw_message_target {
 #define BRW_SAMPLER_MESSAGE_SIMD8_LD                  3
 #define BRW_SAMPLER_MESSAGE_SIMD16_LD                 3
 
-#define GEN5_SAMPLER_MESSAGE_SAMPLE              0
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS         1
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_LOD          2
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_COMPARE      3
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS       4
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE 5
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE  6
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_LD           7
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4      8
-#define GEN5_SAMPLER_MESSAGE_LOD                 9
-#define GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO      10
-#define GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO   11
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C    16
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO   17
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C 18
+#define GFX5_SAMPLER_MESSAGE_SAMPLE              0
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS         1
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_LOD          2
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_COMPARE      3
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_DERIVS       4
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE 5
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE  6
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_LD           7
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4      8
+#define GFX5_SAMPLER_MESSAGE_LOD                 9
+#define GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO      10
+#define GFX6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO   11
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C    16
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO   17
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C 18
 #define HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE 20
-#define GEN9_SAMPLER_MESSAGE_SAMPLE_LZ           24
-#define GEN9_SAMPLER_MESSAGE_SAMPLE_C_LZ         25
-#define GEN9_SAMPLER_MESSAGE_SAMPLE_LD_LZ        26
-#define GEN9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W     28
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS       29
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS       30
-#define GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DSS       31
+#define GFX9_SAMPLER_MESSAGE_SAMPLE_LZ           24
+#define GFX9_SAMPLER_MESSAGE_SAMPLE_C_LZ         25
+#define GFX9_SAMPLER_MESSAGE_SAMPLE_LD_LZ        26
+#define GFX9_SAMPLER_MESSAGE_SAMPLE_LD2DMS_W     28
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_LD_MCS       29
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DMS       30
+#define GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DSS       31
 
-/* for GEN5 only */
+/* for GFX5 only */
 #define BRW_SAMPLER_SIMD_MODE_SIMD4X2                   0
 #define BRW_SAMPLER_SIMD_MODE_SIMD8                     1
 #define BRW_SAMPLER_SIMD_MODE_SIMD16                    2
 #define BRW_SAMPLER_SIMD_MODE_SIMD32_64                 3
 
-/* GEN9 changes SIMD mode 0 to mean SIMD8D, but lets us get the SIMD4x2
+/* GFX9 changes SIMD mode 0 to mean SIMD8D, but lets us get the SIMD4x2
  * behavior by setting bit 22 of dword 2 in the message header. */
-#define GEN9_SAMPLER_SIMD_MODE_SIMD8D                   0
-#define GEN9_SAMPLER_SIMD_MODE_EXTENSION_SIMD4X2        (1 << 22)
+#define GFX9_SAMPLER_SIMD_MODE_SIMD8D                   0
+#define GFX9_SAMPLER_SIMD_MODE_EXTENSION_SIMD4X2        (1 << 22)
 
 #define BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW   0
 #define BRW_DATAPORT_OWORD_BLOCK_1_OWORDHIGH  1
 #define BRW_DATAPORT_OWORD_BLOCK_2_OWORDS     2
 #define BRW_DATAPORT_OWORD_BLOCK_4_OWORDS     3
 #define BRW_DATAPORT_OWORD_BLOCK_8_OWORDS     4
-#define GEN12_DATAPORT_OWORD_BLOCK_16_OWORDS  5
+#define GFX12_DATAPORT_OWORD_BLOCK_16_OWORDS  5
 #define BRW_DATAPORT_OWORD_BLOCK_OWORDS(n)              \
    ((n) == 1 ? BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW :    \
     (n) == 2 ? BRW_DATAPORT_OWORD_BLOCK_2_OWORDS :      \
     (n) == 4 ? BRW_DATAPORT_OWORD_BLOCK_4_OWORDS :      \
     (n) == 8 ? BRW_DATAPORT_OWORD_BLOCK_8_OWORDS :      \
-    (n) == 16 ? GEN12_DATAPORT_OWORD_BLOCK_16_OWORDS :  \
+    (n) == 16 ? GFX12_DATAPORT_OWORD_BLOCK_16_OWORDS :  \
     (abort(), ~0))
 #define BRW_DATAPORT_OWORD_BLOCK_DWORDS(n)              \
    ((n) == 4 ? BRW_DATAPORT_OWORD_BLOCK_1_OWORDLOW :    \
@@ -1336,22 +1336,22 @@ enum brw_message_target {
 
 /* This one stays the same across generations. */
 #define BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ          0
-/* GEN4 */
+/* GFX4 */
 #define BRW_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ     1
 #define BRW_DATAPORT_READ_MESSAGE_MEDIA_BLOCK_READ          2
 #define BRW_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ      3
-/* G45, GEN5 */
+/* G45, GFX5 */
 #define G45_DATAPORT_READ_MESSAGE_RENDER_UNORM_READ	    1
 #define G45_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ     2
 #define G45_DATAPORT_READ_MESSAGE_AVC_LOOP_FILTER_READ	    3
 #define G45_DATAPORT_READ_MESSAGE_MEDIA_BLOCK_READ          4
 #define G45_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ      6
-/* GEN6 */
-#define GEN6_DATAPORT_READ_MESSAGE_RENDER_UNORM_READ	    1
-#define GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ     2
-#define GEN6_DATAPORT_READ_MESSAGE_MEDIA_BLOCK_READ          4
-#define GEN6_DATAPORT_READ_MESSAGE_OWORD_UNALIGN_BLOCK_READ  5
-#define GEN6_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ      6
+/* GFX6 */
+#define GFX6_DATAPORT_READ_MESSAGE_RENDER_UNORM_READ	    1
+#define GFX6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ     2
+#define GFX6_DATAPORT_READ_MESSAGE_MEDIA_BLOCK_READ          4
+#define GFX6_DATAPORT_READ_MESSAGE_OWORD_UNALIGN_BLOCK_READ  5
+#define GFX6_DATAPORT_READ_MESSAGE_DWORD_SCATTERED_READ      6
 
 #define BRW_DATAPORT_READ_TARGET_DATA_CACHE      0
 #define BRW_DATAPORT_READ_TARGET_RENDER_CACHE    1
@@ -1371,48 +1371,48 @@ enum brw_message_target {
 #define BRW_DATAPORT_WRITE_MESSAGE_STREAMED_VERTEX_BUFFER_WRITE     5
 #define BRW_DATAPORT_WRITE_MESSAGE_FLUSH_RENDER_CACHE               7
 
-/* GEN6 */
-#define GEN6_DATAPORT_WRITE_MESSAGE_DWORD_ATOMIC_WRITE              7
-#define GEN6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE               8
-#define GEN6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE          9
-#define GEN6_DATAPORT_WRITE_MESSAGE_MEDIA_BLOCK_WRITE               10
-#define GEN6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE           11
-#define GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE             12
-#define GEN6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE               13
-#define GEN6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_UNORM_WRITE       14
+/* GFX6 */
+#define GFX6_DATAPORT_WRITE_MESSAGE_DWORD_ATOMIC_WRITE              7
+#define GFX6_DATAPORT_WRITE_MESSAGE_OWORD_BLOCK_WRITE               8
+#define GFX6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE          9
+#define GFX6_DATAPORT_WRITE_MESSAGE_MEDIA_BLOCK_WRITE               10
+#define GFX6_DATAPORT_WRITE_MESSAGE_DWORD_SCATTERED_WRITE           11
+#define GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_WRITE             12
+#define GFX6_DATAPORT_WRITE_MESSAGE_STREAMED_VB_WRITE               13
+#define GFX6_DATAPORT_WRITE_MESSAGE_RENDER_TARGET_UNORM_WRITE       14
 
-/* GEN7 */
-#define GEN7_DATAPORT_RC_MEDIA_BLOCK_READ                           4
-#define GEN7_DATAPORT_RC_TYPED_SURFACE_READ                         5
-#define GEN7_DATAPORT_RC_TYPED_ATOMIC_OP                            6
-#define GEN7_DATAPORT_RC_MEMORY_FENCE                               7
-#define GEN7_DATAPORT_RC_MEDIA_BLOCK_WRITE                          10
-#define GEN7_DATAPORT_RC_RENDER_TARGET_WRITE                        12
-#define GEN7_DATAPORT_RC_TYPED_SURFACE_WRITE                        13
-#define GEN7_DATAPORT_DC_OWORD_BLOCK_READ                           0
-#define GEN7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ                 1
-#define GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_READ                      2
-#define GEN7_DATAPORT_DC_DWORD_SCATTERED_READ                       3
-#define GEN7_DATAPORT_DC_BYTE_SCATTERED_READ                        4
-#define GEN7_DATAPORT_DC_UNTYPED_SURFACE_READ                       5
-#define GEN7_DATAPORT_DC_UNTYPED_ATOMIC_OP                          6
-#define GEN7_DATAPORT_DC_MEMORY_FENCE                               7
-#define GEN7_DATAPORT_DC_OWORD_BLOCK_WRITE                          8
-#define GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE                     10
-#define GEN7_DATAPORT_DC_DWORD_SCATTERED_WRITE                      11
-#define GEN7_DATAPORT_DC_BYTE_SCATTERED_WRITE                       12
-#define GEN7_DATAPORT_DC_UNTYPED_SURFACE_WRITE                      13
+/* GFX7 */
+#define GFX7_DATAPORT_RC_MEDIA_BLOCK_READ                           4
+#define GFX7_DATAPORT_RC_TYPED_SURFACE_READ                         5
+#define GFX7_DATAPORT_RC_TYPED_ATOMIC_OP                            6
+#define GFX7_DATAPORT_RC_MEMORY_FENCE                               7
+#define GFX7_DATAPORT_RC_MEDIA_BLOCK_WRITE                          10
+#define GFX7_DATAPORT_RC_RENDER_TARGET_WRITE                        12
+#define GFX7_DATAPORT_RC_TYPED_SURFACE_WRITE                        13
+#define GFX7_DATAPORT_DC_OWORD_BLOCK_READ                           0
+#define GFX7_DATAPORT_DC_UNALIGNED_OWORD_BLOCK_READ                 1
+#define GFX7_DATAPORT_DC_OWORD_DUAL_BLOCK_READ                      2
+#define GFX7_DATAPORT_DC_DWORD_SCATTERED_READ                       3
+#define GFX7_DATAPORT_DC_BYTE_SCATTERED_READ                        4
+#define GFX7_DATAPORT_DC_UNTYPED_SURFACE_READ                       5
+#define GFX7_DATAPORT_DC_UNTYPED_ATOMIC_OP                          6
+#define GFX7_DATAPORT_DC_MEMORY_FENCE                               7
+#define GFX7_DATAPORT_DC_OWORD_BLOCK_WRITE                          8
+#define GFX7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE                     10
+#define GFX7_DATAPORT_DC_DWORD_SCATTERED_WRITE                      11
+#define GFX7_DATAPORT_DC_BYTE_SCATTERED_WRITE                       12
+#define GFX7_DATAPORT_DC_UNTYPED_SURFACE_WRITE                      13
 
-#define GEN7_DATAPORT_SCRATCH_READ                            ((1 << 18) | \
+#define GFX7_DATAPORT_SCRATCH_READ                            ((1 << 18) | \
                                                                (0 << 17))
-#define GEN7_DATAPORT_SCRATCH_WRITE                           ((1 << 18) | \
+#define GFX7_DATAPORT_SCRATCH_WRITE                           ((1 << 18) | \
                                                                (1 << 17))
-#define GEN7_DATAPORT_SCRATCH_NUM_REGS_SHIFT                        12
+#define GFX7_DATAPORT_SCRATCH_NUM_REGS_SHIFT                        12
 
-#define GEN7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET     0
-#define GEN7_PIXEL_INTERPOLATOR_LOC_SAMPLE            1
-#define GEN7_PIXEL_INTERPOLATOR_LOC_CENTROID          2
-#define GEN7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET   3
+#define GFX7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET     0
+#define GFX7_PIXEL_INTERPOLATOR_LOC_SAMPLE            1
+#define GFX7_PIXEL_INTERPOLATOR_LOC_CENTROID          2
+#define GFX7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET   3
 
 /* HSW */
 #define HSW_DATAPORT_DC_PORT0_OWORD_BLOCK_READ                      0
@@ -1438,31 +1438,31 @@ enum brw_message_target {
 #define HSW_DATAPORT_DC_PORT1_ATOMIC_COUNTER_OP                     11
 #define HSW_DATAPORT_DC_PORT1_ATOMIC_COUNTER_OP_SIMD4X2             12
 #define HSW_DATAPORT_DC_PORT1_TYPED_SURFACE_WRITE                   13
-#define GEN9_DATAPORT_DC_PORT1_A64_SCATTERED_READ                   0x10
-#define GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ             0x11
-#define GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP                0x12
-#define GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP      0x13
-#define GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ                 0x14
-#define GEN9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE                0x15
-#define GEN8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE            0x19
-#define GEN8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE                  0x1a
-#define GEN9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP              0x1b
-#define GEN9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP          0x1d
-#define GEN12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP    0x1e
+#define GFX9_DATAPORT_DC_PORT1_A64_SCATTERED_READ                   0x10
+#define GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_READ             0x11
+#define GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_OP                0x12
+#define GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_INT_OP      0x13
+#define GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_READ                 0x14
+#define GFX9_DATAPORT_DC_PORT1_A64_OWORD_BLOCK_WRITE                0x15
+#define GFX8_DATAPORT_DC_PORT1_A64_UNTYPED_SURFACE_WRITE            0x19
+#define GFX8_DATAPORT_DC_PORT1_A64_SCATTERED_WRITE                  0x1a
+#define GFX9_DATAPORT_DC_PORT1_UNTYPED_ATOMIC_FLOAT_OP              0x1b
+#define GFX9_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_FLOAT_OP          0x1d
+#define GFX12_DATAPORT_DC_PORT1_A64_UNTYPED_ATOMIC_HALF_FLOAT_OP    0x1e
 
-/* GEN9 */
-#define GEN9_DATAPORT_RC_RENDER_TARGET_WRITE                        12
-#define GEN9_DATAPORT_RC_RENDER_TARGET_READ                         13
+/* GFX9 */
+#define GFX9_DATAPORT_RC_RENDER_TARGET_WRITE                        12
+#define GFX9_DATAPORT_RC_RENDER_TARGET_READ                         13
 
 /* A64 scattered message subtype */
-#define GEN8_A64_SCATTERED_SUBTYPE_BYTE                             0
-#define GEN8_A64_SCATTERED_SUBTYPE_DWORD                            1
-#define GEN8_A64_SCATTERED_SUBTYPE_QWORD                            2
-#define GEN8_A64_SCATTERED_SUBTYPE_HWORD                            3
+#define GFX8_A64_SCATTERED_SUBTYPE_BYTE                             0
+#define GFX8_A64_SCATTERED_SUBTYPE_DWORD                            1
+#define GFX8_A64_SCATTERED_SUBTYPE_QWORD                            2
+#define GFX8_A64_SCATTERED_SUBTYPE_HWORD                            3
 
 /* Dataport special binding table indices: */
 #define BRW_BTI_STATELESS                255
-#define GEN7_BTI_SLM                     254
+#define GFX7_BTI_SLM                     254
 
 #define HSW_BTI_STATELESS_LOCALLY_COHERENT 255
 #define HSW_BTI_STATELESS_NON_COHERENT 253
@@ -1495,9 +1495,9 @@ enum brw_message_target {
  * (matching the behavior of the same BTI on pre-Gen8 hardware) and BTI 255
  * may actually be an alias for BTI 253.
  */
-#define GEN8_BTI_STATELESS_IA_COHERENT   255
-#define GEN8_BTI_STATELESS_NON_COHERENT  253
-#define GEN9_BTI_BINDLESS                252
+#define GFX8_BTI_STATELESS_IA_COHERENT   255
+#define GFX8_BTI_STATELESS_NON_COHERENT  253
+#define GFX9_BTI_BINDLESS                252
 
 /* Dataport atomic operations for Untyped Atomic Integer Operation message
  * (and others).
@@ -1536,8 +1536,8 @@ enum brw_message_target {
 #define BRW_MATH_FUNCTION_INT_DIV_QUOTIENT_AND_REMAINDER   11
 #define BRW_MATH_FUNCTION_INT_DIV_QUOTIENT                 12
 #define BRW_MATH_FUNCTION_INT_DIV_REMAINDER                13
-#define GEN8_MATH_FUNCTION_INVM                            14
-#define GEN8_MATH_FUNCTION_RSQRTM                          15
+#define GFX8_MATH_FUNCTION_INVM                            14
+#define GFX8_MATH_FUNCTION_RSQRTM                          15
 
 #define BRW_MATH_INTEGER_UNSIGNED     0
 #define BRW_MATH_INTEGER_SIGNED       1
@@ -1555,11 +1555,11 @@ enum brw_message_target {
 #define BRW_URB_OPCODE_WRITE_OWORD  1
 #define BRW_URB_OPCODE_READ_HWORD   2
 #define BRW_URB_OPCODE_READ_OWORD   3
-#define GEN7_URB_OPCODE_ATOMIC_MOV  4
-#define GEN7_URB_OPCODE_ATOMIC_INC  5
-#define GEN8_URB_OPCODE_ATOMIC_ADD  6
-#define GEN8_URB_OPCODE_SIMD8_WRITE 7
-#define GEN8_URB_OPCODE_SIMD8_READ  8
+#define GFX7_URB_OPCODE_ATOMIC_MOV  4
+#define GFX7_URB_OPCODE_ATOMIC_INC  5
+#define GFX8_URB_OPCODE_ATOMIC_ADD  6
+#define GFX8_URB_OPCODE_SIMD8_WRITE 7
+#define GFX8_URB_OPCODE_SIMD8_READ  8
 
 #define BRW_URB_SWIZZLE_NONE          0
 #define BRW_URB_SWIZZLE_INTERLEAVE    1
@@ -1592,15 +1592,15 @@ enum brw_message_target {
  *
  * Identical for VS, DS, and HS.
  */
-#define GEN7_MAX_GS_URB_ENTRY_SIZE_BYTES                (512*64)
-#define GEN7_MAX_DS_URB_ENTRY_SIZE_BYTES                (512*64)
-#define GEN7_MAX_HS_URB_ENTRY_SIZE_BYTES                (512*64)
-#define GEN7_MAX_VS_URB_ENTRY_SIZE_BYTES                (512*64)
+#define GFX7_MAX_GS_URB_ENTRY_SIZE_BYTES                (512*64)
+#define GFX7_MAX_DS_URB_ENTRY_SIZE_BYTES                (512*64)
+#define GFX7_MAX_HS_URB_ENTRY_SIZE_BYTES                (512*64)
+#define GFX7_MAX_VS_URB_ENTRY_SIZE_BYTES                (512*64)
 
 /* Gen6 "GS URB Entry Allocation Size" is defined as a number of 1024-bit
  * (128 bytes) URB rows and the maximum allowed value is 5 rows.
  */
-#define GEN6_MAX_GS_URB_ENTRY_SIZE_BYTES                (5*128)
+#define GFX6_MAX_GS_URB_ENTRY_SIZE_BYTES                (5*128)
 
 /* GS Thread Payload
  */
@@ -1608,11 +1608,11 @@ enum brw_message_target {
 /* 3DSTATE_GS "Output Vertex Size" has an effective maximum of 62. It's
  * counted in multiples of 16 bytes.
  */
-#define GEN7_MAX_GS_OUTPUT_VERTEX_SIZE_BYTES            (62*16)
+#define GFX7_MAX_GS_OUTPUT_VERTEX_SIZE_BYTES            (62*16)
 
 
 /* R0 */
-# define GEN7_GS_PAYLOAD_INSTANCE_ID_SHIFT		27
+# define GFX7_GS_PAYLOAD_INSTANCE_ID_SHIFT		27
 
 /* CR0.0[5:4] Floating-Point Rounding Modes
  *  Skylake PRM, Volume 7 Part 1, "Control Register", page 756
@@ -1644,9 +1644,9 @@ enum PACKED brw_rnd_mode {
  * Specifies the number of Bytes to be read or written per Dword used at
  * byte_scattered read/write and byte_scaled read/write messages.
  */
-#define GEN7_BYTE_SCATTERED_DATA_ELEMENT_BYTE     0
-#define GEN7_BYTE_SCATTERED_DATA_ELEMENT_WORD     1
-#define GEN7_BYTE_SCATTERED_DATA_ELEMENT_DWORD    2
+#define GFX7_BYTE_SCATTERED_DATA_ELEMENT_BYTE     0
+#define GFX7_BYTE_SCATTERED_DATA_ELEMENT_WORD     1
+#define GFX7_BYTE_SCATTERED_DATA_ELEMENT_DWORD    2
 
 #define GEN_RT_BTD_MESSAGE_SPAWN 1
 

@@ -147,23 +147,23 @@ gen7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
 
    BEGIN_BATCH(10);
    OUT_BATCH(_3DSTATE_PUSH_CONSTANT_ALLOC_VS << 16 | (2 - 2));
-   OUT_BATCH(vs_size | offset << GEN7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
+   OUT_BATCH(vs_size | offset << GFX7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
    offset += vs_size;
 
    OUT_BATCH(_3DSTATE_PUSH_CONSTANT_ALLOC_HS << 16 | (2 - 2));
-   OUT_BATCH(hs_size | offset << GEN7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
+   OUT_BATCH(hs_size | offset << GFX7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
    offset += hs_size;
 
    OUT_BATCH(_3DSTATE_PUSH_CONSTANT_ALLOC_DS << 16 | (2 - 2));
-   OUT_BATCH(ds_size | offset << GEN7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
+   OUT_BATCH(ds_size | offset << GFX7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
    offset += ds_size;
 
    OUT_BATCH(_3DSTATE_PUSH_CONSTANT_ALLOC_GS << 16 | (2 - 2));
-   OUT_BATCH(gs_size | offset << GEN7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
+   OUT_BATCH(gs_size | offset << GFX7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
    offset += gs_size;
 
    OUT_BATCH(_3DSTATE_PUSH_CONSTANT_ALLOC_PS << 16 | (2 - 2));
-   OUT_BATCH(fs_size | offset << GEN7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
+   OUT_BATCH(fs_size | offset << GFX7_PUSH_CONSTANT_BUFFER_OFFSET_SHIFT);
    ADVANCE_BATCH();
 
    /* From p292 of the Ivy Bridge PRM (11.2.4 3DSTATE_PUSH_CONSTANT_ALLOC_PS):
@@ -260,8 +260,8 @@ gen7_upload_urb(struct brw_context *brw, unsigned vs_size,
       assert(devinfo->ver != 10 || entry_size[i] % 3);
       OUT_BATCH((_3DSTATE_URB_VS + i) << 16 | (2 - 2));
       OUT_BATCH(entries[i] |
-                ((entry_size[i] - 1) << GEN7_URB_ENTRY_SIZE_SHIFT) |
-                (start[i] << GEN7_URB_STARTING_ADDRESS_SHIFT));
+                ((entry_size[i] - 1) << GFX7_URB_ENTRY_SIZE_SHIFT) |
+                (start[i] << GFX7_URB_STARTING_ADDRESS_SHIFT));
    }
    ADVANCE_BATCH();
 }

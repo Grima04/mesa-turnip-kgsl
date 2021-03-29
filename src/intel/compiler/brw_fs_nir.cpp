@@ -2055,7 +2055,7 @@ fs_visitor::emit_gs_end_primitive(const nir_src &vertex_count_nir_src)
     * output type is points, in which case EndPrimitive() is a no-op.
     */
    if (gs_prog_data->control_data_format !=
-       GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT) {
+       GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT) {
       return;
    }
 
@@ -2346,7 +2346,7 @@ fs_visitor::emit_gs_vertex(const nir_src &vertex_count_nir_src,
     */
    if (gs_compile->control_data_header_size_bits > 0 &&
        gs_prog_data->control_data_format ==
-          GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_SID) {
+          GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_SID) {
       set_gs_stream_control_data_bits(vertex_count, stream_id);
    }
 }
@@ -3738,7 +3738,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
       const unsigned bit_size = nir_dest_bit_size(instr->dest);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GEN7_BTI_SLM);
+      srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[0]);
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
       srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(0);
@@ -3775,7 +3775,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
 
       const unsigned bit_size = nir_src_bit_size(instr->src[0]);
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-      srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GEN7_BTI_SLM);
+      srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = get_nir_src(instr->src[1]);
       srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
       srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
@@ -4358,7 +4358,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                       brw_vec8_grf(0, 0),
                       brw_imm_ud(commit_enable),
                       brw_imm_ud(/* bti */ 0));
-         fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+         fence->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
 
          fence_regs[fence_regs_count++] = fence->dst;
 
@@ -4369,7 +4369,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                          brw_vec8_grf(0, 0),
                          brw_imm_ud(commit_enable),
                          brw_imm_ud(/* bti */ 0));
-            render_fence->sfid = GEN6_SFID_DATAPORT_RENDER_CACHE;
+            render_fence->sfid = GFX6_SFID_DATAPORT_RENDER_CACHE;
 
             fence_regs[fence_regs_count++] = render_fence->dst;
          }
@@ -4382,8 +4382,8 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
                       ubld.vgrf(BRW_REGISTER_TYPE_UD),
                       brw_vec8_grf(0, 0),
                       brw_imm_ud(commit_enable),
-                      brw_imm_ud(GEN7_BTI_SLM));
-         fence->sfid = GEN7_SFID_DATAPORT_DATA_CACHE;
+                      brw_imm_ud(GFX7_BTI_SLM));
+         fence->sfid = GFX7_SFID_DATAPORT_DATA_CACHE;
 
          fence_regs[fence_regs_count++] = fence->dst;
       }
@@ -4895,7 +4895,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       if (devinfo->ver >= 8) {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] =
-            brw_imm_ud(GEN8_BTI_STATELESS_NON_COHERENT);
+            brw_imm_ud(GFX8_BTI_STATELESS_NON_COHERENT);
       } else {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(BRW_BTI_STATELESS);
       }
@@ -4941,7 +4941,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       if (devinfo->ver >= 8) {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] =
-            brw_imm_ud(GEN8_BTI_STATELESS_NON_COHERENT);
+            brw_imm_ud(GFX8_BTI_STATELESS_NON_COHERENT);
       } else {
          srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(BRW_BTI_STATELESS);
       }
@@ -5418,7 +5418,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
       srcs[SURFACE_LOGICAL_SRC_SURFACE] = is_ssbo ?
-         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GEN7_BTI_SLM));
+         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GFX7_BTI_SLM));
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = address;
 
       const fs_builder ubld1 = bld.exec_all().group(1, 0);
@@ -5460,7 +5460,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
 
       fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
       srcs[SURFACE_LOGICAL_SRC_SURFACE] = is_ssbo ?
-         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GEN7_BTI_SLM));
+         get_nir_ssbo_intrinsic_index(bld, instr) : fs_reg(brw_imm_ud(GFX7_BTI_SLM));
       srcs[SURFACE_LOGICAL_SRC_ADDRESS] = address;
 
       const fs_builder ubld1 = bld.exec_all().group(1, 0);
@@ -5613,7 +5613,7 @@ fs_visitor::nir_emit_shared_atomic(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-   srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GEN7_BTI_SLM);
+   srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
    srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
    srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(op);
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);
@@ -5655,7 +5655,7 @@ fs_visitor::nir_emit_shared_atomic_float(const fs_builder &bld,
       dest = get_nir_dest(instr->dest);
 
    fs_reg srcs[SURFACE_LOGICAL_NUM_SRCS];
-   srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GEN7_BTI_SLM);
+   srcs[SURFACE_LOGICAL_SRC_SURFACE] = brw_imm_ud(GFX7_BTI_SLM);
    srcs[SURFACE_LOGICAL_SRC_IMM_DIMS] = brw_imm_ud(1);
    srcs[SURFACE_LOGICAL_SRC_IMM_ARG] = brw_imm_ud(op);
    srcs[SURFACE_LOGICAL_SRC_ALLOW_SAMPLE_MASK] = brw_imm_ud(1);

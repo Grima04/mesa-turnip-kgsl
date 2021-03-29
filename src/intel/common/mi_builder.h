@@ -582,7 +582,7 @@ mi_memset(struct mi_builder *b, __gen_address_type dst,
    }
 }
 
-/* NOTE: On IVB, this function stomps GEN7_3DPRIM_BASE_VERTEX */
+/* NOTE: On IVB, this function stomps GFX7_3DPRIM_BASE_VERTEX */
 static inline void
 mi_memcpy(struct mi_builder *b, __gen_address_type dst,
           __gen_address_type src, uint32_t size)
@@ -603,7 +603,7 @@ mi_memcpy(struct mi_builder *b, __gen_address_type dst,
       /* IVB does not have a general purpose register for command streamer
        * commands. Therefore, we use an alternate temporary register.
        */
-      struct mi_value tmp_reg = mi_reg32(0x2440); /* GEN7_3DPRIM_BASE_VERTEX */
+      struct mi_value tmp_reg = mi_reg32(0x2440); /* GFX7_3DPRIM_BASE_VERTEX */
       mi_store(b, tmp_reg, src_val);
       mi_store(b, dst_val, tmp_reg);
 #endif

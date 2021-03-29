@@ -122,9 +122,9 @@ generate_tex(struct brw_codegen *p,
       case SHADER_OPCODE_TEX:
       case SHADER_OPCODE_TXL:
 	 if (inst->shadow_compare) {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE;
 	 } else {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LOD;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LOD;
 	 }
 	 break;
       case SHADER_OPCODE_TXD:
@@ -133,41 +133,41 @@ generate_tex(struct brw_codegen *p,
             assert(devinfo->is_haswell);
             msg_type = HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE;
          } else {
-            msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
+            msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
          }
 	 break;
       case SHADER_OPCODE_TXF:
-	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+	 msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
 	 break;
       case SHADER_OPCODE_TXF_CMS:
          if (devinfo->ver >= 7)
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD2DMS;
+            msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_LD2DMS;
          else
-            msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+            msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
          break;
       case SHADER_OPCODE_TXF_MCS:
          assert(devinfo->ver >= 7);
-         msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
+         msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_LD_MCS;
          break;
       case SHADER_OPCODE_TXS:
-	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
+	 msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
 	 break;
       case SHADER_OPCODE_TG4:
          if (inst->shadow_compare) {
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C;
+            msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_C;
          } else {
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
+            msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
          }
          break;
       case SHADER_OPCODE_TG4_OFFSET:
          if (inst->shadow_compare) {
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C;
+            msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO_C;
          } else {
-            msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO;
+            msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4_PO;
          }
          break;
       case SHADER_OPCODE_SAMPLEINFO:
-         msg_type = GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
+         msg_type = GFX6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
          break;
       default:
 	 unreachable("should not get here: invalid vec4 texture opcode");
@@ -637,17 +637,17 @@ static void
 generate_gs_get_instance_id(struct brw_codegen *p,
                             struct brw_reg dst)
 {
-   /* We want to right shift R0.0 & R0.1 by GEN7_GS_PAYLOAD_INSTANCE_ID_SHIFT
+   /* We want to right shift R0.0 & R0.1 by GFX7_GS_PAYLOAD_INSTANCE_ID_SHIFT
     * and store into dst.0 & dst.4. So generate the instruction:
     *
-    *     shr(8) dst<1> R0<1,4,0> GEN7_GS_PAYLOAD_INSTANCE_ID_SHIFT { align1 WE_normal 1Q }
+    *     shr(8) dst<1> R0<1,4,0> GFX7_GS_PAYLOAD_INSTANCE_ID_SHIFT { align1 WE_normal 1Q }
     */
    brw_push_insn_state(p);
    brw_set_default_access_mode(p, BRW_ALIGN_1);
    dst = retype(dst, BRW_REGISTER_TYPE_UD);
    struct brw_reg r0(retype(brw_vec8_grf(0, 0), BRW_REGISTER_TYPE_UD));
    brw_SHR(p, dst, stride(r0, 1, 4, 0),
-           brw_imm_ud(GEN7_GS_PAYLOAD_INSTANCE_ID_SHIFT));
+           brw_imm_ud(GFX7_GS_PAYLOAD_INSTANCE_ID_SHIFT));
    brw_pop_insn_state(p);
 }
 
@@ -1157,15 +1157,15 @@ generate_scratch_read(struct brw_codegen *p,
    uint32_t msg_type;
 
    if (devinfo->ver >= 6)
-      msg_type = GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
+      msg_type = GFX6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
    else if (devinfo->ver == 5 || devinfo->is_g4x)
       msg_type = G45_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
    else
       msg_type = BRW_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
 
    const unsigned target_cache =
-      devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-      devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
+      devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
       BRW_SFID_DATAPORT_READ;
 
    /* Each of the 8 channel enables is considered for whether each
@@ -1194,8 +1194,8 @@ generate_scratch_write(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->ver >= 7 ? GEN7_SFID_DATAPORT_DATA_CACHE :
-       devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_RENDER_CACHE :
+      (devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
+       devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
        BRW_SFID_DATAPORT_WRITE);
    struct brw_reg header = brw_vec8_grf(0, 0);
    bool write_commit;
@@ -1217,9 +1217,9 @@ generate_scratch_write(struct brw_codegen *p,
    uint32_t msg_type;
 
    if (devinfo->ver >= 7)
-      msg_type = GEN7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE;
+      msg_type = GFX7_DATAPORT_DC_OWORD_DUAL_BLOCK_WRITE;
    else if (devinfo->ver == 6)
-      msg_type = GEN6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
+      msg_type = GFX6_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
    else
       msg_type = BRW_DATAPORT_WRITE_MESSAGE_OWORD_DUAL_BLOCK_WRITE;
 
@@ -1272,7 +1272,7 @@ generate_pull_constant_load(struct brw_codegen *p,
 {
    const struct gen_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
-      (devinfo->ver >= 6 ? GEN6_SFID_DATAPORT_SAMPLER_CACHE :
+      (devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_SAMPLER_CACHE :
        BRW_SFID_DATAPORT_READ);
    assert(index.file == BRW_IMMEDIATE_VALUE &&
 	  index.type == BRW_REGISTER_TYPE_UD);
@@ -1301,7 +1301,7 @@ generate_pull_constant_load(struct brw_codegen *p,
    uint32_t msg_type;
 
    if (devinfo->ver >= 6)
-      msg_type = GEN6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
+      msg_type = GFX6_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
    else if (devinfo->ver == 5 || devinfo->is_g4x)
       msg_type = G45_DATAPORT_READ_MESSAGE_OWORD_DUAL_BLOCK_READ;
    else
@@ -1341,7 +1341,7 @@ generate_get_buffer_size(struct brw_codegen *p,
               src,
               surf_index.ud,
               0,
-              GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
+              GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
               1, /* response length */
               inst->mlen,
               inst->header_size > 0,
@@ -1369,7 +1369,7 @@ generate_pull_constant_load_gen7(struct brw_codegen *p,
                    brw_message_desc(devinfo, inst->mlen, 1, inst->header_size) |
                    brw_sampler_desc(devinfo, surf_index.ud,
                                     0, /* LD message ignores sampler unit */
-                                    GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
+                                    GFX5_SAMPLER_MESSAGE_SAMPLE_LD,
                                     BRW_SAMPLER_SIMD_MODE_SIMD4X2, 0));
    } else {
 
@@ -1395,7 +1395,7 @@ generate_pull_constant_load_gen7(struct brw_codegen *p,
          brw_sampler_desc(devinfo,
                           0 /* surface */,
                           0 /* sampler */,
-                          GEN5_SAMPLER_MESSAGE_SAMPLE_LD,
+                          GFX5_SAMPLER_MESSAGE_SAMPLE_LD,
                           BRW_SAMPLER_SIMD_MODE_SIMD4X2,
                           0),
          false /* EOT */);

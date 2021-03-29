@@ -54,7 +54,7 @@ gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
       brw->batch.needs_sol_reset = true;
    } else {
       for (int i = 0; i < 4; i++) {
-         brw_load_register_imm32(brw, GEN7_SO_WRITE_OFFSET(i), 0);
+         brw_load_register_imm32(brw, GFX7_SO_WRITE_OFFSET(i), 0);
       }
    }
 
@@ -112,7 +112,7 @@ gen7_pause_transform_feedback(struct gl_context *ctx,
    for (int i = 0; i < 4; i++) {
       BEGIN_BATCH(3);
       OUT_BATCH(MI_STORE_REGISTER_MEM | (3 - 2));
-      OUT_BATCH(GEN7_SO_WRITE_OFFSET(i));
+      OUT_BATCH(GFX7_SO_WRITE_OFFSET(i));
       OUT_RELOC(brw_obj->offset_bo, RELOC_WRITE, i * sizeof(uint32_t));
       ADVANCE_BATCH();
    }
@@ -138,8 +138,8 @@ gen7_resume_transform_feedback(struct gl_context *ctx,
    /* Reload the SOL buffer offset registers. */
    for (int i = 0; i < 4; i++) {
       BEGIN_BATCH(3);
-      OUT_BATCH(GEN7_MI_LOAD_REGISTER_MEM | (3 - 2));
-      OUT_BATCH(GEN7_SO_WRITE_OFFSET(i));
+      OUT_BATCH(GFX7_MI_LOAD_REGISTER_MEM | (3 - 2));
+      OUT_BATCH(GFX7_SO_WRITE_OFFSET(i));
       OUT_RELOC(brw_obj->offset_bo, RELOC_WRITE, i * sizeof(uint32_t));
       ADVANCE_BATCH();
    }

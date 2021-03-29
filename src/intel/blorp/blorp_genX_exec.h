@@ -1384,7 +1384,7 @@ blorp_emit_memcpy(struct blorp_batch *batch,
       /* IVB does not have a general purpose register for command streamer
        * commands. Therefore, we use an alternate temporary register.
        */
-#define BLORP_TEMP_REG 0x2440 /* GEN7_3DPRIM_BASE_VERTEX */
+#define BLORP_TEMP_REG 0x2440 /* GFX7_3DPRIM_BASE_VERTEX */
       blorp_emit(batch, GENX(MI_LOAD_REGISTER_MEM), load) {
          load.RegisterAddress = BLORP_TEMP_REG;
          load.MemoryAddress = src;

@@ -153,8 +153,8 @@ gen8_write_pma_stall_bits(struct brw_context *brw, uint32_t pma_stall_bits)
                                render_cache_flush);
 
    /* CACHE_MODE_1 is a non-privileged register. */
-   brw_load_register_imm32(brw, GEN7_CACHE_MODE_1,
-                           GEN8_HIZ_PMA_MASK_BITS |
+   brw_load_register_imm32(brw, GFX7_CACHE_MODE_1,
+                           GFX8_HIZ_PMA_MASK_BITS |
                            pma_stall_bits );
 
    /* After the LRI, a PIPE_CONTROL with both the Depth Stall and Depth Cache
@@ -178,7 +178,7 @@ gen8_emit_pma_stall_workaround(struct brw_context *brw)
       return;
 
    if (pma_fix_enable(brw))
-      bits |= GEN8_HIZ_NP_PMA_FIX_ENABLE | GEN8_HIZ_NP_EARLY_Z_FAILS_DISABLE;
+      bits |= GFX8_HIZ_NP_PMA_FIX_ENABLE | GFX8_HIZ_NP_EARLY_Z_FAILS_DISABLE;
 
    gen8_write_pma_stall_bits(brw, bits);
 }

@@ -838,7 +838,7 @@ fs_generator::generate_urb_read(fs_inst *inst,
       brw_set_src1(p, send, brw_imm_ud(0u));
 
    brw_inst_set_sfid(p->devinfo, send, BRW_SFID_URB);
-   brw_inst_set_urb_opcode(p->devinfo, send, GEN8_URB_OPCODE_SIMD8_READ);
+   brw_inst_set_urb_opcode(p->devinfo, send, GFX8_URB_OPCODE_SIMD8_READ);
 
    if (inst->opcode == SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT)
       brw_inst_set_urb_per_slot_offset(p->devinfo, send, true);
@@ -860,7 +860,7 @@ fs_generator::generate_urb_write(fs_inst *inst, struct brw_reg payload)
       brw_set_src1(p, insn, brw_imm_ud(0u));
 
    brw_inst_set_sfid(p->devinfo, insn, BRW_SFID_URB);
-   brw_inst_set_urb_opcode(p->devinfo, insn, GEN8_URB_OPCODE_SIMD8_WRITE);
+   brw_inst_set_urb_opcode(p->devinfo, insn, GFX8_URB_OPCODE_SIMD8_WRITE);
 
    if (inst->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_PER_SLOT ||
        inst->opcode == SHADER_OPCODE_URB_WRITE_SIMD8_MASKED_PER_SLOT)
@@ -1064,7 +1064,7 @@ fs_generator::generate_get_buffer_size(fs_inst *inst,
               src,
               surf_index.ud,
               0,
-              GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
+              GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO,
               rlen, /* response length */
               inst->mlen,
               inst->header_size > 0,
@@ -1126,48 +1126,48 @@ fs_generator::generate_tex(fs_inst *inst, struct brw_reg dst,
       switch (inst->opcode) {
       case SHADER_OPCODE_TEX:
 	 if (inst->shadow_compare) {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_COMPARE;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_COMPARE;
 	 } else {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE;
 	 }
 	 break;
       case FS_OPCODE_TXB:
 	 if (inst->shadow_compare) {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS_COMPARE;
 	 } else {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_BIAS;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_BIAS;
 	 }
 	 break;
       case SHADER_OPCODE_TXL:
 	 if (inst->shadow_compare) {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LOD_COMPARE;
 	 } else {
-	    msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LOD;
+	    msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LOD;
 	 }
 	 break;
       case SHADER_OPCODE_TXS:
-	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
+	 msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_RESINFO;
 	 break;
       case SHADER_OPCODE_TXD:
          assert(!inst->shadow_compare);
-         msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
+         msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_DERIVS;
 	 break;
       case SHADER_OPCODE_TXF:
-	 msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+	 msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
 	 break;
       case SHADER_OPCODE_TXF_CMS:
-         msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+         msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
          break;
       case SHADER_OPCODE_LOD:
-         msg_type = GEN5_SAMPLER_MESSAGE_LOD;
+         msg_type = GFX5_SAMPLER_MESSAGE_LOD;
          break;
       case SHADER_OPCODE_TG4:
          assert(devinfo->ver == 6);
          assert(!inst->shadow_compare);
-         msg_type = GEN7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
+         msg_type = GFX7_SAMPLER_MESSAGE_SAMPLE_GATHER4;
          break;
       case SHADER_OPCODE_SAMPLEINFO:
-         msg_type = GEN6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
+         msg_type = GFX6_SAMPLER_MESSAGE_SAMPLE_SAMPLEINFO;
          break;
       default:
 	 unreachable("not reached");
@@ -1642,7 +1642,7 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
       brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
       brw_pop_insn_state(p);
 
-      brw_inst_set_sfid(devinfo, send, GEN6_SFID_DATAPORT_CONSTANT_CACHE);
+      brw_inst_set_sfid(devinfo, send, GFX6_SFID_DATAPORT_CONSTANT_CACHE);
       brw_set_dest(p, send, retype(dst, BRW_REGISTER_TYPE_UD));
       brw_set_src0(p, send, retype(payload, BRW_REGISTER_TYPE_UD));
       brw_set_desc(p, send,
@@ -1650,7 +1650,7 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
                                                              REG_SIZE), true) |
                    brw_dp_read_desc(devinfo, surf_index,
                                     BRW_DATAPORT_OWORD_BLOCK_DWORDS(inst->exec_size),
-                                    GEN7_DATAPORT_DC_OWORD_BLOCK_READ,
+                                    GFX7_DATAPORT_DC_OWORD_BLOCK_READ,
                                     BRW_DATAPORT_READ_TARGET_DATA_CACHE));
 
    } else {
@@ -1671,14 +1671,14 @@ fs_generator::generate_uniform_pull_constant_load_gen7(fs_inst *inst,
       /* dst = send(payload, a0.0 | <descriptor>) */
       brw_set_default_swsb(p, tgl_swsb_dst_dep(swsb, 1));
       brw_send_indirect_message(
-         p, GEN6_SFID_DATAPORT_CONSTANT_CACHE,
+         p, GFX6_SFID_DATAPORT_CONSTANT_CACHE,
          retype(dst, BRW_REGISTER_TYPE_UD),
          retype(payload, BRW_REGISTER_TYPE_UD), addr,
          brw_message_desc(devinfo, 1,
                           DIV_ROUND_UP(inst->size_written, REG_SIZE), true) |
          brw_dp_read_desc(devinfo, 0 /* surface */,
                           BRW_DATAPORT_OWORD_BLOCK_DWORDS(inst->exec_size),
-                          GEN7_DATAPORT_DC_OWORD_BLOCK_READ,
+                          GFX7_DATAPORT_DC_OWORD_BLOCK_READ,
                           BRW_DATAPORT_READ_TARGET_DATA_CACHE),
          false /* EOT */);
 
@@ -1710,7 +1710,7 @@ fs_generator::generate_varying_pull_constant_load_gen4(fs_inst *inst,
    }
 
    if (devinfo->ver >= 5)
-      msg_type = GEN5_SAMPLER_MESSAGE_SAMPLE_LD;
+      msg_type = GFX5_SAMPLER_MESSAGE_SAMPLE_LD;
    else {
       /* We always use the SIMD16 message so that we only have to load U, and
        * not V or R.
@@ -2293,7 +2293,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          generate_send(inst, dst, src[0], src[1], src[2],
                        inst->ex_mlen > 0 ? src[3] : brw_null_reg());
          if ((inst->desc & 0xff) == BRW_BTI_STATELESS ||
-             (inst->desc & 0xff) == GEN8_BTI_STATELESS_NON_COHERENT) {
+             (inst->desc & 0xff) == GFX8_BTI_STATELESS_NON_COHERENT) {
             if (inst->size_written)
                fill_count++;
             else
@@ -2583,19 +2583,19 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
 
       case FS_OPCODE_INTERPOLATE_AT_SAMPLE:
          generate_pixel_interpolator_query(inst, dst, src[0], src[1],
-                                           GEN7_PIXEL_INTERPOLATOR_LOC_SAMPLE);
+                                           GFX7_PIXEL_INTERPOLATOR_LOC_SAMPLE);
          send_count++;
          break;
 
       case FS_OPCODE_INTERPOLATE_AT_SHARED_OFFSET:
          generate_pixel_interpolator_query(inst, dst, src[0], src[1],
-                                           GEN7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET);
+                                           GFX7_PIXEL_INTERPOLATOR_LOC_SHARED_OFFSET);
          send_count++;
          break;
 
       case FS_OPCODE_INTERPOLATE_AT_PER_SLOT_OFFSET:
          generate_pixel_interpolator_query(inst, dst, src[0], src[1],
-                                           GEN7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET);
+                                           GFX7_PIXEL_INTERPOLATOR_LOC_PER_SLOT_OFFSET);
          send_count++;
          break;
 

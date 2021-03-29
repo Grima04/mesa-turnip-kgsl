@@ -365,7 +365,7 @@ void gen11_init_atoms(struct brw_context *brw);
  * On Ivybridge, the PTEs do have a cache-in-L3 bit, so setting MOCS to 0
  * may still respect that.
  */
-#define GEN7_MOCS_L3                    1
+#define GFX7_MOCS_L3                    1
 
 /* Ivybridge only: cache in LLC.
  * Specifying zero here means to use the PTE values set by the kernel;

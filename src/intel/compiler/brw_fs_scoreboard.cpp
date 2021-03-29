@@ -585,7 +585,7 @@ namespace {
                                reg_offset(r) / REG_SIZE);
 
          return (r.file == VGRF || r.file == FIXED_GRF ? &grf_deps[reg] :
-                 r.file == MRF ? &grf_deps[GEN7_MRF_HACK_START + reg] :
+                 r.file == MRF ? &grf_deps[GFX7_MRF_HACK_START + reg] :
                  r.file == ARF && reg >= BRW_ARF_ADDRESS &&
                                   reg < BRW_ARF_ACCUMULATOR ? &addr_dep :
                  r.file == ARF && reg >= BRW_ARF_ACCUMULATOR &&

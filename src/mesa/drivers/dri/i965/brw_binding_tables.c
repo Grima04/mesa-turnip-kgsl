@@ -280,9 +280,9 @@ gen6_upload_binding_table_pointers(struct brw_context *brw)
 {
    BEGIN_BATCH(4);
    OUT_BATCH(_3DSTATE_BINDING_TABLE_POINTERS << 16 |
-             GEN6_BINDING_TABLE_MODIFY_VS |
-             GEN6_BINDING_TABLE_MODIFY_GS |
-             GEN6_BINDING_TABLE_MODIFY_PS |
+             GFX6_BINDING_TABLE_MODIFY_VS |
+             GFX6_BINDING_TABLE_MODIFY_GS |
+             GFX6_BINDING_TABLE_MODIFY_PS |
              (4 - 2));
    OUT_BATCH(brw->vs.base.bind_bo_offset); /* vs */
    if (brw->ff_gs.prog_active)

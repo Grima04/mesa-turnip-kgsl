@@ -50,7 +50,7 @@ _test_combine_address(void *data, void *location,
 static void
 test_struct(struct intel_spec *spec) {
    /* Fill struct fields and <group> tag */
-   struct GEN9_TEST_STRUCT test1 = {
+   struct GFX9_TEST_STRUCT test1 = {
       .number1 = 5,
       .number2 = 1234,
    };
@@ -60,8 +60,8 @@ test_struct(struct intel_spec *spec) {
    }
 
    /* Pack struct into a dw array */
-   uint32_t dw[GEN9_TEST_STRUCT_length];
-   GEN9_TEST_STRUCT_pack(NULL, dw, &test1);
+   uint32_t dw[GFX9_TEST_STRUCT_length];
+   GFX9_TEST_STRUCT_pack(NULL, dw, &test1);
 
    /* Now decode the packed struct, and make sure it matches the original */
    struct intel_group *group;
@@ -94,7 +94,7 @@ test_struct(struct intel_spec *spec) {
 
 static void
 test_two_levels(struct intel_spec *spec) {
-   struct GEN9_STRUCT_TWO_LEVELS test;
+   struct GFX9_STRUCT_TWO_LEVELS test;
 
    for (int i = 0; i < 4; i++) {
       for (int j = 0; j < 8; j++) {
@@ -102,8 +102,8 @@ test_two_levels(struct intel_spec *spec) {
       }
    }
 
-   uint32_t dw[GEN9_STRUCT_TWO_LEVELS_length];
-   GEN9_STRUCT_TWO_LEVELS_pack(NULL, dw, &test);
+   uint32_t dw[GFX9_STRUCT_TWO_LEVELS_length];
+   GFX9_STRUCT_TWO_LEVELS_pack(NULL, dw, &test);
 
    struct intel_group *group;
    group = intel_spec_find_struct(spec, "STRUCT_TWO_LEVELS");

@@ -1288,9 +1288,9 @@ struct brw_gs_prog_data
    unsigned control_data_header_size_hwords;
 
    /**
-    * Format of the control data (either GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_SID
+    * Format of the control data (either GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_SID
     * if the control data is StreamID bits, or
-    * GEN7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT if the control data is cut bits).
+    * GFX7_GS_CONTROL_DATA_FORMAT_GSCTL_CUT if the control data is cut bits).
     * Ignored if control_data_header_size is 0.
     */
    unsigned control_data_format;

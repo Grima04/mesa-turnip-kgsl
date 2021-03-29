@@ -1916,7 +1916,7 @@ brw_miptree_texture_aux_usage(struct brw_context *brw,
     * CCS or HiZ compressed textures.  See gen9_apply_astc5x5_wa_flush() for
     * details.
     */
-   if ((astc5x5_wa_bits & GEN9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
+   if ((astc5x5_wa_bits & GFX9_ASTC5X5_WA_TEX_TYPE_ASTC5x5) &&
        mt->aux_usage != ISL_AUX_USAGE_MCS)
       return ISL_AUX_USAGE_NONE;
 

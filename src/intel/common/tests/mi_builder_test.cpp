@@ -58,7 +58,7 @@ __gen_address_offset(address addr, uint64_t offset)
 #if GFX_VERx10 >= 75
 #define RSVD_TEMP_REG 0x2678 /* MI_ALU_REG15 */
 #else
-#define RSVD_TEMP_REG 0x2430 /* GEN7_3DPRIM_START_VERTEX */
+#define RSVD_TEMP_REG 0x2430 /* GFX7_3DPRIM_START_VERTEX */
 #endif
 #define MI_BUILDER_NUM_ALLOC_GPRS 15
 #define INPUT_DATA_OFFSET 0

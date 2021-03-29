@@ -119,15 +119,15 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
       assert(!cfg->n[INTEL_L3P_IS] && !cfg->n[INTEL_L3P_C] && !cfg->n[INTEL_L3P_T]);
 
       const unsigned imm_data = (
-         (devinfo->ver < 11 && has_slm ? GEN8_L3CNTLREG_SLM_ENABLE : 0) |
-         (devinfo->ver == 11 ? GEN11_L3CNTLREG_USE_FULL_WAYS : 0) |
-         SET_FIELD(cfg->n[INTEL_L3P_URB], GEN8_L3CNTLREG_URB_ALLOC) |
-         SET_FIELD(cfg->n[INTEL_L3P_RO], GEN8_L3CNTLREG_RO_ALLOC) |
-         SET_FIELD(cfg->n[INTEL_L3P_DC], GEN8_L3CNTLREG_DC_ALLOC) |
-         SET_FIELD(cfg->n[INTEL_L3P_ALL], GEN8_L3CNTLREG_ALL_ALLOC));
+         (devinfo->ver < 11 && has_slm ? GFX8_L3CNTLREG_SLM_ENABLE : 0) |
+         (devinfo->ver == 11 ? GFX11_L3CNTLREG_USE_FULL_WAYS : 0) |
+         SET_FIELD(cfg->n[INTEL_L3P_URB], GFX8_L3CNTLREG_URB_ALLOC) |
+         SET_FIELD(cfg->n[INTEL_L3P_RO], GFX8_L3CNTLREG_RO_ALLOC) |
+         SET_FIELD(cfg->n[INTEL_L3P_DC], GFX8_L3CNTLREG_DC_ALLOC) |
+         SET_FIELD(cfg->n[INTEL_L3P_ALL], GFX8_L3CNTLREG_ALL_ALLOC));
 
       /* Set up the L3 partitioning. */
-      brw_load_register_imm32(brw, GEN8_L3CNTLREG, imm_data);
+      brw_load_register_imm32(brw, GFX8_L3CNTLREG, imm_data);
    } else {
       assert(!cfg->n[INTEL_L3P_ALL]);
 
@@ -147,27 +147,27 @@ setup_l3_config(struct brw_context *brw, const struct intel_l3_config *cfg)
       OUT_BATCH(MI_LOAD_REGISTER_IMM | (7 - 2));
 
       /* Demote any clients with no ways assigned to LLC. */
-      OUT_BATCH(GEN7_L3SQCREG1);
+      OUT_BATCH(GFX7_L3SQCREG1);
       OUT_BATCH((devinfo->is_haswell ? HSW_L3SQCREG1_SQGHPCI_DEFAULT :
                  devinfo->is_baytrail ? VLV_L3SQCREG1_SQGHPCI_DEFAULT :
                  IVB_L3SQCREG1_SQGHPCI_DEFAULT) |
-                (has_dc ? 0 : GEN7_L3SQCREG1_CONV_DC_UC) |
-                (has_is ? 0 : GEN7_L3SQCREG1_CONV_IS_UC) |
-                (has_c ? 0 : GEN7_L3SQCREG1_CONV_C_UC) |
-                (has_t ? 0 : GEN7_L3SQCREG1_CONV_T_UC));
+                (has_dc ? 0 : GFX7_L3SQCREG1_CONV_DC_UC) |
+                (has_is ? 0 : GFX7_L3SQCREG1_CONV_IS_UC) |
+                (has_c ? 0 : GFX7_L3SQCREG1_CONV_C_UC) |
+                (has_t ? 0 : GFX7_L3SQCREG1_CONV_T_UC));
 
       /* Set up the L3 partitioning. */
-      OUT_BATCH(GEN7_L3CNTLREG2);
-      OUT_BATCH((has_slm ? GEN7_L3CNTLREG2_SLM_ENABLE : 0) |
-                SET_FIELD(cfg->n[INTEL_L3P_URB] - n0_urb, GEN7_L3CNTLREG2_URB_ALLOC) |
-                (urb_low_bw ? GEN7_L3CNTLREG2_URB_LOW_BW : 0) |
-                SET_FIELD(cfg->n[INTEL_L3P_ALL], GEN7_L3CNTLREG2_ALL_ALLOC) |
-                SET_FIELD(cfg->n[INTEL_L3P_RO], GEN7_L3CNTLREG2_RO_ALLOC) |
-                SET_FIELD(cfg->n[INTEL_L3P_DC], GEN7_L3CNTLREG2_DC_ALLOC));
-      OUT_BATCH(GEN7_L3CNTLREG3);
-      OUT_BATCH(SET_FIELD(cfg->n[INTEL_L3P_IS], GEN7_L3CNTLREG3_IS_ALLOC) |
-                SET_FIELD(cfg->n[INTEL_L3P_C], GEN7_L3CNTLREG3_C_ALLOC) |
-                SET_FIELD(cfg->n[INTEL_L3P_T], GEN7_L3CNTLREG3_T_ALLOC));
+      OUT_BATCH(GFX7_L3CNTLREG2);
+      OUT_BATCH((has_slm ? GFX7_L3CNTLREG2_SLM_ENABLE : 0) |
+                SET_FIELD(cfg->n[INTEL_L3P_URB] - n0_urb, GFX7_L3CNTLREG2_URB_ALLOC) |
+                (urb_low_bw ? GFX7_L3CNTLREG2_URB_LOW_BW : 0) |
+                SET_FIELD(cfg->n[INTEL_L3P_ALL], GFX7_L3CNTLREG2_ALL_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_RO], GFX7_L3CNTLREG2_RO_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_DC], GFX7_L3CNTLREG2_DC_ALLOC));
+      OUT_BATCH(GFX7_L3CNTLREG3);
+      OUT_BATCH(SET_FIELD(cfg->n[INTEL_L3P_IS], GFX7_L3CNTLREG3_IS_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_C], GFX7_L3CNTLREG3_C_ALLOC) |
+                SET_FIELD(cfg->n[INTEL_L3P_T], GFX7_L3CNTLREG3_T_ALLOC));
 
       ADVANCE_BATCH();
 

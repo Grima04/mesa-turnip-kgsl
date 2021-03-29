@@ -392,7 +392,7 @@ set_predicate(struct brw_context *brw, struct brw_bo *query_bo)
 
    /* predicate = !(query_availability == 0); */
    BEGIN_BATCH(1);
-   OUT_BATCH(GEN7_MI_PREDICATE |
+   OUT_BATCH(GFX7_MI_PREDICATE |
              MI_PREDICATE_LOADOP_LOADINV |
              MI_PREDICATE_COMBINEOP_SET |
              MI_PREDICATE_COMPAREOP_SRCS_EQUAL);
