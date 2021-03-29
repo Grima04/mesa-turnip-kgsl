@@ -569,10 +569,10 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
 
-   int32_t max_binding = pCreateInfo->bindingCount > 0 ? 0 : -1;
+   uint32_t num_bindings = 0;
    uint32_t immutable_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
-      max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
+      num_bindings = MAX2(num_bindings, pCreateInfo->pBindings[j].binding + 1);
 
       /* From the Vulkan 1.1.97 spec for VkDescriptorSetLayoutBinding:
        *
@@ -594,7 +594,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    }
 
    uint32_t samplers_offset = sizeof(struct v3dv_descriptor_set_layout) +
-      (max_binding + 1) * sizeof(set_layout->binding[0]);
+      num_bindings * sizeof(set_layout->binding[0]);
    uint32_t size = samplers_offset +
       immutable_sampler_count * sizeof(struct v3dv_sampler);
 
@@ -605,9 +605,9 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* We just allocate all the immutable samplers at the end of the struct */
-   struct v3dv_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
+   struct v3dv_sampler *samplers = (void*) &set_layout->binding[num_bindings];
 
-   assert(pCreateInfo->bindingCount == 0 || max_binding >= 0);
+   assert(pCreateInfo->bindingCount == 0 || num_bindings > 0);
 
    VkDescriptorSetLayoutBinding *bindings = NULL;
    VkResult result = vk_create_sorted_bindings(pCreateInfo->pBindings,
@@ -620,7 +620,7 @@ v3dv_CreateDescriptorSetLayout(VkDevice _device,
    memset(set_layout->binding, 0,
           size - sizeof(struct v3dv_descriptor_set_layout));
 
-   set_layout->binding_count = max_binding + 1;
+   set_layout->binding_count = num_bindings;
    set_layout->flags = pCreateInfo->flags;
    set_layout->shader_stages = 0;
    set_layout->bo_size = 0;

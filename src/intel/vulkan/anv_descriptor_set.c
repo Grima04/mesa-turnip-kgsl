@@ -351,10 +351,10 @@ VkResult anv_CreateDescriptorSetLayout(
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
 
-   uint32_t max_binding = 0;
+   uint32_t num_bindings = 0;
    uint32_t immutable_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
-      max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
+      num_bindings = MAX2(num_bindings, pCreateInfo->pBindings[j].binding + 1);
 
       /* From the Vulkan 1.1.97 spec for VkDescriptorSetLayoutBinding:
        *
@@ -381,7 +381,7 @@ VkResult anv_CreateDescriptorSetLayout(
    VK_MULTIALLOC(ma);
    VK_MULTIALLOC_DECL(&ma, struct anv_descriptor_set_layout, set_layout, 1);
    VK_MULTIALLOC_DECL(&ma, struct anv_descriptor_set_binding_layout,
-                           bindings, max_binding + 1);
+                           bindings, num_bindings);
    VK_MULTIALLOC_DECL(&ma, struct anv_sampler *, samplers,
                            immutable_sampler_count);
 
@@ -393,9 +393,9 @@ VkResult anv_CreateDescriptorSetLayout(
    vk_object_base_init(&device->vk, &set_layout->base,
                        VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT);
    set_layout->ref_cnt = 1;
-   set_layout->binding_count = max_binding + 1;
+   set_layout->binding_count = num_bindings;
 
-   for (uint32_t b = 0; b <= max_binding; b++) {
+   for (uint32_t b = 0; b < num_bindings; b++) {
       /* Initialize all binding_layout entries to -1 */
       memset(&set_layout->binding[b], -1, sizeof(set_layout->binding[b]));
 
@@ -427,7 +427,7 @@ VkResult anv_CreateDescriptorSetLayout(
       vk_find_struct_const(pCreateInfo->pNext,
                            DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
 
-   for (uint32_t b = 0; b <= max_binding; b++) {
+   for (uint32_t b = 0; b < num_bindings; b++) {
       /* We stashed the pCreateInfo->pBindings[] index (plus one) in the
        * immutable_samplers pointer.  Check for NULL (empty binding) and then
        * reset it and compute the index.

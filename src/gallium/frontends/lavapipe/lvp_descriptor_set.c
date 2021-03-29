@@ -36,10 +36,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    struct lvp_descriptor_set_layout *set_layout;
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO);
-   uint32_t max_binding = 0;
+   uint32_t num_bindings = 0;
    uint32_t immutable_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
-      max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
+      num_bindings = MAX2(num_bindings, pCreateInfo->pBindings[j].binding + 1);
       /* From the Vulkan 1.1.97 spec for VkDescriptorSetLayoutBinding:
        *
        *    "If descriptorType specifies a VK_DESCRIPTOR_TYPE_SAMPLER or
@@ -59,7 +59,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    }
 
    size_t size = sizeof(struct lvp_descriptor_set_layout) +
-                 (max_binding + 1) * sizeof(set_layout->binding[0]) +
+                 num_bindings * sizeof(set_layout->binding[0]) +
                  immutable_sampler_count * sizeof(struct lvp_sampler *);
 
    set_layout = vk_zalloc2(&device->vk.alloc, pAllocator, size, 8,
@@ -72,10 +72,10 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateDescriptorSetLayout(
    set_layout->ref_cnt = 1;
    /* We just allocate all the samplers at the end of the struct */
    struct lvp_sampler **samplers =
-      (struct lvp_sampler **)&set_layout->binding[max_binding + 1];
+      (struct lvp_sampler **)&set_layout->binding[num_bindings];
 
    set_layout->alloc = pAllocator;
-   set_layout->binding_count = max_binding + 1;
+   set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
    set_layout->size = 0;
 

@@ -90,11 +90,11 @@ tu_CreateDescriptorSetLayout(
          pCreateInfo->pNext,
          DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT);
 
-   uint32_t max_binding = 0;
+   uint32_t num_bindings = 0;
    uint32_t immutable_sampler_count = 0;
    uint32_t ycbcr_sampler_count = 0;
    for (uint32_t j = 0; j < pCreateInfo->bindingCount; j++) {
-      max_binding = MAX2(max_binding, pCreateInfo->pBindings[j].binding);
+      num_bindings = MAX2(num_bindings, pCreateInfo->pBindings[j].binding + 1);
       if ((pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER ||
            pCreateInfo->pBindings[j].descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER) &&
            pCreateInfo->pBindings[j].pImmutableSamplers) {
@@ -112,7 +112,7 @@ tu_CreateDescriptorSetLayout(
    }
 
    uint32_t samplers_offset =
-         offsetof(struct tu_descriptor_set_layout, binding[max_binding + 1]);
+         offsetof(struct tu_descriptor_set_layout, binding[num_bindings]);
 
    /* note: only need to store TEX_SAMP_DWORDS for immutable samples,
     * but using struct tu_sampler makes things simpler */
@@ -128,7 +128,7 @@ tu_CreateDescriptorSetLayout(
    set_layout->flags = pCreateInfo->flags;
 
    /* We just allocate all the immutable samplers at the end of the struct */
-   struct tu_sampler *samplers = (void*) &set_layout->binding[max_binding + 1];
+   struct tu_sampler *samplers = (void*) &set_layout->binding[num_bindings];
    struct tu_sampler_ycbcr_conversion *ycbcr_samplers =
       (void*) &samplers[immutable_sampler_count];
 
@@ -140,7 +140,7 @@ tu_CreateDescriptorSetLayout(
       return vk_error(device->instance, result);
    }
 
-   set_layout->binding_count = max_binding + 1;
+   set_layout->binding_count = num_bindings;
    set_layout->shader_stages = 0;
    set_layout->has_immutable_samplers = false;
    set_layout->size = 0;
@@ -164,7 +164,7 @@ tu_CreateDescriptorSetLayout(
            VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT)) {
          assert(!binding->pImmutableSamplers); /* Terribly ill defined  how
                                                   many samplers are valid */
-         assert(binding->binding == max_binding);
+         assert(binding->binding == num_bindings - 1);
 
          set_layout->has_variable_descriptors = true;
       }
