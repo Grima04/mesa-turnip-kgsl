@@ -787,16 +787,6 @@ zink_program_num_descriptors(const struct zink_program *pg)
    return num_descriptors;
 }
 
-static void
-gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader)
-{
-   enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-   assert(p_stage < ZINK_SHADER_COUNT);
-   assert(prog->shaders[p_stage] == shader);
-   prog->shaders[p_stage] = NULL;
-   _mesa_set_remove_key(shader->programs, prog);
-}
-
 void
 zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog)
@@ -805,8 +795,10 @@ zink_destroy_gfx_program(struct zink_screen *screen,
       vkDestroyPipelineLayout(screen->dev, prog->base.layout, NULL);
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
-      if (prog->shaders[i])
-         gfx_program_remove_shader(prog, prog->shaders[i]);
+      if (prog->shaders[i]) {
+         _mesa_set_remove_key(prog->shaders[i]->programs, prog);
+         prog->shaders[i] = NULL;
+      }
       if (prog->modules[i])
          zink_shader_module_reference(screen, &prog->modules[i], NULL);
    }
