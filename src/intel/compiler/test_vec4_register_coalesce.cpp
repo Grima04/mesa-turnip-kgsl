@@ -106,7 +106,7 @@ void register_coalesce_test::SetUp()
    v = new register_coalesce_vec4_visitor(compiler, ctx, shader, prog_data);
 
    devinfo->gen = 4;
-   devinfo->genx10 = devinfo->gen * 10;
+   devinfo->verx10 = devinfo->gen * 10;
 }
 
 void register_coalesce_test::TearDown()

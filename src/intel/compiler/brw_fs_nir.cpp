@@ -108,7 +108,7 @@ fs_visitor::nir_setup_uniforms()
    uniforms = nir->num_uniforms / 4;
 
    if ((stage == MESA_SHADER_COMPUTE || stage == MESA_SHADER_KERNEL) &&
-       devinfo->genx10 < 125) {
+       devinfo->verx10 < 125) {
       /* Add uniforms for builtins after regular NIR uniforms. */
       assert(uniforms == prog_data->nr_params);
 
@@ -3675,7 +3675,7 @@ fs_visitor::nir_emit_cs_intrinsic(const fs_builder &bld,
       break;
 
    case nir_intrinsic_load_subgroup_id:
-      if (devinfo->genx10 >= 125)
+      if (devinfo->verx10 >= 125)
          bld.AND(retype(dest, BRW_REGISTER_TYPE_UD),
                  retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
                  brw_imm_ud(INTEL_MASK(7, 0)));

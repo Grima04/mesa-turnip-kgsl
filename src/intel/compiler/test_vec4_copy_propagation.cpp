@@ -102,7 +102,7 @@ void copy_propagation_test::SetUp()
    v = new copy_propagation_vec4_visitor(compiler, ctx, shader, prog_data);
 
    devinfo->gen = 4;
-   devinfo->genx10 = devinfo->gen * 10;
+   devinfo->verx10 = devinfo->gen * 10;
 }
 
 void copy_propagation_test::TearDown()

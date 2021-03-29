@@ -67,7 +67,7 @@ void saturate_propagation_test::SetUp()
    v = new saturate_propagation_fs_visitor(compiler, ctx, prog_data, shader);
 
    devinfo->gen = 6;
-   devinfo->genx10 = devinfo->gen * 10;
+   devinfo->verx10 = devinfo->gen * 10;
 }
 
 void saturate_propagation_test::TearDown()

@@ -59,7 +59,7 @@
 #include "iris_monitor.h"
 
 #define genX_call(devinfo, func, ...)             \
-   switch ((devinfo)->genx10) {                   \
+   switch ((devinfo)->verx10) {                   \
    case 125:                                      \
       gen125_##func(__VA_ARGS__);                 \
       break;                                      \

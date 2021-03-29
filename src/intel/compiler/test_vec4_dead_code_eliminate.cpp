@@ -100,7 +100,7 @@ void dead_code_eliminate_test::SetUp()
   v = new dead_code_eliminate_vec4_visitor(compiler, ctx, shader, prog_data);
 
    devinfo->gen = 4;
-   devinfo->genx10 = devinfo->gen * 10;
+   devinfo->verx10 = devinfo->gen * 10;
 }
 
 void dead_code_eliminate_test::TearDown()

@@ -1067,7 +1067,7 @@ anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
    const unsigned aligned_total_push_constants_size =
       ALIGN(total_push_constants_size, push_constant_alignment);
    struct anv_state state;
-   if (devinfo->genx10 >= 125) {
+   if (devinfo->verx10 >= 125) {
       state = anv_state_stream_alloc(&cmd_buffer->general_state_stream,
                                      aligned_total_push_constants_size,
                                      push_constant_alignment);

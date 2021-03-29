@@ -109,7 +109,7 @@ static const struct gen_device_info gen_device_info_i965 = {
 
 static const struct gen_device_info gen_device_info_g4x = {
    .gen = 4,
-   .genx10 = 45,
+   .verx10 = 45,
    .has_pln = true,
    .has_compr4 = true,
    .has_surface_tile_offset = true,
@@ -309,7 +309,7 @@ static const struct gen_device_info gen_device_info_byt = {
 #define HSW_FEATURES             \
    GEN7_FEATURES,                \
    .is_haswell = true,           \
-   .genx10 = 75,                 \
+   .verx10 = 75,                 \
    .supports_simd16_3src = true, \
    .has_resource_streamer = true
 
@@ -1279,8 +1279,8 @@ gen_get_device_info_from_pci_id(int pci_id,
 
    assert(devinfo->num_slices <= ARRAY_SIZE(devinfo->num_subslices));
 
-   if (devinfo->genx10 == 0)
-      devinfo->genx10 = devinfo->gen * 10;
+   if (devinfo->verx10 == 0)
+      devinfo->verx10 = devinfo->gen * 10;
 
    devinfo->chipset_id = pci_id;
    return true;

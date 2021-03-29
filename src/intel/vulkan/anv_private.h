@@ -4533,7 +4533,7 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(anv_performance_configuration_intel, base,
 
 #define anv_genX(devinfo, thing) ({             \
    __typeof(&gen9_##thing) genX_thing;          \
-   switch ((devinfo)->genx10) {                 \
+   switch ((devinfo)->verx10) {                 \
    case 70:                                     \
       genX_thing = &gen7_##thing;               \
       break;                                    \
