@@ -1940,18 +1940,9 @@ zink_wait_on_batch(struct zink_context *ctx, uint32_t batch_id)
    else {
       struct hash_entry *he = _mesa_hash_table_search_pre_hashed(&ctx->batch_states, batch_id, (void*)(uintptr_t)batch_id);
       if (!he) {
-        util_dynarray_foreach(&ctx->free_batch_states, struct zink_batch_state*, bs) {
-           if ((*bs)->fence.batch_id == batch_id) {
-              simple_mtx_unlock(&ctx->batch_mtx);
-              return;
-           }
-        }
-        if (ctx->last_fence && ctx->last_fence->batch_id > batch_id) {
-           /* already completed */
-           simple_mtx_unlock(&ctx->batch_mtx);
-           return;
-        }
-        unreachable("should've found batch state");
+        /* batch has already completed */
+        simple_mtx_unlock(&ctx->batch_mtx);
+        return;
       }
       fence = he->data;
    }
