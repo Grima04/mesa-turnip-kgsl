@@ -388,7 +388,6 @@ spec@glsl-1.10@execution@built-in-functions@vs-tan-vec2,Fail
 spec@glsl-1.10@execution@built-in-functions@vs-tan-vec3,Fail
 spec@glsl-1.10@execution@built-in-functions@vs-tan-vec4,Fail
 spec@glsl-1.10@execution@fs-texture-select,Fail
-spec@glsl-1.10@execution@gl_lightsource_indirect,Crash
 spec@glsl-1.10@execution@glsl-fs-convolution-2,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-sampler-numbering-2,Fail
 spec@glsl-1.10@execution@samplers@glsl-fs-sampler-numbering-3,Fail

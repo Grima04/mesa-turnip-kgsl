@@ -26,7 +26,6 @@ spec@!opengl 1.0@gl-1.0-no-op-paths,Fail
 spec@!opengl 1.0@gl-1.0-spot-light,Fail
 spec@!opengl 1.0@gl-1.0-user-clip-all-planes,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,Fail
@@ -114,7 +113,6 @@ spec@ext_texture_integer@getteximage-clamping,Fail
 spec@ext_texture_lod_bias@lodbias,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
-spec@glsl-1.10@execution@gl_lightsource_indirect,Crash
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
 spec@glsl-1.20@execution@fs-underflow-mul-compare-zero,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
