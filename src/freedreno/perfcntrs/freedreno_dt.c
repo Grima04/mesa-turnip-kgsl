@@ -246,10 +246,9 @@ fd_dt_find_io(void)
 		return NULL;
 
 	void *io = mmap(0, dev.size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, dev.base);
-	if (io == MAP_FAILED) {
-		close(fd);
+	close(fd);
+	if (io == MAP_FAILED)
 		return NULL;
-	}
 
 	return io;
 }
