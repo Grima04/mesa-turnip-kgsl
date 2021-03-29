@@ -1910,12 +1910,12 @@ brw_detect_swizzling(struct brw_screen *screen)
 {
    /* Broadwell PRM says:
     *
-    *   "Before Gen8, there was a historical configuration control field to
+    *   "Before Gfx8, there was a historical configuration control field to
     *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
     *    different places: TILECTL[1:0], ARB_MODE[5:4], and
     *    DISP_ARB_CTL[14:13].
     *
-    *    For Gen8 and subsequent generations, the swizzle fields are all
+    *    For Gfx8 and subsequent generations, the swizzle fields are all
     *    reserved, and the CPU's memory controller performs all address
     *    swizzling modifications."
     */
@@ -2608,7 +2608,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    screen->subslice_total = gen_device_info_subslice_total(devinfo);
    screen->eu_total = gen_device_info_eu_total(devinfo);
 
-   /* Gen7-7.5 kernel requirements / command parser saga:
+   /* Gfx7-7.5 kernel requirements / command parser saga:
     *
     * - pre-v3.16:
     *   Haswell and Baytrail cannot use any privileged batchbuffer features.
@@ -2747,7 +2747,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
       screen->kernel_features |= KERNEL_ALLOWS_MI_MATH_AND_LRR;
    }
 
-   /* Gen7 needs at least command parser version 5 to support compute */
+   /* Gfx7 needs at least command parser version 5 to support compute */
    if (devinfo->ver >= 8 || screen->cmd_parser_version >= 5)
       screen->kernel_features |= KERNEL_ALLOWS_COMPUTE_DISPATCH;
 
@@ -2773,7 +2773,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
     * Use this to determine whether to advertise the __DRI2_ROBUSTNESS
     * extension to the loader.
     *
-    * Don't even try on pre-Gen6, since we don't attempt to use contexts there.
+    * Don't even try on pre-Gfx6, since we don't attempt to use contexts there.
     */
    if (devinfo->ver >= 6) {
       struct drm_i915_reset_stats stats;

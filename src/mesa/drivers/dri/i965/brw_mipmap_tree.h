@@ -134,7 +134,7 @@ struct brw_mipmap_level
  * Miptree aux buffer. These buffers are associated with a miptree, but the
  * format is managed by the hardware.
  *
- * For Gen7+, we always give the hardware the start of the buffer, and let it
+ * For Gfx7+, we always give the hardware the start of the buffer, and let it
  * handle all accesses to the buffer. Therefore we don't need the full miptree
  * layout structure for this buffer.
  */

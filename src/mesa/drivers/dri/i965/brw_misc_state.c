@@ -216,7 +216,7 @@ brw_workaround_depthstencil_alignment(struct brw_context *brw,
    brw->depthstencil.tile_y = 0;
    brw->depthstencil.depth_offset = 0;
 
-   /* Gen6+ doesn't require the workarounds, since we always program the
+   /* Gfx6+ doesn't require the workarounds, since we always program the
     * surface state at the start of the whole surface.
     */
    if (devinfo->ver >= 6)
@@ -480,7 +480,7 @@ brw_emit_select_pipeline(struct brw_context *brw, enum brw_pipeline pipeline)
        *   3DSTATE_CC_STATE_POINTERS command prior to send a PIPELINE_SELECT
        *   with Pipeline Select set to GPGPU.
        *
-       * The internal hardware docs recommend the same workaround for Gen9
+       * The internal hardware docs recommend the same workaround for Gfx9
        * hardware too.
        */
       if (pipeline == BRW_COMPUTE_PIPELINE) {
@@ -626,7 +626,7 @@ brw_emit_hashing_mode(struct brw_context *brw, unsigned width,
 
    if (devinfo->ver == 9) {
       const uint32_t slice_hashing[] = {
-         /* Because all Gen9 platforms with more than one slice require
+         /* Because all Gfx9 platforms with more than one slice require
           * three-way subslice hashing, a single "normal" 16x16 slice hashing
           * block is guaranteed to suffer from substantial imbalance, with one
           * subslice receiving twice as much work as the other two in the
@@ -634,7 +634,7 @@ brw_emit_hashing_mode(struct brw_context *brw, unsigned width,
           *
           * The performance impact of that would be particularly severe when
           * three-way hashing is also in use for slice balancing (which is the
-          * case for all Gen9 GT4 platforms), because one of the slices
+          * case for all Gfx9 GT4 platforms), because one of the slices
           * receives one every three 16x16 blocks in either direction, which
           * is roughly the periodicity of the underlying subslice imbalance
           * pattern ("roughly" because in reality the hardware's
@@ -716,7 +716,7 @@ brw_upload_invariant_state(struct brw_context *brw)
       ADVANCE_BATCH();
    }
 
-   /* Original Gen4 doesn't have 3DSTATE_AA_LINE_PARAMETERS. */
+   /* Original Gfx4 doesn't have 3DSTATE_AA_LINE_PARAMETERS. */
    if (!is_965) {
       BEGIN_BATCH(3);
       OUT_BATCH(_3DSTATE_AA_LINE_PARAMETERS << 16 | (3 - 2));

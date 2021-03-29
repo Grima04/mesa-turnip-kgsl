@@ -312,7 +312,7 @@ void brw_init_state( struct brw_context *brw )
    if (devinfo->ver >= 11)
       gfx11_init_atoms(brw);
    else if (devinfo->ver >= 10)
-      unreachable("Gen10 support dropped.");
+      unreachable("Gfx10 support dropped.");
    else if (devinfo->ver >= 9)
       gfx9_init_atoms(brw);
    else if (devinfo->ver >= 8)

@@ -299,7 +299,7 @@ tex_cache_flush_hack(struct iris_batch *batch,
     * If the BO hasn't been referenced yet this batch, we assume that the
     * texture cache doesn't contain any relevant data nor need flushing.
     *
-    * Icelake (Gen11+) claims to fix this issue, but seems to still have
+    * Icelake (Gfx11+) claims to fix this issue, but seems to still have
     * issues with ASTC formats.
     */
    bool need_flush = devinfo->ver >= 11 ?

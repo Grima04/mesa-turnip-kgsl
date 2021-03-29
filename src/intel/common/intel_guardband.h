@@ -57,13 +57,13 @@ intel_calculate_guardband_size(uint32_t fb_width, uint32_t fb_height,
     *  This additional restriction must also be comprehended by software,
     *  i.e., enforced by use of clipping."
     *
-    * This makes no sense.  Gen7+ hardware supports 16K render targets,
+    * This makes no sense.  Gfx7+ hardware supports 16K render targets,
     * and you definitely need to be able to draw polygons that fill the
     * surface.  Our assumption is that the rasterizer was limited to 8K
     * on Sandybridge, which only supports 8K surfaces, and it was actually
     * increased to 16K on Ivybridge and later.
     *
-    * So, limit the guardband to 16K on Gen7+ and 8K on Sandybridge.
+    * So, limit the guardband to 16K on Gfx7+ and 8K on Sandybridge.
     */
    const float gb_size = GFX_VER >= 7 ? 16384.0f : 8192.0f;
 

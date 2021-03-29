@@ -41,7 +41,7 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
    device->perf = NULL;
 
    /* We need self modifying batches. The i915 parser prevents it on
-    * Gen7.5 :( maybe one day.
+    * Gfx7.5 :( maybe one day.
     */
    if (devinfo->ver < 8)
       return;
@@ -136,8 +136,8 @@ anv_device_perf_open(struct anv_device *device, uint64_t metric_id)
    properties[p++] = true;
 
    /* If global SSEU is available, pin it to the default. This will ensure on
-    * Gen11 for instance we use the full EU array. Initially when perf was
-    * enabled we would use only half on Gen11 because of functional
+    * Gfx11 for instance we use the full EU array. Initially when perf was
+    * enabled we would use only half on Gfx11 because of functional
     * requirements.
     */
    if (gen_perf_has_global_sseu(device->physical->perf)) {

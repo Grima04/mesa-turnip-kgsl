@@ -193,7 +193,7 @@ isl_device_init(struct isl_device *dev,
                 const struct gen_device_info *info,
                 bool has_bit6_swizzling)
 {
-   /* Gen8+ don't have bit6 swizzling, ensure callsite is not confused. */
+   /* Gfx8+ don't have bit6 swizzling, ensure callsite is not confused. */
    assert(!(has_bit6_swizzling && info->ver >= 8));
 
    dev->info = info;
@@ -411,8 +411,8 @@ isl_tiling_get_info(enum isl_tiling tiling,
       break;
 
    case ISL_TILING_GEN12_CCS:
-      /* From the Bspec, Gen Graphics > Gen12 > Memory Data Formats > Memory
-       * Compression > Memory Compression - Gen12:
+      /* From the Bspec, Gen Graphics > Gfx12 > Memory Data Formats > Memory
+       * Compression > Memory Compression - Gfx12:
        *
        *    4 bits of auxiliary plane data are required for 2 cachelines of
        *    main surface data. This results in a single cacheline of auxiliary
@@ -1071,7 +1071,7 @@ isl_calc_array_pitch_el_rows_gfx4_2d(
        * but the second restriction, which is an extension of the first, only
        * applies to qpitch and must be applied here.
        *
-       * The second restriction disappears on Gen12.
+       * The second restriction disappears on Gfx12.
        */
       assert(fmtl->bh == 4);
       pitch_el_rows = isl_align(pitch_el_rows, 256 / 4);
@@ -1413,7 +1413,7 @@ isl_calc_row_pitch_alignment(const struct isl_device *dev,
                              const struct isl_tile_info *tile_info)
 {
    if (tile_info->tiling != ISL_TILING_LINEAR) {
-      /* According to BSpec: 44930, Gen12's CCS-compressed surface pitches must
+      /* According to BSpec: 44930, Gfx12's CCS-compressed surface pitches must
        * be 512B-aligned. CCS is only support on Y tilings.
        *
        * Only consider 512B alignment when :
@@ -1502,7 +1502,7 @@ isl_calc_tiled_min_row_pitch(const struct isl_device *dev,
                     tile_info->logical_extent_el.width);
 
    /* In some cases the alignment of the pitch might be > to the tile size
-    * (for example Gen12 CCS requires 512B alignment while the tile's width
+    * (for example Gfx12 CCS requires 512B alignment while the tile's width
     * can be 128B), so align the row pitch to the alignment.
     */
    assert(alignment_B >= tile_info->phys_extent_B.width);
@@ -1706,7 +1706,7 @@ isl_surf_init_s(const struct isl_device *dev,
       assert(isl_is_pow2(info->min_alignment_B) && isl_is_pow2(tile_size_B));
       base_alignment_B = MAX(info->min_alignment_B, tile_size_B);
 
-      /* The diagram in the Bspec section Memory Compression - Gen12, shows
+      /* The diagram in the Bspec section Memory Compression - Gfx12, shows
        * that the CCS is indexed in 256B chunks. However, the
        * PLANE_AUX_DIST::Auxiliary Surface Distance field is in units of 4K
        * pages. We currently don't assign the usage field like we do for main
@@ -1715,7 +1715,7 @@ isl_surf_init_s(const struct isl_device *dev,
       if (tiling == ISL_TILING_GEN12_CCS)
          base_alignment_B = MAX(base_alignment_B, 4096);
 
-      /* Gen12+ requires that images be 64K-aligned if they're going to used
+      /* Gfx12+ requires that images be 64K-aligned if they're going to used
        * with CCS.  This is because the Aux translation table maps main
        * surface addresses to aux addresses at a 64K (in the main surface)
        * granularity.  Because we don't know for sure in ISL if a surface will
@@ -1967,7 +1967,7 @@ bool
 isl_surf_supports_ccs(const struct isl_device *dev,
                       const struct isl_surf *surf)
 {
-   /* CCS support does not exist prior to Gen7 */
+   /* CCS support does not exist prior to Gfx7 */
    if (ISL_GFX_VER(dev) <= 6)
       return false;
 
@@ -1991,13 +1991,13 @@ isl_surf_supports_ccs(const struct isl_device *dev,
     *     - MCS and Lossless compression is supported for
     *       TiledY/TileYs/TileYf non-MSRTs only.
     *
-    * From the BSpec (44930) for Gen12:
+    * From the BSpec (44930) for Gfx12:
     *
     *    Linear CCS is only allowed for Untyped Buffers but only via HDC
     *    Data-Port messages.
     *
-    * We never use untyped messages on surfaces created by ISL on Gen9+ so
-    * this means linear is out on Gen12+ as well.
+    * We never use untyped messages on surfaces created by ISL on Gfx9+ so
+    * this means linear is out on Gfx12+ as well.
     */
    if (surf->tiling == ISL_TILING_LINEAR)
       return false;
@@ -2006,7 +2006,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
       if (isl_surf_usage_is_stencil(surf->usage) && surf->samples > 1)
          return false;
 
-      /* On Gen12, all CCS-compressed surface pitches must be multiples of
+      /* On Gfx12, all CCS-compressed surface pitches must be multiples of
        * 512B.
        */
       if (surf->row_pitch_B % 512 != 0)
@@ -2042,7 +2042,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
       if (surf->samples > 1)
          return false;
 
-      /* CCS is only for color images on Gen7-11 */
+      /* CCS is only for color images on Gfx7-11 */
       if (isl_surf_usage_is_depth_or_stencil(surf->usage))
          return false;
 
@@ -2127,7 +2127,7 @@ isl_surf_get_ccs_surf(const struct isl_device *dev,
          return false;
       }
 
-      /* On Gen12, the CCS is a scaled-down version of the main surface. We
+      /* On Gfx12, the CCS is a scaled-down version of the main surface. We
        * model this as the CCS compressing a 2D-view of the entire surface.
        */
       struct isl_surf *ccs_surf =

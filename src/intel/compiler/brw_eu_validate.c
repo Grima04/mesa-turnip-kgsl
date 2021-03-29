@@ -292,9 +292,9 @@ invalid_values(const struct gen_device_info *devinfo, const brw_inst *inst)
 
    if (num_sources == 3) {
       /* Nothing to test:
-       *    No 3-src instructions on Gen4-5
-       *    No reg file bits on Gen6-10 (align16)
-       *    No invalid encodings on Gen10-12 (align1)
+       *    No 3-src instructions on Gfx4-5
+       *    No reg file bits on Gfx6-10 (align16)
+       *    No invalid encodings on Gfx10-12 (align1)
        */
    } else {
       if (devinfo->ver > 6) {
@@ -1873,7 +1873,7 @@ special_requirements_for_handling_double_precision_data_types(
     *    If Align16 is required for an operation with QW destination and non-QW
     *    source datatypes, the execution size cannot exceed 2.
     *
-    * We assume that the restriction applies to all Gen8+ parts.
+    * We assume that the restriction applies to all Gfx8+ parts.
     */
    if (devinfo->ver >= 8) {
       enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);

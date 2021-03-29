@@ -538,7 +538,7 @@ iris_hiz_exec(struct iris_context *ice,
     *    enabled must be issued before the rectangle primitive used for
     *    the depth buffer clear operation."
     *
-    * Same applies for Gen8 and Gen9.
+    * Same applies for Gfx8 and Gfx9.
     */
    iris_emit_pipe_control_flush(batch,
                                 "hiz op: pre-flush",
@@ -848,7 +848,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
                                     0, INTEL_REMAINING_LAYERS))
          return ISL_AUX_USAGE_NONE;
 
-      /* On Gen9 color buffers may be compressed by the hardware (lossless
+      /* On Gfx9 color buffers may be compressed by the hardware (lossless
        * compression). There are, however, format restrictions and care needs
        * to be taken that the sampler engine is capable for re-interpreting a
        * buffer with format different the buffer was originally written with.

@@ -243,7 +243,7 @@ brw_delete_query(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 /**
- * Gen4-5 driver hook for glBeginQuery().
+ * Gfx4-5 driver hook for glBeginQuery().
  *
  * Initializes driver structures and emits any GPU commands required to begin
  * recording data for the query.
@@ -300,7 +300,7 @@ brw_begin_query(struct gl_context *ctx, struct gl_query_object *q)
 
       brw->query.obj = query;
 
-      /* Depth statistics on Gen4 require strange workarounds, so we try to
+      /* Depth statistics on Gfx4 require strange workarounds, so we try to
        * avoid them when necessary.  They're required for occlusion queries,
        * so turn them on now.
        */
@@ -314,7 +314,7 @@ brw_begin_query(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 /**
- * Gen4-5 driver hook for glEndQuery().
+ * Gfx4-5 driver hook for glEndQuery().
  *
  * Emits GPU commands to record a final query value, ending any data capturing.
  * However, the final result isn't necessarily available until the GPU processes
@@ -371,7 +371,7 @@ brw_end_query(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 /**
- * The Gen4-5 WaitQuery() driver hook.
+ * The Gfx4-5 WaitQuery() driver hook.
  *
  * Wait for a query result to become available and return it.  This is the
  * backing for glGetQueryObjectiv() with the GL_QUERY_RESULT pname.
@@ -389,7 +389,7 @@ static void brw_wait_query(struct gl_context *ctx, struct gl_query_object *q)
 }
 
 /**
- * The Gen4-5 CheckQuery() driver hook.
+ * The Gfx4-5 CheckQuery() driver hook.
  *
  * Checks whether a query result is ready yet.  If not, flushes.
  * This is the backing for glGetQueryObjectiv()'s QUERY_RESULT_AVAILABLE pname.
@@ -610,7 +610,7 @@ void brw_init_common_queryobj_functions(struct dd_function_table *functions)
    functions->GetTimestamp = brw_get_timestamp;
 }
 
-/* Initialize Gen4/5-specific query object functions. */
+/* Initialize Gfx4/5-specific query object functions. */
 void gfx4_init_queryobj_functions(struct dd_function_table *functions)
 {
    functions->BeginQuery = brw_begin_query;

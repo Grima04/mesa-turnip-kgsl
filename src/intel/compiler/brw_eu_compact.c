@@ -46,19 +46,19 @@
  * A G45-only instruction, NENOP, must be used to provide padding to align
  * uncompacted instructions.
  *
- * Gen5 removes these restrictions and changes jump counts to be in units of
+ * Gfx5 removes these restrictions and changes jump counts to be in units of
  * 8-byte compacted instructions, allowing jump targets to be only 8-byte
  * aligned. Uncompacted instructions can also be placed on 8-byte boundaries.
  *
- * Gen6 adds the ability to compact instructions with a limited range of
+ * Gfx6 adds the ability to compact instructions with a limited range of
  * immediate values. Compactable immediates have 12 unrestricted bits, and a
  * 13th bit that's replicated through the high 20 bits, to create the 32-bit
  * value of DW3 in the uncompacted instruction word.
  *
- * On Gen7 we can compact some control flow instructions with a small positive
+ * On Gfx7 we can compact some control flow instructions with a small positive
  * immediate in the low bits of DW3, like ENDIF with the JIP field. Other
  * control flow instructions with UIP cannot be compacted, because of the
- * replicated 13th bit. No control flow instructions can be compacted on Gen6
+ * replicated 13th bit. No control flow instructions can be compacted on Gfx6
  * since the jump count field is not in DW3.
  *
  *    break    JIP/UIP
@@ -71,7 +71,7 @@
  *
  * Gen 8 adds support for compacting 3-src instructions.
  *
- * Gen12 reduces the number of bits that available to compacted immediates from
+ * Gfx12 reduces the number of bits that available to compacted immediates from
  * 13 to 12, but improves the compaction of floating-point immediates by
  * allowing the high bits to be encoded (the sign, 8-bit exponent, and the
  * three most significant bits of the mantissa), rather than the lowest bits of
@@ -1303,11 +1303,11 @@ has_unmapped_bits(const struct gen_device_info *devinfo, const brw_inst *src)
    /* Check for instruction bits that don't map to any of the fields of the
     * compacted instruction.  The instruction cannot be compacted if any of
     * them are set.  They overlap with:
-    *  - NibCtrl (bit 47 on Gen7, bit 11 on Gen8)
-    *  - Dst.AddrImm[9] (bit 47 on Gen8)
-    *  - Src0.AddrImm[9] (bit 95 on Gen8)
-    *  - Imm64[27:31] (bits 91-95 on Gen7, bit 95 on Gen8)
-    *  - UIP[31] (bit 95 on Gen8)
+    *  - NibCtrl (bit 47 on Gfx7, bit 11 on Gfx8)
+    *  - Dst.AddrImm[9] (bit 47 on Gfx8)
+    *  - Src0.AddrImm[9] (bit 95 on Gfx8)
+    *  - Imm64[27:31] (bits 91-95 on Gfx7, bit 95 on Gfx8)
+    *  - UIP[31] (bit 95 on Gfx8)
     */
    if (devinfo->ver >= 12) {
       assert(!brw_inst_bits(src, 7,  7));
@@ -1603,7 +1603,7 @@ precompact(const struct gen_device_info *devinfo, brw_inst inst)
     *
     * If we see a 0.0:F, change the type to VF so that it can be compacted.
     *
-    * Compaction of floating-point immediates is improved on Gen12, thus
+    * Compaction of floating-point immediates is improved on Gfx12, thus
     * removing the need for this.
     */
    if (devinfo->ver < 12 &&
@@ -1618,7 +1618,7 @@ precompact(const struct gen_device_info *devinfo, brw_inst inst)
    /* There are no mappings for dst:d | i:d, so if the immediate is suitable
     * set the types to :UD so the instruction can be compacted.
     *
-    * FINISHME: Use dst:f | imm:f on Gen12
+    * FINISHME: Use dst:f | imm:f on Gfx12
     */
    if (devinfo->ver < 12 &&
        compact_immediate(devinfo, BRW_REGISTER_TYPE_D,
@@ -2141,8 +2141,8 @@ update_uip_jip(const struct gen_device_info *devinfo, brw_inst *insn,
                int this_old_ip, int *compacted_counts)
 {
    /* JIP and UIP are in units of:
-    *    - bytes on Gen8+; and
-    *    - compacted instructions on Gen6+.
+    *    - bytes on Gfx8+; and
+    *    - compacted instructions on Gfx6+.
     */
    int shift = devinfo->ver >= 8 ? 3 : 0;
 
@@ -2172,7 +2172,7 @@ update_gfx4_jump_count(const struct gen_device_info *devinfo, brw_inst *insn,
 
    /* Jump Count is in units of:
     *    - uncompacted instructions on G45; and
-    *    - compacted instructions on Gen5.
+    *    - compacted instructions on Gfx5.
     */
    int shift = devinfo->is_g4x ? 1 : 0;
 
@@ -2390,7 +2390,7 @@ brw_compact_instructions(struct brw_codegen *p, int start_offset,
          } else if (devinfo->ver == 6) {
             assert(!brw_inst_cmpt_control(devinfo, insn));
 
-            /* Jump Count is in units of compacted instructions on Gen6. */
+            /* Jump Count is in units of compacted instructions on Gfx6. */
             int jump_count_compacted = brw_inst_gfx6_jump_count(devinfo, insn);
 
             int target_old_ip = this_old_ip + (jump_count_compacted / 2);

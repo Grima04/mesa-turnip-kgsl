@@ -183,7 +183,7 @@ isl_gfx9_choose_image_alignment_el(const struct isl_device *dev,
    }
 
    if (isl_format_is_compressed(info->format)) {
-      /* On Gen9, the meaning of RENDER_SURFACE_STATE's
+      /* On Gfx9, the meaning of RENDER_SURFACE_STATE's
        * SurfaceHorizontalAlignment and SurfaceVerticalAlignment changed for
        * compressed formats. They now indicate a multiple of the compression
        * block.  For example, if the compression mode is ETC2 then HALIGN_4

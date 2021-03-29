@@ -400,7 +400,7 @@ pinned_bo_high_bits(struct brw_bo *bo)
  * we can't apply this workaround.  Instead, we tell the kernel to move it
  * to the low 4GB regardless.
  *
- * This HW issue is gone on Gen11+.
+ * This HW issue is gone on Gfx11+.
  */
 static void
 vf_invalidate_for_vb_48bit_transitions(UNUSED struct brw_context *brw)
@@ -649,7 +649,7 @@ genX(emit_vertices)(struct brw_context *brw)
        * glEdgeFlagPointer, on the other hand, gives us an unnormalized
        * integer ubyte.  Just rewrite that to convert to a float.
        *
-       * Gen6+ passes edgeflag as sideband along with the vertex, instead
+       * Gfx6+ passes edgeflag as sideband along with the vertex, instead
        * of in the VUE.  We have to upload it sideband as the last vertex
        * element according to the B-Spec.
        */
@@ -3891,11 +3891,11 @@ genX(upload_ps)(struct brw_context *brw)
 #endif
 
       /* 3DSTATE_PS expects the number of threads per PSD, which is always 64
-       * for pre Gen11 and 128 for gfx11+; On gfx11+ If a programmed value is
+       * for pre Gfx11 and 128 for gfx11+; On gfx11+ If a programmed value is
        * k, it implies 2(k+1) threads. It implicitly scales for different GT
        * levels (which have some # of PSDs).
        *
-       * In Gen8 the format is U8-2 whereas in Gen9+ it is U9-1.
+       * In Gfx8 the format is U8-2 whereas in Gfx9+ it is U9-1.
        */
 #if GFX_VER >= 9
       ps.MaximumNumberofThreadsPerPSD = 64 - 1;
@@ -4284,7 +4284,7 @@ genX(upload_cs_state)(struct brw_context *brw)
    uint32_t *bind = brw_state_batch(brw, prog_data->binding_table.size_bytes,
                                     32, &stage_state->bind_bo_offset);
 
-   /* The MEDIA_VFE_STATE documentation for Gen8+ says:
+   /* The MEDIA_VFE_STATE documentation for Gfx8+ says:
     *
     * "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
     *  the only bits that are changed are scoreboard related: Scoreboard
@@ -4707,16 +4707,16 @@ genX(upload_ps_extra)(struct brw_context *brw)
        * the bit set finishes execution.
        *
        * It would be nice to disable it, but in some cases we can't because on
-       * Gen8+ it also has an influence on rasterization via the PS UAV-only
+       * Gfx8+ it also has an influence on rasterization via the PS UAV-only
        * signal (which could be set independently from the coherency mechanism
-       * in the 3DSTATE_WM command on Gen7), and because in some cases it will
+       * in the 3DSTATE_WM command on Gfx7), and because in some cases it will
        * determine whether the hardware skips execution of the fragment shader
        * or not via the ThreadDispatchEnable signal.  However if we know that
        * GFX8_PS_BLEND_HAS_WRITEABLE_RT is going to be set and
        * GFX8_PSX_PIXEL_SHADER_NO_RT_WRITE is not set it shouldn't make any
        * difference so we may just disable it here.
        *
-       * Gen8 hardware tries to compute ThreadDispatchEnable for us but doesn't
+       * Gfx8 hardware tries to compute ThreadDispatchEnable for us but doesn't
        * take into account KillPixels when no depth or stencil writes are
        * enabled.  In order for occlusion queries to work correctly with no
        * attachments, we need to force-enable here.
@@ -5142,11 +5142,11 @@ translate_wrap_mode(GLenum wrap, UNUSED bool using_nearest)
        * [0.0, 1.0] give you half edge texel value and half border
        * color.
        *
-       * Gen8+ supports this natively.
+       * Gfx8+ supports this natively.
        */
       return TCM_HALF_BORDER;
 #else
-      /* On Gen4-7.5, we clamp the coordinates in the fragment shader
+      /* On Gfx4-7.5, we clamp the coordinates in the fragment shader
        * and set clamp_border here, which gets the result desired.
        * We just use clamp(_to_edge) for nearest, because for nearest
        * clamping to 1.0 gives border color instead of the desired

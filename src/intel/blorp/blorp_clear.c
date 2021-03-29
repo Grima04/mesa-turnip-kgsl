@@ -808,7 +808,7 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
       /* We have to set the WM_HZ_OP::FullSurfaceDepthandStencilClear bit
        * whenever we clear an uninitialized HIZ buffer (as some drivers
        * currently do). However, this bit seems liable to clear 16x8 pixels in
-       * the ZCS on Gen12 - greater than the slice alignments for depth
+       * the ZCS on Gfx12 - greater than the slice alignments for depth
        * buffers.
        */
       assert(surf->image_alignment_el.w % 16 != 0 ||
@@ -818,7 +818,7 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
        * amd_vertex_shader_layer-layered-depth-texture-render piglit test.
        *
        * From the Compressed Depth Buffers section of the Bspec, under the
-       * Gen12 texture performant and ZCS columns:
+       * Gfx12 texture performant and ZCS columns:
        *
        *    Update with clear at either 16x8 or 8x4 granularity, based on
        *    fs_clr or otherwise.
@@ -828,7 +828,7 @@ blorp_can_hiz_clear_depth(const struct gen_device_info *devinfo,
        * when an initializing clear could hit another miplevel.
        *
        * NOTE: Because the CCS compresses the depth buffer and not a version
-       * of it that has been rearranged with different alignments (like Gen8+
+       * of it that has been rearranged with different alignments (like Gfx8+
        * HIZ), we have to make sure that the x0 and y0 are at least 16x8
        * aligned in the context of the entire surface.
        */
@@ -1193,7 +1193,7 @@ blorp_params_get_mcs_partial_resolve_kernel(struct blorp_batch *batch,
 
    nir_ssa_def *clear_color = nir_load_var(&b, v_color);
    if (blorp_key.indirect_clear_color && blorp->isl_dev->info->ver <= 8) {
-      /* Gen7-8 clear colors are stored as single 0/1 bits */
+      /* Gfx7-8 clear colors are stored as single 0/1 bits */
       clear_color = nir_vec4(&b, blorp_nir_bit(&b, clear_color, 31),
                                  blorp_nir_bit(&b, clear_color, 30),
                                  blorp_nir_bit(&b, clear_color, 29),

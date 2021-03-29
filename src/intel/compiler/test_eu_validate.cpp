@@ -167,7 +167,7 @@ TEST_P(validation_test, math_src1_null_reg)
       gfx6_math(p, g0, BRW_MATH_FUNCTION_POW, g0, null);
       EXPECT_FALSE(validate(p));
    } else {
-      /* Math instructions on Gen4/5 are actually SEND messages with payloads.
+      /* Math instructions on Gfx4/5 are actually SEND messages with payloads.
        * src1 is an immediate message descriptor set by gfx4_math.
        */
    }
@@ -178,7 +178,7 @@ TEST_P(validation_test, opcode46)
    /* opcode 46 is "push" on Gen 4 and 5
     *              "fork" on Gen 6
     *              reserved on Gen 7
-    *              "goto" on Gen8+
+    *              "goto" on Gfx8+
     */
    brw_next_insn(p, brw_opcode_decode(&devinfo, 46));
 
@@ -231,7 +231,7 @@ TEST_P(validation_test, invalid_exec_size_encoding)
 
 TEST_P(validation_test, invalid_file_encoding)
 {
-   /* Register file on Gen12 is only one bit */
+   /* Register file on Gfx12 is only one bit */
    if (devinfo.ver >= 12)
       return;
 
@@ -373,7 +373,7 @@ TEST_P(validation_test, invalid_type_encoding)
 
 TEST_P(validation_test, invalid_type_encoding_3src_a16)
 {
-   /* 3-src instructions in align16 mode only supported on Gen6-10 */
+   /* 3-src instructions in align16 mode only supported on Gfx6-10 */
    if (devinfo.ver < 6 || devinfo.ver > 10)
       return;
 
@@ -453,7 +453,7 @@ TEST_P(validation_test, invalid_type_encoding_3src_a16)
 
 TEST_P(validation_test, invalid_type_encoding_3src_a1)
 {
-   /* 3-src instructions in align1 mode only supported on Gen10+ */
+   /* 3-src instructions in align1 mode only supported on Gfx10+ */
    if (devinfo.ver < 10)
       return;
 
@@ -482,7 +482,7 @@ TEST_P(validation_test, invalid_type_encoding_3src_a1)
       { BRW_REGISTER_TYPE_UW, E(INT),   true  },
 
       /* There are no ternary instructions that can operate on B-type sources
-       * on Gen11-12. Src1/Src2 cannot be B-typed either.
+       * on Gfx11-12. Src1/Src2 cannot be B-typed either.
        */
       { BRW_REGISTER_TYPE_B,  E(INT),   false },
       { BRW_REGISTER_TYPE_UB, E(INT),   false },
@@ -551,11 +551,11 @@ TEST_P(validation_test, invalid_type_encoding_3src_a1)
 
 TEST_P(validation_test, 3src_inst_access_mode)
 {
-   /* 3-src instructions only supported on Gen6+ */
+   /* 3-src instructions only supported on Gfx6+ */
    if (devinfo.ver < 6)
       return;
 
-   /* No access mode bit on Gen12+ */
+   /* No access mode bit on Gfx12+ */
    if (devinfo.ver >= 12)
       return;
 
@@ -750,7 +750,7 @@ TEST_P(validation_test, dst_horizontal_stride_0)
 
    clear_instructions(p);
 
-   /* Align16 does not exist on Gen11+ */
+   /* Align16 does not exist on Gfx11+ */
    if (devinfo.ver >= 11)
       return;
 
@@ -801,7 +801,7 @@ TEST_P(validation_test, must_not_cross_grf_boundary_in_a_width)
 /* Destination Horizontal must be 1 in Align16 */
 TEST_P(validation_test, dst_hstride_on_align16_must_be_1)
 {
-   /* Align16 does not exist on Gen11+ */
+   /* Align16 does not exist on Gfx11+ */
    if (devinfo.ver >= 11)
       return;
 
@@ -823,7 +823,7 @@ TEST_P(validation_test, dst_hstride_on_align16_must_be_1)
 /* VertStride must be 0 or 4 in Align16 */
 TEST_P(validation_test, vstride_on_align16_must_be_0_or_4)
 {
-   /* Align16 does not exist on Gen11+ */
+   /* Align16 does not exist on Gfx11+ */
    if (devinfo.ver >= 11)
       return;
 
@@ -2078,7 +2078,7 @@ TEST_P(validation_test, vector_immediate_destination_alignment)
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
-      /* UV type is Gen6+ */
+      /* UV type is Gfx6+ */
       if (devinfo.ver < 6 &&
           move[i].src_type == BRW_REGISTER_TYPE_UV)
          continue;
@@ -2120,7 +2120,7 @@ TEST_P(validation_test, vector_immediate_destination_stride)
    };
 
    for (unsigned i = 0; i < ARRAY_SIZE(move); i++) {
-      /* UV type is Gen6+ */
+      /* UV type is Gfx6+ */
       if (devinfo.ver < 6 &&
           move[i].src_type == BRW_REGISTER_TYPE_UV)
          continue;
@@ -2271,11 +2271,11 @@ TEST_P(validation_test, qword_low_power_align1_regioning_restrictions)
 #undef INST
    };
 
-   /* These restrictions only apply to Gen8+ */
+   /* These restrictions only apply to Gfx8+ */
    if (devinfo.ver < 8)
       return;
 
-   /* NoDDChk/NoDDClr does not exist on Gen12+ */
+   /* NoDDChk/NoDDClr does not exist on Gfx12+ */
    if (devinfo.ver >= 12)
       return;
 
@@ -2407,7 +2407,7 @@ TEST_P(validation_test, qword_low_power_no_indirect_addressing)
 #undef INST
    };
 
-   /* These restrictions only apply to Gen8+ */
+   /* These restrictions only apply to Gfx8+ */
    if (devinfo.ver < 8)
       return;
 
@@ -2555,7 +2555,7 @@ TEST_P(validation_test, qword_low_power_no_64bit_arf)
 #undef INST
    };
 
-   /* These restrictions only apply to Gen8+ */
+   /* These restrictions only apply to Gfx8+ */
    if (devinfo.ver < 8)
       return;
 
@@ -2660,11 +2660,11 @@ TEST_P(validation_test, align16_64_bit_integer)
 #undef INST
    };
 
-   /* 64-bit integer types exist on Gen8+ */
+   /* 64-bit integer types exist on Gfx8+ */
    if (devinfo.ver < 8)
       return;
 
-   /* Align16 does not exist on Gen11+ */
+   /* Align16 does not exist on Gfx11+ */
    if (devinfo.ver >= 11)
       return;
 
@@ -2768,11 +2768,11 @@ TEST_P(validation_test, qword_low_power_no_depctrl)
 #undef INST
    };
 
-   /* These restrictions only apply to Gen8+ */
+   /* These restrictions only apply to Gfx8+ */
    if (devinfo.ver < 8)
       return;
 
-   /* NoDDChk/NoDDClr does not exist on Gen12+ */
+   /* NoDDChk/NoDDClr does not exist on Gfx12+ */
    if (devinfo.ver >= 12)
       return;
 

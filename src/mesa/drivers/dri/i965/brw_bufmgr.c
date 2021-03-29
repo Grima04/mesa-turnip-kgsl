@@ -1902,11 +1902,11 @@ brw_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
       } else if (devinfo->ver >= 10) {
          /* Softpin landed in 4.5, but GVT used an aliasing PPGTT until
           * kernel commit 6b3816d69628becb7ff35978aa0751798b4a940a in
-          * 4.14.  Gen10+ GVT hasn't landed yet, so it's not actually a
+          * 4.14.  Gfx10+ GVT hasn't landed yet, so it's not actually a
           * problem - but extending this requirement back to earlier gens
           * might actually mean requiring 4.14.
           */
-         fprintf(stderr, "i965 requires softpin (Kernel 4.5) on Gen10+.");
+         fprintf(stderr, "i965 requires softpin (Kernel 4.5) on Gfx10+.");
          close(bufmgr->fd);
          free(bufmgr);
          return NULL;

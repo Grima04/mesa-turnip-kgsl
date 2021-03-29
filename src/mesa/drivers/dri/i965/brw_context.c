@@ -557,7 +557,7 @@ brw_initialize_context_constants(struct brw_context *brw)
     */
    ctx->Const.MaxTransformFeedbackBuffers = BRW_MAX_SOL_BUFFERS;
 
-   /* On Gen6, in the worst case, we use up one binding table entry per
+   /* On Gfx6, in the worst case, we use up one binding table entry per
     * transform feedback component (see comments above the definition of
     * BRW_MAX_SOL_BINDINGS, in brw_context.h), so we need to advertise a value
     * for MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS equal to
@@ -675,7 +675,7 @@ brw_initialize_context_constants(struct brw_context *brw)
    ctx->Const.Program[MESA_SHADER_VERTEX].HighInt = ctx->Const.Program[MESA_SHADER_VERTEX].LowInt;
    ctx->Const.Program[MESA_SHADER_VERTEX].MediumInt = ctx->Const.Program[MESA_SHADER_VERTEX].LowInt;
 
-   /* Gen6 converts quads to polygon in beginning of 3D pipeline,
+   /* Gfx6 converts quads to polygon in beginning of 3D pipeline,
     * but we're not sure how it's actually done for vertex order,
     * that affect provoking vertex decision. Always use last vertex
     * convention for quad primitive which works as expected for now.

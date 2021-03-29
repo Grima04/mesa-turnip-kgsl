@@ -332,7 +332,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.ARB_ES3_2_compatibility = true;
 
       /* Currently only implemented in the scalar backend, so only enable for
-       * Gen8+.  Eventually Gen6+ could be supported.
+       * Gfx8+.  Eventually Gfx6+ could be supported.
        */
       ctx->Extensions.INTEL_shader_integer_functions2 = true;
    }
@@ -367,7 +367,7 @@ brw_init_extensions(struct gl_context *ctx)
        * ensure memory access ordering for all messages to the dataport from
        * all threads. Memory fence messages prior to SKL only provide memory
        * access ordering for messages from the same thread, so we can only
-       * support the feature from Gen9 onwards.
+       * support the feature from Gfx9 onwards.
        *
        */
 

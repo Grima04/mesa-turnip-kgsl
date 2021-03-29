@@ -1230,8 +1230,8 @@ brw_F32TO16(struct brw_codegen *p, struct brw_reg dst, struct brw_reg src)
    const struct gen_device_info *devinfo = p->devinfo;
    const bool align16 = brw_get_default_access_mode(p) == BRW_ALIGN_16;
    /* The F32TO16 instruction doesn't support 32-bit destination types in
-    * Align1 mode, and neither does the Gen8 implementation in terms of a
-    * converting MOV.  Gen7 does zero out the high 16 bits in Align16 mode as
+    * Align1 mode, and neither does the Gfx8 implementation in terms of a
+    * converting MOV.  Gfx7 does zero out the high 16 bits in Align16 mode as
     * an undocumented feature.
     */
    const bool needs_zero_fill = (dst.type == BRW_REGISTER_TYPE_UD &&
@@ -1520,7 +1520,7 @@ patch_IF_ELSE(struct brw_codegen *p,
     * platforms, we convert flow control instructions to conditional ADDs that
     * operate on IP (see brw_ENDIF).
     *
-    * However, on Gen6, writing to IP doesn't work in single program flow mode
+    * However, on Gfx6, writing to IP doesn't work in single program flow mode
     * (see the SandyBridge PRM, Volume 4 part 2, p79: "When SPF is ON, IP may
     * not be updated by non-flow control instructions.").  And on later
     * platforms, there is no significant benefit to converting control flow
@@ -1648,15 +1648,15 @@ brw_ENDIF(struct brw_codegen *p)
 
    /* In single program flow mode, we can express IF and ELSE instructions
     * equivalently as ADD instructions that operate on IP.  On platforms prior
-    * to Gen6, flow control instructions cause an implied thread switch, so
+    * to Gfx6, flow control instructions cause an implied thread switch, so
     * this is a significant savings.
     *
-    * However, on Gen6, writing to IP doesn't work in single program flow mode
+    * However, on Gfx6, writing to IP doesn't work in single program flow mode
     * (see the SandyBridge PRM, Volume 4 part 2, p79: "When SPF is ON, IP may
     * not be updated by non-flow control instructions.").  And on later
     * platforms, there is no significant benefit to converting control flow
-    * instructions to conditional ADDs.  So we only do this trick on Gen4 and
-    * Gen5.
+    * instructions to conditional ADDs.  So we only do this trick on Gfx4 and
+    * Gfx5.
     */
    if (devinfo->ver < 6 && p->single_program_flow)
       emit_endif = false;
@@ -1777,7 +1777,7 @@ brw_HALT(struct brw_codegen *p)
    insn = next_insn(p, BRW_OPCODE_HALT);
    brw_set_dest(p, insn, retype(brw_null_reg(), BRW_REGISTER_TYPE_D));
    if (devinfo->ver < 6) {
-      /* From the Gen4 PRM:
+      /* From the Gfx4 PRM:
        *
        *    "IP register must be put (for example, by the assembler) at <dst>
        *    and <src0> locations.
@@ -1975,7 +1975,7 @@ void brw_CMP(struct brw_codegen *p,
     * page says:
     *    "Any CMP instruction with a null destination must use a {switch}."
     *
-    * It also applies to other Gen7 platforms (IVB, BYT) even though it isn't
+    * It also applies to other Gfx7 platforms (IVB, BYT) even though it isn't
     * mentioned on their work-arounds pages.
     */
    if (devinfo->ver == 7) {
@@ -2090,7 +2090,7 @@ void gfx6_math(struct brw_codegen *p,
              (src1.type == BRW_REGISTER_TYPE_HF && devinfo->ver >= 9));
    }
 
-   /* Source modifiers are ignored for extended math instructions on Gen6. */
+   /* Source modifiers are ignored for extended math instructions on Gfx6. */
    if (devinfo->ver == 6) {
       assert(!src0.negate);
       assert(!src0.abs);
@@ -2788,7 +2788,7 @@ brw_send_indirect_split_message(struct brw_codegen *p,
 
       if (ex_desc.file == BRW_IMMEDIATE_VALUE) {
          /* ex_desc bits 15:12 don't exist in the instruction encoding prior
-          * to Gen12, so we may have fallen back to an indirect extended
+          * to Gfx12, so we may have fallen back to an indirect extended
           * descriptor.
           */
          brw_MOV(p, addr, brw_imm_ud(ex_desc.ud | imm_part));
@@ -2976,7 +2976,7 @@ brw_set_uip_jip(struct brw_codegen *p, int start_offset)
       case BRW_OPCODE_BREAK:
          assert(block_end_offset != 0);
          brw_inst_set_jip(devinfo, insn, (block_end_offset - offset) / scale);
-	 /* Gen7 UIP points to WHILE; Gen6 points just after it */
+	 /* Gfx7 UIP points to WHILE; Gfx6 points just after it */
          brw_inst_set_uip(devinfo, insn,
 	    (brw_find_loop_end(p, offset) - offset +
              (devinfo->ver == 6 ? 16 : 0)) / scale);
@@ -3057,7 +3057,7 @@ void brw_ff_sync(struct brw_codegen *p,
 }
 
 /**
- * Emit the SEND instruction necessary to generate stream output data on Gen6
+ * Emit the SEND instruction necessary to generate stream output data on Gfx6
  * (for transform feedback).
  *
  * If send_commit_msg is true, this is the last piece of stream output data
@@ -3298,7 +3298,7 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
 
    brw_push_insn_state(p);
 
-   /* The flag register is only used on Gen7 in align1 mode, so avoid setting
+   /* The flag register is only used on Gfx7 in align1 mode, so avoid setting
     * unnecessary bits in the instruction words, get the information we need
     * and reset the default flag register. This allows more instructions to be
     * compacted.
@@ -3310,7 +3310,7 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
       brw_set_default_mask_control(p, BRW_MASK_DISABLE);
 
       if (devinfo->ver >= 8) {
-         /* Getting the first active channel index is easy on Gen8: Just find
+         /* Getting the first active channel index is easy on Gfx8: Just find
           * the first bit set in the execution mask.  The register exists on
           * HSW already but it reads back as all ones when the current
           * instruction has execution masking disabled, so it's kind of
@@ -3350,7 +3350,7 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
           * mask in f1.0.  We could use a single 32-wide move here if it
           * weren't because of the hardware bug that causes channel enables to
           * be applied incorrectly to the second half of 32-wide instructions
-          * on Gen7.
+          * on Gfx7.
           */
          const unsigned lower_size = MIN2(16, exec_size);
          for (unsigned i = 0; i < exec_size / lower_size; i++) {
@@ -3379,7 +3379,7 @@ brw_find_live_channel(struct brw_codegen *p, struct brw_reg dst,
           mask.file == BRW_IMMEDIATE_VALUE && mask.ud == 0xffffffff) {
          /* In SIMD4x2 mode the first active channel index is just the
           * negation of the first bit of the mask register.  Note that ce0
-          * doesn't take into account the dispatch mask, so the Gen7 path
+          * doesn't take into account the dispatch mask, so the Gfx7 path
           * should be used instead unless you have the guarantee that the
           * dispatch mask is tightly packed (i.e. it has the form '2^n - 1'
           * for some n).
@@ -3650,7 +3650,7 @@ brw_float_controls_mode(struct brw_codegen *p,
     *   thread control field to ‘switch’ for an instruction that uses
     *   control register as an explicit operand."
     *
-    * On Gen12+ this is implemented in terms of SWSB annotations instead.
+    * On Gfx12+ this is implemented in terms of SWSB annotations instead.
     */
    brw_set_default_swsb(p, tgl_swsb_regdist(1));
 

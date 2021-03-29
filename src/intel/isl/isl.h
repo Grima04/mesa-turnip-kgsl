@@ -478,7 +478,7 @@ enum isl_tiling {
    ISL_TILING_Ys, /**< Standard 64K tiling. The 's' means "sixty-four". */
    ISL_TILING_HIZ, /**< Tiling format for HiZ surfaces */
    ISL_TILING_CCS, /**< Tiling format for CCS surfaces */
-   ISL_TILING_GEN12_CCS, /**< Tiling format for Gen12 CCS surfaces */
+   ISL_TILING_GEN12_CCS, /**< Tiling format for Gfx12 CCS surfaces */
 };
 
 /**
@@ -619,7 +619,7 @@ enum isl_aux_usage {
    ISL_AUX_USAGE_CCS_E,
 
    /** The auxiliary surface provides full lossless color compression on
-    *  Gen12.
+    *  Gfx12.
     *
     * @invariant isl_surf::samples == 1
     */
@@ -660,7 +660,7 @@ enum isl_aux_usage {
    /** The auxiliary surface is an MCS and CCS is also enabled
     *
     * In this mode, we have fused MCS+CCS compression where the MCS is used
-    * for fast-clears and "identical samples" compression just like on Gen7-11
+    * for fast-clears and "identical samples" compression just like on Gfx7-11
     * but each plane is then CCS compressed.
     *
     * @invariant isl_surf::samples > 1

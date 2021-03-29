@@ -478,7 +478,7 @@ blorp_emit_vertex_elements(struct blorp_batch *batch,
       .SourceElementOffset = 0,
       .Component0Control = VFCOMP_STORE_SRC,
 
-      /* From Gen8 onwards hardware is no more instructed to overwrite
+      /* From Gfx8 onwards hardware is no more instructed to overwrite
        * components using an element specifier. Instead one has separate
        * 3DSTATE_VF_SGVS (System Generated Value Setup) state packet for it.
        */
@@ -822,7 +822,7 @@ blorp_emit_ps_config(struct blorp_batch *batch,
          ps.BindingTableEntryCount = 1;
       }
 
-      /* SAMPLER_STATE prefetching is broken on Gen11 - WA_1606682166 */
+      /* SAMPLER_STATE prefetching is broken on Gfx11 - WA_1606682166 */
       if (GFX_VER == 11)
          ps.SamplerCount = 0;
 
@@ -861,11 +861,11 @@ blorp_emit_ps_config(struct blorp_batch *batch,
       }
 
       /* 3DSTATE_PS expects the number of threads per PSD, which is always 64
-       * for pre Gen11 and 128 for gfx11+; On gfx11+ If a programmed value is
+       * for pre Gfx11 and 128 for gfx11+; On gfx11+ If a programmed value is
        * k, it implies 2(k+1) threads. It implicitly scales for different GT
        * levels (which have some # of PSDs).
        *
-       * In Gen8 the format is U8-2 whereas in Gen9+ it is U9-1.
+       * In Gfx8 the format is U8-2 whereas in Gfx9+ it is U9-1.
        */
       if (GFX_VER >= 9)
          ps.MaximumNumberofThreadsPerPSD = 64 - 1;
@@ -983,7 +983,7 @@ blorp_emit_ps_config(struct blorp_batch *batch,
 
          ps.AttributeEnable = prog_data->num_varying_inputs > 0;
       } else {
-         /* Gen7 hardware gets angry if we don't enable at least one dispatch
+         /* Gfx7 hardware gets angry if we don't enable at least one dispatch
           * mode, so just enable 16-pixel dispatch if we don't have a program.
           */
          ps._16PixelDispatchEnable = true;
@@ -1700,7 +1700,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
 #if GFX_VER >= 12
    /* GEN:BUG:1408224581
     *
-    * Workaround: Gen12LP Astep only An additional pipe control with
+    * Workaround: Gfx12LP Astep only An additional pipe control with
     * post-sync = store dword operation would be required.( w/a is to
     * have an additional pipe control after the stencil state whenever
     * the surface state bits of this state is changing).

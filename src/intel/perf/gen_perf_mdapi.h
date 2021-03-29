@@ -124,7 +124,7 @@ struct mdapi_pipeline_metrics {
    uint64_t HSInvocations;
    uint64_t DSInvocations;
    uint64_t CSInvocations;
-   uint64_t Reserved1; /* Gen10+ */
+   uint64_t Reserved1; /* Gfx10+ */
 };
 
 int gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,

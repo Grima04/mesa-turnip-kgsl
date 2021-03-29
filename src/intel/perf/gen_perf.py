@@ -185,7 +185,7 @@ hw_vars["$EuSlicesTotalCount"] = "perf->sys_vars.n_eu_slices"
 hw_vars["$EuSubslicesTotalCount"] = "perf->sys_vars.n_eu_sub_slices"
 hw_vars["$EuThreadsCount"] = "perf->sys_vars.eu_threads_count"
 hw_vars["$SliceMask"] = "perf->sys_vars.slice_mask"
-# subslice_mask is interchangeable with subslice/dual-subslice since Gen12+
+# subslice_mask is interchangeable with subslice/dual-subslice since Gfx12+
 # only has dual subslices which can be assimilated with 16EUs subslices.
 hw_vars["$SubsliceMask"] = "perf->sys_vars.subslice_mask"
 hw_vars["$DualSubsliceMask"] = "perf->sys_vars.subslice_mask"

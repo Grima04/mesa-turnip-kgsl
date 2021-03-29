@@ -917,8 +917,8 @@ brw_flag_subreg(unsigned subreg)
 }
 
 /**
- * Return the mask register present in Gen4-5, or the related register present
- * in Gen7.5 and later hardware referred to as "channel enable" register in
+ * Return the mask register present in Gfx4-5, or the related register present
+ * in Gfx7.5 and later hardware referred to as "channel enable" register in
  * the documentation.
  */
 static inline struct brw_reg

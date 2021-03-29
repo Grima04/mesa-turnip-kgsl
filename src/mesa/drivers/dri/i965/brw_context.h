@@ -342,7 +342,7 @@ struct brw_ff_gs_prog_data {
    GLuint total_grf;
 
    /**
-    * Gen6 transform feedback: Amount by which the streaming vertex buffer
+    * Gfx6 transform feedback: Amount by which the streaming vertex buffer
     * indices should be incremented each time the GS is invoked.
     */
    unsigned svbi_postincrement_value;
@@ -640,7 +640,7 @@ struct brw_stage_state
    /** Offset in the program cache to the program */
    uint32_t prog_offset;
 
-   /** Offset in the batchbuffer to Gen4-5 pipelined state (VS/WM/GS_STATE). */
+   /** Offset in the batchbuffer to Gfx4-5 pipelined state (VS/WM/GS_STATE). */
    uint32_t state_offset;
 
    struct brw_bo *push_const_bo; /* NULL if using the batchbuffer */
@@ -1159,7 +1159,7 @@ struct brw_context
 
       /**
        * Buffer object used in place of multisampled null render targets on
-       * Gen6.  See brw_emit_null_surface_state().
+       * Gfx6.  See brw_emit_null_surface_state().
        */
       struct brw_bo *multisampled_null_render_target_bo;
 

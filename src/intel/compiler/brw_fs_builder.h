@@ -703,7 +703,7 @@ namespace brw {
       }
 
       /**
-       * Gen4 predicated IF.
+       * Gfx4 predicated IF.
        */
       instruction *
       IF(brw_predicate predicate) const
@@ -849,10 +849,10 @@ namespace brw {
           * expanding that result out, but we would need to be careful with
           * masking.
           *
-          * Gen6 hardware ignores source modifiers (negate and abs) on math
+          * Gfx6 hardware ignores source modifiers (negate and abs) on math
           * instructions, so we also move to a temp to set those up.
           *
-          * Gen7 relaxes most of the above restrictions, but still can't use IMM
+          * Gfx7 relaxes most of the above restrictions, but still can't use IMM
           * operands to math
           */
          if ((shader->devinfo->ver == 6 &&

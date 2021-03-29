@@ -488,7 +488,7 @@ struct anv_bo {
 
    /** Size of the implicit CCS range at the end of the buffer
     *
-    * On Gen12, CCS data is always a direct 1/256 scale-down.  A single 64K
+    * On Gfx12, CCS data is always a direct 1/256 scale-down.  A single 64K
     * page of main surface data maps to a 256B chunk of CCS data and that
     * mapping is provided on TGL-LP by the AUX table which maps virtual memory
     * addresses in the main surface to virtual memory addresses for CCS data.
@@ -496,7 +496,7 @@ struct anv_bo {
     * Because we can't change these maps around easily and because Vulkan
     * allows two VkImages to be bound to overlapping memory regions (as long
     * as the app is careful), it's not feasible to make this mapping part of
-    * the image.  (On Gen11 and earlier, the mapping was provided via
+    * the image.  (On Gfx11 and earlier, the mapping was provided via
     * RENDER_SURFACE_STATE so each image had its own main -> CCS mapping.)
     * Instead, we attach the CCS data directly to the buffer object and setup
     * the AUX table mapping at BO creation time.
@@ -940,7 +940,7 @@ struct anv_physical_device {
     /** True if we can read the GPU timestamp register
      *
      * When running in a virtual context, the timestamp register is unreadable
-     * on Gen12+.
+     * on Gfx12+.
      */
     bool                                        has_reg_timestamp;
 
@@ -2351,7 +2351,7 @@ enum anv_pipe_bits {
     */
    ANV_PIPE_RENDER_TARGET_BUFFER_WRITES      = (1 << 23),
 
-   /* This bit does not exist directly in PIPE_CONTROL. It means that Gen12
+   /* This bit does not exist directly in PIPE_CONTROL. It means that Gfx12
     * AUX-TT data has changed and we need to invalidate AUX-TT data.  This is
     * done by writing the AUX-TT register.
     */
@@ -2359,7 +2359,7 @@ enum anv_pipe_bits {
 
    /* This bit does not exist directly in PIPE_CONTROL. It means that a
     * PIPE_CONTROL with a post-sync operation will follow. This is used to
-    * implement a workaround for Gen9.
+    * implement a workaround for Gfx9.
     */
    ANV_PIPE_POST_SYNC_BIT                    = (1 << 25),
 };
@@ -2712,7 +2712,7 @@ struct anv_attachment_state {
 
 /** State tracking for vertex buffer flushes
  *
- * On Gen8-9, the VF cache only considers the bottom 32 bits of memory
+ * On Gfx8-9, the VF cache only considers the bottom 32 bits of memory
  * addresses.  If you happen to have two vertex buffers which get placed
  * exactly 4 GiB apart and use them in back-to-back draw calls, you can get
  * collisions.  In order to solve this problem, we track vertex address ranges
@@ -3935,7 +3935,7 @@ anv_can_sample_with_hiz(const struct gen_device_info * const devinfo,
    if (!(image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
       return false;
 
-   /* For Gen8-11, there are some restrictions around sampling from HiZ.
+   /* For Gfx8-11, there are some restrictions around sampling from HiZ.
     * The Skylake PRM docs for RENDER_SURFACE_STATE::AuxiliarySurfaceMode
     * say:
     *
@@ -4254,7 +4254,7 @@ anv_clear_color_from_att_state(union isl_color_value *clear_color,
 
 /* Haswell border color is a bit of a disaster.  Float and unorm formats use a
  * straightforward 32-bit float color in the first 64 bytes.  Instead of using
- * a nice float/integer union like Gen8+, Haswell specifies the integer border
+ * a nice float/integer union like Gfx8+, Haswell specifies the integer border
  * color as a separate entry /after/ the float color.  The layout of this entry
  * also depends on the format's bpp (with extra hacks for RG32), and overlaps.
  *

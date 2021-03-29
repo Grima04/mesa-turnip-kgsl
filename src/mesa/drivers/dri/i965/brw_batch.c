@@ -1098,7 +1098,7 @@ load_sized_register_mem(struct brw_context *brw,
    const struct gen_device_info *devinfo = &brw->screen->devinfo;
    int i;
 
-   /* MI_LOAD_REGISTER_MEM only exists on Gen7+. */
+   /* MI_LOAD_REGISTER_MEM only exists on Gfx7+. */
    assert(devinfo->ver >= 7);
 
    if (devinfo->ver >= 8) {

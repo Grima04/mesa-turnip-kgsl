@@ -490,7 +490,7 @@ miptree_create(struct brw_context *brw,
    mesa_format mt_fmt = format;
    if (!_mesa_is_format_color_format(format) && devinfo->ver >= 6) {
       /* Fix up the Z miptree format for how we're splitting out separate
-       * stencil. Gen7 expects there to be no stencil bits in its depth buffer.
+       * stencil. Gfx7 expects there to be no stencil bits in its depth buffer.
        */
       mt_fmt = brw_depth_format_for_depthstencil_format(format);
    }
@@ -1328,7 +1328,7 @@ brw_miptree_copy_slice(struct brw_context *brw,
       width = ALIGN_NPOT(width, i) / i;
    }
 
-   /* Gen4-5 doesn't support separate stencil */
+   /* Gfx4-5 doesn't support separate stencil */
    assert(!src_mt->stencil_mt);
 
    uint32_t dst_x, dst_y, src_x, src_y;
@@ -1737,7 +1737,7 @@ brw_miptree_check_color_resolve(const struct brw_context *brw,
    if (!mt->aux_buf)
       return;
 
-   /* Fast color clear is supported for mipmapped surfaces only on Gen8+. */
+   /* Fast color clear is supported for mipmapped surfaces only on Gfx8+. */
    assert(brw->screen->devinfo.ver >= 8 ||
           (level == 0 && mt->first_level == 0 && mt->last_level == 0));
 
@@ -1745,7 +1745,7 @@ brw_miptree_check_color_resolve(const struct brw_context *brw,
    if (mt->surf.samples > 1)
       return;
 
-   /* Fast color clear is supported for non-msaa arrays only on Gen8+. */
+   /* Fast color clear is supported for non-msaa arrays only on Gfx8+. */
    assert(brw->screen->devinfo.ver >= 8 ||
           (layer == 0 &&
            mt->surf.logical_level0_px.depth == 1 &&
@@ -1874,7 +1874,7 @@ brw_miptree_set_aux_state(struct brw_context *brw,
    }
 }
 
-/* On Gen9 color buffers may be compressed by the hardware (lossless
+/* On Gfx9 color buffers may be compressed by the hardware (lossless
  * compression). There are, however, format restrictions and care needs to be
  * taken that the sampler engine is capable for re-interpreting a buffer with
  * format different the buffer was originally written with.

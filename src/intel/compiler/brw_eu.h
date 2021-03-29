@@ -60,7 +60,7 @@ struct brw_insn_state {
    /* One of BRW_MASK_* */
    unsigned mask_control:1;
 
-   /* Scheduling info for Gen12+ */
+   /* Scheduling info for Gfx12+ */
    struct tgl_swsb swsb;
 
    bool saturate:1;
@@ -1241,7 +1241,7 @@ brw_jump_scale(const struct gen_device_info *devinfo)
    if (devinfo->ver >= 5)
       return 2;
 
-   /* Gen4 simply uses the number of 128-bit instructions. */
+   /* Gfx4 simply uses the number of 128-bit instructions. */
    return 1;
 }
 

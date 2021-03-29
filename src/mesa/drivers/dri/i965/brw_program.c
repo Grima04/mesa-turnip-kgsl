@@ -127,7 +127,7 @@ brw_create_nir(struct brw_context *brw,
    brw_preprocess_nir(brw->screen->compiler, nir, ctx->SoftFP64);
 
    if (stage == MESA_SHADER_TESS_CTRL) {
-      /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gen8+. */
+      /* Lower gl_PatchVerticesIn from a sys. value to a uniform on Gfx8+. */
       static const gl_state_index16 tokens[STATE_LENGTH] =
          { STATE_TCS_PATCH_VERTICES_IN };
       nir_lower_patch_vertices(nir, 0, devinfo->ver >= 8 ? tokens : NULL);

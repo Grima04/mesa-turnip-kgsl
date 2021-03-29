@@ -244,7 +244,7 @@ brw_blorp_to_isl_format(struct brw_context *brw, mesa_format format,
 }
 
 /**
- * Convert an swizzle enumeration (i.e. SWIZZLE_X) to one of the Gen7.5+
+ * Convert an swizzle enumeration (i.e. SWIZZLE_X) to one of the Gfx7.5+
  * "Shader Channel Select" enumerations (i.e. HSW_SCS_RED).  The mappings are
  *
  * SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W, SWIZZLE_ZERO, SWIZZLE_ONE
@@ -263,7 +263,7 @@ swizzle_to_scs(GLenum swizzle)
 }
 
 /**
- * Note: if the src (or dst) is a 2D multisample array texture on Gen7+ using
+ * Note: if the src (or dst) is a 2D multisample array texture on Gfx7+ using
  * INTEL_MSAA_LAYOUT_UMS or INTEL_MSAA_LAYOUT_CMS, src_layer (dst_layer) is
  * the physical layer holding sample 0.  So, for example, if
  * src_mt->surf.samples == 4, then logical layer n corresponds to src_layer ==
@@ -1610,7 +1610,7 @@ brw_hiz_exec(struct brw_context *brw, struct brw_mipmap_tree *mt,
        *   enabled must be issued before the rectangle primitive used for
        *   the depth buffer clear operation.
        *
-       * Same applies for Gen8 and Gen9.
+       * Same applies for Gfx8 and Gfx9.
        *
        * In addition, from the Ivybridge PRM, volume 2, 1.10.4.1
        * PIPE_CONTROL, Depth Cache Flush Enable:

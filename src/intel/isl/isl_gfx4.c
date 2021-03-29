@@ -30,7 +30,7 @@ isl_gfx4_choose_msaa_layout(const struct isl_device *dev,
                             enum isl_tiling tiling,
                             enum isl_msaa_layout *msaa_layout)
 {
-   /* Gen4 and Gen5 do not support MSAA */
+   /* Gfx4 and Gfx5 do not support MSAA */
    assert(info->samples >= 1);
 
    *msaa_layout = ISL_MSAA_LAYOUT_NONE;
@@ -42,7 +42,7 @@ isl_gfx4_filter_tiling(const struct isl_device *dev,
                        const struct isl_surf_init_info *restrict info,
                        isl_tiling_flags_t *flags)
 {
-   /* Gen4-5 only support linear, X, and Y-tiling. */
+   /* Gfx4-5 only support linear, X, and Y-tiling. */
    *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT | ISL_TILING_Y0_BIT);
 
    if (isl_surf_usage_is_depth_or_stencil(info->usage)) {

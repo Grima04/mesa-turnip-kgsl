@@ -748,8 +748,8 @@
     <field name="Null Probing Enable" start="114" end="114" type="uint"/>
     <field name="Standard Tiling Mode Extensions" start="115" end="115" type="uint"/>
     <field name="Tile Address Mapping Mode" start="116" end="116" type="uint">
-      <value name="Gen9" value="0"/>
-      <value name="Gen10+" value="1"/>
+      <value name="Gfx9" value="0"/>
+      <value name="Gfx10+" value="1"/>
     </field>
     <field name="Depth" start="117" end="127" type="uint"/>
     <field name="Multisample Position Palette Index" start="128" end="130" type="uint"/>

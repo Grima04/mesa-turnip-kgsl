@@ -1128,7 +1128,7 @@ mi_udiv32_imm(struct mi_builder *b, struct mi_value N, uint32_t D)
 
 #endif /* MI_MATH section */
 
-/* This assumes addresses of strictly more than 32bits (aka. Gen8+). */
+/* This assumes addresses of strictly more than 32bits (aka. Gfx8+). */
 #if MI_BUILDER_CAN_WRITE_BATCH
 
 struct mi_address_token {
@@ -1169,7 +1169,7 @@ mi_self_mod_barrier(struct mi_builder *b)
    mi_builder_emit(b, GENX(PIPE_CONTROL), pc) {
       pc.CommandStreamerStallEnable = true;
    }
-   /* Documentation says Gen11+ should be able to invalidate the command cache
+   /* Documentation says Gfx11+ should be able to invalidate the command cache
     * but experiment show it doesn't work properly, so for now just get over
     * the CS prefetch.
     */

@@ -137,7 +137,7 @@ image_address(nir_builder *b, const struct gen_device_info *devinfo,
     * by passing in the miplevel as tile.z for 3-D textures and 0 in
     * tile.z for 2-D array textures.
     *
-    * See Volume 1 Part 1 of the Gen7 PRM, sections 6.18.4.7 "Surface
+    * See Volume 1 Part 1 of the Gfx7 PRM, sections 6.18.4.7 "Surface
     * Arrays" and 6.18.6 "3D Surfaces" for a more extensive discussion
     * of the hardware 3D texture and 2D array layouts.
     */
@@ -410,7 +410,7 @@ lower_image_load_instr(nir_builder *b,
       nir_ssa_def *do_load = image_coord_is_in_bounds(b, deref, coord);
       if (devinfo->ver == 7 && !devinfo->is_haswell) {
          /* Check whether the first stride component (i.e. the Bpp value)
-          * is greater than four, what on Gen7 indicates that a surface of
+          * is greater than four, what on Gfx7 indicates that a surface of
           * type RAW has been bound for untyped access.  Reading or writing
           * to a surface of type other than RAW using untyped surface
           * messages causes a hang on IVB and VLV.
@@ -558,7 +558,7 @@ lower_image_store_instr(nir_builder *b,
       nir_ssa_def *do_store = image_coord_is_in_bounds(b, deref, coord);
       if (devinfo->ver == 7 && !devinfo->is_haswell) {
          /* Check whether the first stride component (i.e. the Bpp value)
-          * is greater than four, what on Gen7 indicates that a surface of
+          * is greater than four, what on Gfx7 indicates that a surface of
           * type RAW has been bound for untyped access.  Reading or writing
           * to a surface of type other than RAW using untyped surface
           * messages causes a hang on IVB and VLV.

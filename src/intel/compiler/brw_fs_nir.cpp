@@ -206,7 +206,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
             const fs_builder abld =
                v->bld.annotate("gl_HelperInvocation", NULL);
 
-            /* On Gen6+ (gl_HelperInvocation is only exposed on Gen7+) the
+            /* On Gfx6+ (gl_HelperInvocation is only exposed on Gfx7+) the
              * pixel mask is in g1.7 of the thread payload.
              *
              * We move the per-channel pixel enable bit to the low bit of each
@@ -232,7 +232,7 @@ emit_system_values_block(nir_block *block, fs_visitor *v)
              * that is the opposite of gl_HelperInvocation so we need to invert
              * the mask.
              *
-             * The negate source-modifier bit of logical instructions on Gen8+
+             * The negate source-modifier bit of logical instructions on Gfx8+
              * performs 1's complement negation, so we can use that instead of
              * a NOT instruction.
              */
@@ -1251,7 +1251,7 @@ fs_visitor::nir_emit_alu(const fs_builder &bld, nir_alu_instr *instr,
 
       assert(nir_dest_bit_size(instr->dest.dest) == 32);
 
-      /* Before Gen7, the order of the 32-bit source and the 16-bit source was
+      /* Before Gfx7, the order of the 32-bit source and the 16-bit source was
        * swapped.  The extension isn't enabled on those platforms, so don't
        * pretend to support the differences.
        */
@@ -4321,7 +4321,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
           slm_fence && workgroup_size() <= dispatch_width)
          slm_fence = false;
 
-      /* Prior to Gen11, there's only L3 fence, so emit that instead. */
+      /* Prior to Gfx11, there's only L3 fence, so emit that instead. */
       if (slm_fence && devinfo->ver < 11) {
          slm_fence = false;
          l3_fence = true;
@@ -4333,7 +4333,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
       const bool needs_render_fence =
          devinfo->ver == 7 && !devinfo->is_haswell;
 
-      /* Be conservative in Gen11+ and always stall in a fence.  Since there
+      /* Be conservative in Gfx11+ and always stall in a fence.  Since there
        * are two different fences, and shader might want to synchronize
        * between them.
        *
@@ -6044,7 +6044,7 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
       nir_dest[0] = offset(dst, bld, 3);
    } else if (instr->op == nir_texop_txs &&
               dest_size >= 3 && devinfo->ver < 7) {
-      /* Gen4-6 return 0 instead of 1 for single layer surfaces. */
+      /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
       fs_reg depth = offset(dst, bld, 2);
       nir_dest[2] = vgrf(glsl_type::int_type);
       bld.emit_minmax(nir_dest[2], depth, brw_imm_d(1), BRW_CONDITIONAL_GE);

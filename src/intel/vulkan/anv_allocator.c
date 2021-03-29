@@ -1450,9 +1450,9 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
     * According to the other driver team, this applies to compute shaders
     * as well.  This is not currently documented at all.
     *
-    * This hack is no longer necessary on Gen11+.
+    * This hack is no longer necessary on Gfx11+.
     *
-    * For, Gen11+, scratch space allocation is based on the number of threads
+    * For, Gfx11+, scratch space allocation is based on the number of threads
     * in the base configuration.
     */
    if (devinfo->ver == 12)
@@ -1610,7 +1610,7 @@ static uint32_t
 anv_device_get_bo_align(struct anv_device *device,
                         enum anv_bo_alloc_flags alloc_flags)
 {
-   /* Gen12 CCS surface addresses need to be 64K aligned. */
+   /* Gfx12 CCS surface addresses need to be 64K aligned. */
    if (device->info.ver >= 12 && (alloc_flags & ANV_BO_ALLOC_IMPLICIT_CCS))
       return 64 * 1024;
 

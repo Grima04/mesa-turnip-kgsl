@@ -1425,7 +1425,7 @@ iris_bo_import_dmabuf(struct iris_bufmgr *bufmgr, int prime_fd,
    bo->external = true;
    bo->kflags = EXEC_OBJECT_SUPPORTS_48B_ADDRESS | EXEC_OBJECT_PINNED;
 
-   /* From the Bspec, Memory Compression - Gen12:
+   /* From the Bspec, Memory Compression - Gfx12:
     *
     *    The base address for the surface has to be 64K page aligned and the
     *    surface is expected to be padded in the virtual domain to be 4 4K

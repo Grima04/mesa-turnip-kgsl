@@ -23,7 +23,7 @@
 
 /** @file brw_fs_scoreboard.cpp
  *
- * Gen12+ hardware lacks the register scoreboard logic that used to guarantee
+ * Gfx12+ hardware lacks the register scoreboard logic that used to guarantee
  * data coherency between register reads and writes in previous generations.
  * This lowering pass runs after register allocation in order to make up for
  * it.

@@ -240,7 +240,7 @@ const struct brw_tracked_state brw_gs_binding_table = {
  */
 
 /**
- * (Gen4-5) Upload the binding table pointers for all shader stages.
+ * (Gfx4-5) Upload the binding table pointers for all shader stages.
  *
  * The binding table pointers are relative to the surface state base address,
  * which points at the batchbuffer containing the streamed batch state.

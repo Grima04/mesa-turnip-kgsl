@@ -129,7 +129,7 @@ generate_tex(struct brw_codegen *p,
 	 break;
       case SHADER_OPCODE_TXD:
          if (inst->shadow_compare) {
-            /* Gen7.5+.  Otherwise, lowered by brw_lower_texture_gradients(). */
+            /* Gfx7.5+.  Otherwise, lowered by brw_lower_texture_gradients(). */
             assert(devinfo->is_haswell);
             msg_type = HSW_SAMPLER_MESSAGE_SAMPLE_DERIV_COMPARE;
          } else {
@@ -1069,7 +1069,7 @@ generate_tcs_create_barrier_header(struct brw_codegen *p,
    /* Zero the message header */
    brw_MOV(p, retype(dst, BRW_REGISTER_TYPE_UD), brw_imm_ud(0u));
 
-   /* Copy "Barrier ID" from r0.2, bits 16:13 (Gen7.5+) or 15:12 (Gen7) */
+   /* Copy "Barrier ID" from r0.2, bits 16:13 (Gfx7.5+) or 15:12 (Gfx7) */
    brw_AND(p, m0_2,
            retype(brw_vec1_grf(0, 2), BRW_REGISTER_TYPE_UD),
            brw_imm_ud(ivb ? INTEL_MASK(15, 12) : INTEL_MASK(16, 13)));

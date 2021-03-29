@@ -170,7 +170,7 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
        *
        * This seems like nonsense.  An Ivybridge workaround requires us to
        * emit a PIPE_CONTROL with a depth stall and write immediate post-sync
-       * operation.  Gen8+ requires us to emit depth stalls and depth cache
+       * operation.  Gfx8+ requires us to emit depth stalls and depth cache
        * flushes together.  So, it's hard to imagine this means anything other
        * than "we originally intended this to be used for PS_DEPTH_COUNT".
        *
@@ -209,7 +209,7 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
        * We assert that the caller doesn't do this combination, to try and
        * prevent mistakes.  It shouldn't hurt the GPU, though.
        *
-       * We skip this check on Gen11+ as the "Stall and Pixel Scoreboard"
+       * We skip this check on Gfx11+ as the "Stall and Pixel Scoreboard"
        * and "Render Target Flush" combo is explicitly required for BTI
        * update workarounds.
        */

@@ -1213,7 +1213,7 @@ oa_report_ctx_id_valid(const struct gen_device_info *devinfo,
  *
  * These periodic snapshots help to ensure we handle counter overflow
  * correctly by being frequent enough to ensure we don't miss multiple
- * overflows of a counter between snapshots. For Gen8+ the i915 perf
+ * overflows of a counter between snapshots. For Gfx8+ the i915 perf
  * snapshots provide the extra context-switch reports that let us
  * subtract out the progress of counters associated with other
  * contexts running on the system.
@@ -1244,7 +1244,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
       goto error;
    }
 
-   /* On Gen12+ OA reports are sourced from per context counters, so we don't
+   /* On Gfx12+ OA reports are sourced from per context counters, so we don't
     * ever have to look at the global OA buffer. Yey \o/
     */
    if (perf_ctx->devinfo->ver >= 12) {
@@ -1300,7 +1300,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
                goto end;
             }
 
-            /* For Gen8+ since the counters continue while other
+            /* For Gfx8+ since the counters continue while other
              * contexts are running we need to discount any unrelated
              * deltas. The hardware automatically generates a report
              * on context switch which gives us a new reference point

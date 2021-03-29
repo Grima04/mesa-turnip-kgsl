@@ -150,7 +150,7 @@ disasm_annotate(struct disasm_info *disasm,
       group->block_start = cfg->blocks[disasm->cur_block];
    }
 
-   /* There is no hardware DO instruction on Gen6+, so since DO always
+   /* There is no hardware DO instruction on Gfx6+, so since DO always
     * starts a basic block, we need to set the .block_start of the next
     * instruction's annotation with a pointer to the bblock started by
     * the DO.

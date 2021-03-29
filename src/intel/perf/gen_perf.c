@@ -383,8 +383,8 @@ compute_topology_builtins(struct gen_perf_config *perf,
 
    perf->sys_vars.eu_threads_count = devinfo->num_thread_per_eu;
 
-   /* The subslice mask builtin contains bits for all slices. Prior to Gen11
-    * it had groups of 3bits for each slice, on Gen11 it's 8bits for each
+   /* The subslice mask builtin contains bits for all slices. Prior to Gfx11
+    * it had groups of 3bits for each slice, on Gfx11 it's 8bits for each
     * slice.
     *
     * Ideally equations would be updated to have a slice/subslice query
@@ -727,7 +727,7 @@ oa_metrics_available(struct gen_perf_config *perf, int fd,
     */
    if (stat("/proc/sys/dev/i915/perf_stream_paranoid", &sb) == 0) {
 
-      /* If _paranoid == 1 then on Gen8+ we won't be able to access OA
+      /* If _paranoid == 1 then on Gfx8+ we won't be able to access OA
        * metrics unless running as root.
        */
       if (devinfo->is_haswell)
@@ -1023,8 +1023,8 @@ gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
     * OA_DEBUG_REGISTER is set to 1. This is how the kernel programs this
     * global register (see drivers/gpu/drm/i915/i915_perf.c)
     *
-    * Documentation says this should be available on Gen9+ but experimentation
-    * shows that Gen8 reports similar values, so we enable it there too.
+    * Documentation says this should be available on Gfx9+ but experimentation
+    * shows that Gfx8 reports similar values, so we enable it there too.
     */
    if (devinfo->ver < 8)
       return;

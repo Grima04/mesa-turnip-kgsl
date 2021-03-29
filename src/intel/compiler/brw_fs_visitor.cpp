@@ -60,7 +60,7 @@ fs_visitor::emit_mcs_fetch(const fs_reg &coordinate, unsigned components,
 }
 
 /**
- * Apply workarounds for Gen6 gather with UINT/SINT
+ * Apply workarounds for Gfx6 gather with UINT/SINT
  */
 void
 fs_visitor::emit_gfx6_gather_wa(uint8_t wa, fs_reg dst)
@@ -115,7 +115,7 @@ fs_visitor::emit_dummy_fs()
       write->mlen = 2 + 4 * reg_width;
    }
 
-   /* Tell the SF we don't have any inputs.  Gen4-5 require at least one
+   /* Tell the SF we don't have any inputs.  Gfx4-5 require at least one
     * varying to avoid GPU hangs, so set that.
     */
    struct brw_wm_prog_data *wm_prog_data = brw_wm_prog_data(this->prog_data);
@@ -131,7 +131,7 @@ fs_visitor::emit_dummy_fs()
    stage_prog_data->dispatch_grf_start_reg = 2;
    wm_prog_data->dispatch_grf_start_reg_16 = 2;
    wm_prog_data->dispatch_grf_start_reg_32 = 2;
-   grf_used = 1; /* Gen4-5 don't allow zero GRF blocks */
+   grf_used = 1; /* Gfx4-5 don't allow zero GRF blocks */
 
    calculate_cfg();
 }

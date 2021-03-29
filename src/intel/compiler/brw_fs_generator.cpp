@@ -88,7 +88,7 @@ brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
          const unsigned max_hw_width = 16;
 
          /* XXX - The equation above is strictly speaking not correct on
-          *       hardware that supports unbalanced GRF writes -- On Gen9+
+          *       hardware that supports unbalanced GRF writes -- On Gfx9+
           *       each decompressed chunk of the instruction may have a
           *       different execution size when the number of components
           *       written to each destination GRF is not the same.
@@ -525,7 +525,7 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
        * code, using it saves us 0 instructions and would require quite a bit
        * of case-by-case work.  It's just not worth it.
        *
-       * Due to a hardware bug some platforms (particularly Gen11+) seem to
+       * Due to a hardware bug some platforms (particularly Gfx11+) seem to
        * require the address components of all channels to be valid whether or
        * not they're active, which causes issues if we use VxH addressing
        * under non-uniform control-flow.  We can easily work around that by
@@ -685,7 +685,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
                                    lower_width == dispatch_width;
          brw_inst *insn;
 
-         /* Due to a hardware bug some platforms (particularly Gen11+) seem
+         /* Due to a hardware bug some platforms (particularly Gfx11+) seem
           * to require the address components of all channels to be valid
           * whether or not they're active, which causes issues if we use VxH
           * addressing under non-uniform control-flow.  We can easily work
@@ -1409,7 +1409,7 @@ fs_generator::generate_ddy(const fs_inst *inst,
        *     DWord elements ONLY. This is applicable when both source and
        *     destination are half-floats."
        *
-       * So for half-float operations we use the Gen11+ Align1 path. CHV
+       * So for half-float operations we use the Gfx11+ Align1 path. CHV
        * inherits its FP16 hardware from SKL, so it is not affected.
        */
       if (devinfo->ver >= 11 ||

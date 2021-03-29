@@ -119,7 +119,7 @@ brw_compute_vue_map(const struct gen_device_info *devinfo,
        * dword 8-11 is the first vertex data.
        *
        * On Ironlake the VUE header is nominally 20 dwords, but the hardware
-       * will accept the same header layout as Gen4 [and should be a bit faster]
+       * will accept the same header layout as Gfx4 [and should be a bit faster]
        */
       assign_vue_slot(vue_map, VARYING_SLOT_PSIZ, slot++);
       assign_vue_slot(vue_map, BRW_VARYING_SLOT_NDC, slot++);

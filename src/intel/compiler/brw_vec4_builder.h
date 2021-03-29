@@ -495,7 +495,7 @@ namespace brw {
       }
 
       /**
-       * Gen4 predicated IF.
+       * Gfx4 predicated IF.
        */
       instruction *
       IF(brw_predicate predicate) const
@@ -504,7 +504,7 @@ namespace brw {
       }
 
       /**
-       * Gen6 IF with embedded comparison.
+       * Gfx6 IF with embedded comparison.
        */
       instruction *
       IF(const src_reg &src0, const src_reg &src1,

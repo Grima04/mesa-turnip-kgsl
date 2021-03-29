@@ -26,7 +26,7 @@
 /**
  * \file gfx6_gs_visitor.cpp
  *
- * Gen6 geometry shader implementation
+ * Gfx6 geometry shader implementation
  */
 
 #include "gfx6_gs_visitor.h"
@@ -39,7 +39,7 @@ gfx6_gs_visitor::emit_prolog()
 {
    vec4_gs_visitor::emit_prolog();
 
-   /* Gen6 geometry shaders require to allocate an initial VUE handle via
+   /* Gfx6 geometry shaders require to allocate an initial VUE handle via
     * FF_SYNC message, however the documentation remarks that only one thread
     * can write to the URB simultaneously and the FF_SYNC message provides the
     * synchronization mechanism for this, so using this message effectively
@@ -584,7 +584,7 @@ gfx6_gs_visitor::xfb_write()
       num_verts = 3;
       break;
    default:
-      unreachable("Unexpected primitive type in Gen6 SOL program.");
+      unreachable("Unexpected primitive type in Gfx6 SOL program.");
    }
 
    this->current_annotation = "gfx6 thread end: svb writes init";

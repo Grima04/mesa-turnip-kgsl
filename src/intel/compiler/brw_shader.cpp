@@ -165,13 +165,13 @@ brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
 {
    switch (op) {
    case 0 ... NUM_BRW_OPCODES - 1:
-      /* The DO instruction doesn't exist on Gen6+, but we use it to mark the
+      /* The DO instruction doesn't exist on Gfx6+, but we use it to mark the
        * start of a loop in the IR.
        */
       if (devinfo->ver >= 6 && op == BRW_OPCODE_DO)
          return "do";
 
-      /* The following conversion opcodes doesn't exist on Gen8+, but we use
+      /* The following conversion opcodes doesn't exist on Gfx8+, but we use
        * then to mark that we want to do the conversion.
        */
       if (devinfo->ver > 7 && op == BRW_OPCODE_F32TO16)

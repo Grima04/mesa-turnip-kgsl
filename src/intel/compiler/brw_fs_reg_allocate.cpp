@@ -576,7 +576,7 @@ namespace {
    unsigned
    spill_max_size(const backend_shader *s)
    {
-      /* FINISHME - On Gen7+ it should be possible to avoid this limit
+      /* FINISHME - On Gfx7+ it should be possible to avoid this limit
        *            altogether by spilling directly from the temporary GRF
        *            allocated to hold the result of the instruction (and the
        *            scratch write header).
@@ -594,7 +594,7 @@ namespace {
    unsigned
    spill_base_mrf(const backend_shader *s)
    {
-      /* We don't use the MRF hack on Gen9+ */
+      /* We don't use the MRF hack on Gfx9+ */
       assert(s->devinfo->ver < 9);
       return BRW_MAX_MRF(s->devinfo->ver) - spill_max_size(s) - 1;
    }
@@ -699,7 +699,7 @@ fs_reg_alloc::setup_inst_interference(const fs_inst *inst)
                                      grf127_send_hack_node);
 
       /* Spilling instruction are genereated as SEND messages from MRF but as
-       * Gen7+ supports sending from GRF the driver will maps assingn these
+       * Gfx7+ supports sending from GRF the driver will maps assingn these
        * MRF registers to a GRF. Implementations reuses the dest of the send
        * message as source. So as we will have an overlap for sure, we create
        * an interference between destination and grf127.
@@ -844,7 +844,7 @@ fs_reg_alloc::build_interference_graph(bool allow_spilling)
                         compiler->fs_reg_sets[rsi].classes[size - 1]);
    }
 
-   /* Special case: on pre-Gen7 hardware that supports PLN, the second operand
+   /* Special case: on pre-Gfx7 hardware that supports PLN, the second operand
     * of a PLN instruction needs to be an even-numbered register, so we have a
     * special register class aligned_bary_class to handle this case.
     */
@@ -914,9 +914,9 @@ fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
                              BRW_DATAPORT_READ_MESSAGE_OWORD_BLOCK_READ,
                              BRW_DATAPORT_READ_TARGET_RENDER_CACHE);
       } else if (devinfo->ver >= 7 && spill_offset < (1 << 12) * REG_SIZE) {
-         /* The Gen7 descriptor-based offset is 12 bits of HWORD units.
-          * Because the Gen7-style scratch block read is hardwired to BTI 255,
-          * on Gen9+ it would cause the DC to do an IA-coherent read, what
+         /* The Gfx7 descriptor-based offset is 12 bits of HWORD units.
+          * Because the Gfx7-style scratch block read is hardwired to BTI 255,
+          * on Gfx9+ it would cause the DC to do an IA-coherent read, what
           * largely outweighs the slight advantage from not having to provide
           * the address as part of the message header, so we're better off
           * using plain old oword block reads.

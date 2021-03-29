@@ -633,7 +633,7 @@ emit_pipeline_select(struct iris_batch *batch, uint32_t pipeline)
     *   3DSTATE_CC_STATE_POINTERS command prior to send a PIPELINE_SELECT
     *   with Pipeline Select set to GPGPU.
     *
-    * The internal hardware docs recommend the same workaround for Gen9
+    * The internal hardware docs recommend the same workaround for Gfx9
     * hardware too.
     */
    if (pipeline == GPGPU)
@@ -817,7 +817,7 @@ iris_enable_obj_preemption(struct iris_batch *batch, bool enable)
  *
  * The equations above apply if \p flip is equal to 0, if it is equal to 1 p_0
  * and p_1 will be swapped for the result.  Note that in the context of pixel
- * pipe hashing this can be always 0 on Gen12 platforms, since the hardware
+ * pipe hashing this can be always 0 on Gfx12 platforms, since the hardware
  * transparently remaps logical indices found on the table to physical pixel
  * pipe indices from the highest to lowest EU count.
  */
@@ -885,7 +885,7 @@ gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
          ppipes_of[n] += (devinfo->ppipe_subslices[p] == n);
    }
 
-   /* Gen12 has three pixel pipes. */
+   /* Gfx12 has three pixel pipes. */
    assert(ppipes_of[0] + ppipes_of[1] + ppipes_of[2] == 3);
 
    if (ppipes_of[2] == 3 || ppipes_of[0] == 2) {
@@ -1389,7 +1389,7 @@ struct iris_depth_stencil_alpha_state {
    bool depth_writes_enabled;
    bool stencil_writes_enabled;
 
-   /** Outbound to Gen8-9 PMA stall equations */
+   /** Outbound to Gfx8-9 PMA stall equations */
    bool depth_test_enabled;
 };
 
@@ -1518,12 +1518,12 @@ want_pma_fix(struct iris_context *ice)
    const struct iris_depth_stencil_alpha_state *cso_zsa = ice->state.cso_zsa;
    const struct iris_blend_state *cso_blend = ice->state.cso_blend;
 
-   /* In very specific combinations of state, we can instruct Gen8-9 hardware
+   /* In very specific combinations of state, we can instruct Gfx8-9 hardware
     * to avoid stalling at the pixel mask array.  The state equations are
     * documented in these places:
     *
-    * - Gen8 Depth PMA Fix:   CACHE_MODE_1::NP_PMA_FIX_ENABLE
-    * - Gen9 Stencil PMA Fix: CACHE_MODE_0::STC PMA Optimization Enable
+    * - Gfx8 Depth PMA Fix:   CACHE_MODE_1::NP_PMA_FIX_ENABLE
+    * - Gfx9 Stencil PMA Fix: CACHE_MODE_0::STC PMA Optimization Enable
     *
     * Both equations share some common elements:
     *
@@ -1602,7 +1602,7 @@ want_pma_fix(struct iris_context *ice)
    bool killpixels = wm_prog_data->uses_kill || wm_prog_data->uses_omask ||
                      cso_blend->alpha_to_coverage || cso_zsa->alpha_enabled;
 
-   /* The Gen8 depth PMA equation becomes:
+   /* The Gfx8 depth PMA equation becomes:
     *
     *    depth_writes =
     *       3DSTATE_WM_DEPTH_STENCIL::DepthWriteEnable &&
@@ -1646,7 +1646,7 @@ genX(update_pma_fix)(struct iris_context *ice,
     * emit a PIPE_CONTROL with the CS Stall and Depth Cache Flush bits set
     * prior to the LRI.  If stencil buffer writes are enabled, then a Render        * Cache Flush is also necessary.
     *
-    * The Gen9 docs say to use a depth stall rather than a command streamer
+    * The Gfx9 docs say to use a depth stall rather than a command streamer
     * stall.  However, the hardware seems to violently disagree.  A full
     * command streamer stall seems to be needed in both cases.
     */
@@ -1666,7 +1666,7 @@ genX(update_pma_fix)(struct iris_context *ice,
     * Flush bits is often necessary.  We do it regardless because it's easier.
     * The render cache flush is also necessary if stencil writes are enabled.
     *
-    * Again, the Gen9 docs give a different set of flushes but the Broadwell
+    * Again, the Gfx9 docs give a different set of flushes but the Broadwell
     * flushes seem to work just as well.
     */
    iris_emit_pipe_control_flush(batch, "PMA fix change (1/2)",
@@ -5806,7 +5806,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 #endif
 
    for (int stage = 0; stage <= MESA_SHADER_FRAGMENT; stage++) {
-      /* Gen9 requires 3DSTATE_BINDING_TABLE_POINTERS_XS to be re-emitted
+      /* Gfx9 requires 3DSTATE_BINDING_TABLE_POINTERS_XS to be re-emitted
        * in order to commit constants.  TODO: Investigate "Disable Gather
        * at Set Shader" to go back to legacy mode...
        */
@@ -5912,7 +5912,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                *     SIMD32 Dispatch must not be enabled for PER_PIXEL dispatch
                *     mode."
                *
-               * 16x MSAA only exists on Gen9+, so we can skip this on Gen8.
+               * 16x MSAA only exists on Gfx9+, so we can skip this on Gfx8.
                */
                if (GFX_VER >= 9 && cso_fb->samples == 16 &&
                    !wm_prog_data->persample_dispatch) {
@@ -6236,7 +6236,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       if (GFX_VER >= 12) {
          /* GEN:BUG:1408224581
           *
-          * Workaround: Gen12LP Astep only An additional pipe control with
+          * Workaround: Gfx12LP Astep only An additional pipe control with
           * post-sync = store dword operation would be required.( w/a is to
           * have an additional pipe control after the stencil state whenever
           * the surface state bits of this state is changing).
@@ -6344,7 +6344,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       if (count) {
 #if GFX_VER >= 11
-         /* Gen11+ doesn't need the cache workaround below */
+         /* Gfx11+ doesn't need the cache workaround below */
          uint64_t bound = dynamic_bound;
          while (bound) {
             const int i = u_bit_scan64(&bound);
@@ -6888,7 +6888,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
 
 
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
-      /* The MEDIA_VFE_STATE documentation for Gen8+ says:
+      /* The MEDIA_VFE_STATE documentation for Gfx8+ says:
        *
        *   "A stalling PIPE_CONTROL is required before MEDIA_VFE_STATE unless
        *    the only bits that are changed are scoreboard related: Scoreboard
@@ -7424,7 +7424,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
        *
        * The same text exists a few rows below for Post Sync Op.
        *
-       * On Gen12 this is GEN:BUG:1607156449.
+       * On Gfx12 this is GEN:BUG:1607156449.
        */
       iris_emit_raw_pipe_control(batch,
                                  "workaround: CS stall before gpgpu post-sync",
@@ -7458,7 +7458,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
        *
        * This seems like nonsense.  An Ivybridge workaround requires us to
        * emit a PIPE_CONTROL with a depth stall and write immediate post-sync
-       * operation.  Gen8+ requires us to emit depth stalls and depth cache
+       * operation.  Gfx8+ requires us to emit depth stalls and depth cache
        * flushes together.  So, it's hard to imagine this means anything other
        * than "we originally intended this to be used for PS_DEPTH_COUNT".
        *
@@ -7489,7 +7489,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
        * We assert that the caller doesn't do this combination, to try and
        * prevent mistakes.  It shouldn't hurt the GPU, though.
        *
-       * We skip this check on Gen11+ as the "Stall at Pixel Scoreboard"
+       * We skip this check on Gfx11+ as the "Stall at Pixel Scoreboard"
        * and "Render Target Flush" combo is explicitly required for BTI
        * update workarounds.
        */
@@ -7791,7 +7791,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
 
 #if GFX_VER == 9
 /**
- * Preemption on Gen9 has to be enabled or disabled in various cases.
+ * Preemption on Gfx9 has to be enabled or disabled in various cases.
  *
  * See these workarounds for preemption:
  *  - WaDisableMidObjectPreemptionForGSLineStripAdj
@@ -7799,7 +7799,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
  *  - WaDisableMidObjectPreemptionForLineLoop
  *  - WA#0798
  *
- * We don't put this in the vtable because it's only used on Gen9.
+ * We don't put this in the vtable because it's only used on Gfx9.
  */
 void
 gfx9_toggle_preemption(struct iris_context *ice,
@@ -7904,7 +7904,7 @@ genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
 #if GFX_VER == 9
    const struct gen_device_info *devinfo = &batch->screen->devinfo;
    const unsigned slice_hashing[] = {
-      /* Because all Gen9 platforms with more than one slice require
+      /* Because all Gfx9 platforms with more than one slice require
        * three-way subslice hashing, a single "normal" 16x16 slice hashing
        * block is guaranteed to suffer from substantial imbalance, with one
        * subslice receiving twice as much work as the other two in the
@@ -7912,7 +7912,7 @@ genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
        *
        * The performance impact of that would be particularly severe when
        * three-way hashing is also in use for slice balancing (which is the
-       * case for all Gen9 GT4 platforms), because one of the slices
+       * case for all Gfx9 GT4 platforms), because one of the slices
        * receives one every three 16x16 blocks in either direction, which
        * is roughly the periodicity of the underlying subslice imbalance
        * pattern ("roughly" because in reality the hardware's

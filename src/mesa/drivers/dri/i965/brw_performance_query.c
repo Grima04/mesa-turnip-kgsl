@@ -28,10 +28,10 @@
  *
  * Currently there are two possible counter sources exposed here:
  *
- * On Gen6+ hardware we have numerous 64bit Pipeline Statistics Registers
+ * On Gfx6+ hardware we have numerous 64bit Pipeline Statistics Registers
  * that we can snapshot at the beginning and end of a query.
  *
- * On Gen7.5+ we have Observability Architecture counters which are
+ * On Gfx7.5+ we have Observability Architecture counters which are
  * covered in separate document from the rest of the PRMs.  It is available at:
  * https://01.org/linuxgraphics/documentation/driver-documentation-prms
  * => 2013 Intel Core Processor Family => Observability Performance Counters

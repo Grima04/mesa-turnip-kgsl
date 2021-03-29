@@ -77,7 +77,7 @@ iris_format_for_usage(const struct gen_device_info *devinfo,
    }
 
    /* We choose RGBA over RGBX for rendering the hardware doesn't support
-    * rendering to RGBX. However, when this internal override is used on Gen9+,
+    * rendering to RGBX. However, when this internal override is used on Gfx9+,
     * fast clears don't work correctly.
     *
     * i965 fixes this by pretending to not support RGBX formats, and the higher
@@ -209,7 +209,7 @@ iris_is_format_supported(struct pipe_screen *pscreen,
                    format == ISL_FORMAT_R32_UINT;
    }
 
-   /* TODO: Support ASTC 5x5 on Gen9 properly.  This means implementing
+   /* TODO: Support ASTC 5x5 on Gfx9 properly.  This means implementing
     * a complex sampler workaround (see i965's gfx9_apply_astc5x5_wa_flush).
     * Without it, st/mesa will emulate ASTC 5x5 via uncompressed textures.
     */

@@ -280,7 +280,7 @@ blorp_ensure_sf_program(struct blorp_batch *batch,
    const struct brw_wm_prog_data *wm_prog_data = params->wm_prog_data;
    assert(params->wm_prog_data);
 
-   /* Gen6+ doesn't need a strips and fans program */
+   /* Gfx6+ doesn't need a strips and fans program */
    if (blorp->compiler->devinfo->ver >= 6)
       return true;
 

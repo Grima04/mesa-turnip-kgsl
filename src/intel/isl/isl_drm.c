@@ -143,7 +143,7 @@ isl_drm_modifier_get_score(const struct gen_device_info *devinfo,
    case I915_FORMAT_MOD_Y_TILED:
       return 3;
    case I915_FORMAT_MOD_Y_TILED_CCS:
-      /* Gen12's CCS layout differs from Gen9-11. */
+      /* Gfx12's CCS layout differs from Gfx9-11. */
       if (devinfo->ver >= 12)
          return 0;
 

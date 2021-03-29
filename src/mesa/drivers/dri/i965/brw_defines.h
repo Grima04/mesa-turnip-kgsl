@@ -388,7 +388,7 @@
 /* SAMPLER_STATE DW0 */
 #define BRW_SAMPLER_DISABLE                     (1 << 31)
 #define BRW_SAMPLER_LOD_PRECLAMP_ENABLE         (1 << 28)
-#define GFX6_SAMPLER_MIN_MAG_NOT_EQUAL          (1 << 27) /* Gen6 only */
+#define GFX6_SAMPLER_MIN_MAG_NOT_EQUAL          (1 << 27) /* Gfx6 only */
 #define BRW_SAMPLER_BASE_MIPLEVEL_MASK          INTEL_MASK(26, 22)
 #define BRW_SAMPLER_BASE_MIPLEVEL_SHIFT         22
 #define BRW_SAMPLER_MIP_FILTER_MASK             INTEL_MASK(21, 20)
@@ -412,7 +412,7 @@
 #define GFX4_SAMPLER_MAX_LOD_MASK               INTEL_MASK(21, 12)
 #define GFX4_SAMPLER_MAX_LOD_SHIFT              12
 #define GFX4_SAMPLER_CUBE_CONTROL_OVERRIDE      (1 << 9)
-/* Wrap modes are in DW1 on Gen4-6 and DW3 on Gen7+ */
+/* Wrap modes are in DW1 on Gfx4-6 and DW3 on Gfx7+ */
 #define BRW_SAMPLER_TCX_WRAP_MODE_MASK          INTEL_MASK(8, 6)
 #define BRW_SAMPLER_TCX_WRAP_MODE_SHIFT         6
 #define BRW_SAMPLER_TCY_WRAP_MODE_MASK          INTEL_MASK(5, 3)
@@ -436,7 +436,7 @@
 #define BRW_SAMPLER_ADDRESS_ROUNDING_MASK       INTEL_MASK(18, 13)
 #define BRW_SAMPLER_ADDRESS_ROUNDING_SHIFT      13
 #define GFX7_SAMPLER_NON_NORMALIZED_COORDINATES (1 << 10)
-/* Gen7+ wrap modes reuse the same BRW_SAMPLER_TC*_WRAP_MODE enums. */
+/* Gfx7+ wrap modes reuse the same BRW_SAMPLER_TC*_WRAP_MODE enums. */
 #define GFX6_SAMPLER_NON_NORMALIZED_COORDINATES (1 << 0)
 
 enum brw_wrap_mode {
@@ -601,9 +601,9 @@ enum brw_wrap_mode {
 # define GFX6_VS_STATISTICS_ENABLE			(1 << 10)
 # define GFX6_VS_CACHE_DISABLE				(1 << 1)
 # define GFX6_VS_ENABLE					(1 << 0)
-/* Gen8+ DW7 */
+/* Gfx8+ DW7 */
 # define GFX8_VS_SIMD8_ENABLE                           (1 << 2)
-/* Gen8+ DW8 */
+/* Gfx8+ DW8 */
 # define GFX8_VS_URB_ENTRY_OUTPUT_OFFSET_SHIFT          21
 # define GFX8_VS_URB_OUTPUT_LENGTH_SHIFT                16
 # define GFX8_VS_USER_CLIP_DISTANCE_SHIFT               8
@@ -650,12 +650,12 @@ enum brw_wrap_mode {
 # define GFX6_GS_SVBI_POSTINCREMENT_VALUE_MASK		INTEL_MASK(25, 16)
 # define GFX6_GS_ENABLE					(1 << 15)
 
-/* Gen8+ DW8 */
+/* Gfx8+ DW8 */
 # define GFX8_GS_STATIC_OUTPUT                          (1 << 30)
 # define GFX8_GS_STATIC_VERTEX_COUNT_SHIFT              16
 # define GFX8_GS_STATIC_VERTEX_COUNT_MASK               INTEL_MASK(26, 16)
 
-/* Gen8+ DW9 */
+/* Gfx8+ DW9 */
 # define GFX8_GS_URB_ENTRY_OUTPUT_OFFSET_SHIFT          21
 # define GFX8_GS_URB_OUTPUT_LENGTH_SHIFT                16
 # define GFX8_GS_USER_CLIP_DISTANCE_SHIFT               8
@@ -724,7 +724,7 @@ enum brw_wrap_mode {
 # define GFX7_DS_COMPUTE_W_COORDINATE_ENABLE            (1 << 2)
 # define GFX7_DS_CACHE_DISABLE                          (1 << 1)
 # define GFX7_DS_ENABLE                                 (1 << 0)
-/* Gen8+ DW8 */
+/* Gfx8+ DW8 */
 # define GFX8_DS_URB_ENTRY_OUTPUT_OFFSET_MASK           INTEL_MASK(26, 21)
 # define GFX8_DS_URB_ENTRY_OUTPUT_OFFSET_SHIFT          21
 # define GFX8_DS_URB_OUTPUT_LENGTH_MASK                 INTEL_MASK(20, 16)
@@ -911,7 +911,7 @@ enum brw_wrap_mode {
 # define GFX8_RASTER_VIEWPORT_Z_CLIP_TEST_ENABLE        (1 << 0)
 # define GFX9_RASTER_VIEWPORT_Z_NEAR_CLIP_TEST_ENABLE   (1 << 0)
 
-/* Gen8 BLEND_STATE */
+/* Gfx8 BLEND_STATE */
 /* DW0 */
 #define GFX8_BLEND_ALPHA_TO_COVERAGE_ENABLE             (1 << 31)
 #define GFX8_BLEND_INDEPENDENT_ALPHA_BLEND_ENABLE       (1 << 30)
@@ -1169,7 +1169,7 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define SO_STREAM_0_VERTEX_READ_LENGTH_SHIFT		0
 # define SO_STREAM_0_VERTEX_READ_LENGTH_MASK		INTEL_MASK(4, 0)
 
-/* 3DSTATE_WM for Gen7 */
+/* 3DSTATE_WM for Gfx7 */
 /* DW1 */
 # define GFX7_WM_STATISTICS_ENABLE			(1 << 31)
 # define GFX7_WM_DEPTH_CLEAR				(1 << 30)
@@ -1440,11 +1440,11 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define MI_STORE_REGISTER_MEM_USE_GGTT		(1 << 22)
 # define MI_STORE_REGISTER_MEM_PREDICATE	(1 << 21)
 
-/* Load a value from memory into a register.  Only available on Gen7+. */
+/* Load a value from memory into a register.  Only available on Gfx7+. */
 #define GFX7_MI_LOAD_REGISTER_MEM	(CMD_MI | (0x29 << 23))
 # define MI_LOAD_REGISTER_MEM_USE_GGTT		(1 << 22)
 
-/* Manipulate the predicate bit based on some register values. Only on Gen7+ */
+/* Manipulate the predicate bit based on some register values. Only on Gfx7+ */
 #define GFX7_MI_PREDICATE		(CMD_MI | (0xC << 23))
 # define MI_PREDICATE_LOADOP_KEEP		(0 << 6)
 # define MI_PREDICATE_LOADOP_LOAD		(2 << 6)
@@ -1652,10 +1652,10 @@ enum brw_pixel_shader_coverage_mask_mode {
 #define INSTPM                             0x20c0
 # define INSTPM_CONSTANT_BUFFER_ADDRESS_OFFSET_DISABLE (1 << 6)
 
-#define CS_DEBUG_MODE2                     0x20d8 /* Gen9+ */
+#define CS_DEBUG_MODE2                     0x20d8 /* Gfx9+ */
 # define CSDBG2_CONSTANT_BUFFER_ADDRESS_OFFSET_DISABLE (1 << 4)
 
-#define SLICE_COMMON_ECO_CHICKEN1          0x731c /* Gen9+ */
+#define SLICE_COMMON_ECO_CHICKEN1          0x731c /* Gfx9+ */
 # define GLK_SCEC_BARRIER_MODE_GPGPU       (0 << 7)
 # define GLK_SCEC_BARRIER_MODE_3D_HULL     (1 << 7)
 # define GLK_SCEC_BARRIER_MODE_MASK        REG_MASK(1 << 7)
@@ -1669,7 +1669,7 @@ enum brw_pixel_shader_coverage_mask_mode {
 # define HEADERLESS_MESSAGE_FOR_PREEMPTABLE_CONTEXTS        (1 << 5)
 # define HEADERLESS_MESSAGE_FOR_PREEMPTABLE_CONTEXTS_MASK   REG_MASK(1 << 5)
 
-#define CS_CHICKEN1                        0x2580 /* Gen9+ */
+#define CS_CHICKEN1                        0x2580 /* Gfx9+ */
 # define GFX9_REPLAY_MODE_MIDBUFFER             (0 << 0)
 # define GFX9_REPLAY_MODE_MIDOBJECT             (1 << 0)
 # define GFX9_REPLAY_MODE_MASK                  REG_MASK(1 << 0)

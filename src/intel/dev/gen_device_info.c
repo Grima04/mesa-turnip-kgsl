@@ -439,7 +439,7 @@ static const struct gen_device_info gen_device_info_bdw_gt1 = {
          [MESA_SHADER_VERTEX]    = 2560,
          [MESA_SHADER_TESS_CTRL] = 504,
          [MESA_SHADER_TESS_EVAL] = 1536,
-         /* Reduced from 960, seems to be similar to the bug on Gen9 GT1. */
+         /* Reduced from 960, seems to be similar to the bug on Gfx9 GT1. */
          [MESA_SHADER_GEOMETRY]  = 690,
       },
    },
@@ -1252,7 +1252,7 @@ gen_get_device_info_from_pci_id(int pci_id,
     *  allocate scratch space enough so that each slice has 4 slices allowed."
     *
     * The equivalent internal documentation says that this programming note
-    * applies to all Gen9+ platforms.
+    * applies to all Gfx9+ platforms.
     *
     * The hardware typically calculates the scratch space pointer by taking
     * the base address, and adding per-thread-scratch-space * thread ID.
@@ -1321,7 +1321,7 @@ getparam_topology(struct gen_device_info *devinfo, int fd)
    return update_from_masks(devinfo, slice_mask, subslice_mask, n_eus);
 
  maybe_warn:
-   /* Only with Gen8+ are we starting to see devices with fusing that can only
+   /* Only with Gfx8+ are we starting to see devices with fusing that can only
     * be detected at runtime.
     */
    if (devinfo->ver >= 8)
@@ -1445,7 +1445,7 @@ gen_get_device_info_from_fd(int fd, struct gen_device_info *devinfo)
    }
 
    if (devinfo->ver == 10) {
-      mesa_loge("Gen10 support is redacted.");
+      mesa_loge("Gfx10 support is redacted.");
       return false;
    }
 

@@ -76,7 +76,7 @@ brw_inst_##name(const struct gen_device_info *devinfo,        \
 }
 
 /* A simple macro for fields which stay in the same place on all generations,
- * except for Gen12!
+ * except for Gfx12!
  */
 #define F(name, hi4, lo4, hi12, lo12) FC(name, hi4, lo4, hi12, lo12, true)
 
@@ -122,7 +122,7 @@ brw_inst_##name(const struct gen_device_info *devinfo, const brw_inst *inst)  \
    return brw_inst_bits(inst, high, low);                                     \
 }
 
-/* A macro for fields which moved as of Gen8+. */
+/* A macro for fields which moved as of Gfx8+. */
 #define F8(name, gfx4_high, gfx4_low, gfx8_high, gfx8_low, \
            gfx12_high, gfx12_low)                          \
 FF(name,                                                   \
@@ -134,7 +134,7 @@ FF(name,                                                   \
    /* 8:   */ gfx8_high, gfx8_low,                         \
    /* 12:  */ gfx12_high, gfx12_low);
 
-/* Macro for fields that gained extra discontiguous MSBs in Gen12 (specified
+/* Macro for fields that gained extra discontiguous MSBs in Gfx12 (specified
  * by hi12ex-lo12ex).
  */
 #define FFDC(name, hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,                  \
@@ -176,7 +176,7 @@ brw_inst_##name(const struct gen_device_info *devinfo, const brw_inst *inst)  \
    FFDC(name, hi4, lo4, hi45, lo45, hi5, lo5, hi6, lo6,           \
         hi7, lo7, hi8, lo8, hi12ex, lo12ex, hi12, lo12, true)
 
-/* Macro for fields that didn't move across generations until Gen12, and then
+/* Macro for fields that didn't move across generations until Gfx12, and then
  * gained extra discontiguous bits.
  */
 #define FDC(name, hi4, lo4, hi12ex, lo12ex, hi12, lo12, assertions)     \
@@ -184,7 +184,7 @@ brw_inst_##name(const struct gen_device_info *devinfo, const brw_inst *inst)  \
         hi4, lo4, hi4, lo4, hi12ex, lo12ex, hi12, lo12, assertions)
 
 
-/* Macro for the 2-bit register file field, which on Gen12+ is stored as the
+/* Macro for the 2-bit register file field, which on Gfx12+ is stored as the
  * variable length combination of an IsImm (hi12) bit and an additional file
  * (lo12) bit.
  */
@@ -217,7 +217,7 @@ brw_inst_##name(const struct gen_device_info *devinfo, const brw_inst *inst)  \
    }                                                                          \
 }
 
-/* Macro for fields that become a constant in Gen12+ not actually represented
+/* Macro for fields that become a constant in Gfx12+ not actually represented
  * in the instruction.
  */
 #define FK(name, hi4, lo4, const12)                           \
@@ -834,7 +834,7 @@ FF(sfid,
 FF(null_rt,
    /* 4-7: */ -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
    /* 8:   */ 80, 80,
-   /* 12:  */ 44, 44) /* actually only Gen11+ */
+   /* 12:  */ 44, 44) /* actually only Gfx11+ */
 FC(base_mrf,   /* 4+ */ 27,  24, /* 12+ */ -1, -1, devinfo->ver < 6);
 FF(send_rta_index,
    /* 4:   */  -1,  -1,
@@ -886,7 +886,7 @@ FF(urb_opcode,
 /** @} */
 
 /**
- * Gen4-5 math messages:
+ * Gfx4-5 math messages:
  *  @{
  */
 FC(math_msg_data_type,  /* 4+ */ MD(7), MD(7), /* 12+ */ -1, -1, devinfo->ver < 6)
@@ -933,7 +933,7 @@ F(binding_table_index,    /* 4+ */ MD(7), MD(0),  /* 12+ */ MD12(7), MD12(0)) /*
  */
 FC(dp_category,           /* 4+ */ MD(18), MD(18), /* 12+ */ MD12(18), MD12(18), devinfo->ver >= 7)
 
-/* Gen4-5 store fields in different bits for read/write messages. */
+/* Gfx4-5 store fields in different bits for read/write messages. */
 FF(dp_read_msg_type,
    /* 4:   */ MD(13), MD(12),
    /* 4.5: */ MD(13), MD(11),
@@ -976,7 +976,7 @@ FF(dp_write_commit,
    /* 7+: does not exist */ -1, -1, -1, -1,
    /* 12:  */ -1, -1)
 
-/* Gen6+ use the same bit locations for everything. */
+/* Gfx6+ use the same bit locations for everything. */
 FF(dp_msg_type,
    /* 4-5: use dp_read_msg_type or dp_write_msg_type instead */
    -1, -1, -1, -1, -1, -1,
@@ -994,7 +994,7 @@ FD(dp_msg_control,
 /** @} */
 
 /**
- * Scratch message bits (Gen7+):
+ * Scratch message bits (Gfx7+):
  *  @{
  */
 FC(scratch_read_write, /* 4+ */ MD(17), MD(17), /* 12+ */ MD12(17), MD12(17), devinfo->ver >= 7) /* 0 = read,  1 = write */
@@ -1189,7 +1189,7 @@ REG_TYPE(src1)
 #undef REG_TYPE
 
 
-/* The AddrImm fields are split into two discontiguous sections on Gen8+ */
+/* The AddrImm fields are split into two discontiguous sections on Gfx8+ */
 #define BRW_IA1_ADDR_IMM(reg, g4_high, g4_low, g8_nine, g8_high, g8_low, \
                          g12_high, g12_low)                              \
 static inline void                                                       \
@@ -1222,7 +1222,7 @@ brw_inst_##reg##_ia1_addr_imm(const struct gen_device_info *devinfo,     \
 }
 
 /* AddrImm[9:0] for Align1 Indirect Addressing        */
-/*                     -Gen 4-  ----Gen8----  -Gen12- */
+/*                     -Gen 4-  ----Gfx8----  -Gfx12- */
 BRW_IA1_ADDR_IMM(src1, 105, 96, 121, 104, 96, 107, 98)
 BRW_IA1_ADDR_IMM(src0,  73, 64,  95,  72, 64,  75, 66)
 BRW_IA1_ADDR_IMM(dst,   57, 48,  47,  56, 48,  59, 50)
@@ -1257,7 +1257,7 @@ brw_inst_##reg##_ia16_addr_imm(const struct gen_device_info *devinfo,     \
 
 /* AddrImm[9:0] for Align16 Indirect Addressing:
  * Compared to Align1, these are missing the low 4 bits.
- *                     -Gen 4-  ----Gen8----
+ *                     -Gen 4-  ----Gfx8----
  */
 BRW_IA16_ADDR_IMM(src1,       105, 96, 121, 104, 100)
 BRW_IA16_ADDR_IMM(src0,        73, 64,  95,  72,  68)
@@ -1377,7 +1377,7 @@ brw_compact_inst_##name(const struct gen_device_info *devinfo,     \
 }
 
 /* A simple macro for fields which stay in the same place on all generations
- * except for Gen12.
+ * except for Gfx12.
  */
 #define F(name, high, low, gfx12_high, gfx12_low)       \
    FC(name, high, low, gfx12_high, gfx12_low, true)
@@ -1412,7 +1412,7 @@ brw_compact_inst_imm(const struct gen_device_info *devinfo,
 }
 
 /**
- * (Gen8+) Compacted three-source instructions:
+ * (Gfx8+) Compacted three-source instructions:
  *  @{
  */
 FC(3src_src2_reg_nr,    /* 4+ */ 63, 57, /* 12+ */ 55, 48, devinfo->ver >= 8)

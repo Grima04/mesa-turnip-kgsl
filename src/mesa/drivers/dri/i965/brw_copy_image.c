@@ -47,9 +47,9 @@ copy_miptrees(struct brw_context *brw,
    if (devinfo->ver <= 5) {
       /* On gfx4-5, try BLT first.
        *
-       * Gen4-5 have a single ring for both 3D and BLT operations, so there's
-       * no inter-ring synchronization issues like on Gen6+.  It is apparently
-       * faster than using the 3D pipeline.  Original Gen4 also has to rebase
+       * Gfx4-5 have a single ring for both 3D and BLT operations, so there's
+       * no inter-ring synchronization issues like on Gfx6+.  It is apparently
+       * faster than using the 3D pipeline.  Original Gfx4 also has to rebase
        * and copy miptree slices in order to render to unaligned locations.
        */
       if (brw_miptree_copy(brw, src_mt, src_level, src_z, src_x, src_y,

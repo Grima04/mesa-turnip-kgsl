@@ -1097,7 +1097,7 @@ fs_inst::flags_read(const gen_device_info *devinfo) const
    if (predicate == BRW_PREDICATE_ALIGN1_ANYV ||
        predicate == BRW_PREDICATE_ALIGN1_ALLV) {
       /* The vertical predication modes combine corresponding bits from
-       * f0.0 and f1.0 on Gen7+, and f0.0 and f0.1 on older hardware.
+       * f0.0 and f1.0 on Gfx7+, and f0.0 and f0.1 on older hardware.
        */
       const unsigned shift = devinfo->ver >= 7 ? 4 : 2;
       return flag_mask(this, 1) << shift | flag_mask(this, 1);
@@ -1440,7 +1440,7 @@ fs_visitor::emit_sampleid_setup()
        *    shr(16) tmp<1>W g1.0<1,8,0>B 0x44440000:V
        *    and(16) dst<1>D tmp<8,8,1>W  0xf:W
        *
-       * TODO: These payload bits exist on Gen7 too, but they appear to always
+       * TODO: These payload bits exist on Gfx7 too, but they appear to always
        *       be zero, so this code fails to work.  We should find out why.
        */
       const fs_reg tmp = abld.vgrf(BRW_REGISTER_TYPE_UW);
@@ -1639,7 +1639,7 @@ fs_visitor::assign_curb_setup()
       ubld.MOV(header0, brw_imm_ud(0));
       ubld.group(1, 0).SHR(component(header0, 2), base_addr, brw_imm_ud(4));
 
-      /* On Gen12-HP we load constants at the start of the program using A32
+      /* On Gfx12-HP we load constants at the start of the program using A32
        * stateless messages.
        */
       for (unsigned i = 0; i < uniform_push_length;) {
@@ -2805,7 +2805,7 @@ fs_visitor::opt_algebraic()
       case BRW_OPCODE_OR:
          if (inst->src[0].equals(inst->src[1]) ||
              inst->src[1].is_zero()) {
-            /* On Gen8+, the OR instruction can have a source modifier that
+            /* On Gfx8+, the OR instruction can have a source modifier that
              * performs logical not on the operand.  Cases of 'OR r0, ~r1, 0'
              * or 'OR r0, ~r1, ~r1' should become a NOT instead of a MOV.
              */
@@ -2984,7 +2984,7 @@ fs_visitor::opt_algebraic()
 bool
 fs_visitor::opt_zero_samples()
 {
-   /* Gen4 infers the texturing opcode based on the message length so we can't
+   /* Gfx4 infers the texturing opcode based on the message length so we can't
     * change it.
     */
    if (devinfo->ver < 5)
@@ -3953,7 +3953,7 @@ fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block)
                      : brw_imm_w(inst->src[1].d));
       }
    } else {
-      /* Gen < 8 (and some Gen8+ low-power parts like Cherryview) cannot
+      /* Gen < 8 (and some Gfx8+ low-power parts like Cherryview) cannot
        * do 32-bit integer multiplication in one instruction, but instead
        * must do a sequence (which actually calculates a 64-bit result):
        *
@@ -4157,11 +4157,11 @@ fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block)
    fs_inst *mach = ibld.MACH(inst->dst, inst->src[0], inst->src[1]);
 
    if (devinfo->ver >= 8) {
-      /* Until Gen8, integer multiplies read 32-bits from one source,
+      /* Until Gfx8, integer multiplies read 32-bits from one source,
        * and 16-bits from the other, and relying on the MACH instruction
        * to generate the high bits of the result.
        *
-       * On Gen8, the multiply instruction does a full 32x32-bit
+       * On Gfx8, the multiply instruction does a full 32x32-bit
        * multiply, but in order to do a 64-bit multiply we can simulate
        * the previous behavior and then use a MACH instruction.
        */
@@ -4179,13 +4179,13 @@ fs_visitor::lower_mulh_inst(fs_inst *inst, bblock_t *block)
        * accumulator register is used by the hardware for instructions
        * that access the accumulator implicitly (e.g. MACH).  A
        * second-half instruction would normally map to acc1, which
-       * doesn't exist on Gen7 and up (the hardware does emulate it for
+       * doesn't exist on Gfx7 and up (the hardware does emulate it for
        * floating-point instructions *only* by taking advantage of the
        * extra precision of acc0 not normally used for floating point
        * arithmetic).
        *
        * HSW and up are careful enough not to try to access an
-       * accumulator register that doesn't exist, but on earlier Gen7
+       * accumulator register that doesn't exist, but on earlier Gfx7
        * hardware we need to make sure that the quarter control bits are
        * zero to avoid non-deterministic behaviour and emit an extra MOV
        * to get the result masked correctly according to the current
@@ -4261,7 +4261,7 @@ fs_visitor::lower_minmax()
           inst->predicate == BRW_PREDICATE_NONE) {
          /* If src1 is an immediate value that is not NaN, then it can't be
           * NaN.  In that case, emit CMP because it is much better for cmod
-          * propagation.  Likewise if src1 is not float.  Gen4 and Gen5 don't
+          * propagation.  Likewise if src1 is not float.  Gfx4 and Gfx5 don't
           * support HF or DF, so it is not necessary to check for those.
           */
          if (inst->src[1].type != BRW_REGISTER_TYPE_F ||
@@ -4526,7 +4526,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
          };
          ubld.LOAD_PAYLOAD(header, header_sources, 2, 0);
 
-         /* Gen12 will require additional fix-ups if we ever hit this path. */
+         /* Gfx12 will require additional fix-ups if we ever hit this path. */
          assert(devinfo->ver < 12);
       }
 
@@ -4731,7 +4731,7 @@ lower_fb_read_logical_send(const fs_builder &bld, fs_inst *inst)
       ubld.LOAD_PAYLOAD(header, header_sources, ARRAY_SIZE(header_sources), 0);
 
       if (devinfo->ver >= 12) {
-         /* On Gen12 the Viewport and Render Target Array Index fields (AKA
+         /* On Gfx12 the Viewport and Render Target Array Index fields (AKA
           * Poly 0 Info) are provided in r1.1 instead of r0.0, and the render
           * target message header format was updated accordingly -- However
           * the updated format only works for the lower 16 channels in a
@@ -5113,7 +5113,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
          fs_reg sampler_state_ptr =
             retype(brw_vec1_grf(0, 3), BRW_REGISTER_TYPE_UD);
 
-         /* Gen11+ sampler message headers include bits in 4:0 which conflict
+         /* Gfx11+ sampler message headers include bits in 4:0 which conflict
           * with the ones included in g0.3 bits 4:0.  Mask them out.
           */
          if (devinfo->ver >= 11) {
@@ -5136,7 +5136,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
             ubld1.ADD(component(header, 3), sampler_state_ptr, tmp);
          }
       } else if (devinfo->ver >= 11) {
-         /* Gen11+ sampler message headers include bits in 4:0 which conflict
+         /* Gfx11+ sampler message headers include bits in 4:0 which conflict
           * with the ones included in g0.3 bits 4:0.  Mask them out.
           */
          ubld1.AND(component(header, 3),
@@ -5195,7 +5195,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
       break;
    case SHADER_OPCODE_TXF:
       /* Unfortunately, the parameters for LD are intermixed: u, lod, v, r.
-       * On Gen9 they are u, v, lod, r
+       * On Gfx9 they are u, v, lod, r
        */
       bld.MOV(retype(sources[length++], BRW_REGISTER_TYPE_D), coordinate);
 
@@ -5239,7 +5239,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
          bld.MOV(retype(sources[length], BRW_REGISTER_TYPE_UD), mcs);
          length++;
 
-         /* On Gen9+ we'll use ld2dms_w instead which has two registers for
+         /* On Gfx9+ we'll use ld2dms_w instead which has two registers for
           * the MCS data.
           */
          if (op == SHADER_OPCODE_TXF_CMS_W) {
@@ -5574,8 +5574,8 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
     *
     * Earlier generations have a similar wording.  Because of this restriction
     * we don't attempt to implement sample masks via predication for such
-    * messages prior to Gen9, since we have to provide a header anyway.  On
-    * Gen11+ the header has been removed so we can only use predication.
+    * messages prior to Gfx9, since we have to provide a header anyway.  On
+    * Gfx11+ the header has been removed so we can only use predication.
     *
     * For all stateless A32 messages, we also need a header
     */
@@ -6391,9 +6391,9 @@ fs_visitor::lower_logical_sends()
       case SHADER_OPCODE_INT_QUOTIENT:
       case SHADER_OPCODE_INT_REMAINDER:
          /* The math opcodes are overloaded for the send-like and
-          * expression-like instructions which seems kind of icky.  Gen6+ has
+          * expression-like instructions which seems kind of icky.  Gfx6+ has
           * a native (but rather quirky) MATH instruction so we don't need to
-          * do anything here.  On Gen4-5 we'll have to lower the Gen6-like
+          * do anything here.  On Gfx4-5 we'll have to lower the Gfx6-like
           * logical instructions (which we can easily recognize because they
           * have mlen = 0) into send-like virtual instructions.
           */
@@ -6520,7 +6520,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
     *      integer DWord, the source register is not incremented but the
     *      source sub register is incremented."
     *
-    * The hardware specs from Gen4 to Gen7.5 mention similar regioning
+    * The hardware specs from Gfx4 to Gfx7.5 mention similar regioning
     * restrictions.  The code below intentionally doesn't check whether the
     * destination type is integer because empirically the hardware doesn't
     * seem to care what the actual type is as long as it's dword-aligned.
@@ -6574,7 +6574,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
     *   execution mask channels are required, split the instruction into two
     *   SIMD16 instructions."
     *
-    * There is similar text in the HSW PRMs.  Gen4-6 don't even implement
+    * There is similar text in the HSW PRMs.  Gfx4-6 don't even implement
     * 32-wide control flow support in hardware and will behave similarly.
     */
    if (devinfo->ver < 8 && !inst->force_writemask_all)
@@ -6597,7 +6597,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
    if (inst->is_3src(devinfo) && !devinfo->supports_simd16_3src)
       max_width = MIN2(max_width, inst->exec_size / reg_count);
 
-   /* Pre-Gen8 EUs are hardwired to use the QtrCtrl+1 (where QtrCtrl is
+   /* Pre-Gfx8 EUs are hardwired to use the QtrCtrl+1 (where QtrCtrl is
     * the 8-bit quarter of the execution mask signals specified in the
     * instruction control fields) for the second compressed half of any
     * single-precision instruction (for double-precision instructions
@@ -6706,7 +6706,7 @@ get_sampler_lowered_simd_width(const struct gen_device_info *devinfo,
                             inst->opcode != SHADER_OPCODE_TXF_CMS_LOGICAL) ? 4 :
       3;
 
-   /* On Gen9+ the LOD argument is for free if we're able to use the LZ
+   /* On Gfx9+ the LOD argument is for free if we're able to use the LZ
     * variant of the TXL or TXF message.
     */
    const bool implicit_lod = devinfo->ver >= 9 &&
@@ -6821,8 +6821,8 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    case SHADER_OPCODE_LOG2:
    case SHADER_OPCODE_SIN:
    case SHADER_OPCODE_COS: {
-      /* Unary extended math instructions are limited to SIMD8 on Gen4 and
-       * Gen6. Extended Math Function is limited to SIMD8 with half-float.
+      /* Unary extended math instructions are limited to SIMD8 on Gfx4 and
+       * Gfx6. Extended Math Function is limited to SIMD8 with half-float.
        */
       if (devinfo->ver == 6 || (devinfo->ver == 4 && !devinfo->is_g4x))
          return MIN2(8, inst->exec_size);
@@ -6832,7 +6832,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
    }
 
    case SHADER_OPCODE_POW: {
-      /* SIMD16 is only allowed on Gen7+. Extended Math Function is limited
+      /* SIMD16 is only allowed on Gfx7+. Extended Math Function is limited
        * to SIMD8 with half-float
        */
       if (devinfo->ver < 7)
@@ -6886,7 +6886,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
        * In this context, "DW operations" means "operations acting on 32-bit
        * values", so it includes operations on floats.
        *
-       * Gen4 has a similar restriction.  From the i965 PRM, section 11.5.3
+       * Gfx4 has a similar restriction.  From the i965 PRM, section 11.5.3
        * (Instruction Compression -> Rules and Restrictions):
        *
        *  "A compressed instruction must be in Align1 access mode. Align16
@@ -6903,13 +6903,13 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
 
    case SHADER_OPCODE_MULH:
       /* MULH is lowered to the MUL/MACH sequence using the accumulator, which
-       * is 8-wide on Gen7+.
+       * is 8-wide on Gfx7+.
        */
       return (devinfo->ver >= 7 ? 8 :
               get_fpu_lowered_simd_width(devinfo, inst));
 
    case FS_OPCODE_FB_WRITE_LOGICAL:
-      /* Gen6 doesn't support SIMD16 depth writes but we cannot handle them
+      /* Gfx6 doesn't support SIMD16 depth writes but we cannot handle them
        * here.
        */
       assert(devinfo->ver != 6 ||
@@ -6949,7 +6949,7 @@ get_lowered_simd_width(const struct gen_device_info *devinfo,
 
    case SHADER_OPCODE_TXF_LOGICAL:
    case SHADER_OPCODE_TXS_LOGICAL:
-      /* Gen4 doesn't have SIMD8 variants for the RESINFO and LD-with-LOD
+      /* Gfx4 doesn't have SIMD8 variants for the RESINFO and LD-with-LOD
        * messages.  Use SIMD16 instead.
        */
       if (devinfo->ver == 4)
@@ -7323,7 +7323,7 @@ fs_visitor::lower_simd_width()
 
 /**
  * Transform barycentric vectors into the interleaved form expected by the PLN
- * instruction and returned by the Gen7+ PI shared function.
+ * instruction and returned by the Gfx7+ PI shared function.
  *
  * For channels 0-15 in SIMD16 mode they are expected to be laid out as
  * follows in the register file:
@@ -8076,7 +8076,7 @@ find_halt_control_flow_region_start(const fs_visitor *v)
 }
 
 /**
- * Work around the Gen12 hardware bug filed as GEN:BUG:1407528679.  EU fusion
+ * Work around the Gfx12 hardware bug filed as GEN:BUG:1407528679.  EU fusion
  * can cause a BB to be executed with all channels disabled, which will lead
  * to the execution of any NoMask instructions in it, even though any
  * execution-masked instructions will be correctly shot down.  This may break
@@ -9227,7 +9227,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
        * generations, the only configurations supporting persample dispatch
        * are those in which only one dispatch width is enabled.
        *
-       * The Gen12 hardware spec has a similar dispatch grouping table, but
+       * The Gfx12 hardware spec has a similar dispatch grouping table, but
        * the following conflicting restriction applies (from the page on
        * "Structure_3DSTATE_PS_BODY"), so we need to keep the SIMD16 shader:
        *

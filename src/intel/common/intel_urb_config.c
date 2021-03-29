@@ -70,7 +70,7 @@ intel_get_urb_config(const struct gen_device_info *devinfo,
 {
    unsigned urb_size_kB = intel_get_l3_config_urb_size(devinfo, l3_cfg);
 
-   /* RCU_MODE register for Gen12+ in BSpec says:
+   /* RCU_MODE register for Gfx12+ in BSpec says:
     *
     *    "HW reserves 4KB of URB space per bank for Compute Engine out of the
     *    total storage available in L3. SW must consider that 4KB of storage
@@ -236,7 +236,7 @@ intel_get_urb_config(const struct gen_device_info *devinfo,
 
    if (deref_block_size) {
       if (devinfo->ver >= 12) {
-         /* From the Gen12 BSpec:
+         /* From the Gfx12 BSpec:
           *
           *    "Deref Block size depends on the last enabled shader and number
           *    of handles programmed for that shader

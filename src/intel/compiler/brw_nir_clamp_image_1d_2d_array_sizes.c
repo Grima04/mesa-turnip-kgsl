@@ -27,7 +27,7 @@
 /**
  * GEN:BUG:1806565034:
  *
- * Gen12+ allows to set RENDER_SURFACE_STATE::SurfaceArray to 1 only if
+ * Gfx12+ allows to set RENDER_SURFACE_STATE::SurfaceArray to 1 only if
  * array_len > 1. Setting RENDER_SURFACE_STATE::SurfaceArray to 0 results in
  * the HW RESINFO message to report an array size of 0 which breaks texture
  * array size queries.

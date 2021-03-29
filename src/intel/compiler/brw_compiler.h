@@ -310,7 +310,7 @@ struct brw_vs_prog_key {
    unsigned nr_userclip_plane_consts:4;
 
    /**
-    * For pre-Gen6 hardware, a bitfield indicating which texture coordinates
+    * For pre-Gfx6 hardware, a bitfield indicating which texture coordinates
     * are going to be replaced with point coordinates (as a consequence of a
     * call to glTexEnvi(GL_POINT_SPRITE, GL_COORD_REPLACE, GL_TRUE)).  Because
     * our SF thread requires exact matching between VS outputs and FS inputs,
@@ -480,7 +480,7 @@ struct brw_wm_prog_key {
 
    uint8_t color_outputs_valid;
    uint64_t input_slots_valid;
-   GLenum alpha_test_func;          /* < For Gen4/5 MRT alpha test */
+   GLenum alpha_test_func;          /* < For Gfx4/5 MRT alpha test */
    float alpha_test_ref;
 };
 
@@ -555,7 +555,7 @@ struct brw_image_param {
  * From the OpenGL 3.0 spec, table 6.44 (Transform Feedback State), the
  * minimum value of MAX_TRANSFORM_FEEDBACK_INTERLEAVED_COMPONENTS is 64.
  *
- * On Gen6, the size of transform feedback data is limited not by the number
+ * On Gfx6, the size of transform feedback data is limited not by the number
  * of components but by the number of binding table entries we set aside.  We
  * use one binding table entry for a float, one entry for a vector, and one
  * entry per matrix column.  Since the only way we can communicate our
@@ -868,7 +868,7 @@ struct brw_wm_prog_data {
    uint64_t inputs;
 
    /* Mapping of VUE slots to interpolation modes.
-    * Used by the Gen4-5 clip/sf/wm stages.
+    * Used by the Gfx4-5 clip/sf/wm stages.
     */
    unsigned char interp_mode[65]; /* BRW_VARYING_SLOT_COUNT */
 
@@ -1305,25 +1305,25 @@ struct brw_gs_prog_data
    int invocations;
 
    /**
-    * Gen6: Provoking vertex convention for odd-numbered triangles
+    * Gfx6: Provoking vertex convention for odd-numbered triangles
     * in tristrips.
     */
    GLuint pv_first:1;
 
    /**
-    * Gen6: Number of varyings that are output to transform feedback.
+    * Gfx6: Number of varyings that are output to transform feedback.
     */
    GLuint num_transform_feedback_bindings:7; /* 0-BRW_MAX_SOL_BINDINGS */
 
    /**
-    * Gen6: Map from the index of a transform feedback binding table entry to the
+    * Gfx6: Map from the index of a transform feedback binding table entry to the
     * gl_varying_slot that should be streamed out through that binding table
     * entry.
     */
    unsigned char transform_feedback_bindings[64 /* BRW_MAX_SOL_BINDINGS */];
 
    /**
-    * Gen6: Map from the index of a transform feedback binding table entry to the
+    * Gfx6: Map from the index of a transform feedback binding table entry to the
     * swizzles that should be used when streaming out data through that
     * binding table entry.
     */
@@ -1661,9 +1661,9 @@ encode_slm_size(unsigned gen, uint32_t bytes)
     *
     * Size   | 0 kB | 1 kB | 2 kB | 4 kB | 8 kB | 16 kB | 32 kB | 64 kB |
     * -------------------------------------------------------------------
-    * Gen7-8 |    0 | none | none |    1 |    2 |     4 |     8 |    16 |
+    * Gfx7-8 |    0 | none | none |    1 |    2 |     4 |     8 |    16 |
     * -------------------------------------------------------------------
-    * Gen9+  |    0 |    1 |    2 |    3 |    4 |     5 |     6 |     7 |
+    * Gfx9+  |    0 |    1 |    2 |    3 |    4 |     5 |     6 |     7 |
     */
 
    if (bytes > 0) {
@@ -1676,7 +1676,7 @@ encode_slm_size(unsigned gen, uint32_t bytes)
          slm_size = ffs(slm_size) - 10;
       } else {
          assert(slm_size >= 4096);
-         /* Convert to the pre-Gen9 representation. */
+         /* Convert to the pre-Gfx9 representation. */
          slm_size = slm_size / 4096;
       }
    }

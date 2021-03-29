@@ -467,7 +467,7 @@ decode_single_ksp(struct aub_viewer_decode_ctx *ctx,
                   const uint32_t *p)
 {
    uint64_t ksp = 0;
-   bool is_simd8 = false; /* vertex shaders on Gen8+ only */
+   bool is_simd8 = false; /* vertex shaders on Gfx8+ only */
    bool is_enabled = true;
 
    struct intel_field_iterator iter;

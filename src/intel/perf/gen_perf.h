@@ -106,7 +106,7 @@ struct gen_pipeline_stat {
  * The largest OA formats we can use include:
  * For Haswell:
  *   1 timestamp, 45 A counters, 8 B counters and 8 C counters.
- * For Gen8+
+ * For Gfx8+
  *   1 timestamp, 1 clock, 36 A counters, 8 B counters and 8 C counters
  *
  * Plus 2 PERF_CNT registers and 1 RPSTAT register.
@@ -492,7 +492,7 @@ gen_perf_has_hold_preemption(const struct gen_perf_config *perf)
 }
 
 /** Whether we have the ability to lock EU array power configuration for the
- * duration of the performance recording. This is useful on Gen11 where the HW
+ * duration of the performance recording. This is useful on Gfx11 where the HW
  * architecture requires half the EU for particular workloads.
  */
 static inline bool

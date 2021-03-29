@@ -189,7 +189,7 @@ ALU2_ACC(SUBB)
 ALU2(MAC)
 ALU1(DIM)
 
-/** Gen4 predicated IF. */
+/** Gfx4 predicated IF. */
 vec4_instruction *
 vec4_visitor::IF(enum brw_predicate predicate)
 {
@@ -201,7 +201,7 @@ vec4_visitor::IF(enum brw_predicate predicate)
    return inst;
 }
 
-/** Gen6 IF with embedded comparison. */
+/** Gfx6 IF with embedded comparison. */
 vec4_instruction *
 vec4_visitor::IF(src_reg src0, src_reg src1,
                  enum brw_conditional_mod condition)
@@ -340,7 +340,7 @@ vec4_visitor::emit_math(enum opcode opcode,
       emit(opcode, dst, fix_math_operand(src0), fix_math_operand(src1));
 
    if (devinfo->ver == 6 && dst.writemask != WRITEMASK_XYZW) {
-      /* MATH on Gen6 must be align1, so we can't do writemasks. */
+      /* MATH on Gfx6 must be align1, so we can't do writemasks. */
       math->dst = dst_reg(this, glsl_type::vec4_type);
       math->dst.type = dst.type;
       math = emit(MOV(dst, src_reg(math->dst)));
@@ -872,7 +872,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
    inst->offset = constant_offset;
 
    /* The message header is necessary for:
-    * - Gen4 (always)
+    * - Gfx4 (always)
     * - Texel offsets
     * - Gather channel selection
     * - Sampler indices too large to fit in a 4-bit value.
@@ -1000,7 +1000,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
     * spec requires layers.
     */
    if (op == ir_txs && devinfo->ver < 7) {
-      /* Gen4-6 return 0 instead of 1 for single layer surfaces. */
+      /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
       emit_minmax(BRW_CONDITIONAL_GE, writemask(inst->dst, WRITEMASK_Z),
                   src_reg(inst->dst), brw_imm_d(1));
    }
@@ -1019,7 +1019,7 @@ vec4_visitor::emit_texture(ir_texture_opcode op,
 }
 
 /**
- * Apply workarounds for Gen6 gather with UINT/SINT
+ * Apply workarounds for Gfx6 gather with UINT/SINT
  */
 void
 vec4_visitor::emit_gfx6_gather_wa(uint8_t wa, dst_reg dst)

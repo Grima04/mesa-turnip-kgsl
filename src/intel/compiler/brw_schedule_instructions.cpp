@@ -929,8 +929,8 @@ schedule_node::schedule_node(backend_instruction *inst,
    this->delay = 0;
    this->exit = NULL;
 
-   /* We can't measure Gen6 timings directly but expect them to be much
-    * closer to Gen7 than Gen4.
+   /* We can't measure Gfx6 timings directly but expect them to be much
+    * closer to Gfx7 than Gfx4.
     */
    if (!sched->post_reg_alloc)
       this->latency = 1;
@@ -1783,7 +1783,7 @@ instruction_scheduler::schedule_instructions(bblock_t *block)
       }
       cand_generation++;
 
-      /* Shared resource: the mathbox.  There's one mathbox per EU on Gen6+
+      /* Shared resource: the mathbox.  There's one mathbox per EU on Gfx6+
        * but it's more limited pre-gfx6, so if we send something off to it then
        * the next math instruction isn't going to make progress until the first
        * is done.

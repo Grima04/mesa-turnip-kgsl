@@ -229,7 +229,7 @@ brw_delete_transform_feedback(struct gl_context *ctx,
  * number of primitives generated during one section.  We accumulate these
  * values, adding them up to get the total number of primitives generated.
  *
- * Note that we expose one stream pre-Gen7, so the above is just (start, end).
+ * Note that we expose one stream pre-Gfx7, so the above is just (start, end).
  */
 static void
 aggregate_transform_feedback_counter(

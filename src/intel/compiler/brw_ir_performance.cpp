@@ -38,7 +38,7 @@ namespace {
       unit_fe,
       /** EU FPU0 (Note that co-issue to FPU1 is currently not modeled here). */
       unit_fpu,
-      /** Extended Math unit (AKA FPU1 on Gen8-11, part of the EU on Gen6+). */
+      /** Extended Math unit (AKA FPU1 on Gfx8-11, part of the EU on Gfx6+). */
       unit_em,
       /** Sampler shared function. */
       unit_sampler,
@@ -71,7 +71,7 @@ namespace {
    enum dependency_id {
       /* Register part of the GRF. */
       dependency_id_grf0 = 0,
-      /* Register part of the MRF.  Only used on Gen4-6. */
+      /* Register part of the MRF.  Only used on Gfx4-6. */
       dependency_id_mrf0 = dependency_id_grf0 + BRW_MAX_GRF,
       /* Address register part of the ARF. */
       dependency_id_addr0 = dependency_id_mrf0 + 24,
@@ -79,9 +79,9 @@ namespace {
       dependency_id_accum0 = dependency_id_addr0 + 1,
       /* Flag register part of the ARF. */
       dependency_id_flag0 = dependency_id_accum0 + 12,
-      /* SBID token write completion.  Only used on Gen12+. */
+      /* SBID token write completion.  Only used on Gfx12+. */
       dependency_id_sbid_wr0 = dependency_id_flag0 + 8,
-      /* SBID token read completion.  Only used on Gen12+. */
+      /* SBID token read completion.  Only used on Gfx12+. */
       dependency_id_sbid_rd0 = dependency_id_sbid_wr0 + 16,
       /* Number of computation dependencies currently tracked. */
       num_dependency_ids = dependency_id_sbid_rd0 + 16
@@ -280,7 +280,7 @@ namespace {
     * Most timing parameters are obtained from the multivariate linear
     * regression of a sample of empirical timings measured using the tm0
     * register (as can be done today by using the shader_time debugging
-    * option).  The Gen4-5 math timings are obtained from BSpec Volume 5c.3
+    * option).  The Gfx4-5 math timings are obtained from BSpec Volume 5c.3
     * "Shared Functions - Extended Math", Section 3.2 "Performance".
     * Parameters marked XXX shall be considered low-quality, they're possibly
     * high variance or completely guessed in cases where experimental data was
@@ -1229,7 +1229,7 @@ namespace {
 
    /**
     * Return the dependency ID corresponding to the SBID read completion
-    * condition of a Gen12+ SWSB.
+    * condition of a Gfx12+ SWSB.
     */
    dependency_id
    tgl_swsb_rd_dependency_id(tgl_swsb swsb)
@@ -1244,7 +1244,7 @@ namespace {
 
    /**
     * Return the dependency ID corresponding to the SBID write completion
-    * condition of a Gen12+ SWSB.
+    * condition of a Gfx12+ SWSB.
     */
    dependency_id
    tgl_swsb_wr_dependency_id(tgl_swsb swsb)
@@ -1531,7 +1531,7 @@ namespace {
        *       weights used elsewhere in the compiler back-end.
        *
        *       Note that we provide slightly more pessimistic weights on
-       *       Gen12+ for SIMD32, since the effective warp size on that
+       *       Gfx12+ for SIMD32, since the effective warp size on that
        *       platform is 2x the SIMD width due to EU fusion, which increases
        *       the likelihood of divergent control flow in comparison to
        *       previous generations, giving narrower SIMD modes a performance

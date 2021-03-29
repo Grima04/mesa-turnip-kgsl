@@ -29,7 +29,7 @@
  *
  * Support for query objects (GL_ARB_occlusion_query, GL_ARB_timer_query,
  * GL_EXT_transform_feedback, and friends) on platforms that support
- * hardware contexts (Gen6+).
+ * hardware contexts (Gfx6+).
  */
 #include "brw_context.h"
 #include "brw_defines.h"
@@ -199,7 +199,7 @@ emit_pipeline_stat(struct brw_context *brw, struct brw_bo *bo,
    };
    STATIC_ASSERT(ARRAY_SIZE(target_to_register) == MAX_PIPELINE_STATISTICS);
    uint32_t reg = target_to_register[pipeline_target_to_index(target)];
-   /* Gen6 GS code counts full primitives, that is, it won't count individual
+   /* Gfx6 GS code counts full primitives, that is, it won't count individual
     * triangles in a triangle strip. Use CL_INVOCATION_COUNT for that.
     */
    if (devinfo->ver == 6 && target == GL_GEOMETRY_SHADER_PRIMITIVES_EMITTED_ARB)
@@ -549,7 +549,7 @@ gfx6_query_counter(struct gl_context *ctx, struct gl_query_object *q)
    set_query_availability(brw, query, true);
 }
 
-/* Initialize Gen6+-specific query object functions. */
+/* Initialize Gfx6+-specific query object functions. */
 void gfx6_init_queryobj_functions(struct dd_function_table *functions)
 {
    functions->BeginQuery = gfx6_begin_query;

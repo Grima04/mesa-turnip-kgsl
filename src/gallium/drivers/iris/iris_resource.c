@@ -291,7 +291,7 @@ iris_image_view_get_format(struct iris_context *ice,
       iris_format_for_usage(devinfo, img->format, usage).fmt;
 
    if (img->shader_access & PIPE_IMAGE_ACCESS_READ) {
-      /* On Gen8, try to use typed surfaces reads (which support a
+      /* On Gfx8, try to use typed surfaces reads (which support a
        * limited number of formats), and if not possible, fall back
        * to untyped reads.
        */
@@ -733,7 +733,7 @@ iris_resource_configure_aux(struct iris_screen *screen,
        * A CCS value of 0 indicates that the corresponding block is in the
        * pass-through state which is what we want.
        *
-       * For CCS_D, do the same thing.  On Gen9+, this avoids having any
+       * For CCS_D, do the same thing.  On Gfx9+, this avoids having any
        * undefined bits in the aux buffer.
        */
       if (imported) {

@@ -90,7 +90,7 @@ static void brw_ff_gs_alloc_regs(struct brw_ff_gs_compile *c,
  * The following information is passed to the GS thread in R0, and needs to be
  * included in the first URB_WRITE or FF_SYNC message sent by the GS:
  *
- * - DWORD 0 [31:0] handle info (Gen4 only)
+ * - DWORD 0 [31:0] handle info (Gfx4 only)
  * - DWORD 5 [7:0] FFTID
  * - DWORD 6 [31:0] Debug info
  * - DWORD 7 [31:0] Debug info
@@ -330,7 +330,7 @@ void brw_ff_gs_lines(struct brw_ff_gs_compile *c)
 }
 
 /**
- * Generate the geometry shader program used on Gen6 to perform stream output
+ * Generate the geometry shader program used on Gfx6 to perform stream output
  * (transform feedback).
  */
 void

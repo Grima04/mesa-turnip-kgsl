@@ -433,7 +433,7 @@ anv_can_hiz_clear_ds_view(struct anv_device *device,
       return false;
 
    /* Only gfx9+ supports returning ANV_HZ_FC_VAL when sampling a fast-cleared
-    * portion of a HiZ buffer. Testing has revealed that Gen8 only supports
+    * portion of a HiZ buffer. Testing has revealed that Gfx8 only supports
     * returning 0.0f. Gens prior to gfx8 do not support this feature at all.
     */
    if (GFX_VER == 8 && anv_can_sample_with_hiz(&device->info, iview->image))
@@ -1888,7 +1888,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
       return;
 
 #if GFX_VER >= 11
-   /* On Gen11+ we use only one config, so verify it remains the same and skip
+   /* On Gfx11+ we use only one config, so verify it remains the same and skip
     * the stalling programming entirely.
     */
    assert(cfg == cmd_buffer->device->l3_config);
@@ -2049,7 +2049,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     *
     * The same text exists a few rows below for Post Sync Op.
     *
-    * On Gen12 this is GEN:BUG:1607156449.
+    * On Gfx12 this is GEN:BUG:1607156449.
     */
    if (bits & ANV_PIPE_POST_SYNC_BIT) {
       if ((GFX_VER == 9 || (GFX_VER == 12 && devinfo->revision == 0 /* A0 */)) &&
@@ -3036,7 +3036,7 @@ cmd_buffer_emit_push_constant(struct anv_cmd_buffer *cmd_buffer,
             &pipeline->shaders[stage]->bind_map;
 
 #if GFX_VER >= 9
-         /* This field exists since Gen8.  However, the Broadwell PRM says:
+         /* This field exists since Gfx8.  However, the Broadwell PRM says:
           *
           *    "Constant Buffer Object Control State must be always programmed
           *    to zero."
@@ -3451,7 +3451,7 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
                /* Size is in DWords - 1 */
                sob.SurfaceSize = DIV_ROUND_UP(xfb->size, 4) - 1;
 #else
-               /* We don't have SOBufferEnable in 3DSTATE_SO_BUFFER on Gen7 so
+               /* We don't have SOBufferEnable in 3DSTATE_SO_BUFFER on Gfx7 so
                 * we trust in SurfaceEndAddress = SurfaceBaseAddress = 0 (the
                 * default for an empty SO_BUFFER packet) to disable them.
                 */
@@ -4711,7 +4711,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
     *   3DSTATE_CC_STATE_POINTERS command prior to send a PIPELINE_SELECT
     *   with Pipeline Select set to GPGPU.
     *
-    * The internal hardware docs recommend the same workaround for Gen9
+    * The internal hardware docs recommend the same workaround for Gfx9
     * hardware too.
     */
    if (pipeline == GPGPU)
@@ -4992,7 +4992,7 @@ genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VER == 9
    const struct gen_device_info *devinfo = &cmd_buffer->device->info;
    const unsigned slice_hashing[] = {
-      /* Because all Gen9 platforms with more than one slice require
+      /* Because all Gfx9 platforms with more than one slice require
        * three-way subslice hashing, a single "normal" 16x16 slice hashing
        * block is guaranteed to suffer from substantial imbalance, with one
        * subslice receiving twice as much work as the other two in the
@@ -5000,7 +5000,7 @@ genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
        *
        * The performance impact of that would be particularly severe when
        * three-way hashing is also in use for slice balancing (which is the
-       * case for all Gen9 GT4 platforms), because one of the slices
+       * case for all Gfx9 GT4 platforms), because one of the slices
        * receives one every three 16x16 blocks in either direction, which
        * is roughly the periodicity of the underlying subslice imbalance
        * pattern ("roughly" because in reality the hardware's
@@ -5144,7 +5144,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
 
       /* GEN:BUG:1408224581
        *
-       * Workaround: Gen12LP Astep only An additional pipe control with
+       * Workaround: Gfx12LP Astep only An additional pipe control with
        * post-sync = store dword operation would be required.( w/a is to
        * have an additional pipe control after the stencil state whenever
        * the surface state bits of this state is changing).

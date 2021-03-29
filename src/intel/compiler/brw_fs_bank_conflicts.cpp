@@ -30,7 +30,7 @@
  * instructions.
  *
  * Unfortunately there is close to no information about bank conflicts in the
- * hardware spec, but experimentally on Gen7-Gen9 ternary instructions seem to
+ * hardware spec, but experimentally on Gfx7-Gfx9 ternary instructions seem to
  * incur an average bank conflict penalty of one cycle per SIMD8 op whenever
  * the second and third source are stored in the same GRF bank (\sa bank_of()
  * for the exact bank layout) which cannot be fetched during the same cycle by
@@ -568,14 +568,14 @@ namespace {
          }
 
          /* Preserve the original allocation of VGRFs used by the barycentric
-          * source of the LINTERP instruction on Gen6, since pair-aligned
+          * source of the LINTERP instruction on Gfx6, since pair-aligned
           * barycentrics allow the PLN instruction to be used.
           */
          if (v->devinfo->has_pln && v->devinfo->ver <= 6 &&
              inst->opcode == FS_OPCODE_LINTERP)
             constrained[p.atom_of_reg(reg_of(inst->src[0]))] = true;
 
-         /* The location of the Gen7 MRF hack registers is hard-coded in the
+         /* The location of the Gfx7 MRF hack registers is hard-coded in the
           * rest of the compiler back-end.  Don't attempt to move them around.
           */
          if (v->devinfo->ver >= 7) {
@@ -620,9 +620,9 @@ namespace {
     * assignment of r.  \sa delta_conflicts() for a vectorized implementation
     * of the expression above.
     *
-    * FINISHME: Teach this about the Gen10+ bank conflict rules, which are
+    * FINISHME: Teach this about the Gfx10+ bank conflict rules, which are
     *           somewhat more relaxed than on previous generations.  In the
-    *           meantime optimizing based on Gen9 weights is likely to be more
+    *           meantime optimizing based on Gfx9 weights is likely to be more
     *           helpful than not optimizing at all.
     */
    weight_vector_type *

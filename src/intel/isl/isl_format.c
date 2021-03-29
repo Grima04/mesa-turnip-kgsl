@@ -928,7 +928,7 @@ isl_formats_are_ccs_e_compatible(const struct gen_device_info *devinfo,
        !isl_format_supports_ccs_e(devinfo, format2))
       return false;
 
-   /* Gen12 added CCS_E support for A8_UNORM, A8_UNORM and R8_UNORM share the
+   /* Gfx12 added CCS_E support for A8_UNORM, A8_UNORM and R8_UNORM share the
     * same aux map format encoding so they are definitely compatible.
     */
    if (format1 == ISL_FORMAT_A8_UNORM)

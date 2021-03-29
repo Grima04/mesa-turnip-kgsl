@@ -441,7 +441,7 @@ brw_get_texture_swizzle(const struct gl_context *ctx,
 }
 
 /**
- * Convert an swizzle enumeration (i.e. SWIZZLE_X) to one of the Gen7.5+
+ * Convert an swizzle enumeration (i.e. SWIZZLE_X) to one of the Gfx7.5+
  * "Shader Channel Select" enumerations (i.e. HSW_SCS_RED).  The mappings are
  *
  * SWIZZLE_X, SWIZZLE_Y, SWIZZLE_Z, SWIZZLE_W, SWIZZLE_ZERO, SWIZZLE_ONE
@@ -855,7 +855,7 @@ emit_null_surface_state(struct brw_context *brw,
       return;
    }
 
-   /* On Gen6, null render targets seem to cause GPU hangs when multisampling.
+   /* On Gfx6, null render targets seem to cause GPU hangs when multisampling.
     * So work around this problem by rendering into dummy color buffer.
     *
     * To decrease the amount of memory needed by the workaround buffer, we

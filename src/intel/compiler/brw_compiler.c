@@ -112,7 +112,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
    /* Default to the sampler since that's what we've done since forever */
    compiler->indirect_ubos_use_sampler = true;
 
-   /* There is no vec4 mode on Gen10+, and we don't use it at all on Gen8+. */
+   /* There is no vec4 mode on Gfx10+, and we don't use it at all on Gfx8+. */
    for (int i = MESA_SHADER_VERTEX; i < MESA_ALL_SHADER_STAGES; i++) {
       compiler->scalar_stage[i] = devinfo->ver >= 8 ||
          i == MESA_SHADER_FRAGMENT || i == MESA_SHADER_COMPUTE;
@@ -145,8 +145,8 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
    }
 
    /* The Bspec's section tittled "Instruction_multiply[DevBDW+]" claims that
-    * destination type can be Quadword and source type Doubleword for Gen8 and
-    * Gen9. So, lower 64 bit multiply instruction on rest of the platforms.
+    * destination type can be Quadword and source type Doubleword for Gfx8 and
+    * Gfx9. So, lower 64 bit multiply instruction on rest of the platforms.
     */
    if (devinfo->ver < 8 || devinfo->ver > 9)
       int64_options |= nir_lower_imul_2x32_64;
@@ -174,7 +174,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
          *nir_options = vector_nir_options;
       }
 
-      /* Prior to Gen6, there are no three source operations, and Gen11 loses
+      /* Prior to Gfx6, there are no three source operations, and Gfx11 loses
        * LRP.
        */
       nir_options->lower_ffma16 = devinfo->ver < 6;
@@ -189,7 +189,7 @@ brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
       nir_options->lower_int64_options = int64_options;
       nir_options->lower_doubles_options = fp64_options;
 
-      /* Starting with Gen11, we lower away 8-bit arithmetic */
+      /* Starting with Gfx11, we lower away 8-bit arithmetic */
       nir_options->support_8bit_alu = devinfo->ver < 11;
 
       nir_options->unify_interfaces = i < MESA_SHADER_FRAGMENT;

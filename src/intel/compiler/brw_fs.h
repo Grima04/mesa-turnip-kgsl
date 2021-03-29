@@ -447,7 +447,7 @@ private:
 
 /**
  * Return the flag register used in fragment shaders to keep track of live
- * samples.  On Gen7+ we use f1.0-f1.1 to allow discard jumps in SIMD32
+ * samples.  On Gfx7+ we use f1.0-f1.1 to allow discard jumps in SIMD32
  * dispatch mode, while earlier generations are constrained to f0.1, which
  * limits the dispatch width to SIMD16 for fragment shaders that use discard.
  */

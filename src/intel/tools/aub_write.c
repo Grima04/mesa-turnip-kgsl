@@ -429,7 +429,7 @@ aub_write_ggtt(struct aub_file *aub, uint64_t virt_addr, uint64_t size, const vo
    aub_map_ggtt(aub, virt_addr, size);
 
    /* We write the GGTT buffer through the GGTT aub command rather than the
-    * PHYSICAL aub command. This is because the Gen9 simulator seems to have 2
+    * PHYSICAL aub command. This is because the Gfx9 simulator seems to have 2
     * different set of memory pools for GGTT and physical (probably someone
     * didn't really understand the concept?).
     */

@@ -277,7 +277,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
           * mask writes to alpha (ala glColorMask) and reconfigure the
           * alpha blending hardware to use GL_ONE (or GL_ZERO) for
           * cases where GL_DST_ALPHA (or GL_ONE_MINUS_DST_ALPHA) is
-          * used. On Gen8+ BGRX is actually allowed (but not RGBX).
+          * used. On Gfx8+ BGRX is actually allowed (but not RGBX).
           */
          if (!isl_format_supports_rendering(devinfo, texture))
             render = ISL_FORMAT_B8G8R8A8_UNORM;
@@ -346,7 +346,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
       screen->mesa_format_supports_texture[MESA_FORMAT_Z_UNORM16] = true;
 
    /* The RGBX formats are not renderable. Normally these get mapped
-    * internally to RGBA formats when rendering. However on Gen9+ when this
+    * internally to RGBA formats when rendering. However on Gfx9+ when this
     * internal override is used fast clears don't work so they are disabled in
     * brw_meta_fast_clear. To avoid this problem we can just pretend not to
     * support RGBX formats at all. This will cause the upper layers of Mesa to
@@ -356,7 +356,7 @@ brw_screen_init_surface_formats(struct brw_screen *screen)
     * it's a bit more difficult when the hardware doesn't support texture
     * swizzling. Gens using the blorp have further problems because that
     * doesn't implement this swizzle override. We don't need to do this for
-    * BGRX because that actually is supported natively on Gen8+.
+    * BGRX because that actually is supported natively on Gfx8+.
     */
    if (gen >= 90) {
       static const mesa_format rgbx_formats[] = {
@@ -435,11 +435,11 @@ brw_render_target_supported(struct brw_context *brw,
     */
    if (devinfo->ver < 8 &&
        rb->NumSamples > 0 && _mesa_get_format_bytes(format) > 8) {
-      /* Gen6: MSAA on >64 bit formats is unsupported. */
+      /* Gfx6: MSAA on >64 bit formats is unsupported. */
       if (devinfo->ver <= 6)
          return false;
 
-      /* Gen7: 8x MSAA on >64 bit formats is unsupported. */
+      /* Gfx7: 8x MSAA on >64 bit formats is unsupported. */
       if (rb->NumSamples >= 8)
          return false;
    }
@@ -532,11 +532,11 @@ brw_depth_format(struct brw_context *brw, mesa_format format)
       } else {
          /* Use D24_UNORM_S8, not D24_UNORM_X8.
           *
-          * D24_UNORM_X8 was not introduced until Gen5. (See the Ironlake PRM,
+          * D24_UNORM_X8 was not introduced until Gfx5. (See the Ironlake PRM,
           * Volume 2, Part 1, Section 8.4.6 "Depth/Stencil Buffer State", Bits
           * 3DSTATE_DEPTH_BUFFER.Surface_Format).
           *
-          * However, on Gen5, D24_UNORM_X8 may be used only if separate
+          * However, on Gfx5, D24_UNORM_X8 may be used only if separate
           * stencil is enabled, and we never enable it. From the Ironlake PRM,
           * same section as above, 3DSTATE_DEPTH_BUFFER's
           * "Separate Stencil Buffer Enable" bit:

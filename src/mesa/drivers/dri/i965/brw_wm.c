@@ -239,7 +239,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
                key->gl_clamp_mask[2] |= 1 << s;
          }
 
-         /* gather4 for RG32* is broken in multiple ways on Gen7. */
+         /* gather4 for RG32* is broken in multiple ways on Gfx7. */
          if (devinfo->ver == 7 && prog->info.uses_texture_gather) {
             switch (img->InternalFormat) {
             case GL_RG32I:
@@ -275,7 +275,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
             }
          }
 
-         /* Gen6's gather4 is broken for UINT/SINT; we treat them as
+         /* Gfx6's gather4 is broken for UINT/SINT; we treat them as
           * UNORM/FLOAT instead and fix it in the shader.
           */
          if (devinfo->ver == 6 && prog->info.uses_texture_gather) {

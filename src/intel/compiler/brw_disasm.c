@@ -288,7 +288,7 @@ static const char *const end_of_thread[2] = {
    [1] = "EOT"
 };
 
-/* SFIDs on Gen4-5 */
+/* SFIDs on Gfx4-5 */
 static const char *const gfx4_sfid[16] = {
    [BRW_SFID_NULL]            = "null",
    [BRW_SFID_MATH]            = "math",
@@ -405,7 +405,7 @@ static const char *const m_rt_write_subtype[] = {
    [0b010] = "SIMD8/DualSrcLow",
    [0b011] = "SIMD8/DualSrcHigh",
    [0b100] = "SIMD8",
-   [0b101] = "SIMD8/ImageWrite",   /* Gen6+ */
+   [0b101] = "SIMD8/ImageWrite",   /* Gfx6+ */
    [0b111] = "SIMD16/RepData-111", /* no idea how this is different than 1 */
 };
 
@@ -545,11 +545,11 @@ static const char *const gfx7_urb_opcode[] = {
    [BRW_URB_OPCODE_WRITE_OWORD] = "write OWord",
    [BRW_URB_OPCODE_READ_HWORD] = "read HWord",
    [BRW_URB_OPCODE_READ_OWORD] = "read OWord",
-   [GFX7_URB_OPCODE_ATOMIC_MOV] = "atomic mov",  /* Gen7+ */
-   [GFX7_URB_OPCODE_ATOMIC_INC] = "atomic inc",  /* Gen7+ */
-   [GFX8_URB_OPCODE_ATOMIC_ADD] = "atomic add",  /* Gen8+ */
-   [GFX8_URB_OPCODE_SIMD8_WRITE] = "SIMD8 write", /* Gen8+ */
-   [GFX8_URB_OPCODE_SIMD8_READ] = "SIMD8 read",  /* Gen8+ */
+   [GFX7_URB_OPCODE_ATOMIC_MOV] = "atomic mov",  /* Gfx7+ */
+   [GFX7_URB_OPCODE_ATOMIC_INC] = "atomic inc",  /* Gfx7+ */
+   [GFX8_URB_OPCODE_ATOMIC_ADD] = "atomic add",  /* Gfx8+ */
+   [GFX8_URB_OPCODE_SIMD8_WRITE] = "SIMD8 write", /* Gfx8+ */
+   [GFX8_URB_OPCODE_SIMD8_READ] = "SIMD8 read",  /* Gfx8+ */
    /* [9-15] - reserved */
 };
 
@@ -1919,7 +1919,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             break;
          case GFX6_SFID_DATAPORT_SAMPLER_CACHE:
          case GFX6_SFID_DATAPORT_CONSTANT_CACHE:
-            /* aka BRW_SFID_DATAPORT_READ on Gen4-5 */
+            /* aka BRW_SFID_DATAPORT_READ on Gfx4-5 */
             if (devinfo->ver >= 6) {
                format(file, " (%u, %u, %u, %u)",
                       brw_dp_desc_binding_table_index(devinfo, imm_desc),
@@ -1944,7 +1944,7 @@ brw_disassemble_inst(FILE *file, const struct gen_device_info *devinfo,
             break;
 
          case GFX6_SFID_DATAPORT_RENDER_CACHE: {
-            /* aka BRW_SFID_DATAPORT_WRITE on Gen4-5 */
+            /* aka BRW_SFID_DATAPORT_WRITE on Gfx4-5 */
             unsigned msg_type = brw_dp_write_desc_msg_type(devinfo, imm_desc);
 
             err |= control(file, "DP rc message type",

@@ -811,7 +811,7 @@ iris_setup_binding_table(const struct gen_device_info *devinfo,
          BITFIELD64_MASK(num_render_targets);
 
       /* Setup render target read surface group in order to support non-coherent
-       * framebuffer fetch on Gen8
+       * framebuffer fetch on Gfx8
        */
       if (devinfo->ver == 8 && info->outputs_read) {
          bt->sizes[IRIS_SURFACE_GROUP_RENDER_TARGET_READ] = num_render_targets;
@@ -1760,12 +1760,12 @@ iris_compile_fs(struct iris_screen *screen,
 
    /* Lower output variables to load_output intrinsics before setting up
     * binding tables, so iris_setup_binding_table can map any load_output
-    * intrinsics to IRIS_SURFACE_GROUP_RENDER_TARGET_READ on Gen8 for
+    * intrinsics to IRIS_SURFACE_GROUP_RENDER_TARGET_READ on Gfx8 for
     * non-coherent framebuffer fetches.
     */
    brw_nir_lower_fs_outputs(nir);
 
-   /* On Gen11+, shader RT write messages have a "Null Render Target" bit
+   /* On Gfx11+, shader RT write messages have a "Null Render Target" bit
     * and do not need a binding table entry with a null surface.  Earlier
     * generations need an entry for a null surface.
     */
@@ -2162,9 +2162,9 @@ iris_get_scratch_space(struct iris_context *ice,
     * According to the other driver team, this applies to compute shaders
     * as well.  This is not currently documented at all.
     *
-    * This hack is no longer necessary on Gen11+.
+    * This hack is no longer necessary on Gfx11+.
     *
-    * For, Gen11+, scratch space allocation is based on the number of threads
+    * For, Gfx11+, scratch space allocation is based on the number of threads
     * in the base configuration.
     */
    unsigned subslice_total = screen->subslice_total;

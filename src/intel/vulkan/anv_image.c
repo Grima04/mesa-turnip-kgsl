@@ -568,7 +568,7 @@ add_aux_surface_if_supported(struct anv_device *device,
       } else if (device->info.ver >= 12) {
          anv_perf_warn(device, &image->base,
                        "The CCS_D aux mode is not yet handled on "
-                       "Gen12+. Not allocating a CCS buffer.");
+                       "Gfx12+. Not allocating a CCS buffer.");
          image->planes[plane].aux_surface.isl.size_B = 0;
          return VK_SUCCESS;
       } else {

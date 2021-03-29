@@ -98,7 +98,7 @@ gfx6_upload_urb(struct brw_context *brw, unsigned vs_size,
     *   space.
     *
     * It is not clear exactly what this means ("URB fence" is a command that
-    * doesn't exist on Gen6).  So for now we just do a full pipeline flush as
+    * doesn't exist on Gfx6).  So for now we just do a full pipeline flush as
     * a workaround.
     */
    if (brw->urb.gs_present && !gs_present)

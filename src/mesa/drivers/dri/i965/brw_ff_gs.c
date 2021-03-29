@@ -103,11 +103,11 @@ brw_codegen_ff_gs_prog(struct brw_context *brw,
          check_edge_flag = true;
          break;
       default:
-         unreachable("Unexpected primitive type in Gen6 SOL program.");
+         unreachable("Unexpected primitive type in Gfx6 SOL program.");
       }
       gfx6_sol_program(&c, key, num_verts, check_edge_flag);
    } else {
-      /* On Gen4-5, we use the GS to decompose certain types of primitives.
+      /* On Gfx4-5, we use the GS to decompose certain types of primitives.
        * Note that primitives which don't require a GS program have already
        * been weeded out by now.
        */
@@ -192,7 +192,7 @@ brw_ff_gs_populate_key(struct brw_context *brw,
    }
 
    if (devinfo->ver == 6) {
-      /* On Gen6, GS is used for transform feedback. */
+      /* On Gfx6, GS is used for transform feedback. */
       /* BRW_NEW_TRANSFORM_FEEDBACK */
       if (_mesa_is_xfb_active_and_unpaused(ctx)) {
          const struct gl_program *prog =

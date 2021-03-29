@@ -294,7 +294,7 @@ run_tests(const struct gen_device_info *devinfo)
          continue;
 
       for (int align_16 = 0; align_16 <= 1; align_16++) {
-         /* Align16 support is not present on Gen11+ */
+         /* Align16 support is not present on Gfx11+ */
          if (devinfo->ver >= 11 && align_16)
             continue;
 

@@ -1203,7 +1203,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
 
    dst_pos = blorp_blit_get_frag_coords(&b, key, &v);
 
-   /* Render target and texture hardware don't support W tiling until Gen8. */
+   /* Render target and texture hardware don't support W tiling until Gfx8. */
    const bool rt_tiled_w = false;
    const bool tex_tiled_w = devinfo->ver >= 8 && key->src_tiled_w;
 
@@ -1375,7 +1375,7 @@ brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
                             nir_imm_float(&b, 0.5f));
          color = blorp_nir_tex(&b, &v, key, src_pos);
       } else {
-         /* Gen7+ hardware doesn't automaticaly blend. */
+         /* Gfx7+ hardware doesn't automaticaly blend. */
          color = blorp_nir_combine_samples(&b, &v, src_pos, key->src_samples,
                                            key->tex_aux_usage,
                                            key->texture_data_type,
@@ -1648,7 +1648,7 @@ blorp_surf_retile_w_to_y(const struct isl_device *isl_dev,
    }
 
    if (isl_dev->info->ver == 6) {
-      /* Gen6 stencil buffers have a very large alignment coming in from the
+      /* Gfx6 stencil buffers have a very large alignment coming in from the
        * miptree.  It's out-of-bounds for what the surface state can handle.
        * Since we have a single layer and level, it doesn't really matter as
        * long as we don't pass a bogus value into isl_surf_fill_state().
@@ -1806,10 +1806,10 @@ try_blorp_blit(struct blorp_batch *batch,
 
    if (params->dst.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) {
       if (devinfo->ver >= 7) {
-         /* We can render as depth on Gen5 but there's no real advantage since
-          * it doesn't support MSAA or HiZ.  On Gen4, we can't always render
+         /* We can render as depth on Gfx5 but there's no real advantage since
+          * it doesn't support MSAA or HiZ.  On Gfx4, we can't always render
           * to depth due to issues with depth buffers and mip-mapping.  On
-          * Gen6, we can do everything but we have weird offsetting for HiZ
+          * Gfx6, we can do everything but we have weird offsetting for HiZ
           * and stencil.  It's easier to just render using the color pipe
           * on those platforms.
           */
@@ -2025,7 +2025,7 @@ try_blorp_blit(struct blorp_batch *batch,
    if ((wm_prog_key->filter == BLORP_FILTER_AVERAGE ||
         wm_prog_key->filter == BLORP_FILTER_BILINEAR) &&
        batch->blorp->isl_dev->info->ver <= 6) {
-      /* Gen4-5 don't support non-normalized texture coordinates */
+      /* Gfx4-5 don't support non-normalized texture coordinates */
       wm_prog_key->src_coords_normalized = true;
       params->wm_inputs.src_inv_size[0] =
          1.0f / minify(params->src.surf.logical_level0_px.width,
@@ -2674,7 +2674,7 @@ blorp_copy(struct blorp_batch *batch,
       params.dst.view.format = params.src.surf.format;
    } else if ((params.dst.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) &&
               isl_dev->info->ver >= 7) {
-      /* On Gen7 and higher, we use actual depth writes for blits into depth
+      /* On Gfx7 and higher, we use actual depth writes for blits into depth
        * buffers so we need the real format.
        */
       params.src.view.format = params.dst.surf.format;

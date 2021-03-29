@@ -137,8 +137,8 @@ gfx6_set_prim(struct brw_context *brw, const struct _mesa_prim *prim)
 
 /**
  * The hardware is capable of removing dangling vertices on its own; however,
- * prior to Gen6, we sometimes convert quads into trifans (and quad strips
- * into tristrips), since pre-Gen6 hardware requires a GS to render quads.
+ * prior to Gfx6, we sometimes convert quads into trifans (and quad strips
+ * into tristrips), since pre-Gfx6 hardware requires a GS to render quads.
  * This function manually trims dangling vertices from a draw call involving
  * quads so that those dangling vertices won't get drawn when we convert to
  * trifans/tristrips.
@@ -190,7 +190,7 @@ brw_emit_prim(struct brw_context *brw,
       start_vertex_location += brw->vb.start_vertex_bias;
    }
 
-   /* We only need to trim the primitive count on pre-Gen6. */
+   /* We only need to trim the primitive count on pre-Gfx6. */
    if (devinfo->ver < 6)
       verts_per_instance = trim(prim->mode, prim->count);
    else
@@ -411,7 +411,7 @@ brw_disable_rb_aux_buffer(struct brw_context *brw,
 
 /** Implement the ASTC 5x5 sampler workaround
  *
- * Gen9 sampling hardware has a bug where an ASTC 5x5 compressed surface
+ * Gfx9 sampling hardware has a bug where an ASTC 5x5 compressed surface
  * cannot live in the sampler cache at the same time as an aux compressed
  * surface.  In order to work around the bug we have to stall rendering with a
  * CS and pixel scoreboard stall (implicit in the CS stall) and invalidate the

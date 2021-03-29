@@ -723,7 +723,7 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.GlobalDepthOffsetEnablePoint = rs_info->depthBiasEnable;
 
 #if GFX_VER == 7
-   /* Gen7 requires that we provide the depth format in 3DSTATE_SF so that it
+   /* Gfx7 requires that we provide the depth format in 3DSTATE_SF so that it
     * can get the depth offsets correct.
     */
    if (subpass->depth_stencil_attachment) {
@@ -755,14 +755,14 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineMultisampleStateCreateInfo *info,
               uint32_t dynamic_states)
 {
-   /* If the sample locations are dynamic, 3DSTATE_MULTISAMPLE on Gen7/7.5
-    * will be emitted dynamically, so skip it here. On Gen8+
+   /* If the sample locations are dynamic, 3DSTATE_MULTISAMPLE on Gfx7/7.5
+    * will be emitted dynamically, so skip it here. On Gfx8+
     * 3DSTATE_SAMPLE_PATTERN will be emitted dynamically, so skip it here.
     */
    if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)) {
       /* Only lookup locations if the extensions is active, otherwise the
        * default ones will be used either at device initialization time or
-       * through 3DSTATE_MULTISAMPLE on Gen7/7.5 by passing NULL locations.
+       * through 3DSTATE_MULTISAMPLE on Gfx7/7.5 by passing NULL locations.
        */
       if (pipeline->base.device->vk.enabled_extensions.EXT_sample_locations) {
 #if GFX_VER >= 8
@@ -776,7 +776,7 @@ emit_ms_state(struct anv_graphics_pipeline *pipeline,
                              pipeline->dynamic_state.sample_locations.samples,
                              pipeline->dynamic_state.sample_locations.locations);
    } else {
-      /* On Gen8+ 3DSTATE_MULTISAMPLE does not hold anything we need to modify
+      /* On Gfx8+ 3DSTATE_MULTISAMPLE does not hold anything we need to modify
        * for sample locations, so we don't have to emit it dynamically.
        */
 #if GFX_VER >= 8
@@ -1430,7 +1430,7 @@ emit_3dstate_streamout(struct anv_graphics_pipeline *pipeline,
          pipeline->gfx7.xfb_bo_pitch[2] = xfb_info->buffers[2].stride;
          pipeline->gfx7.xfb_bo_pitch[3] = xfb_info->buffers[3].stride;
 
-         /* On Gen7, the SO buffer enables live in 3DSTATE_STREAMOUT which
+         /* On Gfx7, the SO buffer enables live in 3DSTATE_STREAMOUT which
           * is a bit inconvenient because we don't know what buffers will
           * actually be enabled until draw time.  We do our best here by
           * setting them based on buffers_written and we disable them
@@ -1926,7 +1926,7 @@ emit_3dstate_wm(struct anv_graphics_pipeline *pipeline, struct anv_subpass *subp
          }
 
 #if GFX_VER >= 8
-         /* Gen8 hardware tries to compute ThreadDispatchEnable for us but
+         /* Gfx8 hardware tries to compute ThreadDispatchEnable for us but
           * doesn't take into account KillPixels when no depth or stencil
           * writes are enabled.  In order for occlusion queries to work
           * correctly with no attachments, we need to force-enable PS thread

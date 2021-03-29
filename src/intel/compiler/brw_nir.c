@@ -614,7 +614,7 @@ brw_nir_optimize(nir_shader *nir, const struct brw_compiler *compiler,
        *
        * Passing 1 to the peephole select pass causes it to convert
        * if-statements that contain at most a single ALU instruction (total)
-       * in both branches.  Before Gen6, some math instructions were
+       * in both branches.  Before Gfx6, some math instructions were
        * prohibitively expensive and the results of compare operations need an
        * extra resolve step.  For these reasons, this pass is more harmful
        * than good on those platforms.

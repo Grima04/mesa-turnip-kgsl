@@ -302,10 +302,10 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
     * a few things which back this up:
     *
     *  1. The docs are also pretty clear that this bit was added as part
-    *     of enabling Gen12 depth/stencil lossless compression.
+    *     of enabling Gfx12 depth/stencil lossless compression.
     *
     *  2. The only new difference between depth/stencil and color images on
-    *     Gen12 (where the bit was added) is how they treat CCS compression.
+    *     Gfx12 (where the bit was added) is how they treat CCS compression.
     *     All other differences such as alignment requirements and MSAA layout
     *     are already covered by other bits.
     *
@@ -626,14 +626,14 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
          assert(info->aux_usage == ISL_AUX_USAGE_STC_CCS);
 
       if (isl_aux_usage_has_hiz(info->aux_usage)) {
-         /* For Gen8-10, there are some restrictions around sampling from HiZ.
+         /* For Gfx8-10, there are some restrictions around sampling from HiZ.
           * The Skylake PRM docs for RENDER_SURFACE_STATE::AuxiliarySurfaceMode
           * say:
           *
           *    "If this field is set to AUX_HIZ, Number of Multisamples must
           *    be MULTISAMPLECOUNT_1, and Surface Type cannot be SURFTYPE_3D."
           *
-          * On Gen12, the docs are a bit less obvious but the restriction is
+          * On Gfx12, the docs are a bit less obvious but the restriction is
           * the same.  The limitation isn't called out explicitly but the docs
           * for the CCS_E value of RENDER_SURFACE_STATE::AuxiliarySurfaceMode
           * say:
@@ -677,7 +677,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
    /* The auxiliary buffer info is filled when it's useable by the HW.
     *
-    * Starting with Gen12, the only form of compression that can be used
+    * Starting with Gfx12, the only form of compression that can be used
     * with RENDER_SURFACE_STATE which requires an aux surface is MCS.
     * HiZ still requires a surface but the HiZ surface can only be
     * accessed through 3DSTATE_HIER_DEPTH_BUFFER.
@@ -746,7 +746,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
          s.ClearValueAddressEnable = true;
          s.ClearValueAddress = info->clear_address;
 #else
-         unreachable("Gen9 and earlier do not support indirect clear colors");
+         unreachable("Gfx9 and earlier do not support indirect clear colors");
 #endif
       }
 
@@ -755,7 +755,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
        * From BXML > GT > Shared Functions > vol5c Shared Functions >
        * [Structure] RENDER_SURFACE_STATE [BDW+] > ClearColorConversionEnable:
        *
-       *   Project: Gen11
+       *   Project: Gfx11
        *
        *   "Enables Pixel backend hw to convert clear values into native format
        *    and write back to clear address, so that display and sampler can use

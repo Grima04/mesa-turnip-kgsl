@@ -145,7 +145,7 @@ brw_ptr_in_state_buffer(struct brw_batch *batch, void *p)
    OUT_BATCH(reloc);                                                    \
 } while (0)
 
-/* Handle 48-bit address relocations for Gen8+ */
+/* Handle 48-bit address relocations for Gfx8+ */
 #define OUT_RELOC64(buf, flags, delta) do {        \
    uint32_t __offset = (__map - brw->batch.batch.map) * 4;              \
    uint64_t reloc64 =                                                   \

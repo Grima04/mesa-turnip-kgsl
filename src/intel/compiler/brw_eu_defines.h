@@ -177,7 +177,7 @@ enum PACKED gfx10_align1_3src_dst_horizontal_stride {
 
 /** @{
  *
- * Gen6 has replaced "mask enable/disable" with WECtrl, which is
+ * Gfx6 has replaced "mask enable/disable" with WECtrl, which is
  * effectively the same but much simpler to think about.  Now, there
  * are two contributors ANDed together to whether channels are
  * executed: The predication on the instruction, and the channel write
@@ -209,48 +209,48 @@ enum opcode {
    BRW_OPCODE_XOR,
    BRW_OPCODE_SHR,
    BRW_OPCODE_SHL,
-   BRW_OPCODE_DIM, /**< Gen7.5 only */
-   BRW_OPCODE_SMOV, /**< Gen8+ */
+   BRW_OPCODE_DIM, /**< Gfx7.5 only */
+   BRW_OPCODE_SMOV, /**< Gfx8+ */
    BRW_OPCODE_ASR,
-   BRW_OPCODE_ROR,  /**< Gen11+ */
-   BRW_OPCODE_ROL,  /**< Gen11+ */
+   BRW_OPCODE_ROR,  /**< Gfx11+ */
+   BRW_OPCODE_ROL,  /**< Gfx11+ */
    BRW_OPCODE_CMP,
    BRW_OPCODE_CMPN,
-   BRW_OPCODE_CSEL, /**< Gen8+ */
-   BRW_OPCODE_F32TO16, /**< Gen7 only */
-   BRW_OPCODE_F16TO32, /**< Gen7 only */
-   BRW_OPCODE_BFREV, /**< Gen7+ */
-   BRW_OPCODE_BFE, /**< Gen7+ */
-   BRW_OPCODE_BFI1, /**< Gen7+ */
-   BRW_OPCODE_BFI2, /**< Gen7+ */
+   BRW_OPCODE_CSEL, /**< Gfx8+ */
+   BRW_OPCODE_F32TO16, /**< Gfx7 only */
+   BRW_OPCODE_F16TO32, /**< Gfx7 only */
+   BRW_OPCODE_BFREV, /**< Gfx7+ */
+   BRW_OPCODE_BFE, /**< Gfx7+ */
+   BRW_OPCODE_BFI1, /**< Gfx7+ */
+   BRW_OPCODE_BFI2, /**< Gfx7+ */
    BRW_OPCODE_JMPI,
-   BRW_OPCODE_BRD, /**< Gen7+ */
+   BRW_OPCODE_BRD, /**< Gfx7+ */
    BRW_OPCODE_IF,
-   BRW_OPCODE_IFF, /**< Pre-Gen6 */
-   BRW_OPCODE_BRC, /**< Gen7+ */
+   BRW_OPCODE_IFF, /**< Pre-Gfx6 */
+   BRW_OPCODE_BRC, /**< Gfx7+ */
    BRW_OPCODE_ELSE,
    BRW_OPCODE_ENDIF,
-   BRW_OPCODE_DO, /**< Pre-Gen6 */
-   BRW_OPCODE_CASE, /**< Gen6 only */
+   BRW_OPCODE_DO, /**< Pre-Gfx6 */
+   BRW_OPCODE_CASE, /**< Gfx6 only */
    BRW_OPCODE_WHILE,
    BRW_OPCODE_BREAK,
    BRW_OPCODE_CONTINUE,
    BRW_OPCODE_HALT,
-   BRW_OPCODE_CALLA, /**< Gen7.5+ */
-   BRW_OPCODE_MSAVE, /**< Pre-Gen6 */
-   BRW_OPCODE_CALL, /**< Gen6+ */
-   BRW_OPCODE_MREST, /**< Pre-Gen6 */
-   BRW_OPCODE_RET, /**< Gen6+ */
-   BRW_OPCODE_PUSH, /**< Pre-Gen6 */
-   BRW_OPCODE_FORK, /**< Gen6 only */
-   BRW_OPCODE_GOTO, /**< Gen8+ */
-   BRW_OPCODE_POP, /**< Pre-Gen6 */
+   BRW_OPCODE_CALLA, /**< Gfx7.5+ */
+   BRW_OPCODE_MSAVE, /**< Pre-Gfx6 */
+   BRW_OPCODE_CALL, /**< Gfx6+ */
+   BRW_OPCODE_MREST, /**< Pre-Gfx6 */
+   BRW_OPCODE_RET, /**< Gfx6+ */
+   BRW_OPCODE_PUSH, /**< Pre-Gfx6 */
+   BRW_OPCODE_FORK, /**< Gfx6 only */
+   BRW_OPCODE_GOTO, /**< Gfx8+ */
+   BRW_OPCODE_POP, /**< Pre-Gfx6 */
    BRW_OPCODE_WAIT,
    BRW_OPCODE_SEND,
    BRW_OPCODE_SENDC,
-   BRW_OPCODE_SENDS, /**< Gen9+ */
-   BRW_OPCODE_SENDSC, /**< Gen9+ */
-   BRW_OPCODE_MATH, /**< Gen6+ */
+   BRW_OPCODE_SENDS, /**< Gfx9+ */
+   BRW_OPCODE_SENDSC, /**< Gfx9+ */
+   BRW_OPCODE_MATH, /**< Gfx6+ */
    BRW_OPCODE_ADD,
    BRW_OPCODE_MUL,
    BRW_OPCODE_AVG,
@@ -262,11 +262,11 @@ enum opcode {
    BRW_OPCODE_MAC,
    BRW_OPCODE_MACH,
    BRW_OPCODE_LZD,
-   BRW_OPCODE_FBH, /**< Gen7+ */
-   BRW_OPCODE_FBL, /**< Gen7+ */
-   BRW_OPCODE_CBIT, /**< Gen7+ */
-   BRW_OPCODE_ADDC, /**< Gen7+ */
-   BRW_OPCODE_SUBB, /**< Gen7+ */
+   BRW_OPCODE_FBH, /**< Gfx7+ */
+   BRW_OPCODE_FBL, /**< Gfx7+ */
+   BRW_OPCODE_CBIT, /**< Gfx7+ */
+   BRW_OPCODE_ADDC, /**< Gfx7+ */
+   BRW_OPCODE_SUBB, /**< Gfx7+ */
    BRW_OPCODE_SAD2,
    BRW_OPCODE_SADA2,
    BRW_OPCODE_DP4,
@@ -275,9 +275,9 @@ enum opcode {
    BRW_OPCODE_DP2,
    BRW_OPCODE_LINE,
    BRW_OPCODE_PLN, /**< G45+ */
-   BRW_OPCODE_MAD, /**< Gen6+ */
-   BRW_OPCODE_LRP, /**< Gen6+ */
-   BRW_OPCODE_MADM, /**< Gen8+ */
+   BRW_OPCODE_MAD, /**< Gfx6+ */
+   BRW_OPCODE_LRP, /**< Gfx6+ */
+   BRW_OPCODE_MADM, /**< Gfx8+ */
    BRW_OPCODE_NENOP, /**< G45 only */
    BRW_OPCODE_NOP,
 
@@ -466,7 +466,7 @@ enum opcode {
     * Source 1: Immediate bool to indicate whether control is returned to the
     *           thread only after the fence has been honored.
     * Source 2: Immediate byte indicating which memory to fence.  Zero means
-    *           global memory; GFX7_BTI_SLM means SLM (for Gen11+ only).
+    *           global memory; GFX7_BTI_SLM means SLM (for Gfx11+ only).
     *
     * Vec4 backend only uses Source 0.
     */
@@ -476,7 +476,7 @@ enum opcode {
     * Scheduling-only fence.
     *
     * Sources can be used to force a stall until the registers in those are
-    * available.  This might generate MOVs or SYNC_NOPs (Gen12+).
+    * available.  This might generate MOVs or SYNC_NOPs (Gfx12+).
     */
    FS_OPCODE_SCHEDULING_FENCE,
 
@@ -487,7 +487,7 @@ enum opcode {
    SHADER_OPCODE_SCRATCH_HEADER,
 
    /**
-    * Gen8+ SIMD8 URB Read messages.
+    * Gfx8+ SIMD8 URB Read messages.
     */
    SHADER_OPCODE_URB_READ_SIMD8,
    SHADER_OPCODE_URB_READ_SIMD8_PER_SLOT,
@@ -1058,7 +1058,7 @@ enum PACKED brw_width {
 };
 
 /**
- * Gen12+ SWSB SBID synchronization mode.
+ * Gfx12+ SWSB SBID synchronization mode.
  *
  * This is represented as a bitmask including any required SBID token
  * synchronization modes, used to synchronize out-of-order instructions.  Only
@@ -1226,7 +1226,7 @@ enum tgl_sync_function {
  */
 enum brw_message_target {
    BRW_SFID_NULL                     = 0,
-   BRW_SFID_MATH                     = 1, /* Only valid on Gen4-5 */
+   BRW_SFID_MATH                     = 1, /* Only valid on Gfx4-5 */
    BRW_SFID_SAMPLER                  = 2,
    BRW_SFID_MESSAGE_GATEWAY          = 3,
    BRW_SFID_DATAPORT_READ            = 4,
@@ -1492,7 +1492,7 @@ enum brw_message_target {
  * Note that because the DRM sets bit 4 of HDC_CHICKEN0 on BDW, CHV and at
  * least some pre-production steppings of SKL due to WaForceEnableNonCoherent,
  * HDC memory access may have been overridden by the kernel to be non-coherent
- * (matching the behavior of the same BTI on pre-Gen8 hardware) and BTI 255
+ * (matching the behavior of the same BTI on pre-Gfx8 hardware) and BTI 255
  * may actually be an alias for BTI 253.
  */
 #define GFX8_BTI_STATELESS_IA_COHERENT   255
@@ -1587,7 +1587,7 @@ enum brw_message_target {
 #define BRW_MESSAGE_GATEWAY_SFID_MMIO_READ_WRITE      6
 
 
-/* Gen7 "GS URB Entry Allocation Size" is a U9-1 field, so the maximum gs_size
+/* Gfx7 "GS URB Entry Allocation Size" is a U9-1 field, so the maximum gs_size
  * is 2^9, or 512.  It's counted in multiples of 64 bytes.
  *
  * Identical for VS, DS, and HS.
@@ -1597,7 +1597,7 @@ enum brw_message_target {
 #define GFX7_MAX_HS_URB_ENTRY_SIZE_BYTES                (512*64)
 #define GFX7_MAX_VS_URB_ENTRY_SIZE_BYTES                (512*64)
 
-/* Gen6 "GS URB Entry Allocation Size" is defined as a number of 1024-bit
+/* Gfx6 "GS URB Entry Allocation Size" is defined as a number of 1024-bit
  * (128 bytes) URB rows and the maximum allowed value is 5 rows.
  */
 #define GFX6_MAX_GS_URB_ENTRY_SIZE_BYTES                (5*128)

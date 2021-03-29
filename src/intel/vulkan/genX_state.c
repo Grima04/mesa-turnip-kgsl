@@ -58,7 +58,7 @@
  *
  * The equations above apply if \p flip is equal to 0, if it is equal to 1 p_0
  * and p_1 will be swapped for the result.  Note that in the context of pixel
- * pipe hashing this can be always 0 on Gen12 platforms, since the hardware
+ * pipe hashing this can be always 0 on Gfx12 platforms, since the hardware
  * transparently remaps logical indices found on the table to physical pixel
  * pipe indices from the highest to lowest EU count.
  */
@@ -117,7 +117,7 @@ genX(emit_slice_hashing_state)(struct anv_device *device,
          ppipes_of[n] += (device->info.ppipe_subslices[p] == n);
    }
 
-   /* Gen12 has three pixel pipes. */
+   /* Gfx12 has three pixel pipes. */
    assert(ppipes_of[0] + ppipes_of[1] + ppipes_of[2] == 3);
 
    if (ppipes_of[2] == 3 || ppipes_of[0] == 2) {

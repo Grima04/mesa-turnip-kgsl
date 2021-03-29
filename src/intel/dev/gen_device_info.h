@@ -195,7 +195,7 @@ struct gen_device_info
     * automatically scale pixel shader thread count, based on a single value
     * programmed into 3DSTATE_PS.
     *
-    * To calculate the maximum number of threads for Gen8 beyond (which have
+    * To calculate the maximum number of threads for Gfx8 beyond (which have
     * multiple Pixel Shader Dispatchers):
     *
     * - Look up 3DSTATE_PS and find "Maximum Number of Threads Per PSD"
@@ -216,10 +216,10 @@ struct gen_device_info
       /**
        * Fixed size of the URB.
        *
-       * On Gen6 and DG1, this is measured in KB.  Gen4-5 instead measure
+       * On Gfx6 and DG1, this is measured in KB.  Gfx4-5 instead measure
        * this in 512b blocks, as that's more convenient there.
        *
-       * On most Gen7+ platforms, the URB is a section of the L3 cache,
+       * On most Gfx7+ platforms, the URB is a section of the L3 cache,
        * and can be resized based on the L3 programming.  For those platforms,
        * simply leave this field blank (zero) - it isn't used.
        */
@@ -247,7 +247,7 @@ struct gen_device_info
     * could be assumed to be 12.5MHz, where the least significant bit neatly
     * corresponded to 80 nanoseconds.
     *
-    * Since Gen9 the numbers aren't so round, with a a frequency of 12MHz for
+    * Since Gfx9 the numbers aren't so round, with a a frequency of 12MHz for
     * SKL (or scale factor of 83.33333333) and a frequency of 19200000Hz for
     * BXT.
     *

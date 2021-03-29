@@ -293,7 +293,7 @@ vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
    case SHADER_OPCODE_MOV_INDIRECT:
       return false;
    default:
-      /* The MATH instruction on Gen6 only executes in align1 mode, which does
+      /* The MATH instruction on Gfx6 only executes in align1 mode, which does
        * not support writemasking.
        */
       if (devinfo->ver == 6 && is_math())
@@ -1129,7 +1129,7 @@ vec4_instruction::can_reswizzle(const struct gen_device_info *devinfo,
                                 int swizzle,
                                 int swizzle_mask)
 {
-   /* Gen6 MATH instructions can not execute in align16 mode, so swizzles
+   /* Gfx6 MATH instructions can not execute in align16 mode, so swizzles
     * are not allowed.
     */
    if (devinfo->ver == 6 && is_math() && swizzle != BRW_SWIZZLE_XYZW)
@@ -1871,7 +1871,7 @@ vec4_visitor::lower_minmax()
           inst->predicate == BRW_PREDICATE_NONE) {
          /* If src1 is an immediate value that is not NaN, then it can't be
           * NaN.  In that case, emit CMP because it is much better for cmod
-          * propagation.  Likewise if src1 is not float.  Gen4 and Gen5 don't
+          * propagation.  Likewise if src1 is not float.  Gfx4 and Gfx5 don't
           * support HF or DF, so it is not necessary to check for those.
           */
          if (inst->src[1].type != BRW_REGISTER_TYPE_F ||
@@ -2380,7 +2380,7 @@ scalarize_predicate(brw_predicate predicate, unsigned writemask)
    }
 }
 
-/* Gen7 has a hardware decompression bug that we can exploit to represent
+/* Gfx7 has a hardware decompression bug that we can exploit to represent
  * handful of additional swizzles natively.
  */
 static bool

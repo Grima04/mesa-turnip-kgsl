@@ -678,7 +678,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
    } else if (devinfo.ver == 7 && devinfo.is_baytrail) {
       mesa_logw("Bay Trail Vulkan support is incomplete");
    } else if (devinfo.ver >= 8 && devinfo.ver <= 12) {
-      /* Gen8-12 fully supported */
+      /* Gfx8-12 fully supported */
    } else {
       result = vk_errorfi(instance, NULL, VK_ERROR_INCOMPATIBLE_DRIVER,
                           "Vulkan not yet supported on %s", device_name);
@@ -861,12 +861,12 @@ anv_physical_device_try_create(struct anv_instance *instance,
 
    /* Broadwell PRM says:
     *
-    *   "Before Gen8, there was a historical configuration control field to
+    *   "Before Gfx8, there was a historical configuration control field to
     *    swizzle address bit[6] for in X/Y tiling modes. This was set in three
     *    different places: TILECTL[1:0], ARB_MODE[5:4], and
     *    DISP_ARB_CTL[14:13].
     *
-    *    For Gen8 and subsequent generations, the swizzle fields are all
+    *    For Gfx8 and subsequent generations, the swizzle fields are all
     *    reserved, and the CPU's memory controller performs all address
     *    swizzling modifications."
     */

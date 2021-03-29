@@ -723,7 +723,7 @@ brw_validate_framebuffer(struct gl_context *ctx, struct gl_framebuffer *fb)
                       _mesa_get_format_name(stencil_mt->format));
          }
          if (devinfo->ver < 7 && !brw_renderbuffer_has_hiz(depthRb)) {
-            /* Before Gen7, separate depth and stencil buffers can be used
+            /* Before Gfx7, separate depth and stencil buffers can be used
              * only if HiZ is enabled. From the Sandybridge PRM, Volume 2,
              * Part 1, Bit 3DSTATE_DEPTH_BUFFER.SeparateStencilBufferEnable:
              *     [DevSNB]: This field must be set to the same value (enabled
@@ -907,9 +907,9 @@ brw_blit_framebuffer(struct gl_context *ctx,
    if (devinfo->ver < 6) {
       /* On gfx4-5, try BLT first.
        *
-       * Gen4-5 have a single ring for both 3D and BLT operations, so there's
-       * no inter-ring synchronization issues like on Gen6+.  It is apparently
-       * faster than using the 3D pipeline.  Original Gen4 also has to rebase
+       * Gfx4-5 have a single ring for both 3D and BLT operations, so there's
+       * no inter-ring synchronization issues like on Gfx6+.  It is apparently
+       * faster than using the 3D pipeline.  Original Gfx4 also has to rebase
        * and copy miptree slices in order to render to unaligned locations.
        */
       mask = brw_blit_framebuffer_with_blitter(ctx, readFb, drawFb,

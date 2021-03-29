@@ -604,7 +604,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
 
    /* The GLSL linker will have already matched up GS inputs and the outputs
     * of prior stages.  The driver does extend VS outputs in some cases, but
-    * only for legacy OpenGL or Gen4-5 hardware, neither of which offer
+    * only for legacy OpenGL or Gfx4-5 hardware, neither of which offer
     * geometry shader support.  So we can safely ignore that.
     *
     * For SSO pipelines, we use a fixed VUE map layout based on variable
@@ -915,7 +915,7 @@ brw_compile_gs(const struct brw_compiler *compiler, void *log_data,
     * the best choice for performance, followed by SINGLE mode."
     *
     * So SINGLE mode is more performant when invocations == 1 and DUAL_INSTANCE
-    * mode is more performant when invocations > 1. Gen6 only supports
+    * mode is more performant when invocations > 1. Gfx6 only supports
     * SINGLE mode.
     */
    if (prog_data->invocations <= 1 || compiler->devinfo->ver < 7)

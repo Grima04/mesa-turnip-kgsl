@@ -203,7 +203,7 @@ alignment_valid(struct brw_context *brw, unsigned offset,
    if (tiling != ISL_TILING_LINEAR)
       return (offset & 4095) == 0;
 
-   /* On Gen8+, linear buffers must be cacheline-aligned. */
+   /* On Gfx8+, linear buffers must be cacheline-aligned. */
    if (devinfo->ver >= 8)
       return (offset & 63) == 0;
 
