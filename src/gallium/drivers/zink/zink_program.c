@@ -373,6 +373,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
    }
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
+      /* we need to iterate over the stages in pipeline-order here */
       enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
       assert(type < ZINK_SHADER_COUNT);
       if (dirty[i]) {
