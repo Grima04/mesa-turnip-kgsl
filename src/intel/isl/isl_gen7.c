@@ -28,7 +28,7 @@ static bool
 gen7_format_needs_valign2(const struct isl_device *dev,
                           enum isl_format format)
 {
-   assert(ISL_DEV_GEN(dev) == 7);
+   assert(ISL_GFX_VER(dev) == 7);
 
    /* From the Ivybridge PRM (2012-05-31), Volume 4, Part 1, Section 2.12.1,
     * RENDER_SURFACE_STATE Surface Vertical Alignment:
@@ -54,7 +54,7 @@ isl_gen7_choose_msaa_layout(const struct isl_device *dev,
    bool require_array = false;
    bool require_interleaved = false;
 
-   assert(ISL_DEV_GEN(dev) == 7);
+   assert(ISL_GFX_VER(dev) == 7);
    assert(info->samples >= 1);
 
    if (info->samples == 1) {
@@ -197,7 +197,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
    assert(ISL_DEV_USE_SEPARATE_STENCIL(dev));
 
    /* Clear flags unsupported on this hardware */
-   if (ISL_DEV_GEN(dev) < 9) {
+   if (ISL_GFX_VER(dev) < 9) {
       *flags &= ~ISL_TILING_Yf_BIT;
       *flags &= ~ISL_TILING_Ys_BIT;
    }
@@ -214,7 +214,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
    }
 
    if (isl_surf_usage_is_stencil(info->usage)) {
-      if (ISL_DEV_GEN(dev) >= 12) {
+      if (ISL_GFX_VER(dev) >= 12) {
          /* Stencil requires Y. */
          *flags &= ISL_TILING_ANY_Y_MASK;
       } else {
@@ -251,10 +251,10 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
    }
 
    if (info->usage & ISL_SURF_USAGE_DISPLAY_BIT) {
-      if (ISL_DEV_GEN(dev) >= 12) {
+      if (ISL_GFX_VER(dev) >= 12) {
          *flags &= (ISL_TILING_LINEAR_BIT | ISL_TILING_X_BIT |
                     ISL_TILING_Y0_BIT);
-      } else if (ISL_DEV_GEN(dev) >= 9) {
+      } else if (ISL_GFX_VER(dev) >= 9) {
          /* Note we let Yf even though it was cleared above. This is just for
           * completeness.
           */
@@ -285,7 +285,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
    }
 
    /* workaround */
-   if (ISL_DEV_GEN(dev) == 7 &&
+   if (ISL_GFX_VER(dev) == 7 &&
        gen7_format_needs_valign2(dev, info->format) &&
        (info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT) &&
        info->samples == 1) {
@@ -305,7 +305,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
     *
     * This is necessary all the way back to 965, but is permitted on Gen7+.
     */
-   if (ISL_DEV_GEN(dev) < 7 && isl_format_get_layout(info->format)->bpb >= 128)
+   if (ISL_GFX_VER(dev) < 7 && isl_format_get_layout(info->format)->bpb >= 128)
       *flags &= ~ISL_TILING_Y0_BIT;
 
    /* From the BDW and SKL PRMs, Volume 2d,
@@ -326,7 +326,7 @@ isl_gen6_filter_tiling(const struct isl_device *dev,
     */
    if (info->width > 16382 && info->samples == 1 &&
        info->usage & ISL_SURF_USAGE_RENDER_TARGET_BIT &&
-       (ISL_DEV_GEN(dev) == 8 ||
+       (ISL_GFX_VER(dev) == 8 ||
         (dev->info->is_skylake && dev->info->gt != 4))) {
           *flags &= ISL_TILING_LINEAR_BIT;
    }
@@ -340,7 +340,7 @@ isl_gen7_choose_image_alignment_el(const struct isl_device *dev,
                                    enum isl_msaa_layout msaa_layout,
                                    struct isl_extent3d *image_align_el)
 {
-   assert(ISL_DEV_GEN(dev) == 7);
+   assert(ISL_GFX_VER(dev) == 7);
 
    /* Handled by isl_choose_image_alignment_el */
    assert(info->format != ISL_FORMAT_HIZ);

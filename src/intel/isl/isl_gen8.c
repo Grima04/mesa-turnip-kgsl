@@ -173,7 +173,7 @@ isl_gen8_choose_image_alignment_el(const struct isl_device *dev,
       halign = 16;
    }
 
-   if (ISL_DEV_GEN(dev) >= 11 && isl_tiling_is_any_y(tiling) &&
+   if (ISL_GFX_VER(dev) >= 11 && isl_tiling_is_any_y(tiling) &&
        fmtl->bpb == 32 && info->samples == 1) {
       /* GEN_BUG_1406667188: Pixel Corruption in subspan combining (8x4
        * combining) scenarios if halign=4.

@@ -53,20 +53,20 @@ extern "C" {
 struct gen_device_info;
 struct brw_image_param;
 
-#ifndef ISL_DEV_GEN
+#ifndef ISL_GFX_VER
 /**
  * @brief Get the hardware generation of isl_device.
  *
  * You can define this as a compile-time constant in the CFLAGS. For example,
- * `gcc -DISL_DEV_GEN(dev)=9 ...`.
+ * `gcc -DISL_GFX_VER(dev)=9 ...`.
  */
-#define ISL_DEV_GEN(__dev) ((__dev)->info->gen)
-#define ISL_DEV_GENX10(__dev) ((__dev)->info->genx10)
-#define ISL_DEV_GEN_SANITIZE(__dev)
+#define ISL_GFX_VER(__dev) ((__dev)->info->gen)
+#define ISL_GFX_VERX10(__dev) ((__dev)->info->genx10)
+#define ISL_GFX_VER_SANITIZE(__dev)
 #else
-#define ISL_DEV_GEN_SANITIZE(__dev) \
-   (assert(ISL_DEV_GEN(__dev) == (__dev)->info->gen) && \
-           ISL_DEV_GENX10(__dev) == (__dev)->info->genx10))
+#define ISL_GFX_VER_SANITIZE(__dev) \
+   (assert(ISL_GFX_VER(__dev) == (__dev)->info->gen) && \
+           ISL_GFX_VERX10(__dev) == (__dev)->info->genx10))
 #endif
 
 #ifndef ISL_DEV_IS_G4X
@@ -78,7 +78,7 @@ struct brw_image_param;
  * @brief Get the hardware generation of isl_device.
  *
  * You can define this as a compile-time constant in the CFLAGS. For example,
- * `gcc -DISL_DEV_GEN(dev)=9 ...`.
+ * `gcc -DISL_GFX_VER(dev)=9 ...`.
  */
 #define ISL_DEV_IS_HASWELL(__dev) ((__dev)->info->is_haswell)
 #endif

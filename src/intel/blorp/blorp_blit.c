@@ -2421,7 +2421,7 @@ get_copy_format_for_bpb(const struct isl_device *isl_dev, unsigned bpb)
     * the table below is for RGB -> RGBA blits and so we will never have any
     * UNORM/UINT mismatch.
     */
-   if (ISL_DEV_GEN(isl_dev) >= 9) {
+   if (ISL_GFX_VER(isl_dev) >= 9) {
       switch (bpb) {
       case 8:  return ISL_FORMAT_R8_UINT;
       case 16: return ISL_FORMAT_R8G8_UINT;

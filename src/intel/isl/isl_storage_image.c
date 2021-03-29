@@ -253,7 +253,7 @@ isl_surf_fill_image_param(const struct isl_device *dev,
 
    const struct isl_extent3d image_align_sa =
       isl_surf_get_image_alignment_sa(surf);
-   if (ISL_DEV_GEN(dev) < 9 && surf->dim == ISL_SURF_DIM_3D) {
+   if (ISL_GFX_VER(dev) < 9 && surf->dim == ISL_SURF_DIM_3D) {
       param->stride[2] = isl_align_npot(param->size[0], image_align_sa.w);
       param->stride[3] = isl_align_npot(param->size[1], image_align_sa.h);
    } else {
@@ -307,7 +307,7 @@ isl_surf_fill_image_param(const struct isl_device *dev,
     * brw_fs_surface_builder.cpp) handles this as a sort of tiling with
     * modulus equal to the LOD.
     */
-   param->tiling[2] = (ISL_DEV_GEN(dev) < 9 && surf->dim == ISL_SURF_DIM_3D ?
+   param->tiling[2] = (ISL_GFX_VER(dev) < 9 && surf->dim == ISL_SURF_DIM_3D ?
                        view->base_level : 0);
 }
 

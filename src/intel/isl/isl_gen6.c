@@ -30,7 +30,7 @@ isl_gen6_choose_msaa_layout(const struct isl_device *dev,
                             enum isl_tiling tiling,
                             enum isl_msaa_layout *msaa_layout)
 {
-   assert(ISL_DEV_GEN(dev) == 6);
+   assert(ISL_GFX_VER(dev) == 6);
    assert(info->samples >= 1);
 
    if (info->samples == 1) {

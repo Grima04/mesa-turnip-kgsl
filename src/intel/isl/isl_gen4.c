@@ -58,7 +58,7 @@ isl_gen4_filter_tiling(const struct isl_device *dev,
        *
        * In testing, the linear configuration doesn't seem to work on gen4.
        */
-      *flags &= (ISL_DEV_GEN(dev) == 4 && !ISL_DEV_IS_G4X(dev)) ?
+      *flags &= (ISL_GFX_VER(dev) == 4 && !ISL_DEV_IS_G4X(dev)) ?
                 ISL_TILING_Y0_BIT : (ISL_TILING_Y0_BIT | ISL_TILING_LINEAR_BIT);
    }
 

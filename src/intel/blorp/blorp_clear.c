@@ -620,7 +620,7 @@ blorp_clear_stencil_as_rgba(struct blorp_batch *batch,
     * We have to use RGBA16_UINT on SNB.
     */
    enum isl_format wide_format;
-   if (ISL_DEV_GEN(batch->blorp->isl_dev) <= 6) {
+   if (ISL_GFX_VER(batch->blorp->isl_dev) <= 6) {
       wide_format = ISL_FORMAT_R16G16B16A16_UINT;
 
       /* For RGBA16_UINT, we need to mask the stencil value otherwise, we risk
@@ -690,7 +690,7 @@ blorp_clear_depth_stencil(struct blorp_batch *batch,
    params.x1 = x1;
    params.y1 = y1;
 
-   if (ISL_DEV_GEN(batch->blorp->isl_dev) == 6) {
+   if (ISL_GFX_VER(batch->blorp->isl_dev) == 6) {
       /* For some reason, Sandy Bridge gets occlusion queries wrong if we
        * don't have a shader.  In particular, it records samples even though
        * we disable statistics in 3DSTATE_WM.  Give it the usual clear shader
@@ -896,7 +896,7 @@ blorp_hiz_clear_depth_stencil(struct blorp_batch *batch,
    params.snapshot_type = INTEL_SNAPSHOT_HIZ_CLEAR;
 
    /* This requires WM_HZ_OP which only exists on gen8+ */
-   assert(ISL_DEV_GEN(batch->blorp->isl_dev) >= 8);
+   assert(ISL_GFX_VER(batch->blorp->isl_dev) >= 8);
 
    params.hiz_op = ISL_AUX_OP_FAST_CLEAR;
    /* From BSpec: 3DSTATE_WM_HZ_OP_BODY >> Full Surface Depth and Stencil Clear
@@ -1089,13 +1089,13 @@ blorp_ccs_resolve(struct blorp_batch *batch,
    assert(aux_fmtl->txc == ISL_TXC_CCS);
 
    unsigned x_scaledown, y_scaledown;
-   if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 12) {
+   if (ISL_GFX_VER(batch->blorp->isl_dev) >= 12) {
       x_scaledown = aux_fmtl->bw * 8;
       y_scaledown = aux_fmtl->bh * 4;
-   } else if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 9) {
+   } else if (ISL_GFX_VER(batch->blorp->isl_dev) >= 9) {
       x_scaledown = aux_fmtl->bw * 8;
       y_scaledown = aux_fmtl->bh * 8;
-   } else if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 8) {
+   } else if (ISL_GFX_VER(batch->blorp->isl_dev) >= 8) {
       x_scaledown = aux_fmtl->bw * 8;
       y_scaledown = aux_fmtl->bh * 16;
    } else {
@@ -1272,7 +1272,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
                     struct blorp_surf *surf,
                     uint32_t level, uint32_t layer)
 {
-   if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 10) {
+   if (ISL_GFX_VER(batch->blorp->isl_dev) >= 10) {
       /* On gen10 and above, we have a hardware resolve op for this */
       return blorp_ccs_resolve(batch, surf, level, layer, 1,
                                surf->surf->format, ISL_AUX_OP_AMBIGUATE);
@@ -1282,7 +1282,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
    blorp_params_init(&params);
    params.snapshot_type = INTEL_SNAPSHOT_CCS_AMBIGUATE;
 
-   assert(ISL_DEV_GEN(batch->blorp->isl_dev) >= 7);
+   assert(ISL_GFX_VER(batch->blorp->isl_dev) >= 7);
 
    const struct isl_format_layout *aux_fmtl =
       isl_format_get_layout(surf->aux_surf->format);
@@ -1332,7 +1332,7 @@ blorp_ccs_ambiguate(struct blorp_batch *batch,
     * clear in units of Y-tiled cache lines.
     */
    uint32_t x_offset_cl, y_offset_cl, width_cl, height_cl;
-   if (ISL_DEV_GEN(batch->blorp->isl_dev) >= 8) {
+   if (ISL_GFX_VER(batch->blorp->isl_dev) >= 8) {
       /* From the Sky Lake PRM Vol. 12 in the section on planes:
        *
        *    "The Color Control Surface (CCS) contains the compression status
