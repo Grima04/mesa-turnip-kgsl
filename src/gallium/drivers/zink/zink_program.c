@@ -374,6 +374,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
 
    for (int i = 0; i < ZINK_SHADER_COUNT; ++i) {
       enum pipe_shader_type type = pipe_shader_type_from_mesa(i);
+      assert(type < ZINK_SHADER_COUNT);
       if (dirty[i]) {
          struct zink_shader_module *zm;
          zm = get_shader_module_for_stage(ctx, dirty[i], prog);
@@ -790,7 +791,7 @@ static void
 gfx_program_remove_shader(struct zink_gfx_program *prog, struct zink_shader *shader)
 {
    enum pipe_shader_type p_stage = pipe_shader_type_from_mesa(shader->nir->info.stage);
-
+   assert(p_stage < ZINK_SHADER_COUNT);
    assert(prog->shaders[p_stage] == shader);
    prog->shaders[p_stage] = NULL;
    _mesa_set_remove_key(shader->programs, prog);

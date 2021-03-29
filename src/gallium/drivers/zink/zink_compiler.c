@@ -856,6 +856,7 @@ zink_shader_free(struct zink_context *ctx, struct zink_shader *shader)
       } else {
          struct zink_gfx_program *prog = (void*)entry->key;
          enum pipe_shader_type pstage = pipe_shader_type_from_mesa(shader->nir->info.stage);
+         assert(pstage < ZINK_SHADER_COUNT);
          bool in_use = prog == ctx->curr_program;
          if (shader->nir->info.stage != MESA_SHADER_TESS_CTRL || !shader->is_generated)
             _mesa_hash_table_remove_key(ctx->program_cache, prog->shaders);
