@@ -860,7 +860,8 @@ void radv_meta_resolve_compute_image(struct radv_cmd_buffer *cmd_buffer,
 
 	radv_meta_restore(&saved_state, cmd_buffer);
 
-	if (radv_layout_dcc_compressed(cmd_buffer->device, dest_image,
+	if (!radv_image_use_dcc_image_stores(cmd_buffer->device, dest_image) &&
+	    radv_layout_dcc_compressed(cmd_buffer->device, dest_image,
 				       dest_image_layout, false, queue_mask)) {
 
 		cmd_buffer->state.flush_bits |= RADV_CMD_FLAG_CS_PARTIAL_FLUSH |
