@@ -1846,8 +1846,9 @@ emit_branch(struct v3d_compile *c,
 
         /* Fill any remaining delay slots.
          *
-         * FIXME: For unconditional branches we could fill these with the
-         * first instructions in the successor block.
+         * For unconditional branches we'll try to fill these with the
+         * first instructions in the successor block after scheduling
+         * all blocks when setting up branch targets.
          */
         for (int i = 0; i < 3 - slots_filled; i++)
                 emit_nop(c, block, scoreboard);
@@ -2209,13 +2210,28 @@ qpu_set_branch_targets(struct v3d_compile *c)
                  */
                 struct qinst *branch = NULL;
                 struct list_head *entry = block->instructions.prev;
+                int32_t delay_slot_count = -1;
+                struct qinst *delay_slots_start = NULL;
                 for (int i = 0; i < 3; i++) {
                         entry = entry->prev;
-                        branch = container_of(entry, struct qinst, link);
-                        if (branch->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH)
+                        struct qinst *inst =
+                                container_of(entry, struct qinst, link);
+
+                        if (delay_slot_count == -1) {
+                                if (!v3d_qpu_is_nop(&inst->qpu))
+                                        delay_slot_count = i;
+                                else
+                                        delay_slots_start = inst;
+                        }
+
+                        if (inst->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH) {
+                                branch = inst;
                                 break;
+                        }
                 }
                 assert(branch && branch->qpu.type == V3D_QPU_INSTR_TYPE_BRANCH);
+                assert(delay_slot_count >= 0 && delay_slot_count <= 3);
+                assert(delay_slot_count == 0 || delay_slots_start != NULL);
 
                 /* Make sure that the if-we-don't-jump
                  * successor was scheduled just after the
@@ -2241,6 +2257,34 @@ qpu_set_branch_targets(struct v3d_compile *c)
                 c->uniform_data[branch->uniform] =
                         (block->successors[0]->start_uniform -
                          (block->branch_uniform + 1)) * 4;
+
+                /* If this is an unconditional branch, try to fill any remaining
+                 * delay slots with the initial instructions of the successor
+                 * block.
+                 *
+                 * FIXME: we can do the same for conditional branches if we
+                 * predicate the instructions to match the branch condition.
+                 */
+                if (branch->qpu.branch.cond == V3D_QPU_BRANCH_COND_ALWAYS) {
+                        struct list_head *successor_insts =
+                                &block->successors[0]->instructions;
+                        delay_slot_count = MIN2(delay_slot_count,
+                                                list_length(successor_insts));
+                        struct qinst *s_inst =
+                                (struct qinst *) successor_insts->next;
+                        struct qinst *slot = delay_slots_start;
+                        int slots_filled = 0;
+                        while (slots_filled < delay_slot_count &&
+                               qpu_inst_valid_in_branch_delay_slot(c, s_inst)) {
+                                memcpy(&slot->qpu, &s_inst->qpu,
+                                       sizeof(slot->qpu));
+                                s_inst = (struct qinst *) s_inst->link.next;
+                                slot = (struct qinst *) slot->link.next;
+                                slots_filled++;
+                        }
+                        branch->qpu.branch.offset +=
+                                slots_filled * sizeof(uint64_t);
+                }
         }
 }
 
