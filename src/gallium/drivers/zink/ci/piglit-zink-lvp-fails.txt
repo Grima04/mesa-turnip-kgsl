@@ -83,7 +83,6 @@ spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims line cull-front pv-last,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims pv-last,Fail
-spec@!opengl 3.2@glsl-resource-not-bound buffer,Crash
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_clear_texture@arb_clear_texture-multisample,Fail
@@ -121,7 +120,6 @@ spec@arb_sample_shading@samplemask 4 all,Fail
 spec@arb_seamless_cube_map@arb_seamless_cubemap,Fail
 spec@arb_shader_storage_buffer_object@array-ssbo-binding,Crash
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
-spec@arb_shading_language_420pack@active sampler conflict,Crash
 spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output -small -scan 1 50,Crash
 spec@arb_texture_buffer_object@indexed,Fail
 spec@arb_texture_buffer_object@render-no-bo,Crash
