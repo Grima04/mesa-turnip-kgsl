@@ -360,6 +360,21 @@ staging/year.quarter branch, not on the year.quarter branch, per the
 stable branch policy. Assigning the MR to release maintainer for said
 branch or mentioning them is helpful, but not required.
 
+Documentation patches
+---------------------
+
+Our documentation is written as `reStructuredText`_ files in the
+:file:`docs` folder, and built using `Sphinx`_.
+
+The preferred language of the documentation is US English. This
+doesn't mean that everyone is expected to pay close attention to
+the different English variants, but it does mean someome might
+suggest a spelling-change, either during review or as a follow-up
+merge-request.
+
+.. _reStructuredText: https://docutils.sourceforge.io/rst.html
+.. _Sphinx: https://www.sphinx-doc.org/
+
 Git tips
 --------
 
