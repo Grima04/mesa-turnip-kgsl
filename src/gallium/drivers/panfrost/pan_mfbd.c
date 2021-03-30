@@ -249,7 +249,8 @@ panfrost_mfbd_zs_crc_ext_set_bufs(struct panfrost_batch *batch,
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         /* Checksumming only works with a single render target */
-        if (batch->key.nr_cbufs == 1 && batch->key.cbufs[0]) {
+        if (batch->key.nr_cbufs == 1 && batch->key.cbufs[0] &&
+            ((batch->clear | batch->draws) & PIPE_CLEAR_COLOR0)) {
                 struct pipe_surface *c_surf = batch->key.cbufs[0];
                 struct panfrost_resource *rsrc = pan_resource(c_surf->texture);
 
