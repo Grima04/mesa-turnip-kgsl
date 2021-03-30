@@ -424,6 +424,9 @@ pan_internal_cbuf_size(struct panfrost_batch *batch, unsigned *tile_size)
         for (int cb = 0; cb < batch->key.nr_cbufs; ++cb) {
                 struct pipe_surface *surf = batch->key.cbufs[cb];
 
+                if (!((batch->clear | batch->draws) & (PIPE_CLEAR_COLOR0 << cb)))
+                        surf = NULL;
+
                 if (!surf)
                         continue;
 
