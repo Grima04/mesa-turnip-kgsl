@@ -264,7 +264,7 @@ tc_add_sized_call(struct threaded_context *tc, enum tc_call_id id,
                   unsigned num_call_slots)
 {
    struct tc_batch *next = &tc->batch_slots[tc->next];
-
+   assert(num_call_slots <= TC_CALLS_PER_BATCH);
    tc_debug_check(tc);
 
    if (unlikely(next->num_total_call_slots + num_call_slots > TC_CALLS_PER_BATCH)) {
@@ -2527,6 +2527,10 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
       return;
    }
 
+   const int draw_overhead_bytes = offsetof(struct tc_call, payload) + sizeof(struct tc_draw_multi);
+   const int one_draw_payload_bytes = sizeof(((struct tc_draw_multi*)NULL)->slot[0]);
+   const int slots_for_one_draw = DIV_ROUND_UP(draw_overhead_bytes + one_draw_payload_bytes,
+                                               sizeof(struct tc_call));
    /* Multi draw. */
    if (index_size && has_user_indices) {
       struct pipe_resource *buffer = NULL;
@@ -2553,43 +2557,77 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
       if (unlikely(!buffer))
          return;
 
-      struct tc_draw_multi *p =
-         tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
-                                num_draws);
-      memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
-      p->info.index.resource = buffer;
-      p->num_draws = num_draws;
+      int total_offset = 0;
+      while (num_draws) {
+         struct tc_batch *next = &tc->batch_slots[tc->next];
 
-      /* Upload index buffers. */
-      for (unsigned i = 0, offset = 0; i < num_draws; i++) {
-         unsigned count = draws[i].count;
+         int nb_slots_left = TC_CALLS_PER_BATCH - next->num_total_call_slots;
+         /* If there isn't enough place for one draw, try to fill the next one */
+         if (nb_slots_left < slots_for_one_draw)
+            nb_slots_left = TC_CALLS_PER_BATCH;
+         const int size_left_bytes = nb_slots_left * sizeof(struct tc_call);
 
-         if (!count) {
-            p->slot[i].start = 0;
-            p->slot[i].count = 0;
-            continue;
+         /* How many draws can we fit in the current batch */
+         const int dr = MIN2(num_draws, (size_left_bytes - draw_overhead_bytes) / one_draw_payload_bytes);
+
+         struct tc_draw_multi *p =
+            tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
+                                   dr);
+         memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
+         p->info.index.resource = buffer;
+         p->num_draws = dr;
+
+         /* Upload index buffers. */
+         for (unsigned i = 0, offset = 0; i < dr; i++) {
+            unsigned count = draws[i + total_offset].count;
+
+            if (!count) {
+               p->slot[i].start = 0;
+               p->slot[i].count = 0;
+               continue;
+            }
+
+            unsigned size = count << index_size_shift;
+            memcpy(ptr + offset,
+                   (uint8_t*)info->index.user +
+                   (draws[i + total_offset].start << index_size_shift), size);
+            p->slot[i].start = (buffer_offset + offset) >> index_size_shift;
+            p->slot[i].count = count;
+            offset += size;
          }
 
-         unsigned size = count << index_size_shift;
-         memcpy(ptr + offset,
-                (uint8_t*)info->index.user +
-                (draws[i].start << index_size_shift), size);
-         p->slot[i].start = (buffer_offset + offset) >> index_size_shift;
-         p->slot[i].count = count;
-         offset += size;
+         total_offset += dr;
+         num_draws -= dr;
       }
    } else {
-      /* Non-indexed call or indexed with a real index buffer. */
-      struct tc_draw_multi *p =
-         tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
-                                num_draws);
-      if (index_size && !info->take_index_buffer_ownership) {
-         tc_set_resource_reference(&p->info.index.resource,
-                                   info->index.resource);
+      int total_offset = 0;
+      while (num_draws) {
+         struct tc_batch *next = &tc->batch_slots[tc->next];
+
+         int nb_slots_left = TC_CALLS_PER_BATCH - next->num_total_call_slots;
+         /* If there isn't enough place for one draw, try to fill the next one */
+         if (nb_slots_left < slots_for_one_draw)
+            nb_slots_left = TC_CALLS_PER_BATCH;
+         const int size_left_bytes = nb_slots_left * sizeof(struct tc_call);
+
+         /* How many draws can we fit in the current batch */
+         const int dr = MIN2(num_draws, (size_left_bytes - draw_overhead_bytes) / one_draw_payload_bytes);
+
+         /* Non-indexed call or indexed with a real index buffer. */
+         struct tc_draw_multi *p =
+            tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
+                                   dr);
+         if (index_size && !info->take_index_buffer_ownership) {
+            tc_set_resource_reference(&p->info.index.resource,
+                                      info->index.resource);
+         }
+         memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
+         p->num_draws = dr;
+         memcpy(p->slot, &draws[total_offset], sizeof(draws[0]) * dr);
+         num_draws -= dr;
+
+         total_offset += dr;
       }
-      memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
-      p->num_draws = num_draws;
-      memcpy(p->slot, draws, sizeof(draws[0]) * num_draws);
    }
 }
 
