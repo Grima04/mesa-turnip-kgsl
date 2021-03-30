@@ -98,7 +98,7 @@ struct gen_context_parameters {
 
 typedef void (*gen_context_init_t)(const struct gen_context_parameters *, uint32_t *, uint32_t *);
 
-#include "gen8_context.h"
-#include "gen10_context.h"
+#include "gfx8_context.h"
+#include "gfx10_context.h"
 
 #endif /* INTEL_CONTEXT_H */

@@ -57,10 +57,10 @@ anv_gen_files = files(
   'genX_query.c',
   'genX_state.c',
 )
-foreach g : [['70', ['gen7_cmd_buffer.c']], ['75', ['gen7_cmd_buffer.c']],
-             ['80', ['gen8_cmd_buffer.c']], ['90', ['gen8_cmd_buffer.c']],
-             ['110', ['gen8_cmd_buffer.c']], ['120', ['gen8_cmd_buffer.c']],
-             ['125', ['gen8_cmd_buffer.c']]]
+foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
+             ['80', ['gfx8_cmd_buffer.c']], ['90', ['gfx8_cmd_buffer.c']],
+             ['110', ['gfx8_cmd_buffer.c']], ['120', ['gfx8_cmd_buffer.c']],
+             ['125', ['gfx8_cmd_buffer.c']]]
   _gen = g[0]
   libanv_gen_libs += static_library(
     'anv_gen@0@'.format(_gen),

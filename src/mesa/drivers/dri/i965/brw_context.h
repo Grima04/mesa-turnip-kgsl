@@ -1313,7 +1313,7 @@ bool brw_is_query_pipelined(struct brw_query_object *query);
 uint64_t brw_raw_timestamp_delta(struct brw_context *brw,
                                  uint64_t time0, uint64_t time1);
 
-/** gen6_queryobj.c */
+/** gfx6_queryobj.c */
 void gen6_init_queryobj_functions(struct dd_function_table *functions);
 void brw_write_timestamp(struct brw_context *brw, struct brw_bo *bo, int idx);
 void brw_write_depth_count(struct brw_context *brw, struct brw_bo *bo, int idx);
@@ -1444,7 +1444,7 @@ extern int brw_translate_stencil_op(GLenum op);
 /* brw_sync.c */
 void brw_init_syncobj_functions(struct dd_function_table *functions);
 
-/* gen6_sol.c */
+/* gfx6_sol.c */
 struct gl_transform_feedback_object *
 brw_new_transform_feedback(struct gl_context *ctx, GLuint name);
 void
@@ -1470,7 +1470,7 @@ brw_get_transform_feedback_vertex_count(struct gl_context *ctx,
                                         struct gl_transform_feedback_object *obj,
                                         GLuint stream);
 
-/* gen7_sol_state.c */
+/* gfx7_sol_state.c */
 void
 gen7_begin_transform_feedback(struct gl_context *ctx, GLenum mode,
                               struct gl_transform_feedback_object *obj);
@@ -1526,13 +1526,13 @@ gen6_get_sample_position(struct gl_context *ctx,
                          GLuint index,
                          GLfloat *result);
 
-/* gen8_multisample_state.c */
+/* gfx8_multisample_state.c */
 void gen8_emit_3dstate_sample_pattern(struct brw_context *brw);
 
-/* gen7_l3_state.c */
+/* gfx7_l3_state.c */
 void brw_emit_l3_state(struct brw_context *brw);
 
-/* gen7_urb.c */
+/* gfx7_urb.c */
 void
 gen7_emit_push_constant_state(struct brw_context *brw, unsigned vs_size,
                               unsigned hs_size, unsigned ds_size,

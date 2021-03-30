@@ -21,7 +21,7 @@
  * IN THE SOFTWARE.
  */
 
-/** \file gen6_sol.c
+/** \file gfx6_sol.c
  *
  * Code to initialize the binding table entries used by transform feedback.
  */

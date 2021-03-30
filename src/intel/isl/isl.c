@@ -28,12 +28,12 @@
 #include "genxml/genX_bits.h"
 
 #include "isl.h"
-#include "isl_gen4.h"
-#include "isl_gen6.h"
-#include "isl_gen7.h"
-#include "isl_gen8.h"
-#include "isl_gen9.h"
-#include "isl_gen12.h"
+#include "isl_gfx4.h"
+#include "isl_gfx6.h"
+#include "isl_gfx7.h"
+#include "isl_gfx8.h"
+#include "isl_gfx9.h"
+#include "isl_gfx12.h"
 #include "isl_priv.h"
 
 void

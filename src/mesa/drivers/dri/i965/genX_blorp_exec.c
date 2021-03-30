@@ -33,7 +33,7 @@
 #include "blorp/blorp_genX_exec.h"
 
 #if GFX_VER <= 5
-#include "gen4_blorp_exec.h"
+#include "gfx4_blorp_exec.h"
 #endif
 
 #include "brw_blorp.h"

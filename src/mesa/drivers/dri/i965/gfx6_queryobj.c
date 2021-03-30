@@ -25,7 +25,7 @@
  *    Kenneth Graunke <kenneth@whitecape.org>
  */
 
-/** @file gen6_queryobj.c
+/** @file gfx6_queryobj.c
  *
  * Support for query objects (GL_ARB_occlusion_query, GL_ARB_timer_query,
  * GL_EXT_transform_feedback, and friends) on platforms that support

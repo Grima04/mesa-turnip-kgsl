@@ -144,7 +144,7 @@ brw_depthbuffer_format(struct brw_context *brw);
 
 void brw_upload_state_base_address(struct brw_context *brw);
 
-/* gen8_depth_state.c */
+/* gfx8_depth_state.c */
 void gen8_write_pma_stall_bits(struct brw_context *brw,
                                uint32_t pma_stall_bits);
 
@@ -257,7 +257,7 @@ void brw_emit_sampler_state(struct brw_context *brw,
                             bool non_normalized_coordinates,
                             uint32_t border_color_offset);
 
-/* gen6_constant_state.c */
+/* gfx6_constant_state.c */
 void
 brw_populate_constant_data(struct brw_context *brw,
                            const struct gl_program *prog,
@@ -277,7 +277,7 @@ brw_upload_cs_push_constants(struct brw_context *brw,
                              const struct brw_cs_prog_data *cs_prog_data,
                              struct brw_stage_state *stage_state);
 
-/* gen7_vs_state.c */
+/* gfx7_vs_state.c */
 void
 gen7_upload_constant_state(struct brw_context *brw,
                            const struct brw_stage_state *stage_state,
@@ -292,7 +292,7 @@ void brw_upload_sf_prog(struct brw_context *brw);
 bool brw_is_drawing_points(const struct brw_context *brw);
 bool brw_is_drawing_lines(const struct brw_context *brw);
 
-/* gen7_l3_state.c */
+/* gfx7_l3_state.c */
 void
 gen7_restore_default_l3_config(struct brw_context *brw);
 

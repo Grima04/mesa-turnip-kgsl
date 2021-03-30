@@ -22,7 +22,7 @@
  */
 
 /**
- * @file gen7_sol_state.c
+ * @file gfx7_sol_state.c
  *
  * Controls the stream output logic (SOL) stage of the gen7 hardware, which is
  * used to implement GL_EXT_transform_feedback.

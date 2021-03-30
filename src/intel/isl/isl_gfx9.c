@@ -21,8 +21,8 @@
  *  IN THE SOFTWARE.
  */
 
-#include "isl_gen8.h"
-#include "isl_gen9.h"
+#include "isl_gfx8.h"
+#include "isl_gfx9.h"
 #include "isl_priv.h"
 
 /**

@@ -2324,7 +2324,7 @@ genX(graphics_pipeline_create)(
 #endif
 
 #if 0
-   /* From gen7_vs_state.c */
+   /* From gfx7_vs_state.c */
 
    /**
     * From Graphics BSpec: 3D-Media-GPGPU Engine > 3D Pipeline Stages >

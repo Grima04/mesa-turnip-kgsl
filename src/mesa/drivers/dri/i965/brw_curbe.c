@@ -46,7 +46,7 @@
  * stall occurs at CMD_CONST_BUFFER time.
  *
  * On gen6+, constant handling becomes a much simpler set of per-unit state.
- * See gen6_upload_vec4_push_constants() in gen6_vs_state.c for that code.
+ * See gen6_upload_vec4_push_constants() in gfx6_vs_state.c for that code.
  */
 
 

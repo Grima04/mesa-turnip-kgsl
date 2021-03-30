@@ -24,12 +24,12 @@
  */
 
 /**
- * \file gen6_gs_visitor.cpp
+ * \file gfx6_gs_visitor.cpp
  *
  * Gen6 geometry shader implementation
  */
 
-#include "gen6_gs_visitor.h"
+#include "gfx6_gs_visitor.h"
 #include "brw_eu.h"
 
 namespace brw {

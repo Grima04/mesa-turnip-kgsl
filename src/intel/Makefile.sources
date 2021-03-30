@@ -141,8 +141,8 @@ COMPILER_FILES = \
 	compiler/brw_vec4_vs.h \
 	compiler/brw_vue_map.c \
 	compiler/brw_wm_iz.cpp \
-	compiler/gen6_gs_visitor.cpp \
-	compiler/gen6_gs_visitor.h
+	compiler/gfx6_gs_visitor.cpp \
+	compiler/gfx6_gs_visitor.h
 
 COMPILER_GENERATED_FILES = \
 	compiler/brw_nir_trig_workarounds.c
@@ -195,8 +195,8 @@ ISL_FILES = \
 	isl/isl_storage_image.c
 
 ISL_GEN4_FILES = \
-	isl/isl_gen4.c \
-	isl/isl_gen4.h \
+	isl/isl_gfx4.c \
+	isl/isl_gfx4.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
@@ -205,14 +205,14 @@ ISL_GEN5_FILES = \
 	isl/isl_surface_state.c
 
 ISL_GEN6_FILES = \
-	isl/isl_gen6.c \
-	isl/isl_gen6.h \
+	isl/isl_gfx6.c \
+	isl/isl_gfx6.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
 ISL_GEN7_FILES = \
-	isl/isl_gen7.c \
-	isl/isl_gen7.h \
+	isl/isl_gfx7.c \
+	isl/isl_gfx7.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
@@ -221,14 +221,14 @@ ISL_GEN75_FILES = \
 	isl/isl_surface_state.c
 
 ISL_GEN8_FILES = \
-	isl/isl_gen8.c \
-	isl/isl_gen8.h \
+	isl/isl_gfx8.c \
+	isl/isl_gfx8.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
 ISL_GEN9_FILES = \
-	isl/isl_gen9.c \
-	isl/isl_gen9.h \
+	isl/isl_gfx9.c \
+	isl/isl_gfx9.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
@@ -237,8 +237,8 @@ ISL_GEN11_FILES = \
 	isl/isl_surface_state.c
 
 ISL_GEN12_FILES = \
-	isl/isl_gen12.c \
-	isl/isl_gen12.h \
+	isl/isl_gfx12.c \
+	isl/isl_gfx12.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
@@ -322,31 +322,31 @@ VULKAN_GENX_FILES := \
 	vulkan/genX_state.c
 
 VULKAN_GEN7_FILES := \
-	vulkan/gen7_cmd_buffer.c \
+	vulkan/gfx7_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 VULKAN_GEN75_FILES := \
-	vulkan/gen7_cmd_buffer.c \
+	vulkan/gfx7_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 VULKAN_GEN8_FILES := \
-	vulkan/gen8_cmd_buffer.c \
+	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 VULKAN_GEN9_FILES := \
-	vulkan/gen8_cmd_buffer.c \
+	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 VULKAN_GEN11_FILES := \
-	vulkan/gen8_cmd_buffer.c \
+	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 VULKAN_GEN12_FILES := \
-	vulkan/gen8_cmd_buffer.c \
+	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 VULKAN_GEN125_FILES := \
-	vulkan/gen8_cmd_buffer.c \
+	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
 GEN_PERF_XML_FILES = \

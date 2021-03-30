@@ -28,7 +28,7 @@
  */
 
 #include "brw_vec4_gs_visitor.h"
-#include "gen6_gs_visitor.h"
+#include "gfx6_gs_visitor.h"
 #include "brw_cfg.h"
 #include "brw_fs.h"
 #include "brw_nir.h"

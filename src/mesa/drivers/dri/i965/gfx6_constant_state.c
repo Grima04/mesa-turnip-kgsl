@@ -226,7 +226,7 @@ gen6_upload_push_constants(struct brw_context *brw,
  * register space with mostly-unused data).
  *
  * Compare this path to brw_curbe.c for gen4/5 push constants, and
- * gen6_vs_state.c for gen6+ push constants.
+ * gfx6_vs_state.c for gen6+ push constants.
  */
 void
 brw_upload_pull_constants(struct brw_context *brw,
@@ -289,7 +289,7 @@ brw_upload_pull_constants(struct brw_context *brw,
  * pre-loaded into a shader stage's register space at thread spawn time.
  *
  * For other stages, see brw_curbe.c:brw_upload_constant_buffer for the
- * equivalent gen4/5 code and gen6_vs_state.c:gen6_upload_push_constants for
+ * equivalent gen4/5 code and gfx6_vs_state.c:gen6_upload_push_constants for
  * gen6+.
  */
 void

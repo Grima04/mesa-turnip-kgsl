@@ -21,7 +21,7 @@
  *  IN THE SOFTWARE.
  */
 
-#include "isl_gen7.h"
+#include "isl_gfx7.h"
 #include "isl_priv.h"
 
 static bool

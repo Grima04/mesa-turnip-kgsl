@@ -21,24 +21,23 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN8_CONTEXT_H
-#define GEN8_CONTEXT_H
+#ifndef GFX10_CONTEXT_H
+#define GFX10_CONTEXT_H
 
-static inline void gen8_render_context_init(const struct gen_context_parameters *params,
-                                            uint32_t *data, uint32_t *size)
+static inline void gen10_render_context_init(const struct gen_context_parameters *params,
+                                             uint32_t *data, uint32_t *size)
 {
    *size = CONTEXT_RENDER_SIZE;
    if (!data)
       return;
 
-   *data++ = 0 /* MI_NOOP */;
+   *data++ = 0; /* MI_NOOP */
    MI_LOAD_REGISTER_IMM_vals(data, MI_LRI_FORCE_POSTED,
-                             0x2244 /* CONTEXT_CONTROL */,
-                             0x90009 /* Inhibit Synchronous Context Switch | Engine Context Restore Inhibit */,
-                             0x2034 /* RING_HEAD */, 0,
-                             0x2030 /* RING_TAIL */, 0,
+                             0x2244 /* CONTEXT_CONTROL */,         0x90009 /* Inhibit Synchronous Context Switch | Engine Context Restore Inhibit */,
+                             0x2034 /* RING_HEAD */,               0,
+                             0x2030 /* RING_TAIL */,               0,
                              0x2038 /* RING_BUFFER_START */,       params->ring_addr,
-                             0x203C /* RING_BUFFER_CONTROL */,     (params->ring_addr - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
+                             0x203C /* RING_BUFFER_CONTROL */,     (params->ring_size - 4096) | 1 /* Buffer Length | Ring Buffer Enable */,
                              0x2168 /* BB_HEAD_U */,               0,
                              0x2140 /* BB_HEAD_L */,               0,
                              0x2110 /* BB_STATE */,                0,
@@ -47,12 +46,10 @@ static inline void gen8_render_context_init(const struct gen_context_parameters 
                              0x2118 /* SECOND_BB_STATE */,         0,
                              0x21C0 /* BB_PER_CTX_PTR */,          0,
                              0x21C4 /* RCS_INDIRECT_CTX */,        0,
-                             0x21C8 /* RCS_INDIRECT_CTX_OFFSET */, 0);
-   /* MI_NOOP */
-   *data++ = 0;
-   *data++ = 0;
-
+                             0x21C8 /* RCS_INDIRECT_CTX_OFFSET */, 0,
+                             0x2180 /* CCID */,		           0);
    *data++ = 0; /* MI_NOOP */
+
    MI_LOAD_REGISTER_IMM_vals(data, MI_LRI_FORCE_POSTED,
                              0x23A8 /* CTX_TIMESTAMP */, 0,
                              0x228C /* PDP3_UDW */,      0,
@@ -63,18 +60,23 @@ static inline void gen8_render_context_init(const struct gen_context_parameters 
                              0x2278 /* PDP1_LDW */,      0,
                              0x2274 /* PDP0_UDW */,      params->pml4_addr >> 32,
                              0x2270 /* PDP0_LDW */,      params->pml4_addr & 0xffffffff);
-   /* MI_NOOP */
    for (int i = 0; i < 12; i++)
-      *data++ = 0 /* MI_NOOP */;
+      *data++ = 0; /* MI_NOOP */
 
-   *data++ = 0 /* MI_NOOP */;
+   *data++ = 0; /* MI_NOOP */
    MI_LOAD_REGISTER_IMM_vals(data, 0,
-                             0x20C8 /* R_PWR_CLK_STATE */, 0x7FFFFFFF);
-   *data++ = MI_BATCH_BUFFER_END;
+                             0x20C8 /* R_PWR_CLK_STATE */, 0x7FFFFFFF,
+                             0, /* GPGPU_CSR_BASE_ADDRESS ? */ 0);
+   *data++ = 0; /* MI_NOOP */
+
+   for (int i = 0; i < 9; i++)
+      *data++ = 0;
+
+   *data++ = MI_BATCH_BUFFER_END | 1 /* End Context */;
 }
 
-static inline void gen8_blitter_context_init(const struct gen_context_parameters *params,
-                                             uint32_t *data, uint32_t *size)
+static inline void gen10_blitter_context_init(const struct gen_context_parameters *params,
+                                              uint32_t *data, uint32_t *size)
 {
    *size = CONTEXT_OTHER_SIZE;
    if (!data)
@@ -92,12 +94,14 @@ static inline void gen8_blitter_context_init(const struct gen_context_parameters
                              0x22110 /* BB_STATE */,            0,
                              0x2211C /* SECOND_BB_HEAD_U */,    0,
                              0x22114 /* SECOND_BB_HEAD_L */,    0,
-                             0x22118 /* SECOND_BB_STATE */,     0);
+                             0x22118 /* SECOND_BB_STATE */,     0,
+                             0x221C0 /* BB_PER_CTX_PTR */,	0,
+                             0x221C4 /* INDIRECT_CTX */,	0,
+                             0x221C8 /* INDIRECT_CTX_OFFSET */, 0);
+   *data++ = 0 /* MI_NOOP */;
+   *data++ = 0 /* MI_NOOP */;
 
-   for (int i = 0; i < 8; i++)
-      *data++ = 0 /* MI_NOOP */;
-
-   *data = 0 /* MI_NOOP */;
+   *data++ = 0 /* MI_NOOP */;
    MI_LOAD_REGISTER_IMM_vals(data, MI_LRI_FORCE_POSTED,
                              0x223A8 /* CTX_TIMESTAMP */, 0,
                              0x2228C /* PDP3_UDW */,      0,
@@ -108,15 +112,21 @@ static inline void gen8_blitter_context_init(const struct gen_context_parameters
                              0x22278 /* PDP1_LDW */,      0,
                              0x22274 /* PDP0_UDW */,      params->pml4_addr >> 32,
                              0x22270 /* PDP0_LDW */,      params->pml4_addr & 0xffffffff);
+   for (int i = 0; i < 13; i++)
+      *data++ = 0 /* MI_NOOP */;
+
+   MI_LOAD_REGISTER_IMM_vals(data, 0,
+                             0x22200 /* BCS_SWCTRL */,	0);
 
    for (int i = 0; i < 12; i++)
       *data++ = 0 /* MI_NOOP */;
 
-   *data++ = MI_BATCH_BUFFER_END;
+
+   *data++ = MI_BATCH_BUFFER_END | 1 /* End Context */;
 }
 
-static inline void gen8_video_context_init(const struct gen_context_parameters *params,
-                                           uint32_t *data, uint32_t *size)
+static inline void gen10_video_context_init(const struct gen_context_parameters *params,
+                                            uint32_t *data, uint32_t *size)
 {
    *size = CONTEXT_OTHER_SIZE;
    if (!data)
@@ -152,7 +162,7 @@ static inline void gen8_video_context_init(const struct gen_context_parameters *
    for (int i = 0; i < 12; i++)
       *data++ = 0 /* MI_NOOP */;
 
-   *data++ = MI_BATCH_BUFFER_END;
+   *data++ = MI_BATCH_BUFFER_END | 1  /* End Context */;
 }
 
-#endif /* GEN8_CONTEXT_H */
+#endif /* GFX10_CONTEXT_H */

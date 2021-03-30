@@ -87,4 +87,3 @@ brw_is_drawing_lines(const struct brw_context *brw)
    }
    return false;
 }
-

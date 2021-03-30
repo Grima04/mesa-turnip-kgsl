@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018 Intel Corporation
+ * Copyright 2015 Intel Corporation
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a
  *  copy of this software and associated documentation files (the "Software"),
@@ -21,8 +21,8 @@
  *  IN THE SOFTWARE.
  */
 
-#ifndef ISL_GEN12_H
-#define ISL_GEN12_H
+#ifndef ISL_GFX6_H
+#define ISL_GFX6_H
 
 #include "isl.h"
 
@@ -30,16 +30,22 @@
 extern "C" {
 #endif
 
+bool
+isl_gen6_choose_msaa_layout(const struct isl_device *dev,
+                            const struct isl_surf_init_info *info,
+                            enum isl_tiling tiling,
+                            enum isl_msaa_layout *msaa_layout);
+
 void
-isl_gen12_choose_image_alignment_el(const struct isl_device *dev,
-                                    const struct isl_surf_init_info *restrict info,
-                                    enum isl_tiling tiling,
-                                    enum isl_dim_layout dim_layout,
-                                    enum isl_msaa_layout msaa_layout,
-                                    struct isl_extent3d *image_align_el);
+isl_gen6_choose_image_alignment_el(const struct isl_device *dev,
+                                   const struct isl_surf_init_info *restrict info,
+                                   enum isl_tiling tiling,
+                                   enum isl_dim_layout dim_layout,
+                                   enum isl_msaa_layout msaa_layout,
+                                   struct isl_extent3d *image_align_el);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ISL_GEN12_H */
+#endif /* ISL_GFX6_H */

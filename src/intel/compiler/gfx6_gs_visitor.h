@@ -22,8 +22,8 @@
  *
  */
 
-#ifndef GEN6_GS_VISITOR_H
-#define GEN6_GS_VISITOR_H
+#ifndef GFX6_GS_VISITOR_H
+#define GFX6_GS_VISITOR_H
 
 #include "brw_vec4.h"
 #include "brw_vec4_gs_visitor.h"
@@ -89,4 +89,4 @@ private:
 
 #endif /* __cplusplus */
 
-#endif /* GEN6_GS_VISITOR_H */
+#endif /* GFX6_GS_VISITOR_H */
