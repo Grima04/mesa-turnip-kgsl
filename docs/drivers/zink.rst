@@ -37,7 +37,9 @@ Here's a list of those requirements:
 * Device extensions:
 
   * `VK_KHR_maintenance1`_
-  * `VK_KHR_external_memory`_
+
+In addition to this, `VK_KHR_external_memory`_ is required to support the
+DRI code-path.
 
 OpenGL 3.0
 ^^^^^^^^^^
