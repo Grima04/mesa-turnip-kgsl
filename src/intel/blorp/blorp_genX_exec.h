@@ -1698,7 +1698,7 @@ blorp_emit_depth_stencil_config(struct blorp_batch *batch,
    isl_emit_depth_stencil_hiz_s(isl_dev, dw, &info);
 
 #if GFX_VER >= 12
-   /* GEN:BUG:1408224581
+   /* Wa_1408224581
     *
     * Workaround: Gfx12LP Astep only An additional pipe control with
     * post-sync = store dword operation would be required.( w/a is to
@@ -1872,7 +1872,7 @@ blorp_update_clear_color(UNUSED struct blorp_batch *batch,
       }
 #elif GFX_VER >= 9
 
-      /* According to GEN:BUG:2201730850, in the Clear Color Programming Note
+      /* According to Wa_2201730850, in the Clear Color Programming Note
        * under the Red channel, "Software shall write the converted Depth
        * Clear to this dword." The only depth formats listed under the red
        * channel are IEEE_FP and UNORM24_X8. These two requirements are

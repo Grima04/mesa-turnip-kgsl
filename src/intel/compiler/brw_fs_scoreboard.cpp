@@ -335,7 +335,7 @@ namespace {
        * Whether the dependency could be run with execution masking disabled,
        * which might lead to the unwanted execution of the generating
        * instruction in cases where a BB is executed with all channels
-       * disabled due to hardware bug GEN:BUG:1407528679.
+       * disabled due to hardware bug Wa_1407528679.
        */
       bool exec_all;
 
@@ -1024,7 +1024,7 @@ namespace {
                    * possible, except in cases where the current instruction
                    * isn't marked NoMask but the dependency is, since that
                    * might lead to data coherency issues due to
-                   * GEN:BUG:1407528679.
+                   * Wa_1407528679.
                    */
                   swsb.sbid = dep.id;
                   swsb.mode = dep.unordered;
@@ -1051,7 +1051,7 @@ namespace {
                /* If the current instruction is not marked NoMask but an
                 * ordered dependency is, perform the synchronization as a
                 * separate NoMask SYNC instruction in order to avoid data
-                * coherency issues due to GEN:BUG:1407528679.  The similar
+                * coherency issues due to Wa_1407528679.  The similar
                 * scenario with unordered dependencies should have been
                 * handled above.
                 */

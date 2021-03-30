@@ -1697,7 +1697,7 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
       hs.BindingTableEntryCount = tcs_bin->bind_map.surface_count;
 
 #if GFX_VER >= 12
-      /* GEN:BUG:1604578095:
+      /* Wa_1604578095:
        *
        *    Hang occurs when the number of max threads is less than 2 times
        *    the number of instance count. The number of max threads must be

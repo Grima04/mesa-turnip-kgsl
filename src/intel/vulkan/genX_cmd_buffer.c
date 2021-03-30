@@ -75,7 +75,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
       pc.TileCacheFlushEnable = true;
 #endif
 #if GFX_VER == 12
-      /* GEN:BUG:1606662791:
+      /* Wa_1606662791:
        *
        *   Software must program PIPE_CONTROL command with "HDC Pipeline
        *   Flush" prior to programming of the below two non-pipeline state :
@@ -88,7 +88,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
    }
 
 #if GFX_VER == 12
-   /* GEN:BUG:1607854226:
+   /* Wa_1607854226:
     *
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
     *  mode by putting the pipeline temporarily in 3D mode.
@@ -185,7 +185,7 @@ genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
    }
 
 #if GFX_VER == 12
-   /* GEN:BUG:1607854226:
+   /* Wa_1607854226:
     *
     *  Put the pipeline back into its current mode.
     */
@@ -2022,7 +2022,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
       bits |= ANV_PIPE_TILE_CACHE_FLUSH_BIT;
    }
 
-   /* GEN:BUG:1409226450, Wait for EU to be idle before pipe control which
+   /* Wa_1409226450, Wait for EU to be idle before pipe control which
     * invalidates the instruction cache
     */
    if (GFX_VER == 12 && (bits & ANV_PIPE_INSTRUCTION_CACHE_INVALIDATE_BIT))
@@ -2049,7 +2049,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
     *
     * The same text exists a few rows below for Post Sync Op.
     *
-    * On Gfx12 this is GEN:BUG:1607156449.
+    * On Gfx12 this is Wa_1607156449.
     */
    if (bits & ANV_PIPE_POST_SYNC_BIT) {
       if ((GFX_VER == 9 || (GFX_VER == 12 && devinfo->revision == 0 /* A0 */)) &&
@@ -2069,7 +2069,7 @@ genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
          pipe.RenderTargetCacheFlushEnable =
             bits & ANV_PIPE_RENDER_TARGET_CACHE_FLUSH_BIT;
 
-         /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
+         /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must
           * be set with any PIPE_CONTROL with Depth Flush Enable bit set.
           */
 #if GFX_VER >= 12
@@ -4763,7 +4763,7 @@ genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
 #if GFX_VER >= 12
       pc.TileCacheFlushEnable = true;
 
-      /* GEN:BUG:1409600907: "PIPE_CONTROL with Depth Stall Enable bit must be
+      /* Wa_1409600907: "PIPE_CONTROL with Depth Stall Enable bit must be
        * set with any PIPE_CONTROL with Depth Flush Enable bit set.
        */
       pc.DepthStallEnable = true;
@@ -5142,7 +5142,7 @@ cmd_buffer_emit_depth_stencil(struct anv_cmd_buffer *cmd_buffer)
       cmd_buffer->state.pending_pipe_bits |= ANV_PIPE_POST_SYNC_BIT;
       genX(cmd_buffer_apply_pipe_flushes)(cmd_buffer);
 
-      /* GEN:BUG:1408224581
+      /* Wa_1408224581
        *
        * Workaround: Gfx12LP Astep only An additional pipe control with
        * post-sync = store dword operation would be required.( w/a is to
@@ -5573,7 +5573,7 @@ cmd_buffer_begin_subpass(struct anv_cmd_buffer *cmd_buffer,
 #endif
 
 #if GFX_VER == 12
-   /* GEN:BUG:14010455700
+   /* Wa_14010455700
     *
     * ISL will change some CHICKEN registers depending on the depth surface
     * format, along with emitting the depth and stencil packets. In that case,

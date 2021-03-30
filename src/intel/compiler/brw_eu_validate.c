@@ -1912,7 +1912,7 @@ instruction_restrictions(const struct gen_device_info *devinfo,
 {
    struct string error_msg = { .str = NULL, .len = 0 };
 
-   /* From GEN:BUG:1604601757:
+   /* From Wa_1604601757:
     *
     * "When multiplying a DW and any lower precision integer, source modifier
     *  is not supported."

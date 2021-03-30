@@ -52,7 +52,7 @@ gfx7_cmd_buffer_emit_scissor(struct anv_cmd_buffer *cmd_buffer)
    uint32_t count = cmd_buffer->state.gfx.dynamic.scissor.count;
    const VkRect2D *scissors = cmd_buffer->state.gfx.dynamic.scissor.scissors;
 
-   /* GEN:BUG:1409725701:
+   /* Wa_1409725701:
     *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
     *    stored as an array of up to 16 elements. The location of first
     *    element of the array, as specified by Pointer to SCISSOR_RECT, should

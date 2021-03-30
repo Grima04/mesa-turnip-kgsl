@@ -410,7 +410,7 @@ flush_before_state_base_change(struct iris_batch *batch)
                               PIPE_CONTROL_RENDER_TARGET_FLUSH |
                               PIPE_CONTROL_DEPTH_CACHE_FLUSH |
                               PIPE_CONTROL_DATA_CACHE_FLUSH |
-                              /* GEN:BUG:1606662791:
+                              /* Wa_1606662791:
                                *
                                *   Software must program PIPE_CONTROL command
                                *   with "HDC Pipeline Flush" prior to
@@ -1091,7 +1091,7 @@ iris_init_compute_context(struct iris_batch *batch)
 
    iris_batch_sync_region_start(batch);
 
-   /* GEN:BUG:1607854226:
+   /* Wa_1607854226:
     *
     *  Start with pipeline in 3D mode to set the STATE_BASE_ADDRESS.
     */
@@ -4383,7 +4383,7 @@ iris_store_tcs_state(const struct gen_device_info *devinfo,
       INIT_THREAD_DISPATCH_FIELDS(hs, Vertex, MESA_SHADER_TESS_CTRL);
 
 #if GFX_VER >= 12
-      /* GEN:BUG:1604578095:
+      /* Wa_1604578095:
        *
        *    Hang occurs when the number of max threads is less than 2 times
        *    the number of instance count. The number of max threads must be
@@ -5312,7 +5312,7 @@ iris_update_surface_base_address(struct iris_batch *batch,
    flush_before_state_base_change(batch);
 
 #if GFX_VER == 12
-   /* GEN:BUG:1607854226:
+   /* Wa_1607854226:
     *
     *  Workaround the non pipelined state not applying in MEDIA/GPGPU pipeline
     *  mode by putting the pipeline temporarily in 3D mode..
@@ -5340,7 +5340,7 @@ iris_update_surface_base_address(struct iris_batch *batch,
    }
 
 #if GFX_VER == 12
-   /* GEN:BUG:1607854226:
+   /* Wa_1607854226:
     *
     *  Put the pipeline back into compute mode.
     */
@@ -5747,7 +5747,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       }
    }
 
-   /* GEN:BUG:1604061319
+   /* Wa_1604061319
     *
     *    3DSTATE_CONSTANT_* needs to be programmed before BTP_*
     *
@@ -6190,7 +6190,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
    }
 
    if (dirty & IRIS_DIRTY_SCISSOR_RECT) {
-      /* GEN:BUG:1409725701:
+      /* Wa_1409725701:
        *    "The viewport-specific state used by the SF unit (SCISSOR_RECT) is
        *    stored as an array of up to 16 elements. The location of first
        *    element of the array, as specified by Pointer to SCISSOR_RECT,
@@ -6219,7 +6219,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
       uint32_t cso_z_size = batch->screen->isl_dev.ds.size - clear_length;;
 
 #if GFX_VER == 12
-      /* GEN:BUG:14010455700
+      /* Wa_14010455700
        *
        * ISL will change some CHICKEN registers depending on the depth surface
        * format, along with emitting the depth and stencil packets. In that
@@ -6234,7 +6234,7 @@ iris_upload_dirty_render_state(struct iris_context *ice,
 
       iris_batch_emit(batch, cso_z->packets, cso_z_size);
       if (GFX_VER >= 12) {
-         /* GEN:BUG:1408224581
+         /* Wa_1408224581
           *
           * Workaround: Gfx12LP Astep only An additional pipe control with
           * post-sync = store dword operation would be required.( w/a is to
@@ -7401,7 +7401,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
                                  0, NULL, 0, 0);
    }
 
-   /* GEN:BUG:1409226450, Wait for EU to be idle before pipe control which
+   /* Wa_1409226450, Wait for EU to be idle before pipe control which
     * invalidates the instruction cache
     */
    if (GFX_VER == 12 && (flags & PIPE_CONTROL_INSTRUCTION_INVALIDATE)) {
@@ -7424,7 +7424,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
        *
        * The same text exists a few rows below for Post Sync Op.
        *
-       * On Gfx12 this is GEN:BUG:1607156449.
+       * On Gfx12 this is Wa_1607156449.
        */
       iris_emit_raw_pipe_control(batch,
                                  "workaround: CS stall before gpgpu post-sync",
@@ -7706,7 +7706,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
    }
 
    if (GFX_VER >= 12 && (flags & PIPE_CONTROL_DEPTH_CACHE_FLUSH)) {
-      /* GEN:BUG:1409600907:
+      /* Wa_1409600907:
        *
        * "PIPE_CONTROL with Depth Stall Enable bit must be set
        * with any PIPE_CONTROL with Depth Flush Enable bit set.

@@ -439,7 +439,7 @@ fs_inst::can_do_source_mods(const struct gen_device_info *devinfo) const
    if (is_send_from_grf())
       return false;
 
-   /* From GEN:BUG:1604601757:
+   /* From Wa_1604601757:
     *
     * "When multiplying a DW and any lower precision integer, source modifier
     *  is not supported."
@@ -4024,7 +4024,7 @@ fs_visitor::lower_mul_dword_inst(fs_inst *inst, bblock_t *block)
       high.offset = inst->dst.offset % REG_SIZE;
 
       if (devinfo->ver >= 7) {
-         /* From GEN:BUG:1604601757:
+         /* From Wa_1604601757:
           *
           * "When multiplying a DW and any lower precision integer, source modifier
           *  is not supported."
@@ -8076,7 +8076,7 @@ find_halt_control_flow_region_start(const fs_visitor *v)
 }
 
 /**
- * Work around the Gfx12 hardware bug filed as GEN:BUG:1407528679.  EU fusion
+ * Work around the Gfx12 hardware bug filed as Wa_1407528679.  EU fusion
  * can cause a BB to be executed with all channels disabled, which will lead
  * to the execution of any NoMask instructions in it, even though any
  * execution-masked instructions will be correctly shot down.  This may break

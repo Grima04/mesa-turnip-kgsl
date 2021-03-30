@@ -2012,7 +2012,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
       if (surf->row_pitch_B % 512 != 0)
          return false;
 
-      /* According to GEN:BUG:1406738321, 3D textures need a blit to a new
+      /* According to Wa_1406738321, 3D textures need a blit to a new
        * surface in order to perform a resolve. For now, just disable CCS.
        */
       if (surf->dim == ISL_SURF_DIM_3D) {
@@ -2021,7 +2021,7 @@ isl_surf_supports_ccs(const struct isl_device *dev,
          return false;
       }
 
-      /* GEN:BUG:1207137018
+      /* Wa_1207137018
        *
        * TODO: implement following workaround currently covered by the
        * restriction above. If following conditions are met:

@@ -305,7 +305,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    dw += GENX(3DSTATE_HIER_DEPTH_BUFFER_length);
 
 #if GFX_VER == 12
-   /* GEN:BUG:14010455700
+   /* Wa_14010455700
     *
     * To avoid sporadic corruptions “Set 0x7010[9] when Depth Buffer Surface
     * Format is D16_UNORM , surface type is not NULL & 1X_MSAA”.
@@ -328,7 +328,7 @@ isl_genX(emit_depth_stencil_hiz_s)(const struct isl_device *dev, void *batch,
    GENX(MI_LOAD_REGISTER_IMM_pack)(NULL, dw, &lri);
    dw += GENX(MI_LOAD_REGISTER_IMM_length);
 
-   /* GEN:BUG:1806527549
+   /* Wa_1806527549
     *
     * Set HIZ_CHICKEN (7018h) bit 13 = 1 when depth buffer is D16_UNORM.
     */

@@ -1943,7 +1943,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          nop_count++;
       }
 
-      /* GEN:BUG:14010017096:
+      /* Wa_14010017096:
        *
        * Clear accumulator register before end of thread.
        */
