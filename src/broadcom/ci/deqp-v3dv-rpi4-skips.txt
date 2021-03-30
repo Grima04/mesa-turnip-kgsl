@@ -3,6 +3,3 @@ dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_linear_repeat
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_repeat
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
-
-# Flaky tests
-dEQP-VK.synchronization.op.single_queue.binary_semaphore.write_update_buffer_read_vertex_input.buffer_16384
