@@ -425,6 +425,9 @@ v3d_vir_to_qpu(struct v3d_compile *c, struct qpu_reg *temp_registers)
                         c->compilation_result = V3D_COMPILATION_FAILED;
                         return;
                 }
+
+                if (v3d_qpu_is_nop(&inst->qpu))
+                        c->nop_count++;
         }
         assert(i == c->qpu_inst_count);
 

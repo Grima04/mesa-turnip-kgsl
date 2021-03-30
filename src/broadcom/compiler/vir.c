@@ -1238,7 +1238,7 @@ int v3d_shaderdb_dump(struct v3d_compile *c,
         return asprintf(shaderdb_str,
                         "%s shader: %d inst, %d threads, %d loops, "
                         "%d uniforms, %d max-temps, %d:%d spills:fills, "
-                        "%d sfu-stalls, %d inst-and-stalls",
+                        "%d sfu-stalls, %d inst-and-stalls, %d nops",
                         vir_get_stage_name(c),
                         c->qpu_inst_count,
                         c->threads,
@@ -1248,7 +1248,8 @@ int v3d_shaderdb_dump(struct v3d_compile *c,
                         c->spills,
                         c->fills,
                         c->qpu_inst_stalled_count,
-                        c->qpu_inst_count + c->qpu_inst_stalled_count);
+                        c->qpu_inst_count + c->qpu_inst_stalled_count,
+                        c->nop_count);
 }
 
 uint64_t *v3d_compile(const struct v3d_compiler *compiler,
