@@ -136,7 +136,8 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
     * We do these now because they may add post-sync operations or CS stalls.
     */
 
-   if (IS_GFX_VER_BETWEEN(8, 10) && (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE)) {
+   if (IS_GFX_VER_BETWEEN(8, 10) &&
+       (flags & PIPE_CONTROL_VF_CACHE_INVALIDATE)) {
       /* Project: BDW, SKL+ (stopping at CNL) / Argument: VF Invalidate
        *
        * "'Post Sync Operation' must be enabled to 'Write Immediate Data' or
@@ -219,7 +220,8 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
 
    /* PIPE_CONTROL page workarounds ------------------------------------- */
 
-   if (IS_GFX_VER_BETWEEN(7, 8) && (flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE)) {
+   if (IS_GFX_VER_BETWEEN(7, 8) &&
+       (flags & PIPE_CONTROL_STATE_CACHE_INVALIDATE)) {
       /* From the PIPE_CONTROL page itself:
        *
        *    "IVB, HSW, BDW
@@ -312,7 +314,8 @@ genX(emit_raw_pipe_control)(struct brw_context *brw, uint32_t flags,
       assert(non_lri_post_sync_flags != 0);
    }
 
-   if (IS_GFX_VERx10_BETWEEN(60, 75) && (flags & PIPE_CONTROL_TLB_INVALIDATE)) {
+   if (IS_GFX_VERx10_BETWEEN(60, 75) &&
+       (flags & PIPE_CONTROL_TLB_INVALIDATE)) {
       /* Project: SNB, IVB, HSW / Argument: TLB inv
        *
        * "{All SKUs}{All Steppings}: Post-Sync Operation ([15:14] of DW1)
