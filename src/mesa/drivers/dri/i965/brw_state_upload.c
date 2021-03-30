@@ -183,7 +183,7 @@ brw_upload_initial_gpu_state(struct brw_context *brw)
                               TEXEL_OFFSET_FIX_MASK |
                               TEXEL_OFFSET_FIX_ENABLE);
 
-      /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
+      /* Wa_1406697149: Bit 9 "Error Detection Behavior Control" must be set
        * in L3CNTLREG register. The default setting of the bit is not the
        * desirable behavior.
        */

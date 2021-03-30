@@ -822,7 +822,7 @@ blorp_emit_ps_config(struct blorp_batch *batch,
          ps.BindingTableEntryCount = 1;
       }
 
-      /* SAMPLER_STATE prefetching is broken on Gfx11 - WA_1606682166 */
+      /* SAMPLER_STATE prefetching is broken on Gfx11 - Wa_1606682166 */
       if (GFX_VER == 11)
          ps.SamplerCount = 0;
 

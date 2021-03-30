@@ -758,7 +758,7 @@ iris_emit_l3_config(struct iris_batch *batch,
       reg.SLMEnable = cfg->n[INTEL_L3P_SLM] > 0;
 #endif
 #if GFX_VER == 11
-      /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be set
+      /* Wa_1406697149: Bit 9 "Error Detection Behavior Control" must be set
        * in L3CNTLREG register. The default setting of the bit is not the
        * desirable behavior.
        */

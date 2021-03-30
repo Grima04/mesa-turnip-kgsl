@@ -365,7 +365,7 @@ genX(emit_l3_config)(struct anv_batch *batch,
          l3cr.SLMEnable = cfg->n[INTEL_L3P_SLM];
 #endif
 #if GFX_VER == 11
-         /* WA_1406697149: Bit 9 "Error Detection Behavior Control" must be
+         /* Wa_1406697149: Bit 9 "Error Detection Behavior Control" must be
           * set in L3CNTLREG register. The default setting of the bit is not
           * the desirable behavior.
           */

@@ -2094,7 +2094,7 @@ static const struct brw_tracked_state genX(wm_state) = {
 
 #define INIT_THREAD_DISPATCH_FIELDS(pkt, prefix) \
    pkt.KernelStartPointer = KSP(brw, stage_state->prog_offset);           \
-   /* WA_1606682166 */                                                    \
+   /* Wa_1606682166 */                                                    \
    pkt.SamplerCount       =                                               \
       GFX_VER == 11 ?                                                     \
       0 :                                                                 \
@@ -3867,7 +3867,7 @@ genX(upload_ps)(struct brw_context *brw)
        */
       ps.VectorMaskEnable = GFX_VER >= 8;
 
-      /* WA_1606682166:
+      /* Wa_1606682166:
        * "Incorrect TDL's SSP address shift in SARB for 16:6 & 18:8 modes.
        * Disable the Sampler state prefetch functionality in the SARB by
        * programming 0xB000[30] to '1'."
@@ -4385,7 +4385,7 @@ genX(upload_cs_state)(struct brw_context *brw)
    const struct GENX(INTERFACE_DESCRIPTOR_DATA) idd = {
       .KernelStartPointer = ksp,
       .SamplerStatePointer = stage_state->sampler_offset,
-      /* WA_1606682166 */
+      /* Wa_1606682166 */
       .SamplerCount = GFX_VER == 11 ? 0 :
                       DIV_ROUND_UP(CLAMP(stage_state->sampler_count, 0, 16), 4),
       .BindingTablePointer = stage_state->bind_bo_offset,
