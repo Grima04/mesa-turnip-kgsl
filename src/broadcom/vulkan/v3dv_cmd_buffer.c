@@ -4314,10 +4314,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
     * an active job. In that case, create a new job continuing the current
     * subpass.
     */
-   struct v3dv_job *job = cmd_buffer->state.job;
-   if (!job) {
-      job = v3dv_cmd_buffer_subpass_resume(cmd_buffer,
-                                           cmd_buffer->state.subpass_idx);
+   if (!cmd_buffer->state.job) {
+      v3dv_cmd_buffer_subpass_resume(cmd_buffer,
+                                     cmd_buffer->state.subpass_idx);
    }
 
    /* Restart single sample job for MSAA pipeline if needed */
@@ -4326,7 +4325,7 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    /* If the job is configured to flush on every draw call we need to create
     * a new job now.
     */
-   job = cmd_buffer_pre_draw_split_job(cmd_buffer);
+   struct v3dv_job *job = cmd_buffer_pre_draw_split_job(cmd_buffer);
    job->draw_count++;
 
    /* GL shader state binds shaders, uniform and vertex attribute state. The
