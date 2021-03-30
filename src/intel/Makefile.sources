@@ -194,55 +194,55 @@ ISL_FILES = \
 	isl/isl_priv.h \
 	isl/isl_storage_image.c
 
-ISL_GEN4_FILES = \
+ISL_GFX4_FILES = \
 	isl/isl_gfx4.c \
 	isl/isl_gfx4.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN5_FILES = \
+ISL_GFX5_FILES = \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN6_FILES = \
+ISL_GFX6_FILES = \
 	isl/isl_gfx6.c \
 	isl/isl_gfx6.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN7_FILES = \
+ISL_GFX7_FILES = \
 	isl/isl_gfx7.c \
 	isl/isl_gfx7.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN75_FILES = \
+ISL_GFX75_FILES = \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN8_FILES = \
+ISL_GFX8_FILES = \
 	isl/isl_gfx8.c \
 	isl/isl_gfx8.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN9_FILES = \
+ISL_GFX9_FILES = \
 	isl/isl_gfx9.c \
 	isl/isl_gfx9.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN11_FILES = \
+ISL_GFX11_FILES = \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN12_FILES = \
+ISL_GFX12_FILES = \
 	isl/isl_gfx12.c \
 	isl/isl_gfx12.h \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
-ISL_GEN125_FILES = \
+ISL_GFX125_FILES = \
 	isl/isl_emit_depth_stencil.c \
 	isl/isl_surface_state.c
 
@@ -321,31 +321,31 @@ VULKAN_GENX_FILES := \
 	vulkan/genX_query.c \
 	vulkan/genX_state.c
 
-VULKAN_GEN7_FILES := \
+VULKAN_GFX7_FILES := \
 	vulkan/gfx7_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-VULKAN_GEN75_FILES := \
+VULKAN_GFX75_FILES := \
 	vulkan/gfx7_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-VULKAN_GEN8_FILES := \
+VULKAN_GFX8_FILES := \
 	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-VULKAN_GEN9_FILES := \
+VULKAN_GFX9_FILES := \
 	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-VULKAN_GEN11_FILES := \
+VULKAN_GFX11_FILES := \
 	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-VULKAN_GEN12_FILES := \
+VULKAN_GFX12_FILES := \
 	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-VULKAN_GEN125_FILES := \
+VULKAN_GFX125_FILES := \
 	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
