@@ -1,5 +1,3 @@
-# AMD Radeon Vulkan (RADV) issue template
-
 ### Before submitting your bug report:
 - Check if a new version of Mesa is available which might have fixed the problem.
 - If you can, check if the latest development version (git master) works better.
