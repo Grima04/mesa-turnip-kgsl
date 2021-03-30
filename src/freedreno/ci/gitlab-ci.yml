@@ -172,6 +172,7 @@ a630_gles_asan:
     - .baremetal-deqp-test
     - .a630-test
     - .baremetal-arm64-asan-test
+    - .test-manual
   variables:
     DEQP_VER: gles31
     DEQP_FRACTION: 10
