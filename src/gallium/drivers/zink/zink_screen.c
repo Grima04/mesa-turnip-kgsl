@@ -1368,6 +1368,22 @@ pre_hash_descriptor_states(struct zink_screen *screen)
    screen->null_descriptor_hashes.buffer_view = _mesa_hash_data(&null_binfo, sizeof(VkBufferViewCreateInfo));
 }
 
+static void
+check_base_requements(struct zink_screen *screen)
+{
+   if (!screen->info.feats.features.logicOp ||
+       !screen->info.feats.features.fillModeNonSolid ||
+       !screen->info.feats.features.wideLines ||
+       !screen->info.feats.features.largePoints ||
+       !screen->info.feats.features.alphaToOne ||
+       !screen->info.feats.features.shaderClipDistance ||
+       !screen->info.have_KHR_maintenance1) {
+      fprintf(stderr, "WARNING: The Vulkan device doesn't support "
+              "the base Zink requirements, some incorrect rendering "
+              "might occur\n");
+   }
+}
+
 static struct zink_screen *
 zink_internal_create_screen(const struct pipe_screen_config *config)
 {
@@ -1420,6 +1436,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
 
    if (!load_device_extensions(screen))
       goto fail;
+
+   check_base_requements(screen);
 
    screen->base.get_name = zink_get_name;
    screen->base.get_vendor = zink_get_vendor;
