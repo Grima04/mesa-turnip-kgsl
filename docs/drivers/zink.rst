@@ -36,7 +36,6 @@ Here's a list of those requirements:
 
 * Instance extensions:
 
-  * `VK_KHR_get_physical_device_properties2`_
   * `VK_KHR_external_memory_capabilities`_
 
 * Device extensions:
@@ -252,7 +251,6 @@ questions, don't hesitate to visit `#zink on FreeNode
 <irc://irc.freenode.net/zink>`_ and say hi!
 
 
-.. _VK_KHR_get_physical_device_properties2: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_get_physical_device_properties2.html
 .. _VK_KHR_external_memory_capabilities: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_external_memory_capabilities.html
 .. _VK_KHR_maintenance1: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_maintenance1.html
 .. _VK_KHR_external_memory: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_external_memory.html
