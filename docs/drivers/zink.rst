@@ -34,10 +34,6 @@ Here's a list of those requirements:
   * ``alphaToOne``
   * ``shaderClipDistance``
 
-* Instance extensions:
-
-  * `VK_KHR_external_memory_capabilities`_
-
 * Device extensions:
 
   * `VK_KHR_maintenance1`_
@@ -251,7 +247,6 @@ questions, don't hesitate to visit `#zink on FreeNode
 <irc://irc.freenode.net/zink>`_ and say hi!
 
 
-.. _VK_KHR_external_memory_capabilities: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_external_memory_capabilities.html
 .. _VK_KHR_maintenance1: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_maintenance1.html
 .. _VK_KHR_external_memory: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_external_memory.html
 .. _VK_EXT_transform_feedback: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_transform_feedback.html
