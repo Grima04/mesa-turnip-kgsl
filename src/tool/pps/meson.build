@@ -42,3 +42,20 @@ executable(
   cpp_args: '-std=c++17',
   install: true
 )
+
+config_sources = [
+  'pps_config.cc'
+]
+
+dep_docopt = dependency('docopt', required: false)
+
+if dep_docopt.found()
+  executable(
+    'pps-config',
+    sources: config_sources,
+    include_directories: [include_pps, inc_src],
+    dependencies: [dep_pps, dep_docopt],
+    cpp_args: '-std=c++17',
+    install: true
+  )
+endif
