@@ -1599,7 +1599,7 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
                                                               QUNIFORM_CONSTANT,
                                                               conf);
                         } else {
-                                inst = vir_MOV_dest(c, tlb_reg, r);
+                                vir_MOV_dest(c, tlb_reg, r);
                         }
 
                         if (num_components >= 2)
@@ -1619,7 +1619,7 @@ vir_emit_tlb_color_write(struct v3d_compile *c, unsigned rt)
                         }
 
                         if (num_components >= 3)
-                                inst = vir_VFPACK_dest(c, tlb_reg, b, a);
+                                vir_VFPACK_dest(c, tlb_reg, b, a);
                 }
         }
 }
