@@ -781,7 +781,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device,
 			if (plane->surface.dcc_offset)
 				meta = plane->surface.u.gfx9.dcc;
 
-			if (radv_dcc_enabled(image, first_level) && enable_write_compression)
+			if (radv_dcc_enabled(image, first_level) &&
+			    is_storage_image && enable_write_compression)
 				state[6] |= S_00A018_WRITE_COMPRESS_ENABLE(1);
 
 			state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
