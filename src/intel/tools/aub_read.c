@@ -57,8 +57,6 @@
 #define SUBOPCODE_MEM_WRITE 0x06
 #define SUBOPCODE_VERSION   0x0e
 
-#define MAKE_GEN(major, minor) (((major) << 8) | (minor))
-
 static void
 parse_error(struct aub_read *read, const uint32_t *p, const char *fmt, ...)
 {
