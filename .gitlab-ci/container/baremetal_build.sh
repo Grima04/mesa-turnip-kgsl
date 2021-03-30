@@ -6,15 +6,15 @@ set -o xtrace
 # Fetch the arm-built rootfs image and unpack it in our x86 container (saves
 # network transfer, disk usage, and runtime on test jobs)
 
-if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/${ARTIFACTS_SUFFIX}/done"; then
-  ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/${ARTIFACTS_SUFFIX}"
+if wget -q --method=HEAD "${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/${ARTIFACTS_SUFFIX}/${arch}/done"; then
+  ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${FDO_UPSTREAM_REPO}/${ARTIFACTS_SUFFIX}/${arch}"
 else
-  ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/${ARTIFACTS_SUFFIX}"
+  ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/${ARTIFACTS_SUFFIX}/${arch}"
 fi
 
 wget ${ARTIFACTS_URL}/lava-rootfs.tgz -O rootfs.tgz
-mkdir -p /rootfs
-tar -C /rootfs -zxvf rootfs.tgz
+mkdir -p /rootfs-$arch
+tar -C /rootfs-$arch -zxf rootfs.tgz
 rm rootfs.tgz
 
 if [[ $arch == "arm64" ]]; then

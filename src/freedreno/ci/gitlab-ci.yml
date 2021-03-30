@@ -1,18 +1,18 @@
 .freedreno-test:
   extends:
     - .baremetal-test
-    - .use-arm64_test
+    - .use-arm_test
     - .freedreno-rules
   variables:
     MINIO_ARTIFACT_NAME: mesa-arm64
-    BM_ROOTFS: /rootfs
+    BM_ROOTFS: /rootfs-arm64
     FLAKES_CHANNEL: "#freedreno-ci"
     PIGLIT_PLATFORM: mixed_glx_egl
     BM_CMDLINE: "ip=dhcp console=ttyMSM0,115200n8 root=/dev/nfs rw nfsrootdebug nfsroot=,tcp,nfsvers=4.2 init=/init $BM_KERNELARGS"
   script:
     - ./install/bare-metal/fastboot.sh
   needs:
-    - arm64_test
+    - arm_test
     - job: meson-arm64
       artifacts: false
   tags:

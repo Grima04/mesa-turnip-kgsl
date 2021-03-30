@@ -27,3 +27,6 @@ apt-get install -y --no-remove \
 # setup nginx
 sed -i '/gzip_/ s/#\ //g' /etc/nginx/nginx.conf
 cp .gitlab-ci/bare-metal/nginx-default-site  /etc/nginx/sites-enabled/default
+
+arch=arm64 . .gitlab-ci/container/baremetal_build.sh
+arch=armhf . .gitlab-ci/container/baremetal_build.sh

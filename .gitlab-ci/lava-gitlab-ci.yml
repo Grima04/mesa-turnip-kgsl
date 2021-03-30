@@ -4,6 +4,7 @@
   stage: container-2
   variables:
     GIT_STRATEGY: fetch
+    DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   script:
     - .gitlab-ci/container/lava_build.sh
 
@@ -12,7 +13,6 @@
     - .kernel+rootfs
   variables:
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
-    DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
     INSTALL_KERNEL_MODULES: 1
     MESA_ROOTFS_TAG: &lava-rootfs "2021-03-31-libxrender"
     MINIO_SUFFIX: "lava"
