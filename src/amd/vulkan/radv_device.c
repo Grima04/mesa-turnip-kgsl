@@ -818,6 +818,7 @@ static const struct debug_control radv_perftest_options[] = {
 	{"dfsm", RADV_PERFTEST_DFSM},
 	{"nosam", RADV_PERFTEST_NO_SAM},
 	{"sam", RADV_PERFTEST_SAM},
+	{"dccstores", RADV_PERFTEST_DCC_STORES},
 	{NULL, 0}
 };
 

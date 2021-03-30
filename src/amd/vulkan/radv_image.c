@@ -294,7 +294,11 @@ bool radv_image_use_dcc_image_stores(const struct radv_device *device,
 	 *
 	 * DCC with MSAA > 2 samples results in CTS failures (some of dEQP-VK.pipeline.multisample.storage_image.*).
 	 */
-	return device->physical_device->rad_info.chip_class == GFX10 && image->info.samples <= 2;
+	return (device->physical_device->rad_info.chip_class == GFX10 ||
+		(device->physical_device->rad_info.chip_class == GFX10_3 &&
+		 (device->instance->perftest_flags & RADV_PERFTEST_DCC_STORES) &&
+		 !device->physical_device->use_llvm)) &&
+		image->info.samples <= 2;
 }
 
 /*

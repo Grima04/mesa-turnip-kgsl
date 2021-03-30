@@ -631,6 +631,8 @@ RADV driver environment variables
       enable wave32 for compute shaders (GFX10+)
    ``dccmsaa``
       enable DCC for MSAA images
+   ``dccstores``
+      enable DCC for storage images (for performance testing on GFX10.3 only)
    ``dfsm``
       enable DFSM
    ``gewave32``
