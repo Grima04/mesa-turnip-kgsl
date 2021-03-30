@@ -92,7 +92,7 @@ stages:
   script:
   - apk --no-cache add graphviz
   - pip3 install sphinx sphinx_rtd_theme
-  - sphinx-build -b html docs public
+  - sphinx-build -W -b html docs public
 
 pages:
   extends: .docs-base
