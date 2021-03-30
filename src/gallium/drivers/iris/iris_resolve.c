@@ -366,6 +366,7 @@ iris_cache_flush_for_render(struct iris_batch *batch,
       iris_emit_pipe_control_flush(batch,
                                    "cache tracker: aux usage mismatch",
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                   PIPE_CONTROL_TILE_CACHE_FLUSH |
                                    PIPE_CONTROL_CS_STALL);
       entry->data = v_aux_usage;
    }

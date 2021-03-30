@@ -295,7 +295,8 @@ fast_clear_color(struct iris_context *ice,
     */
    iris_emit_end_of_pipe_sync(batch,
                               "fast clear: pre-flush",
-                              PIPE_CONTROL_RENDER_TARGET_FLUSH);
+                              PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                              PIPE_CONTROL_TILE_CACHE_FLUSH);
 
    iris_batch_sync_region_start(batch);
 
@@ -493,6 +494,8 @@ fast_clear_depth(struct iris_context *ice,
                           ISL_AUX_OP_FULL_RESOLVE, false);
             iris_resource_set_aux_state(ice, res, res_level, layer, 1,
                                         ISL_AUX_STATE_RESOLVED);
+            iris_emit_pipe_control_flush(batch, "hiz op: post depth resolve",
+                                         PIPE_CONTROL_TILE_CACHE_FLUSH);
          }
       }
       const union isl_color_value clear_value = { .f32 = {depth, } };
@@ -607,7 +610,8 @@ clear_depth_stencil(struct iris_context *ice,
    blorp_batch_finish(&blorp_batch);
    iris_batch_sync_region_end(batch);
 
-   iris_flush_and_dirty_for_history(ice, batch, res, 0,
+   iris_flush_and_dirty_for_history(ice, batch, res,
+                                    PIPE_CONTROL_TILE_CACHE_FLUSH,
                                     "cache history: post slow ZS clear");
 
    if (clear_depth && z_res) {

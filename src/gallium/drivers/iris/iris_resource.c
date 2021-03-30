@@ -1540,6 +1540,7 @@ iris_map_copy_region(struct iris_transfer *map)
       iris_emit_pipe_control_flush(map->batch,
                                    "transfer read: flush before mapping",
                                    PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                                   PIPE_CONTROL_TILE_CACHE_FLUSH |
                                    PIPE_CONTROL_CS_STALL);
    }
 
@@ -2051,7 +2052,8 @@ iris_transfer_flush_region(struct pipe_context *ctx,
 
    if (res->base.b.target == PIPE_BUFFER) {
       if (map->staging)
-         history_flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH;
+         history_flush |= PIPE_CONTROL_RENDER_TARGET_FLUSH |
+                          PIPE_CONTROL_TILE_CACHE_FLUSH;
 
       if (map->dest_had_defined_contents)
          history_flush |= iris_flush_bits_for_history(ice, res);
