@@ -990,7 +990,10 @@ zink_transfer_map(struct pipe_context *pctx,
          VkSubresourceLayout srl;
          vkGetImageSubresourceLayout(screen->dev, res->obj->image, &isr, &srl);
          trans->base.b.stride = srl.rowPitch;
-         trans->base.b.layer_stride = srl.arrayPitch;
+         if (res->base.b.target == PIPE_TEXTURE_3D)
+            trans->base.b.layer_stride = srl.depthPitch;
+         else
+            trans->base.b.layer_stride = srl.arrayPitch;
          trans->offset = srl.offset;
          trans->depthPitch = srl.depthPitch;
          const struct util_format_description *desc = util_format_description(res->base.b.format);
