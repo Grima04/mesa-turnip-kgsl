@@ -48,6 +48,10 @@ libopengl32 = shared_library(
 # The CI pipeline for MinGW doesn't support creating a window, so don't run these tests there
 if with_tests and cc.get_id() != 'gcc'
   extra_test_deps = []
+  if with_gallium_d3d12
+    extra_test_deps += [cpp.find_library('d3d12')]
+  endif
+
   test(
     'wgl',
     executable(

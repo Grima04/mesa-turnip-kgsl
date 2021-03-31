@@ -26,6 +26,8 @@
 #include <windows.h>
 #include <GL/gl.h>
 
+#undef GetMessage
+
 class window
 {
 public:
@@ -119,3 +121,79 @@ TEST(wgl, basic_create)
    const char *version = (const char *)glGetString(GL_VERSION);
    ASSERT_NE(strstr(version, "Mesa"), nullptr);
 }
+
+#ifdef GALLIUM_D3D12
+/* Fixture for tests for the d3d12 backend. Will be skipped if
+ * the environment isn't set up to run them.
+ */
+#include <directx/d3d12.h>
+#include <wrl/client.h>
+#include <memory>
+using Microsoft::WRL::ComPtr;
+
+class d3d12 : public ::testing::Test
+{
+   void SetUp() override;
+};
+
+void d3d12::SetUp()
+{
+   window wnd;
+   ASSERT_TRUE(wnd.valid());
+
+   const char *renderer = (const char *)glGetString(GL_RENDERER);
+   if (!strstr(renderer, "D3D12"))
+      GTEST_SKIP();
+}
+
+static bool
+info_queue_has_swapchain(ID3D12DebugDevice *debug_device, ID3D12InfoQueue *info_queue)
+{
+   info_queue->PushEmptyStorageFilter();
+
+   debug_device->ReportLiveDeviceObjects(D3D12_RLDO_DETAIL);
+
+   uint32_t num_messages = info_queue->GetNumStoredMessages();
+   for (uint32_t i = 0; i < num_messages; ++i) {
+      SIZE_T message_size = 0;
+      info_queue->GetMessage(i, nullptr, &message_size);
+      EXPECT_GT(message_size, 0);
+
+      std::unique_ptr<byte[]> message_bytes(new byte[message_size]);
+      D3D12_MESSAGE *message = (D3D12_MESSAGE *)message_bytes.get();
+      info_queue->GetMessage(i, message, &message_size);
+
+      if (strstr(message->pDescription, "SwapChain")) {
+         info_queue->ClearStoredMessages();
+         info_queue->PopStorageFilter();
+         return true;
+      }
+   }
+   info_queue->ClearStoredMessages();
+   info_queue->PopStorageFilter();
+   return false;
+}
+
+TEST_F(d3d12, swapchain_cleanup)
+{
+   ComPtr<ID3D12InfoQueue> info_queue;
+   ComPtr<ID3D12DebugDevice> debug_device;
+   if (FAILED(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(&info_queue))) ||
+       FAILED(info_queue.As(&debug_device)))
+      GTEST_SKIP();
+
+   ASSERT_FALSE(info_queue_has_swapchain(debug_device.Get(), info_queue.Get()));
+
+   {
+      window wnd;
+      wnd.show();
+      glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+      glClear(GL_COLOR_BUFFER_BIT);
+      SwapBuffers(wnd.get_hdc());
+
+      ASSERT_TRUE(info_queue_has_swapchain(debug_device.Get(), info_queue.Get()));
+   }
+
+   ASSERT_FALSE(info_queue_has_swapchain(debug_device.Get(), info_queue.Get()));
+}
+#endif
