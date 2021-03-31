@@ -259,7 +259,7 @@ create_cov(struct ir3_context *ctx, struct ir3_instruction *src,
 	struct ir3_instruction *cov =
 		ir3_COV(ctx->block, src, src_type, dst_type);
 
-	if (op == nir_op_f2f16_rtne)
+	if (op == nir_op_f2f16 || op == nir_op_f2f16_rtne)
 		cov->regs[0]->flags |= IR3_REG_EVEN;
 
 	return cov;
@@ -374,7 +374,7 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 
 	case nir_op_fquantize2f16:
 		dst[0] = create_cov(ctx,
-							create_cov(ctx, src[0], 32, nir_op_f2f16),
+							create_cov(ctx, src[0], 32, nir_op_f2f16_rtz),
 							16, nir_op_f2f32);
 		break;
 	case nir_op_f2b1:
