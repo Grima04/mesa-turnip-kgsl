@@ -138,16 +138,30 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.srcOffsets[1].x = info->src.box.x + info->src.box.width;
    region.srcOffsets[1].y = info->src.box.y + info->src.box.height;
 
-   if (src->base.b.array_size > 1) {
+   switch (src->base.b.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.srcSubresource.baseArrayLayer = info->src.box.z;
+      region.srcSubresource.layerCount = info->src.box.z + info->src.box.depth;
       region.srcOffsets[0].z = 0;
       region.srcOffsets[1].z = 1;
-      region.srcSubresource.baseArrayLayer = info->src.box.z;
-      region.srcSubresource.layerCount = info->src.box.depth;
-   } else {
-      region.srcOffsets[0].z = info->src.box.z;
-      region.srcOffsets[1].z = info->src.box.z + info->src.box.depth;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
       region.srcSubresource.baseArrayLayer = 0;
       region.srcSubresource.layerCount = 1;
+      region.srcOffsets[0].z = info->src.box.z;
+      region.srcOffsets[1].z = info->src.box.z + info->src.box.depth;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.srcSubresource.baseArrayLayer = 0;
+      region.srcSubresource.layerCount = 1;
+      region.srcOffsets[0].z = 0;
+      region.srcOffsets[1].z = 1;
    }
 
    region.dstSubresource.aspectMask = dst->aspect;
@@ -157,16 +171,30 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.dstOffsets[1].x = info->dst.box.x + info->dst.box.width;
    region.dstOffsets[1].y = info->dst.box.y + info->dst.box.height;
 
-   if (dst->base.b.array_size > 1) {
+   switch (dst->base.b.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.dstSubresource.baseArrayLayer = info->dst.box.z;
+      region.dstSubresource.layerCount = info->dst.box.z + info->dst.box.depth;
       region.dstOffsets[0].z = 0;
       region.dstOffsets[1].z = 1;
-      region.dstSubresource.baseArrayLayer = info->dst.box.z;
-      region.dstSubresource.layerCount = info->dst.box.depth;
-   } else {
-      region.dstOffsets[0].z = info->dst.box.z;
-      region.dstOffsets[1].z = info->dst.box.z + info->dst.box.depth;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
       region.dstSubresource.baseArrayLayer = 0;
       region.dstSubresource.layerCount = 1;
+      region.dstOffsets[0].z = info->dst.box.z;
+      region.dstOffsets[1].z = info->dst.box.z + info->dst.box.depth;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.dstSubresource.baseArrayLayer = 0;
+      region.dstSubresource.layerCount = 1;
+      region.dstOffsets[0].z = 0;
+      region.dstOffsets[1].z = 1;
    }
 
    vkCmdBlitImage(batch->state->cmdbuf, src->obj->image, src->layout,
