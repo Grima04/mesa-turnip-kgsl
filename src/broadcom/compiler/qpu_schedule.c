@@ -491,6 +491,7 @@ struct choose_scoreboard {
         int last_uniforms_reset_tick;
         int last_thrsw_tick;
         int last_branch_tick;
+        int last_setmsf_tick;
         bool tlb_locked;
         bool fixup_ldvary;
         int ldvary_count;
@@ -1079,14 +1080,25 @@ retry:
                         continue;
                 }
 
-                /* Don't try to put a branch in the delay slots of another
-                 * branch or a unifa write.
-                 */
                 if (inst->type == V3D_QPU_INSTR_TYPE_BRANCH) {
+                        /* Don't try to put a branch in the delay slots of another
+                         * branch or a unifa write.
+                         */
                         if (scoreboard->last_branch_tick + 3 >= scoreboard->tick)
                                 continue;
                         if (scoreboard->last_unifa_write_tick + 3 >= scoreboard->tick)
                                 continue;
+
+                        /* No branch with cond != 0,2,3 and msfign != 0 after
+                         * setmsf.
+                         */
+                        if (scoreboard->last_setmsf_tick == scoreboard->tick - 1 &&
+                            inst->branch.msfign != V3D_QPU_MSFIGN_NONE &&
+                            inst->branch.cond != V3D_QPU_BRANCH_COND_ALWAYS &&
+                            inst->branch.cond != V3D_QPU_BRANCH_COND_A0 &&
+                            inst->branch.cond != V3D_QPU_BRANCH_COND_NA0) {
+                                continue;
+                        }
                 }
 
                 /* If we're trying to pair with another instruction, check
@@ -1246,6 +1258,9 @@ update_scoreboard_for_chosen(struct choose_scoreboard *scoreboard,
                         update_scoreboard_for_sfu_stall_waddr(scoreboard,
                                                               inst);
                 }
+
+                if (inst->alu.add.op == V3D_QPU_A_SETMSF)
+                        scoreboard->last_setmsf_tick = scoreboard->tick;
         }
 
         if (inst->alu.mul.op != V3D_QPU_M_NOP) {
@@ -1796,6 +1811,17 @@ emit_branch(struct v3d_compile *c,
         assert(scoreboard->last_branch_tick + 3 < branch_tick);
         assert(scoreboard->last_unifa_write_tick + 3 < branch_tick);
 
+        /* Can't place a branch with msfign != 0 and cond != 0,2,3 after
+         * setmsf.
+         */
+        bool is_safe_msf_branch =
+                inst->qpu.branch.msfign == V3D_QPU_MSFIGN_NONE ||
+                inst->qpu.branch.cond == V3D_QPU_BRANCH_COND_ALWAYS ||
+                inst->qpu.branch.cond == V3D_QPU_BRANCH_COND_A0 ||
+                inst->qpu.branch.cond == V3D_QPU_BRANCH_COND_NA0;
+        assert(scoreboard->last_setmsf_tick != branch_tick - 1 ||
+               is_safe_msf_branch);
+
         /* Insert the branch instruction */
         insert_scheduled_instruction(c, block, scoreboard, inst);
 
@@ -1835,6 +1861,15 @@ emit_branch(struct v3d_compile *c,
 
                 if (!qpu_inst_valid_in_branch_delay_slot(c, prev_inst))
                         break;
+
+                if (!is_safe_msf_branch) {
+                        struct qinst *prev_prev_inst =
+                                (struct qinst *) prev_inst->link.prev;
+                        if (prev_prev_inst->qpu.type == V3D_QPU_INSTR_TYPE_ALU &&
+                            prev_prev_inst->qpu.alu.add.op == V3D_QPU_A_SETMSF) {
+                                break;
+                        }
+                }
 
                 list_del(&prev_inst->link);
                 list_add(&prev_inst->link, &inst->link);
@@ -2314,6 +2349,7 @@ v3d_qpu_schedule_instructions(struct v3d_compile *c)
         scoreboard.last_uniforms_reset_tick = -10;
         scoreboard.last_thrsw_tick = -10;
         scoreboard.last_branch_tick = -10;
+        scoreboard.last_setmsf_tick = -10;
         scoreboard.last_stallable_sfu_tick = -10;
 
         if (debug) {
