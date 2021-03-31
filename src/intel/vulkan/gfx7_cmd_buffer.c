@@ -351,6 +351,62 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
                              cmd_buffer->state.gfx.dynamic.sample_locations.locations);
    }
 
+   if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE) {
+      const uint8_t color_writes = cmd_buffer->state.gfx.dynamic.color_writes;
+      /* 3DSTATE_WM in the hope we can avoid spawning fragment shaders
+       * threads.
+       */
+      uint32_t dwords[GENX(3DSTATE_WM_length)];
+      struct GENX(3DSTATE_WM) wm = {
+         GENX(3DSTATE_WM_header),
+
+         .ThreadDispatchEnable = pipeline->force_fragment_thread_dispatch ||
+                                 color_writes,
+      };
+      GENX(3DSTATE_WM_pack)(NULL, dwords, &wm);
+
+      anv_batch_emit_merge(&cmd_buffer->batch, dwords, pipeline->gfx7.wm);
+
+      /* Blend states of each RT */
+      uint32_t surface_count = 0;
+      struct anv_pipeline_bind_map *map;
+      if (anv_pipeline_has_stage(pipeline, MESA_SHADER_FRAGMENT)) {
+         map = &pipeline->shaders[MESA_SHADER_FRAGMENT]->bind_map;
+         surface_count = map->surface_count;
+      }
+
+      uint32_t blend_dws[GENX(BLEND_STATE_length) +
+                         MAX_RTS * GENX(BLEND_STATE_ENTRY_length)];
+      uint32_t *dws = blend_dws;
+      memset(blend_dws, 0, sizeof(blend_dws));
+
+      /* Skip this part */
+      dws += GENX(BLEND_STATE_length);
+
+      for (uint32_t i = 0; i < surface_count; i++) {
+         struct anv_pipeline_binding *binding = &map->surface_to_descriptor[i];
+         bool write_disabled = (color_writes & (1u << binding->index)) == 0;
+         struct GENX(BLEND_STATE_ENTRY) entry = {
+            .WriteDisableAlpha = write_disabled,
+            .WriteDisableRed   = write_disabled,
+            .WriteDisableGreen = write_disabled,
+            .WriteDisableBlue  = write_disabled,
+         };
+         GENX(BLEND_STATE_ENTRY_pack)(NULL, dws, &entry);
+         dws += GENX(BLEND_STATE_ENTRY_length);
+      }
+
+      uint32_t num_dwords = GENX(BLEND_STATE_length) +
+         GENX(BLEND_STATE_ENTRY_length) * surface_count;
+
+      struct anv_state blend_states =
+         anv_cmd_buffer_merge_dynamic(cmd_buffer, blend_dws,
+                                      pipeline->gfx7.blend_state, num_dwords, 64);
+      anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_BLEND_STATE_POINTERS), bsp) {
+         bsp.BlendStatePointer      = blend_states.offset;
+      }
+   }
+
    cmd_buffer->state.gfx.dirty = 0;
 }
 

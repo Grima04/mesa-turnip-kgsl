@@ -256,6 +256,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_4444_formats                      = true,
       .EXT_buffer_device_address             = device->has_a64_buffer_access,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
+      .EXT_color_write_enable                = true,
       .EXT_conditional_rendering             = device->info.ver >= 8 ||
                                                device->info.is_haswell,
       .EXT_conservative_rasterization        = device->info.ver >= 9,
@@ -1373,6 +1374,13 @@ void anv_GetPhysicalDeviceFeatures2(
          CORE_FEATURE(1, 2, bufferDeviceAddress);
          CORE_FEATURE(1, 2, bufferDeviceAddressCaptureReplay);
          CORE_FEATURE(1, 2, bufferDeviceAddressMultiDevice);
+         break;
+      }
+
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT: {
+         VkPhysicalDeviceColorWriteEnableFeaturesEXT *features =
+            (VkPhysicalDeviceColorWriteEnableFeaturesEXT *)ext;
+         features->colorWriteEnable = true;
          break;
       }
 

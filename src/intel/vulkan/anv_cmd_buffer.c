@@ -100,6 +100,7 @@ const struct anv_dynamic_state default_dynamic_state = {
    .stencil_test_enable = 0,
    .dyn_vbo_stride = 0,
    .dyn_vbo_size = 0,
+   .color_writes = 0xff,
 };
 
 /**
@@ -195,6 +196,8 @@ anv_dynamic_state_copy(struct anv_dynamic_state *dest,
                    dest->sample_locations.samples);
       changed |= ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
    }
+
+   ANV_CMP_COPY(color_writes, ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE);
 
 #undef ANV_CMP_COPY
 
@@ -1410,4 +1413,23 @@ void anv_CmdSetDeviceMask(
     uint32_t                                    deviceMask)
 {
    /* No-op */
+}
+
+void anv_CmdSetColorWriteEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    attachmentCount,
+    const VkBool32*                             pColorWriteEnables)
+{
+   ANV_FROM_HANDLE(anv_cmd_buffer, cmd_buffer, commandBuffer);
+
+   assert(attachmentCount < MAX_RTS);
+
+   uint8_t color_writes = 0;
+   for (uint32_t i = 0; i < attachmentCount; i++)
+      color_writes |= pColorWriteEnables[i] ? (1 << i) : 0;
+
+   if (cmd_buffer->state.gfx.dynamic.color_writes != color_writes) {
+      cmd_buffer->state.gfx.dynamic.color_writes = color_writes;
+      cmd_buffer->state.gfx.dirty |= ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
+   }
 }

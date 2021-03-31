@@ -2264,7 +2264,8 @@ typedef uint32_t anv_cmd_dirty_mask_t;
     ANV_CMD_DIRTY_DYNAMIC_DEPTH_BOUNDS_TEST_ENABLE |    \
     ANV_CMD_DIRTY_DYNAMIC_STENCIL_TEST_ENABLE |         \
     ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP |                  \
-    ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS)
+    ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS |            \
+    ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE)
 
 static inline enum anv_cmd_dirty_bits
 anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
@@ -2314,6 +2315,8 @@ anv_cmd_dirty_bit_for_vk_dynamic_state(VkDynamicState vk_state)
       return ANV_CMD_DIRTY_DYNAMIC_STENCIL_OP;
    case VK_DYNAMIC_STATE_SAMPLE_LOCATIONS_EXT:
       return ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
+   case VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT:
+      return ANV_CMD_DIRTY_DYNAMIC_COLOR_BLEND_STATE;
    default:
       assert(!"Unsupported dynamic state");
       return 0;
@@ -2653,6 +2656,9 @@ struct anv_dynamic_state {
    bool                                         stencil_test_enable;
    bool                                         dyn_vbo_stride;
    bool                                         dyn_vbo_size;
+
+   /* Bitfield, one bit per render target */
+   uint8_t                                      color_writes;
 };
 
 extern const struct anv_dynamic_state default_dynamic_state;

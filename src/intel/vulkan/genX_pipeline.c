@@ -1126,6 +1126,19 @@ is_dual_src_blend_factor(VkBlendFactor factor)
           factor == VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA;
 }
 
+static inline uint32_t *
+write_disabled_blend(uint32_t *state)
+{
+   struct GENX(BLEND_STATE_ENTRY) entry = {
+      .WriteDisableAlpha = true,
+      .WriteDisableRed = true,
+      .WriteDisableGreen = true,
+      .WriteDisableBlue = true,
+   };
+   GENX(BLEND_STATE_ENTRY_pack)(NULL, state, &entry);
+   return state + GENX(BLEND_STATE_ENTRY_length);
+}
+
 static void
 emit_cb_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineColorBlendStateCreateInfo *info,
@@ -1181,15 +1194,12 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
       assert(i < 8);
 
       if (info == NULL || binding->index >= info->attachmentCount) {
-         /* Default everything to disabled */
-         struct GENX(BLEND_STATE_ENTRY) entry = {
-            .WriteDisableAlpha = true,
-            .WriteDisableRed = true,
-            .WriteDisableGreen = true,
-            .WriteDisableBlue = true,
-         };
-         GENX(BLEND_STATE_ENTRY_pack)(NULL, state_pos, &entry);
-         state_pos += GENX(BLEND_STATE_ENTRY_length);
+         state_pos = write_disabled_blend(state_pos);
+         continue;
+      }
+
+      if ((pipeline->dynamic_state.color_writes & (1u << binding->index)) == 0) {
+         state_pos = write_disabled_blend(state_pos);
          continue;
       }
 
@@ -1901,6 +1911,9 @@ has_color_buffer_write_enabled(const struct anv_graphics_pipeline *pipeline,
    const struct anv_shader_bin *shader_bin =
       pipeline->shaders[MESA_SHADER_FRAGMENT];
    if (!shader_bin)
+      return false;
+
+   if (!pipeline->dynamic_state.color_writes)
       return false;
 
    const struct anv_pipeline_bind_map *bind_map = &shader_bin->bind_map;
