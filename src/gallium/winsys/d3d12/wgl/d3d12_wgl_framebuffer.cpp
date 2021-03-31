@@ -64,7 +64,26 @@ static void
 d3d12_wgl_framebuffer_destroy(struct stw_winsys_framebuffer *fb,
                               pipe_context *ctx)
 {
-   FREE(fb);
+   struct d3d12_wgl_framebuffer *framebuffer = d3d12_wgl_framebuffer(fb);
+   struct pipe_fence_handle *fence = NULL;
+
+   if (ctx) {
+      /* Ensure all resources are flushed */
+      ctx->flush(ctx, &fence, PIPE_FLUSH_HINT_FINISH);
+      if (fence) {
+         ctx->screen->fence_finish(ctx->screen, ctx, fence, PIPE_TIMEOUT_INFINITE);
+         ctx->screen->fence_reference(ctx->screen, &fence, NULL);
+      }
+   }
+
+   for (int i = 0; i < num_buffers; ++i) {
+      if (framebuffer->buffers[i]) {
+         d3d12_resource_release(d3d12_resource(framebuffer->buffers[i]));
+         pipe_resource_reference(&framebuffer->buffers[i], NULL);
+      }
+   }
+
+   delete framebuffer;
 }
 
 static void
@@ -207,6 +226,8 @@ d3d12_wgl_create_framebuffer(struct pipe_screen *screen,
    struct d3d12_wgl_framebuffer *fb = CALLOC_STRUCT(d3d12_wgl_framebuffer);
    if (!fb)
       return NULL;
+
+   new (fb) struct d3d12_wgl_framebuffer();
 
    fb->window = WindowFromDC(hDC);
    fb->screen = d3d12_screen(screen);
