@@ -1357,6 +1357,14 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
       si_clear_buffer(sctx, ptex, tex->surface.meta_offset,
                       tex->surface.meta_size, &clear_value, 4, SI_OP_SYNC_AFTER,
                       SI_COHERENCY_CB_META, SI_COMPUTE_CLEAR_METHOD);
+
+      /* Clearing DCC metadata requires flushing L2 and invalidating L2 metadata to make
+       * the metadata visible to L2 caches. This is because clear_buffer uses plain stores
+       * that can go to different L2 channels than where L2 metadata caches expect them.
+       * This is not done for fast clears because plain stores are visible to CB/DB. Only
+       * L2 metadata caches have the problem.
+       */
+      sctx->flags |= SI_CONTEXT_WB_L2 | SI_CONTEXT_INV_L2_METADATA;
    }
 }
 
