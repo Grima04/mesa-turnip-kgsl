@@ -4,12 +4,7 @@ context:
   extra_nfsroot_args: " init=/init rootwait"
 timeouts:
   job:
-    minutes: 40
-  action:
-   minutes: 10
-  actions:
-    power-off:
-      seconds: 30
+    minutes: 30
 priority: 75
 visibility:
     group:
@@ -41,7 +36,7 @@ actions:
     os: oe
 - boot:
     timeout:
-      minutes: 5
+      minutes: 25
     method: {{ boot_method }}
 {% if boot_method == "fastboot" %}
 {#
@@ -58,7 +53,7 @@ actions:
       - 'lava-shell:'
 - test:
     timeout:
-      minutes: 60
+      minutes: 30
     definitions:
     - repository:
         metadata:
