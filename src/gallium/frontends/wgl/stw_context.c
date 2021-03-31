@@ -555,7 +555,7 @@ stw_make_current(HDC hDrawDC, HDC hReadDC, DHGLRC dhglrc)
       if (old_fb && old_fb != fb) {
          stw_lock_framebuffers(stw_dev);
          stw_framebuffer_lock(old_fb);
-         stw_framebuffer_release_locked(old_fb);
+         stw_framebuffer_release_locked(old_fb, old_ctx->st);
          stw_unlock_framebuffers(stw_dev);
       }
 
@@ -584,7 +584,7 @@ fail:
          old_ctx->current_framebuffer = NULL;
          stw_lock_framebuffers(stw_dev);
          stw_framebuffer_lock(old_fb);
-         stw_framebuffer_release_locked(old_fb);
+         stw_framebuffer_release_locked(old_fb, old_ctx->st);
          stw_unlock_framebuffers(stw_dev);
       }
    }

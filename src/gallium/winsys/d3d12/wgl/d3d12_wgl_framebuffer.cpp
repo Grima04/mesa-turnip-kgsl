@@ -60,7 +60,8 @@ d3d12_wgl_framebuffer(struct stw_winsys_framebuffer *fb)
 }
 
 static void
-d3d12_wgl_framebuffer_destroy(struct stw_winsys_framebuffer *fb)
+d3d12_wgl_framebuffer_destroy(struct stw_winsys_framebuffer *fb,
+                              pipe_context *ctx)
 {
    FREE(fb);
 }
