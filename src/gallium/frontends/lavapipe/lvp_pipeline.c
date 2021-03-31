@@ -485,6 +485,10 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
                       spec_entries, num_spec_entries,
                       stage, entrypoint_name, &spirv_options, drv_options);
 
+   if (!nir) {
+      free(spec_entries);
+      return;
+   }
    nir_validate_shader(nir, NULL);
 
    free(spec_entries);
@@ -753,6 +757,8 @@ lvp_graphics_pipeline_init(struct lvp_pipeline *pipeline,
                                pCreateInfo->pStages[i].pName,
                                stage,
                                pCreateInfo->pStages[i].pSpecializationInfo);
+      if (!pipeline->pipeline_nir[stage])
+         return VK_ERROR_FEATURE_NOT_PRESENT;
    }
 
    if (pipeline->pipeline_nir[MESA_SHADER_FRAGMENT]) {
@@ -878,6 +884,8 @@ lvp_compute_pipeline_init(struct lvp_pipeline *pipeline,
                             pCreateInfo->stage.pName,
                             MESA_SHADER_COMPUTE,
                             pCreateInfo->stage.pSpecializationInfo);
+   if (!pipeline->pipeline_nir[MESA_SHADER_COMPUTE])
+      return VK_ERROR_FEATURE_NOT_PRESENT;
    lvp_pipeline_compile(pipeline, MESA_SHADER_COMPUTE);
    return VK_SUCCESS;
 }
