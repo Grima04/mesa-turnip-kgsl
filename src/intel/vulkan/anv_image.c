@@ -2016,6 +2016,8 @@ vk_image_layout_to_usage_flags(VkImageLayout layout,
       return VK_IMAGE_USAGE_FRAGMENT_DENSITY_MAP_BIT_EXT;
 
    case VK_IMAGE_LAYOUT_MAX_ENUM:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR:
       unreachable("Invalid image layout.");
    }
 
@@ -2059,6 +2061,8 @@ vk_image_layout_is_read_only(VkImageLayout layout,
       return aspect == VK_IMAGE_ASPECT_STENCIL_BIT;
 
    case VK_IMAGE_LAYOUT_MAX_ENUM:
+   case VK_IMAGE_LAYOUT_ATTACHMENT_OPTIMAL_KHR:
+   case VK_IMAGE_LAYOUT_READ_ONLY_OPTIMAL_KHR:
       unreachable("Invalid image layout.");
    }
 
