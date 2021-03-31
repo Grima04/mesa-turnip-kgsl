@@ -25,7 +25,7 @@
     DEQP_VER: vk
     VK_DRIVER: freedreno
 
-.arm64-a306-test:
+.a306-test:
   extends:
     - .freedreno-test
   variables:
@@ -37,14 +37,14 @@
 a306_gles2:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a306-test
+    - .a306-test
   variables:
     DEQP_VER: gles2
 
 a306_gles3:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a306-test
+    - .a306-test
   parallel: 3
   variables:
     DEQP_VER: gles3
@@ -54,14 +54,14 @@ a306_gles3:
 a306_gles3_options:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a306-test
+    - .a306-test
   variables:
     DEQP_VER: gles3
   script:
     # Check that the non-constbuf UBO case works.
     - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" ./install/bare-metal/fastboot.sh
 
-.arm64-a530-test:
+.a530-test:
   extends:
     - .freedreno-test
   variables:
@@ -75,14 +75,14 @@ a306_gles3_options:
 a530_gles2:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a530-test
+    - .a530-test
   variables:
     DEQP_VER: gles2
 
 a530_gles3:
   extends:
     - .baremetal-deqp-test
-    - .arm64-a530-test
+    - .a530-test
   parallel: 2
   variables:
     DEQP_VER: gles3
@@ -98,7 +98,7 @@ a530_gles31:
 .a530_piglit:
   extends:
     - .piglit-test
-    - .arm64-a530-test
+    - .a530-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_START_XORG: 1
