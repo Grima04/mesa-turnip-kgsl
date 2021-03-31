@@ -17,58 +17,52 @@ elif [ $DEBIAN_ARCH = amd64 ]; then
                   "
 fi
 
-if [ -n "$INCLUDE_PIGLIT" ]; then
-    PIGLIT_PACKAGES="libpython3.7
-                     libwaffle-1-0
-                     libx11-6
-                     libx11-xcb1
-                     libxcb-glx0
-                     libxcb-shm0
-                     libxdamage1
-                     libxext6
-                     libxfixes3
-                     libxkbcommon0
-                     libxxf86vm1
-                     python3
-                     python3-lxml
-                     python3-mako
-                     python3-numpy
-                     python3-packaging
-                     python3-pil
-                     python3-requests
-                     python3-simplejson
-                     python3-yaml
-                    "
-    INSTALL_CI_FAIRY_PACKAGES="git
-                               python3-dev
-                               python3-pip
-                               python3-setuptools
-                               python3-wheel
-                              "
-fi
+INSTALL_CI_FAIRY_PACKAGES="git
+                           python3-dev
+                           python3-pip
+                           python3-setuptools
+                           python3-wheel
+                           "
 
 apt-get -y install --no-install-recommends \
     $ARCH_PACKAGES \
-    $CI_FAIRY_PACKAGES \
     $INSTALL_CI_FAIRY_PACKAGES \
-    $PIGLIT_PACKAGES \
-    $VK_CTS_PACKAGES \
     ca-certificates \
     curl \
     initramfs-tools \
     libasan5 \
     libexpat1 \
     libpng16-16 \
+    libpython3.7 \
     libsensors5 \
     libvulkan1 \
+    libwaffle-1-0 \
+    libx11-6 \
+    libx11-xcb1 \
     libxcb-dri2-0 \
     libxcb-dri3-0 \
+    libxcb-glx0 \
     libxcb-present0 \
     libxcb-randr0 \
+    libxcb-shm0 \
     libxcb-sync1 \
     libxcb-xfixes0 \
+    libxdamage1 \
+    libxext6 \
+    libxfixes3 \
+    libxkbcommon0 \
     libxshmfence1 \
+    libxxf86vm1 \
     netcat-openbsd \
+    python3 \
+    python3-lxml \
+    python3-mako \
+    python3-numpy \
+    python3-packaging \
+    python3-pil \
+    python3-requests \
+    python3-simplejson \
+    python3-yaml \
     sntp \
     strace \
     wget \
@@ -76,14 +70,12 @@ apt-get -y install --no-install-recommends \
     xserver-xorg-core \
     xz-utils
 
-if [ -n "$INCLUDE_PIGLIT" ]; then
-    # Needed for ci-fairy, this revision is able to upload files to
-    # MinIO and doesn't depend on git
-    pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@0f1abc24c043e63894085a6bd12f14263e8b29eb
+# Needed for ci-fairy, this revision is able to upload files to
+# MinIO and doesn't depend on git
+pip3 install git+http://gitlab.freedesktop.org/freedesktop/ci-templates@0f1abc24c043e63894085a6bd12f14263e8b29eb
 
-    apt-get purge -y \
+apt-get purge -y \
         $INSTALL_CI_FAIRY_PACKAGES
-fi
 
 passwd root -d
 chsh -s /bin/sh

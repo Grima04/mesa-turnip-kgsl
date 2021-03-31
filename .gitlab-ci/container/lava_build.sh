@@ -130,10 +130,8 @@ mv /deqp /lava-files/rootfs-${DEBIAN_ARCH}/.
 
 
 ############### Build piglit
-if [ -n "$INCLUDE_PIGLIT" ]; then
-    . .gitlab-ci/container/build-piglit.sh
-    mv /piglit /lava-files/rootfs-${DEBIAN_ARCH}/.
-fi
+. .gitlab-ci/container/build-piglit.sh
+mv /piglit /lava-files/rootfs-${DEBIAN_ARCH}/.
 
 
 ############### Build apitrace
@@ -229,8 +227,7 @@ set -e
 
 cp .gitlab-ci/container/create-rootfs.sh /lava-files/rootfs-${DEBIAN_ARCH}/.
 cp .gitlab-ci/container/llvm-snapshot.gpg.key /lava-files/rootfs-${DEBIAN_ARCH}/.
-chroot /lava-files/rootfs-${DEBIAN_ARCH} \
-    sh -c "INCLUDE_PIGLIT=$INCLUDE_PIGLIT sh /create-rootfs.sh"
+chroot /lava-files/rootfs-${DEBIAN_ARCH} sh /create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/create-rootfs.sh
 rm /lava-files/rootfs-${DEBIAN_ARCH}/llvm-snapshot.gpg.key
 

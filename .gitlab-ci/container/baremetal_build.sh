@@ -5,8 +5,6 @@ set -o xtrace
 
 ROOTFS=/lava-files/rootfs-${arch}
 
-INCLUDE_PIGLIT=1
-
 dpkg --add-architecture $arch
 apt-get update
 

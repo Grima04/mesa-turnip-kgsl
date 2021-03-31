@@ -461,7 +461,7 @@ arm64_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &arm64_test "2021-03-17-waffle-dep"
+    MESA_IMAGE_TAG: &arm64_test "2021-03-31-piglit"
 
 .use-arm64_test:
   extends:
@@ -478,7 +478,7 @@ armhf_test:
   extends:
     - .use-arm_test-base
   variables:
-    MESA_IMAGE_TAG: &armhf_test "2021-03-17-waffle-dep"
+    MESA_IMAGE_TAG: &armhf_test "2021-03-31-piglit"
 
 .use-armhf_test:
   extends:
