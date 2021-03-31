@@ -6,6 +6,10 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: ea2b03e0768e8400c0badd46e4d26087
+  - path: behdad-glyphy/glyphy.trace
+    expectations:
+      - device: freedreno-a630
+        checksum: d25edb433abfcde517b626b3071906ff
   - path: glmark2/buffer-columns=200:interleave=false:update-dispersion=0.9:update-fraction=0.5:update-method=map.rdc
     expectations:
       - device: freedreno-a630
@@ -235,6 +239,12 @@ traces:
 #    expectations:
 #      - device: freedreno-a630
 #        checksum: 9571117bf4eab6fe29b12f6c3d42d865
+  - path: minetest/minetest.trace
+    expectations:
+      # Note: Obvious alpha test failure on the tree in the upper left.  Also a
+      # big block around the hand that's not present on radeonsi.
+      - device: freedreno-a630
+        checksum: c856d9588886978a12181e4646a7a78b
   - path: neverball/neverball.trace
     expectations:
       - device: freedreno-a630
@@ -251,10 +261,24 @@ traces:
     expectations:
       - device: freedreno-a630
         checksum: f6661ed4de9e0a444c6338ebd0cd3768
+#  Throws "Invalid state in _mesa_program_state_string" and
+#  GL_INVALID_OPERATION in glBindTexture(target mismatch), fails to produce
+#  a .png at all.  Renders fine on radeonsi.
+#  - path: pioneer/pioneer.trace
+#    expectations:
+#      - device: freedreno-a630
+#        checksum: a0000000000000000000000000000000
   - path: supertuxkart/supertuxkart-mansion-egl-gles.trace
     expectations:
       - device: freedreno-a630
         checksum: 5f3fff8969813a5fc5d8d95b4d4c5755
+# 21 seconds to render.  Renders nearly completely black, logs "warning:
+# 0:29(61): warning: `var_Position' used uninitialized".  Replays fine
+# on radeonsi.  Skip for now.
+#  - path: thedarkmod/thedarkmod.trace
+#    expectations:
+#      #- device: freedreno-a630
+#      #  checksum: a0000000000000000000000000000000
   - path: xonotic/xonotic-keybench-high.trace
     expectations:
       - device: freedreno-a630
