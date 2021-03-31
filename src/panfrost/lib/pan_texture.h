@@ -319,4 +319,19 @@ pan_image_layout_init(const struct panfrost_device *dev,
                       enum pan_image_crc_mode crc_mode,
                       const struct pan_image_explicit_layout *explicit_layout);
 
+struct pan_surface {
+        union {
+                mali_ptr data;
+                struct {
+                        mali_ptr header;
+                        mali_ptr body;
+                } afbc;
+        };
+};
+
+void
+pan_iview_get_surface(const struct pan_image_view *iview,
+                      unsigned level, unsigned layer, unsigned sample,
+                      struct pan_surface *surf);
+
 #endif
