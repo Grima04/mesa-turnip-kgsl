@@ -9036,6 +9036,24 @@ void visit_tex(isel_context *ctx, nir_tex_instr *instr)
          half_texel[i] = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0xbf000000/*-0.5*/), half_texel[i]);
       }
 
+      if (instr->sampler_dim == GLSL_SAMPLER_DIM_2D && !instr->is_array) {
+         /* In vulkan, whether the sampler uses unnormalized
+          * coordinates or not is a dynamic property of the
+          * sampler. Hence, to figure out whether or not we
+          * need to divide by the texture size, we need to test
+          * the sampler at runtime. This tests the bit set by
+          * radv_init_sampler().
+          */
+         unsigned bit_idx = ffs(S_008F30_FORCE_UNNORMALIZED(1)) - 1;
+         Temp not_needed = bld.sopc(aco_opcode::s_bitcmp0_b32, bld.def(s1, scc), sampler, Operand(bit_idx));
+
+         not_needed = bool_to_vector_condition(ctx, not_needed);
+         half_texel[0] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                                  Operand(0xbf000000/*-0.5*/), half_texel[0], not_needed);
+         half_texel[1] = bld.vop2(aco_opcode::v_cndmask_b32, bld.def(v1),
+                                  Operand(0xbf000000/*-0.5*/), half_texel[1], not_needed);
+      }
+
       Temp new_coords[2] = {
          bld.vop2(aco_opcode::v_add_f32, bld.def(v1), coords[0], half_texel[0]),
          bld.vop2(aco_opcode::v_add_f32, bld.def(v1), coords[1], half_texel[1])
