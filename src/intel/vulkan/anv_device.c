@@ -258,6 +258,7 @@ get_device_extensions(const struct anv_physical_device *device,
       .EXT_calibrated_timestamps             = device->has_reg_timestamp,
       .EXT_conditional_rendering             = device->info.gen >= 8 ||
                                                device->info.is_haswell,
+      .EXT_conservative_rasterization        = device->info.gen >= 9,
       .EXT_custom_border_color               = device->info.gen >= 8,
       .EXT_depth_clip_enable                 = true,
       .EXT_descriptor_indexing               = device->has_a64_buffer_access &&
@@ -2120,6 +2121,33 @@ void anv_GetPhysicalDeviceProperties2(
 
    vk_foreach_struct(ext, pProperties->pNext) {
       switch (ext->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CONSERVATIVE_RASTERIZATION_PROPERTIES_EXT: {
+         /* TODO: Real limits */
+         VkPhysicalDeviceConservativeRasterizationPropertiesEXT *properties =
+            (VkPhysicalDeviceConservativeRasterizationPropertiesEXT *)ext;
+         /* There's nothing in the public docs about this value as far as I
+          * can tell.  However, this is the value the Windows driver reports
+          * and there's a comment on a rejected HW feature in the internal
+          * docs that says:
+          *
+          *    "This is similar to conservative rasterization, except the
+          *    primitive area is not extended by 1/512 and..."
+          *
+          * That's a bit of an obtuse reference but it's the best we've got
+          * for now.
+          */
+         properties->primitiveOverestimationSize = 1.0f / 512.0f;
+         properties->maxExtraPrimitiveOverestimationSize = 0.0f;
+         properties->extraPrimitiveOverestimationSizeGranularity = 0.0f;
+         properties->primitiveUnderestimation = false;
+         properties->conservativePointAndLineRasterization = false;
+         properties->degenerateTrianglesRasterized = true;
+         properties->degenerateLinesRasterized = false;
+         properties->fullyCoveredFragmentShaderInputVariable = false;
+         properties->conservativeRasterizationPostDepthCoverage = true;
+         break;
+      }
+
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
          VkPhysicalDeviceCustomBorderColorPropertiesEXT *properties =
             (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;

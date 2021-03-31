@@ -576,6 +576,18 @@ const uint32_t genX(vk_to_gen_front_face)[] = {
    [VK_FRONT_FACE_CLOCKWISE]                 = 0
 };
 
+#if GEN_GEN >= 9
+static VkConservativeRasterizationModeEXT
+vk_conservative_rasterization_mode(const VkPipelineRasterizationStateCreateInfo *rs_info)
+{
+   const VkPipelineRasterizationConservativeStateCreateInfoEXT *cr =
+      vk_find_struct_const(rs_info, PIPELINE_RASTERIZATION_CONSERVATIVE_STATE_CREATE_INFO_EXT);
+
+   return cr ? cr->conservativeRasterizationMode :
+               VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
+}
+#endif
+
 static void
 emit_rs_state(struct anv_graphics_pipeline *pipeline,
               const VkPipelineInputAssemblyStateCreateInfo *ia_info,
@@ -698,6 +710,12 @@ emit_rs_state(struct anv_graphics_pipeline *pipeline,
    raster.ViewportZNearClipTestEnable = pipeline->depth_clip_enable;
 #elif GEN_GEN >= 8
    raster.ViewportZClipTestEnable = pipeline->depth_clip_enable;
+#endif
+
+#if GEN_GEN >= 9
+   raster.ConservativeRasterizationEnable =
+      vk_conservative_rasterization_mode(rs_info) !=
+         VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT;
 #endif
 
    raster.GlobalDepthOffsetEnableSolid = rs_info->depthBiasEnable;
@@ -2089,7 +2107,8 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
 #if GEN_GEN >= 8
 static void
 emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
-                      struct anv_subpass *subpass)
+                      struct anv_subpass *subpass,
+                      const VkPipelineRasterizationStateCreateInfo *rs_info)
 {
    const struct brw_wm_prog_data *wm_prog_data = get_wm_prog_data(pipeline);
 
@@ -2121,12 +2140,16 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
       ps.PixelShaderPullsBary    = wm_prog_data->pulls_bary;
 
       ps.InputCoverageMaskState  = ICMS_NONE;
-      if (wm_prog_data->uses_sample_mask) {
-         if (wm_prog_data->post_depth_coverage)
-            ps.InputCoverageMaskState  = ICMS_DEPTH_COVERAGE;
-         else
-            ps.InputCoverageMaskState  = ICMS_INNER_CONSERVATIVE;
-      }
+      if (!wm_prog_data->uses_sample_mask)
+         ps.InputCoverageMaskState  = ICMS_NONE;
+      else if (wm_prog_data->post_depth_coverage)
+         ps.InputCoverageMaskState  = ICMS_DEPTH_COVERAGE;
+      else if (wm_prog_data->inner_coverage &&
+               vk_conservative_rasterization_mode(rs_info) !=
+                  VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
+         ps.InputCoverageMaskState = ICMS_INNER_CONSERVATIVE;
+      else
+         ps.InputCoverageMaskState  = ICMS_INNER_CONSERVATIVE;
 #else
       ps.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
 #endif
@@ -2329,7 +2352,8 @@ genX(graphics_pipeline_create)(
                    cb_info, ms_info, line_info);
    emit_3dstate_ps(pipeline, cb_info, ms_info);
 #if GEN_GEN >= 8
-   emit_3dstate_ps_extra(pipeline, subpass);
+   emit_3dstate_ps_extra(pipeline, subpass,
+                         pCreateInfo->pRasterizationState);
 
    if (!(dynamic_states & ANV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY))
       emit_3dstate_vf_topology(pipeline);
