@@ -190,13 +190,16 @@ _mesa_notifySwapBuffers(struct gl_context *ctx)
 
 
 /**********************************************************************/
-/** \name GL Visual allocation/destruction                            */
+/** \name GL Visual initialization                                    */
 /**********************************************************************/
 /*@{*/
 
+
 /**
- * Allocates a struct gl_config structure and initializes it via
- * _mesa_initialize_visual().
+ * Makes some sanity checks and fills in the fields of the struct
+ * gl_config object with the given parameters.  If the caller needs to
+ * set additional fields, he should just probably init the whole
+ * gl_config object himself.
  *
  * \param dbFlag double buffering
  * \param stereoFlag stereo buffer
@@ -211,49 +214,12 @@ _mesa_notifySwapBuffers(struct gl_context *ctx)
  * \param greenBits same as above.
  * \param blueBits same as above.
  * \param alphaBits same as above.
- * \param numSamples not really used.
+ * \param numSamples number of samples per pixel.
  *
  * \return pointer to new struct gl_config or NULL if requested parameters
  * can't be met.
  *
- * \note Need to add params for level and numAuxBuffers (at least)
- */
-struct gl_config *
-_mesa_create_visual( GLboolean dbFlag,
-                     GLboolean stereoFlag,
-                     GLint redBits,
-                     GLint greenBits,
-                     GLint blueBits,
-                     GLint alphaBits,
-                     GLint depthBits,
-                     GLint stencilBits,
-                     GLint accumRedBits,
-                     GLint accumGreenBits,
-                     GLint accumBlueBits,
-                     GLint accumAlphaBits,
-                     GLuint numSamples )
-{
-   struct gl_config *vis = CALLOC_STRUCT(gl_config);
-   if (vis) {
-      _mesa_initialize_visual(vis, dbFlag, stereoFlag,
-                              redBits, greenBits, blueBits, alphaBits,
-                              depthBits, stencilBits,
-                              accumRedBits, accumGreenBits, accumBlueBits,
-                              accumAlphaBits, numSamples);
-   }
-   return vis;
-}
-
-
-/**
- * Makes some sanity checks and fills in the fields of the struct
- * gl_config object with the given parameters.  If the caller needs to
- * set additional fields, he should just probably init the whole
- * gl_config object himself.
- *
  * \return GL_TRUE on success, or GL_FALSE on failure.
- *
- * \sa _mesa_create_visual() above for the parameter description.
  */
 void
 _mesa_initialize_visual( struct gl_config *vis,
@@ -293,19 +259,6 @@ _mesa_initialize_visual( struct gl_config *vis,
    vis->samples = numSamples;
 }
 
-
-/**
- * Destroy a visual and free its memory.
- *
- * \param vis visual.
- *
- * Frees the visual structure.
- */
-void
-_mesa_destroy_visual( struct gl_config *vis )
-{
-   free(vis);
-}
 
 /*@}*/
 
