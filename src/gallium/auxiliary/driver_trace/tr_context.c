@@ -837,6 +837,23 @@ trace_context_set_polygon_stipple(struct pipe_context *_pipe,
    trace_dump_call_end();
 }
 
+static void
+trace_context_set_min_samples(struct pipe_context *_pipe,
+                              unsigned min_samples)
+{
+   struct trace_context *tr_ctx = trace_context(_pipe);
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+   trace_dump_call_begin("pipe_context", "set_min_samples");
+
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg(uint, min_samples);
+
+   pipe->set_min_samples(pipe, min_samples);
+
+   trace_dump_call_end();
+}
+
 
 static void
 trace_context_set_scissor_states(struct pipe_context *_pipe,
@@ -2018,6 +2035,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(set_framebuffer_state);
    TR_CTX_INIT(set_inlinable_constants);
    TR_CTX_INIT(set_polygon_stipple);
+   TR_CTX_INIT(set_min_samples);
    TR_CTX_INIT(set_scissor_states);
    TR_CTX_INIT(set_viewport_states);
    TR_CTX_INIT(set_sampler_views);
