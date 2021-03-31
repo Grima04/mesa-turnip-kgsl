@@ -1191,7 +1191,7 @@ emit_cb_state(struct anv_graphics_pipeline *pipeline,
          break;
 
       /* We can have at most 8 attachments */
-      assert(i < 8);
+      assert(i < MAX_RTS);
 
       if (info == NULL || binding->index >= info->attachmentCount) {
          state_pos = write_disabled_blend(state_pos);
