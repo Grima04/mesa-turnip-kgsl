@@ -329,7 +329,6 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_pack_64_2x32_split = true,
       .lower_unpack_64_2x32_split = true,
       .lower_vector_cmp = true,
-      .use_scoped_barrier = true,
       .lower_int64_options = 0,
       .lower_doubles_options = ~nir_lower_fp64_full_software,
       .has_fsub = true,
