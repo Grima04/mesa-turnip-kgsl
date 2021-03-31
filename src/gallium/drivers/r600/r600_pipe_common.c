@@ -1181,6 +1181,8 @@ r600_get_compiler_options(struct pipe_screen *screen,
        return &rscreen->nir_options;
 }
 
+extern bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *);
+
 bool r600_common_screen_init(struct r600_common_screen *rscreen,
 			     struct radeon_winsys *ws)
 {
@@ -1330,6 +1332,8 @@ bool r600_common_screen_init(struct r600_common_screen *rscreen,
 		.lower_bitfield_insert_to_bitfield_select = true,
 		.has_fused_comp_and_csel = true,
 		.lower_find_msb_to_reverse = true,
+                .lower_to_scalar = true,
+                .lower_to_scalar_filter = r600_lower_to_scalar_instr_filter,
 	};
 
 	rscreen->nir_options = nir_options;

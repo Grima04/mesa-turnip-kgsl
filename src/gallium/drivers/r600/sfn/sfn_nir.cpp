@@ -810,6 +810,7 @@ bool has_saturate(const nir_function *func)
    return false;
 }
 
+extern "C"
 bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *)
 {
    if (instr->type != nir_instr_type_alu)
@@ -874,8 +875,6 @@ int r600_shader_from_nir(struct r600_context *rctx,
    if (lower_64bit)
       NIR_PASS_V(sel->nir, nir_lower_int64);
    while(optimize_once(sel->nir, false));
-
-   NIR_PASS_V(sel->nir, nir_lower_alu_to_scalar, r600_lower_to_scalar_instr_filter, NULL);
 
    NIR_PASS_V(sel->nir, r600_lower_shared_io);
    NIR_PASS_V(sel->nir, r600_nir_lower_atomics);

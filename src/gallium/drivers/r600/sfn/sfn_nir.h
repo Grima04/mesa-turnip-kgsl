@@ -146,6 +146,7 @@ extern "C" {
 
 bool r600_vectorize_vs_inputs(nir_shader *shader);
 
+bool r600_lower_to_scalar_instr_filter(const nir_instr *instr, const void *);
 
 int r600_shader_from_nir(struct r600_context *rctx,
                          struct r600_pipe_shader *pipeshader,
