@@ -265,15 +265,7 @@ VkResult radv_AcquireNextImage2KHR(
 				fence->temporary.kind != RADV_FENCE_NONE ?
 				&fence->temporary : &fence->permanent;
 
-			switch (part->kind) {
-			case RADV_FENCE_NONE:
-				break;
-			case RADV_FENCE_SYNCOBJ:
-				device->ws->signal_syncobj(device->ws, part->syncobj, 0);
-				break;
-			default:
-				unreachable("Invalid WSI fence type");
-			}
+			device->ws->signal_syncobj(device->ws, part->syncobj, 0);
 		}
 		if (semaphore) {
 			struct radv_semaphore_part *part =
