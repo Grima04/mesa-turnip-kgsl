@@ -686,6 +686,7 @@ v3d_spec_load(const struct v3d_device_info *devinfo)
 
         if (text_length == 0) {
                 fprintf(stderr, "unable to find gen (%u) data\n", devinfo->ver);
+                free(spec);
                 return NULL;
         }
 
@@ -695,6 +696,7 @@ v3d_spec_load(const struct v3d_device_info *devinfo)
         XML_SetUserData(ctx.parser, &ctx);
         if (ctx.parser == NULL) {
                 fprintf(stderr, "failed to create parser\n");
+                free(spec);
                 return NULL;
         }
 
@@ -720,6 +722,7 @@ v3d_spec_load(const struct v3d_device_info *devinfo)
                         XML_ErrorString(XML_GetErrorCode(ctx.parser)));
                 XML_ParserFree(ctx.parser);
                 free(text_data);
+                free(spec);
                 return NULL;
         }
 
