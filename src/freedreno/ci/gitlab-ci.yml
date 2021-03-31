@@ -25,6 +25,17 @@
     DEQP_VER: vk
     VK_DRIVER: freedreno
 
+.freedreno-test-traces:
+  extends:
+    - .piglit-traces-test
+  variables:
+    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
+    BM_START_XORG: 1
+    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-freedreno.yml"
+  artifacts:
+    reports:
+      junit: results/junit.xml
+
 .a306-test:
   extends:
     - .freedreno-test
@@ -60,6 +71,14 @@ a306_gles3_options:
   script:
     # Check that the non-constbuf UBO case works.
     - DEQP_RUN_SUFFIX=-nouboopt IR3_SHADER_DEBUG=nouboopt DEQP_CASELIST_FILTER="functional.*ubo" ./install/bare-metal/fastboot.sh
+
+a306-traces:
+  extends:
+    - .freedreno-test-traces
+    - .a306-test
+  variables:
+    PIGLIT_REPLAY_DEVICE_NAME: "freedreno-a306"
+    PIGLIT_RESULTS: "freedreno-a306-replay"
 
 .a530-test:
   extends:
@@ -118,6 +137,14 @@ a530_piglit_shader:
   variables:
     PIGLIT_PROFILES: quick_shader
     PIGLIT_FRACTION: 2
+
+a530-traces:
+  extends:
+    - .freedreno-test-traces
+    - .a530-test
+  variables:
+    PIGLIT_REPLAY_DEVICE_NAME: "freedreno-a530"
+    PIGLIT_RESULTS: "freedreno-a530-replay"
 
 .a630-test:
   extends:
@@ -243,18 +270,12 @@ a630_piglit_shader:
 
 a630-traces:
   extends:
-    - .piglit-traces-test
+    - .freedreno-test-traces
     - .a630-test
   variables:
-    BARE_METAL_TEST_SCRIPT: "/install/piglit/run.sh"
-    BM_START_XORG: 1
-    PIGLIT_REPLAY_DESCRIPTION_FILE: "/install/traces-freedreno.yml"
     PIGLIT_REPLAY_DEVICE_NAME: "freedreno-a630"
     PIGLIT_RESULTS: "freedreno-a630-replay"
     # This lets us run several more traces which don't use any features we're
     # missing.
     MESA_GLSL_VERSION_OVERRIDE: "460"
     MESA_GL_VERSION_OVERRIDE: "4.6"
-  artifacts:
-    reports:
-      junit: results/junit.xml
