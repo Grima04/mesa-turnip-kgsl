@@ -3129,6 +3129,12 @@ typedef enum {
    nir_divergence_multiple_workgroup_per_compute_subgroup = (1 << 5),
 } nir_divergence_options;
 
+/** An instruction filtering callback
+ *
+ * Returns true if the instruction should be processed and false otherwise.
+ */
+typedef bool (*nir_instr_filter_cb)(const nir_instr *, const void *);
+
 typedef struct nir_shader_compiler_options {
    bool lower_fdiv;
    bool lower_ffma16;
@@ -3342,6 +3348,7 @@ typedef struct nir_shader_compiler_options {
     */
    bool vectorize_io;
    bool lower_to_scalar;
+   nir_instr_filter_cb lower_to_scalar_filter;
 
    /**
     * Whether nir_opt_vectorize should only create 16-bit 2D vectors.
@@ -4183,12 +4190,6 @@ static inline bool should_print_nir(nir_shader *shader) { return false; }
 )
 
 #define NIR_SKIP(name) should_skip_nir(#name)
-
-/** An instruction filtering callback
- *
- * Returns true if the instruction should be processed and false otherwise.
- */
-typedef bool (*nir_instr_filter_cb)(const nir_instr *, const void *);
 
 /** An instruction filtering callback with writemask
  *
