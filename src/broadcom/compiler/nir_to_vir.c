@@ -3158,37 +3158,83 @@ ntq_emit_uniform_if(struct v3d_compile *c, nir_if *if_stmt)
         else
                 else_block = vir_new_block(c);
 
+        /* Check if this if statement is really just a conditional jump with
+         * the form:
+         *
+         * if (cond) {
+         *    break/continue;
+         * } else {
+         * }
+         *
+         * In which case we can skip the jump to ELSE we emit before the THEN
+         * block and instead just emit the break/continue directly.
+         */
+        nir_jump_instr *conditional_jump = NULL;
+        if (empty_else_block) {
+                nir_block *nir_then_block = nir_if_first_then_block(if_stmt);
+                struct nir_instr *inst = nir_block_first_instr(nir_then_block);
+                if (inst && inst->type == nir_instr_type_jump)
+                        conditional_jump = nir_instr_as_jump(inst);
+        }
+
         /* Set up the flags for the IF condition (taking the THEN branch). */
         enum v3d_qpu_cond cond = ntq_emit_bool_to_cond(c, if_stmt->condition);
 
-        /* Jump to ELSE. */
-        struct qinst *branch = vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
-                   V3D_QPU_BRANCH_COND_ANYNA :
-                   V3D_QPU_BRANCH_COND_ANYA);
-        /* Pixels that were not dispatched or have been discarded should not
-         * contribute to the ANYA/ANYNA condition.
-         */
-        branch->qpu.branch.msfign = V3D_QPU_MSFIGN_P;
-
-        vir_link_blocks(c->cur_block, else_block);
-        vir_link_blocks(c->cur_block, then_block);
-
-        /* Process the THEN block. */
-        vir_set_emit_block(c, then_block);
-        ntq_emit_cf_list(c, &if_stmt->then_list);
-
-        if (!empty_else_block) {
-                /* At the end of the THEN block, jump to ENDIF, unless
-                 * the block ended in a break or continue.
+        if (!conditional_jump) {
+                /* Jump to ELSE. */
+                struct qinst *branch = vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
+                           V3D_QPU_BRANCH_COND_ANYNA :
+                           V3D_QPU_BRANCH_COND_ANYA);
+                /* Pixels that were not dispatched or have been discarded
+                 * should not contribute to the ANYA/ANYNA condition.
                  */
-                if (!c->cur_block->branch_emitted) {
-                        vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALWAYS);
-                        vir_link_blocks(c->cur_block, after_block);
-                }
+                branch->qpu.branch.msfign = V3D_QPU_MSFIGN_P;
 
-                /* Emit the else block. */
-                vir_set_emit_block(c, else_block);
-                ntq_emit_cf_list(c, &if_stmt->else_list);
+                vir_link_blocks(c->cur_block, else_block);
+                vir_link_blocks(c->cur_block, then_block);
+
+                /* Process the THEN block. */
+                vir_set_emit_block(c, then_block);
+                ntq_emit_cf_list(c, &if_stmt->then_list);
+
+                if (!empty_else_block) {
+                        /* At the end of the THEN block, jump to ENDIF, unless
+                         * the block ended in a break or continue.
+                         */
+                        if (!c->cur_block->branch_emitted) {
+                                vir_BRANCH(c, V3D_QPU_BRANCH_COND_ALWAYS);
+                                vir_link_blocks(c->cur_block, after_block);
+                        }
+
+                        /* Emit the else block. */
+                        vir_set_emit_block(c, else_block);
+                        ntq_emit_cf_list(c, &if_stmt->else_list);
+                }
+        } else {
+                /* Emit the conditional jump directly.
+                 *
+                 * Use ALL with breaks and ANY with continues to ensure that
+                 * we always break and never continue when all lanes have been
+                 * disabled (for example because of discards) to prevent
+                 * infinite loops.
+                 */
+                assert(conditional_jump &&
+                       (conditional_jump->type == nir_jump_continue ||
+                        conditional_jump->type == nir_jump_break));
+
+                struct qinst *branch = vir_BRANCH(c, cond == V3D_QPU_COND_IFA ?
+                           (conditional_jump->type == nir_jump_break ?
+                            V3D_QPU_BRANCH_COND_ALLA :
+                            V3D_QPU_BRANCH_COND_ANYA) :
+                           (conditional_jump->type == nir_jump_break ?
+                            V3D_QPU_BRANCH_COND_ALLNA :
+                            V3D_QPU_BRANCH_COND_ANYNA));
+                branch->qpu.branch.msfign = V3D_QPU_MSFIGN_P;
+
+                vir_link_blocks(c->cur_block,
+                                conditional_jump->type == nir_jump_break ?
+                                        c->loop_break_block :
+                                        c->loop_cont_block);
         }
 
         vir_link_blocks(c->cur_block, after_block);
