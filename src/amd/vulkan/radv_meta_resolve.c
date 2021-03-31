@@ -63,8 +63,8 @@ create_pass(struct radv_device *device, VkFormat vk_format, VkRenderPass *pass)
 		attachments[i].loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 		attachments[i].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	}
-	attachments[0].initialLayout = VK_IMAGE_LAYOUT_GENERAL;
-	attachments[0].finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+	attachments[0].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachments[0].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	attachments[1].initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 	attachments[1].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
@@ -83,7 +83,7 @@ create_pass(struct radv_device *device, VkFormat vk_format, VkRenderPass *pass)
 							       {
 								       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
 								       .attachment = 0,
-								       .layout = VK_IMAGE_LAYOUT_GENERAL,
+								       .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
 							       },
 							       {
 								       .sType = VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2,
