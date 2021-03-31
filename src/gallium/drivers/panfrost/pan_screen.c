@@ -43,6 +43,7 @@
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/panfrost_drm.h"
 
+#include "pan_blitter.h"
 #include "pan_bo.h"
 #include "pan_shader.h"
 #include "pan_screen.h"
@@ -687,6 +688,7 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
         struct panfrost_device *dev = pan_device(pscreen);
 
         panfrost_cleanup_indirect_draw_shaders(dev);
+        pan_blitter_cleanup(dev);
         pan_blend_shaders_cleanup(dev);
 
         if (dev->ro)
@@ -859,9 +861,9 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         screen->base.set_damage_region = panfrost_resource_set_damage_region;
 
         panfrost_resource_screen_init(&screen->base);
-        panfrost_init_blit_shaders(dev);
         pan_blend_shaders_init(dev);
         panfrost_init_indirect_draw_shaders(dev);
+        pan_blitter_init(dev);
 
         return &screen->base;
 }

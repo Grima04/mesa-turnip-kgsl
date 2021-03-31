@@ -8,13 +8,10 @@ C_SOURCES := \
 	pan_compute.c \
 	pan_context.c \
 	pan_context.h \
-	pan_fragment.c \
 	pan_job.c \
 	pan_job.h \
-	pan_mfbd.c \
 	pan_public.h \
 	pan_resource.c \
 	pan_resource.h \
 	pan_screen.c \
-	pan_screen.h \
-	pan_sfbd.c \
+	pan_screen.h

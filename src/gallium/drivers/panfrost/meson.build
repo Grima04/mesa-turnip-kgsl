@@ -32,9 +32,6 @@ files_panfrost = files(
   'pan_blend_cso.c',
   'pan_cmdstream.c',
   'pan_compute.c',
-  'pan_fragment.c',
-  'pan_sfbd.c',
-  'pan_mfbd.c',
 )
 
 panfrost_includes = [

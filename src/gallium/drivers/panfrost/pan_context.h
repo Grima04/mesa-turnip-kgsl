@@ -315,23 +315,6 @@ panfrost_flush(
 bool
 panfrost_render_condition_check(struct panfrost_context *ctx);
 
-mali_ptr panfrost_sfbd_fragment(struct panfrost_batch *batch, bool has_draws);
-mali_ptr panfrost_mfbd_fragment(struct panfrost_batch *batch, bool has_draws);
-
-void
-panfrost_attach_mfbd(struct panfrost_batch *batch, unsigned vertex_count);
-
-void
-panfrost_attach_sfbd(struct panfrost_batch *batch, unsigned vertex_count);
-
-void
-panfrost_emit_midg_tiler(struct panfrost_batch *batch,
-                         struct mali_midgard_tiler_packed *tp,
-                         unsigned vertex_count);
-
-mali_ptr
-panfrost_fragment_job(struct panfrost_batch *batch, bool has_draws);
-
 void
 panfrost_shader_compile(struct panfrost_context *ctx,
                         enum pipe_shader_ir ir_type,

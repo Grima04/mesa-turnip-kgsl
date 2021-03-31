@@ -57,69 +57,6 @@
 #include "decode.h"
 #include "util/pan_lower_framebuffer.h"
 
-void
-panfrost_emit_midg_tiler(struct panfrost_batch *batch,
-                         struct mali_midgard_tiler_packed *tp,
-                         unsigned vertex_count)
-{
-        struct panfrost_device *device = pan_device(batch->ctx->base.screen);
-        bool hierarchy = !(device->quirks & MIDGARD_NO_HIER_TILING);
-        unsigned height = batch->key.height;
-        unsigned width = batch->key.width;
-
-        pan_pack(tp, MIDGARD_TILER, t) {
-                t.hierarchy_mask =
-                        panfrost_choose_hierarchy_mask(width, height,
-                                                       vertex_count, hierarchy);
-
-                /* Compute the polygon header size and use that to offset the body */
-
-                unsigned header_size =
-                        panfrost_tiler_header_size(width, height,
-                                                   t.hierarchy_mask, hierarchy);
-
-                t.polygon_list_size =
-                        panfrost_tiler_full_size(width, height, t.hierarchy_mask,
-                                                 hierarchy);
-
-                if (vertex_count) {
-                        t.polygon_list =
-                                panfrost_batch_get_polygon_list(batch,
-                                                                header_size +
-                                                                t.polygon_list_size);
-
-                        t.heap_start = device->tiler_heap->ptr.gpu;
-                        t.heap_end = device->tiler_heap->ptr.gpu +
-                                     device->tiler_heap->size;
-                } else {
-                        struct panfrost_bo *tiler_dummy;
-
-                        tiler_dummy = panfrost_batch_get_tiler_dummy(batch);
-                        header_size = MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE;
-
-                        /* The tiler is disabled, so don't allow the tiler heap */
-                        t.heap_start = tiler_dummy->ptr.gpu;
-                        t.heap_end = t.heap_start;
-
-                        /* Use a dummy polygon list */
-                        t.polygon_list = tiler_dummy->ptr.gpu;
-
-                        /* Disable the tiler */
-                        if (hierarchy)
-                                t.hierarchy_mask |= MALI_MIDGARD_TILER_DISABLED;
-                        else {
-                                t.hierarchy_mask = MALI_MIDGARD_TILER_USER;
-                                t.polygon_list_size = MALI_MIDGARD_TILER_MINIMUM_HEADER_SIZE + 4;
-
-                                /* We don't have a WRITE_VALUE job, so write the polygon list manually */
-                                uint32_t *polygon_list_body = (uint32_t *) (tiler_dummy->ptr.cpu + header_size);
-                                polygon_list_body[0] = 0xa0000000; /* TODO: Just that? */
-                        }
-                }
-                t.polygon_list_body = t.polygon_list + header_size;
-        }
-}
-
 static void
 panfrost_clear(
         struct pipe_context *pipe,
@@ -523,7 +460,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
 
         unsigned vertex_count = ctx->vertex_count;
 
-        mali_ptr shared_mem = panfrost_batch_reserve_framebuffer(batch);
+        mali_ptr shared_mem = panfrost_batch_reserve_tls(batch);
 
         unsigned min_index = 0, max_index = 0;
         mali_ptr indices = 0;
