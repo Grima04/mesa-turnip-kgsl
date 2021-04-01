@@ -1623,19 +1623,57 @@ void anv_GetImageSubresourceLayout(
     VkSubresourceLayout*                        layout)
 {
    ANV_FROM_HANDLE(anv_image, image, _image);
+   const struct anv_surface *surface;
 
    assert(__builtin_popcount(subresource->aspectMask) == 1);
 
-   const struct anv_surface *surface;
-   if (subresource->aspectMask == VK_IMAGE_ASPECT_PLANE_1_BIT &&
-       image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
-       isl_drm_modifier_has_aux(image->drm_format_mod)) {
-      /* If the memory binding differs between primary and aux, then the
-       * returned offset will be incorrect.
-       */
-      assert(image->planes[0].aux_surface.memory_range.binding ==
-             image->planes[0].primary_surface.memory_range.binding);
-      surface = &image->planes[0].aux_surface;
+   /* The Vulkan spec requires that aspectMask be
+    * VK_IMAGE_ASPECT_MEMORY_PLANE_i_BIT_EXT if tiling is
+    * VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT.
+    *
+    * For swapchain images, the Vulkan spec says that every swapchain image has
+    * tiling VK_IMAGE_TILING_OPTIMAL, but we may choose
+    * VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT internally.  Vulkan doesn't allow
+    * vkGetImageSubresourceLayout for images with VK_IMAGE_TILING_OPTIMAL,
+    * therefore it's invalid for the application to call this on a swapchain
+    * image.  The WSI code, however, knows when it has internally created
+    * a swapchain image with VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT,
+    * so it _should_ correctly use VK_IMAGE_ASPECT_MEMORY_PLANE_* in that case.
+    * But it incorrectly uses VK_IMAGE_ASPECT_PLANE_*, so we have a temporary
+    * workaround.
+    */
+   if (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      /* TODO(chadv): Drop this workaround when WSI gets fixed. */
+      uint32_t mem_plane;
+      switch (subresource->aspectMask) {
+      case VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT:
+      case VK_IMAGE_ASPECT_PLANE_0_BIT:
+         mem_plane = 0;
+         break;
+      case VK_IMAGE_ASPECT_MEMORY_PLANE_1_BIT_EXT:
+      case VK_IMAGE_ASPECT_PLANE_1_BIT:
+         mem_plane = 1;
+         break;
+      case VK_IMAGE_ASPECT_MEMORY_PLANE_2_BIT_EXT:
+      case VK_IMAGE_ASPECT_PLANE_2_BIT:
+         mem_plane = 2;
+         break;
+      default:
+         unreachable("bad VkImageAspectFlags");
+      }
+
+      if (mem_plane == 1 && isl_drm_modifier_has_aux(image->drm_format_mod)) {
+         assert(image->n_planes == 1);
+         /* If the memory binding differs between primary and aux, then the
+          * returned offset will be incorrect.
+          */
+         assert(image->planes[0].aux_surface.memory_range.binding ==
+                image->planes[0].primary_surface.memory_range.binding);
+         surface = &image->planes[0].aux_surface;
+      } else {
+         assert(mem_plane < image->n_planes);
+         surface = &image->planes[mem_plane].primary_surface;
+      }
    } else {
       uint32_t plane = anv_image_aspect_to_plane(image->aspects,
                                                  subresource->aspectMask);
