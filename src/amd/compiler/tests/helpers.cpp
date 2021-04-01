@@ -23,7 +23,7 @@
  */
 #include "helpers.h"
 #include "vulkan/vk_format.h"
-#include "llvm/ac_llvm_util.h"
+#include "common/amd_family.h"
 #include <stdio.h>
 #include <sstream>
 #include <llvm-c/Target.h>
@@ -261,7 +261,7 @@ VkDevice get_vk_device(enum radeon_family family)
    if (device_cache[family])
       return device_cache[family];
 
-   setenv("RADV_FORCE_FAMILY", ac_get_llvm_processor_name(family), 1);
+   setenv("RADV_FORCE_FAMILY", ac_get_family_name(family), 1);
 
    VkApplicationInfo app_info = {};
    app_info.pApplicationName = "aco_tests";

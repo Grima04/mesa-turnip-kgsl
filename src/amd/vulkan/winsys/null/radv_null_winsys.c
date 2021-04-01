@@ -80,7 +80,7 @@ static void radv_null_winsys_query_info(struct radeon_winsys *rws,
 	info->family = CHIP_UNKNOWN;
 
 	for (i = CHIP_TAHITI; i < CHIP_LAST; i++) {
-		if (!strcmp(family, ac_get_llvm_processor_name(i))) {
+		if (!strcmp(family, ac_get_family_name(i))) {
 			/* Override family and chip_class. */
 			info->family = i;
 			info->name = "OVERRIDDEN";
