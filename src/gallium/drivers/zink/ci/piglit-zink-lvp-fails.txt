@@ -70,8 +70,6 @@ spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
 spec@!opengl 2.0@max-samplers border,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
-spec@!opengl 3.0@clearbuffer-depth,Fail
-spec@!opengl 3.0@clearbuffer-stencil,Fail
 spec@!opengl 3.0@sampler-cube-shadow,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims cull-back pv-last,Fail
