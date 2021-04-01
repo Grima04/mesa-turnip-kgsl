@@ -14,7 +14,7 @@
   variables:
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
     INSTALL_KERNEL_MODULES: 1
-    MESA_ROOTFS_TAG: &lava-rootfs "2021-04-08-libdrm"
+    MESA_ROOTFS_TAG: &lava-rootfs "2021-04-12-kernel"
     MINIO_SUFFIX: "lava"
     PIGLIT_BUILD_TARGETS: "piglit_replayer"
 
