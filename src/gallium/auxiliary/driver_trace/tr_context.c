@@ -102,7 +102,9 @@ trace_context_draw_vbo(struct pipe_context *_pipe,
    trace_dump_arg(ptr,  pipe);
    trace_dump_arg(draw_info, info);
    trace_dump_arg(draw_indirect_info, indirect);
+   trace_dump_arg_begin("draws");
    trace_dump_struct_array(draw_start_count, draws, num_draws);
+   trace_dump_arg_end();
    trace_dump_arg(uint, num_draws);
 
    trace_dump_trace_flush();
@@ -1767,8 +1769,8 @@ static void trace_context_set_shader_buffers(struct pipe_context *_context,
    trace_dump_arg(uint, start);
    trace_dump_arg_begin("buffers");
    trace_dump_struct_array(shader_buffer, buffers, nr);
-   trace_dump_arg(uint, writable_bitmask);
    trace_dump_arg_end();
+   trace_dump_arg(uint, writable_bitmask);
    trace_dump_call_end();
 
    context->set_shader_buffers(context, shader, start, nr, buffers,
