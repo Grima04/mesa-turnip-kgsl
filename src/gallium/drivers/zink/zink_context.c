@@ -714,6 +714,9 @@ zink_set_vertex_buffers(struct pipe_context *pctx,
 {
    struct zink_context *ctx = zink_context(pctx);
 
+   if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state &&
+       (num_buffers || (!buffers && ctx->gfx_pipeline_state.vertex_buffers_enabled_mask)))
+      ctx->gfx_pipeline_state.vertex_state_dirty = true;
    util_set_vertex_buffers_mask(ctx->vertex_buffers, &ctx->gfx_pipeline_state.vertex_buffers_enabled_mask,
                                 buffers, start_slot, num_buffers,
                                 unbind_num_trailing_slots, take_ownership);
