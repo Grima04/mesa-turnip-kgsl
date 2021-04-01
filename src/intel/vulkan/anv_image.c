@@ -1084,9 +1084,8 @@ anv_image_create(VkDevice _device,
    return VK_SUCCESS;
 
 fail:
-   if (image)
-      vk_free2(&device->vk.alloc, alloc, image);
-
+   vk_object_base_finish(&image->base);
+   vk_free2(&device->vk.alloc, alloc, image);
    return r;
 }
 
