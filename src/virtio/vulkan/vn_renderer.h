@@ -108,6 +108,7 @@ struct vn_renderer_info {
    bool has_cache_management;
    bool has_timeline_sync;
    bool has_external_sync;
+   bool has_implicit_fencing;
 
    uint32_t max_sync_queue_count;
 

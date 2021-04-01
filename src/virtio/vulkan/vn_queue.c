@@ -360,25 +360,22 @@ vn_QueueSubmit(VkQueue _queue,
       return vn_error(dev->instance, result);
    }
 
-   /* XXX The implicit fence won't work because the host is not aware of it.
-    * It is guest-only and the guest kernel does not wait.  We need kernel
-    * support, or better yet, an explicit fence that the host is aware of.
-    *
-    * vn_AcquireNextImage2KHR is also broken.
-    */
    if (wsi_mem) {
-      if (!VN_DEBUG(WSI)) {
+      /* XXX this is always false and kills the performance */
+      if (dev->instance->renderer_info.has_implicit_fencing) {
          vn_renderer_submit(dev->instance->renderer,
                             &(const struct vn_renderer_submit){
                                .bos = &wsi_mem->base_bo,
                                .bo_count = 1,
                             });
       } else {
-         static uint32_t ratelimit;
-         if (ratelimit < 10) {
-            vn_log(dev->instance,
-                   "forcing vkQueueWaitIdle before presenting");
-            ratelimit++;
+         if (VN_DEBUG(WSI)) {
+            static uint32_t ratelimit;
+            if (ratelimit < 10) {
+               vn_log(dev->instance,
+                      "forcing vkQueueWaitIdle before presenting");
+               ratelimit++;
+            }
          }
 
          vn_QueueWaitIdle(submit.queue);

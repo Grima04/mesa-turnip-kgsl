@@ -1251,6 +1251,8 @@ virtgpu_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
    info->has_timeline_sync = false;
    info->has_external_sync = false;
 
+   info->has_implicit_fencing = false;
+
    info->max_sync_queue_count = gpu->max_sync_queue_count;
 
    const struct virgl_renderer_capset_venus *capset = &gpu->capset.data;
