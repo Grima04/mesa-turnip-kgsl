@@ -1,6 +1,6 @@
 variables:
   FDO_UPSTREAM_REPO: mesa/mesa
-  MESA_TEMPLATES_COMMIT: &ci-templates-commit 52dd4a94044449c8481d18dcdc221a3c636366d2
+  MESA_TEMPLATES_COMMIT: &ci-templates-commit 290b79e0e78eab67a83766f4e9691be554fc4afd
   CI_PRE_CLONE_SCRIPT: |-
           set -o xtrace
           /usr/bin/wget -q -O- ${CI_PROJECT_URL}/-/raw/${CI_COMMIT_SHA}/.gitlab-ci/download-git-cache.sh | sh -
@@ -424,8 +424,10 @@ x86_test-vk:
 # Debian 11 based ARM build image
 arm_build:
   extends:
-    - .fdo.container-build@debian@arm64v8
+    - .fdo.container-build@debian
     - .container
+  tags:
+    - aarch64
   variables:
     MESA_IMAGE_TAG: &arm_build "2021-04-13-bullseye"
 

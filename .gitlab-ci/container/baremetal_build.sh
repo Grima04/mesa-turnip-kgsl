@@ -14,7 +14,7 @@ fi
 
 wget ${ARTIFACTS_URL}/lava-rootfs.tgz -O rootfs.tgz
 mkdir -p /rootfs-$arch
-tar -C /rootfs-$arch -zxf rootfs.tgz
+tar -C /rootfs-$arch '--exclude=./dev/*' -zxf rootfs.tgz
 rm rootfs.tgz
 
 if [[ $arch == "arm64" ]]; then
