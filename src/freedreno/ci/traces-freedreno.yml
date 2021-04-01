@@ -436,7 +436,7 @@ traces:
       - device: freedreno-a306
         checksum: 9227cc8d4e6445f2323438340f2a5d9b
       - device: freedreno-a530
-        checksum: 7625ffd782f1aa47e50a8d851b363922
+        checksum: 76fbd196f69594c927dc994b4492dd50
       # Note: Obvious alpha test failure on the tree in the upper left.  Also a
       # big block around the hand that's not present on a530 or radeonsi.
       - device: freedreno-a630
@@ -504,10 +504,9 @@ traces:
     expectations:
       - device: freedreno-a306
         checksum: b4af9243e34f3de0153b6855dc9c66b6
-      # Looks like maybe some Z updates before alpha test discards happening
-      # (trees on the right side).  23 seconds.
-      - device: freedreno-a530
-        checksum: 9e691aa0baf3fcb836e2331118c9dfc3
+      # Flaky rendering (slight pixel differences around the tree alpha tests)
+      # - device: freedreno-a530
+      #   checksum: 14e78caf29b6a3341081c8f2e678355f
       # Looks like some alpha test failures (trees on the right side)
       - device: freedreno-a630
         checksum: 5a11d791a5a718d4aa6c84b416b9f2b6
@@ -518,7 +517,7 @@ traces:
       #   checksum: 4b707f385256b380c936186db8c251cb
       # 1 minute
       - device: freedreno-a530
-        checksum: 6f15685177bd5ab6c0d6a6f056802cf2
+        checksum: bbe74b2171d62fc6738086740e1aa0d8
       # Alpha test failures (fence on the left hand side of road)
       - device: freedreno-a630
         checksum: 4b707f385256b380c936186db8c251cb
@@ -529,7 +528,7 @@ traces:
       #   checksum: 8f5929c82e7d990e8c3d2bea14688224
       # 2 minutes
       - device: freedreno-a530
-        checksum: bfb17944d38c04e7592d20e1c5b00059
+        checksum: 5def334bb574b024198ddddb1a069529
       # Alpha test failures on the fence.  Also, the shadows are much lighter
       # than a530, but it's unclear which is right.
       - device: freedreno-a630
