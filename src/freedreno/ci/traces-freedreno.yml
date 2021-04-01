@@ -298,16 +298,16 @@ traces:
         checksum: 27612b5ea9597f9d7c7f3df3025fd112
       - device: freedreno-a630
         checksum: b0f6e888784b7018d796aa3e3cd32aa2
-  - path: glxgears/glxgears.trace
+  - path: glxgears/glxgears-2.trace
     expectations:
       # inner rings are flat shaded when they should be smooth
       - device: freedreno-a306
-        checksum: b03e453c6588910fb2e6a889f01b3174
+        checksum: 3df913932335f17918c55aa70cfba817
       # bad shading on the inner ring of red
       - device: freedreno-a530
-        checksum: fce2d5ef8b93c19423de235e84ea963f
+        checksum: 4e980c27c1715a355d3226295b3885e9
       - device: freedreno-a630
-        checksum: 5599d6e8e43384c59196b9c9b0161268
+        checksum: 3ff0833c1456ad05fa9dab751decd838
   - path: gputest/furmark.trace
     expectations:
       # Triggers hangcheck on db410c
