@@ -807,15 +807,42 @@ midgard_tex_register_select;
 #define REG_TEX_BASE 28
 
 enum mali_texture_op {
-        TEXTURE_OP_NORMAL = 1,  /* texture */
-        TEXTURE_OP_LOD = 2,     /* textureLod */
-        TEXTURE_OP_TEXEL_FETCH = 4,
-        TEXTURE_OP_BARRIER = 11,
-        TEXTURE_OP_DERIVATIVE = 13
+        /* [texture + LOD bias]
+         * If the texture is mipmapped, barriers must be enabled in the
+         * instruction word in order for this opcode to compute the output
+         * correctly. */
+        midgard_tex_op_normal = 1,
+
+        /* [texture + gradient for LOD and anisotropy]
+         * Unlike midgard_tex_op_normal, this opcode does not require barriers
+         * to compute the output correctly. */
+        midgard_tex_op_gradient = 2,
+
+        /* [unfiltered texturing]
+         * Unlike midgard_tex_op_normal, this opcode does not require barriers
+         * to compute the output correctly. */
+        midgard_tex_op_fetch = 4,
+
+        /* [gradient from derivative] */
+        midgard_tex_op_grad_from_derivative = 9,
+
+        /* [mov] */
+        midgard_tex_op_mov = 10,
+
+        /* [noop]
+         * Mostly used for barriers. */
+        midgard_tex_op_barrier = 11,
+
+        /* [gradient from coords] */
+        midgard_tex_op_grad_from_coords = 12,
+
+        /* [derivative]
+         * Computes derivatives in 2x2 fragment blocks. */
+        midgard_tex_op_derivative = 13
 };
 
 enum mali_sampler_type {
-        MALI_SAMPLER_UNK        = 0x0,
+        /* 0 is reserved */
         MALI_SAMPLER_FLOAT      = 0x1, /* sampler */
         MALI_SAMPLER_UNSIGNED   = 0x2, /* usampler */
         MALI_SAMPLER_SIGNED     = 0x3, /* isampler */

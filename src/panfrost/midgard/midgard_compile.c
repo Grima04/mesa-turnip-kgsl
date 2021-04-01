@@ -1619,7 +1619,7 @@ emit_control_barrier(compiler_context *ctx)
                 .type = TAG_TEXTURE_4,
                 .dest = ~0,
                 .src = { ~0, ~0, ~0, ~0 },
-                .op = TEXTURE_OP_BARRIER,
+                .op = midgard_tex_op_barrier,
         };
 
         emit_mir_instruction(ctx, ins);
@@ -2213,7 +2213,7 @@ set_tex_coord(compiler_context *ctx, nir_tex_instr *instr,
 
         if (instr->sampler_dim == GLSL_SAMPLER_DIM_CUBE) {
                 /* texelFetch is undefined on samplerCube */
-                assert(ins->op != TEXTURE_OP_TEXEL_FETCH);
+                assert(ins->op != midgard_tex_op_fetch);
 
                 ins->src[1] = make_compiler_temp_reg(ctx);
 
@@ -2268,7 +2268,7 @@ set_tex_coord(compiler_context *ctx, nir_tex_instr *instr,
          * of texture dimensionality, which means it's necessary to zero the
          * unused components to keep everything happy.
          */
-        if (ins->op == TEXTURE_OP_TEXEL_FETCH &&
+        if (ins->op == midgard_tex_op_fetch &&
             (written_mask | write_mask) != 0xF) {
                 if (ins->src[1] == ~0)
                         ins->src[1] = make_compiler_temp_reg(ctx);
@@ -2361,7 +2361,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
                 case nir_tex_src_lod: {
                         /* Try as a constant if we can */
 
-                        bool is_txf = midgard_texop == TEXTURE_OP_TEXEL_FETCH;
+                        bool is_txf = midgard_texop == midgard_tex_op_fetch;
                         if (!is_txf && pan_attach_constant_bias(ctx, instr->src[i].src, &ins.texture))
                                 break;
 
@@ -2410,15 +2410,15 @@ emit_tex(compiler_context *ctx, nir_tex_instr *instr)
         switch (instr->op) {
         case nir_texop_tex:
         case nir_texop_txb:
-                emit_texop_native(ctx, instr, TEXTURE_OP_NORMAL);
+                emit_texop_native(ctx, instr, midgard_tex_op_normal);
                 break;
         case nir_texop_txl:
         case nir_texop_tg4:
-                emit_texop_native(ctx, instr, TEXTURE_OP_LOD);
+                emit_texop_native(ctx, instr, midgard_tex_op_gradient);
                 break;
         case nir_texop_txf:
         case nir_texop_txf_ms:
-                emit_texop_native(ctx, instr, TEXTURE_OP_TEXEL_FETCH);
+                emit_texop_native(ctx, instr, midgard_tex_op_fetch);
                 break;
         case nir_texop_txs:
                 emit_sysval_read(ctx, &instr->instr, 4, 0);

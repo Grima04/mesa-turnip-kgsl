@@ -261,6 +261,11 @@ struct mir_ldst_op_props {
         unsigned props;
 };
 
+struct mir_tex_op_props {
+        const char *name;
+        unsigned props;
+};
+
 struct mir_tag_props {
         const char *name;
         unsigned size;

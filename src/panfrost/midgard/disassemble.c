@@ -112,6 +112,15 @@ print_ld_st_opcode(FILE *fp, midgard_load_store_op op)
 }
 
 static void
+validate_sampler_type(enum mali_texture_op op, enum mali_sampler_type sampler_type)
+{
+        if (op == midgard_tex_op_mov || op == midgard_tex_op_barrier)
+                assert(sampler_type == 0);
+        else
+                assert(sampler_type > 0);
+}
+
+static void
 validate_expand_mode(midgard_src_expand_mode expand_mode,
                      midgard_reg_mode reg_mode)
 {
@@ -782,12 +791,8 @@ print_ldst_mask(FILE *fp, unsigned mask, unsigned swizzle) {
         }
 }
 
-/* Prints the 4-bit masks found in texture and load/store ops, as opposed to
- * the 8-bit masks found in (vector) ALU ops. Supports texture-style 16-bit
- * mode as well, but not load/store-style 16-bit mode. */
-
 static void
-print_mask_4(FILE *fp, unsigned mask, bool upper)
+print_tex_mask(FILE *fp, unsigned mask, bool upper)
 {
         if (mask == 0xF) {
                 if (upper)
@@ -1537,7 +1542,7 @@ print_texture_reg_select(FILE *fp, uint8_t u, unsigned base)
                 component += 4;
         }
 
-        fprintf(fp, ".%c", components[component]);
+        fprintf(fp, ".%c.%d", components[component], sel.full ? 32 : 16);
 
         assert(sel.zero == 0);
 }
@@ -1563,8 +1568,8 @@ static bool
 midgard_op_has_helpers(unsigned op)
 {
         switch (op) {
-        case TEXTURE_OP_NORMAL:
-        case TEXTURE_OP_DERIVATIVE:
+        case midgard_tex_op_normal:
+        case midgard_tex_op_derivative:
                 return true;
         default:
                 return false;
@@ -1574,23 +1579,16 @@ midgard_op_has_helpers(unsigned op)
 static void
 print_texture_op(FILE *fp, unsigned op)
 {
-        switch (op) {
-                DEFINE_CASE(TEXTURE_OP_NORMAL, "texture");
-                DEFINE_CASE(TEXTURE_OP_LOD, "textureLod");
-                DEFINE_CASE(TEXTURE_OP_TEXEL_FETCH, "texelFetch");
-                DEFINE_CASE(TEXTURE_OP_BARRIER, "barrier");
-                DEFINE_CASE(TEXTURE_OP_DERIVATIVE, "derivative");
-
-        default:
-                fprintf(fp, "tex_%X", op);
-                break;
-        }
+        if (tex_opcode_props[op].name)
+                fprintf(fp, "%s", tex_opcode_props[op].name);
+        else
+                fprintf(fp, "tex_op_%02X", op);
 }
 
 static bool
 texture_op_takes_bias(unsigned op)
 {
-        return op == TEXTURE_OP_NORMAL;
+        return op == midgard_tex_op_normal;
 }
 
 static char
@@ -1676,12 +1674,13 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
 {
         midgard_texture_word *texture = (midgard_texture_word *) word;
         midg_stats.helper_invocations |= midgard_op_has_helpers(texture->op);
+        validate_sampler_type(texture->op, texture->sampler_type);
 
         /* Broad category of texture operation in question */
         print_texture_op(fp, texture->op);
 
         /* Barriers use a dramatically different code path */
-        if (texture->op == TEXTURE_OP_BARRIER) {
+        if (texture->op == midgard_tex_op_barrier) {
                 print_texture_barrier(fp, word);
                 return;
         } else if (texture->type == TAG_TEXTURE_4_BARRIER)
@@ -1689,7 +1688,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         else if (texture->type == TAG_TEXTURE_4_VTX)
                 fprintf (fp, ".vtx");
 
-        if (texture->op == TEXTURE_OP_DERIVATIVE)
+        if (texture->op == midgard_tex_op_derivative)
                 fprintf(fp, "%s", derivative_mode(texture->mode));
         else
                 fprintf(fp, "%s", texture_mode(texture->mode));
@@ -1709,8 +1708,10 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
                 fprintf(fp, ".ooo%u", texture->out_of_order);
 
         fprintf(fp, " ");
-        print_tex_reg(fp, texture->out_reg_select, true);
-        print_mask_4(fp, texture->mask, texture->out_upper);
+        print_tex_reg(fp, out_reg_base + texture->out_reg_select, true);
+        print_tex_mask(fp, texture->mask, texture->out_upper);
+        fprintf(fp, ".%c%d", texture->sampler_type == MALI_SAMPLER_FLOAT ? 'f' : 'i',
+                             texture->out_full ? 32 : 16);
         assert(!(texture->out_full && texture->out_upper));
 
         /* Output modifiers are only valid for float texture operations */
@@ -1756,6 +1757,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
                 texture->in_reg_upper ? midgard_src_expand_high : midgard_src_passthrough;
         print_tex_reg(fp, in_reg_base + texture->in_reg_select, false);
         print_vec_swizzle(fp, texture->in_reg_swizzle, exp, midgard_reg_mode_32, 0xFF);
+        fprintf(fp, ".%d", texture->in_reg_full ? 32 : 16);
         assert(!(texture->in_reg_full && texture->in_reg_upper));
 
         /* There is *always* an offset attached. Of
@@ -1771,6 +1773,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
         if (texture->offset_register) {
                 fprintf(fp, " + ");
 
+                bool full = texture->offset & 1;
                 bool select = texture->offset & 2;
                 bool upper = texture->offset & 4;
                 unsigned swizzle = texture->offset >> 3;
@@ -1779,6 +1782,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
 
                 print_tex_reg(fp, in_reg_base + select, false);
                 print_vec_swizzle(fp, swizzle, exp, midgard_reg_mode_32, 0xFF);
+                fprintf(fp, ".%d", full ? 32 : 16);
                 assert(!(texture->out_full && texture->out_upper));
 
                 fprintf(fp, ", ");
@@ -1794,7 +1798,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
                 bool neg_z = offset_z < 0;
                 bool any_neg = neg_x || neg_y || neg_z;
 
-                if (any_neg && texture->op != TEXTURE_OP_TEXEL_FETCH)
+                if (any_neg && texture->op != midgard_tex_op_fetch)
                         fprintf(fp, "/* invalid negative */ ");
 
                 /* Regardless, just print the immediate offset */
@@ -1813,7 +1817,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
 
                 if (texture->bias_int)
                         fprintf(fp, " /* bias_int = 0x%X */", texture->bias_int);
-        } else if (texture->op == TEXTURE_OP_TEXEL_FETCH) {
+        } else if (texture->op == midgard_tex_op_fetch) {
                 /* For texel fetch, the int LOD is in the fractional place and
                  * there is no fraction. We *always* have an explicit LOD, even
                  * if it's zero. */

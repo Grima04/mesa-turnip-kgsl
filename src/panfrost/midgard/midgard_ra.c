@@ -744,7 +744,7 @@ install_registers_instr(
         }
 
         case TAG_TEXTURE_4: {
-                if (ins->op == TEXTURE_OP_BARRIER)
+                if (ins->op == midgard_tex_op_barrier)
                         break;
 
                 /* Grab RA results */

@@ -360,6 +360,17 @@ struct mir_ldst_op_props load_store_opcode_props[256] = {
         [midgard_op_st_tilebuffer_raw] = {"ST_TILEBUFFER.raw", M32},
 };
 
+struct mir_tex_op_props tex_opcode_props[256] = {
+        [midgard_tex_op_normal] = {"TEX", M32},
+        [midgard_tex_op_gradient] = {"TEX_GRAD", M32},
+        [midgard_tex_op_fetch] = {"TEX_FETCH", M32},
+        [midgard_tex_op_grad_from_derivative] = {"DER_TO_GRAD", M32},
+        [midgard_tex_op_grad_from_coords] = {"COORDS_TO_GRAD", M32},
+        [midgard_tex_op_mov] = {"MOV", M32},
+        [midgard_tex_op_barrier] = {"BARRIER", M32},
+        [midgard_tex_op_derivative] = {"DERIVATIVE", M32}
+};
+
 #undef M8
 #undef M16
 #undef M32
