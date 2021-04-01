@@ -635,6 +635,7 @@ blorp_nir_combine_samples(nir_builder *b, struct brw_blorp_blit_vars *v,
     * operations and skip the final division.
     */
    nir_ssa_def *texture_data[5];
+   texture_data[0] = NULL; /* Avoid maybe-uninitialized warning with GCC 10 */
    unsigned stack_depth = 0;
    for (unsigned i = 0; i < tex_samples; ++i) {
       assert(stack_depth == util_bitcount(i)); /* Loop invariant */
