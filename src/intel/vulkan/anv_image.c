@@ -1346,13 +1346,11 @@ anv_image_create(VkDevice _device,
                            IMAGE_FORMAT_LIST_CREATE_INFO_KHR);
 
    if (mod_explicit_info) {
-      assert(create_info->stride == 0);
       r = add_all_surfaces_explicit_layout(device, image, fmt_list,
                                            mod_explicit_info, isl_tiling_flags,
                                            create_info->isl_extra_usage_flags);
    } else {
-      r = add_all_surfaces_implicit_layout(device, image, fmt_list,
-                                           create_info->stride,
+      r = add_all_surfaces_implicit_layout(device, image, fmt_list, 0,
                                            isl_tiling_flags,
                                            create_info->isl_extra_usage_flags);
    }
