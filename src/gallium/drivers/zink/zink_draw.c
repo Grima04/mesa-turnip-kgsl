@@ -343,8 +343,8 @@ zink_draw_vbo(struct pipe_context *pctx,
       for (unsigned i = 0; i < ctx->element_state->hw_state.num_bindings; i++) {
          unsigned binding = ctx->element_state->binding_map[i];
          const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + binding;
-         if (ctx->gfx_pipeline_state.bindings[i].stride != vb->stride) {
-            ctx->gfx_pipeline_state.bindings[i].stride = vb->stride;
+         if (ctx->gfx_pipeline_state.vertex_strides[i] != vb->stride) {
+            ctx->gfx_pipeline_state.vertex_strides[i] = vb->stride;
             ctx->gfx_pipeline_state.dirty = true;
          }
       }

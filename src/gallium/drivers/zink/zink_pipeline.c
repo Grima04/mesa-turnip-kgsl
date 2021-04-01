@@ -43,17 +43,17 @@ zink_create_gfx_pipeline(struct zink_screen *screen,
 {
    VkPipelineVertexInputStateCreateInfo vertex_input_state = {};
    vertex_input_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-   vertex_input_state.pVertexBindingDescriptions = state->bindings;
+   vertex_input_state.pVertexBindingDescriptions = state->element_state->bindings;
    vertex_input_state.vertexBindingDescriptionCount = state->element_state->num_bindings;
    vertex_input_state.pVertexAttributeDescriptions = state->element_state->attribs;
    vertex_input_state.vertexAttributeDescriptionCount = state->element_state->num_attribs;
 
    VkPipelineVertexInputDivisorStateCreateInfoEXT vdiv_state = {};
-   if (state->divisors_present) {
+   if (state->element_state->divisors_present) {
        vertex_input_state.pNext = &vdiv_state;
        vdiv_state.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT;
-       vdiv_state.vertexBindingDivisorCount = state->divisors_present;
-       vdiv_state.pVertexBindingDivisors = state->divisors;
+       vdiv_state.vertexBindingDivisorCount = state->element_state->divisors_present;
+       vdiv_state.pVertexBindingDivisors = state->element_state->divisors;
    }
 
    VkPipelineInputAssemblyStateCreateInfo primitive_state = {};

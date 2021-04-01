@@ -76,6 +76,15 @@ zink_create_vertex_elements_state(struct pipe_context *pctx,
 
    ves->hw_state.num_bindings = num_bindings;
    ves->hw_state.num_attribs = num_elements;
+   for (int i = 0; i < num_bindings; ++i) {
+      ves->hw_state.bindings[i].binding = ves->bindings[i].binding;
+      ves->hw_state.bindings[i].inputRate = ves->bindings[i].inputRate;
+      if (ves->divisor[i]) {
+         ves->hw_state.divisors[ves->hw_state.divisors_present].divisor = ves->divisor[i];
+         ves->hw_state.divisors[ves->hw_state.divisors_present].binding = ves->bindings[i].binding;
+         ves->hw_state.divisors_present++;
+      }
+   }
    return ves;
 }
 
@@ -87,19 +96,8 @@ zink_bind_vertex_elements_state(struct pipe_context *pctx,
    struct zink_gfx_pipeline_state *state = &ctx->gfx_pipeline_state;
    ctx->element_state = cso;
    state->dirty = true;
-   state->divisors_present = 0;
    if (cso) {
       state->element_state = &ctx->element_state->hw_state;
-      struct zink_vertex_elements_state *ves = cso;
-      for (int i = 0; i < state->element_state->num_bindings; ++i) {
-         state->bindings[i].binding = ves->bindings[i].binding;
-         state->bindings[i].inputRate = ves->bindings[i].inputRate;
-         if (ves->divisor[i]) {
-            state->divisors[state->divisors_present].divisor = ves->divisor[i];
-            state->divisors[state->divisors_present].binding = state->bindings[i].binding;
-            state->divisors_present++;
-         }
-      }
    } else
      state->element_state = NULL;
 }

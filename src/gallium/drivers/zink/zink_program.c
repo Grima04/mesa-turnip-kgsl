@@ -379,11 +379,9 @@ hash_gfx_pipeline_state(const void *key)
       hash = XXH32(&vertex_buffers_enabled_mask, sizeof(uint32_t), hash);
       while (vertex_buffers_enabled_mask) {
          unsigned idx = u_bit_scan(&vertex_buffers_enabled_mask);
-         hash = XXH32(&state->bindings[idx], sizeof(VkVertexInputBindingDescription), hash);
+         hash = XXH32(&state->vertex_strides[idx], sizeof(uint32_t), hash);
       }
    }
-   for (unsigned i = 0; i < state->divisors_present; i++)
-      hash = XXH32(&state->divisors[i], sizeof(VkVertexInputBindingDivisorDescriptionEXT), hash);
    return _mesa_hash_data(key, offsetof(struct zink_gfx_pipeline_state, hash));
 }
 
@@ -401,19 +399,7 @@ equals_gfx_pipeline_state(const void *a, const void *b)
       while (mask_a || mask_b) {
          unsigned idx_a = u_bit_scan(&mask_a);
          unsigned idx_b = u_bit_scan(&mask_b);
-         if (memcmp(&sa->bindings[idx_a], &sb->bindings[idx_b], sizeof(VkVertexInputBindingDescription)))
-            return false;
-      }
-   }
-   if (sa->divisors_present != sb->divisors_present)
-      return false;
-   if (sa->divisors_present && sb->divisors_present) {
-      uint32_t divisors_present_a = sa->divisors_present;
-      uint32_t divisors_present_b = sb->divisors_present;
-      while (divisors_present_a || divisors_present_b) {
-         unsigned idx_a = u_bit_scan(&divisors_present_a);
-         unsigned idx_b = u_bit_scan(&divisors_present_b);
-         if (memcmp(&sa->divisors[idx_a], &sb->divisors[idx_b], sizeof(VkVertexInputBindingDivisorDescriptionEXT)))
+         if (sa->vertex_strides[idx_a] != sb->vertex_strides[idx_b])
             return false;
       }
    }

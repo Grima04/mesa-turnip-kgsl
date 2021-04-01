@@ -41,7 +41,6 @@ struct zink_gfx_pipeline_state {
    struct zink_render_pass *render_pass;
 
    struct zink_vertex_elements_hw_state *element_state;
-   uint8_t divisors_present;
 
    uint32_t num_attachments;
    struct zink_blend_state *blend_state;
@@ -69,9 +68,8 @@ struct zink_gfx_pipeline_state {
    uint32_t combined_hash;
    bool combined_dirty;
 
-   VkVertexInputBindingDivisorDescriptionEXT divisors[PIPE_MAX_ATTRIBS];
-   VkVertexInputBindingDescription bindings[PIPE_MAX_ATTRIBS]; // combination of element_state and stride
    uint32_t vertex_buffers_enabled_mask;
+   uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
    bool have_EXT_extended_dynamic_state;
 };
 
