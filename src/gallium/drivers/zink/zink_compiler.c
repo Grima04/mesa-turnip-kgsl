@@ -540,11 +540,11 @@ assign_io_locations(nir_shader *nir, unsigned char *shader_slot_map,
          if (var->data.patch) {
             assert(var->data.location >= VARYING_SLOT_PATCH0);
             slot = var->data.location - VARYING_SLOT_PATCH0;
-         } else if ((var->data.mode == nir_var_shader_out &&
+         } else if (var->data.location >= VARYING_SLOT_VAR0 &&
+                     ((var->data.mode == nir_var_shader_out &&
                      nir->info.stage == MESA_SHADER_TESS_CTRL) ||
                     (var->data.mode != nir_var_shader_out &&
-                     nir->info.stage == MESA_SHADER_TESS_EVAL)) {
-            assert(var->data.location >= VARYING_SLOT_VAR0);
+                     nir->info.stage == MESA_SHADER_TESS_EVAL))) {
             slot = var->data.location - VARYING_SLOT_VAR0;
          } else {
             if (shader_slot_map[var->data.location] == 0xff) {
