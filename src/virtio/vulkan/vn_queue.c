@@ -494,34 +494,16 @@ VkResult
 vn_QueueWaitIdle(VkQueue _queue)
 {
    struct vn_queue *queue = vn_queue_from_handle(_queue);
-   struct vn_device *dev = queue->device;
-   struct vn_renderer *renderer = dev->instance->renderer;
+   VkDevice device = vn_device_to_handle(queue->device);
 
-   vn_instance_ring_wait(dev->instance);
+   VkResult result = vn_QueueSubmit(_queue, 0, NULL, queue->wait_fence);
+   if (result != VK_SUCCESS)
+      return result;
 
-   const uint64_t val = ++queue->idle_sync_value;
-   const struct vn_renderer_submit submit = {
-      .batches =
-         &(const struct vn_renderer_submit_batch){
-            .sync_queue_index = queue->sync_queue_index,
-            .vk_queue_id = queue->base.id,
-            .syncs = &queue->idle_sync,
-            .sync_values = &val,
-            .sync_count = 1,
-         },
-      .batch_count = 1,
-   };
-   vn_renderer_submit(renderer, &submit);
+   result = vn_WaitForFences(device, 1, &queue->wait_fence, true, UINT64_MAX);
+   vn_ResetFences(device, 1, &queue->wait_fence);
 
-   const struct vn_renderer_wait wait = {
-      .timeout = UINT64_MAX,
-      .syncs = &queue->idle_sync,
-      .sync_values = &val,
-      .sync_count = 1,
-   };
-   VkResult result = vn_renderer_wait(renderer, &wait);
-
-   return vn_result(dev->instance, result);
+   return vn_result(queue->device->instance, result);
 }
 
 /* fence commands */

@@ -2835,6 +2835,16 @@ vn_EnumerateDeviceLayerProperties(VkPhysicalDevice physicalDevice,
    return VK_SUCCESS;
 }
 
+static void
+vn_queue_fini(struct vn_queue *queue)
+{
+   if (queue->wait_fence != VK_NULL_HANDLE) {
+      vn_DestroyFence(vn_device_to_handle(queue->device), queue->wait_fence,
+                      NULL);
+   }
+   vn_object_base_fini(&queue->base);
+}
+
 static VkResult
 vn_queue_init(struct vn_device *dev,
               struct vn_queue *queue,
@@ -2863,7 +2873,11 @@ vn_queue_init(struct vn_device *dev,
    queue->sync_queue_index = sync_queue_index;
 
    VkResult result =
-      vn_renderer_sync_create_cpu(dev->instance->renderer, &queue->idle_sync);
+      vn_CreateFence(vn_device_to_handle(dev),
+                     &(const VkFenceCreateInfo){
+                        .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+                     },
+                     NULL, &queue->wait_fence);
    if (result != VK_SUCCESS)
       return result;
 
@@ -2908,7 +2922,7 @@ vn_device_init_queues(struct vn_device *dev,
 
    if (result != VK_SUCCESS) {
       for (uint32_t i = 0; i < count; i++)
-         vn_renderer_sync_destroy(queues[i].idle_sync);
+         vn_queue_fini(&queues[i]);
       vk_free(alloc, queues);
 
       return result;
@@ -3068,14 +3082,11 @@ vn_DestroyDevice(VkDevice device, const VkAllocationCallbacks *pAllocator)
    for (uint32_t i = 0; i < ARRAY_SIZE(dev->memory_pools); i++)
       vn_device_memory_pool_fini(dev, i);
 
-   vn_async_vkDestroyDevice(dev->instance, device, NULL);
-
-   for (uint32_t i = 0; i < dev->queue_count; i++) {
-      struct vn_queue *queue = &dev->queues[i];
-      vn_renderer_sync_destroy(queue->idle_sync);
-      vn_object_base_fini(&queue->base);
-   }
+   for (uint32_t i = 0; i < dev->queue_count; i++)
+      vn_queue_fini(&dev->queues[i]);
    vk_free(alloc, dev->queues);
+
+   vn_async_vkDestroyDevice(dev->instance, device, NULL);
 
    vn_device_base_fini(&dev->base);
    vk_free(alloc, dev);
