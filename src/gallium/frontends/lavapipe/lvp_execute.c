@@ -1160,29 +1160,42 @@ static void handle_descriptor_sets(struct lvp_cmd_buffer_entry *cmd,
    }
 }
 
+static struct pipe_surface *create_img_surface_bo(struct rendering_state *state,
+                                                  VkImageSubresourceRange *range,
+                                                  struct pipe_resource *bo,
+                                                  enum pipe_format pformat,
+                                                  int width,
+                                                  int height,
+                                                  int base_layer, int layer_count,
+                                                  int level)
+{
+   struct pipe_surface template;
+
+   memset(&template, 0, sizeof(struct pipe_surface));
+
+   template.format = pformat;
+   template.width = width;
+   template.height = height;
+   template.u.tex.first_layer = range->baseArrayLayer + base_layer;
+   template.u.tex.last_layer = range->baseArrayLayer + layer_count;
+   template.u.tex.level = range->baseMipLevel + level;
+
+   if (template.format == PIPE_FORMAT_NONE)
+      return NULL;
+   return state->pctx->create_surface(state->pctx,
+                                      bo, &template);
+
+}
 static struct pipe_surface *create_img_surface(struct rendering_state *state,
                                                struct lvp_image_view *imgv,
                                                VkFormat format, int width,
                                                int height,
                                                int base_layer, int layer_count)
 {
-   struct pipe_surface template;
-
-   memset(&template, 0, sizeof(struct pipe_surface));
-
-   template.format = vk_format_to_pipe(format);
-   template.width = width;
-   template.height = height;
-   template.u.tex.first_layer = imgv->subresourceRange.baseArrayLayer + base_layer;
-   template.u.tex.last_layer = imgv->subresourceRange.baseArrayLayer + layer_count;
-   template.u.tex.level = imgv->subresourceRange.baseMipLevel;
-
-   if (template.format == PIPE_FORMAT_NONE)
-      return NULL;
-   return state->pctx->create_surface(state->pctx,
-                                      imgv->image->bo, &template);
-
+   return create_img_surface_bo(state, &imgv->subresourceRange, imgv->image->bo,
+                                vk_format_to_pipe(format), width, height, base_layer, layer_count, 0);
 }
+
 static void add_img_view_surface(struct rendering_state *state,
                                  struct lvp_image_view *imgv, VkFormat format, int width, int height)
 {
@@ -2464,33 +2477,35 @@ static void handle_clear_ds_image(struct lvp_cmd_buffer_entry *cmd,
                                   struct rendering_state *state)
 {
    struct lvp_image *image = cmd->u.clear_ds_image.image;
-   uint64_t col_val;
-   col_val = util_pack64_z_stencil(image->bo->format, cmd->u.clear_ds_image.clear_val.depth, cmd->u.clear_ds_image.clear_val.stencil);
    for (unsigned i = 0; i < cmd->u.clear_ds_image.range_count; i++) {
       VkImageSubresourceRange *range = &cmd->u.clear_ds_image.ranges[i];
-      struct pipe_box box;
-      box.x = 0;
-      box.y = 0;
-      box.z = 0;
+      uint32_t ds_clear_flags = 0;
+      if (range->aspectMask & VK_IMAGE_ASPECT_DEPTH_BIT)
+         ds_clear_flags |= PIPE_CLEAR_DEPTH;
+      if (range->aspectMask & VK_IMAGE_ASPECT_STENCIL_BIT)
+         ds_clear_flags |= PIPE_CLEAR_STENCIL;
 
       uint32_t level_count = lvp_get_levelCount(image, range);
-      for (unsigned j = range->baseMipLevel; j < range->baseMipLevel + level_count; j++) {
-         box.width = u_minify(image->bo->width0, j);
-         box.height = u_minify(image->bo->height0, j);
-         box.depth = 1;
-         if (image->bo->target == PIPE_TEXTURE_3D)
-            box.depth = u_minify(image->bo->depth0, j);
-         else if (image->bo->target == PIPE_TEXTURE_1D_ARRAY) {
-            box.y = range->baseArrayLayer;
-            box.height = lvp_get_layerCount(image, range);
-            box.depth = 1;
-         } else {
-            box.z = range->baseArrayLayer;
-            box.depth = lvp_get_layerCount(image, range);
-         }
+      for (unsigned j = 0; j < level_count; j++) {
+         struct pipe_surface *surf;
+         unsigned width, height;
 
-         state->pctx->clear_texture(state->pctx, image->bo,
-                                    j, &box, (void *)&col_val);
+         width = u_minify(image->bo->width0, range->baseMipLevel + j);
+         height = u_minify(image->bo->height0, range->baseMipLevel + j);
+
+         surf = create_img_surface_bo(state, range,
+                                      image->bo, image->bo->format,
+                                      width, height,
+                                      0, lvp_get_layerCount(image, range) - 1, j);
+
+         state->pctx->clear_depth_stencil(state->pctx,
+                                          surf,
+                                          ds_clear_flags,
+                                          cmd->u.clear_ds_image.clear_val.depth,
+                                          cmd->u.clear_ds_image.clear_val.stencil,
+                                          0, 0,
+                                          width, height, true);
+         state->pctx->surface_destroy(state->pctx, surf);
       }
    }
 }
