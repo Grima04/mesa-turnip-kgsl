@@ -51,6 +51,35 @@ memory_range_end(struct anv_image_memory_range memory_range)
 }
 
 /**
+ * Get binding for VkImagePlaneMemoryRequirementsInfo and
+ * VkBindImagePlaneMemoryInfo.
+ */
+static struct anv_image_binding *
+image_aspect_to_binding(struct anv_image *image, VkImageAspectFlags aspect)
+{
+   uint32_t plane;
+
+   assert(image->disjoint);
+
+   if (image->tiling == VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT) {
+      /* Spec requires special aspects for modifier images. */
+      assert(aspect >= VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT &&
+             aspect <= VK_IMAGE_ASPECT_MEMORY_PLANE_3_BIT_EXT);
+
+      /* We don't advertise DISJOINT for modifiers with aux, and therefore we
+       * don't handle queries of the modifier's "aux plane" here.
+       */
+      assert(!isl_drm_modifier_has_aux(image->drm_format_mod));
+
+      plane = aspect - VK_IMAGE_ASPECT_MEMORY_PLANE_0_BIT_EXT;
+   } else {
+      plane = anv_image_aspect_to_plane(image->aspects, aspect);
+   }
+
+   return &image->bindings[ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane];
+}
+
+/**
  * Extend the memory binding's range by appending a new memory range with the
  * given size and alignment. Return the appended range.
  *
@@ -1396,10 +1425,8 @@ void anv_GetImageMemoryRequirements2(
       case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
          assert(image->disjoint);
          plane_reqs = (const VkImagePlaneMemoryRequirementsInfo *) ext;
-         uint32_t plane = anv_image_aspect_to_plane(image->aspects,
-                                                    plane_reqs->planeAspect);
          const struct anv_image_binding *binding =
-            &image->bindings[ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane];
+            image_aspect_to_binding(image, plane_reqs->planeAspect);
 
          pMemoryRequirements->memoryRequirements = (VkMemoryRequirements) {
             .size = binding->memory_range.size,
@@ -1505,9 +1532,6 @@ VkResult anv_BindImageMemory2(
             const VkBindImagePlaneMemoryInfo *plane_info =
                (const VkBindImagePlaneMemoryInfo *) s;
 
-            uint32_t plane = anv_image_aspect_to_plane(image->aspects,
-                                                       plane_info->planeAspect);
-
             /* Workaround for possible spec bug.
              *
              * Unlike VkImagePlaneMemoryRequirementsInfo, which requires that
@@ -1518,16 +1542,16 @@ VkResult anv_BindImageMemory2(
              * VkImagePlaneMemoryRequirementsInfo::planeAspect, the behavior is
              * the same as if VkImagePlaneMemoryRequirementsInfo were omitted.
              */
-            if (!image->disjoint) {
-               assert(plane == 0);
+            if (!image->disjoint)
                break;
-            }
 
-            image->bindings[ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane].address =
-               (struct anv_address) {
-                  .bo = mem->bo,
-                  .offset = bind_info->memoryOffset,
-               };
+            struct anv_image_binding *binding =
+               image_aspect_to_binding(image, plane_info->planeAspect);
+
+            binding->address = (struct anv_address) {
+               .bo = mem->bo,
+               .offset = bind_info->memoryOffset,
+            };
 
             did_bind = true;
             break;
