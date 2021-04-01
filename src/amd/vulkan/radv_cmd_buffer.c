@@ -1636,10 +1636,10 @@ radv_emit_fb_color_state(struct radv_cmd_buffer *cmd_buffer,
 		cb_color_info &= C_028C70_DCC_ENABLE;
 	}
 
-	if (!radv_layout_can_fast_clear(cmd_buffer->device, image, layout, in_render_loop,
-	                                radv_image_queue_family_mask(image,
-	                                                             cmd_buffer->queue_family_index,
-	                                                             cmd_buffer->queue_family_index))) {
+	if (!radv_layout_fmask_compressed(cmd_buffer->device, image, layout,
+					  radv_image_queue_family_mask(image,
+								       cmd_buffer->queue_family_index,
+								       cmd_buffer->queue_family_index))) {
 		cb_color_info &= C_028C70_COMPRESSION;
 	}
 

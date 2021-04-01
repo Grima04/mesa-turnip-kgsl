@@ -1925,6 +1925,11 @@ bool radv_layout_dcc_compressed(const struct radv_device *device,
 			        bool in_render_loop,
 			        unsigned queue_mask);
 
+bool radv_layout_fmask_compressed(const struct radv_device *device,
+				  const struct radv_image *image,
+				  VkImageLayout layout,
+				  unsigned queue_mask);
+
 /**
  * Return whether the image has CMASK metadata for color surfaces.
  */

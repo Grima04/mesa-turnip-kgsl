@@ -2131,6 +2131,15 @@ bool radv_layout_dcc_compressed(const struct radv_device *device,
 	        layout != VK_IMAGE_LAYOUT_GENERAL);
 }
 
+bool radv_layout_fmask_compressed(const struct radv_device *device,
+				  const struct radv_image *image,
+				  VkImageLayout layout,
+				  unsigned queue_mask)
+{
+	return radv_image_has_fmask(image) &&
+	       layout != VK_IMAGE_LAYOUT_GENERAL &&
+	       queue_mask == (1u << RADV_QUEUE_GENERAL);
+}
 
 unsigned radv_image_queue_family_mask(const struct radv_image *image, uint32_t family, uint32_t queue_family)
 {
