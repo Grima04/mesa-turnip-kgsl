@@ -421,7 +421,7 @@ Vulkan 1.0 -- all DONE: anv, lvp, radv, tu, v3dv
 
 Vulkan 1.1 -- all DONE: anv, radv
 
-  VK_KHR_16bit_storage                                  DONE (anv/gen8+, lvp, radv)
+  VK_KHR_16bit_storage                                  DONE (anv/gen8+, lvp, radv, tu/a650)
   VK_KHR_bind_memory2                                   DONE (anv, lvp, radv, tu)
   VK_KHR_dedicated_allocation                           DONE (anv, lvp, radv, tu)
   VK_KHR_descriptor_update_template                     DONE (anv, lvp, radv, tu)
@@ -458,8 +458,8 @@ Vulkan 1.2 -- all DONE: anv
   VK_KHR_sampler_mirror_clamp_to_edge                   DONE (anv, lvp, radv, tu)
   VK_KHR_separate_depth_stencil_layouts                 DONE (anv, radv)
   VK_KHR_shader_atomic_int64                            DONE (anv/gen9+, lvp, radv)
-  VK_KHR_shader_float16_int8                            DONE (anv/gen8+, radv)
-  VK_KHR_shader_float_controls                          DONE (anv/gen8+, radv)
+  VK_KHR_shader_float16_int8                            DONE (anv/gen8+, radv, tu)
+  VK_KHR_shader_float_controls                          DONE (anv/gen8+, radv, tu)
   VK_KHR_shader_subgroup_extended_types                 DONE (anv/gen8+, radv)
   VK_KHR_spirv_1_4                                      DONE (anv, radv)
   VK_KHR_timeline_semaphore                             DONE (anv, radv)
