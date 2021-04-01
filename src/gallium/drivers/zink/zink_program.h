@@ -149,7 +149,7 @@ zink_destroy_gfx_program(struct zink_screen *screen,
                          struct zink_gfx_program *prog);
 
 VkPipeline
-zink_get_gfx_pipeline(struct zink_screen *screen,
+zink_get_gfx_pipeline(struct zink_context *ctx,
                       struct zink_gfx_program *prog,
                       struct zink_gfx_pipeline_state *state,
                       enum pipe_prim_type mode);

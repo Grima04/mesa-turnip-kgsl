@@ -339,17 +339,6 @@ zink_draw_vbo(struct pipe_context *pctx,
       ctx->gfx_pipeline_state.dirty = true;
    ctx->gfx_pipeline_state.primitive_restart = !!dinfo->primitive_restart;
 
-   if (!zink_screen(pctx->screen)->info.have_EXT_extended_dynamic_state) {
-      for (unsigned i = 0; i < ctx->element_state->hw_state.num_bindings; i++) {
-         unsigned binding = ctx->element_state->binding_map[i];
-         const struct pipe_vertex_buffer *vb = ctx->vertex_buffers + binding;
-         if (ctx->gfx_pipeline_state.vertex_strides[i] != vb->stride) {
-            ctx->gfx_pipeline_state.vertex_strides[i] = vb->stride;
-            ctx->gfx_pipeline_state.dirty = true;
-         }
-      }
-   }
-
    enum pipe_prim_type reduced_prim = u_reduced_prim(dinfo->mode);
 
    bool depth_bias = false;
@@ -488,7 +477,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       vkCmdSetBlendConstants(batch->state->cmdbuf, ctx->blend_constants);
 
 
-   VkPipeline pipeline = zink_get_gfx_pipeline(screen, gfx_program,
+   VkPipeline pipeline = zink_get_gfx_pipeline(ctx, gfx_program,
                                                &ctx->gfx_pipeline_state,
                                                dinfo->mode);
    vkCmdBindPipeline(batch->state->cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);

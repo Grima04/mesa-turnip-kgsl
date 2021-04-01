@@ -40,8 +40,6 @@ struct zink_vertex_elements_state;
 struct zink_gfx_pipeline_state {
    struct zink_render_pass *render_pass;
 
-   struct zink_vertex_elements_hw_state *element_state;
-
    uint32_t num_attachments;
    struct zink_blend_state *blend_state;
 
@@ -67,6 +65,11 @@ struct zink_gfx_pipeline_state {
 
    uint32_t combined_hash;
    bool combined_dirty;
+
+   struct zink_vertex_elements_hw_state *element_state;
+   bool vertex_state_dirty;
+
+   uint32_t final_hash;
 
    uint32_t vertex_buffers_enabled_mask;
    uint32_t vertex_strides[PIPE_MAX_ATTRIBS];
