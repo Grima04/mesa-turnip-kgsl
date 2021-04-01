@@ -174,8 +174,6 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
 
    submit->sync_count =
       submit->signal_semaphore_count - submit->signal_device_only_count;
-   if (submit->fence != VK_NULL_HANDLE)
-      submit->sync_count++;
 }
 
 static VkResult
@@ -358,23 +356,6 @@ vn_queue_submission_setup_batch_syncs(struct vn_queue_submission *submit,
    return sync_count;
 }
 
-static uint32_t
-vn_queue_submission_setup_fence_sync(struct vn_queue_submission *submit,
-                                     uint32_t sync_base)
-{
-   if (submit->fence == VK_NULL_HANDLE)
-      return 0;
-
-   struct vn_fence *fence = vn_fence_from_handle(submit->fence);
-   struct vn_sync_payload *payload = fence->payload;
-
-   assert(payload->type == VN_SYNC_TYPE_SYNC);
-   submit->temp.syncs[sync_base] = payload->sync;
-   submit->temp.sync_values[sync_base] = 1;
-
-   return 1;
-}
-
 static void
 vn_queue_submission_setup_batches(struct vn_queue_submission *submit)
 {
@@ -415,8 +396,6 @@ vn_queue_submission_setup_batches(struct vn_queue_submission *submit)
          submit->temp.batch_sync_counts[i] = 0;
       }
    }
-
-   sync_base += vn_queue_submission_setup_fence_sync(submit, sync_base);
 
    assert(sync_base == submit->sync_count);
 }
@@ -711,8 +690,8 @@ vn_fence_init_payloads(struct vn_device *dev,
                        const VkAllocationCallbacks *alloc)
 {
    struct vn_renderer_sync *perm_sync;
-   VkResult result = vn_renderer_sync_create_fence(dev->instance->renderer,
-                                                   signaled, 0, &perm_sync);
+   VkResult result =
+      vn_renderer_sync_create_empty(dev->instance->renderer, &perm_sync);
    if (result != VK_SUCCESS)
       return result;
 
@@ -724,7 +703,8 @@ vn_fence_init_payloads(struct vn_device *dev,
       return result;
    }
 
-   fence->permanent.type = VN_SYNC_TYPE_SYNC;
+   /* perm_sync is unused */
+   fence->permanent.type = VN_SYNC_TYPE_DEVICE_ONLY;
    fence->permanent.sync = perm_sync;
 
    /* temp_sync is uninitialized */
@@ -827,8 +807,7 @@ vn_ResetFences(VkDevice device, uint32_t fenceCount, const VkFence *pFences)
 
       vn_sync_payload_release(dev, &fence->temporary);
 
-      assert(perm->type == VN_SYNC_TYPE_SYNC);
-      vn_renderer_sync_reset(perm->sync, 0);
+      assert(perm->type == VN_SYNC_TYPE_DEVICE_ONLY);
       fence->payload = perm;
    }
 
@@ -843,12 +822,9 @@ vn_GetFenceStatus(VkDevice device, VkFence _fence)
    struct vn_sync_payload *payload = fence->payload;
 
    VkResult result;
-   uint64_t val;
    switch (payload->type) {
-   case VN_SYNC_TYPE_SYNC:
-      result = vn_renderer_sync_read(payload->sync, &val);
-      if (result == VK_SUCCESS && !val)
-         result = VK_NOT_READY;
+   case VN_SYNC_TYPE_DEVICE_ONLY:
+      result = vn_call_vkGetFenceStatus(dev->instance, device, _fence);
       break;
    case VN_SYNC_TYPE_WSI_SIGNALED:
       result = VK_SUCCESS;
@@ -861,6 +837,55 @@ vn_GetFenceStatus(VkDevice device, VkFence _fence)
    return vn_result(dev->instance, result);
 }
 
+static VkResult
+vn_find_first_signaled_fence(VkDevice device,
+                             const VkFence *fences,
+                             uint32_t count)
+{
+   for (uint32_t i = 0; i < count; i++) {
+      VkResult result = vn_GetFenceStatus(device, fences[i]);
+      if (result == VK_SUCCESS || result < 0)
+         return result;
+   }
+   return VK_NOT_READY;
+}
+
+static VkResult
+vn_remove_signaled_fences(VkDevice device, VkFence *fences, uint32_t *count)
+{
+   uint32_t cur = 0;
+   for (uint32_t i = 0; i < *count; i++) {
+      VkResult result = vn_GetFenceStatus(device, fences[i]);
+      if (result != VK_SUCCESS) {
+         if (result < 0)
+            return result;
+         fences[cur++] = fences[i];
+      }
+   }
+
+   *count = cur;
+   return cur ? VK_NOT_READY : VK_SUCCESS;
+}
+
+static VkResult
+vn_update_sync_result(VkResult result, int64_t abs_timeout, uint32_t *iter)
+{
+   switch (result) {
+   case VK_NOT_READY:
+      if (abs_timeout != OS_TIMEOUT_INFINITE &&
+          os_time_get_nano() >= abs_timeout)
+         result = VK_TIMEOUT;
+      else
+         vn_relax(iter);
+      break;
+   default:
+      assert(result == VK_SUCCESS || result < 0);
+      break;
+   }
+
+   return result;
+}
+
 VkResult
 vn_WaitForFences(VkDevice device,
                  uint32_t fenceCount,
@@ -871,59 +896,33 @@ vn_WaitForFences(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
 
-   struct vn_renderer_sync *local_syncs[8];
-   uint64_t local_sync_vals[8];
-   struct vn_renderer_sync **syncs = local_syncs;
-   uint64_t *sync_vals = local_sync_vals;
-   if (fenceCount > ARRAY_SIZE(local_syncs)) {
-      syncs = vk_alloc(alloc, sizeof(*syncs) * fenceCount, VN_DEFAULT_ALIGN,
-                       VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      sync_vals =
-         vk_alloc(alloc, sizeof(*sync_vals) * fenceCount, VN_DEFAULT_ALIGN,
-                  VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      if (!syncs || !sync_vals) {
-         vk_free(alloc, syncs);
-         vk_free(alloc, sync_vals);
-         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   const int64_t abs_timeout = os_time_get_absolute_timeout(timeout);
+   VkResult result = VK_NOT_READY;
+   uint32_t iter = 0;
+   if (fenceCount > 1 && waitAll) {
+      VkFence local_fences[8];
+      VkFence *fences = local_fences;
+      if (fenceCount > ARRAY_SIZE(local_fences)) {
+         fences =
+            vk_alloc(alloc, sizeof(*fences) * fenceCount, VN_DEFAULT_ALIGN,
+                     VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+         if (!fences)
+            return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
       }
-   }
+      memcpy(fences, pFences, sizeof(*fences) * fenceCount);
 
-   uint32_t wait_count = 0;
-   uint32_t signaled_count = 0;
-   for (uint32_t i = 0; i < fenceCount; i++) {
-      struct vn_fence *fence = vn_fence_from_handle(pFences[i]);
-      const struct vn_sync_payload *payload = fence->payload;
-
-      switch (payload->type) {
-      case VN_SYNC_TYPE_SYNC:
-         syncs[wait_count] = payload->sync;
-         sync_vals[wait_count] = 1;
-         wait_count++;
-         break;
-      case VN_SYNC_TYPE_WSI_SIGNALED:
-         signaled_count++;
-         break;
-      default:
-         unreachable("unexpected fence payload type");
-         break;
+      while (result == VK_NOT_READY) {
+         result = vn_remove_signaled_fences(device, fences, &fenceCount);
+         result = vn_update_sync_result(result, abs_timeout, &iter);
       }
-   }
 
-   VkResult result = VK_SUCCESS;
-   if (wait_count && (waitAll || !signaled_count)) {
-      const struct vn_renderer_wait wait = {
-         .wait_any = !waitAll,
-         .timeout = timeout,
-         .syncs = syncs,
-         .sync_values = sync_vals,
-         .sync_count = wait_count,
-      };
-      result = vn_renderer_wait(dev->instance->renderer, &wait);
-   }
-
-   if (syncs != local_syncs) {
-      vk_free(alloc, syncs);
-      vk_free(alloc, sync_vals);
+      if (fences != local_fences)
+         vk_free(alloc, fences);
+   } else {
+      while (result == VK_NOT_READY) {
+         result = vn_find_first_signaled_fence(device, pFences, fenceCount);
+         result = vn_update_sync_result(result, abs_timeout, &iter);
+      }
    }
 
    return vn_result(dev->instance, result);
@@ -934,34 +933,7 @@ vn_ImportFenceFdKHR(VkDevice device,
                     const VkImportFenceFdInfoKHR *pImportFenceFdInfo)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_fence *fence = vn_fence_from_handle(pImportFenceFdInfo->fence);
-   const bool sync_file = pImportFenceFdInfo->handleType ==
-                          VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
-   const int fd = pImportFenceFdInfo->fd;
-   struct vn_sync_payload *payload =
-      pImportFenceFdInfo->flags & VK_FENCE_IMPORT_TEMPORARY_BIT
-         ? &fence->temporary
-         : &fence->permanent;
-
-   if (payload->type == VN_SYNC_TYPE_SYNC)
-      vn_renderer_sync_release(payload->sync);
-
-   VkResult result;
-   if (sync_file && fd < 0)
-      result = vn_renderer_sync_init_signaled(payload->sync);
-   else
-      result = vn_renderer_sync_init_syncobj(payload->sync, fd, sync_file);
-
-   if (result != VK_SUCCESS)
-      return vn_error(dev->instance, result);
-
-   payload->type = VN_SYNC_TYPE_SYNC;
-   fence->payload = payload;
-
-   if (fd >= 0)
-      close(fd);
-
-   return VK_SUCCESS;
+   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
 }
 
 VkResult
@@ -970,21 +942,7 @@ vn_GetFenceFdKHR(VkDevice device,
                  int *pFd)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_fence *fence = vn_fence_from_handle(pGetFdInfo->fence);
-   const bool sync_file =
-      pGetFdInfo->handleType == VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
-   struct vn_sync_payload *payload = fence->payload;
-
-   assert(payload->type == VN_SYNC_TYPE_SYNC);
-   int fd = vn_renderer_sync_export_syncobj(payload->sync, sync_file);
-   if (fd < 0)
-      return vn_error(dev->instance, VK_ERROR_TOO_MANY_OBJECTS);
-
-   if (sync_file)
-      vn_ResetFences(device, 1, &pGetFdInfo->fence);
-
-   *pFd = fd;
-   return VK_SUCCESS;
+   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
 }
 
 /* semaphore commands */

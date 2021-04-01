@@ -1362,24 +1362,22 @@ static void
 vn_physical_device_init_external_fence_handles(
    struct vn_physical_device *physical_dev)
 {
-   if (!physical_dev->instance->renderer_info.has_external_sync)
-      return;
-
-   /* In the current model, a vn_fence can be implemented entirely on top of
-    * vn_renderer_sync.  All operations can go through the renderer sync.
+   /* The current code manipulates the host-side VkFence directly.
+    * vkWaitForFences is translated to repeated vkGetFenceStatus.
     *
-    * The current code still creates a host-side VkFence, which can be
-    * eliminated.  The renderer also lacks proper external sync (i.e.,
-    * drm_syncobj) support and we can only support handle types with copy
-    * transference (i.e., sync fds).
+    * External fence is not possible currently.  At best, we could cheat by
+    * translating vkGetFenceFdKHR to vkWaitForFences and returning -1, when
+    * the handle type is sync file.
     *
-    * We are considering creating a vn_renderer_sync from a host-side VkFence
-    * instead, similar to how a vn_renderer_bo is created from a host-side
-    * VkDeviceMemory.  That will require tons of works on the host side, but
-    * should allow us to get rid of ring<->renderer syncs in vkQueueSubmit.
+    * We would like to create a vn_renderer_sync from a host-side VkFence,
+    * similar to how a vn_renderer_bo is created from a host-side
+    * VkDeviceMemory.  That would require kernel support and tons of works on
+    * the host side.  If we had that, and we kept both the vn_renderer_sync
+    * and the host-side VkFence in sync, we would have the freedom to use
+    * either of them depending on the occasions, and support external fences
+    * and idle waiting.
     */
-   physical_dev->external_fence_handles =
-      VK_EXTERNAL_FENCE_HANDLE_TYPE_SYNC_FD_BIT;
+   physical_dev->external_fence_handles = 0;
 }
 
 static void
