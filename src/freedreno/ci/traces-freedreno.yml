@@ -437,10 +437,8 @@ traces:
         checksum: 9227cc8d4e6445f2323438340f2a5d9b
       - device: freedreno-a530
         checksum: 76fbd196f69594c927dc994b4492dd50
-      # Note: Obvious alpha test failure on the tree in the upper left.  Also a
-      # big block around the hand that's not present on a530 or radeonsi.
       - device: freedreno-a630
-        checksum: c856d9588886978a12181e4646a7a78b
+        checksum: d70eb1f72d5d50e6cb617520234f20fb
   - path: neverball/neverball.trace
     expectations:
       # Skipped since it's long on a530.
@@ -507,9 +505,8 @@ traces:
       # Flaky rendering (slight pixel differences around the tree alpha tests)
       # - device: freedreno-a530
       #   checksum: 14e78caf29b6a3341081c8f2e678355f
-      # Looks like some alpha test failures (trees on the right side)
       - device: freedreno-a630
-        checksum: 5a11d791a5a718d4aa6c84b416b9f2b6
+        checksum: 2a755a4da96e2b0ec780f877157b6752
   - path: valve/counterstrike-source-v2.trace
     expectations:
       # Skipped since it's slow even on a530.
@@ -518,9 +515,8 @@ traces:
       # 1 minute
       - device: freedreno-a530
         checksum: bbe74b2171d62fc6738086740e1aa0d8
-      # Alpha test failures (fence on the left hand side of road)
       - device: freedreno-a630
-        checksum: 4b707f385256b380c936186db8c251cb
+        checksum: e7b57988348b2ce98b964d71b18c1771
   - path: valve/half-life-2-v2.trace
     expectations:
       # Skipped since it's slow even on a530.
@@ -529,10 +525,8 @@ traces:
       # 2 minutes
       - device: freedreno-a530
         checksum: 5def334bb574b024198ddddb1a069529
-      # Alpha test failures on the fence.  Also, the shadows are much lighter
-      # than a530, but it's unclear which is right.
       - device: freedreno-a630
-        checksum: 8f5929c82e7d990e8c3d2bea14688224
+        checksum: b6ac60027699d49618cc9f2dde1c308c
   - path: valve/portal-2-v2.trace
     expectations:
       # Skipped since it's slow even on a530.

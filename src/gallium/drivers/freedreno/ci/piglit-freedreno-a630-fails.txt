@@ -99,8 +99,6 @@ spec@arb_direct_state_access@gettextureimage-formats,Crash
 spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
 spec@arb_direct_state_access@transformfeedback-bufferbase,Fail
 spec@arb_direct_state_access@transformfeedback-bufferrange,Fail
-spec@arb_draw_buffers@fbo-mrt-alphatest,Fail
-spec@arb_es2_compatibility@fbo-alphatest-formats,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_fragment_program@fp-fragment-position,Crash
 spec@arb_fragment_program@sparse-samplers,Crash
@@ -183,7 +181,6 @@ spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_cube_map@copyteximage cube,Crash
 spec@arb_texture_cube_map@copyteximage cube samples=2,Crash
 spec@arb_texture_cube_map@copyteximage cube samples=4,Crash
-spec@arb_texture_float@fbo-alphatest-formats,Fail
 spec@arb_texture_float@fbo-blending-formats,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_multisample@arb_texture_multisample-dsa-texelfetch,Fail
@@ -191,8 +188,6 @@ spec@arb_texture_rectangle@1-1-linear-texture,Fail
 spec@arb_texture_rectangle@copyteximage rect,Crash
 spec@arb_texture_rectangle@copyteximage rect samples=2,Crash
 spec@arb_texture_rectangle@copyteximage rect samples=4,Crash
-spec@arb_texture_rg@fbo-alphatest-formats,Fail
-spec@arb_texture_rg@fbo-alphatest-formats-float,Fail
 spec@arb_texture_rg@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_rg@texwrap formats-float bordercolor-swizzled,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled,Fail
@@ -275,7 +270,6 @@ spec@ext_framebuffer_multisample@unaligned-blit 2 stencil msaa,Fail
 spec@ext_framebuffer_multisample@unaligned-blit 4 color msaa,Fail
 spec@ext_framebuffer_multisample@unaligned-blit 4 depth msaa,Fail
 spec@ext_framebuffer_multisample@unaligned-blit 4 stencil msaa,Fail
-spec@ext_framebuffer_object@fbo-alphatest-formats,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor,Fail
 spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
@@ -293,7 +287,6 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Crash
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
-spec@ext_packed_float@fbo-alphatest-formats,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_array@copyteximage 1d_array,Crash
@@ -318,7 +311,6 @@ spec@ext_texture_snorm@fbo-generatemipmap-formats,Fail
 spec@ext_texture_snorm@multisample-formats 2 gl_ext_texture_snorm,Fail
 spec@ext_texture_snorm@multisample-formats 4 gl_ext_texture_snorm,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
-spec@ext_texture_srgb@fbo-alphatest-formats,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled,Fail
 spec@ext_transform_feedback@geometry-shaders-basic,Fail
