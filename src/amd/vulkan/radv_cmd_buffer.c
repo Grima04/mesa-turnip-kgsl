@@ -6447,18 +6447,20 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 
 		if (radv_image_has_fmask(image) &&
 		    (image->usage & (VK_IMAGE_USAGE_STORAGE_BIT |
-				     VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {
-			if (src_layout != VK_IMAGE_LAYOUT_GENERAL &&
-			    dst_layout == VK_IMAGE_LAYOUT_GENERAL) {
-				/* A FMASK decompress is required before doing
-				 * a MSAA decompress using FMASK.
-				 */
-				fmask_expand = true;
-			}
+				     VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&
+		    radv_layout_fmask_compressed(cmd_buffer->device, image,
+						 src_layout, src_queue_mask) &&
+		    !radv_layout_fmask_compressed(cmd_buffer->device, image,
+						  dst_layout, dst_queue_mask)) {
+			fmask_expand = true;
 		}
 
-		if (fce_eliminate || fmask_expand)
+		if (fce_eliminate || fmask_expand) {
+			/* A FMASK decompress is required before expanding
+			 * FMASK.
+			 */
 			radv_fast_clear_flush_image_inplace(cmd_buffer, image, range);
+		}
 
 		if (fmask_expand) {
 			struct radv_barrier_data barrier = {0};
