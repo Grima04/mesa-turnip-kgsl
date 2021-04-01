@@ -1329,11 +1329,6 @@ static VkResult radv_get_image_format_properties(struct radv_physical_device *ph
 		vk_find_struct_const(info->pNext, PHYSICAL_DEVICE_IMAGE_DRM_FORMAT_MODIFIER_INFO_EXT);
 	VkResult result = VK_ERROR_FORMAT_NOT_SUPPORTED;
 
-	if (mod_info) {
-		tiling = mod_info->drmFormatModifier == DRM_FORMAT_MOD_LINEAR ?
-			VK_IMAGE_TILING_LINEAR : VK_IMAGE_TILING_OPTIMAL;
-	}
-
 	radv_physical_device_get_format_properties(physical_device, format,
 						   &format_props);
 	if (tiling == VK_IMAGE_TILING_LINEAR) {
