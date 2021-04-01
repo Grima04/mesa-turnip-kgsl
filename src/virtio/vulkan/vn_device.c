@@ -1384,29 +1384,26 @@ static void
 vn_physical_device_init_external_semaphore_handles(
    struct vn_physical_device *physical_dev)
 {
-   /* In the current model, it is not possible to support external semaphores.
-    * At least an external semaphore cannot be waited on GPU in the host but
-    * can only be waited on CPU in the guest.
+   /* The current code manipulates the host-side VkSemaphore directly.  It
+    * works very well for binary semaphores because there is no CPU operation.
+    * But for timeline semaphores, the situation is similar to that of fences.
+    * vkWaitSemaphores is translated to repeated vkGetSemaphoreCounterValue.
     *
-    * A binary vn_semaphore is implemented solely on top of a host-side binary
-    * VkSemaphore.  There is no CPU operation against binary semaphroes and
-    * there is no need for vn_renderer_sync.
+    * External semaphore is not possible currently.  We could cheat when the
+    * semaphore is binary and the handle type is sync file, but that would
+    * require associating a fence with the semaphore and doing vkWaitForFences
+    * in vkGetSemaphoreFdKHR.
     *
-    * A timeline vn_semaphore is implemented on top of both a host-side
-    * timeline VkSemaphore and a vn_renderer_sync.  Whenever a timeline
-    * vn_semaphore is updated, we make sure both the host-side timeline
-    * VkSemaphore and the vn_renderer_sync are updated.  This allows us to use
-    * whichever is more convenient depending on the operations: the host-side
-    * timeline VkSemaphore for GPU waits and the vn_renderer_sync for CPU
-    * waits/gets.
-    *
-    * To support external semaphores, we should create a vn_renderer_sync from
-    * a host-side VkSemaphore instead, similar to how a vn_renderer_bo is
-    * created from a host-side VkDeviceMemory.  The reasons to make a similar
-    * move for fences apply to timeline semaphores as well.  Besides, the
-    * external handle (drm_syncobj or sync file) needs to carry the necessary
-    * information to identify the host-side semaphore.
+    * We would like to create a vn_renderer_sync from a host-side VkSemaphore,
+    * similar to how a vn_renderer_bo is created from a host-side
+    * VkDeviceMemory.  The reasoning is the same as that for fences.
+    * Additionally, we would like the sync file exported from the
+    * vn_renderer_sync to carry the necessary information to identify the
+    * host-side VkSemaphore.  That would allow the consumers to wait on the
+    * host side rather than the guest side.
     */
+   physical_dev->external_binary_semaphore_handles = 0;
+   physical_dev->external_timeline_semaphore_handles = 0;
 }
 
 static void

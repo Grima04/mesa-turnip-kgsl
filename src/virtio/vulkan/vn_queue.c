@@ -75,9 +75,6 @@ struct vn_queue_submission {
 
    uint32_t wait_semaphore_count;
    uint32_t wait_wsi_count;
-   uint32_t signal_semaphore_count;
-   uint32_t signal_device_only_count;
-   uint32_t signal_timeline_count;
 
    uint32_t sync_count;
 
@@ -103,16 +100,12 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
 {
    submit->wait_semaphore_count = 0;
    submit->wait_wsi_count = 0;
-   submit->signal_semaphore_count = 0;
-   submit->signal_device_only_count = 0;
-   submit->signal_timeline_count = 0;
    switch (submit->batch_type) {
    case VK_STRUCTURE_TYPE_SUBMIT_INFO:
       for (uint32_t i = 0; i < submit->batch_count; i++) {
          const VkSubmitInfo *batch = &submit->submit_batches[i];
 
          submit->wait_semaphore_count += batch->waitSemaphoreCount;
-         submit->signal_semaphore_count += batch->signalSemaphoreCount;
 
          for (uint32_t j = 0; j < batch->waitSemaphoreCount; j++) {
             struct vn_semaphore *sem =
@@ -121,21 +114,6 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
 
             if (payload->type == VN_SYNC_TYPE_WSI_SIGNALED)
                submit->wait_wsi_count++;
-         }
-
-         for (uint32_t j = 0; j < batch->signalSemaphoreCount; j++) {
-            struct vn_semaphore *sem =
-               vn_semaphore_from_handle(batch->pSignalSemaphores[j]);
-            const struct vn_sync_payload *payload = sem->payload;
-
-            /* it must be one of the waited semaphores and will be reset */
-            if (payload->type == VN_SYNC_TYPE_WSI_SIGNALED)
-               payload = &sem->permanent;
-
-            if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY)
-               submit->signal_device_only_count++;
-            else if (sem->type == VK_SEMAPHORE_TYPE_TIMELINE)
-               submit->signal_timeline_count++;
          }
       }
       break;
@@ -144,7 +122,6 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
          const VkBindSparseInfo *batch = &submit->bind_sparse_batches[i];
 
          submit->wait_semaphore_count += batch->waitSemaphoreCount;
-         submit->signal_semaphore_count += batch->signalSemaphoreCount;
 
          for (uint32_t j = 0; j < batch->waitSemaphoreCount; j++) {
             struct vn_semaphore *sem =
@@ -154,17 +131,6 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
             if (payload->type == VN_SYNC_TYPE_WSI_SIGNALED)
                submit->wait_wsi_count++;
          }
-
-         for (uint32_t j = 0; j < batch->signalSemaphoreCount; j++) {
-            struct vn_semaphore *sem =
-               vn_semaphore_from_handle(batch->pSignalSemaphores[j]);
-            const struct vn_sync_payload *payload = sem->payload;
-
-            if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY)
-               submit->signal_device_only_count++;
-            else if (sem->type == VK_SEMAPHORE_TYPE_TIMELINE)
-               submit->signal_timeline_count++;
-         }
       }
       break;
    default:
@@ -172,8 +138,7 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
       break;
    }
 
-   submit->sync_count =
-      submit->signal_semaphore_count - submit->signal_device_only_count;
+   submit->sync_count = 0;
 }
 
 static VkResult
@@ -305,55 +270,8 @@ vn_queue_submission_setup_batch_syncs(struct vn_queue_submission *submit,
                                       uint32_t batch_index,
                                       uint32_t sync_base)
 {
-   union {
-      const VkSubmitInfo *submit_batch;
-      const VkBindSparseInfo *bind_sparse_batch;
-   } u;
-   const VkTimelineSemaphoreSubmitInfo *timeline;
-   const VkSemaphore *sems;
-   uint32_t sem_count;
-   switch (submit->batch_type) {
-   case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      u.submit_batch = &submit->submit_batches[batch_index];
-      timeline = vk_find_struct_const(u.submit_batch->pNext,
-                                      TIMELINE_SEMAPHORE_SUBMIT_INFO);
-      sems = u.submit_batch->pSignalSemaphores;
-      sem_count = u.submit_batch->signalSemaphoreCount;
-      break;
-   case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-      u.bind_sparse_batch = &submit->bind_sparse_batches[batch_index];
-      timeline = vk_find_struct_const(u.bind_sparse_batch->pNext,
-                                      TIMELINE_SEMAPHORE_SUBMIT_INFO);
-      sems = u.bind_sparse_batch->pSignalSemaphores;
-      sem_count = u.bind_sparse_batch->signalSemaphoreCount;
-      break;
-   default:
-      unreachable("unexpected batch type");
-      break;
-   }
-
-   struct vn_renderer_sync **syncs = &submit->temp.syncs[sync_base];
-   uint64_t *sync_values = &submit->temp.sync_values[sync_base];
-   uint32_t sync_count = 0;
-
-   for (uint32_t i = 0; i < sem_count; i++) {
-      struct vn_semaphore *sem = vn_semaphore_from_handle(sems[i]);
-      const struct vn_sync_payload *payload = sem->payload;
-
-      if (payload->type == VN_SYNC_TYPE_DEVICE_ONLY)
-         continue;
-
-      assert(payload->type == VN_SYNC_TYPE_SYNC);
-      syncs[sync_count] = payload->sync;
-      sync_values[sync_count] = sem->type == VK_SEMAPHORE_TYPE_TIMELINE
-                                   ? timeline->pSignalSemaphoreValues[i]
-                                   : 1;
-      sync_count++;
-   }
-
-   submit->temp.batch_sync_counts[batch_index] = sync_count;
-
-   return sync_count;
+   assert(!submit->sync_count);
+   return 0;
 }
 
 static void
@@ -389,12 +307,8 @@ vn_queue_submission_setup_batches(struct vn_queue_submission *submit)
             submit, i, wait_sem_base);
       }
 
-      if (submit->signal_semaphore_count > submit->signal_device_only_count) {
-         sync_base +=
-            vn_queue_submission_setup_batch_syncs(submit, i, sync_base);
-      } else if (submit->sync_count) {
-         submit->temp.batch_sync_counts[i] = 0;
-      }
+      sync_base +=
+         vn_queue_submission_setup_batch_syncs(submit, i, sync_base);
    }
 
    assert(sync_base == submit->sync_count);
@@ -509,48 +423,18 @@ vn_QueueSubmit(VkQueue _queue,
       }
    }
 
-   /* TODO this should be one trip to the renderer */
-   if (submit.signal_timeline_count) {
-      uint32_t sync_base = 0;
-      for (uint32_t i = 0; i < submit.batch_count - 1; i++) {
-         vn_async_vkQueueSubmit(dev->instance, submit.queue, 1,
-                                &submit.submit_batches[i], VK_NULL_HANDLE);
-         vn_instance_ring_wait(dev->instance);
+   result =
+      vn_call_vkQueueSubmit(dev->instance, submit.queue, submit.batch_count,
+                            submit.submit_batches, submit.fence);
+   if (result != VK_SUCCESS) {
+      vn_queue_submission_cleanup(&submit);
+      return vn_error(dev->instance, result);
+   }
 
-         vn_queue_submit_syncs(queue, &submit.temp.syncs[sync_base],
-                               &submit.temp.sync_values[sync_base],
-                               submit.temp.batch_sync_counts[i], NULL);
-         sync_base += submit.temp.batch_sync_counts[i];
-      }
-
-      result = vn_call_vkQueueSubmit(
-         dev->instance, submit.queue, 1,
-         &submit.submit_batches[submit.batch_count - 1], submit.fence);
-      if (result != VK_SUCCESS) {
-         vn_queue_submission_cleanup(&submit);
-         return vn_error(dev->instance, result);
-      }
-
-      if (sync_base < submit.sync_count || wsi_mem) {
-         vn_queue_submit_syncs(queue, &submit.temp.syncs[sync_base],
-                               &submit.temp.sync_values[sync_base],
-                               submit.sync_count - sync_base,
-                               wsi_mem ? wsi_mem->base_bo : NULL);
-      }
-   } else {
-      result = vn_call_vkQueueSubmit(dev->instance, submit.queue,
-                                     submit.batch_count,
-                                     submit.submit_batches, submit.fence);
-      if (result != VK_SUCCESS) {
-         vn_queue_submission_cleanup(&submit);
-         return vn_error(dev->instance, result);
-      }
-
-      if (submit.sync_count || wsi_mem) {
-         vn_queue_submit_syncs(queue, submit.temp.syncs,
-                               submit.temp.sync_values, submit.sync_count,
-                               wsi_mem ? wsi_mem->base_bo : NULL);
-      }
+   if (submit.sync_count || wsi_mem) {
+      vn_queue_submit_syncs(queue, submit.temp.syncs, submit.temp.sync_values,
+                            submit.sync_count,
+                            wsi_mem ? wsi_mem->base_bo : NULL);
    }
 
    /* XXX The implicit fence won't work because the host is not aware of it.
@@ -588,48 +472,17 @@ vn_QueueBindSparse(VkQueue _queue,
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
 
-   /* TODO this should be one trip to the renderer */
-   if (submit.signal_timeline_count) {
-      uint32_t sync_base = 0;
-      for (uint32_t i = 0; i < submit.batch_count - 1; i++) {
-         vn_async_vkQueueBindSparse(dev->instance, submit.queue, 1,
-                                    &submit.bind_sparse_batches[i],
-                                    VK_NULL_HANDLE);
-         vn_instance_ring_wait(dev->instance);
+   result = vn_call_vkQueueBindSparse(
+      dev->instance, submit.queue, submit.batch_count,
+      submit.bind_sparse_batches, submit.fence);
+   if (result != VK_SUCCESS) {
+      vn_queue_submission_cleanup(&submit);
+      return vn_error(dev->instance, result);
+   }
 
-         vn_queue_submit_syncs(queue, &submit.temp.syncs[sync_base],
-                               &submit.temp.sync_values[sync_base],
-                               submit.temp.batch_sync_counts[i], NULL);
-         sync_base += submit.temp.batch_sync_counts[i];
-      }
-
-      result = vn_call_vkQueueBindSparse(
-         dev->instance, submit.queue, 1,
-         &submit.bind_sparse_batches[submit.batch_count - 1], submit.fence);
-      if (result != VK_SUCCESS) {
-         vn_queue_submission_cleanup(&submit);
-         return vn_error(dev->instance, result);
-      }
-
-      if (sync_base < submit.sync_count) {
-         vn_queue_submit_syncs(queue, &submit.temp.syncs[sync_base],
-                               &submit.temp.sync_values[sync_base],
-                               submit.sync_count - sync_base, NULL);
-      }
-   } else {
-      result = vn_call_vkQueueBindSparse(
-         dev->instance, submit.queue, submit.batch_count,
-         submit.bind_sparse_batches, submit.fence);
-      if (result != VK_SUCCESS) {
-         vn_queue_submission_cleanup(&submit);
-         return vn_error(dev->instance, result);
-      }
-
-      if (submit.sync_count) {
-         vn_queue_submit_syncs(queue, submit.temp.syncs,
-                               submit.temp.sync_values, submit.sync_count,
-                               NULL);
-      }
+   if (submit.sync_count) {
+      vn_queue_submit_syncs(queue, submit.temp.syncs, submit.temp.sync_values,
+                            submit.sync_count, NULL);
    }
 
    vn_queue_submission_cleanup(&submit);
@@ -954,15 +807,8 @@ vn_semaphore_init_payloads(struct vn_device *dev,
                            const VkAllocationCallbacks *alloc)
 {
    struct vn_renderer_sync *perm_sync;
-   VkResult result;
-   if (sem->type == VK_SEMAPHORE_TYPE_TIMELINE) {
-      result = vn_renderer_sync_create_semaphore(dev->instance->renderer,
-                                                 VK_SEMAPHORE_TYPE_TIMELINE,
-                                                 initial_val, 0, &perm_sync);
-   } else {
-      result =
-         vn_renderer_sync_create_empty(dev->instance->renderer, &perm_sync);
-   }
+   VkResult result =
+      vn_renderer_sync_create_empty(dev->instance->renderer, &perm_sync);
    if (result != VK_SUCCESS)
       return result;
 
@@ -974,9 +820,8 @@ vn_semaphore_init_payloads(struct vn_device *dev,
       return result;
    }
 
-   sem->permanent.type = sem->type == VK_SEMAPHORE_TYPE_TIMELINE
-                            ? VN_SYNC_TYPE_SYNC
-                            : VN_SYNC_TYPE_DEVICE_ONLY;
+   /* perm_sync is unused */
+   sem->permanent.type = VN_SYNC_TYPE_DEVICE_ONLY;
    sem->permanent.sync = perm_sync;
 
    /* temp_sync is uninitialized */
@@ -995,8 +840,7 @@ vn_semaphore_reset_wsi(struct vn_device *dev, struct vn_semaphore *sem)
 
    vn_sync_payload_release(dev, &sem->temporary);
 
-   if (perm->type == VN_SYNC_TYPE_SYNC)
-      vn_renderer_sync_reset(perm->sync, 0);
+   assert(perm->type != VN_SYNC_TYPE_SYNC);
    sem->payload = perm;
 }
 
@@ -1081,11 +925,13 @@ vn_GetSemaphoreCounterValue(VkDevice device,
                             VkSemaphore semaphore,
                             uint64_t *pValue)
 {
+   struct vn_device *dev = vn_device_from_handle(device);
    struct vn_semaphore *sem = vn_semaphore_from_handle(semaphore);
    struct vn_sync_payload *payload = sem->payload;
 
-   assert(payload->type == VN_SYNC_TYPE_SYNC);
-   return vn_renderer_sync_read(payload->sync, pValue);
+   assert(payload->type == VN_SYNC_TYPE_DEVICE_ONLY);
+   return vn_call_vkGetSemaphoreCounterValue(dev->instance, device, semaphore,
+                                             pValue);
 }
 
 VkResult
@@ -1102,10 +948,46 @@ vn_SignalSemaphore(VkDevice device, const VkSemaphoreSignalInfo *pSignalInfo)
    else
       vn_async_vkSignalSemaphore(dev->instance, device, pSignalInfo);
 
-   assert(payload->type == VN_SYNC_TYPE_SYNC);
-   vn_renderer_sync_write(payload->sync, pSignalInfo->value);
+   assert(payload->type != VN_SYNC_TYPE_SYNC);
 
    return VK_SUCCESS;
+}
+
+static VkResult
+vn_find_first_signaled_semaphore(VkDevice device,
+                                 const VkSemaphore *semaphores,
+                                 const uint64_t *values,
+                                 uint32_t count)
+{
+   for (uint32_t i = 0; i < count; i++) {
+      uint64_t val;
+      VkResult result =
+         vn_GetSemaphoreCounterValue(device, semaphores[i], &val);
+      if (result != VK_SUCCESS || val >= values[i])
+         return result;
+   }
+   return VK_NOT_READY;
+}
+
+static VkResult
+vn_remove_signaled_semaphores(VkDevice device,
+                              VkSemaphore *semaphores,
+                              uint64_t *values,
+                              uint32_t *count)
+{
+   uint32_t cur = 0;
+   for (uint32_t i = 0; i < *count; i++) {
+      uint64_t val;
+      VkResult result =
+         vn_GetSemaphoreCounterValue(device, semaphores[i], &val);
+      if (result != VK_SUCCESS)
+         return result;
+      if (val < values[i])
+         semaphores[cur++] = semaphores[i];
+   }
+
+   *count = cur;
+   return cur ? VK_NOT_READY : VK_SUCCESS;
 }
 
 VkResult
@@ -1116,35 +998,45 @@ vn_WaitSemaphores(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
 
-   struct vn_renderer_sync *local_syncs[8];
-   struct vn_renderer_sync **syncs = local_syncs;
-   if (pWaitInfo->semaphoreCount > ARRAY_SIZE(local_syncs)) {
-      syncs = vk_alloc(alloc, sizeof(*syncs) * pWaitInfo->semaphoreCount,
-                       VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
-      if (!syncs)
-         return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+   const int64_t abs_timeout = os_time_get_absolute_timeout(timeout);
+   VkResult result = VK_NOT_READY;
+   uint32_t iter = 0;
+   if (pWaitInfo->semaphoreCount > 1 &&
+       !(pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT)) {
+      uint32_t semaphore_count = pWaitInfo->semaphoreCount;
+      VkSemaphore local_semaphores[8];
+      uint64_t local_values[8];
+      VkSemaphore *semaphores = local_semaphores;
+      uint64_t *values = local_values;
+      if (semaphore_count > ARRAY_SIZE(local_semaphores)) {
+         semaphores = vk_alloc(
+            alloc, (sizeof(*semaphores) + sizeof(*values)) * semaphore_count,
+            VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+         if (!semaphores)
+            return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+         values = (uint64_t *)&semaphores[semaphore_count];
+      }
+      memcpy(semaphores, pWaitInfo->pSemaphores,
+             sizeof(*semaphores) * semaphore_count);
+      memcpy(values, pWaitInfo->pValues, sizeof(*values) * semaphore_count);
+
+      while (result == VK_NOT_READY) {
+         result = vn_remove_signaled_semaphores(device, semaphores, values,
+                                                &semaphore_count);
+         result = vn_update_sync_result(result, abs_timeout, &iter);
+      }
+
+      if (semaphores != local_semaphores)
+         vk_free(alloc, semaphores);
+   } else {
+      while (result == VK_NOT_READY) {
+         result = vn_find_first_signaled_semaphore(
+            device, pWaitInfo->pSemaphores, pWaitInfo->pValues,
+            pWaitInfo->semaphoreCount);
+         result = vn_update_sync_result(result, abs_timeout, &iter);
+      }
    }
-
-   for (uint32_t i = 0; i < pWaitInfo->semaphoreCount; i++) {
-      struct vn_semaphore *sem =
-         vn_semaphore_from_handle(pWaitInfo->pSemaphores[i]);
-      const struct vn_sync_payload *payload = sem->payload;
-
-      assert(payload->type == VN_SYNC_TYPE_SYNC);
-      syncs[i] = payload->sync;
-   }
-
-   const struct vn_renderer_wait wait = {
-      .wait_any = pWaitInfo->flags & VK_SEMAPHORE_WAIT_ANY_BIT,
-      .timeout = timeout,
-      .syncs = syncs,
-      .sync_values = pWaitInfo->pValues,
-      .sync_count = pWaitInfo->semaphoreCount,
-   };
-   VkResult result = vn_renderer_wait(dev->instance->renderer, &wait);
-
-   if (syncs != local_syncs)
-      vk_free(alloc, syncs);
 
    return vn_result(dev->instance, result);
 }
@@ -1154,37 +1046,7 @@ vn_ImportSemaphoreFdKHR(
    VkDevice device, const VkImportSemaphoreFdInfoKHR *pImportSemaphoreFdInfo)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_semaphore *sem =
-      vn_semaphore_from_handle(pImportSemaphoreFdInfo->semaphore);
-   const bool sync_file = pImportSemaphoreFdInfo->handleType ==
-                          VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
-   const int fd = pImportSemaphoreFdInfo->fd;
-   struct vn_sync_payload *payload =
-      pImportSemaphoreFdInfo->flags & VK_SEMAPHORE_IMPORT_TEMPORARY_BIT
-         ? &sem->temporary
-         : &sem->permanent;
-
-   if (payload->type == VN_SYNC_TYPE_SYNC)
-      vn_renderer_sync_release(payload->sync);
-
-   VkResult result;
-   if (sync_file && fd < 0)
-      result = vn_renderer_sync_init_signaled(payload->sync);
-   else
-      result = vn_renderer_sync_init_syncobj(payload->sync, fd, sync_file);
-
-   if (result != VK_SUCCESS)
-      return vn_error(dev->instance, result);
-
-   /* TODO import into the host-side semaphore */
-
-   payload->type = VN_SYNC_TYPE_SYNC;
-   sem->payload = payload;
-
-   if (fd >= 0)
-      close(fd);
-
-   return VK_SUCCESS;
+   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
 }
 
 VkResult
@@ -1193,25 +1055,7 @@ vn_GetSemaphoreFdKHR(VkDevice device,
                      int *pFd)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_semaphore *sem = vn_semaphore_from_handle(pGetFdInfo->semaphore);
-   const bool sync_file =
-      pGetFdInfo->handleType == VK_EXTERNAL_SEMAPHORE_HANDLE_TYPE_SYNC_FD_BIT;
-   struct vn_sync_payload *payload = sem->payload;
-
-   assert(payload->type == VN_SYNC_TYPE_SYNC);
-   int fd = vn_renderer_sync_export_syncobj(payload->sync, sync_file);
-   if (fd < 0)
-      return vn_error(dev->instance, VK_ERROR_TOO_MANY_OBJECTS);
-
-   if (sync_file) {
-      vn_sync_payload_release(dev, &sem->temporary);
-      vn_renderer_sync_reset(sem->permanent.sync, 0);
-      sem->payload = &sem->permanent;
-      /* TODO reset the host-side semaphore */
-   }
-
-   *pFd = fd;
-   return VK_SUCCESS;
+   return vn_error(dev->instance, VK_ERROR_UNKNOWN);
 }
 
 /* event commands */
