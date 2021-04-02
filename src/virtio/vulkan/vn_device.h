@@ -81,7 +81,6 @@ struct vn_physical_device {
       transform_feedback_properties;
 
    VkQueueFamilyProperties2 *queue_family_properties;
-   uint32_t *queue_family_sync_queue_bases;
    uint32_t queue_family_count;
 
    VkPhysicalDeviceMemoryProperties2 memory_properties;

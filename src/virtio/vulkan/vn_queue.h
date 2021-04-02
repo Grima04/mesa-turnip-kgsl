@@ -21,8 +21,6 @@ struct vn_queue {
    uint32_t index;
    uint32_t flags;
 
-   uint32_t sync_queue_index;
-
    VkFence wait_fence;
 };
 VK_DEFINE_HANDLE_CASTS(vn_queue, base.base, VkQueue, VK_OBJECT_TYPE_QUEUE)

@@ -1287,25 +1287,20 @@ vn_physical_device_init_queue_family_properties(
    vn_call_vkGetPhysicalDeviceQueueFamilyProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &count, NULL);
 
-   uint32_t *sync_queue_bases;
    VkQueueFamilyProperties2 *props =
-      vk_alloc(alloc, (sizeof(*props) + sizeof(*sync_queue_bases)) * count,
-               VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
+      vk_alloc(alloc, sizeof(*props) * count, VN_DEFAULT_ALIGN,
+               VK_SYSTEM_ALLOCATION_SCOPE_INSTANCE);
    if (!props)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
-   sync_queue_bases = (uint32_t *)&props[count];
 
    for (uint32_t i = 0; i < count; i++) {
       props[i].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2;
-      /* define an extension to query sync queue base? */
       props[i].pNext = NULL;
    }
    vn_call_vkGetPhysicalDeviceQueueFamilyProperties2(
       instance, vn_physical_device_to_handle(physical_dev), &count, props);
 
    physical_dev->queue_family_properties = props;
-   /* sync_queue_bases will be initialized later */
-   physical_dev->queue_family_sync_queue_bases = sync_queue_bases;
    physical_dev->queue_family_count = count;
 
    return VK_SUCCESS;
@@ -1711,33 +1706,11 @@ vn_instance_enumerate_physical_devices(struct vn_instance *instance)
    if (result != VK_SUCCESS)
       goto out;
 
-   uint32_t sync_queue_base = 0;
    uint32_t i = 0;
    while (i < count) {
       struct vn_physical_device *physical_dev = &physical_devs[i];
 
       result = vn_physical_device_init(physical_dev);
-      if (result == VK_SUCCESS) {
-         /* TODO assign sync queues more fairly */
-         for (uint32_t j = 0; j < physical_dev->queue_family_count; j++) {
-            const VkQueueFamilyProperties *props =
-               &physical_dev->queue_family_properties[j].queueFamilyProperties;
-
-            if (sync_queue_base + props->queueCount >
-                instance->renderer_info.max_sync_queue_count) {
-               if (VN_DEBUG(INIT)) {
-                  vn_log(instance, "not enough sync queues (max %d)",
-                         instance->renderer_info.max_sync_queue_count);
-               }
-               result = VK_ERROR_INITIALIZATION_FAILED;
-               break;
-            }
-
-            physical_dev->queue_family_sync_queue_bases[j] = sync_queue_base;
-            sync_queue_base += props->queueCount;
-         }
-      }
-
       if (result != VK_SUCCESS) {
          vn_physical_device_base_fini(&physical_devs[i].base);
          memmove(&physical_devs[i], &physical_devs[i + 1],
@@ -2849,8 +2822,7 @@ static VkResult
 vn_queue_init(struct vn_device *dev,
               struct vn_queue *queue,
               const VkDeviceQueueCreateInfo *queue_info,
-              uint32_t queue_index,
-              uint32_t sync_queue_index)
+              uint32_t queue_index)
 {
    vn_object_base_init(&queue->base, VK_OBJECT_TYPE_QUEUE, &dev->base);
 
@@ -2870,8 +2842,6 @@ vn_queue_init(struct vn_device *dev,
    queue->index = queue_index;
    queue->flags = queue_info->flags;
 
-   queue->sync_queue_index = sync_queue_index;
-
    VkResult result =
       vn_CreateFence(vn_device_to_handle(dev),
                      &(const VkFenceCreateInfo){
@@ -2888,7 +2858,6 @@ static VkResult
 vn_device_init_queues(struct vn_device *dev,
                       const VkDeviceCreateInfo *create_info)
 {
-   struct vn_physical_device *physical_dev = dev->physical_device;
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
 
    uint32_t count = 0;
@@ -2906,13 +2875,8 @@ vn_device_init_queues(struct vn_device *dev,
    for (uint32_t i = 0; i < create_info->queueCreateInfoCount; i++) {
       const VkDeviceQueueCreateInfo *queue_info =
          &create_info->pQueueCreateInfos[i];
-      const uint32_t sync_queue_base =
-         physical_dev
-            ->queue_family_sync_queue_bases[queue_info->queueFamilyIndex];
-
       for (uint32_t j = 0; j < queue_info->queueCount; j++) {
-         result = vn_queue_init(dev, &queues[count], queue_info, j,
-                                sync_queue_base + j);
+         result = vn_queue_init(dev, &queues[count], queue_info, j);
          if (result != VK_SUCCESS)
             break;
 
