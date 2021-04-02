@@ -2466,14 +2466,14 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
       surf->db_stencil_base = (tex->buffer.gpu_address + tex->surface.u.gfx9.stencil_offset) >> 8;
       z_info = S_028038_FORMAT(format) |
                S_028038_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples)) |
-               S_028038_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode) |
+               S_028038_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
                S_028038_MAXMIP(tex->buffer.b.b.last_level);
       s_info = S_02803C_FORMAT(stencil_format) |
-               S_02803C_SW_MODE(tex->surface.u.gfx9.stencil.swizzle_mode);
+               S_02803C_SW_MODE(tex->surface.u.gfx9.stencil_swizzle_mode);
 
       if (sctx->chip_class == GFX9) {
-         surf->db_z_info2 = S_028068_EPITCH(tex->surface.u.gfx9.surf.epitch);
-         surf->db_stencil_info2 = S_02806C_EPITCH(tex->surface.u.gfx9.stencil.epitch);
+         surf->db_z_info2 = S_028068_EPITCH(tex->surface.u.gfx9.epitch);
+         surf->db_stencil_info2 = S_02806C_EPITCH(tex->surface.u.gfx9.stencil_epitch);
       }
       surf->db_depth_view |= S_028008_MIPID(level);
       surf->db_depth_size =
@@ -3051,8 +3051,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             cb_color_cmask = cb_color_base;
 
          cb_color_attrib3 = cb->cb_color_attrib3 |
-                            S_028EE0_COLOR_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode) |
-                            S_028EE0_FMASK_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode) |
+                            S_028EE0_COLOR_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
+                            S_028EE0_FMASK_SW_MODE(tex->surface.u.gfx9.fmask_swizzle_mode) |
                             S_028EE0_CMASK_PIPE_ALIGNED(1) |
                             S_028EE0_DCC_PIPE_ALIGNED(tex->surface.u.gfx9.dcc.pipe_aligned);
 
@@ -3096,8 +3096,8 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             cb_color_fmask = cb_color_base;
          if (cb->base.u.tex.level > 0)
             cb_color_cmask = cb_color_base;
-         cb_color_attrib |= S_028C74_COLOR_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode) |
-                            S_028C74_FMASK_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode) |
+         cb_color_attrib |= S_028C74_COLOR_SW_MODE(tex->surface.u.gfx9.swizzle_mode) |
+                            S_028C74_FMASK_SW_MODE(tex->surface.u.gfx9.fmask_swizzle_mode) |
                             S_028C74_RB_ALIGNED(meta.rb_aligned) |
                             S_028C74_PIPE_ALIGNED(meta.pipe_aligned);
 
@@ -3119,7 +3119,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          radeon_emit(cs, S_028C98_BASE_256B(cb_dcc_base >> 32));    /* CB_COLOR0_DCC_BASE_EXT */
 
          radeon_set_context_reg(cs, R_0287A0_CB_MRT0_EPITCH + i * 4,
-                                S_0287A0_EPITCH(tex->surface.u.gfx9.surf.epitch));
+                                S_0287A0_EPITCH(tex->surface.u.gfx9.epitch));
       } else {
          /* Compute mutable surface parameters (GFX6-GFX8). */
          const struct legacy_surf_level *level_info =
@@ -3891,7 +3891,7 @@ static void gfx10_make_texture_descriptor(
       fmask_state[3] =
          S_00A00C_DST_SEL_X(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
          S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
-         S_00A00C_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode) |
+         S_00A00C_SW_MODE(tex->surface.u.gfx9.fmask_swizzle_mode) |
          S_00A00C_TYPE(si_tex_dim(screen, tex, target, 0));
       fmask_state[4] = S_00A010_DEPTH(last_layer) | S_00A010_BASE_ARRAY(first_layer);
       fmask_state[5] = 0;
@@ -4215,9 +4215,9 @@ static void si_make_texture_descriptor(struct si_screen *screen, struct si_textu
       fmask_state[7] = 0;
 
       if (screen->info.chip_class == GFX9) {
-         fmask_state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.fmask.swizzle_mode);
+         fmask_state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.fmask_swizzle_mode);
          fmask_state[4] |=
-            S_008F20_DEPTH(last_layer) | S_008F20_PITCH(tex->surface.u.gfx9.fmask.epitch);
+            S_008F20_DEPTH(last_layer) | S_008F20_PITCH(tex->surface.u.gfx9.fmask_epitch);
          fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) |
                            S_008F24_META_RB_ALIGNED(1);
       } else {

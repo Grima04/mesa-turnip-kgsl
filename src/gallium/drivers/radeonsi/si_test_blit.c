@@ -121,7 +121,7 @@ static enum pipe_format choose_format()
 static const char *array_mode_to_string(struct si_screen *sscreen, struct radeon_surf *surf)
 {
    if (sscreen->info.chip_class >= GFX9) {
-      switch (surf->u.gfx9.surf.swizzle_mode) {
+      switch (surf->u.gfx9.swizzle_mode) {
       case 0:
          return "  LINEAR";
       case 21:
@@ -135,7 +135,7 @@ static const char *array_mode_to_string(struct si_screen *sscreen, struct radeon
       case 27:
          return "64KB_R_X";
       default:
-         printf("Unhandled swizzle mode = %u\n", surf->u.gfx9.surf.swizzle_mode);
+         printf("Unhandled swizzle mode = %u\n", surf->u.gfx9.swizzle_mode);
          return " UNKNOWN";
       }
    } else {

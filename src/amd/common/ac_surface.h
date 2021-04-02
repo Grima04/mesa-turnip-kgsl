@@ -150,11 +150,6 @@ enum gfx9_resource_type
    RADEON_RESOURCE_3D,
 };
 
-struct gfx9_surf_flags {
-   uint16_t swizzle_mode; /* tile mode */
-   uint16_t epitch;       /* (pitch - 1) or (height - 1) */
-};
-
 struct gfx9_surf_meta_flags {
    unsigned rb_aligned : 1;   /* optimal for RBs */
    unsigned pipe_aligned : 1; /* optimal for TC */
@@ -170,9 +165,13 @@ struct gfx9_surf_level {
 };
 
 struct gfx9_surf_layout {
-   struct gfx9_surf_flags surf;    /* color or depth surface */
-   struct gfx9_surf_flags fmask;   /* not added to surf_size */
-   struct gfx9_surf_flags stencil; /* added to surf_size, use stencil_offset */
+   uint8_t swizzle_mode;      /* color or depth */
+   uint8_t fmask_swizzle_mode;
+   uint8_t stencil_swizzle_mode;
+
+   uint16_t epitch;           /* gfx9 only, not on gfx10 */
+   uint16_t fmask_epitch;     /* gfx9 only, not on gfx10 */
+   uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
 
    struct gfx9_surf_meta_flags dcc; /* metadata of color */
 

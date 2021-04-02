@@ -358,9 +358,9 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[3] &= C_00A00C_SW_MODE;
 
       if (is_stencil) {
-         state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.stencil.swizzle_mode);
+         state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.stencil_swizzle_mode);
       } else {
-         state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode);
+         state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.swizzle_mode);
       }
 
       state[6] &= C_00A018_META_DATA_ADDRESS_LO & C_00A018_META_PIPE_ALIGNED &
@@ -386,10 +386,10 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[4] &= C_008F20_PITCH;
 
       if (is_stencil) {
-         state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.stencil.swizzle_mode);
-         state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.stencil.epitch);
+         state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.stencil_swizzle_mode);
+         state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.stencil_epitch);
       } else {
-         uint16_t epitch = tex->surface.u.gfx9.surf.epitch;
+         uint16_t epitch = tex->surface.u.gfx9.epitch;
          if (tex->buffer.b.b.format == PIPE_FORMAT_R8G8_R8B8_UNORM &&
              block_width == 1) {
             /* epitch is patched in ac_surface for sdma/vcn blocks to get
@@ -399,7 +399,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
              */
             epitch = (epitch + 1) / tex->surface.blk_w - 1;
          }
-         state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.surf.swizzle_mode);
+         state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.swizzle_mode);
          state[4] |= S_008F20_PITCH(epitch);
       }
 

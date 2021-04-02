@@ -75,7 +75,7 @@ get_addr_from_coord_base(ADDR_HANDLE addrlib, const struct radeon_surf *surf,
    din.size = sizeof(ADDR2_COMPUTE_DCCINFO_INPUT);
    dout.size = sizeof(ADDR2_COMPUTE_DCCINFO_OUTPUT);
 
-   din.swizzleMode = surf->u.gfx9.surf.swizzle_mode;
+   din.swizzleMode = surf->u.gfx9.swizzle_mode;
    din.resourceType = ADDR_RSRC_TEX_2D;
    din.bpp = util_format_get_blocksizebits(format);
    din.unalignedWidth = w;
@@ -92,7 +92,7 @@ get_addr_from_coord_base(ADDR_HANDLE addrlib, const struct radeon_surf *surf,
 
    ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT dcc_input = {0};
    dcc_input.size = sizeof(dcc_input);
-   dcc_input.swizzleMode = surf->u.gfx9.surf.swizzle_mode;
+   dcc_input.swizzleMode = surf->u.gfx9.swizzle_mode;
    dcc_input.resourceType = ADDR_RSRC_TEX_2D;
    dcc_input.bpp = din.bpp;
    dcc_input.numSlices = 1;
@@ -130,7 +130,7 @@ void generate_hash(struct ac_addrlib *ac_addrlib,
 
    ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT input = {0};
    input.size = sizeof(input);
-   input.swizzleMode = surf->u.gfx9.surf.swizzle_mode;
+   input.swizzleMode = surf->u.gfx9.swizzle_mode;
    input.resourceType = ADDR_RSRC_TEX_2D;
    input.bpp = util_format_get_blocksizebits(entry->format);
    input.unalignedWidth = entry->w;

@@ -379,7 +379,7 @@ radv_patch_surface_from_metadata(struct radv_device *device, struct radeon_surf 
       else
          surface->flags |= RADEON_SURF_SET(RADEON_SURF_MODE_LINEAR_ALIGNED, MODE);
 
-      surface->u.gfx9.surf.swizzle_mode = md->u.gfx9.swizzle_mode;
+      surface->u.gfx9.swizzle_mode = md->u.gfx9.swizzle_mode;
    } else {
       surface->u.legacy.pipe_config = md->u.legacy.pipe_config;
       surface->u.legacy.bankw = md->u.legacy.bankw;
@@ -722,9 +722,9 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       state[3] &= C_00A00C_SW_MODE;
 
       if (is_stencil) {
-         state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.stencil.swizzle_mode);
+         state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.stencil_swizzle_mode);
       } else {
-         state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.surf.swizzle_mode);
+         state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.swizzle_mode);
       }
 
       state[6] &= C_00A018_META_DATA_ADDRESS_LO & C_00A018_META_PIPE_ALIGNED;
@@ -751,11 +751,11 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       state[4] &= C_008F20_PITCH;
 
       if (is_stencil) {
-         state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.stencil.swizzle_mode);
-         state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.stencil.epitch);
+         state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.stencil_swizzle_mode);
+         state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.stencil_epitch);
       } else {
-         state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.surf.swizzle_mode);
-         state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.surf.epitch);
+         state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.swizzle_mode);
+         state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.epitch);
       }
 
       state[5] &=
@@ -949,7 +949,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
          fmask_state[3] =
             S_00A00C_DST_SEL_X(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
             S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
-            S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode) |
+            S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.fmask_swizzle_mode) |
             S_00A00C_TYPE(
                radv_tex_dim(image->type, view_type, image->info.array_size, 0, false, false));
          fmask_state[4] = S_00A010_DEPTH(last_layer) | S_00A010_BASE_ARRAY(first_layer);
@@ -1129,9 +1129,9 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
          fmask_state[7] = 0;
 
          if (device->physical_device->rad_info.chip_class == GFX9) {
-            fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask.swizzle_mode);
+            fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask_swizzle_mode);
             fmask_state[4] |= S_008F20_DEPTH(last_layer) |
-                              S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask.epitch);
+                              S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask_epitch);
             fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) | S_008F24_META_RB_ALIGNED(1);
 
             if (radv_image_is_tc_compat_cmask(image)) {
@@ -1214,7 +1214,7 @@ radv_init_metadata(struct radv_device *device, struct radv_image *image,
       uint64_t dcc_offset =
          image->offset +
          (surface->display_dcc_offset ? surface->display_dcc_offset : surface->dcc_offset);
-      metadata->u.gfx9.swizzle_mode = surface->u.gfx9.surf.swizzle_mode;
+      metadata->u.gfx9.swizzle_mode = surface->u.gfx9.swizzle_mode;
       metadata->u.gfx9.dcc_offset_256b = dcc_offset >> 8;
       metadata->u.gfx9.dcc_pitch_max = surface->u.gfx9.display_dcc_pitch_max;
       metadata->u.gfx9.dcc_independent_64b_blocks = surface->u.gfx9.dcc.independent_64B_blocks;

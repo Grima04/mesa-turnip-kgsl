@@ -329,7 +329,7 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
 
    if (sscreen->info.chip_class >= GFX9) {
       /* 4K or larger tiles only. 0 is linear. 1-3 are 256B tiles. */
-      assert(tex->surface.u.gfx9.surf.swizzle_mode >= 4);
+      assert(tex->surface.u.gfx9.swizzle_mode >= 4);
 
       /* If you do swizzle_mode % 4, you'll get:
        *   0 = Depth
@@ -339,20 +339,20 @@ static void si_set_optimal_micro_tile_mode(struct si_screen *sscreen, struct si_
        *
        * Depth-sample order isn't allowed:
        */
-      assert(tex->surface.u.gfx9.surf.swizzle_mode % 4 != 0);
+      assert(tex->surface.u.gfx9.swizzle_mode % 4 != 0);
 
       switch (tex->last_msaa_resolve_target_micro_mode) {
       case RADEON_MICRO_MODE_DISPLAY:
-         tex->surface.u.gfx9.surf.swizzle_mode &= ~0x3;
-         tex->surface.u.gfx9.surf.swizzle_mode += 2; /* D */
+         tex->surface.u.gfx9.swizzle_mode &= ~0x3;
+         tex->surface.u.gfx9.swizzle_mode += 2; /* D */
          break;
       case RADEON_MICRO_MODE_STANDARD:
-         tex->surface.u.gfx9.surf.swizzle_mode &= ~0x3;
-         tex->surface.u.gfx9.surf.swizzle_mode += 1; /* S */
+         tex->surface.u.gfx9.swizzle_mode &= ~0x3;
+         tex->surface.u.gfx9.swizzle_mode += 1; /* S */
          break;
       case RADEON_MICRO_MODE_RENDER:
-         tex->surface.u.gfx9.surf.swizzle_mode &= ~0x3;
-         tex->surface.u.gfx9.surf.swizzle_mode += 3; /* R */
+         tex->surface.u.gfx9.swizzle_mode &= ~0x3;
+         tex->surface.u.gfx9.swizzle_mode += 3; /* R */
          break;
       default: /* depth */
          assert(!"unexpected micro mode");

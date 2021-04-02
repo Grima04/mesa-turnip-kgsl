@@ -256,7 +256,7 @@ static int si_init_surface(struct si_screen *sscreen, struct radeon_surf *surfac
       flags |= RADEON_SURF_FORCE_SWIZZLE_MODE;
 
       if (sscreen->info.chip_class >= GFX10)
-         surface->u.gfx9.surf.swizzle_mode = ADDR_SW_64KB_R_X;
+         surface->u.gfx9.swizzle_mode = ADDR_SW_64KB_R_X;
    }
 
    surface->modifier = modifier;

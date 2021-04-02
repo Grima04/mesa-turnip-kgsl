@@ -358,8 +358,8 @@ image_hw_resolve_compat(const struct radv_device *device, struct radv_image *src
                         struct radv_image *dst_image)
 {
    if (device->physical_device->rad_info.chip_class >= GFX9) {
-      return dst_image->planes[0].surface.u.gfx9.surf.swizzle_mode ==
-             src_image->planes[0].surface.u.gfx9.surf.swizzle_mode;
+      return dst_image->planes[0].surface.u.gfx9.swizzle_mode ==
+             src_image->planes[0].surface.u.gfx9.swizzle_mode;
    } else {
       return dst_image->planes[0].surface.micro_tile_mode ==
              src_image->planes[0].surface.micro_tile_mode;

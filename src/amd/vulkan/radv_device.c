@@ -6296,8 +6296,8 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 
    if (device->physical_device->rad_info.chip_class >= GFX9) {
       if (device->physical_device->rad_info.chip_class >= GFX10) {
-         cb->cb_color_attrib3 |= S_028EE0_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
-                                 S_028EE0_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
+         cb->cb_color_attrib3 |= S_028EE0_COLOR_SW_MODE(surf->u.gfx9.swizzle_mode) |
+                                 S_028EE0_FMASK_SW_MODE(surf->u.gfx9.fmask_swizzle_mode) |
                                  S_028EE0_CMASK_PIPE_ALIGNED(1) |
                                  S_028EE0_DCC_PIPE_ALIGNED(surf->u.gfx9.dcc.pipe_aligned);
       } else {
@@ -6309,11 +6309,11 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
          if (surf->dcc_offset)
             meta = surf->u.gfx9.dcc;
 
-         cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
-                                S_028C74_FMASK_SW_MODE(surf->u.gfx9.fmask.swizzle_mode) |
+         cb->cb_color_attrib |= S_028C74_COLOR_SW_MODE(surf->u.gfx9.swizzle_mode) |
+                                S_028C74_FMASK_SW_MODE(surf->u.gfx9.fmask_swizzle_mode) |
                                 S_028C74_RB_ALIGNED(meta.rb_aligned) |
                                 S_028C74_PIPE_ALIGNED(meta.pipe_aligned);
-         cb->cb_mrt_epitch = S_0287A0_EPITCH(surf->u.gfx9.surf.epitch);
+         cb->cb_mrt_epitch = S_0287A0_EPITCH(surf->u.gfx9.epitch);
       }
 
       cb->cb_color_base += surf->u.gfx9.surf_offset >> 8;
@@ -6584,14 +6584,14 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
 
       ds->db_z_info = S_028038_FORMAT(format) |
                       S_028038_NUM_SAMPLES(util_logbase2(iview->image->info.samples)) |
-                      S_028038_SW_MODE(surf->u.gfx9.surf.swizzle_mode) |
+                      S_028038_SW_MODE(surf->u.gfx9.swizzle_mode) |
                       S_028038_MAXMIP(iview->image->info.levels - 1) | S_028038_ZRANGE_PRECISION(1);
       ds->db_stencil_info =
-         S_02803C_FORMAT(stencil_format) | S_02803C_SW_MODE(surf->u.gfx9.stencil.swizzle_mode);
+         S_02803C_FORMAT(stencil_format) | S_02803C_SW_MODE(surf->u.gfx9.stencil_swizzle_mode);
 
       if (device->physical_device->rad_info.chip_class == GFX9) {
-         ds->db_z_info2 = S_028068_EPITCH(surf->u.gfx9.surf.epitch);
-         ds->db_stencil_info2 = S_02806C_EPITCH(surf->u.gfx9.stencil.epitch);
+         ds->db_z_info2 = S_028068_EPITCH(surf->u.gfx9.epitch);
+         ds->db_stencil_info2 = S_02806C_EPITCH(surf->u.gfx9.stencil_epitch);
       }
 
       ds->db_depth_view |= S_028008_MIPID(level);
