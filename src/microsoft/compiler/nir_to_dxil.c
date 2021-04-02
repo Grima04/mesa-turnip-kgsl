@@ -2046,7 +2046,7 @@ emit_barrier(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    }
 
    if (modes & nir_var_mem_shared)
-      flags |= DXIL_BARRIER_MODE_UAV_FENCE_THREAD_GROUP;
+      flags |= DXIL_BARRIER_MODE_GROUPSHARED_MEM_FENCE;
 
    func = dxil_get_function(&ctx->mod, "dx.op.barrier", DXIL_NONE);
    if (!func)
