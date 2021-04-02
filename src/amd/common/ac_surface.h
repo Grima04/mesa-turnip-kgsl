@@ -239,6 +239,8 @@ struct radeon_surf {
    uint8_t blk_w : 4;
    uint8_t blk_h : 4;
    uint8_t bpe : 5;
+   /* Display, standard(thin), depth, render(rotated). AKA D,S,Z,R swizzle modes. */
+   uint8_t micro_tile_mode : 3;
    /* Number of mipmap levels where DCC is enabled starting from level 0.
     * Non-zero levels may be disabled due to alignment constraints, but not
     * the first level.
@@ -249,16 +251,7 @@ struct radeon_surf {
    uint8_t has_stencil : 1;
    /* This might be true even if micro_tile_mode isn't displayable or rotated. */
    uint8_t is_displayable : 1;
-   /* Displayable, thin, depth, rotated. AKA D,S,Z,R swizzle modes. */
-   uint8_t micro_tile_mode : 3;
-
-   uint64_t flags;
-
-    /*
-     * DRM format modifier. Set to DRM_FORMAT_MOD_INVALID to have addrlib
-     * select tiling parameters instead.
-     */
-    uint64_t modifier;
+   uint8_t first_mip_tail_level : 4;
 
    /* These are return values. Some of them can be set by the caller, but
     * they will be treated as hints (e.g. bankw, bankh) and might be
@@ -266,7 +259,6 @@ struct radeon_surf {
     */
 
    /* Not supported yet for depth + stencil. */
-   uint8_t first_mip_tail_level;
    uint16_t prt_tile_width;
    uint16_t prt_tile_height;
 
@@ -294,9 +286,15 @@ struct radeon_surf {
    uint8_t cmask_alignment_log2;
    uint8_t alignment_log2;
 
+   /* DRM format modifier. Set to DRM_FORMAT_MOD_INVALID to have addrlib
+    * select tiling parameters instead.
+    */
+   uint64_t modifier;
+   uint64_t flags;
+
    uint64_t surf_size;
    uint64_t fmask_size;
-   uint64_t fmask_slice_size;
+   uint32_t fmask_slice_size; /* max 2^31 (16K * 16K * 8) */
 
    /* DCC and HTILE are very small. */
    uint32_t dcc_size;
