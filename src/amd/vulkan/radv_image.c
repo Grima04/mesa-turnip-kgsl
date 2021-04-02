@@ -2086,6 +2086,19 @@ bool radv_layout_is_htile_compressed(const struct radv_device *device,
 		} else {
 			return false;
 		}
+	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL:
+		if (radv_image_is_tc_compat_htile(image) ||
+		    (radv_image_has_htile(image) &&
+		     !(image->usage & (VK_IMAGE_USAGE_SAMPLED_BIT |
+				       VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)))) {
+			/* Keep HTILE compressed if the image is only going to
+			 * be used as a depth/stencil read-only attachment.
+			 */
+			return true;
+		} else {
+			return false;
+		}
+		break;
 	default:
 	    return radv_image_is_tc_compat_htile(image);
 	}
