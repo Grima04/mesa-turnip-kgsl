@@ -175,7 +175,7 @@ struct gfx9_surf_layout {
    uint16_t fmask_epitch;     /* gfx9 only, not on gfx10 */
    uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
 
-   enum gfx9_resource_type resource_type; /* 1D, 2D or 3D */
+   enum gfx9_resource_type resource_type:8; /* 1D, 2D or 3D */
    uint16_t surf_pitch;                   /* in blocks */
    uint16_t surf_height;
 
