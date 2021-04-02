@@ -1,0 +1,6 @@
+# Times out after a minute.
+dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.query_status.fragment
+dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.recover_from_reset.fragment
+dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.reset_status.fragment
+dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.shared_context_status.fragment
+dEQP-EGL.functional.robustness.reset_context.shaders.infinite_loop.sync_status.fragment

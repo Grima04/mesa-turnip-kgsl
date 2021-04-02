@@ -47,7 +47,7 @@ mkdir -p $RESULTS
 if [ "$DEQP_VER" = "vk" ]; then
    cp /deqp/mustpass/vk-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/external/vulkancts/modules/vulkan/deqp-vk
-elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" ]; then
+elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" -o "$DEQP_VER" = "egl" ]; then
    cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/modules/$DEQP_VER/deqp-$DEQP_VER
    SUITE=dEQP
@@ -181,6 +181,9 @@ parse_renderer() {
 }
 
 check_renderer() {
+    if echo $DEQP_VER | grep -q egl; then
+        return
+    fi
     echo "Capturing renderer info for GLES driver sanity checks"
     # If you're having trouble loading your driver, uncommenting this may help
     # debug.
