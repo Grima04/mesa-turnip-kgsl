@@ -8,7 +8,7 @@ DEQP_CONFIG=${DEQP_CONFIG:-rgba8888d24s8ms0}
 DEQP_VARIANT=${DEQP_VARIANT:-master}
 
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-width=$DEQP_WIDTH --deqp-surface-height=$DEQP_HEIGHT"
-DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=pbuffer"
+DEQP_OPTIONS="$DEQP_OPTIONS --deqp-surface-type=${DEQP_SURFACE_TYPE:-pbuffer}"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=$DEQP_CONFIG"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 
