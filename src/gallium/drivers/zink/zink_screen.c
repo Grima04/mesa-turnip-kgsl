@@ -303,6 +303,9 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_TEXTURE_MULTISAMPLE:
       return 1;
 
+   case PIPE_CAP_FRAGMENT_SHADER_INTERLOCK:
+      return screen->info.have_EXT_fragment_shader_interlock;
+
    case PIPE_CAP_POINT_SPRITE:
       return 1;
 
