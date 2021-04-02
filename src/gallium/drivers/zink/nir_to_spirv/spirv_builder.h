@@ -187,6 +187,9 @@ spirv_builder_emit_access_chain(struct spirv_builder *b, SpvId result_type,
                                 SpvId base, const SpvId indexes[],
                                 size_t num_indexes);
 
+void
+spirv_builder_emit_interlock(struct spirv_builder *b, bool end);
+
 SpvId
 spirv_builder_emit_unop(struct spirv_builder *b, SpvOp op, SpvId result_type,
                         SpvId operand);

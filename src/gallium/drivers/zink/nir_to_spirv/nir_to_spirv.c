@@ -2600,6 +2600,11 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_shared_atomic_intrinsic(ctx, intr);
       break;
 
+   case nir_intrinsic_begin_invocation_interlock:
+   case nir_intrinsic_end_invocation_interlock:
+      spirv_builder_emit_interlock(&ctx->builder, intr->intrinsic == nir_intrinsic_end_invocation_interlock);
+      break;
+
    case nir_intrinsic_get_ssbo_size: {
       SpvId uint_type = get_uvec_type(ctx, 32, 1);
       nir_variable *var = ctx->ssbo_vars[nir_src_as_const_value(intr->src[0])->u32];
@@ -3615,6 +3620,22 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
          spirv_builder_emit_exec_mode(&ctx.builder, entry_point,
                                       SpvExecutionModePostDepthCoverage);
       }
+
+      if (s->info.fs.pixel_interlock_ordered || s->info.fs.pixel_interlock_unordered ||
+          s->info.fs.sample_interlock_ordered || s->info.fs.sample_interlock_unordered)
+         spirv_builder_emit_extension(&ctx.builder, "SPV_EXT_fragment_shader_interlock");
+      if (s->info.fs.pixel_interlock_ordered || s->info.fs.pixel_interlock_unordered)
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityFragmentShaderPixelInterlockEXT);
+      if (s->info.fs.sample_interlock_ordered || s->info.fs.sample_interlock_unordered)
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityFragmentShaderSampleInterlockEXT);
+      if (s->info.fs.pixel_interlock_ordered)
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModePixelInterlockOrderedEXT);
+      if (s->info.fs.pixel_interlock_unordered)
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModePixelInterlockUnorderedEXT);
+      if (s->info.fs.sample_interlock_ordered)
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeSampleInterlockOrderedEXT);
+      if (s->info.fs.sample_interlock_unordered)
+         spirv_builder_emit_exec_mode(&ctx.builder, entry_point, SpvExecutionModeSampleInterlockUnorderedEXT);
       break;
    case MESA_SHADER_TESS_CTRL:
       spirv_builder_emit_exec_mode_literal(&ctx.builder, entry_point,

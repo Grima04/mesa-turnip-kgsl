@@ -460,6 +460,12 @@ spirv_builder_emit_access_chain(struct spirv_builder *b, SpvId result_type,
    return result;
 }
 
+void
+spirv_builder_emit_interlock(struct spirv_builder *b, bool end)
+{
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 1);
+   spirv_buffer_emit_word(&b->instructions, (end ? SpvOpEndInvocationInterlockEXT : SpvOpBeginInvocationInterlockEXT) | (1 << 16));
+}
 
 SpvId
 spirv_builder_emit_unop(struct spirv_builder *b, SpvOp op, SpvId result_type,
