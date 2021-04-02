@@ -838,7 +838,8 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
    surf->surf_size = surf_level->offset + AddrSurfInfoOut->surfSize;
 
    /* Clear DCC fields at the beginning. */
-   dcc_level->dcc_offset = 0;
+   if (!AddrSurfInfoIn->flags.depth && !AddrSurfInfoIn->flags.stencil)
+      dcc_level->dcc_offset = 0;
 
    /* The previous level's flag tells us if we can use DCC for this level. */
    if (AddrSurfInfoIn->flags.dccCompatible && (level == 0 || AddrDccOut->subLvlCompressible)) {

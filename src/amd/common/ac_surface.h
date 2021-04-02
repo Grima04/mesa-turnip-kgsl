@@ -124,12 +124,22 @@ struct legacy_surf_layout {
    unsigned stencil_adjusted : 1;
 
    struct legacy_surf_level level[RADEON_SURF_MAX_LEVELS];
-   struct legacy_surf_level stencil_level[RADEON_SURF_MAX_LEVELS];
-   struct legacy_surf_dcc_level dcc_level[RADEON_SURF_MAX_LEVELS];
    uint8_t tiling_index[RADEON_SURF_MAX_LEVELS];
-   uint8_t stencil_tiling_index[RADEON_SURF_MAX_LEVELS];
-   struct legacy_surf_fmask fmask;
-   unsigned cmask_slice_tile_max;
+
+   union {
+      /* Color layout */
+      struct {
+         struct legacy_surf_dcc_level dcc_level[RADEON_SURF_MAX_LEVELS];
+         struct legacy_surf_fmask fmask;
+         unsigned cmask_slice_tile_max;
+      };
+
+      /* Z/S layout */
+      struct {
+         struct legacy_surf_level stencil_level[RADEON_SURF_MAX_LEVELS];
+         uint8_t stencil_tiling_index[RADEON_SURF_MAX_LEVELS];
+      };
+   };
 };
 
 /* Same as addrlib - AddrResourceType. */
