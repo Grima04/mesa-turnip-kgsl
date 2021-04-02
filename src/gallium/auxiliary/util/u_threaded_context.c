@@ -893,6 +893,31 @@ tc_set_inlinable_constants(struct pipe_context *_pipe,
    memcpy(p->values, values, num_values * 4);
 }
 
+struct tc_sample_locations {
+   uint16_t size;
+   uint8_t locations[0];
+};
+
+
+static void
+tc_call_set_sample_locations(struct pipe_context *pipe, union tc_payload *payload)
+{
+   struct tc_sample_locations *p = (struct tc_sample_locations *)payload;
+   pipe->set_sample_locations(pipe, p->size, &p->locations[0]);
+}
+
+static void
+tc_set_sample_locations(struct pipe_context *_pipe, size_t size, const uint8_t *locations)
+{
+   struct threaded_context *tc = threaded_context(_pipe);
+   struct tc_sample_locations *p = (struct tc_sample_locations *)tc_add_sized_call(tc,
+                                   TC_CALL_set_sample_locations,
+                                   tc_payload_size_to_call_slots(sizeof(struct tc_sample_locations) + size));
+
+   p->size = size;
+   memcpy(&p->locations, locations, size);
+}
+
 struct tc_scissors {
    ubyte start, count;
    struct pipe_scissor_state slot[0]; /* more will be allocated if needed */
@@ -3144,6 +3169,7 @@ threaded_context_create(struct pipe_context *pipe,
    CTX_INIT(set_inlinable_constants);
    CTX_INIT(set_framebuffer_state);
    CTX_INIT(set_polygon_stipple);
+   CTX_INIT(set_sample_locations);
    CTX_INIT(set_scissor_states);
    CTX_INIT(set_viewport_states);
    CTX_INIT(set_window_rectangles);
