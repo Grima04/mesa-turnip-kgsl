@@ -591,7 +591,7 @@ tu_CreateImage(VkDevice _device,
       if (fmt_list) {
          may_be_swapped = false;
          for (uint32_t i = 0; i < fmt_list->viewFormatCount; i++) {
-            if (tu6_format_color(fmt_list->pViewFormats[i], TILE6_LINEAR).swap) {
+            if (tu6_format_texture(fmt_list->pViewFormats[i], TILE6_LINEAR).swap) {
                may_be_swapped = true;
                break;
             }
