@@ -530,8 +530,10 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       struct pipe_surface templ = {};
       templ.u.tex.level = state->u.tex.first_level;
       templ.format = state->format;
-      templ.u.tex.first_layer = state->u.tex.first_layer;
-      templ.u.tex.last_layer = state->u.tex.last_layer;
+      if (state->target != PIPE_TEXTURE_3D) {
+         templ.u.tex.first_layer = state->u.tex.first_layer;
+         templ.u.tex.last_layer = state->u.tex.last_layer;
+      }
 
       ivci = create_ivci(screen, res, &templ, state->target);
       ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
