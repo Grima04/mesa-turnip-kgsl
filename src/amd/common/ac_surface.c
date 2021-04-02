@@ -1730,8 +1730,10 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
    /* CMASK fast clear uses these even if FMASK isn't allocated.
     * FMASK only supports the Z swizzle modes, whose numbers are multiples of 4.
     */
-   surf->u.gfx9.fmask_swizzle_mode = surf->u.gfx9.swizzle_mode & ~0x3;
-   surf->u.gfx9.fmask_epitch = surf->u.gfx9.epitch;
+   if (!in->flags.depth) {
+      surf->u.gfx9.fmask_swizzle_mode = surf->u.gfx9.swizzle_mode & ~0x3;
+      surf->u.gfx9.fmask_epitch = surf->u.gfx9.epitch;
+   }
 
    surf->u.gfx9.surf_slice_size = out.sliceSize;
    surf->u.gfx9.surf_pitch = out.pitch;
@@ -2242,7 +2244,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
 
    if (ac_modifier_has_dcc(surf->modifier)) {
       ac_modifier_fill_dcc_params(surf->modifier, surf, &AddrSurfInfoIn);
-   } else {
+   } else if (!AddrSurfInfoIn.flags.depth && !AddrSurfInfoIn.flags.stencil) {
       /* Optimal values for the L2 cache. */
       if (info->chip_class == GFX9) {
          surf->u.gfx9.dcc.independent_64B_blocks = 1;
@@ -2332,7 +2334,8 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    surf->htile_size = 0;
    surf->htile_slice_size = 0;
    surf->u.gfx9.surf_offset = 0;
-   surf->u.gfx9.stencil_offset = 0;
+   if (AddrSurfInfoIn.flags.stencil)
+      surf->u.gfx9.stencil_offset = 0;
    surf->cmask_size = 0;
    surf->u.gfx9.dcc_retile_use_uint16 = false;
    surf->u.gfx9.dcc_retile_num_elements = 0;

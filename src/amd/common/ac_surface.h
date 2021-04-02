@@ -165,15 +165,8 @@ struct gfx9_surf_level {
 };
 
 struct gfx9_surf_layout {
-   uint8_t swizzle_mode;      /* color or depth */
-   uint8_t fmask_swizzle_mode;
-   uint8_t stencil_swizzle_mode;
-
-   struct gfx9_surf_meta_flags dcc; /* metadata of color */
-
    uint16_t epitch;           /* gfx9 only, not on gfx10 */
-   uint16_t fmask_epitch;     /* gfx9 only, not on gfx10 */
-   uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
+   uint8_t swizzle_mode;      /* color or depth */
 
    enum gfx9_resource_type resource_type:8; /* 1D, 2D or 3D */
    uint16_t surf_pitch;                   /* in blocks */
@@ -190,38 +183,55 @@ struct gfx9_surf_layout {
    uint16_t base_mip_width;
    uint16_t base_mip_height;
 
-   uint64_t stencil_offset; /* separate stencil */
-
-   uint8_t dcc_block_width;
-   uint8_t dcc_block_height;
-   uint8_t dcc_block_depth;
-
-   /* Displayable DCC. This is always rb_aligned=0 and pipe_aligned=0.
-    * The 3D engine doesn't support that layout except for chips with 1 RB.
-    * All other chips must set rb_aligned=1.
-    * A compute shader needs to convert from aligned DCC to unaligned.
-    */
-   uint32_t display_dcc_size;
-   uint8_t display_dcc_alignment_log2;
-   uint16_t display_dcc_pitch_max; /* (mip chain pitch - 1) */
-   uint16_t dcc_pitch_max;
-   bool dcc_retile_use_uint16;     /* if all values fit into uint16_t */
-   uint32_t dcc_retile_num_elements;
-   void *dcc_retile_map;
-
-   /* Offset within slice in bytes, only valid for prt images. */
-   uint32_t prt_level_offset[RADEON_SURF_MAX_LEVELS];
    /* Pitch of level in blocks, only valid for prt images. */
    uint16_t prt_level_pitch[RADEON_SURF_MAX_LEVELS];
+   /* Offset within slice in bytes, only valid for prt images. */
+   uint32_t prt_level_offset[RADEON_SURF_MAX_LEVELS];
 
-   /* DCC level info */
-   struct gfx9_surf_level dcc_levels[RADEON_SURF_MAX_LEVELS];
+   union {
+      /* Color */
+      struct {
+         struct gfx9_surf_meta_flags dcc; /* metadata of color */
+         uint8_t fmask_swizzle_mode;
+         uint16_t fmask_epitch;     /* gfx9 only, not on gfx10 */
 
-   /* HTILE level info */
-   struct gfx9_surf_level htile_levels[RADEON_SURF_MAX_LEVELS];
+         uint16_t dcc_pitch_max;
+         uint16_t dcc_height;
 
-   /* CMASK level info (only level 0) */
-   struct gfx9_surf_level cmask_level0;
+         uint8_t dcc_block_width;
+         uint8_t dcc_block_height;
+         uint8_t dcc_block_depth;
+
+         /* Displayable DCC. This is always rb_aligned=0 and pipe_aligned=0.
+          * The 3D engine doesn't support that layout except for chips with 1 RB.
+          * All other chips must set rb_aligned=1.
+          * A compute shader needs to convert from aligned DCC to unaligned.
+          */
+         uint8_t display_dcc_alignment_log2;
+         uint32_t display_dcc_size;
+         uint16_t display_dcc_pitch_max; /* (mip chain pitch - 1) */
+         uint16_t display_dcc_height;
+         bool dcc_retile_use_uint16;     /* if all values fit into uint16_t */
+         uint32_t dcc_retile_num_elements;
+         void *dcc_retile_map;
+
+         /* DCC level info */
+         struct gfx9_surf_level dcc_levels[RADEON_SURF_MAX_LEVELS];
+
+         /* CMASK level info (only level 0) */
+         struct gfx9_surf_level cmask_level0;
+      };
+
+      /* Z/S */
+      struct {
+         uint64_t stencil_offset; /* separate stencil */
+         uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
+         uint8_t stencil_swizzle_mode;
+
+         /* HTILE level info */
+         struct gfx9_surf_level htile_levels[RADEON_SURF_MAX_LEVELS];
+      };
+   };
 };
 
 struct radeon_surf {
