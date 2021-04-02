@@ -76,6 +76,7 @@ struct zink_screen {
 
    unsigned shader_id;
 
+   uint64_t total_video_mem;
    uint64_t total_mem;
 
    VkInstance instance;

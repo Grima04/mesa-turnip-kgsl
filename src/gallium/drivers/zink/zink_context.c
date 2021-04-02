@@ -1984,10 +1984,10 @@ zink_maybe_flush_or_stall(struct zink_context *ctx)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    /* flush anytime our total batch memory usage is potentially >= 1/10 of total system memory */
-   if (ctx->batch.state->resource_size >= screen->total_mem / 10)
+   if (ctx->batch.state->resource_size >= screen->total_video_mem / 10)
       flush_batch(ctx, true);
 
-   if (ctx->resource_size >= screen->total_mem / 10 || _mesa_hash_table_num_entries(&ctx->batch_states) > 10) {
+   if (ctx->resource_size >= screen->total_video_mem / 10 || _mesa_hash_table_num_entries(&ctx->batch_states) > 10) {
       sync_flush(ctx, zink_batch_state(ctx->last_fence));
       zink_vkfence_wait(screen, ctx->last_fence, PIPE_TIMEOUT_INFINITE);
       zink_batch_reset_all(ctx);
