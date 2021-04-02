@@ -87,6 +87,12 @@ void
 util_end_pipestat_query(struct pipe_context *ctx, struct pipe_query *q,
                         FILE *f);
 
+struct pipe_query *
+util_begin_time_query(struct pipe_context *ctx);
+void
+util_end_time_query(struct pipe_context *ctx, struct pipe_query *q, FILE *f,
+                    const char *name);
+
 void
 util_wait_for_idle(struct pipe_context *ctx);
 
