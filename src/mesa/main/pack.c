@@ -1641,7 +1641,7 @@ _mesa_unpack_ubyte_rgba_row(mesa_format format, uint32_t n,
       util_format_unpack_description((enum pipe_format)format);
 
    if (unpack->unpack_rgba_8unorm) {
-      unpack->unpack_rgba_8unorm((uint8_t *)dst, 0, src, 0, n, 1);
+      unpack->unpack_rgba_8unorm((uint8_t *)dst, src, n);
    } else {
       /* get float values, convert to ubyte */
       {

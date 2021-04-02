@@ -255,10 +255,17 @@ def write_format_table(formats):
         print("   [%s] = {" % (format.name,))
 
         if format.colorspace != ZS and not format.is_pure_color():
-            print("      .unpack_rgba_8unorm = &util_format_%s_unpack_rgba_8unorm," % sn)
             if format.layout == 's3tc' or format.layout == 'rgtc':
                 print("      .fetch_rgba_8unorm = &util_format_%s_fetch_rgba_8unorm," % sn)
-            print("      .unpack_rgba = &util_format_%s_unpack_rgba_float," % sn)
+            if format.block_width > 1:
+                print(
+                    "      .unpack_rgba_8unorm_rect = &util_format_%s_unpack_rgba_8unorm," % sn)
+                print(
+                    "      .unpack_rgba_rect = &util_format_%s_unpack_rgba_float," % sn)
+            else:
+                print(
+                    "      .unpack_rgba_8unorm = &util_format_%s_unpack_rgba_8unorm," % sn)
+                print("      .unpack_rgba = &util_format_%s_unpack_rgba_float," % sn)
 
         if format.has_depth():
             print("      .unpack_z_32unorm = &util_format_%s_unpack_z_32unorm," % sn)

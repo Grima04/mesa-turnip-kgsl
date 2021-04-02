@@ -315,10 +315,20 @@ struct util_format_unpack_description {
     * Unpack pixel blocks to R8G8B8A8_UNORM.
     * Note: strides are in bytes.
     *
-    * Only defined for non-depth-stencil formats.
+    * Only defined for non-block non-depth-stencil formats.
     */
    void
-   (*unpack_rgba_8unorm)(uint8_t *restrict dst, unsigned dst_stride,
+   (*unpack_rgba_8unorm)(uint8_t *restrict dst, const uint8_t *restrict src,
+                         unsigned width);
+
+   /**
+    * Unpack pixel blocks to R8G8B8A8_UNORM.
+    * Note: strides are in bytes.
+    *
+    * Only defined for block non-depth-stencil formats.
+    */
+   void
+   (*unpack_rgba_8unorm_rect)(uint8_t *restrict dst, unsigned dst_stride,
                          const uint8_t *restrict src, unsigned src_stride,
                          unsigned width, unsigned height);
 
@@ -338,10 +348,22 @@ struct util_format_unpack_description {
     *
     * Note: strides are in bytes.
     *
-    * Only defined for non-depth-stencil formats.
+    * Only defined for non-block non-depth-stencil formats.
     */
    void
-   (*unpack_rgba)(void *restrict dst, unsigned dst_stride,
+   (*unpack_rgba)(void *restrict dst, const uint8_t *restrict src,
+                  unsigned width);
+
+   /**
+    * Unpack pixel blocks to R32G32B32A32_UINT/_INT_FLOAT based on whether the
+    * type is pure uint, int, or other.
+    *
+    * Note: strides are in bytes.
+    *
+    * Only defined for block non-depth-stencil formats.
+    */
+   void
+   (*unpack_rgba_rect)(void *restrict dst, unsigned dst_stride,
                   const uint8_t *restrict src, unsigned src_stride,
                   unsigned width, unsigned height);
 
@@ -1477,7 +1499,7 @@ util_format_unpack_rgba(enum pipe_format format, void *dst,
    const struct util_format_unpack_description *desc =
       util_format_unpack_description(format);
 
-   desc->unpack_rgba(dst, 0, (const uint8_t *)src, 0, w, 1);
+   desc->unpack_rgba(dst, (const uint8_t *)src, w);
 }
 
 static inline void
@@ -1557,6 +1579,18 @@ util_format_write_4ub(enum pipe_format format,
                       const uint8_t *src, unsigned src_stride, 
                       void *dst, unsigned dst_stride, 
                       unsigned x, unsigned y, unsigned w, unsigned h);
+
+void
+util_format_unpack_rgba_rect(enum pipe_format format,
+                             void *dst, unsigned dst_stride,
+                             const void *src, unsigned src_stride,
+                             unsigned w, unsigned h);
+
+void
+util_format_unpack_rgba_8unorm_rect(enum pipe_format format,
+                                    void *dst, unsigned dst_stride,
+                                    const void *src, unsigned src_stride,
+                                    unsigned w, unsigned h);
 
 /*
  * Generic format conversion;
