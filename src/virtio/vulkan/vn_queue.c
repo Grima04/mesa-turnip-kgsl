@@ -440,9 +440,6 @@ static void
 vn_sync_payload_release(struct vn_device *dev,
                         struct vn_sync_payload *payload)
 {
-   if (payload->type == VN_SYNC_TYPE_SYNC)
-      vn_renderer_sync_release(payload->sync);
-
    payload->type = VN_SYNC_TYPE_INVALID;
 }
 
@@ -452,28 +449,8 @@ vn_fence_init_payloads(struct vn_device *dev,
                        bool signaled,
                        const VkAllocationCallbacks *alloc)
 {
-   struct vn_renderer_sync *perm_sync;
-   VkResult result =
-      vn_renderer_sync_create_empty(dev->instance->renderer, &perm_sync);
-   if (result != VK_SUCCESS)
-      return result;
-
-   struct vn_renderer_sync *temp_sync;
-   result =
-      vn_renderer_sync_create_empty(dev->instance->renderer, &temp_sync);
-   if (result != VK_SUCCESS) {
-      vn_renderer_sync_destroy(perm_sync);
-      return result;
-   }
-
-   /* perm_sync is unused */
    fence->permanent.type = VN_SYNC_TYPE_DEVICE_ONLY;
-   fence->permanent.sync = perm_sync;
-
-   /* temp_sync is uninitialized */
    fence->temporary.type = VN_SYNC_TYPE_INVALID;
-   fence->temporary.sync = temp_sync;
-
    fence->payload = &fence->permanent;
 
    return VK_SUCCESS;
@@ -546,8 +523,6 @@ vn_DestroyFence(VkDevice device,
 
    vn_sync_payload_release(dev, &fence->permanent);
    vn_sync_payload_release(dev, &fence->temporary);
-   vn_renderer_sync_destroy(fence->permanent.sync);
-   vn_renderer_sync_destroy(fence->temporary.sync);
 
    vn_object_base_fini(&fence->base);
    vk_free(alloc, fence);
@@ -716,28 +691,8 @@ vn_semaphore_init_payloads(struct vn_device *dev,
                            uint64_t initial_val,
                            const VkAllocationCallbacks *alloc)
 {
-   struct vn_renderer_sync *perm_sync;
-   VkResult result =
-      vn_renderer_sync_create_empty(dev->instance->renderer, &perm_sync);
-   if (result != VK_SUCCESS)
-      return result;
-
-   struct vn_renderer_sync *temp_sync;
-   result =
-      vn_renderer_sync_create_empty(dev->instance->renderer, &temp_sync);
-   if (result != VK_SUCCESS) {
-      vn_renderer_sync_destroy(perm_sync);
-      return result;
-   }
-
-   /* perm_sync is unused */
    sem->permanent.type = VN_SYNC_TYPE_DEVICE_ONLY;
-   sem->permanent.sync = perm_sync;
-
-   /* temp_sync is uninitialized */
    sem->temporary.type = VN_SYNC_TYPE_INVALID;
-   sem->temporary.sync = temp_sync;
-
    sem->payload = &sem->permanent;
 
    return VK_SUCCESS;
@@ -750,7 +705,6 @@ vn_semaphore_reset_wsi(struct vn_device *dev, struct vn_semaphore *sem)
 
    vn_sync_payload_release(dev, &sem->temporary);
 
-   assert(perm->type != VN_SYNC_TYPE_SYNC);
    sem->payload = perm;
 }
 
@@ -823,8 +777,6 @@ vn_DestroySemaphore(VkDevice device,
 
    vn_sync_payload_release(dev, &sem->permanent);
    vn_sync_payload_release(dev, &sem->temporary);
-   vn_renderer_sync_destroy(sem->permanent.sync);
-   vn_renderer_sync_destroy(sem->temporary.sync);
 
    vn_object_base_fini(&sem->base);
    vk_free(alloc, sem);
@@ -848,17 +800,12 @@ VkResult
 vn_SignalSemaphore(VkDevice device, const VkSemaphoreSignalInfo *pSignalInfo)
 {
    struct vn_device *dev = vn_device_from_handle(device);
-   struct vn_semaphore *sem =
-      vn_semaphore_from_handle(pSignalInfo->semaphore);
-   struct vn_sync_payload *payload = sem->payload;
 
    /* TODO if the semaphore is shared-by-ref, this needs to be synchronous */
    if (false)
       vn_call_vkSignalSemaphore(dev->instance, device, pSignalInfo);
    else
       vn_async_vkSignalSemaphore(dev->instance, device, pSignalInfo);
-
-   assert(payload->type != VN_SYNC_TYPE_SYNC);
 
    return VK_SUCCESS;
 }
