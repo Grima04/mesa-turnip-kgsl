@@ -67,7 +67,7 @@ create_ivci(struct zink_screen *screen,
       break;
 
    case PIPE_TEXTURE_3D:
-      ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+      ivci.viewType = VK_IMAGE_VIEW_TYPE_3D;
       break;
 
    default:
@@ -176,6 +176,8 @@ zink_create_surface(struct pipe_context *pctx,
 
    VkImageViewCreateInfo ivci = create_ivci(zink_screen(pctx->screen),
                                             zink_resource(pres), templ);
+   if (pres->target == PIPE_TEXTURE_3D)
+      ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
    return zink_get_surface(zink_context(pctx), pres, templ, &ivci);
 }
