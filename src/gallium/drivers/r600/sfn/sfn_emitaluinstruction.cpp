@@ -913,12 +913,10 @@ bool EmitAluInstruction::emit_tex_fdd(const nir_alu_instr& instr, TexInstruction
    GPRVector::Values v;
    std::array<int, 4> writemask = {0,1,2,3};
 
-   int ncomp = nir_src_num_components(instr.src[0].src);
-
-   GPRVector::Swizzle src_swz;
-   for (auto i = 0; i < 4; ++i) {
+   int ncomp = nir_dest_num_components(instr.dest.dest);
+   GPRVector::Swizzle src_swz = {7,7,7,7};
+   for (auto i = 0; i < ncomp; ++i)
       src_swz[i] = instr.src[0].swizzle[i];
-   }
 
    auto src = vec_from_nir_with_fetch_constant(instr.src[0].src, (1 << ncomp) - 1, src_swz);
 
