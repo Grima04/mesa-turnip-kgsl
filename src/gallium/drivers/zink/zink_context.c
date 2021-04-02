@@ -404,23 +404,6 @@ zink_delete_sampler_state(struct pipe_context *pctx,
    FREE(sampler);
 }
 
-static VkImageViewType
-image_view_type(enum pipe_texture_target target)
-{
-   switch (target) {
-   case PIPE_TEXTURE_1D: return VK_IMAGE_VIEW_TYPE_1D;
-   case PIPE_TEXTURE_1D_ARRAY: return VK_IMAGE_VIEW_TYPE_1D_ARRAY;
-   case PIPE_TEXTURE_2D: return VK_IMAGE_VIEW_TYPE_2D;
-   case PIPE_TEXTURE_2D_ARRAY: return VK_IMAGE_VIEW_TYPE_2D_ARRAY;
-   case PIPE_TEXTURE_CUBE: return VK_IMAGE_VIEW_TYPE_CUBE;
-   case PIPE_TEXTURE_CUBE_ARRAY: return VK_IMAGE_VIEW_TYPE_CUBE_ARRAY;
-   case PIPE_TEXTURE_3D: return VK_IMAGE_VIEW_TYPE_3D;
-   case PIPE_TEXTURE_RECT: return VK_IMAGE_VIEW_TYPE_2D;
-   default:
-      unreachable("unexpected target");
-   }
-}
-
 static VkComponentSwizzle
 component_mapping(enum pipe_swizzle swizzle)
 {
@@ -542,13 +525,17 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
    sampler_view->base.context = pctx;
 
    if (state->target != PIPE_BUFFER) {
-      VkImageViewCreateInfo ivci = {};
-      ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-      ivci.image = res->obj->image;
-      ivci.viewType = image_view_type(state->target);
+      VkImageViewCreateInfo ivci;
 
+      struct pipe_surface templ = {};
+      templ.u.tex.level = state->u.tex.first_level;
+      templ.format = state->format;
+      templ.u.tex.first_layer = state->u.tex.first_layer;
+      templ.u.tex.last_layer = state->u.tex.last_layer;
+
+      ivci = create_ivci(screen, res, &templ, state->target);
+      ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
       ivci.subresourceRange.aspectMask = sampler_aspect_from_format(state->format);
-      ivci.format = zink_get_format(screen, state->format);
       /* samplers for stencil aspects of packed formats need to always use stencil swizzle */
       if (ivci.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
          ivci.components.r = component_mapping(clamp_zs_swizzle(sampler_view->base.swizzle_r));
@@ -573,18 +560,6 @@ zink_create_sampler_view(struct pipe_context *pctx, struct pipe_resource *pres,
       }
       assert(ivci.format);
 
-      ivci.subresourceRange.baseMipLevel = state->u.tex.first_level;
-      ivci.subresourceRange.levelCount = 1;
-      ivci.subresourceRange.baseArrayLayer = state->u.tex.first_layer;
-      ivci.subresourceRange.levelCount = state->u.tex.last_level - state->u.tex.first_level + 1;
-      ivci.subresourceRange.layerCount = state->u.tex.last_layer - state->u.tex.first_layer + 1;
-      ivci.viewType = zink_surface_clamp_viewtype(ivci.viewType, state->u.tex.first_layer, state->u.tex.last_layer, pres->array_size);
-
-      struct pipe_surface templ = {};
-      templ.u.tex.level = state->u.tex.first_level;
-      templ.format = state->format;
-      templ.u.tex.first_layer = state->u.tex.first_layer;
-      templ.u.tex.last_layer = state->u.tex.last_layer;
       sampler_view->image_view = (struct zink_surface*)zink_get_surface(zink_context(pctx), pres, &templ, &ivci);
       err = !sampler_view->image_view;
    } else {
