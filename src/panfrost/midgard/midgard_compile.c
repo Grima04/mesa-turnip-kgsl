@@ -2303,7 +2303,7 @@ emit_texop_native(compiler_context *ctx, nir_tex_instr *instr,
         nir_dest *dest = &instr->dest;
 
         int texture_index = instr->texture_index;
-        int sampler_index = texture_index;
+        int sampler_index = instr->sampler_index;
 
         nir_alu_type dest_base = nir_alu_type_get_base_type(instr->dest_type);
 
