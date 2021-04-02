@@ -187,6 +187,14 @@ a630_gl:
   variables:
     DEQP_VER: gl33
 
+a630_egl:
+  extends:
+    - .baremetal-deqp-test
+    - .a630-test
+  variables:
+    DEQP_VER: egl
+    BM_START_XORG: 1
+
 a630_gles_others:
   extends:
     - .baremetal-deqp-test
