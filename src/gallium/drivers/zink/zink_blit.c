@@ -170,6 +170,8 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    region.dstOffsets[0].y = info->dst.box.y;
    region.dstOffsets[1].x = info->dst.box.x + info->dst.box.width;
    region.dstOffsets[1].y = info->dst.box.y + info->dst.box.height;
+   assert(region.dstOffsets[0].x != region.dstOffsets[1].x);
+   assert(region.dstOffsets[0].y != region.dstOffsets[1].y);
 
    switch (dst->base.b.target) {
    case PIPE_TEXTURE_CUBE:
@@ -196,6 +198,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
       region.dstOffsets[0].z = 0;
       region.dstOffsets[1].z = 1;
    }
+   assert(region.dstOffsets[0].z != region.dstOffsets[1].z);
 
    vkCmdBlitImage(batch->state->cmdbuf, src->obj->image, src->layout,
                   dst->obj->image, dst->layout,
