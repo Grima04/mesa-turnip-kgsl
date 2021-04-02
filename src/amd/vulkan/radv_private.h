@@ -2498,13 +2498,14 @@ void radv_meta_push_descriptor_set(struct radv_cmd_buffer *cmd_buffer,
                                    uint32_t descriptorWriteCount,
                                    const VkWriteDescriptorSet *pDescriptorWrites);
 
-void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
-			 struct radv_image *image,
-			 const VkImageSubresourceRange *range, uint32_t value);
+uint32_t radv_init_dcc(struct radv_cmd_buffer *cmd_buffer,
+		       struct radv_image *image,
+		       const VkImageSubresourceRange *range,
+		       uint32_t value);
 
-void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
-			   struct radv_image *image,
-			   const VkImageSubresourceRange *range);
+uint32_t radv_init_fmask(struct radv_cmd_buffer *cmd_buffer,
+			 struct radv_image *image,
+			 const VkImageSubresourceRange *range);
 
 typedef enum {
 	RADV_FENCE_NONE,

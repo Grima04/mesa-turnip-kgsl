@@ -187,7 +187,8 @@ radv_expand_fmask_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 					radv_src_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, image);
 
 	/* Re-initialize FMASK in fully expanded mode. */
-	radv_initialize_fmask(cmd_buffer, image, subresourceRange);
+	cmd_buffer->state.flush_bits |=
+		radv_init_fmask(cmd_buffer, image, subresourceRange);
 }
 
 void radv_device_finish_meta_fmask_expand_state(struct radv_device *device)

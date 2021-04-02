@@ -6239,11 +6239,10 @@ static void radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffe
 	}
 }
 
-static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
-				  struct radv_image *image,
-				  const VkImageSubresourceRange *range)
+static uint32_t radv_init_cmask(struct radv_cmd_buffer *cmd_buffer,
+				struct radv_image *image,
+				const VkImageSubresourceRange *range)
 {
-	struct radv_cmd_state *state = &cmd_buffer->state;
 	static const uint32_t cmask_clear_values[4] = {
 		0xffffffff,
 		0xdddddddd,
@@ -6257,18 +6256,13 @@ static void radv_initialise_cmask(struct radv_cmd_buffer *cmd_buffer,
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
-	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
-	 * in considering previous rendering work for WAW hazards. */
-	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
-
-	state->flush_bits |= radv_clear_cmask(cmd_buffer, image, range, value);
+	return radv_clear_cmask(cmd_buffer, image, range, value);
 }
 
-void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
-			   struct radv_image *image,
-			   const VkImageSubresourceRange *range)
+uint32_t radv_init_fmask(struct radv_cmd_buffer *cmd_buffer,
+			 struct radv_image *image,
+			 const VkImageSubresourceRange *range)
 {
-	struct radv_cmd_state *state = &cmd_buffer->state;
 	static const uint32_t fmask_clear_values[4] = {
 		0x00000000,
 		0x02020202,
@@ -6282,29 +6276,22 @@ void radv_initialize_fmask(struct radv_cmd_buffer *cmd_buffer,
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
-	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
-	 * in considering previous rendering work for WAW hazards. */
-	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
-
-	state->flush_bits |= radv_clear_fmask(cmd_buffer, image, range, value);
+	return radv_clear_fmask(cmd_buffer, image, range, value);
 }
 
-void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
-			 struct radv_image *image,
-			 const VkImageSubresourceRange *range, uint32_t value)
+uint32_t radv_init_dcc(struct radv_cmd_buffer *cmd_buffer,
+		       struct radv_image *image,
+		       const VkImageSubresourceRange *range,
+		       uint32_t value)
 {
-	struct radv_cmd_state *state = &cmd_buffer->state;
 	struct radv_barrier_data barrier = {0};
+	uint32_t flush_bits = 0;
 	unsigned size = 0;
 
 	barrier.layout_transitions.init_mask_ram = 1;
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
-	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is consistent
-	 * in considering previous rendering work for WAW hazards. */
-	state->flush_bits |= radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
-
-	state->flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
+	flush_bits |= radv_clear_dcc(cmd_buffer, image, range, value);
 
 	if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX8) {
 		/* When DCC is enabled with mipmaps, some levels might not
@@ -6326,13 +6313,14 @@ void radv_initialize_dcc(struct radv_cmd_buffer *cmd_buffer,
 
 		/* Initialize the mipmap levels without DCC. */
 		if (size != image->planes[0].surface.dcc_size) {
-			state->flush_bits |=
-				radv_fill_buffer(cmd_buffer, image, image->bo,
-						 image->offset + image->planes[0].surface.dcc_offset + size,
-						 image->planes[0].surface.dcc_size - size,
-						 0xffffffff);
+			flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo,
+						       image->offset + image->planes[0].surface.dcc_offset + size,
+						       image->planes[0].surface.dcc_size - size,
+						       0xffffffff);
 		}
 	}
+
+	return flush_bits;
 }
 
 /**
@@ -6348,12 +6336,20 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 					   unsigned dst_queue_mask,
 					   const VkImageSubresourceRange *range)
 {
+	uint32_t flush_bits = 0;
+
+	/* Transitioning from LAYOUT_UNDEFINED layout not everyone is
+	 * consistent in considering previous rendering work for WAW hazards.
+	 */
+	cmd_buffer->state.flush_bits |=
+		radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
+
 	if (radv_image_has_cmask(image)) {
-		radv_initialise_cmask(cmd_buffer, image, range);
+		flush_bits |= radv_init_cmask(cmd_buffer, image, range);
 	}
 
 	if (radv_image_has_fmask(image)) {
-		radv_initialize_fmask(cmd_buffer, image, range);
+		flush_bits |= radv_init_fmask(cmd_buffer, image, range);
 	}
 
 	if (radv_dcc_enabled(image, range->baseMipLevel)) {
@@ -6365,7 +6361,7 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 			value = 0u;
 		}
 
-		radv_initialize_dcc(cmd_buffer, image, range, value);
+		flush_bits |= radv_init_dcc(cmd_buffer, image, range, value);
 	}
 
 	if (radv_image_has_cmask(image) ||
@@ -6376,6 +6372,8 @@ static void radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer,
 		radv_set_color_clear_metadata(cmd_buffer, image, range,
 					      color_values);
 	}
+
+	cmd_buffer->state.flush_bits |= flush_bits;
 }
 
 /**
@@ -6391,6 +6389,11 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 					       unsigned dst_queue_mask,
 					       const VkImageSubresourceRange *range)
 {
+	if (!radv_image_has_cmask(image) &&
+	    !radv_image_has_fmask(image) &&
+	    !radv_dcc_enabled(image, range->baseMipLevel))
+		return;
+
 	if (src_layout == VK_IMAGE_LAYOUT_UNDEFINED) {
 		radv_init_color_image_metadata(cmd_buffer, image,
 					       src_layout, src_render_loop,
@@ -6406,7 +6409,8 @@ static void radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffe
 
 	if (radv_dcc_enabled(image, range->baseMipLevel)) {
 		if (src_layout == VK_IMAGE_LAYOUT_PREINITIALIZED) {
-			radv_initialize_dcc(cmd_buffer, image, range, 0xffffffffu);
+			cmd_buffer->state.flush_bits |=
+				radv_init_dcc(cmd_buffer, image, range, 0xffffffffu);
 		} else if (radv_layout_dcc_compressed(cmd_buffer->device, image, src_layout, src_render_loop, src_queue_mask) &&
 		           !radv_layout_dcc_compressed(cmd_buffer->device, image, dst_layout, dst_render_loop, dst_queue_mask)) {
 			radv_decompress_dcc(cmd_buffer, image, range);
