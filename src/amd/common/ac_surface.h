@@ -85,7 +85,7 @@ enum radeon_micro_mode
 #define RADEON_SURF_PRT                   (1ull << 32)
 
 struct legacy_surf_level {
-   uint64_t offset;
+   uint32_t offset_256B;   /* divided by 256, the hw can only do 40-bit addresses */
    uint32_t slice_size_dw; /* in dwords; max = 4GB / 4. */
    unsigned nblk_x : 15;
    unsigned nblk_y : 15;

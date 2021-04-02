@@ -2506,9 +2506,9 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
       assert(levelinfo->nblk_x % 8 == 0 && levelinfo->nblk_y % 8 == 0);
 
       surf->db_depth_base =
-         (tex->buffer.gpu_address + tex->surface.u.legacy.level[level].offset) >> 8;
+         (tex->buffer.gpu_address >> 8) + tex->surface.u.legacy.level[level].offset_256B;
       surf->db_stencil_base =
-         (tex->buffer.gpu_address + tex->surface.u.legacy.stencil_level[level].offset) >> 8;
+         (tex->buffer.gpu_address >> 8) + tex->surface.u.legacy.stencil_level[level].offset_256B;
 
       z_info =
          S_028040_FORMAT(format) | S_028040_NUM_SAMPLES(util_logbase2(tex->buffer.b.b.nr_samples));
@@ -3127,7 +3127,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          unsigned pitch_tile_max, slice_tile_max, tile_mode_index;
          unsigned cb_color_pitch, cb_color_slice, cb_color_fmask_slice;
 
-         cb_color_base += level_info->offset >> 8;
+         cb_color_base += level_info->offset_256B;
          /* Only macrotiled modes can set tile swizzle. */
          if (level_info->mode == RADEON_SURF_MODE_2D)
             cb_color_base |= tex->surface.tile_swizzle;

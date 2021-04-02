@@ -1379,7 +1379,7 @@ static unsigned texture_offset(struct radeon_surf *surface, unsigned layer,
    switch (type) {
    default:
    case RUVD_SURFACE_TYPE_LEGACY:
-      return surface->u.legacy.level[0].offset +
+      return (uint64_t)surface->u.legacy.level[0].offset_256B * 256 +
              layer * (uint64_t)surface->u.legacy.level[0].slice_size_dw * 4;
       break;
    case RUVD_SURFACE_TYPE_GFX9:

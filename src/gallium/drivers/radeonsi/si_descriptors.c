@@ -314,7 +314,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       else
          va += tex->surface.u.gfx9.surf_offset;
    } else {
-      va += base_level_info->offset;
+      va += (uint64_t)base_level_info->offset_256B * 256;
    }
 
    state[0] = va >> 8;

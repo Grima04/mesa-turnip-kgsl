@@ -180,7 +180,7 @@ void rvid_join_surfaces(struct r600_common_context *rctx,
 		surfaces[i]->u.legacy.tile_split = surfaces[best_tiling]->u.legacy.tile_split;
 
 		for (j = 0; j < ARRAY_SIZE(surfaces[i]->u.legacy.level); ++j)
-			surfaces[i]->u.legacy.level[j].offset += off;
+			surfaces[i]->u.legacy.level[j].offset_256B += off / 256;
 
 		off += surfaces[i]->surf_size;
 	}

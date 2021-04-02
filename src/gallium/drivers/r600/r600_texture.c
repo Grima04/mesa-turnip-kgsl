@@ -183,11 +183,11 @@ static unsigned r600_texture_get_offset(struct r600_common_screen *rscreen,
 	*layer_stride = (uint64_t)rtex->surface.u.legacy.level[level].slice_size_dw * 4;
 
 	if (!box)
-		return rtex->surface.u.legacy.level[level].offset;
+		return (uint64_t)rtex->surface.u.legacy.level[level].offset_256B * 256;
 
 	/* Each texture is an array of mipmap levels. Each level is
 	 * an array of slices. */
-	return rtex->surface.u.legacy.level[level].offset +
+	return (uint64_t)rtex->surface.u.legacy.level[level].offset_256B * 256 +
 		box->z * (uint64_t)rtex->surface.u.legacy.level[level].slice_size_dw * 4 +
 		(box->y / rtex->surface.blk_h *
 		 rtex->surface.u.legacy.level[level].nblk_x +
@@ -262,7 +262,7 @@ static int r600_init_surface(struct r600_common_screen *rscreen,
 
 	if (offset) {
 		for (i = 0; i < ARRAY_SIZE(surface->u.legacy.level); ++i)
-			surface->u.legacy.level[i].offset += offset;
+			surface->u.legacy.level[i].offset_256B += offset / 256;
 	}
 
 	return 0;
@@ -455,7 +455,7 @@ static void r600_texture_get_info(struct pipe_screen* screen,
 		return;
 
 	if (resource->target != PIPE_BUFFER) {
-		offset = rtex->surface.u.legacy.level[0].offset;
+		offset = (uint64_t)rtex->surface.u.legacy.level[0].offset_256B * 256;
 		stride = rtex->surface.u.legacy.level[0].nblk_x *
 			 rtex->surface.bpe;
 	}
@@ -868,7 +868,7 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 		u_log_printf(log, "  Level[%i]: offset=%"PRIu64", slice_size=%"PRIu64", "
 			"npix_x=%u, npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
 			"mode=%u, tiling_index = %u\n",
-			i, rtex->surface.u.legacy.level[i].offset,
+			i, (uint64_t)rtex->surface.u.legacy.level[i].offset_256B * 256,
 			(uint64_t)rtex->surface.u.legacy.level[i].slice_size_dw * 4,
 			u_minify(rtex->resource.b.b.width0, i),
 			u_minify(rtex->resource.b.b.height0, i),
@@ -886,7 +886,7 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 				"slice_size=%"PRIu64", npix_x=%u, "
 				"npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
 				"mode=%u, tiling_index = %u\n",
-				i, rtex->surface.u.legacy.stencil_level[i].offset,
+				i, (uint64_t)rtex->surface.u.legacy.stencil_level[i].offset_256B * 256,
 				(uint64_t)rtex->surface.u.legacy.stencil_level[i].slice_size_dw * 4,
 				u_minify(rtex->resource.b.b.width0, i),
 				u_minify(rtex->resource.b.b.height0, i),

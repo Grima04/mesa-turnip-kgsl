@@ -797,7 +797,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
 
    surf_level = is_stencil ? &surf->u.legacy.stencil_level[level] : &surf->u.legacy.level[level];
    dcc_level = &surf->u.legacy.dcc_level[level];
-   surf_level->offset = align64(surf->surf_size, AddrSurfInfoOut->baseAlign);
+   surf_level->offset_256B = align64(surf->surf_size, AddrSurfInfoOut->baseAlign) / 256;
    surf_level->slice_size_dw = AddrSurfInfoOut->sliceSize / 4;
    surf_level->nblk_x = AddrSurfInfoOut->pitch;
    surf_level->nblk_y = AddrSurfInfoOut->height;
@@ -835,7 +835,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
       }
    }
 
-   surf->surf_size = surf_level->offset + AddrSurfInfoOut->surfSize;
+   surf->surf_size = (uint64_t)surf_level->offset_256B * 256 + AddrSurfInfoOut->surfSize;
 
    /* Clear DCC fields at the beginning. */
    if (!AddrSurfInfoIn->flags.depth && !AddrSurfInfoIn->flags.stencil)
@@ -2721,7 +2721,7 @@ bool ac_surface_set_umd_metadata(const struct radeon_info *info, struct radeon_s
    if (info->chip_class >= GFX9)
       offset = surf->u.gfx9.surf_offset;
    else
-      offset = surf->u.legacy.level[0].offset;
+      offset = (uint64_t)surf->u.legacy.level[0].offset_256B * 256;
 
    if (offset ||                 /* Non-zero planes ignore metadata. */
        size_metadata < 10 * 4 || /* at least 2(header) + 8(desc) dwords */
@@ -2851,7 +2851,7 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_s
    /* Dwords [10:..] contain the mipmap level offsets. */
    if (info->chip_class <= GFX8) {
       for (unsigned i = 0; i < num_mipmap_levels; i++)
-         metadata[10 + i] = surf->u.legacy.level[i].offset >> 8;
+         metadata[10 + i] = surf->u.legacy.level[i].offset_256B;
 
       *size_metadata += num_mipmap_levels * 4;
    }
@@ -2927,7 +2927,7 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
 
       if (offset) {
          for (unsigned i = 0; i < ARRAY_SIZE(surf->u.legacy.level); ++i)
-            surf->u.legacy.level[i].offset += offset;
+            surf->u.legacy.level[i].offset_256B += offset / 256;
       }
    }
 
@@ -2970,7 +2970,7 @@ uint64_t ac_surface_get_plane_offset(enum chip_class chip_class,
          return surf->u.gfx9.surf_offset +
                 layer * surf->u.gfx9.surf_slice_size;
       } else {
-         return surf->u.legacy.level[0].offset +
+         return (uint64_t)surf->u.legacy.level[0].offset_256B * 256 +
                 layer * (uint64_t)surf->u.legacy.level[0].slice_size_dw * 4;
       }
    case 1:

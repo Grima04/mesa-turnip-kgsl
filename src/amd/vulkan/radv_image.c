@@ -688,7 +688,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       else
          va += plane->surface.u.gfx9.surf_offset;
    } else
-      va += base_level_info->offset;
+      va += (uint64_t)base_level_info->offset_256B * 256;
 
    state[0] = va >> 8;
    if (chip_class >= GFX9 || base_level_info->mode == RADEON_SURF_MODE_2D)
@@ -2126,7 +2126,7 @@ radv_GetImageSubresourceLayout(VkDevice _device, VkImage _image,
       if (image->type == VK_IMAGE_TYPE_3D)
          pLayout->size *= u_minify(image->info.depth, level);
    } else {
-      pLayout->offset = surface->u.legacy.level[level].offset +
+      pLayout->offset = (uint64_t)surface->u.legacy.level[level].offset_256B * 256 +
                         (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4 * layer;
       pLayout->rowPitch = surface->u.legacy.level[level].nblk_x * surface->bpe;
       pLayout->arrayPitch = (uint64_t)surface->u.legacy.level[level].slice_size_dw * 4;

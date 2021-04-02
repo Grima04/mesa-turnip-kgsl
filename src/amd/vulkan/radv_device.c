@@ -4140,7 +4140,7 @@ radv_sparse_image_bind_memory(struct radv_device *device, const VkSparseImageMem
          offset = surface->u.gfx9.surf_slice_size * layer + surface->u.gfx9.prt_level_offset[level];
          pitch = surface->u.gfx9.prt_level_pitch[level];
       } else {
-         offset = surface->u.legacy.level[level].offset +
+         offset = (uint64_t)surface->u.legacy.level[level].offset_256B * 256 +
                   surface->u.legacy.level[level].slice_size_dw * 4 * layer;
          pitch = surface->u.legacy.level[level].nblk_x;
       }
@@ -6322,7 +6322,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       const struct legacy_surf_level *level_info = &surf->u.legacy.level[iview->base_mip];
       unsigned pitch_tile_max, slice_tile_max, tile_mode_index;
 
-      cb->cb_color_base += level_info->offset >> 8;
+      cb->cb_color_base += level_info->offset_256B;
       if (level_info->mode == RADEON_SURF_MODE_2D)
          cb->cb_color_base |= surf->tile_swizzle;
 
@@ -6633,8 +6633,8 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
       if (stencil_only)
          level_info = &surf->u.legacy.stencil_level[level];
 
-      z_offs += surf->u.legacy.level[level].offset;
-      s_offs += surf->u.legacy.stencil_level[level].offset;
+      z_offs += (uint64_t)surf->u.legacy.level[level].offset_256B * 256;
+      s_offs += (uint64_t)surf->u.legacy.stencil_level[level].offset_256B * 256;
 
       ds->db_depth_info = S_02803C_ADDR5_SWIZZLE_MASK(!radv_image_is_tc_compat_htile(iview->image));
       ds->db_z_info = S_028040_FORMAT(format) | S_028040_ZRANGE_PRECISION(1);

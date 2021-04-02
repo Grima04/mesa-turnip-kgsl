@@ -67,7 +67,7 @@ static void surf_level_winsys_to_drm(struct radeon_surface_level *level_drm,
                                      const struct legacy_surf_level *level_ws,
                                      unsigned bpe)
 {
-   level_drm->offset = level_ws->offset;
+   level_drm->offset = (uint64_t)level_ws->offset_256B * 256;
    level_drm->slice_size = (uint64_t)level_ws->slice_size_dw * 4;
    level_drm->nblk_x = level_ws->nblk_x;
    level_drm->nblk_y = level_ws->nblk_y;
@@ -79,7 +79,7 @@ static void surf_level_drm_to_winsys(struct legacy_surf_level *level_ws,
                                      const struct radeon_surface_level *level_drm,
                                      unsigned bpe)
 {
-   level_ws->offset = level_drm->offset;
+   level_ws->offset_256B = level_drm->offset / 256;
    level_ws->slice_size_dw = level_drm->slice_size / 4;
    level_ws->nblk_x = level_drm->nblk_x;
    level_ws->nblk_y = level_drm->nblk_y;

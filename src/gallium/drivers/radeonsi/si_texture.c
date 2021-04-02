@@ -142,11 +142,11 @@ static unsigned si_texture_get_offset(struct si_screen *sscreen, struct si_textu
       *layer_stride = (uint64_t)tex->surface.u.legacy.level[level].slice_size_dw * 4;
 
       if (!box)
-         return tex->surface.u.legacy.level[level].offset;
+         return (uint64_t)tex->surface.u.legacy.level[level].offset_256B * 256;
 
       /* Each texture is an array of mipmap levels. Each level is
        * an array of slices. */
-      return tex->surface.u.legacy.level[level].offset +
+      return (uint64_t)tex->surface.u.legacy.level[level].offset_256B * 256 +
              box->z * (uint64_t)tex->surface.u.legacy.level[level].slice_size_dw * 4 +
              (box->y / tex->surface.blk_h * tex->surface.u.legacy.level[level].nblk_x +
               box->x / tex->surface.blk_w) *
@@ -846,7 +846,7 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                    "    Level[%i]: offset=%" PRIu64 ", slice_size=%" PRIu64 ", "
                    "npix_x=%u, npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
                    "mode=%u, tiling_index = %u\n",
-                   i, tex->surface.u.legacy.level[i].offset,
+                   i, (uint64_t)tex->surface.u.legacy.level[i].offset_256B * 256,
                    (uint64_t)tex->surface.u.legacy.level[i].slice_size_dw * 4,
                    u_minify(tex->buffer.b.b.width0, i), u_minify(tex->buffer.b.b.height0, i),
                    u_minify(tex->buffer.b.b.depth0, i), tex->surface.u.legacy.level[i].nblk_x,
@@ -860,7 +860,7 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                       "slice_size=%" PRIu64 ", npix_x=%u, "
                       "npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
                       "mode=%u, tiling_index = %u\n",
-                      i, tex->surface.u.legacy.stencil_level[i].offset,
+                      i, (uint64_t)tex->surface.u.legacy.stencil_level[i].offset_256B * 256,
                       (uint64_t)tex->surface.u.legacy.stencil_level[i].slice_size_dw * 4,
                       u_minify(tex->buffer.b.b.width0, i), u_minify(tex->buffer.b.b.height0, i),
                       u_minify(tex->buffer.b.b.depth0, i),
