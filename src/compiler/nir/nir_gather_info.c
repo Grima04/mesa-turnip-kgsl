@@ -194,8 +194,15 @@ mark_whole_variable(nir_shader *shader, nir_variable *var,
 }
 
 static unsigned
-get_io_offset(nir_deref_instr *deref, bool compact, bool per_vertex)
+get_io_offset(nir_deref_instr *deref, nir_variable *var, bool per_vertex)
 {
+   if (var->data.compact) {
+      assert(deref->deref_type == nir_deref_type_array);
+      return nir_src_is_const(deref->arr.index) ?
+             (nir_src_as_uint(deref->arr.index) + var->data.location_frac) / 4u :
+             (unsigned)-1;
+   }
+
    unsigned offset = 0;
 
    for (nir_deref_instr *d = deref; d; d = nir_deref_instr_parent(d)) {
@@ -206,11 +213,8 @@ get_io_offset(nir_deref_instr *deref, bool compact, bool per_vertex)
          if (!nir_src_is_const(d->arr.index))
             return -1;
 
-         if (compact)
-            offset += nir_src_as_uint(d->arr.index) / 4;
-         else
-            offset += glsl_count_attribute_slots(d->type, false) *
-                      nir_src_as_uint(d->arr.index);
+         offset += glsl_count_attribute_slots(d->type, false) *
+                   nir_src_as_uint(d->arr.index);
       } else if (d->deref_type == nir_deref_type_struct) {
          const struct glsl_type *parent_type = nir_deref_instr_parent(d)->type;
          for (unsigned i = 0; i < d->strct.index; i++) {
@@ -246,7 +250,7 @@ try_mask_partial_io(nir_shader *shader, nir_variable *var,
    if (var->data.per_view)
       return false;
 
-   unsigned offset = get_io_offset(deref, var->data.compact, per_vertex);
+   unsigned offset = get_io_offset(deref, var, per_vertex);
    if (offset == -1)
       return false;
 
