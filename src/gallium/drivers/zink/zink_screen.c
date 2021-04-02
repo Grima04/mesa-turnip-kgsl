@@ -1209,6 +1209,11 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR(DestroySwapchainKHR);
    }
 
+   if (screen->info.have_EXT_sample_locations) {
+      GET_PROC_ADDR(CmdSetSampleLocationsEXT);
+      GET_PROC_ADDR_INSTANCE(GetPhysicalDeviceMultisamplePropertiesEXT);
+   }
+
    return true;
 }
 
