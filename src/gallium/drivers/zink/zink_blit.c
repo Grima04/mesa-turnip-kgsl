@@ -145,7 +145,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    case PIPE_TEXTURE_1D_ARRAY:
       /* these use layer */
       region.srcSubresource.baseArrayLayer = info->src.box.z;
-      region.srcSubresource.layerCount = info->src.box.z + info->src.box.depth;
+      region.srcSubresource.layerCount = info->src.box.depth;
       region.srcOffsets[0].z = 0;
       region.srcOffsets[1].z = 1;
       break;
@@ -178,7 +178,7 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    case PIPE_TEXTURE_1D_ARRAY:
       /* these use layer */
       region.dstSubresource.baseArrayLayer = info->dst.box.z;
-      region.dstSubresource.layerCount = info->dst.box.z + info->dst.box.depth;
+      region.dstSubresource.layerCount = info->dst.box.depth;
       region.dstOffsets[0].z = 0;
       region.dstOffsets[1].z = 1;
       break;
