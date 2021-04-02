@@ -226,20 +226,22 @@ struct gfx9_surf_layout {
 
 struct radeon_surf {
    /* Format properties. */
-   unsigned blk_w : 4;
-   unsigned blk_h : 4;
-   unsigned bpe : 5;
+   uint8_t blk_w : 4;
+   uint8_t blk_h : 4;
+   uint8_t bpe : 5;
    /* Number of mipmap levels where DCC is enabled starting from level 0.
     * Non-zero levels may be disabled due to alignment constraints, but not
     * the first level.
     */
-   unsigned num_dcc_levels : 4;
-   unsigned is_linear : 1;
-   unsigned has_stencil : 1;
+   uint8_t num_dcc_levels : 4;
+   uint8_t num_htile_levels : 4;
+   uint8_t is_linear : 1;
+   uint8_t has_stencil : 1;
    /* This might be true even if micro_tile_mode isn't displayable or rotated. */
-   unsigned is_displayable : 1;
+   uint8_t is_displayable : 1;
    /* Displayable, thin, depth, rotated. AKA D,S,Z,R swizzle modes. */
-   unsigned micro_tile_mode : 3;
+   uint8_t micro_tile_mode : 3;
+
    uint64_t flags;
 
     /*
@@ -288,7 +290,6 @@ struct radeon_surf {
    uint32_t htile_size;
    uint32_t htile_slice_size;
    uint32_t htile_alignment;
-   uint32_t num_htile_levels : 4;
 
    uint32_t cmask_size;
    uint32_t cmask_slice_size;
