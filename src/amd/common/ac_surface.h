@@ -151,11 +151,11 @@ enum gfx9_resource_type
 };
 
 struct gfx9_surf_meta_flags {
-   unsigned rb_aligned : 1;   /* optimal for RBs */
-   unsigned pipe_aligned : 1; /* optimal for TC */
-   unsigned independent_64B_blocks : 1;
-   unsigned independent_128B_blocks : 1;
-   unsigned max_compressed_block_size : 2;
+   uint8_t rb_aligned : 1;   /* optimal for RBs */
+   uint8_t pipe_aligned : 1; /* optimal for TC */
+   uint8_t independent_64B_blocks : 1;
+   uint8_t independent_128B_blocks : 1;
+   uint8_t max_compressed_block_size : 2;
 };
 
 struct gfx9_surf_level {
@@ -169,11 +169,11 @@ struct gfx9_surf_layout {
    uint8_t fmask_swizzle_mode;
    uint8_t stencil_swizzle_mode;
 
+   struct gfx9_surf_meta_flags dcc; /* metadata of color */
+
    uint16_t epitch;           /* gfx9 only, not on gfx10 */
    uint16_t fmask_epitch;     /* gfx9 only, not on gfx10 */
    uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
-
-   struct gfx9_surf_meta_flags dcc; /* metadata of color */
 
    enum gfx9_resource_type resource_type; /* 1D, 2D or 3D */
    uint16_t surf_pitch;                   /* in blocks */
