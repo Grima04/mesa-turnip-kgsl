@@ -5906,14 +5906,14 @@ radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
        */
       /* Compute the size of all fast clearable DCC levels. */
       for (unsigned i = 0; i < image->planes[0].surface.num_dcc_levels; i++) {
-         struct legacy_surf_level *surf_level = &image->planes[0].surface.u.legacy.level[i];
+         struct legacy_surf_dcc_level *dcc_level = &image->planes[0].surface.u.legacy.dcc_level[i];
          unsigned dcc_fast_clear_size =
-            surf_level->dcc_slice_fast_clear_size * image->info.array_size;
+            dcc_level->dcc_slice_fast_clear_size * image->info.array_size;
 
          if (!dcc_fast_clear_size)
             break;
 
-         size = surf_level->dcc_offset + dcc_fast_clear_size;
+         size = dcc_level->dcc_offset + dcc_fast_clear_size;
       }
 
       /* Initialize the mipmap levels without DCC. */

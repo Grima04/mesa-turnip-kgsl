@@ -3137,7 +3137,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          if (cb->base.u.tex.level > 0)
             cb_color_cmask = cb_color_base;
          if (cb_dcc_base)
-            cb_dcc_base += level_info->dcc_offset >> 8;
+            cb_dcc_base += tex->surface.u.legacy.dcc_level[cb->base.u.tex.level].dcc_offset >> 8;
 
          pitch_tile_max = level_info->nblk_x / 8 - 1;
          slice_tile_max = level_info->nblk_x * level_info->nblk_y / 64 - 1;

@@ -6361,7 +6361,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
 
    if (radv_dcc_enabled(iview->image, iview->base_mip) &&
        device->physical_device->rad_info.chip_class <= GFX8)
-      va += plane->surface.u.legacy.level[iview->base_mip].dcc_offset;
+      va += plane->surface.u.legacy.dcc_level[iview->base_mip].dcc_offset;
 
    unsigned dcc_tile_swizzle = surf->tile_swizzle;
    dcc_tile_swizzle &= (surf->dcc_alignment - 1) >> 8;

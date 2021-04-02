@@ -742,6 +742,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
                               ADDR_COMPUTE_HTILE_INFO_OUTPUT *AddrHtileOut)
 {
    struct legacy_surf_level *surf_level;
+   struct legacy_surf_dcc_level *dcc_level;
    ADDR_E_RETURNCODE ret;
 
    AddrSurfInfoIn->mipLevel = level;
@@ -795,6 +796,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
    }
 
    surf_level = is_stencil ? &surf->u.legacy.stencil_level[level] : &surf->u.legacy.level[level];
+   dcc_level = &surf->u.legacy.dcc_level[level];
    surf_level->offset = align64(surf->surf_size, AddrSurfInfoOut->baseAlign);
    surf_level->slice_size_dw = AddrSurfInfoOut->sliceSize / 4;
    surf_level->nblk_x = AddrSurfInfoOut->pitch;
@@ -836,7 +838,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
    surf->surf_size = surf_level->offset + AddrSurfInfoOut->surfSize;
 
    /* Clear DCC fields at the beginning. */
-   surf_level->dcc_offset = 0;
+   dcc_level->dcc_offset = 0;
 
    /* The previous level's flag tells us if we can use DCC for this level. */
    if (AddrSurfInfoIn->flags.dccCompatible && (level == 0 || AddrDccOut->subLvlCompressible)) {
@@ -851,9 +853,9 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
       ret = AddrComputeDccInfo(addrlib, AddrDccIn, AddrDccOut);
 
       if (ret == ADDR_OK) {
-         surf_level->dcc_offset = surf->dcc_size;
+         dcc_level->dcc_offset = surf->dcc_size;
          surf->num_dcc_levels = level + 1;
-         surf->dcc_size = surf_level->dcc_offset + AddrDccOut->dccRamSize;
+         surf->dcc_size = dcc_level->dcc_offset + AddrDccOut->dccRamSize;
          surf->dcc_alignment = MAX2(surf->dcc_alignment, AddrDccOut->dccRamBaseAlign);
 
          /* If the DCC size of a subresource (1 mip level or 1 slice)
@@ -869,9 +871,9 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
           */
          if (AddrDccOut->dccRamSizeAligned ||
              (prev_level_clearable && level == config->info.levels - 1))
-            surf_level->dcc_fast_clear_size = AddrDccOut->dccFastClearSize;
+            dcc_level->dcc_fast_clear_size = AddrDccOut->dccFastClearSize;
          else
-            surf_level->dcc_fast_clear_size = 0;
+            dcc_level->dcc_fast_clear_size = 0;
 
          /* Compute the DCC slice size because addrlib doesn't
           * provide this info. As DCC memory is linear (each
@@ -897,19 +899,19 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
                 * accross slices.
                 */
                if (AddrDccOut->dccRamSizeAligned)
-                  surf_level->dcc_slice_fast_clear_size = AddrDccOut->dccFastClearSize;
+                  dcc_level->dcc_slice_fast_clear_size = AddrDccOut->dccFastClearSize;
                else
-                  surf_level->dcc_slice_fast_clear_size = 0;
+                  dcc_level->dcc_slice_fast_clear_size = 0;
             }
 
             if (surf->flags & RADEON_SURF_CONTIGUOUS_DCC_LAYERS &&
-                surf->dcc_slice_size != surf_level->dcc_slice_fast_clear_size) {
+                surf->dcc_slice_size != dcc_level->dcc_slice_fast_clear_size) {
                surf->dcc_size = 0;
                surf->num_dcc_levels = 0;
                AddrDccOut->subLvlCompressible = false;
             }
          } else {
-            surf_level->dcc_slice_fast_clear_size = surf_level->dcc_fast_clear_size;
+            dcc_level->dcc_slice_fast_clear_size = dcc_level->dcc_fast_clear_size;
          }
       }
    }

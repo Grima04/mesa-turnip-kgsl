@@ -837,8 +837,8 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
          u_log_printf(log,
                       "    DCCLevel[%i]: enabled=%u, offset=%u, "
                       "fast_clear_size=%u\n",
-                      i, i < tex->surface.num_dcc_levels, tex->surface.u.legacy.level[i].dcc_offset,
-                      tex->surface.u.legacy.level[i].dcc_fast_clear_size);
+                      i, i < tex->surface.num_dcc_levels, tex->surface.u.legacy.dcc_level[i].dcc_offset,
+                      tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size);
    }
 
    for (i = 0; i <= tex->buffer.b.b.last_level; i++)
@@ -1071,11 +1071,11 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
             unsigned size = 0;
 
             for (unsigned i = 0; i < tex->surface.num_dcc_levels; i++) {
-               if (!tex->surface.u.legacy.level[i].dcc_fast_clear_size)
+               if (!tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size)
                   break;
 
-               size = tex->surface.u.legacy.level[i].dcc_offset +
-                      tex->surface.u.legacy.level[i].dcc_fast_clear_size;
+               size = tex->surface.u.legacy.dcc_level[i].dcc_offset +
+                      tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size;
             }
 
             /* Mipmap levels with DCC. */

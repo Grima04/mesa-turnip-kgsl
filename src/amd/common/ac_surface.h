@@ -87,12 +87,15 @@ enum radeon_micro_mode
 struct legacy_surf_level {
    uint64_t offset;
    uint32_t slice_size_dw; /* in dwords; max = 4GB / 4. */
-   uint32_t dcc_offset;    /* relative offset within DCC mip tree */
-   uint32_t dcc_fast_clear_size;
-   uint32_t dcc_slice_fast_clear_size;
    unsigned nblk_x : 15;
    unsigned nblk_y : 15;
    enum radeon_surf_mode mode : 2;
+};
+
+struct legacy_surf_dcc_level {
+   uint32_t dcc_offset;    /* relative offset within DCC mip tree */
+   uint32_t dcc_fast_clear_size;
+   uint32_t dcc_slice_fast_clear_size;
 };
 
 struct legacy_surf_fmask {
@@ -122,6 +125,7 @@ struct legacy_surf_layout {
 
    struct legacy_surf_level level[RADEON_SURF_MAX_LEVELS];
    struct legacy_surf_level stencil_level[RADEON_SURF_MAX_LEVELS];
+   struct legacy_surf_dcc_level dcc_level[RADEON_SURF_MAX_LEVELS];
    uint8_t tiling_index[RADEON_SURF_MAX_LEVELS];
    uint8_t stencil_tiling_index[RADEON_SURF_MAX_LEVELS];
    struct legacy_surf_fmask fmask;

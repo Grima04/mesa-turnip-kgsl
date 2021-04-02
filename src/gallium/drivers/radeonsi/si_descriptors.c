@@ -335,7 +335,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
             (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.dcc_offset;
 
          if (sscreen->info.chip_class == GFX8) {
-            meta_va += base_level_info->dcc_offset;
+            meta_va += tex->surface.u.legacy.dcc_level[base_level].dcc_offset;
             assert(base_level_info->mode == RADEON_SURF_MODE_2D);
          }
 

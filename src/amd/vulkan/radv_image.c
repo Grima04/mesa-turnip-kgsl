@@ -702,7 +702,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       if (!disable_compression && radv_dcc_enabled(image, first_level)) {
          meta_va = gpu_address + plane->surface.dcc_offset;
          if (chip_class <= GFX8)
-            meta_va += base_level_info->dcc_offset;
+            meta_va += plane->surface.u.legacy.dcc_level[base_level].dcc_offset;
 
          unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
          dcc_tile_swizzle &= plane->surface.dcc_alignment - 1;
