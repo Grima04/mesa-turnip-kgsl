@@ -1310,9 +1310,9 @@ si_texture_create_with_modifier(struct pipe_screen *screen,
                           is_flushed_depth, tc_compatible_htile))
          return NULL;
 
-      plane_offset[i] = align64(total_size, surface[i].surf_alignment);
+      plane_offset[i] = align64(total_size, 1 << surface[i].surf_alignment_log2);
       total_size = plane_offset[i] + surface[i].total_size;
-      max_alignment = MAX2(max_alignment, surface[i].surf_alignment);
+      max_alignment = MAX2(max_alignment, 1 << surface[i].surf_alignment_log2);
    }
 
    struct si_texture *plane0 = NULL, *last_plane = NULL;
@@ -1625,7 +1625,7 @@ static struct pipe_resource *si_texture_from_winsys_buffer(struct si_screen *ssc
 
    if (ac_surface_get_plane_offset(sscreen->info.chip_class, &tex->surface, 0, 0) +
         tex->surface.total_size > buf->size ||
-       1 << buf->alignment_log2 < tex->surface.alignment) {
+       buf->alignment_log2 < tex->surface.alignment_log2) {
       si_texture_reference(&tex, NULL);
       return NULL;
    }
@@ -2366,7 +2366,7 @@ void vi_separate_dcc_try_enable(struct si_context *sctx, struct si_texture *tex)
    } else {
       tex->dcc_separate_buffer =
          si_aligned_buffer_create(sctx->b.screen, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT,
-                                  tex->surface.dcc_size, tex->surface.dcc_alignment);
+                                  tex->surface.dcc_size, 1 << tex->surface.dcc_alignment_log2);
       if (!tex->dcc_separate_buffer)
          return;
    }

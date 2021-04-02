@@ -202,7 +202,7 @@ struct gfx9_surf_layout {
     * A compute shader needs to convert from aligned DCC to unaligned.
     */
    uint32_t display_dcc_size;
-   uint32_t display_dcc_alignment;
+   uint8_t display_dcc_alignment_log2;
    uint16_t display_dcc_pitch_max; /* (mip chain pitch - 1) */
    uint16_t dcc_pitch_max;
    bool dcc_retile_use_uint16;     /* if all values fit into uint16_t */
@@ -276,24 +276,27 @@ struct radeon_surf {
    uint8_t tile_swizzle;
    uint8_t fmask_tile_swizzle;
 
+   /* Use (1 << log2) to compute the alignment. */
+   uint8_t surf_alignment_log2;
+   uint8_t fmask_alignment_log2;
+   uint8_t dcc_alignment_log2;
+   uint8_t htile_alignment_log2;
+   uint8_t cmask_alignment_log2;
+   uint8_t alignment_log2;
+
    uint64_t surf_size;
    uint64_t fmask_size;
-   uint32_t surf_alignment;
-   uint32_t fmask_alignment;
    uint64_t fmask_slice_size;
 
    /* DCC and HTILE are very small. */
    uint32_t dcc_size;
    uint32_t dcc_slice_size;
-   uint32_t dcc_alignment;
 
    uint32_t htile_size;
    uint32_t htile_slice_size;
-   uint32_t htile_alignment;
 
    uint32_t cmask_size;
    uint32_t cmask_slice_size;
-   uint32_t cmask_alignment;
 
    /* All buffers combined. */
    uint64_t htile_offset;
@@ -302,7 +305,6 @@ struct radeon_surf {
    uint64_t dcc_offset;
    uint64_t display_dcc_offset;
    uint64_t total_size;
-   uint32_t alignment;
 
    union {
       /* Return values for GFX8 and older.

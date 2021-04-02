@@ -171,7 +171,7 @@ void rvid_join_surfaces(struct r600_common_context *rctx,
 			continue;
 
 		/* adjust the texture layer offsets */
-		off = align(off, surfaces[i]->surf_alignment);
+		off = align(off, 1 << surfaces[i]->surf_alignment_log2);
 
 		/* copy the tiling parameters */
 		surfaces[i]->u.legacy.bankw = surfaces[best_tiling]->u.legacy.bankw;

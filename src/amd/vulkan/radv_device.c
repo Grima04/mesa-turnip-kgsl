@@ -6364,7 +6364,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
       va += plane->surface.u.legacy.dcc_level[iview->base_mip].dcc_offset;
 
    unsigned dcc_tile_swizzle = surf->tile_swizzle;
-   dcc_tile_swizzle &= (surf->dcc_alignment - 1) >> 8;
+   dcc_tile_swizzle &= ((1 << surf->dcc_alignment_log2) - 1) >> 8;
 
    cb->cb_dcc_base = va >> 8;
    cb->cb_dcc_base |= dcc_tile_swizzle;

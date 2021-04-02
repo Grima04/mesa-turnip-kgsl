@@ -705,7 +705,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
             meta_va += plane->surface.u.legacy.dcc_level[base_level].dcc_offset;
 
          unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
-         dcc_tile_swizzle &= plane->surface.dcc_alignment - 1;
+         dcc_tile_swizzle &= (1 << plane->surface.dcc_alignment_log2) - 1;
          meta_va |= dcc_tile_swizzle;
       } else if (!disable_compression && radv_image_is_tc_compat_htile(image)) {
          meta_va = gpu_address + plane->surface.htile_offset;
@@ -1261,9 +1261,9 @@ radv_image_alloc_single_sample_cmask(const struct radv_device *device,
 
    assert(image->info.storage_samples == 1);
 
-   surf->cmask_offset = align64(surf->total_size, surf->cmask_alignment);
+   surf->cmask_offset = align64(surf->total_size, 1 << surf->cmask_alignment_log2);
    surf->total_size = surf->cmask_offset + surf->cmask_size;
-   surf->alignment = MAX2(surf->alignment, surf->cmask_alignment);
+   surf->alignment_log2 = MAX2(surf->alignment_log2, surf->cmask_alignment_log2);
 }
 
 static void
@@ -1410,7 +1410,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
          offset = mod_info->pPlaneLayouts[plane].offset;
          stride = mod_info->pPlaneLayouts[plane].rowPitch / image->planes[plane].surface.bpe;
       } else {
-         offset = align(image->size, image->planes[plane].surface.alignment);
+         offset = align(image->size, 1 << image->planes[plane].surface.alignment_log2);
          stride = 0; /* 0 means no override */
       }
 
@@ -1434,7 +1434,7 @@ radv_image_create_layout(struct radv_device *device, struct radv_image_create_in
       }
 
       image->size = MAX2(image->size, offset + image->planes[plane].surface.total_size);
-      image->alignment = MAX2(image->alignment, image->planes[plane].surface.alignment);
+      image->alignment = MAX2(image->alignment, 1 << image->planes[plane].surface.alignment_log2);
 
       image->planes[plane].format = vk_format_get_plane_format(image->vk_format, plane);
    }

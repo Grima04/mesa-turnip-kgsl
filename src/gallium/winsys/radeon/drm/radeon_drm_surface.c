@@ -146,7 +146,7 @@ static void surf_winsys_to_drm(struct radeon_surface *surf_drm,
    }
 
    surf_drm->bo_size = surf_ws->surf_size;
-   surf_drm->bo_alignment = surf_ws->surf_alignment;
+   surf_drm->bo_alignment = 1 << surf_ws->surf_alignment_log2;
 
    surf_drm->bankw = surf_ws->u.legacy.bankw;
    surf_drm->bankh = surf_ws->u.legacy.bankh;
@@ -188,7 +188,7 @@ static void surf_drm_to_winsys(struct radeon_drm_winsys *ws,
    surf_ws->flags = surf_drm->flags;
 
    surf_ws->surf_size = surf_drm->bo_size;
-   surf_ws->surf_alignment = surf_drm->bo_alignment;
+   surf_ws->surf_alignment_log2 = util_logbase2(surf_drm->bo_alignment);
 
    surf_ws->u.legacy.bankw = surf_drm->bankw;
    surf_ws->u.legacy.bankh = surf_drm->bankh;
@@ -276,7 +276,7 @@ static void si_compute_cmask(const struct radeon_info *info,
    else
       num_layers = config->info.array_size;
 
-   surf->cmask_alignment = MAX2(256, base_align);
+   surf->cmask_alignment_log2 = util_logbase2(MAX2(256, base_align));
    surf->cmask_size = align(slice_bytes, base_align) * num_layers;
 }
 
@@ -342,7 +342,7 @@ static void si_compute_htile(const struct radeon_info *info,
    pipe_interleave_bytes = info->pipe_interleave_bytes;
    base_align = num_pipes * pipe_interleave_bytes;
 
-   surf->htile_alignment = base_align;
+   surf->htile_alignment_log2 = util_logbase2(base_align);
    surf->htile_size = num_layers * align(slice_bytes, base_align);
 }
 
@@ -404,7 +404,7 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
       assert(fmask.u.legacy.level[0].mode == RADEON_SURF_MODE_2D);
 
       surf_ws->fmask_size = fmask.surf_size;
-      surf_ws->fmask_alignment = MAX2(256, fmask.surf_alignment);
+      surf_ws->fmask_alignment_log2 = util_logbase2(MAX2(256, 1 << fmask.surf_alignment_log2));
       surf_ws->fmask_tile_swizzle = fmask.tile_swizzle;
 
       surf_ws->u.legacy.fmask.slice_tile_max =
@@ -439,19 +439,19 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
       surf_ws->total_size = surf_ws->surf_size;
 
       if (surf_ws->htile_size) {
-         surf_ws->htile_offset = align64(surf_ws->total_size, surf_ws->htile_alignment);
+         surf_ws->htile_offset = align64(surf_ws->total_size, 1 << surf_ws->htile_alignment_log2);
          surf_ws->total_size = surf_ws->htile_offset + surf_ws->htile_size;
       }
 
       if (surf_ws->fmask_size) {
          assert(tex->nr_samples >= 2);
-         surf_ws->fmask_offset = align64(surf_ws->total_size, surf_ws->fmask_alignment);
+         surf_ws->fmask_offset = align64(surf_ws->total_size, 1 << surf_ws->fmask_alignment_log2);
          surf_ws->total_size = surf_ws->fmask_offset + surf_ws->fmask_size;
       }
 
       /* Single-sample CMASK is in a separate buffer. */
       if (surf_ws->cmask_size && tex->nr_samples >= 2) {
-         surf_ws->cmask_offset = align64(surf_ws->total_size, surf_ws->cmask_alignment);
+         surf_ws->cmask_offset = align64(surf_ws->total_size, 1 << surf_ws->cmask_alignment_log2);
          surf_ws->total_size = surf_ws->cmask_offset + surf_ws->cmask_size;
       }
    }

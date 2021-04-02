@@ -857,7 +857,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
          dcc_level->dcc_offset = surf->dcc_size;
          surf->num_dcc_levels = level + 1;
          surf->dcc_size = dcc_level->dcc_offset + AddrDccOut->dccRamSize;
-         surf->dcc_alignment = MAX2(surf->dcc_alignment, AddrDccOut->dccRamBaseAlign);
+         surf->dcc_alignment_log2 = MAX2(surf->dcc_alignment_log2, util_logbase2(AddrDccOut->dccRamBaseAlign));
 
          /* If the DCC size of a subresource (1 mip level or 1 slice)
           * is not aligned, the DCC memory layout is not contiguous for
@@ -935,7 +935,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
       if (ret == ADDR_OK) {
          surf->htile_size = AddrHtileOut->htileBytes;
          surf->htile_slice_size = AddrHtileOut->sliceSize;
-         surf->htile_alignment = AddrHtileOut->baseAlign;
+         surf->htile_alignment_log2 = util_logbase2(AddrHtileOut->baseAlign);
          surf->num_htile_levels = level + 1;
       }
    }
@@ -1007,7 +1007,7 @@ static int gfx6_surface_settings(ADDR_HANDLE addrlib, const struct radeon_info *
                                  const struct ac_surf_config *config,
                                  ADDR_COMPUTE_SURFACE_INFO_OUTPUT *csio, struct radeon_surf *surf)
 {
-   surf->surf_alignment = csio->baseAlign;
+   surf->surf_alignment_log2 = util_logbase2(csio->baseAlign);
    surf->u.legacy.pipe_config = csio->pTileInfo->pipeConfig - 1;
    gfx6_set_micro_tile_mode(surf, info);
 
@@ -1108,7 +1108,7 @@ static void ac_compute_cmask(const struct radeon_info *info, const struct ac_sur
    else
       num_layers = config->info.array_size;
 
-   surf->cmask_alignment = MAX2(256, base_align);
+   surf->cmask_alignment_log2 = util_logbase2(MAX2(256, base_align));
    surf->cmask_slice_size = align(slice_bytes, base_align);
    surf->cmask_size = surf->cmask_slice_size * num_layers;
 }
@@ -1326,10 +1326,10 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
    surf->num_dcc_levels = 0;
    surf->surf_size = 0;
    surf->dcc_size = 0;
-   surf->dcc_alignment = 1;
+   surf->dcc_alignment_log2 = 0;
    surf->htile_size = 0;
    surf->htile_slice_size = 0;
-   surf->htile_alignment = 1;
+   surf->htile_alignment_log2 = 0;
 
    const bool only_stencil =
       (surf->flags & RADEON_SURF_SBUFFER) && !(surf->flags & RADEON_SURF_ZBUFFER);
@@ -1428,7 +1428,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
          return r;
 
       surf->fmask_size = fout.fmaskBytes;
-      surf->fmask_alignment = fout.baseAlign;
+      surf->fmask_alignment_log2 = util_logbase2(fout.baseAlign);
       surf->fmask_slice_size = fout.sliceSize;
       surf->fmask_tile_swizzle = 0;
 
@@ -1477,7 +1477,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
        *
        * "dcc_alignment * 4" was determined by trial and error.
        */
-      surf->dcc_size = align64(surf->surf_size >> 8, surf->dcc_alignment * 4);
+      surf->dcc_size = align64(surf->surf_size >> 8, (1 << surf->dcc_alignment_log2) * 4);
    }
 
    /* Make sure HTILE covers the whole miptree, because the shader reads
@@ -1491,7 +1491,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
       const unsigned htile_element_size = 4;
 
       surf->htile_size = (total_pixels / htile_block_size) * htile_element_size;
-      surf->htile_size = align(surf->htile_size, surf->htile_alignment);
+      surf->htile_size = align(surf->htile_size, 1 << surf->htile_alignment_log2);
    } else if (!surf->htile_size) {
       /* Unset this if HTILE is not present. */
       surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
@@ -1718,7 +1718,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       surf->u.gfx9.stencil_swizzle_mode = in->swizzleMode;
       surf->u.gfx9.stencil_epitch =
          out.epitchIsHeight ? out.mipChainHeight - 1 : out.mipChainPitch - 1;
-      surf->surf_alignment = MAX2(surf->surf_alignment, out.baseAlign);
+      surf->surf_alignment_log2 = MAX2(surf->surf_alignment_log2, util_logbase2(out.baseAlign));
       surf->u.gfx9.stencil_offset = align(surf->surf_size, out.baseAlign);
       surf->surf_size = surf->u.gfx9.stencil_offset + out.surfSize;
       return 0;
@@ -1737,7 +1737,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
    surf->u.gfx9.surf_pitch = out.pitch;
    surf->u.gfx9.surf_height = out.height;
    surf->surf_size = out.surfSize;
-   surf->surf_alignment = out.baseAlign;
+   surf->surf_alignment_log2 = util_logbase2(out.baseAlign);
 
    if (!compressed && surf->blk_w > 1 && out.pitch == out.pixelPitch &&
        surf->u.gfx9.swizzle_mode == ADDR_SW_LINEAR) {
@@ -1800,7 +1800,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
 
       surf->htile_size = hout.htileBytes;
       surf->htile_slice_size = hout.sliceSize;
-      surf->htile_alignment = hout.baseAlign;
+      surf->htile_alignment_log2 = util_logbase2(hout.baseAlign);
       surf->num_htile_levels = in->numMipLevels;
 
       for (unsigned i = 0; i < in->numMipLevels; i++) {
@@ -1888,9 +1888,10 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.dcc_block_width = dout.compressBlkWidth;
          surf->u.gfx9.dcc_block_height = dout.compressBlkHeight;
          surf->u.gfx9.dcc_block_depth = dout.compressBlkDepth;
+         surf->u.gfx9.dcc_pitch_max = dout.pitch - 1;
          surf->dcc_size = dout.dccRamSize;
          surf->dcc_slice_size = dout.dccRamSliceSize;
-         surf->dcc_alignment = dout.dccRamBaseAlign;
+         surf->dcc_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
          surf->num_dcc_levels = in->numMipLevels;
 
          /* Disable DCC for levels that are in the mip tail.
@@ -1938,9 +1939,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
             surf->dcc_size = 0;
 
          surf->u.gfx9.display_dcc_size = surf->dcc_size;
-         surf->u.gfx9.display_dcc_alignment = surf->dcc_alignment;
-         surf->u.gfx9.display_dcc_pitch_max = dout.pitch - 1;
-         surf->u.gfx9.dcc_pitch_max = dout.pitch - 1;
+         surf->u.gfx9.display_dcc_alignment_log2 = surf->dcc_alignment_log2;
+         surf->u.gfx9.display_dcc_pitch_max = surf->u.gfx9.dcc_pitch_max;
 
          /* Compute displayable DCC. */
          if (((in->flags.display && info->use_display_dcc_with_retile_blit) ||
@@ -1960,7 +1960,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
                return ret;
 
             surf->u.gfx9.display_dcc_size = dout.dccRamSize;
-            surf->u.gfx9.display_dcc_alignment = dout.dccRamBaseAlign;
+            surf->u.gfx9.display_dcc_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
             surf->u.gfx9.display_dcc_pitch_max = dout.pitch - 1;
             assert(surf->u.gfx9.display_dcc_size <= surf->dcc_size);
 
@@ -2068,7 +2068,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.fmask_swizzle_mode = fin.swizzleMode;
          surf->u.gfx9.fmask_epitch = fout.pitch - 1;
          surf->fmask_size = fout.fmaskBytes;
-         surf->fmask_alignment = fout.baseAlign;
+         surf->fmask_alignment_log2 = util_logbase2(fout.baseAlign);
          surf->fmask_slice_size = fout.sliceSize;
 
          /* Compute tile swizzle for the FMASK surface. */
@@ -2133,7 +2133,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
             return ret;
 
          surf->cmask_size = cout.cmaskBytes;
-         surf->cmask_alignment = cout.baseAlign;
+         surf->cmask_alignment_log2 = util_logbase2(cout.baseAlign);
          surf->cmask_slice_size = cout.sliceSize;
          surf->u.gfx9.cmask_level0.offset = meta_mip_info[0].offset;
          surf->u.gfx9.cmask_level0.size = meta_mip_info[0].sliceSize;
@@ -2404,7 +2404,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
 
    if (info->has_graphics && !compressed && !config->is_3d && config->info.levels == 1 &&
        AddrSurfInfoIn.flags.color && !surf->is_linear &&
-       surf->surf_alignment >= 64 * 1024 && /* 64KB tiling */
+       (1 << surf->surf_alignment_log2) >= 64 * 1024 && /* 64KB tiling */
        !(surf->flags & (RADEON_SURF_DISABLE_DCC | RADEON_SURF_FORCE_SWIZZLE_MODE |
                         RADEON_SURF_FORCE_MICRO_TILE_MODE)) &&
        (surf->modifier == DRM_FORMAT_MOD_INVALID ||
@@ -2500,7 +2500,7 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
 
    /* Determine the memory layout of multiple allocations in one buffer. */
    surf->total_size = surf->surf_size;
-   surf->alignment = surf->surf_alignment;
+   surf->alignment_log2 = surf->surf_alignment_log2;
 
    /* Ensure the offsets are always 0 if not available. */
    surf->dcc_offset = surf->display_dcc_offset = 0;
@@ -2508,23 +2508,23 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
    surf->htile_offset = 0;
 
    if (surf->htile_size) {
-      surf->htile_offset = align64(surf->total_size, surf->htile_alignment);
+      surf->htile_offset = align64(surf->total_size, 1 << surf->htile_alignment_log2);
       surf->total_size = surf->htile_offset + surf->htile_size;
-      surf->alignment = MAX2(surf->alignment, surf->htile_alignment);
+      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->htile_alignment_log2);
    }
 
    if (surf->fmask_size) {
       assert(config->info.samples >= 2);
-      surf->fmask_offset = align64(surf->total_size, surf->fmask_alignment);
+      surf->fmask_offset = align64(surf->total_size, 1 << surf->fmask_alignment_log2);
       surf->total_size = surf->fmask_offset + surf->fmask_size;
-      surf->alignment = MAX2(surf->alignment, surf->fmask_alignment);
+      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->fmask_alignment_log2);
    }
 
    /* Single-sample CMASK is in a separate buffer. */
    if (surf->cmask_size && config->info.samples >= 2) {
-      surf->cmask_offset = align64(surf->total_size, surf->cmask_alignment);
+      surf->cmask_offset = align64(surf->total_size, 1 << surf->cmask_alignment_log2);
       surf->total_size = surf->cmask_offset + surf->cmask_size;
-      surf->alignment = MAX2(surf->alignment, surf->cmask_alignment);
+      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->cmask_alignment_log2);
    }
 
    if (surf->is_displayable)
@@ -2538,13 +2538,13 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
        */
       if (info->chip_class >= GFX9 && surf->u.gfx9.dcc_retile_num_elements) {
          /* Add space for the displayable DCC buffer. */
-         surf->display_dcc_offset = align64(surf->total_size, surf->u.gfx9.display_dcc_alignment);
+         surf->display_dcc_offset = align64(surf->total_size, 1 << surf->u.gfx9.display_dcc_alignment_log2);
          surf->total_size = surf->display_dcc_offset + surf->u.gfx9.display_dcc_size;
       }
 
-      surf->dcc_offset = align64(surf->total_size, surf->dcc_alignment);
+      surf->dcc_offset = align64(surf->total_size, 1 << surf->dcc_alignment_log2);
       surf->total_size = surf->dcc_offset + surf->dcc_size;
-      surf->alignment = MAX2(surf->alignment, surf->dcc_alignment);
+      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->dcc_alignment_log2);
    }
 
    return 0;
@@ -2557,7 +2557,7 @@ void ac_surface_zero_dcc_fields(struct radeon_surf *surf)
    surf->display_dcc_offset = 0;
    if (!surf->htile_offset && !surf->fmask_offset && !surf->cmask_offset) {
       surf->total_size = surf->surf_size;
-      surf->alignment = surf->surf_alignment;
+      surf->alignment_log2 = surf->surf_alignment_log2;
    }
 }
 
@@ -2931,7 +2931,7 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
       }
    }
 
-   if (offset & (surf->alignment - 1) ||
+   if (offset & ((1 << surf->alignment_log2) - 1) ||
        offset >= UINT64_MAX - surf->total_size)
       return false;
 
@@ -3037,7 +3037,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
               "alignment=%u, swmode=%u, epitch=%u, pitch=%u, blk_w=%u, "
               "blk_h=%u, bpe=%u, flags=0x%"PRIx64"\n",
               surf->surf_size, surf->u.gfx9.surf_slice_size,
-              surf->surf_alignment, surf->u.gfx9.swizzle_mode,
+              1 << surf->surf_alignment_log2, surf->u.gfx9.swizzle_mode,
               surf->u.gfx9.epitch, surf->u.gfx9.surf_pitch,
               surf->blk_w, surf->blk_h, surf->bpe, surf->flags);
 
@@ -3046,7 +3046,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  "    FMask: offset=%" PRIu64 ", size=%" PRIu64 ", "
                  "alignment=%u, swmode=%u, epitch=%u\n",
                  surf->fmask_offset, surf->fmask_size,
-                 surf->fmask_alignment, surf->u.gfx9.fmask_swizzle_mode,
+                 1 << surf->fmask_alignment_log2, surf->u.gfx9.fmask_swizzle_mode,
                  surf->u.gfx9.fmask_epitch);
 
       if (surf->cmask_offset)
@@ -3054,19 +3054,19 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  "    CMask: offset=%" PRIu64 ", size=%u, "
                  "alignment=%u\n",
                  surf->cmask_offset, surf->cmask_size,
-                 surf->cmask_alignment);
+                 1 << surf->cmask_alignment_log2);
 
       if (surf->htile_offset)
          fprintf(out,
                  "    HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
                  surf->htile_offset, surf->htile_size,
-                 surf->htile_alignment);
+                 1 << surf->htile_alignment_log2);
 
       if (surf->dcc_offset)
          fprintf(out,
                  "    DCC: offset=%" PRIu64 ", size=%u, "
                  "alignment=%u, pitch_max=%u, num_dcc_levels=%u\n",
-                 surf->dcc_offset, surf->dcc_size, surf->dcc_alignment,
+                 surf->dcc_offset, surf->dcc_size, 1 << surf->dcc_alignment_log2,
                  surf->u.gfx9.display_dcc_pitch_max, surf->num_dcc_levels);
 
       if (surf->u.gfx9.stencil_offset)
@@ -3079,13 +3079,13 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
       fprintf(out,
               "    Surf: size=%" PRIu64 ", alignment=%u, blk_w=%u, blk_h=%u, "
               "bpe=%u, flags=0x%"PRIx64"\n",
-              surf->surf_size, surf->surf_alignment, surf->blk_w,
+              surf->surf_size, 1 << surf->surf_alignment_log2, surf->blk_w,
               surf->blk_h, surf->bpe, surf->flags);
 
       fprintf(out,
               "    Layout: size=%" PRIu64 ", alignment=%u, bankw=%u, bankh=%u, "
               "nbanks=%u, mtilea=%u, tilesplit=%u, pipeconfig=%u, scanout=%u\n",
-              surf->surf_size, surf->surf_alignment,
+              surf->surf_size, 1 << surf->surf_alignment_log2,
               surf->u.legacy.bankw, surf->u.legacy.bankh,
               surf->u.legacy.num_banks, surf->u.legacy.mtilea,
               surf->u.legacy.tile_split, surf->u.legacy.pipe_config,
@@ -3097,7 +3097,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  "alignment=%u, pitch_in_pixels=%u, bankh=%u, "
                  "slice_tile_max=%u, tile_mode_index=%u\n",
                  surf->fmask_offset, surf->fmask_size,
-                 surf->fmask_alignment, surf->u.legacy.fmask.pitch_in_pixels,
+                 1 << surf->fmask_alignment_log2, surf->u.legacy.fmask.pitch_in_pixels,
                  surf->u.legacy.fmask.bankh,
                  surf->u.legacy.fmask.slice_tile_max,
                  surf->u.legacy.fmask.tiling_index);
@@ -3107,16 +3107,16 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  "    CMask: offset=%" PRIu64 ", size=%u, alignment=%u, "
                  "slice_tile_max=%u\n",
                  surf->cmask_offset, surf->cmask_size,
-                 surf->cmask_alignment, surf->u.legacy.cmask_slice_tile_max);
+                 1 << surf->cmask_alignment_log2, surf->u.legacy.cmask_slice_tile_max);
 
       if (surf->htile_offset)
          fprintf(out, "    HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
                  surf->htile_offset, surf->htile_size,
-                 surf->htile_alignment);
+                 1 << surf->htile_alignment_log2);
 
       if (surf->dcc_offset)
          fprintf(out, "    DCC: offset=%" PRIu64 ", size=%u, alignment=%u\n",
-                 surf->dcc_offset, surf->dcc_size, surf->dcc_alignment);
+                 surf->dcc_offset, surf->dcc_size, 1 << surf->dcc_alignment_log2);
 
       if (surf->has_stencil)
          fprintf(out, "    StencilLayout: tilesplit=%u\n",

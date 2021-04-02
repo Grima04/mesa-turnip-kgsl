@@ -653,7 +653,7 @@ void r600_texture_get_fmask_info(struct r600_common_screen *rscreen,
 	out->pitch_in_pixels = fmask.u.legacy.level[0].nblk_x;
 	out->bank_height = fmask.u.legacy.bankh;
 	out->tile_swizzle = fmask.tile_swizzle;
-	out->alignment = MAX2(256, fmask.surf_alignment);
+	out->alignment = MAX2(256, 1 << fmask.surf_alignment_log2);
 	out->size = fmask.surf_size;
 }
 
@@ -804,7 +804,7 @@ static void r600_texture_get_htile_size(struct r600_common_screen *rscreen,
 	pipe_interleave_bytes = rscreen->info.pipe_interleave_bytes;
 	base_align = num_pipes * pipe_interleave_bytes;
 
-	rtex->surface.htile_alignment = base_align;
+	rtex->surface.htile_alignment_log2 = util_logbase2(base_align);
 	rtex->surface.htile_size =
 		util_num_layers(&rtex->resource.b.b, 0) *
 		align(slice_bytes, base_align);
@@ -818,7 +818,7 @@ static void r600_texture_allocate_htile(struct r600_common_screen *rscreen,
 	if (!rtex->surface.htile_size)
 		return;
 
-	rtex->htile_offset = align(rtex->size, rtex->surface.htile_alignment);
+	rtex->htile_offset = align(rtex->size, 1 << rtex->surface.htile_alignment_log2);
 	rtex->size = rtex->htile_offset + rtex->surface.htile_size;
 }
 
@@ -840,7 +840,7 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 
 	u_log_printf(log, "  Layout: size=%"PRIu64", alignment=%u, bankw=%u, "
 		"bankh=%u, nbanks=%u, mtilea=%u, tilesplit=%u, pipeconfig=%u, scanout=%u\n",
-		rtex->surface.surf_size, rtex->surface.surf_alignment, rtex->surface.u.legacy.bankw,
+		rtex->surface.surf_size, 1 << rtex->surface.surf_alignment_log2, rtex->surface.u.legacy.bankw,
 		rtex->surface.u.legacy.bankh, rtex->surface.u.legacy.num_banks, rtex->surface.u.legacy.mtilea,
 		rtex->surface.u.legacy.tile_split, rtex->surface.u.legacy.pipe_config,
 		(rtex->surface.flags & RADEON_SURF_SCANOUT) != 0);
@@ -862,7 +862,7 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 		u_log_printf(log, "  HTile: offset=%"PRIu64", size=%u "
 			"alignment=%u\n",
 			     rtex->htile_offset, rtex->surface.htile_size,
-			     rtex->surface.htile_alignment);
+			     1 << rtex->surface.htile_alignment_log2);
 
 	for (i = 0; i <= rtex->resource.b.b.last_level; i++)
 		u_log_printf(log, "  Level[%i]: offset=%"PRIu64", slice_size=%"PRIu64", "
@@ -971,7 +971,7 @@ r600_texture_create_object(struct pipe_screen *screen,
 	/* Now create the backing buffer. */
 	if (!buf) {
 		r600_init_resource_fields(rscreen, resource, rtex->size,
-					  rtex->surface.surf_alignment);
+					  1 << rtex->surface.surf_alignment_log2);
 
 		if (!r600_alloc_resource(rscreen, resource)) {
 			FREE(rtex);

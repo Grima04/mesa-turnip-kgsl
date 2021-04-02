@@ -3035,7 +3035,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             8;
 
          unsigned dcc_tile_swizzle = tex->surface.tile_swizzle;
-         dcc_tile_swizzle &= (tex->surface.dcc_alignment - 1) >> 8;
+         dcc_tile_swizzle &= ((1 << tex->surface.dcc_alignment_log2) - 1) >> 8;
          cb_dcc_base |= dcc_tile_swizzle;
       }
 
