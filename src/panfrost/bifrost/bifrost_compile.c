@@ -2907,8 +2907,27 @@ bi_vectorize_filter(const nir_instr *instr, void *data)
         }
 }
 
+/* XXX: This is a kludge to workaround NIR's lack of divergence metadata. If we
+ * keep divergence info around after we consume it for indirect lowering,
+ * nir_convert_from_ssa will regress code quality since it will avoid
+ * coalescing divergent with non-divergent nodes. */
+
+static bool
+nir_invalidate_divergence_ssa(nir_ssa_def *ssa, UNUSED void *data)
+{
+        ssa->divergent = false;
+        return true;
+}
+
+static bool
+nir_invalidate_divergence(struct nir_builder *b, nir_instr *instr,
+                UNUSED void *data)
+{
+        return nir_foreach_ssa_def(instr, nir_invalidate_divergence_ssa, NULL);
+}
+
 static void
-bi_optimize_nir(nir_shader *nir, bool is_blend)
+bi_optimize_nir(nir_shader *nir, unsigned gpu_id, bool is_blend)
 {
         bool progress;
         unsigned lower_flrp = 16 | 32 | 64;
@@ -3012,6 +3031,24 @@ bi_optimize_nir(nir_shader *nir, bool is_blend)
         if (!is_blend) {
                 NIR_PASS_V(nir, nir_opt_sink, move_all);
                 NIR_PASS_V(nir, nir_opt_move, move_all);
+        }
+
+        /* We might lower attribute, varying, and image indirects. Use the
+         * gathered info to skip the extra analysis in the happy path. */
+        bool any_indirects =
+                nir->info.inputs_read_indirectly ||
+                nir->info.outputs_accessed_indirectly ||
+                nir->info.patch_inputs_read_indirectly ||
+                nir->info.patch_outputs_accessed_indirectly ||
+                nir->info.images_used;
+
+        if (any_indirects) {
+                nir_convert_to_lcssa(nir, true, true);
+                NIR_PASS_V(nir, nir_divergence_analysis);
+                NIR_PASS_V(nir, bi_lower_divergent_indirects,
+                                bifrost_lanes_per_warp(gpu_id));
+                NIR_PASS_V(nir, nir_shader_instructions_pass,
+                        nir_invalidate_divergence, nir_metadata_all, NULL);
         }
 
         /* Take us out of SSA */
@@ -3172,7 +3209,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
                         NULL);
         }
 
-        bi_optimize_nir(nir, ctx->inputs->is_blend);
+        bi_optimize_nir(nir, ctx->inputs->gpu_id, ctx->inputs->is_blend);
 
         NIR_PASS_V(nir, pan_nir_reorder_writeout);
 

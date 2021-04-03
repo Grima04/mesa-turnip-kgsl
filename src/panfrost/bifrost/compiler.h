@@ -988,4 +988,9 @@ bi_builder_insert(bi_cursor *cursor, bi_instr *I)
     unreachable("Invalid cursor option");
 }
 
+
+/* NIR passes */
+
+bool bi_lower_divergent_indirects(nir_shader *shader, unsigned lanes);
+
 #endif
