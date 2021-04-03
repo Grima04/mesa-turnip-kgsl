@@ -34,13 +34,14 @@
 VkImageViewCreateInfo
 create_ivci(struct zink_screen *screen,
             struct zink_resource *res,
-            const struct pipe_surface *templ)
+            const struct pipe_surface *templ,
+            enum pipe_texture_target target)
 {
    VkImageViewCreateInfo ivci = {};
    ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
    ivci.image = res->obj->image;
 
-   switch (res->base.b.target) {
+   switch (target) {
    case PIPE_TEXTURE_1D:
       ivci.viewType = VK_IMAGE_VIEW_TYPE_1D;
       break;
@@ -175,7 +176,7 @@ zink_create_surface(struct pipe_context *pctx,
 {
 
    VkImageViewCreateInfo ivci = create_ivci(zink_screen(pctx->screen),
-                                            zink_resource(pres), templ);
+                                            zink_resource(pres), templ, pres->target);
    if (pres->target == PIPE_TEXTURE_3D)
       ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
 
@@ -248,7 +249,7 @@ zink_rebind_surface(struct zink_context *ctx, struct pipe_surface **psurface)
    if (surface->simage_view)
       return false;
    VkImageViewCreateInfo ivci = create_ivci(screen,
-                                            zink_resource((*psurface)->texture), (*psurface));
+                                            zink_resource((*psurface)->texture), (*psurface), surface->base.texture->target);
    uint32_t hash = hash_ivci(&ivci);
 
    simple_mtx_lock(&screen->surface_mtx);
