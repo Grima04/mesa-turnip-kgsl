@@ -2491,7 +2491,8 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_sample_mask_in:
-      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleMaskPostDepthCoverage);
+      if (ctx->info->fs.post_depth_coverage)
+         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleMaskPostDepthCoverage);
       emit_load_uint_input(ctx, intr, &ctx->sample_mask_in_var, "gl_SampleMaskIn", SpvBuiltInSampleMask);
       break;
 
