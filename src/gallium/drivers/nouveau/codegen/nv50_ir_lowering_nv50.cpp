@@ -1038,8 +1038,22 @@ bool
 NV50LoweringPreSSA::handleTXQ(TexInstruction *i)
 {
    Value *ms, *ms_x, *ms_y;
-   if (i->tex.query == TXQ_DIMS)
+   if (i->tex.query == TXQ_DIMS) {
+      if (i->tex.target.isMS()) {
+         bld.setPosition(i, true);
+         loadTexMsInfo(i->tex.r * 4 * 2, &ms, &ms_x, &ms_y);
+         int d = 0;
+         if (i->tex.mask & 1) {
+            bld.mkOp2(OP_SHR, TYPE_U32, i->getDef(d), i->getDef(d), ms_x);
+            d++;
+         }
+         if (i->tex.mask & 2) {
+            bld.mkOp2(OP_SHR, TYPE_U32, i->getDef(d), i->getDef(d), ms_y);
+            d++;
+         }
+      }
       return true;
+   }
    assert(i->tex.query == TXQ_TYPE);
    assert(i->tex.mask == 4);
 
