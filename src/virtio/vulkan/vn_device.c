@@ -1525,6 +1525,11 @@ vn_physical_device_init_extensions(struct vn_physical_device *physical_dev)
          }
       }
 
+#ifdef ANDROID
+      if (!vk_android_allowed_device_extensions.extensions[i])
+         continue;
+#endif
+
       /* does not depend on renderer (e.g., WSI) */
       if (supported.extensions[i]) {
          physical_dev->base.base.supported_extensions.extensions[i] = true;

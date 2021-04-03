@@ -75,6 +75,10 @@ if with_platform_x11
   ]
 endif
 
+if with_platform_android
+  libvn_files += files('vn_android.c')
+endif
+
 libvulkan_virtio = shared_library(
   'vulkan_virtio',
   [libvn_files, vn_entrypoints, sha1_h],
