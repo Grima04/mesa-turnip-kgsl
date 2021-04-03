@@ -609,6 +609,10 @@ bi_emit_load(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 static void
 bi_emit_store(bi_builder *b, nir_intrinsic_instr *instr, enum bi_seg seg)
 {
+        /* Require contiguous masks, gauranteed by nir_lower_wrmasks */
+        assert(nir_intrinsic_write_mask(instr) ==
+                        BITFIELD_MASK(instr->num_components));
+
         bi_store(b, instr->num_components * nir_src_bit_size(instr->src[0]),
                     bi_src_index(&instr->src[0]),
                     bi_src_index(&instr->src[1]), bi_addr_high(&instr->src[1]),
@@ -2773,6 +2777,26 @@ glsl_type_size(const struct glsl_type *type, bool bindless)
         return glsl_count_attribute_slots(type, false);
 }
 
+/* Split stores to memory. We don't split stores to vertex outputs, since
+ * nir_lower_io_to_temporaries will ensure there's only a single write.
+ */
+
+static bool
+should_split_wrmask(const nir_instr *instr, UNUSED const void *data)
+{
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+
+        switch (intr->intrinsic) {
+        case nir_intrinsic_store_ssbo:
+        case nir_intrinsic_store_shared:
+        case nir_intrinsic_store_global:
+        case nir_intrinsic_store_scratch:
+                return true;
+        default:
+                return false;
+        }
+}
+
 static void
 bi_optimize_nir(nir_shader *nir)
 {
@@ -2805,6 +2829,7 @@ bi_optimize_nir(nir_shader *nir)
 
                 NIR_PASS(progress, nir, nir_lower_var_copies);
                 NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
+                NIR_PASS(progress, nir, nir_lower_wrmasks, should_split_wrmask, NULL);
 
                 NIR_PASS(progress, nir, nir_copy_prop);
                 NIR_PASS(progress, nir, nir_opt_remove_phis);
