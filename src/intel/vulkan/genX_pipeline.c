@@ -2139,17 +2139,14 @@ emit_3dstate_ps_extra(struct anv_graphics_pipeline *pipeline,
       ps.PixelShaderComputesStencil = wm_prog_data->computed_stencil;
       ps.PixelShaderPullsBary    = wm_prog_data->pulls_bary;
 
-      ps.InputCoverageMaskState  = ICMS_NONE;
+      ps.InputCoverageMaskState = ICMS_NONE;
+      assert(!wm_prog_data->inner_coverage); /* Not available in SPIR-V */
       if (!wm_prog_data->uses_sample_mask)
-         ps.InputCoverageMaskState  = ICMS_NONE;
+         ps.InputCoverageMaskState = ICMS_NONE;
       else if (wm_prog_data->post_depth_coverage)
-         ps.InputCoverageMaskState  = ICMS_DEPTH_COVERAGE;
-      else if (wm_prog_data->inner_coverage &&
-               vk_conservative_rasterization_mode(rs_info) !=
-                  VK_CONSERVATIVE_RASTERIZATION_MODE_DISABLED_EXT)
-         ps.InputCoverageMaskState = ICMS_INNER_CONSERVATIVE;
+         ps.InputCoverageMaskState = ICMS_DEPTH_COVERAGE;
       else
-         ps.InputCoverageMaskState  = ICMS_INNER_CONSERVATIVE;
+         ps.InputCoverageMaskState = ICMS_NORMAL;
 #else
       ps.PixelShaderUsesInputCoverageMask = wm_prog_data->uses_sample_mask;
 #endif
