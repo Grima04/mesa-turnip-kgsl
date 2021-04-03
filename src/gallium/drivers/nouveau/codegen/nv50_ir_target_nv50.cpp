@@ -261,6 +261,8 @@ TargetNV50::getSVAddress(DataFile shaderFile, const Symbol *sym) const
       return 0;
    case SV_SAMPLE_POS:
       return 0; /* sample position is handled differently */
+   case SV_THREAD_KILL:
+      return 0;
    default:
       return sysvalLocation[sym->reg.data.sv.sv];
    }

@@ -1230,6 +1230,11 @@ NV50LoweringPreSSA::handleRDSV(Instruction *i)
                  off);
       break;
    }
+   case SV_THREAD_KILL:
+      // Not actually supported. But it's implementation-dependent, so we can
+      // always just say it's not a helper.
+      bld.mkMov(def, bld.loadImm(NULL, 0));
+      break;
    default:
       bld.mkFetch(i->getDef(0), i->dType,
                   FILE_SHADER_INPUT, addr, i->getIndirect(0, 0), NULL);
