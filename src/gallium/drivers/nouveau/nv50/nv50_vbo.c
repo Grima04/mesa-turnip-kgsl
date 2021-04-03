@@ -770,6 +770,14 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    if (!indirect && (!draws[0].count || !info->instance_count))
       return;
 
+   /* We don't actually support indirect draws, so add a fallback for ES 3.1's
+    * benefit.
+    */
+   if (indirect && indirect->buffer) {
+      util_draw_indirect(pipe, info, indirect);
+      return;
+   }
+
    struct nv50_context *nv50 = nv50_context(pipe);
    struct nouveau_pushbuf *push = nv50->base.pushbuf;
    bool tex_dirty = false;
