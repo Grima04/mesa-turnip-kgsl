@@ -23,6 +23,7 @@
 #ifndef VK_UTIL_H
 #define VK_UTIL_H
 
+#include "util/bitscan.h"
 #include "util/macros.h"
 #include "compiler/shader_enums.h"
 #include <string.h>
