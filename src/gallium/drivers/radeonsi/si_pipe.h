@@ -1316,6 +1316,10 @@ struct si_context {
    bool thread_trace_enabled;
 
    unsigned context_flags;
+
+   /* Shaders. */
+   /* TODO: move other shaders here too */
+   void *cs_clear_dcc_msaa[32][5][2][2]; /* [swizzle_mode][log2(bpe)][samples == 8][is_array] */
 };
 
 /* si_blit.c */
@@ -1368,6 +1372,7 @@ struct si_clear_info {
    uint32_t size;
    uint32_t clear_value;
    uint32_t writemask;
+   bool is_dcc_msaa; /* Clear it as a DCC MSAA image. */
 };
 
 enum pipe_format si_simplify_cb_format(enum pipe_format format);
@@ -1423,6 +1428,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
                                     unsigned dsty, unsigned width, unsigned height,
                                     bool render_condition_enabled);
 void si_retile_dcc(struct si_context *sctx, struct si_texture *tex);
+void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uint32_t clear_value,
+                         unsigned flags, enum si_coherency coher);
 void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex);
 void si_init_compute_blit_functions(struct si_context *sctx);
 
@@ -1539,6 +1546,7 @@ void si_resume_queries(struct si_context *sctx);
 
 /* si_shaderlib_nir.c */
 void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf);
+void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *tex);
 
 /* si_shaderlib_tgsi.c */
 void *si_get_blitter_vs(struct si_context *sctx, enum blitter_attrib_type type,

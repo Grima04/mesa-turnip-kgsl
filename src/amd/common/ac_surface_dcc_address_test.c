@@ -255,6 +255,13 @@ static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE
                   addr = gfx9_dcc_addr_from_coord(info, &dout, dout.metaBlkWidth, dout.metaBlkHeight,
                                                   dout.metaBlkDepth, dout.pitch, dout.height,
                                                   in.x, in.y, in.slice, in.sample, in.pipeXor);
+                  if (in.sample == 1) {
+                     /* Sample 0 should be one byte before sample 1. The DCC MSAA clear relies on it. */
+                     assert(addr - 1 ==
+                            gfx9_dcc_addr_from_coord(info, &dout, dout.metaBlkWidth, dout.metaBlkHeight,
+                                                     dout.metaBlkDepth, dout.pitch, dout.height,
+                                                     in.x, in.y, in.slice, 0, in.pipeXor));
+                  }
                } else {
                   addr = gfx10_dcc_addr_from_coord(info, dout.equation.gfx10_bits,
                                                    in.bpp, dout.metaBlkWidth, dout.metaBlkHeight,

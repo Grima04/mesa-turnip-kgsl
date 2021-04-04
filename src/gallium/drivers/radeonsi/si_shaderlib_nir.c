@@ -100,3 +100,49 @@ void *si_create_dcc_retile_cs(struct si_context *sctx, struct radeon_surf *surf)
 
    return create_nir_cs(sctx, &b);
 }
+
+void *gfx9_create_clear_dcc_msaa_cs(struct si_context *sctx, struct si_texture *tex)
+{
+   const nir_shader_compiler_options *options =
+      sctx->b.screen->get_compiler_options(sctx->b.screen, PIPE_SHADER_IR_NIR, PIPE_SHADER_COMPUTE);
+
+   nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, options, "clear_dcc_msaa");
+   b.shader->info.cs.local_size[0] = 8;
+   b.shader->info.cs.local_size[1] = 8;
+   b.shader->info.cs.local_size[2] = 1;
+   b.shader->info.cs.user_data_components_amd = 2;
+   b.shader->info.num_ssbos = 1;
+
+   /* Get user data SGPRs. */
+   nir_ssa_def *user_sgprs = nir_load_user_data_amd(&b);
+   nir_ssa_def *dcc_pitch, *dcc_height, *clear_value, *pipe_xor;
+   unpack_2x16(&b, nir_channel(&b, user_sgprs, 0), &dcc_pitch, &dcc_height);
+   unpack_2x16(&b, nir_channel(&b, user_sgprs, 1), &clear_value, &pipe_xor);
+   clear_value = nir_u2u16(&b, clear_value);
+
+   /* Get the 2D coordinates. */
+   nir_ssa_def *coord = get_global_ids(&b, 3);
+   nir_ssa_def *zero = nir_imm_int(&b, 0);
+
+   /* Multiply the coordinates by the DCC block size (they are DCC block coordinates). */
+   coord = nir_imul(&b, coord,
+                    nir_channels(&b, nir_imm_ivec4(&b, tex->surface.u.gfx9.color.dcc_block_width,
+                                                   tex->surface.u.gfx9.color.dcc_block_height,
+                                                   tex->surface.u.gfx9.color.dcc_block_depth, 0), 0x7));
+
+   nir_ssa_def *offset =
+      ac_nir_dcc_addr_from_coord(&b, &sctx->screen->info, tex->surface.bpe,
+                                 &tex->surface.u.gfx9.color.dcc_equation,
+                                 dcc_pitch, dcc_height, zero, /* DCC slice size */
+                                 nir_channel(&b, coord, 0), nir_channel(&b, coord, 1), /* x, y */
+                                 tex->buffer.b.b.array_size > 1 ? nir_channel(&b, coord, 2) : zero, /* z */
+                                 zero, pipe_xor); /* sample, pipe_xor */
+
+   /* The trick here is that DCC elements for an even and the next odd sample are next to each other
+    * in memory, so we only need to compute the address for sample 0 and the next DCC byte is always
+    * sample 1. That's why the clear value has 2 bytes - we're clearing 2 samples at the same time.
+    */
+   nir_store_ssbo(&b, clear_value, zero, offset, .write_mask=0x1, .align_mul=2);
+
+   return create_nir_cs(sctx, &b);
+}

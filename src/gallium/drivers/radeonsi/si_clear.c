@@ -43,6 +43,7 @@ void si_init_buffer_clear(struct si_clear_info *info,
    info->size = size;
    info->clear_value = clear_value;
    info->writemask = 0xffffffff;
+   info->is_dcc_msaa = false;
 }
 
 static void si_init_buffer_clear_rmw(struct si_clear_info *info,
@@ -75,6 +76,12 @@ void si_execute_clears(struct si_context *sctx, struct si_clear_info *info,
 
    /* Execute clears. */
    for (unsigned i = 0; i < num_clears; i++) {
+      if (info[i].is_dcc_msaa) {
+         gfx9_clear_dcc_msaa(sctx, info[i].resource, info[i].clear_value,
+                             SI_OP_SKIP_CACHE_INV_BEFORE, SI_COHERENCY_CP);
+         continue;
+      }
+
       assert(info[i].size > 0);
 
       if (info[i].writemask != 0xffffffff) {
@@ -328,10 +335,13 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
       if (tex->buffer.b.b.last_level > 0)
          return false;
 
-      /* 4x and 8x MSAA needs a sophisticated compute shader for
-       * the clear. See AMDVLK. */
-      if (tex->buffer.b.b.nr_storage_samples >= 4)
-         return false;
+      /* 4x and 8x MSAA need to clear only sample 0 and 1 in a compute shader and leave other
+       * samples untouched. (only the first 2 samples are compressed) */
+      if (tex->buffer.b.b.nr_storage_samples >= 4) {
+         si_init_buffer_clear(out, dcc_buffer, 0, 0, clear_value);
+         out->is_dcc_msaa = true;
+         return true;
+      }
 
       clear_size = tex->surface.meta_size;
    } else {

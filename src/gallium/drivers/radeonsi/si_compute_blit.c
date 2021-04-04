@@ -725,6 +725,78 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    pipe_resource_reference(&saved_sb.buffer, NULL);
 }
 
+void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uint32_t clear_value,
+                         unsigned flags, enum si_coherency coher)
+{
+   struct pipe_context *ctx = &sctx->b;
+   struct si_texture *tex = (struct si_texture*)res;
+
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
+
+   /* Save states. */
+   void *saved_cs = sctx->cs_shader_state.program;
+   struct pipe_shader_buffer saved_sb = {};
+   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
+
+   unsigned saved_writable_mask = 0;
+   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
+       (1u << si_get_shaderbuf_slot(0)))
+      saved_writable_mask |= 1 << 0;
+
+   /* Set the DCC buffer. */
+   assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
+   assert(tex->buffer.bo_size <= UINT_MAX);
+
+   struct pipe_shader_buffer sb = {};
+   sb.buffer = &tex->buffer.b.b;
+   sb.buffer_offset = tex->surface.meta_offset;
+   sb.buffer_size = tex->buffer.bo_size - sb.buffer_offset;
+   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
+
+   sctx->cs_user_data[0] = (tex->surface.u.gfx9.color.dcc_pitch_max + 1) |
+                           (tex->surface.u.gfx9.color.dcc_height << 16);
+   sctx->cs_user_data[1] = (clear_value & 0xffff) |
+                           ((uint32_t)tex->surface.tile_swizzle << 16);
+
+   /* These variables identify the shader variant. */
+   unsigned swizzle_mode = tex->surface.u.gfx9.swizzle_mode;
+   unsigned bpe_log2 = util_logbase2(tex->surface.bpe);
+   bool samples8 = tex->buffer.b.b.nr_storage_samples == 8;
+   bool is_array = tex->buffer.b.b.array_size > 1;
+   void **shader = &sctx->cs_clear_dcc_msaa[swizzle_mode][bpe_log2][samples8][is_array];
+
+   if (!*shader)
+      *shader = gfx9_create_clear_dcc_msaa_cs(sctx, tex);
+   ctx->bind_compute_state(ctx, *shader);
+
+   /* Dispatch compute. */
+   unsigned width = DIV_ROUND_UP(tex->buffer.b.b.width0, tex->surface.u.gfx9.color.dcc_block_width);
+   unsigned height = DIV_ROUND_UP(tex->buffer.b.b.height0, tex->surface.u.gfx9.color.dcc_block_height);
+   unsigned depth = DIV_ROUND_UP(tex->buffer.b.b.array_size, tex->surface.u.gfx9.color.dcc_block_depth);
+
+   struct pipe_grid_info info = {};
+   info.block[0] = 8;
+   info.block[1] = 8;
+   info.block[2] = 1;
+   info.last_block[0] = width % info.block[0];
+   info.last_block[1] = height % info.block[1];
+   info.grid[0] = DIV_ROUND_UP(width, info.block[0]);
+   info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
+   info.grid[2] = depth;
+
+   si_launch_grid_internal(sctx, &info, saved_cs, flags);
+
+   enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, tex->surface.meta_size);
+
+   if (flags & SI_OP_SYNC_AFTER)
+      sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
+
+   /* Restore states. */
+   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
+   pipe_resource_reference(&saved_sb.buffer, NULL);
+}
+
 /* Expand FMASK to make it identity, so that image stores can ignore it. */
 void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex)
 {
