@@ -2448,6 +2448,53 @@ zink_resource_rebind(struct zink_context *ctx, struct zink_resource *res)
    }
 }
 
+static bool
+zink_resource_commit(struct pipe_context *pctx, struct pipe_resource *pres, unsigned level, struct pipe_box *box, bool commit)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *res = zink_resource(pres);
+   struct zink_screen *screen = zink_screen(pctx->screen);
+
+   /* if any current usage exists, flush the queue */
+   if (zink_batch_usage_matches(&res->obj->reads, ctx->curr_batch) ||
+       zink_batch_usage_matches(&res->obj->writes, ctx->curr_batch))
+      zink_flush_queue(ctx);
+
+   VkBindSparseInfo sparse;
+   sparse.sType = VK_STRUCTURE_TYPE_BIND_SPARSE_INFO;
+   sparse.pNext = NULL;
+   sparse.waitSemaphoreCount = 0;
+   sparse.bufferBindCount = 1;
+   sparse.imageOpaqueBindCount = 0;
+   sparse.imageBindCount = 0;
+   sparse.signalSemaphoreCount = 0;
+
+   VkSparseBufferMemoryBindInfo sparse_bind;
+   sparse_bind.buffer = res->obj->buffer;
+   sparse_bind.bindCount = 1;
+   sparse.pBufferBinds = &sparse_bind;
+
+   VkSparseMemoryBind mem_bind;
+   mem_bind.resourceOffset = box->x;
+   mem_bind.size = box->width;
+   mem_bind.memory = commit ? res->obj->mem : VK_NULL_HANDLE;
+   /* currently sparse buffers allocate memory 1:1 for the max sparse size,
+    * but probably it should dynamically allocate the committed regions;
+    * if this ever changes, update the below line
+    */
+   mem_bind.memoryOffset = box->x;
+   mem_bind.flags = 0;
+   sparse_bind.pBinds = &mem_bind;
+   VkQueue queue = util_queue_is_initialized(&ctx->batch.flush_queue) ? ctx->batch.thread_queue : ctx->batch.queue;
+
+   VkResult ret = vkQueueBindSparse(queue, 1, &sparse, VK_NULL_HANDLE);
+   if (!zink_screen_handle_vkresult(screen, ret)) {
+      check_device_lost(ctx);
+      return false;
+   }
+   return true;
+}
+
 static void
 zink_context_replace_buffer_storage(struct pipe_context *pctx, struct pipe_resource *dst, struct pipe_resource *src)
 {
@@ -2519,6 +2566,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
    ctx->base.memory_barrier = zink_memory_barrier;
    ctx->base.texture_barrier = zink_texture_barrier;
 
+   ctx->base.resource_commit = zink_resource_commit;
    ctx->base.resource_copy_region = zink_resource_copy_region;
    ctx->base.blit = zink_blit;
    ctx->base.create_stream_output_target = zink_create_stream_output_target;
