@@ -876,6 +876,9 @@ zink_is_format_supported(struct pipe_screen *pscreen,
          !(props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT))
             return false;
 
+      if (bind & PIPE_BIND_SAMPLER_REDUCTION_MINMAX)
+         return props.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_MINMAX_BIT;
+
       if ((bind & PIPE_BIND_SAMPLER_VIEW) || (bind & PIPE_BIND_RENDER_TARGET)) {
          /* if this is a 3-component texture, force gallium to give us 4 components by rejecting this one */
          const struct util_format_description *desc = util_format_description(format);
