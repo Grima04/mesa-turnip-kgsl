@@ -154,16 +154,7 @@ zink_vkfence_wait(struct zink_screen *screen, struct zink_fence *fence, uint64_t
       ret = vkWaitForFences(screen->dev, 1, &fence->fence, VK_TRUE, timeout_ns);
    else
       ret = vkGetFenceStatus(screen->dev, fence->fence);
-   switch (ret) {
-   case VK_SUCCESS:
-      success = true;
-      break;
-   case VK_ERROR_DEVICE_LOST:
-      screen->device_lost = true;
-      break;
-   default:
-      break;
-   }
+   success = zink_screen_handle_vkresult(screen, ret);
 
    if (success) {
       p_atomic_set(&fence->completed, true);

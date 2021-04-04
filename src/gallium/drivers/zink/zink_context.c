@@ -1836,20 +1836,14 @@ timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
    bool success = false;
    if (screen->device_lost)
       return true;
-   switch (screen->vk_WaitSemaphores(screen->dev, &wi, timeout)) {
-   case VK_SUCCESS:
-      success = true;
-      break;
-   case VK_ERROR_DEVICE_LOST:
-      if (ctx->reset.reset)
-         ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
-      screen->device_lost = true;
-      break;
-   default:
-      break;
-   }
+   VkResult ret = screen->vk_WaitSemaphores(screen->dev, &wi, timeout);
+   success = zink_screen_handle_vkresult(screen, ret);
+
    if (success)
       zink_screen_update_last_finished(screen, batch_id);
+   else if (screen->device_lost && ctx->reset.reset)
+      ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+
    return success;
 }
 
