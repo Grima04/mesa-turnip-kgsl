@@ -274,6 +274,23 @@ zink_create_sampler_state(struct pipe_context *pctx,
    sci.magFilter = zink_filter(state->mag_img_filter);
    sci.minFilter = zink_filter(state->min_img_filter);
 
+   VkSamplerReductionModeCreateInfo rci;
+   rci.sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO;
+   rci.pNext = NULL;
+   switch (state->reduction_mode) {
+   case PIPE_TEX_REDUCTION_MIN:
+      rci.reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN;
+      break;
+   case PIPE_TEX_REDUCTION_MAX:
+      rci.reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX;
+      break;
+   default:
+      rci.reductionMode = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
+      break;
+   }
+   if (state->reduction_mode)
+      sci.pNext = &rci;
+
    if (state->min_mip_filter != PIPE_TEX_MIPFILTER_NONE) {
       sci.mipmapMode = sampler_mipmap_mode(state->min_mip_filter);
       sci.minLod = state->min_lod;
@@ -310,6 +327,7 @@ zink_create_sampler_state(struct pipe_context *pctx,
          cbci.format = VK_FORMAT_UNDEFINED;
          /* these are identical unions */
          memcpy(&cbci.customBorderColor, &state->border_color, sizeof(union pipe_color_union));
+         cbci.pNext = sci.pNext;
          sci.pNext = &cbci;
          UNUSED uint32_t check = p_atomic_inc_return(&screen->cur_custom_border_color_samplers);
          assert(check <= screen->info.border_color_props.maxCustomBorderColorSamplers);
