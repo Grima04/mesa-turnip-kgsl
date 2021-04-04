@@ -1953,7 +1953,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindVertexBuffers2EXT(
    VkDeviceSize *sizes;
    VkDeviceSize *strides;
    int i;
-   uint32_t cmd_size = bindingCount * sizeof(struct lvp_buffer *) + bindingCount * 3 * sizeof(VkDeviceSize);
+   uint32_t array_count = pStrides ? 3 : 2;
+   uint32_t cmd_size = bindingCount * sizeof(struct lvp_buffer *) + bindingCount * array_count * sizeof(VkDeviceSize);
 
    cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_BIND_VERTEX_BUFFERS);
    if (!cmd)
@@ -1973,12 +1974,14 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindVertexBuffers2EXT(
          sizes[i] = pSizes[i];
       else
          sizes[i] = 0;
-      strides[i] = pStrides[i];
+
+      if (pStrides)
+         strides[i] = pStrides[i];
    }
    cmd->u.vertex_buffers.buffers = buffers;
    cmd->u.vertex_buffers.offsets = offsets;
    cmd->u.vertex_buffers.sizes = sizes;
-   cmd->u.vertex_buffers.strides = strides;
+   cmd->u.vertex_buffers.strides = pStrides ? strides : NULL;
 
    cmd_buf_queue(cmd_buffer, cmd);
 }
