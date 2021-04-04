@@ -205,6 +205,23 @@ zink_screen_check_last_finished(struct zink_screen *screen, uint32_t batch_id)
 bool
 zink_screen_init_semaphore(struct zink_screen *screen);
 
+static inline bool
+zink_screen_handle_vkresult(struct zink_screen *screen, VkResult ret)
+{
+   bool success = false;
+   switch (ret) {
+   case VK_SUCCESS:
+      success = true;
+      break;
+   case VK_ERROR_DEVICE_LOST:
+      screen->device_lost = true;
+      FALLTHROUGH;
+   default:
+      success = false;
+      break;
+   }
+   return success;
+}
 
 static inline struct zink_screen *
 zink_screen(struct pipe_screen *pipe)
