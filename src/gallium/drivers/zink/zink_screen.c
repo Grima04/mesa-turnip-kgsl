@@ -481,6 +481,10 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CULL_DISTANCE:
       return screen->info.feats.features.shaderCullDistance;
 
+   case PIPE_CAP_SPARSE_BUFFER_PAGE_SIZE:
+      /* this is the spec minimum */
+      return screen->info.feats.features.sparseBinding ? 64 * 1024 : 0;
+
    case PIPE_CAP_VIEWPORT_SUBPIXEL_BITS:
       return screen->info.props.limits.viewportSubPixelBits;
 
