@@ -139,6 +139,17 @@ zink_context_destroy(struct pipe_context *pctx)
    ralloc_free(ctx);
 }
 
+static void
+check_device_lost(struct zink_context *ctx)
+{
+   if (!zink_screen(ctx->base.screen)->device_lost || ctx->is_device_lost)
+      return;
+   debug_printf("ZINK: device lost detected!\n");
+   if (ctx->reset.reset)
+      ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+   ctx->is_device_lost = true;
+}
+
 static enum pipe_reset_status
 zink_get_device_reset_status(struct pipe_context *pctx)
 {
