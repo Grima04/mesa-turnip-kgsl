@@ -355,8 +355,6 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
 
    ssbo[2] = ssbo[1];
 
-   sctx->b.bind_compute_state(&sctx->b, sctx->sh_query_result_shader);
-
    grid.block[0] = 1;
    grid.block[1] = 1;
    grid.block[2] = 1;
@@ -405,8 +403,7 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
          si_cp_wait_mem(sctx, &sctx->gfx_cs, va, 0x00000001, 0x00000001, 0);
       }
 
-      void *saved_cs = sctx->cs_shader_state.program;
-      si_launch_grid_internal((struct si_context *)&sctx->b, &grid, saved_cs,
+      si_launch_grid_internal((struct si_context *)&sctx->b, &grid, sctx->sh_query_result_shader,
                               SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_AFTER);
 
       if (qbuf == query->last)

@@ -61,8 +61,9 @@ unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
 }
 
 void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
-                                    void *restore_cs, unsigned flags)
+                             void *shader, unsigned flags)
 {
+
    /* Wait for previous shaders to finish. */
    if (flags & SI_OP_SYNC_PS_BEFORE)
       sctx->flags |= SI_CONTEXT_PS_PARTIAL_FLUSH;
@@ -89,16 +90,16 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
    sctx->blitter_running = true;
 
    /* Dispatch compute. */
+   void *saved_cs = sctx->cs_shader_state.program;
+   sctx->b.bind_compute_state(&sctx->b, shader);
    sctx->b.launch_grid(&sctx->b, info);
+   sctx->b.bind_compute_state(&sctx->b, saved_cs);
 
    /* Restore default settings. */
    sctx->flags &= ~SI_CONTEXT_STOP_PIPELINE_STATS;
    sctx->flags |= SI_CONTEXT_START_PIPELINE_STATS;
    sctx->render_cond_enabled = sctx->render_cond;
    sctx->blitter_running = false;
-
-   /* Restore the original compute shader. */
-   sctx->b.bind_compute_state(&sctx->b, restore_cs);
 
    if (flags & SI_OP_SYNC_AFTER) {
       sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH;
@@ -135,7 +136,6 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
       sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
 
    /* Save states. */
-   void *saved_cs = sctx->cs_shader_state.program;
    struct pipe_shader_buffer saved_sb = {};
    si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
 
@@ -172,9 +172,7 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
    if (!sctx->cs_clear_buffer_rmw)
       sctx->cs_clear_buffer_rmw = si_create_clear_buffer_rmw_cs(&sctx->b);
 
-   ctx->bind_compute_state(ctx, sctx->cs_clear_buffer_rmw);
-
-   si_launch_grid_internal(sctx, &info, saved_cs, flags);
+   si_launch_grid_internal(sctx, &info, sctx->cs_clear_buffer_rmw, flags);
 
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
 
@@ -211,8 +209,6 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
        (1u << si_get_shaderbuf_slot(0)))
       saved_writable_mask = 1;
 
-   void *saved_cs = sctx->cs_shader_state.program;
-
    struct pipe_shader_buffer sb = {0};
    sb.buffer = dst;
    sb.buffer_offset = dst_offset;
@@ -226,7 +222,7 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
 
    if (!sctx->cs_clear_12bytes_buffer)
       sctx->cs_clear_12bytes_buffer = si_clear_12bytes_buffer_shader(ctx);
-   ctx->bind_compute_state(ctx, sctx->cs_clear_12bytes_buffer);
+
    info.block[0] = 64;
    info.last_block[0] = size_12 % 64;
    info.block[1] = 1;
@@ -235,7 +231,7 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    info.grid[1] = 1;
    info.grid[2] = 1;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, flags);
+   si_launch_grid_internal(sctx, &info, sctx->cs_clear_12bytes_buffer, flags);
 
    ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
    pipe_resource_reference(&saved_sb.buffer, NULL);
@@ -260,7 +256,6 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
       sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
 
    /* Save states. */
-   void *saved_cs = sctx->cs_shader_state.program;
    struct pipe_shader_buffer saved_sb[2] = {};
    si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb);
 
@@ -311,7 +306,8 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
          sctx->cs_copy_buffer = si_create_dma_compute_shader(
             &sctx->b, SI_COMPUTE_COPY_DW_PER_THREAD, shader_dst_stream_policy, true);
       }
-      ctx->bind_compute_state(ctx, sctx->cs_copy_buffer);
+
+      si_launch_grid_internal(sctx, &info, sctx->cs_copy_buffer, flags);
    } else {
       assert(clear_value_size >= 4 && clear_value_size <= 16 &&
              util_is_power_of_two_or_zero(clear_value_size));
@@ -325,10 +321,9 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
          sctx->cs_clear_buffer = si_create_dma_compute_shader(
             &sctx->b, SI_COMPUTE_CLEAR_DW_PER_THREAD, shader_dst_stream_policy, false);
       }
-      ctx->bind_compute_state(ctx, sctx->cs_clear_buffer);
-   }
 
-   si_launch_grid_internal(sctx, &info, saved_cs, flags);
+      si_launch_grid_internal(sctx, &info, sctx->cs_clear_buffer, flags);
+   }
 
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
 
@@ -547,8 +542,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    util_copy_image_view(&saved_image[0], &images->views[0]);
    util_copy_image_view(&saved_image[1], &images->views[1]);
 
-   void *saved_cs = sctx->cs_shader_state.program;
-
    struct pipe_image_view image[2] = {0};
    image[0].resource = src;
    image[0].shader_access = image[0].access = PIPE_IMAGE_ACCESS_READ;
@@ -601,7 +594,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
       if (!sctx->cs_dcc_decompress)
          sctx->cs_dcc_decompress = si_create_dcc_decompress_cs(ctx);
-      ctx->bind_compute_state(ctx, sctx->cs_dcc_decompress);
 
       info.block[0] = tex->surface.u.gfx9.color.dcc_block_width;
       info.block[1] = tex->surface.u.gfx9.color.dcc_block_height;
@@ -617,10 +609,12 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
          info.last_block[i] = dim[i] % info.block[i];
          info.grid[i] = DIV_ROUND_UP(dim[i], info.block[i]);
       }
+
+      si_launch_grid_internal(sctx, &info, sctx->cs_dcc_decompress, flags | SI_OP_CS_IMAGE);
    } else if (dst->target == PIPE_TEXTURE_1D_ARRAY && src->target == PIPE_TEXTURE_1D_ARRAY) {
       if (!sctx->cs_copy_image_1d_array)
          sctx->cs_copy_image_1d_array = si_create_copy_image_compute_shader_1d_array(ctx);
-      ctx->bind_compute_state(ctx, sctx->cs_copy_image_1d_array);
+
       info.block[0] = 64;
       info.last_block[0] = width % 64;
       info.block[1] = 1;
@@ -628,10 +622,11 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       info.grid[0] = DIV_ROUND_UP(width, 64);
       info.grid[1] = depth;
       info.grid[2] = 1;
+
+      si_launch_grid_internal(sctx, &info, sctx->cs_copy_image_1d_array, flags | SI_OP_CS_IMAGE);
    } else {
       if (!sctx->cs_copy_image)
          sctx->cs_copy_image = si_create_copy_image_compute_shader(ctx);
-      ctx->bind_compute_state(ctx, sctx->cs_copy_image);
 
       /* This is better for access over PCIe. */
       if (is_linear) {
@@ -647,9 +642,9 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       info.grid[0] = DIV_ROUND_UP(width, info.block[0]);
       info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
       info.grid[2] = depth;
-   }
 
-   si_launch_grid_internal(sctx, &info, saved_cs, flags | SI_OP_CS_IMAGE);
+      si_launch_grid_internal(sctx, &info, sctx->cs_copy_image, flags | SI_OP_CS_IMAGE);
+   }
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, saved_image);
    for (int i = 0; i < 2; i++)
@@ -663,7 +658,6 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_LRU);
 
    /* Save states. */
-   void *saved_cs = sctx->cs_shader_state.program;
    struct pipe_shader_buffer saved_sb = {};
    si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
 
@@ -700,7 +694,6 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 
    if (!sctx->cs_dcc_retile)
       sctx->cs_dcc_retile = si_create_dcc_retile_cs(sctx, &tex->surface);
-   ctx->bind_compute_state(ctx, sctx->cs_dcc_retile);
 
    /* Dispatch compute. */
    unsigned width = DIV_ROUND_UP(tex->buffer.b.b.width0, tex->surface.u.gfx9.color.dcc_block_width);
@@ -716,7 +709,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
    info.grid[2] = 1;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE);
+   si_launch_grid_internal(sctx, &info, sctx->cs_dcc_retile, SI_OP_SYNC_BEFORE);
 
    /* Don't flush caches. L2 will be flushed by the kernel fence. */
 
@@ -735,7 +728,6 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
       sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
 
    /* Save states. */
-   void *saved_cs = sctx->cs_shader_state.program;
    struct pipe_shader_buffer saved_sb = {};
    si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
 
@@ -768,7 +760,6 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
 
    if (!*shader)
       *shader = gfx9_create_clear_dcc_msaa_cs(sctx, tex);
-   ctx->bind_compute_state(ctx, *shader);
 
    /* Dispatch compute. */
    unsigned width = DIV_ROUND_UP(tex->buffer.b.b.width0, tex->surface.u.gfx9.color.dcc_block_width);
@@ -785,7 +776,7 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
    info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
    info.grid[2] = depth;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, flags);
+   si_launch_grid_internal(sctx, &info, *shader, flags);
 
    enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, tex->surface.meta_size);
 
@@ -814,7 +805,6 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
                               true /* DCC is not possible with image stores */);
 
    /* Save states. */
-   void *saved_cs = sctx->cs_shader_state.program;
    struct pipe_image_view saved_image = {0};
    util_copy_image_view(&saved_image, &sctx->images[PIPE_SHADER_COMPUTE].views[0]);
 
@@ -834,7 +824,6 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    void **shader = &sctx->cs_fmask_expand[log_samples - 1][is_array];
    if (!*shader)
       *shader = si_create_fmask_expand_cs(ctx, tex->nr_samples, is_array);
-   ctx->bind_compute_state(ctx, *shader);
 
    /* Dispatch compute. */
    struct pipe_grid_info info = {0};
@@ -847,7 +836,7 @@ void si_compute_expand_fmask(struct pipe_context *ctx, struct pipe_resource *tex
    info.grid[1] = DIV_ROUND_UP(tex->height0, 8);
    info.grid[2] = is_array ? tex->array_size : 1;
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER);
+   si_launch_grid_internal(sctx, &info, *shader, SI_OP_SYNC_BEFORE_AFTER);
 
    /* Restore previous states. */
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, 0, &saved_image);
@@ -914,8 +903,6 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
    struct pipe_image_view saved_image = {0};
    util_copy_image_view(&saved_image, &images->views[0]);
 
-   void *saved_cs = sctx->cs_shader_state.program;
-
    struct pipe_constant_buffer cb = {};
    cb.buffer_size = sizeof(data);
    cb.user_buffer = data;
@@ -932,11 +919,13 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, 0, &image);
 
    struct pipe_grid_info info = {0};
+   void *shader;
 
    if (dstsurf->texture->target != PIPE_TEXTURE_1D_ARRAY) {
       if (!sctx->cs_clear_render_target)
          sctx->cs_clear_render_target = si_clear_render_target_shader(ctx);
-      ctx->bind_compute_state(ctx, sctx->cs_clear_render_target);
+      shader = sctx->cs_clear_render_target;
+
       info.block[0] = 8;
       info.last_block[0] = width % 8;
       info.block[1] = 8;
@@ -948,7 +937,8 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
    } else {
       if (!sctx->cs_clear_render_target_1d_array)
          sctx->cs_clear_render_target_1d_array = si_clear_render_target_shader_1d_array(ctx);
-      ctx->bind_compute_state(ctx, sctx->cs_clear_render_target_1d_array);
+      shader = sctx->cs_clear_render_target_1d_array;
+
       info.block[0] = 64;
       info.last_block[0] = width % 64;
       info.block[1] = 1;
@@ -958,7 +948,7 @@ void si_compute_clear_render_target(struct pipe_context *ctx, struct pipe_surfac
       info.grid[2] = 1;
    }
 
-   si_launch_grid_internal(sctx, &info, saved_cs, SI_OP_SYNC_BEFORE_AFTER | SI_OP_CS_IMAGE |
+   si_launch_grid_internal(sctx, &info, shader, SI_OP_SYNC_BEFORE_AFTER | SI_OP_CS_IMAGE |
                            (render_condition_enabled ? SI_OP_CS_RENDER_COND_ENABLE : 0));
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 1, 0, &saved_image);

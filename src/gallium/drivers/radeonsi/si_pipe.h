@@ -1401,7 +1401,7 @@ void si_init_clear_functions(struct si_context *sctx);
 unsigned si_get_flush_flags(struct si_context *sctx, enum si_coherency coher,
                             enum si_cache_policy cache_policy);
 void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *info,
-                                    void *restore_cs, unsigned flags);
+                             void *shader, unsigned flags);
 enum si_clear_method {
   SI_CP_DMA_CLEAR_METHOD,
   SI_COMPUTE_CLEAR_METHOD,
