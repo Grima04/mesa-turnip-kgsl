@@ -1255,9 +1255,8 @@ flush_batch(struct zink_context *ctx, bool sync)
    if (sync)
       sync_flush(ctx, ctx->batch.state);
 
-   if (ctx->batch.state->is_device_lost && ctx->reset.reset) {
-      ctx->is_device_lost = true;
-      ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+   if (ctx->batch.state->is_device_lost) {
+      check_device_lost(ctx);
    } else {
       incr_curr_batch(ctx);
 
@@ -1745,10 +1744,8 @@ zink_flush(struct pipe_context *pctx,
           struct zink_batch_state *last = zink_batch_state(ctx->last_fence);
           if (last) {
              sync_flush(ctx, last);
-             if (last->is_device_lost && ctx->reset.reset) {
-                ctx->is_device_lost = true;
-                ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
-             }
+             if (last->is_device_lost)
+                check_device_lost(ctx);
           }
        }
    } else {
@@ -1852,8 +1849,8 @@ timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
 
    if (success)
       zink_screen_update_last_finished(screen, batch_id);
-   else if (screen->device_lost && ctx->reset.reset)
-      ctx->reset.reset(ctx->reset.data, PIPE_GUILTY_CONTEXT_RESET);
+   else
+      check_device_lost(ctx);
 
    return success;
 }
