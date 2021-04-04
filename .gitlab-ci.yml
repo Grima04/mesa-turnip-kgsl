@@ -450,7 +450,7 @@ kernel+rootfs_arm64-baremetal:
   variables:
     DEBIAN_ARCH: "arm64"
     KERNEL_URL: "https://github.com/anholt/linux/archive/mesa-ci-2021-04-01-5.11.tar.gz"
-    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-14-librenderdoc"
+    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-15-nfsroot"
     MINIO_SUFFIX: "baremetal"
 
 # Kernel & rootfs for armhf baremetal testing
