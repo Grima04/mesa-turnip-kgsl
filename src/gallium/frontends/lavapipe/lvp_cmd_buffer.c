@@ -393,31 +393,8 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindVertexBuffers(
    const VkBuffer*                             pBuffers,
    const VkDeviceSize*                         pOffsets)
 {
-   LVP_FROM_HANDLE(lvp_cmd_buffer, cmd_buffer, commandBuffer);
-   struct lvp_cmd_buffer_entry *cmd;
-   struct lvp_buffer **buffers;
-   VkDeviceSize *offsets;
-   int i;
-   uint32_t cmd_size = bindingCount * sizeof(struct lvp_buffer *) + bindingCount * sizeof(VkDeviceSize);
-
-   cmd = cmd_buf_entry_alloc_size(cmd_buffer, cmd_size, LVP_CMD_BIND_VERTEX_BUFFERS);
-   if (!cmd)
-      return;
-
-   cmd->u.vertex_buffers.first = firstBinding;
-   cmd->u.vertex_buffers.binding_count = bindingCount;
-
-   buffers = (struct lvp_buffer **)(cmd + 1);
-   offsets = (VkDeviceSize *)(buffers + bindingCount);
-   for (i = 0; i < bindingCount; i++) {
-      buffers[i] = lvp_buffer_from_handle(pBuffers[i]);
-      offsets[i] = pOffsets[i];
-   }
-   cmd->u.vertex_buffers.buffers = buffers;
-   cmd->u.vertex_buffers.offsets = offsets;
-   cmd->u.vertex_buffers.strides = NULL;
-
-   cmd_buf_queue(cmd_buffer, cmd);
+   lvp_CmdBindVertexBuffers2EXT(commandBuffer, firstBinding,
+      bindingCount, pBuffers, pOffsets, NULL, NULL);
 }
 
 VKAPI_ATTR void VKAPI_CALL lvp_CmdBindPipeline(
