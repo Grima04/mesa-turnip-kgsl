@@ -106,6 +106,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
 #ifdef LVP_USE_WSI_PLATFORM
    .KHR_incremental_present               = true,
 #endif
+   .KHR_image_format_list                 = true,
    .KHR_maintenance1                      = true,
    .KHR_maintenance2                      = true,
    .KHR_maintenance3                      = true,
