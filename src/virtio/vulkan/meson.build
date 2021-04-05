@@ -38,7 +38,6 @@ libvn_files = files(
   'vn_ring.c',
   'vn_renderer_virtgpu.c',
   'vn_renderer_vtest.c',
-  'vn_wsi.c',
 )
 
 vn_deps = [
@@ -52,6 +51,14 @@ vn_deps = [
 vn_flags = [
   no_override_init_args,
 ]
+
+vn_libs = []
+
+if with_platform_wayland or with_platform_x11
+  libvn_files += files('vn_wsi.c')
+  vn_flags += '-DVN_USE_WSI_PLATFORM'
+  vn_libs += libvulkan_wsi
+endif
 
 if with_platform_wayland
   libvn_files += files('vn_wsi_wayland.c')
@@ -74,7 +81,7 @@ libvulkan_virtio = shared_library(
   include_directories : [
     inc_include, inc_src, inc_vulkan_wsi, inc_virtio,
   ],
-  link_with : [libvulkan_wsi],
+  link_with : vn_libs,
   dependencies : [vn_deps],
   c_args : [vn_flags],
   link_args : [ld_args_bsymbolic, ld_args_gc_sections],
