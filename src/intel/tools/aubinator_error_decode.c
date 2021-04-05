@@ -640,7 +640,7 @@ read_data_file(FILE *file)
       if (sections[s].dword_count * 4 > intel_debug_identifier_size() &&
           memcmp(sections[s].data, intel_debug_identifier(),
                  intel_debug_identifier_size()) == 0) {
-         const struct gen_debug_block_driver *driver_desc =
+         const struct intel_debug_block_driver *driver_desc =
             intel_debug_get_identifier_block(sections[s].data,
                                              sections[s].dword_count * 4,
                                              GEN_DEBUG_BLOCK_TYPE_DRIVER);

@@ -1256,7 +1256,7 @@ struct anv_device {
 
     const struct intel_l3_config                *l3_config;
 
-    struct gen_debug_block_frame                *debug_frame_desc;
+    struct intel_debug_block_frame              *debug_frame_desc;
 };
 
 static inline struct anv_instance *

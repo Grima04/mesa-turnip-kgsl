@@ -171,7 +171,7 @@ intel_debug_write_identifiers(void *_output,
    for (uint32_t id = GEN_DEBUG_BLOCK_TYPE_DRIVER; id < GEN_DEBUG_BLOCK_TYPE_MAX; id++) {
       switch (id) {
       case GEN_DEBUG_BLOCK_TYPE_DRIVER: {
-         struct gen_debug_block_driver driver_desc = {
+         struct intel_debug_block_driver driver_desc = {
             .base = {
                .type = id,
             },
@@ -187,7 +187,7 @@ intel_debug_write_identifiers(void *_output,
       }
 
       case GEN_DEBUG_BLOCK_TYPE_FRAME: {
-         struct gen_debug_block_frame frame_desc = {
+         struct intel_debug_block_frame frame_desc = {
             .base = {
                .type = GEN_DEBUG_BLOCK_TYPE_FRAME,
                .length = sizeof(frame_desc),
@@ -205,7 +205,7 @@ intel_debug_write_identifiers(void *_output,
       assert(output < output_end);
    }
 
-   struct gen_debug_block_base end = {
+   struct intel_debug_block_base end = {
       .type = GEN_DEBUG_BLOCK_TYPE_END,
       .length = sizeof(end),
    };
@@ -223,13 +223,13 @@ intel_debug_write_identifiers(void *_output,
 void *
 intel_debug_get_identifier_block(void *_buffer,
                                  uint32_t buffer_size,
-                                 enum gen_debug_block_type type)
+                                 enum intel_debug_block_type type)
 {
    void *buffer = _buffer + intel_debug_identifier_size(),
       *end_buffer = _buffer + buffer_size;
 
    while (buffer < end_buffer) {
-      struct gen_debug_block_base *item = buffer;
+      struct intel_debug_block_base *item = buffer;
 
       if (item->type == type)
          return item;
