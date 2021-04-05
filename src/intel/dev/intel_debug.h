@@ -133,16 +133,16 @@ extern void brw_process_intel_debug_variable(void);
 
 enum intel_debug_block_type {
    /* End of the debug blocks */
-   GEN_DEBUG_BLOCK_TYPE_END = 1,
+   INTEL_DEBUG_BLOCK_TYPE_END = 1,
 
    /* Driver identifier (struct intel_debug_block_driver) */
-   GEN_DEBUG_BLOCK_TYPE_DRIVER,
+   INTEL_DEBUG_BLOCK_TYPE_DRIVER,
 
    /* Frame identifier (struct intel_debug_block_frame) */
-   GEN_DEBUG_BLOCK_TYPE_FRAME,
+   INTEL_DEBUG_BLOCK_TYPE_FRAME,
 
    /* Internal, never to be written out */
-   GEN_DEBUG_BLOCK_TYPE_MAX,
+   INTEL_DEBUG_BLOCK_TYPE_MAX,
 };
 
 struct intel_debug_block_base {

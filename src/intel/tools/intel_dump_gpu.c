@@ -277,7 +277,7 @@ dump_execbuffer2(int fd, struct drm_i915_gem_execbuffer2 *execbuffer2)
                     intel_debug_identifier_size()) == 0) {
             const struct intel_debug_block_frame *frame_desc =
                intel_debug_get_identifier_block(bo->map, bo->size,
-                                                GEN_DEBUG_BLOCK_TYPE_FRAME);
+                                                INTEL_DEBUG_BLOCK_TYPE_FRAME);
 
             current_frame_id = frame_desc ? frame_desc->frame_id : 0;
             break;

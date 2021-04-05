@@ -168,9 +168,9 @@ intel_debug_write_identifiers(void *_output,
    memcpy(output, intel_debug_identifier(), intel_debug_identifier_size());
    output += intel_debug_identifier_size();
 
-   for (uint32_t id = GEN_DEBUG_BLOCK_TYPE_DRIVER; id < GEN_DEBUG_BLOCK_TYPE_MAX; id++) {
+   for (uint32_t id = INTEL_DEBUG_BLOCK_TYPE_DRIVER; id < INTEL_DEBUG_BLOCK_TYPE_MAX; id++) {
       switch (id) {
-      case GEN_DEBUG_BLOCK_TYPE_DRIVER: {
+      case INTEL_DEBUG_BLOCK_TYPE_DRIVER: {
          struct intel_debug_block_driver driver_desc = {
             .base = {
                .type = id,
@@ -186,10 +186,10 @@ intel_debug_write_identifiers(void *_output,
          break;
       }
 
-      case GEN_DEBUG_BLOCK_TYPE_FRAME: {
+      case INTEL_DEBUG_BLOCK_TYPE_FRAME: {
          struct intel_debug_block_frame frame_desc = {
             .base = {
-               .type = GEN_DEBUG_BLOCK_TYPE_FRAME,
+               .type = INTEL_DEBUG_BLOCK_TYPE_FRAME,
                .length = sizeof(frame_desc),
             },
          };
@@ -206,7 +206,7 @@ intel_debug_write_identifiers(void *_output,
    }
 
    struct intel_debug_block_base end = {
-      .type = GEN_DEBUG_BLOCK_TYPE_END,
+      .type = INTEL_DEBUG_BLOCK_TYPE_END,
       .length = sizeof(end),
    };
    memcpy(output, &end, sizeof(end));
@@ -233,7 +233,7 @@ intel_debug_get_identifier_block(void *_buffer,
 
       if (item->type == type)
          return item;
-      if (item->type == GEN_DEBUG_BLOCK_TYPE_END)
+      if (item->type == INTEL_DEBUG_BLOCK_TYPE_END)
          return NULL;
 
       buffer += item->length;

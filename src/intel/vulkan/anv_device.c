@@ -3216,7 +3216,7 @@ VkResult anv_CreateDevice(
    device->debug_frame_desc =
       intel_debug_get_identifier_block(device->workaround_bo->map,
                                        device->workaround_bo->size,
-                                       GEN_DEBUG_BLOCK_TYPE_FRAME);
+                                       INTEL_DEBUG_BLOCK_TYPE_FRAME);
 
    result = anv_device_init_trivial_batch(device);
    if (result != VK_SUCCESS)
