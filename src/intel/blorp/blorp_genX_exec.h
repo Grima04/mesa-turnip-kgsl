@@ -25,7 +25,7 @@
 #define BLORP_GENX_EXEC_H
 
 #include "blorp_priv.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "common/intel_sample_positions.h"
 #include "common/intel_l3_config.h"
 #include "genxml/gen_macros.h"

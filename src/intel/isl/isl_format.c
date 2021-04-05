@@ -25,7 +25,7 @@
 
 #include "isl.h"
 #include "isl_priv.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 
 #include "main/macros.h" /* Needed for MAX3 and MAX2 for format_rgb9e5 */
 #include "util/format_srgb.h"

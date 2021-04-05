@@ -22,8 +22,8 @@
   *
   */
 
-#ifndef GEN_DEVICE_INFO_H
-#define GEN_DEVICE_INFO_H
+#ifndef INTEL_DEVICE_INFO_H
+#define INTEL_DEVICE_INFO_H
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -360,4 +360,4 @@ int gen_get_aperture_size(int fd, uint64_t *size);
 }
 #endif
 
-#endif /* GEN_DEVICE_INFO_H */
+#endif /* INTEL_DEVICE_INFO_H */

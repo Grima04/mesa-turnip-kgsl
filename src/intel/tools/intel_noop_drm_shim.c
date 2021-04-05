@@ -33,7 +33,7 @@
 #include <sys/un.h>
 
 #include "common/intel_gem.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "drm-uapi/i915_drm.h"
 #include "drm-shim/drm_shim.h"
 #include "util/macros.h"

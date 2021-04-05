@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "gen_device_info.h"
+#include "intel_device_info.h"
 
 int
 main(int argc, char *argv[])

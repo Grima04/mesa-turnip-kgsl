@@ -35,7 +35,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "util/macros.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 
 /* The following hunk, up-to "Execution Unit" is used by both the
  * intel/compiler and i965 codebase. */

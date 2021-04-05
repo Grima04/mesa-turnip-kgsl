@@ -37,7 +37,7 @@
 #define __STDC_FORMAT_MACROS 1
 #include <inttypes.h>
 
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "util/debug.h"
 #include "util/macros.h"
 #include "util/u_debug.h"

@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 
 struct gen_perf_query_result;
 

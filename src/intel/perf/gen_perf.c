@@ -38,7 +38,7 @@
 #include "common/intel_gem.h"
 
 #include "dev/intel_debug.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 
 #include "perf/gen_perf.h"
 #include "perf/gen_perf_regs.h"

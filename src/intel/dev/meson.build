@@ -23,8 +23,8 @@
 files_libintel_dev = files(
   'intel_debug.c',
   'intel_debug.h',
-  'gen_device_info.c',
-  'gen_device_info.h',
+  'intel_device_info.c',
+  'intel_device_info.h',
 )
 
 libintel_dev = static_library(
@@ -40,7 +40,7 @@ if with_tests
   test('gen_device_info_test',
        executable(
          'gen_device_info_test',
-         'gen_device_info_test.c',
+         'intel_device_info_test.c',
          include_directories : [inc_include, inc_src],
          link_with : libintel_dev,
        ),

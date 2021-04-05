@@ -24,7 +24,7 @@
 #ifndef MI_BUILDER_H
 #define MI_BUILDER_H
 
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "genxml/genX_bits.h"
 #include "util/bitscan.h"
 #include "util/fast_idiv_by_const.h"

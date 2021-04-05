@@ -48,7 +48,7 @@
 #include "common/intel_clflush.h"
 #include "dev/intel_debug.h"
 #include "common/intel_gem.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "libdrm_macros.h"
 #include "main/macros.h"
 #include "util/macros.h"

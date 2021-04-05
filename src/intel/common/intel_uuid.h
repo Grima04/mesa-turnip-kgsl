@@ -25,7 +25,7 @@
 #ifndef INTEL_UUID_H
 #define INTEL_UUID_H
 
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "isl/isl.h"
 
 #ifdef __cplusplus

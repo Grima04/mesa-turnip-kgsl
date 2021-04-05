@@ -22,7 +22,7 @@
  */
 
 #include "util/macros.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 
 enum gen {
    GFX4    = (1 << 0),

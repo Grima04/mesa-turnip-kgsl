@@ -27,7 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "gen_device_info.h"
+#include "intel_device_info.h"
 #include "compiler/shader_enums.h"
 #include "intel/common/intel_gem.h"
 #include "util/bitscan.h"

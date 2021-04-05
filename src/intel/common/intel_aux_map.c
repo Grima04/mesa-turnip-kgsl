@@ -77,7 +77,7 @@
 #include "intel_aux_map.h"
 #include "intel_gem.h"
 
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "isl/isl.h"
 
 #include "drm-uapi/i915_drm.h"

@@ -44,7 +44,7 @@
 #include "aub_write.h"
 
 #include "dev/intel_debug.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "util/macros.h"
 
 static int close_init_helper(int fd);

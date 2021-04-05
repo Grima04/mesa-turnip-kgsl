@@ -28,7 +28,7 @@
 #include "drm-uapi/i915_drm.h"
 
 #include "isl.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "dev/intel_debug.h"
 
 uint32_t

@@ -150,8 +150,8 @@ COMPILER_GENERATED_FILES = \
 DEV_FILES = \
 	dev/intel_debug.c \
 	dev/intel_debug.h \
-	dev/gen_device_info.c \
-	dev/gen_device_info.h
+	dev/intel_device_info.c \
+	dev/intel_device_info.h
 
 GENXML_XML_FILES = \
 	genxml/gen4.xml \

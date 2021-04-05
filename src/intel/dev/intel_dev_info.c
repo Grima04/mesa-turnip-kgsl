@@ -33,7 +33,7 @@
 
 #include <xf86drm.h>
 
-#include "gen_device_info.h"
+#include "intel_device_info.h"
 
 static int
 error(char *fmt, ...)

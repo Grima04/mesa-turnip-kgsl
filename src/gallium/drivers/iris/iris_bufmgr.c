@@ -52,7 +52,7 @@
 #include "common/intel_clflush.h"
 #include "dev/intel_debug.h"
 #include "common/intel_gem.h"
-#include "dev/gen_device_info.h"
+#include "dev/intel_device_info.h"
 #include "main/macros.h"
 #include "os/os_mman.h"
 #include "util/debug.h"
