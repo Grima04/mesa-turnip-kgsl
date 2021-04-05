@@ -1500,8 +1500,6 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
 
    ssbo[2] = ssbo[1];
 
-   sctx->b.bind_compute_state(&sctx->b, sctx->query_result_shader);
-
    grid.block[0] = 1;
    grid.block[1] = 1;
    grid.block[2] = 1;
@@ -1566,8 +1564,6 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
          si_resource(resource)->TC_L2_dirty = true;
       }
 
-      sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, 3, ssbo, 1 << 2);
-
       if (wait && qbuf == &query->buffer) {
          uint64_t va;
 
@@ -1580,9 +1576,9 @@ static void si_query_hw_get_result_resource(struct si_context *sctx, struct si_q
 
          si_cp_wait_mem(sctx, &sctx->gfx_cs, va, 0x80000000, 0x80000000, WAIT_REG_MEM_EQUAL);
       }
-
-      sctx->b.launch_grid(&sctx->b, &grid);
-      sctx->flags |= SI_CONTEXT_CS_PARTIAL_FLUSH | SI_CONTEXT_PFP_SYNC_ME;
+      si_launch_grid_internal_ssbos(sctx, &grid, sctx->query_result_shader,
+                                    SI_OP_SYNC_AFTER, SI_COHERENCY_SHADER,
+                                    3, ssbo, 0x4);
    }
 
    si_restore_qbo_state(sctx, &saved_state);

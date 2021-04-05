@@ -1333,30 +1333,12 @@ void si_set_occlusion_query_state(struct si_context *sctx, bool old_perfect_enab
 
 void si_save_qbo_state(struct si_context *sctx, struct si_qbo_state *st)
 {
-   st->saved_compute = sctx->cs_shader_state.program;
-
    si_get_pipe_constant_buffer(sctx, PIPE_SHADER_COMPUTE, 0, &st->saved_const0);
-   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 3, st->saved_ssbo);
-
-   st->saved_ssbo_writable_mask = 0;
-
-   for (unsigned i = 0; i < 3; i++) {
-      if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
-          (1u << si_get_shaderbuf_slot(i)))
-         st->saved_ssbo_writable_mask |= 1 << i;
-   }
 }
 
 void si_restore_qbo_state(struct si_context *sctx, struct si_qbo_state *st)
 {
-   sctx->b.bind_compute_state(&sctx->b, st->saved_compute);
-
    sctx->b.set_constant_buffer(&sctx->b, PIPE_SHADER_COMPUTE, 0, true, &st->saved_const0);
-
-   sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, 3, st->saved_ssbo,
-                              st->saved_ssbo_writable_mask);
-   for (unsigned i = 0; i < 3; ++i)
-      pipe_resource_reference(&st->saved_ssbo[i].buffer, NULL);
 }
 
 static void si_emit_db_render_state(struct si_context *sctx)

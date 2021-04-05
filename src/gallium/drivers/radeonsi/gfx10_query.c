@@ -387,7 +387,6 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
       }
 
       sctx->b.set_constant_buffer(&sctx->b, PIPE_SHADER_COMPUTE, 0, false, &constant_buffer);
-      sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, 3, ssbo, 0x6);
 
       if (wait) {
          uint64_t va;
@@ -403,8 +402,9 @@ static void gfx10_sh_query_get_result_resource(struct si_context *sctx, struct s
          si_cp_wait_mem(sctx, &sctx->gfx_cs, va, 0x00000001, 0x00000001, 0);
       }
 
-      si_launch_grid_internal((struct si_context *)&sctx->b, &grid, sctx->sh_query_result_shader,
-                              SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_AFTER);
+      si_launch_grid_internal_ssbos(sctx, &grid, sctx->sh_query_result_shader,
+                                    SI_OP_SYNC_PS_BEFORE | SI_OP_SYNC_AFTER, SI_COHERENCY_SHADER,
+                                    3, ssbo, 0x6);
 
       if (qbuf == query->last)
          break;

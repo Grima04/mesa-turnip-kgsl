@@ -116,6 +116,47 @@ void si_launch_grid_internal(struct si_context *sctx, struct pipe_grid_info *inf
    }
 }
 
+void si_launch_grid_internal_ssbos(struct si_context *sctx, struct pipe_grid_info *info,
+                                   void *shader, unsigned flags, enum si_coherency coher,
+                                   unsigned num_buffers, const struct pipe_shader_buffer *buffers,
+                                   unsigned writeable_bitmask)
+{
+   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
+      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
+
+   /* Save states. */
+   struct pipe_shader_buffer saved_sb[3] = {};
+   assert(num_buffers <= ARRAY_SIZE(saved_sb));
+   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, num_buffers, saved_sb);
+
+   unsigned saved_writable_mask = 0;
+   for (unsigned i = 0; i < num_buffers; i++) {
+      if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
+          (1u << si_get_shaderbuf_slot(i)))
+         saved_writable_mask |= 1 << i;
+   }
+
+   /* Bind buffers and launch compute. */
+   sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, num_buffers, buffers,
+                              writeable_bitmask);
+   si_launch_grid_internal(sctx, info, shader, flags);
+
+   /* Do cache flushing at the end. */
+   if (get_cache_policy(sctx, coher, 0) == L2_BYPASS) {
+      if (flags & SI_OP_SYNC_AFTER)
+         sctx->flags |= SI_CONTEXT_WB_L2;
+   } else {
+      while (writeable_bitmask)
+         si_resource(buffers[u_bit_scan(&writeable_bitmask)].buffer)->TC_L2_dirty = true;
+   }
+
+   /* Restore states. */
+   sctx->b.set_shader_buffers(&sctx->b, PIPE_SHADER_COMPUTE, 0, num_buffers, saved_sb,
+                              saved_writable_mask);
+   for (int i = 0; i < num_buffers; i++)
+      pipe_resource_reference(&saved_sb[i].buffer, NULL);
+}
+
 /**
  * Clear a buffer using read-modify-write with a 32-bit write bitmask.
  * The clear value has 32 bits.
@@ -125,24 +166,10 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
                                  uint32_t clear_value, uint32_t writebitmask,
                                  unsigned flags, enum si_coherency coher)
 {
-   struct pipe_context *ctx = &sctx->b;
-
    assert(dst_offset % 4 == 0);
    assert(size % 4 == 0);
 
    assert(dst->target != PIPE_BUFFER || dst_offset + size <= dst->width0);
-
-   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
-      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
-
-   /* Save states. */
-   struct pipe_shader_buffer saved_sb = {};
-   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
-
-   unsigned saved_writable_mask = 0;
-   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
-       (1u << si_get_shaderbuf_slot(0)))
-      saved_writable_mask |= 1 << 0;
 
    /* Use buffer_load_dwordx4 and buffer_store_dwordx4 per thread. */
    unsigned dwords_per_instruction = 4;
@@ -164,7 +191,6 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
    sb.buffer = dst;
    sb.buffer_offset = dst_offset;
    sb.buffer_size = size;
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
 
    sctx->cs_user_data[0] = clear_value & writebitmask;
    sctx->cs_user_data[1] = ~writebitmask;
@@ -172,19 +198,8 @@ void si_compute_clear_buffer_rmw(struct si_context *sctx, struct pipe_resource *
    if (!sctx->cs_clear_buffer_rmw)
       sctx->cs_clear_buffer_rmw = si_create_clear_buffer_rmw_cs(&sctx->b);
 
-   si_launch_grid_internal(sctx, &info, sctx->cs_clear_buffer_rmw, flags);
-
-   enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
-
-   if (flags & SI_OP_SYNC_AFTER)
-      sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
-
-   if (cache_policy != L2_BYPASS)
-      si_resource(dst)->TC_L2_dirty = true;
-
-   /* Restore states. */
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
-   pipe_resource_reference(&saved_sb.buffer, NULL);
+   si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_clear_buffer_rmw, flags, coher,
+                                 1, &sb, 0x1);
 }
 
 static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe_resource *dst,
@@ -198,23 +213,10 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    assert(size % 4 == 0);
    unsigned size_12 = DIV_ROUND_UP(size, 12);
 
-   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
-      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
-
-   struct pipe_shader_buffer saved_sb = {0};
-   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
-
-   unsigned saved_writable_mask = 0;
-   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
-       (1u << si_get_shaderbuf_slot(0)))
-      saved_writable_mask = 1;
-
    struct pipe_shader_buffer sb = {0};
    sb.buffer = dst;
    sb.buffer_offset = dst_offset;
    sb.buffer_size = size;
-
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
 
    memcpy(sctx->cs_user_data, clear_value, 12);
 
@@ -231,10 +233,8 @@ static void si_compute_clear_12bytes_buffer(struct si_context *sctx, struct pipe
    info.grid[1] = 1;
    info.grid[2] = 1;
 
-   si_launch_grid_internal(sctx, &info, sctx->cs_clear_12bytes_buffer, flags);
-
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
-   pipe_resource_reference(&saved_sb.buffer, NULL);
+   si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_clear_12bytes_buffer, flags, coher,
+                                 1, &sb, 0x1);
 }
 
 static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_resource *dst,
@@ -243,28 +243,12 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
                                         const uint32_t *clear_value, unsigned clear_value_size,
                                         unsigned flags, enum si_coherency coher)
 {
-   struct pipe_context *ctx = &sctx->b;
-
    assert(src_offset % 4 == 0);
    assert(dst_offset % 4 == 0);
    assert(size % 4 == 0);
 
    assert(dst->target != PIPE_BUFFER || dst_offset + size <= dst->width0);
    assert(!src || src_offset + size <= src->width0);
-
-   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
-      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
-
-   /* Save states. */
-   struct pipe_shader_buffer saved_sb[2] = {};
-   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb);
-
-   unsigned saved_writable_mask = 0;
-   for (unsigned i = 0; i < (src ? 2 : 1); i++) {
-      if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
-          (1u << si_get_shaderbuf_slot(i)))
-         saved_writable_mask |= 1 << i;
-   }
 
    /* The memory accesses are coalesced, meaning that the 1st instruction writes
     * the 1st contiguous block of data for the whole wave, the 2nd instruction
@@ -300,14 +284,13 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
       sb[1].buffer_offset = src_offset;
       sb[1].buffer_size = size;
 
-      ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 2, sb, 0x1);
-
       if (!sctx->cs_copy_buffer) {
          sctx->cs_copy_buffer = si_create_dma_compute_shader(
             &sctx->b, SI_COMPUTE_COPY_DW_PER_THREAD, shader_dst_stream_policy, true);
       }
 
-      si_launch_grid_internal(sctx, &info, sctx->cs_copy_buffer, flags);
+      si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_copy_buffer, flags, coher,
+                                    2, sb, 0x1);
    } else {
       assert(clear_value_size >= 4 && clear_value_size <= 16 &&
              util_is_power_of_two_or_zero(clear_value_size));
@@ -315,28 +298,14 @@ static void si_compute_do_clear_or_copy(struct si_context *sctx, struct pipe_res
       for (unsigned i = 0; i < 4; i++)
          sctx->cs_user_data[i] = clear_value[i % (clear_value_size / 4)];
 
-      ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, sb, 0x1);
-
       if (!sctx->cs_clear_buffer) {
          sctx->cs_clear_buffer = si_create_dma_compute_shader(
             &sctx->b, SI_COMPUTE_CLEAR_DW_PER_THREAD, shader_dst_stream_policy, false);
       }
 
-      si_launch_grid_internal(sctx, &info, sctx->cs_clear_buffer, flags);
+      si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_clear_buffer, flags, coher,
+                                    1, sb, 0x1);
    }
-
-   enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, size);
-
-   if (flags & SI_OP_SYNC_AFTER)
-      sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
-
-   if (cache_policy != L2_BYPASS)
-      si_resource(dst)->TC_L2_dirty = true;
-
-   /* Restore states. */
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, src ? 2 : 1, saved_sb, saved_writable_mask);
-   for (int i = 0; i < 2; i++)
-      pipe_resource_reference(&saved_sb[i].buffer, NULL);
 }
 
 void si_clear_buffer(struct si_context *sctx, struct pipe_resource *dst,
@@ -653,19 +622,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
 void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 {
-   struct pipe_context *ctx = &sctx->b;
-
-   sctx->flags |= si_get_flush_flags(sctx, SI_COHERENCY_CB_META, L2_LRU);
-
-   /* Save states. */
-   struct pipe_shader_buffer saved_sb = {};
-   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
-
-   unsigned saved_writable_mask = 0;
-   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
-       (1u << si_get_shaderbuf_slot(0)))
-      saved_writable_mask |= 1 << 0;
-
    /* Set the DCC buffer. */
    assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
    assert(tex->surface.display_dcc_offset && tex->surface.display_dcc_offset <= UINT_MAX);
@@ -676,7 +632,6 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    sb.buffer = &tex->buffer.b.b;
    sb.buffer_offset = tex->surface.display_dcc_offset;
    sb.buffer_size = tex->buffer.bo_size - sb.buffer_offset;
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
 
    sctx->cs_user_data[0] = tex->surface.meta_offset - tex->surface.display_dcc_offset;
    sctx->cs_user_data[1] = (tex->surface.u.gfx9.color.dcc_pitch_max + 1) |
@@ -709,32 +664,16 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
    info.grid[2] = 1;
 
-   si_launch_grid_internal(sctx, &info, sctx->cs_dcc_retile, SI_OP_SYNC_BEFORE);
+   si_launch_grid_internal_ssbos(sctx, &info, sctx->cs_dcc_retile, SI_OP_SYNC_BEFORE,
+                                 SI_COHERENCY_CB_META, 1, &sb, 0x1);
 
    /* Don't flush caches. L2 will be flushed by the kernel fence. */
-
-   /* Restore states. */
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
-   pipe_resource_reference(&saved_sb.buffer, NULL);
 }
 
 void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uint32_t clear_value,
                          unsigned flags, enum si_coherency coher)
 {
-   struct pipe_context *ctx = &sctx->b;
    struct si_texture *tex = (struct si_texture*)res;
-
-   if (!(flags & SI_OP_SKIP_CACHE_INV_BEFORE))
-      sctx->flags |= si_get_flush_flags(sctx, coher, SI_COMPUTE_DST_CACHE_POLICY);
-
-   /* Save states. */
-   struct pipe_shader_buffer saved_sb = {};
-   si_get_shader_buffers(sctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb);
-
-   unsigned saved_writable_mask = 0;
-   if (sctx->const_and_shader_buffers[PIPE_SHADER_COMPUTE].writable_mask &
-       (1u << si_get_shaderbuf_slot(0)))
-      saved_writable_mask |= 1 << 0;
 
    /* Set the DCC buffer. */
    assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
@@ -744,7 +683,6 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
    sb.buffer = &tex->buffer.b.b;
    sb.buffer_offset = tex->surface.meta_offset;
    sb.buffer_size = tex->buffer.bo_size - sb.buffer_offset;
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &sb, 0x1);
 
    sctx->cs_user_data[0] = (tex->surface.u.gfx9.color.dcc_pitch_max + 1) |
                            (tex->surface.u.gfx9.color.dcc_height << 16);
@@ -776,16 +714,7 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
    info.grid[1] = DIV_ROUND_UP(height, info.block[1]);
    info.grid[2] = depth;
 
-   si_launch_grid_internal(sctx, &info, *shader, flags);
-
-   enum si_cache_policy cache_policy = get_cache_policy(sctx, coher, tex->surface.meta_size);
-
-   if (flags & SI_OP_SYNC_AFTER)
-      sctx->flags |= cache_policy == L2_BYPASS ? SI_CONTEXT_WB_L2 : 0;
-
-   /* Restore states. */
-   ctx->set_shader_buffers(ctx, PIPE_SHADER_COMPUTE, 0, 1, &saved_sb, saved_writable_mask);
-   pipe_resource_reference(&saved_sb.buffer, NULL);
+   si_launch_grid_internal_ssbos(sctx, &info, *shader, flags, coher, 1, &sb, 0x1);
 }
 
 /* Expand FMASK to make it identity, so that image stores can ignore it. */
