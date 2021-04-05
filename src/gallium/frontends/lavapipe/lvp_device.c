@@ -757,6 +757,7 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties(VkPhysicalDevice phys
 
 }
 
+extern unsigned lp_native_vector_width;
 static void
 lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
                                        VkPhysicalDeviceVulkan11Properties *p)
@@ -770,7 +771,7 @@ lvp_get_physical_device_properties_1_1(struct lvp_physical_device *pdevice,
    p->deviceLUIDValid = false;
    p->deviceNodeMask = 0;
 
-   p->subgroupSize = 8;
+   p->subgroupSize = lp_native_vector_width / 32;
    p->subgroupSupportedStages = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT;
    p->subgroupSupportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT | VK_SUBGROUP_FEATURE_VOTE_BIT | VK_SUBGROUP_FEATURE_ARITHMETIC_BIT | VK_SUBGROUP_FEATURE_BALLOT_BIT;
    p->subgroupQuadOperationsInAllStages = false;
