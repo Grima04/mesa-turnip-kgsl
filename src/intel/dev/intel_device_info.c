@@ -1365,7 +1365,7 @@ query_topology(struct intel_device_info *devinfo, int fd)
 }
 
 int
-gen_get_aperture_size(int fd, uint64_t *size)
+intel_get_aperture_size(int fd, uint64_t *size)
 {
    struct drm_i915_gem_get_aperture aperture = { 0 };
 
@@ -1475,7 +1475,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
       getparam_topology(devinfo, fd);
    }
 
-   gen_get_aperture_size(fd, &devinfo->aperture_bytes);
+   intel_get_aperture_size(fd, &devinfo->aperture_bytes);
    devinfo->has_tiling_uapi = gen_has_get_tiling(fd);
 
    return true;

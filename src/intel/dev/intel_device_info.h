@@ -355,7 +355,7 @@ intel_device_info_timebase_scale(const struct intel_device_info *devinfo,
 bool intel_get_device_info_from_fd(int fh, struct intel_device_info *devinfo);
 bool intel_get_device_info_from_pci_id(int pci_id,
                                        struct intel_device_info *devinfo);
-int gen_get_aperture_size(int fd, uint64_t *size);
+int intel_get_aperture_size(int fd, uint64_t *size);
 
 #ifdef __cplusplus
 }

@@ -345,7 +345,7 @@ anv_physical_device_init_heaps(struct anv_physical_device *device, int fd)
       anv_perf_warn(NULL, NULL,
                     "Failed to get I915_CONTEXT_PARAM_GTT_SIZE: %m");
 
-      if (gen_get_aperture_size(fd, &device->gtt_size) == -1) {
+      if (intel_get_aperture_size(fd, &device->gtt_size) == -1) {
          return vk_errorfi(device->instance, NULL,
                            VK_ERROR_INITIALIZATION_FAILED,
                            "failed to get aperture size: %m");
