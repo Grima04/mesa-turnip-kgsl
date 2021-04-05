@@ -1165,43 +1165,46 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
       }
 
       unsigned texture_index = tex->texture_index;
+      uint32_t texture_mask = 1u << texture_index;
       int tex_index = nir_tex_instr_src_index(tex, nir_tex_src_texture_deref);
       if (tex_index >= 0) {
          nir_deref_instr *deref = nir_src_as_deref(tex->src[tex_index].src);
-         texture_index = nir_deref_instr_get_variable(deref)->data.binding;
+         nir_variable *var = nir_deref_instr_get_variable(deref);
+         texture_index = var ? var->data.binding : 0;
+         texture_mask = var ? (1u << texture_index) : 0u;
       }
 
-      if ((1u << texture_index) & options->lower_y_uv_external) {
+      if (texture_mask & options->lower_y_uv_external) {
          lower_y_uv_external(b, tex, options, texture_index);
          progress = true;
       }
 
-      if ((1u << texture_index) & options->lower_y_u_v_external) {
+      if (texture_mask & options->lower_y_u_v_external) {
          lower_y_u_v_external(b, tex, options, texture_index);
          progress = true;
       }
 
-      if ((1u << texture_index) & options->lower_yx_xuxv_external) {
+      if (texture_mask & options->lower_yx_xuxv_external) {
          lower_yx_xuxv_external(b, tex, options, texture_index);
          progress = true;
       }
 
-      if ((1u << texture_index) & options->lower_xy_uxvx_external) {
+      if (texture_mask & options->lower_xy_uxvx_external) {
          lower_xy_uxvx_external(b, tex, options, texture_index);
          progress = true;
       }
 
-      if ((1u << texture_index) & options->lower_ayuv_external) {
+      if (texture_mask & options->lower_ayuv_external) {
          lower_ayuv_external(b, tex, options, texture_index);
          progress = true;
       }
 
-      if ((1u << texture_index) & options->lower_xyuv_external) {
+      if (texture_mask & options->lower_xyuv_external) {
          lower_xyuv_external(b, tex, options, texture_index);
          progress = true;
       }
 
-      if ((1 << tex->texture_index) & options->lower_yuv_external) {
+      if (texture_mask & options->lower_yuv_external) {
          lower_yuv_external(b, tex, options, texture_index);
          progress = true;
       }
@@ -1216,7 +1219,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
          progress = true;
       }
 
-      if (((1u << texture_index) & options->swizzle_result) &&
+      if ((texture_mask & options->swizzle_result) &&
           !nir_tex_instr_is_query(tex) &&
           !(tex->is_shadow && tex->is_new_style_shadow)) {
          swizzle_result(b, tex, options->swizzles[tex->texture_index]);
@@ -1224,7 +1227,7 @@ nir_lower_tex_block(nir_block *block, nir_builder *b,
       }
 
       /* should be after swizzle so we know which channels are rgb: */
-      if (((1u << texture_index) & options->lower_srgb) &&
+      if ((texture_mask & options->lower_srgb) &&
           !nir_tex_instr_is_query(tex) && !tex->is_shadow) {
          linearize_srgb_result(b, tex);
          progress = true;
