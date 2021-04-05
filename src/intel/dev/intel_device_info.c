@@ -1113,7 +1113,7 @@ update_from_topology(struct intel_device_info *devinfo,
        * 4 subslices.
        */
       const unsigned ppipe_bits = devinfo->ver >= 12 ? 2 : 4;
-      for (unsigned p = 0; p < GEN_DEVICE_MAX_PIXEL_PIPES; p++) {
+      for (unsigned p = 0; p < INTEL_DEVICE_MAX_PIXEL_PIPES; p++) {
          const unsigned ppipe_mask = BITFIELD_RANGE(p * ppipe_bits, ppipe_bits);
          devinfo->ppipe_subslices[p] =
             __builtin_popcount(devinfo->subslice_masks[0] & ppipe_mask);
