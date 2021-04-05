@@ -166,8 +166,11 @@ def write_format_table(formats):
         print("   },")
 
     def generate_table_getter(type):
+        suffix = ""
+        if type == "unpack_":
+            suffix = "_generic"
         print("const struct util_format_%sdescription *" % type)
-        print("util_format_%sdescription(enum pipe_format format)" % type)
+        print("util_format_%sdescription%s(enum pipe_format format)" % (type, suffix))
         print("{")
         print("   if (format >= ARRAY_SIZE(util_format_%sdescriptions))" % (type))
         print("      return NULL;")
@@ -242,7 +245,6 @@ def write_format_table(formats):
     print("};")
     print()
     generate_table_getter("pack_")
-
     print('static const struct util_format_unpack_description')
     print('util_format_unpack_descriptions[] = {')
     for format in formats:

@@ -415,8 +415,17 @@ util_format_description(enum pipe_format format) ATTRIBUTE_CONST;
 const struct util_format_pack_description *
 util_format_pack_description(enum pipe_format format) ATTRIBUTE_CONST;
 
+/* Lookup with CPU detection for choosing optimized paths. */
 const struct util_format_unpack_description *
 util_format_unpack_description(enum pipe_format format) ATTRIBUTE_CONST;
+
+/* Codegenned table of CPU-agnostic unpack code. */
+const struct util_format_unpack_description *
+util_format_unpack_description_generic(enum pipe_format format) ATTRIBUTE_CONST;
+
+const struct util_format_unpack_description *
+util_format_unpack_description_neon(enum pipe_format format) ATTRIBUTE_CONST;
+
 #ifdef __GNUC__
 #pragma GCC diagnostic pop
 #endif

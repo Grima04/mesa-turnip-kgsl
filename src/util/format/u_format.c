@@ -34,6 +34,7 @@
 
 #include "util/format/u_format.h"
 #include "util/format/u_format_s3tc.h"
+#include "util/u_cpu_detect.h"
 #include "util/u_math.h"
 
 #include "pipe/p_defines.h"
@@ -1129,4 +1130,31 @@ util_format_rgb_to_bgr(enum pipe_format format)
    default:
       return PIPE_FORMAT_NONE;
    }
+}
+
+static const struct util_format_unpack_description *util_format_unpack_table[PIPE_FORMAT_COUNT];
+
+static void
+util_format_unpack_table_init(void)
+{
+   for (enum pipe_format format = PIPE_FORMAT_NONE; format < PIPE_FORMAT_COUNT; format++) {
+#if (defined(PIPE_ARCH_AARCH64) || defined(PIPE_ARCH_ARM)) && !defined NO_FORMAT_ASM
+      const struct util_format_unpack_description *unpack = util_format_unpack_description_neon(format);
+      if (unpack) {
+         util_format_unpack_table[format] = unpack;
+         continue;
+      }
+#endif
+
+      util_format_unpack_table[format] = util_format_unpack_description_generic(format);
+   }
+}
+
+const struct util_format_unpack_description *
+util_format_unpack_description(enum pipe_format format)
+{
+   static once_flag flag = ONCE_FLAG_INIT;
+   call_once(&flag, util_format_unpack_table_init);
+
+   return util_format_unpack_table[format];
 }
