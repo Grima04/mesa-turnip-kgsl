@@ -123,6 +123,21 @@ get_bvec_type(struct ntv_context *ctx, int num_components)
    return bool_type;
 }
 
+static SpvScope
+get_scope(nir_scope scope)
+{
+   SpvScope conv[] = {
+      [NIR_SCOPE_NONE] = 0,
+      [NIR_SCOPE_INVOCATION] = SpvScopeInvocation,
+      [NIR_SCOPE_SUBGROUP] = SpvScopeSubgroup,
+      [NIR_SCOPE_SHADER_CALL] = SpvScopeShaderCallKHR,
+      [NIR_SCOPE_WORKGROUP] = SpvScopeWorkgroup,
+      [NIR_SCOPE_QUEUE_FAMILY] = SpvScopeQueueFamily,
+      [NIR_SCOPE_DEVICE] = SpvScopeDevice,
+   };
+   return conv[scope];
+}
+
 static SpvId
 block_label(struct ntv_context *ctx, nir_block *block)
 {
