@@ -39,7 +39,7 @@
 #include <zlib.h>
 
 #include "common/intel_decoder.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "util/macros.h"
 
 #define CSI "\e["

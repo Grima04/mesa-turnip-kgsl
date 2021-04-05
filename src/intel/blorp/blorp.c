@@ -28,7 +28,7 @@
 #include "blorp_priv.h"
 #include "compiler/brw_compiler.h"
 #include "compiler/brw_nir.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 
 const char *
 blorp_shader_type_to_name(enum blorp_shader_type type)

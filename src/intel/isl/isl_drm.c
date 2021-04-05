@@ -29,7 +29,7 @@
 
 #include "isl.h"
 #include "dev/gen_device_info.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 
 uint32_t
 isl_tiling_to_i915_tiling(enum isl_tiling tiling)

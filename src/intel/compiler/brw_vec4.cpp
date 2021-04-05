@@ -28,7 +28,7 @@
 #include "brw_vec4_builder.h"
 #include "brw_vec4_vs.h"
 #include "brw_dead_control_flow.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "program/prog_parameter.h"
 #include "util/u_math.h"
 

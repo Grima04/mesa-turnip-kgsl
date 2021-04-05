@@ -26,7 +26,7 @@
 #include "brw_fs.h"
 #include "brw_nir.h"
 #include "brw_vec4_tes.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "main/uniforms.h"
 #include "util/macros.h"
 

@@ -36,7 +36,7 @@
 #include "brw_vec4_gs_visitor.h"
 #include "brw_cfg.h"
 #include "brw_dead_control_flow.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "compiler/glsl_types.h"
 #include "compiler/nir/nir_builder.h"
 #include "program/prog_parameter.h"

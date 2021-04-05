@@ -95,7 +95,7 @@ struct gen_perf_query_result;
 #include "anv_entrypoints.h"
 #include "isl/isl.h"
 
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #define MESA_LOG_TAG "MESA-INTEL"
 #include "util/log.h"
 #include "wsi_common.h"

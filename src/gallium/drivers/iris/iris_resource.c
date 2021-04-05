@@ -49,7 +49,7 @@
 #include "iris_resource.h"
 #include "iris_screen.h"
 #include "intel/common/intel_aux_map.h"
-#include "intel/dev/gen_debug.h"
+#include "intel/dev/intel_debug.h"
 #include "isl/isl.h"
 #include "drm-uapi/drm_fourcc.h"
 #include "drm-uapi/i915_drm.h"

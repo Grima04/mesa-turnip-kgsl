@@ -43,7 +43,7 @@
 #include "intel_aub.h"
 #include "aub_write.h"
 
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "dev/gen_device_info.h"
 #include "util/macros.h"
 

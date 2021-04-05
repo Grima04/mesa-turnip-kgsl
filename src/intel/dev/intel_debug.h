@@ -23,8 +23,8 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#ifndef GEN_DEBUG_H
-#define GEN_DEBUG_H
+#ifndef INTEL_DEBUG_H
+#define INTEL_DEBUG_H
 
 #include <stdint.h>
 #include "compiler/shader_enums.h"
@@ -34,7 +34,7 @@
 extern "C" {
 #endif
 /**
- * \file gen_debug.h
+ * \file intel_debug.h
  *
  * Basic INTEL_DEBUG environment variable handling.  This file defines the
  * list of debugging flags, as well as some macros for handling them.
@@ -175,4 +175,4 @@ extern void *intel_debug_get_identifier_block(void *buffer,
 }
 #endif
 
-#endif /* GEN_DEBUG_H */
+#endif /* INTEL_DEBUG_H */

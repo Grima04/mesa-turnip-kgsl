@@ -148,8 +148,8 @@ COMPILER_GENERATED_FILES = \
 	compiler/brw_nir_trig_workarounds.c
 
 DEV_FILES = \
-	dev/gen_debug.c \
-	dev/gen_debug.h \
+	dev/intel_debug.c \
+	dev/intel_debug.h \
 	dev/gen_device_info.c \
 	dev/gen_device_info.h
 

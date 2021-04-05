@@ -23,7 +23,7 @@
  */
 
 /**
- * \file gen_debug.c
+ * \file intel_debug.c
  *
  * Support for the INTEL_DEBUG environment variable, along with other
  * miscellaneous debugging code.
@@ -33,7 +33,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "git_sha1.h"
 #include "util/macros.h"
 #include "util/debug.h"

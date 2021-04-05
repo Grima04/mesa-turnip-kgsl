@@ -23,7 +23,7 @@
 #include "brw_vec4.h"
 #include "brw_cfg.h"
 #include "brw_eu.h"
-#include "dev/gen_debug.h"
+#include "dev/intel_debug.h"
 #include "util/mesa-sha1.h"
 
 using namespace brw;
