@@ -284,17 +284,6 @@ static void si_destroy_context(struct pipe_context *context)
    if (sctx->blitter)
       util_blitter_destroy(sctx->blitter);
 
-   /* Release DCC stats. */
-   for (int i = 0; i < ARRAY_SIZE(sctx->dcc_stats); i++) {
-      assert(!sctx->dcc_stats[i].query_active);
-
-      for (int j = 0; j < ARRAY_SIZE(sctx->dcc_stats[i].ps_stats); j++)
-         if (sctx->dcc_stats[i].ps_stats[j])
-            sctx->b.destroy_query(&sctx->b, sctx->dcc_stats[i].ps_stats[j]);
-
-      si_texture_reference(&sctx->dcc_stats[i].tex, NULL);
-   }
-
    if (sctx->query_result_shader)
       sctx->b.delete_compute_state(&sctx->b, sctx->query_result_shader);
    if (sctx->sh_query_result_shader)

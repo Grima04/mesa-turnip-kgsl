@@ -2583,8 +2583,6 @@ void si_update_fb_dirtiness_after_rendering(struct si_context *sctx)
          tex->dirty_level_mask |= 1 << surf->u.tex.level;
          tex->fmask_is_identity = false;
       }
-      if (tex->dcc_gather_statistics)
-         tex->separate_dcc_dirty = true;
    }
 }
 
@@ -2655,15 +2653,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
    }
 
    si_update_fb_dirtiness_after_rendering(sctx);
-
-   for (i = 0; i < sctx->framebuffer.state.nr_cbufs; i++) {
-      if (!sctx->framebuffer.state.cbufs[i])
-         continue;
-
-      tex = (struct si_texture *)sctx->framebuffer.state.cbufs[i]->texture;
-      if (tex->dcc_gather_statistics)
-         vi_separate_dcc_stop_query(sctx, tex);
-   }
 
    /* Disable DCC if the formats are incompatible. */
    for (i = 0; i < state->nr_cbufs; i++) {
@@ -2821,12 +2810,6 @@ static void si_set_framebuffer_state(struct pipe_context *ctx,
 
       p_atomic_inc(&tex->framebuffers_bound);
 
-      if (tex->dcc_gather_statistics) {
-         /* Dirty tracking must be enabled for DCC usage analysis. */
-         sctx->framebuffer.compressed_cb_mask |= 1 << i;
-         vi_separate_dcc_start_query(sctx, tex);
-      }
-
       /* Update the minimum but don't keep 0. */
       if (!sctx->framebuffer.min_bytes_per_pixel ||
           tex->surface.bpe < sctx->framebuffer.min_bytes_per_pixel)
@@ -2967,11 +2950,6 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
                                    RADEON_PRIO_SEPARATE_META);
       }
 
-      if (tex->dcc_separate_buffer)
-         radeon_add_to_buffer_list(sctx, &sctx->gfx_cs, tex->dcc_separate_buffer,
-                                   RADEON_USAGE_READWRITE | RADEON_USAGE_NEEDS_IMPLICIT_SYNC,
-                                   RADEON_PRIO_SEPARATE_META);
-
       /* Compute mutable surface parameters. */
       cb_color_base = tex->buffer.gpu_address >> 8;
       cb_color_fmask = 0;
@@ -3011,9 +2989,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
          if (!is_msaa_resolve_dst)
             cb_color_info |= S_028C70_DCC_ENABLE(1);
 
-         cb_dcc_base =
-            ((!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.meta_offset) >>
-            8;
+         cb_dcc_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
 
          unsigned dcc_tile_swizzle = tex->surface.tile_swizzle;
          dcc_tile_swizzle &= ((1 << tex->surface.meta_alignment_log2) - 1) >> 8;

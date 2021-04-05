@@ -385,37 +385,14 @@ struct si_texture {
 
    /* We need to track DCC dirtiness, because st/dri usually calls
     * flush_resource twice per frame (not a bug) and we don't wanna
-    * decompress DCC twice. Also, the dirty tracking must be done even
-    * if DCC isn't used, because it's required by the DCC usage analysis
-    * for a possible future enablement.
+    * decompress DCC twice.
     */
-   bool separate_dcc_dirty : 1;
    bool displayable_dcc_dirty : 1;
 
-   /* Statistics gathering for the DCC enablement heuristic. */
-   bool dcc_gather_statistics : 1;
    /* Counter that should be non-zero if the texture is bound to a
     * framebuffer.
     */
    unsigned framebuffers_bound;
-   /* Whether the texture is a displayable back buffer and needs DCC
-    * decompression, which is expensive. Therefore, it's enabled only
-    * if statistics suggest that it will pay off and it's allocated
-    * separately. It can't be bound as a sampler by apps. Limited to
-    * target == 2D and last_level == 0. If enabled, dcc_offset contains
-    * the absolute GPUVM address, not the relative one.
-    */
-   struct si_resource *dcc_separate_buffer;
-   /* When DCC is temporarily disabled, the separate buffer is here. */
-   struct si_resource *last_dcc_separate_buffer;
-   /* Estimate of how much this color buffer is written to in units of
-    * full-screen draws: ps_invocations / (width * height)
-    * Shader kills, late Z, and blending with trivial discards make it
-    * inaccurate (we need to count CB updates, not PS invocations).
-    */
-   unsigned ps_draw_ratio;
-   /* The number of clears since the last DCC usage analysis. */
-   unsigned num_slow_clears;
 };
 
 struct si_surface {
@@ -1281,25 +1258,6 @@ struct si_context {
 
    bool force_cb_shader_coherent;
 
-   /* Statistics gathering for the DCC enablement heuristic. It can't be
-    * in si_texture because si_texture can be shared by multiple
-    * contexts. This is for back buffers only. We shouldn't get too many
-    * of those.
-    *
-    * X11 DRI3 rotates among a finite set of back buffers. They should
-    * all fit in this array. If they don't, separate DCC might never be
-    * enabled by DCC stat gathering.
-    */
-   struct {
-      struct si_texture *tex;
-      /* Query queue: 0 = usually active, 1 = waiting, 2 = readback. */
-      struct pipe_query *ps_stats[3];
-      /* If all slots are used and another slot is needed,
-       * the least recently used slot is evicted based on this. */
-      int64_t last_use_timestamp;
-      bool query_active;
-   } dcc_stats[5];
-
    struct si_tracked_regs tracked_regs;
 
    /* Resources that need to be flushed, but will not get an explicit
@@ -1617,10 +1575,6 @@ struct pipe_surface *si_create_surface_custom(struct pipe_context *pipe,
                                               const struct pipe_surface *templ, unsigned width0,
                                               unsigned height0, unsigned width, unsigned height);
 unsigned si_translate_colorswap(enum pipe_format format, bool do_endian_swap);
-void vi_separate_dcc_try_enable(struct si_context *sctx, struct si_texture *tex);
-void vi_separate_dcc_start_query(struct si_context *sctx, struct si_texture *tex);
-void vi_separate_dcc_stop_query(struct si_context *sctx, struct si_texture *tex);
-void vi_separate_dcc_process_and_reset_stats(struct pipe_context *ctx, struct si_texture *tex);
 bool si_texture_disable_dcc(struct si_context *sctx, struct si_texture *tex);
 void si_init_screen_texture_functions(struct si_screen *sscreen);
 void si_init_context_texture_functions(struct si_context *sctx);

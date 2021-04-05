@@ -293,18 +293,11 @@ static bool vi_get_fast_clear_parameters(struct si_screen *sscreen, enum pipe_fo
 bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsigned level,
                            unsigned clear_value, struct si_clear_info *out)
 {
-   struct pipe_resource *dcc_buffer;
-   uint64_t dcc_offset, clear_size;
+   struct pipe_resource *dcc_buffer = &tex->buffer.b.b;
+   uint64_t dcc_offset = tex->surface.meta_offset;
+   uint32_t clear_size;
 
    assert(vi_dcc_enabled(tex, level));
-
-   if (tex->dcc_separate_buffer) {
-      dcc_buffer = &tex->dcc_separate_buffer->b.b;
-      dcc_offset = 0;
-   } else {
-      dcc_buffer = &tex->buffer.b.b;
-      dcc_offset = tex->surface.meta_offset;
-   }
 
    if (sctx->chip_class >= GFX10) {
       /* 4x and 8x MSAA needs a sophisticated compute shader for
@@ -606,21 +599,6 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
       bool eliminate_needed = false;
       bool fmask_decompress_needed = false;
 
-      /* Fast clear is the most appropriate place to enable DCC for
-       * displayable surfaces.
-       */
-      if (sctx->family == CHIP_STONEY && !too_small) {
-         vi_separate_dcc_try_enable(sctx, tex);
-
-         /* RB+ isn't supported with a CMASK clear only on Stoney,
-          * so all clears are considered to be hypothetically slow
-          * clears, which is weighed when determining whether to
-          * enable separate DCC.
-          */
-         if (tex->dcc_gather_statistics) /* only for Stoney */
-            tex->num_slow_clears++;
-      }
-
       /* Try to clear DCC first, otherwise try CMASK. */
       if (vi_dcc_enabled(tex, level)) {
          uint32_t reset_value;
@@ -666,7 +644,6 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
          num_clears++;
          clear_types |= SI_CLEAR_TYPE_DCC;
 
-         tex->separate_dcc_dirty = true;
          si_mark_display_dcc_dirty(sctx, tex);
 
          /* DCC fast clear with MSAA should clear CMASK to 0xC. */

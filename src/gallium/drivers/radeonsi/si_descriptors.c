@@ -231,15 +231,6 @@ static void si_sampler_view_add_buffer(struct si_context *sctx, struct pipe_reso
 
    priority = si_get_sampler_view_priority(&tex->buffer);
    radeon_add_to_gfx_buffer_list_check_mem(sctx, &tex->buffer, usage, priority, check_mem);
-
-   if (resource->target == PIPE_BUFFER)
-      return;
-
-   /* Add separate DCC. */
-   if (tex->dcc_separate_buffer) {
-      radeon_add_to_gfx_buffer_list_check_mem(sctx, tex->dcc_separate_buffer, usage,
-                                              RADEON_PRIO_SEPARATE_META, check_mem);
-   }
 }
 
 static void si_sampler_views_begin_new_cs(struct si_context *sctx, struct si_samplers *samplers)
@@ -331,8 +322,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[6] &= C_008F28_COMPRESSION_EN;
 
       if (!(access & SI_IMAGE_ACCESS_DCC_OFF) && vi_dcc_enabled(tex, first_level)) {
-         meta_va =
-            (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.meta_offset;
+         meta_va = tex->buffer.gpu_address + tex->surface.meta_offset;
 
          if (sscreen->info.chip_class == GFX8) {
             meta_va += tex->surface.u.legacy.color.dcc_level[base_level].dcc_offset;
