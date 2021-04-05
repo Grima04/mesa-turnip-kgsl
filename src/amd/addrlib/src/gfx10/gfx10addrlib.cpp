@@ -252,6 +252,14 @@ ADDR_E_RETURNCODE Gfx10Lib::HwlComputeHtileInfo(
                 pOut->pMipInfo[0].sliceSize = pOut->sliceSize;
             }
         }
+
+        // Get the HTILE address equation (copied from HtileAddrFromCoord).
+        // Note that HTILE doesn't depend on the number of samples.
+        const UINT_32 index = m_xmaskBaseIndex;
+        const UINT_8* patIdxTable = m_settings.supportRbPlus ? GFX10_HTILE_RBPLUS_PATIDX : GFX10_HTILE_PATIDX;
+
+        ADDR_C_ASSERT(sizeof(GFX10_HTILE_SW_PATTERN[patIdxTable[index]]) == 72 * 2);
+        pOut->equation.gfx10_bits = (UINT_16 *)GFX10_HTILE_SW_PATTERN[patIdxTable[index]];
     }
 
     return ret;

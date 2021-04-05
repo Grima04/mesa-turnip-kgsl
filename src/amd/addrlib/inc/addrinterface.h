@@ -2785,6 +2785,10 @@ typedef struct _ADDR2_COMPUTE_HTILE_INFO_OUTPUT
     UINT_32    metaBlkNumPerSlice;  ///< Number of metablock within one slice
 
     ADDR2_META_MIP_INFO* pMipInfo;  ///< HTILE mip information
+
+    struct {
+      UINT_16* gfx10_bits; /* 72 2-byte elements */
+   } equation;
 } ADDR2_COMPUTE_HTILE_INFO_OUTPUT;
 
 /**
