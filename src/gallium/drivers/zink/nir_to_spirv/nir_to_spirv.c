@@ -2772,6 +2772,17 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       emit_store_shared(ctx, intr);
       break;
 
+   case nir_intrinsic_shader_clock: {
+      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityShaderClockKHR);
+      spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_clock");
+
+      SpvScope scope = get_scope(nir_intrinsic_memory_scope(intr));
+      SpvId type = get_dest_type(ctx, &intr->dest, nir_type_uint);
+      SpvId result = spirv_builder_emit_unop_const(&ctx->builder, SpvOpReadClockKHR, type, scope);
+      store_dest(ctx, &intr->dest, result, nir_type_uint);
+      break;
+   }
+
    case nir_intrinsic_vote_all:
    case nir_intrinsic_vote_any:
    case nir_intrinsic_vote_ieq:
