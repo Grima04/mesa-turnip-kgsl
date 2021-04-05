@@ -306,7 +306,7 @@ zink_create_query(struct pipe_context *pctx,
    query->needs_reset = true;
    if (query->type == PIPE_QUERY_TIMESTAMP) {
       query->active = true;
-      reset_pool(zink_context(pctx), batch, query);
+      /* defer pool reset until end_query since we're guaranteed to be threadsafe then */
       reset_qbo(query);
    }
    return (struct pipe_query *)query;
@@ -693,6 +693,8 @@ end_query(struct zink_context *ctx, struct zink_batch *batch, struct zink_query 
    batch->has_work = true;
    q->active = q->type == PIPE_QUERY_TIMESTAMP;
    if (is_time_query(q)) {
+      if (q->needs_reset)
+         reset_pool(ctx, batch, q);
       vkCmdWriteTimestamp(batch->state->cmdbuf, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
                           q->query_pool, q->curr_query);
       zink_batch_usage_set(&q->batch_id, batch->state->fence.batch_id);
