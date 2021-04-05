@@ -5332,7 +5332,7 @@ should_declare_array(isel_context *ctx, enum glsl_sampler_dim sampler_dim, bool 
 
 Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
                       enum aco_descriptor_type desc_type,
-                      const nir_tex_instr *tex_instr, bool image, bool write)
+                      const nir_tex_instr *tex_instr, bool write)
 {
 /* FIXME: we should lower the deref with some new nir_intrinsic_load_desc
    std::unordered_map<uint64_t, Temp>::iterator it = ctx->tex_desc.find((uint64_t) desc_type << 32 | deref_instr->dest.ssa.index);
@@ -5347,7 +5347,7 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
    Builder bld(ctx->program, ctx->block);
 
    if (!deref_instr) {
-      assert(tex_instr && !image);
+      assert(tex_instr);
       descriptor_set = 0;
       base_index = tex_instr->sampler_index;
    } else {
@@ -5467,7 +5467,7 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
                  Definition(components[3]),
                  res);
 
-      Temp desc2 = get_sampler_desc(ctx, deref_instr, ACO_DESC_PLANE_1, tex_instr, image, write);
+      Temp desc2 = get_sampler_desc(ctx, deref_instr, ACO_DESC_PLANE_1, tex_instr, write);
       bld.pseudo(aco_opcode::p_split_vector,
                  bld.def(s1), bld.def(s1), bld.def(s1), bld.def(s1),
                  Definition(components[4]),
@@ -5481,7 +5481,7 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
                        components[4], components[5], components[6], components[7]);
    } else if (desc_type == ACO_DESC_IMAGE &&
               ctx->options->has_image_load_dcc_bug &&
-              image && !write) {
+              !tex_instr && !write) {
       Temp components[8];
       for (unsigned i = 0; i < 8; i++)
          components[i] = bld.tmp(s1);
@@ -5701,7 +5701,7 @@ static std::vector<Temp> get_image_coords(isel_context *ctx, const nir_intrinsic
          for (unsigned i = 0; i < (is_array ? 3 : 2); i++)
             fmask_load_address.emplace_back(emit_extract_vector(ctx, src0, i, v1));
 
-         Temp fmask_desc_ptr = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_FMASK, nullptr, false, false);
+         Temp fmask_desc_ptr = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_FMASK, nullptr, false);
          coords[count] = adjust_sample_index_using_fmask(ctx, is_array, fmask_load_address, sample_index, fmask_desc_ptr);
       } else {
          coords[count] = emit_extract_vector(ctx, src2, 0, v1);
@@ -5805,7 +5805,7 @@ void visit_image_load(isel_context *ctx, nir_intrinsic_instr *instr)
 
    Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr),
                                     dim == GLSL_SAMPLER_DIM_BUF ? ACO_DESC_BUFFER : ACO_DESC_IMAGE,
-                                    nullptr, true, false);
+                                    nullptr, false);
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
@@ -5887,7 +5887,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
    bool glc = ctx->options->chip_class == GFX6 || access & (ACCESS_VOLATILE | ACCESS_COHERENT | ACCESS_NON_READABLE) ? 1 : 0;
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
-      Temp rsrc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true, true);
+      Temp rsrc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true);
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
       aco_opcode opcode;
       switch (data.size()) {
@@ -5923,7 +5923,7 @@ void visit_image_store(isel_context *ctx, nir_intrinsic_instr *instr)
 
    assert(data.type() == RegType::vgpr);
    std::vector<Temp> coords = get_image_coords(ctx, instr, type);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
+   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true);
 
    bool level_zero = nir_src_is_const(instr->src[4]) && nir_src_as_uint(instr->src[4]) == 0;
    aco_opcode opcode = level_zero ? aco_opcode::image_store : aco_opcode::image_store_mip;
@@ -6030,7 +6030,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
 
    if (dim == GLSL_SAMPLER_DIM_BUF) {
       Temp vindex = emit_extract_vector(ctx, get_ssa_temp(ctx, instr->src[1].ssa), 0, v1);
-      Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true, true);
+      Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, nullptr, true);
       //assert(ctx->options->chip_class < GFX9 && "GFX9 stride size workaround not yet implemented.");
       aco_ptr<MUBUF_instruction> mubuf{create_instruction<MUBUF_instruction>(
          is_64bit ? buf_op64 : buf_op, Format::MUBUF, 4, return_previous ? 1 : 0)};
@@ -6052,7 +6052,7 @@ void visit_image_atomic(isel_context *ctx, nir_intrinsic_instr *instr)
    }
 
    std::vector<Temp> coords = get_image_coords(ctx, instr, type);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true, true);
+   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, nullptr, true);
    Definition def = return_previous ? Definition(dst) : Definition();
    MIMG_instruction *mimg = emit_mimg(bld, image_op, def, resource,
                                       Operand(s4), coords, 0, Operand(data));
@@ -6106,7 +6106,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    Builder bld(ctx->program, ctx->block);
 
    if (glsl_get_sampler_dim(type) == GLSL_SAMPLER_DIM_BUF) {
-      Temp desc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, NULL, true, false);
+      Temp desc = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_BUFFER, NULL, false);
       return get_buffer_size(ctx, desc, get_ssa_temp(ctx, &instr->dest.ssa));
    }
 
@@ -6115,7 +6115,7 @@ void visit_image_size(isel_context *ctx, nir_intrinsic_instr *instr)
    std::vector<Temp> lod{bld.copy(bld.def(v1), Operand(0u))};
 
    /* Resource */
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, NULL, true, false);
+   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, NULL, false);
 
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
 
@@ -6180,7 +6180,7 @@ void visit_image_samples(isel_context *ctx, nir_intrinsic_instr *instr)
 {
    Builder bld(ctx->program, ctx->block);
    Temp dst = get_ssa_temp(ctx, &instr->dest.ssa);
-   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, NULL, true, false);
+   Temp resource = get_sampler_desc(ctx, nir_instr_as_deref(instr->src[0].ssa->parent_instr), ACO_DESC_IMAGE, NULL, false);
    get_image_samples(ctx, Definition(dst), resource);
 }
 
@@ -8584,16 +8584,16 @@ void tex_fetch_ptrs(isel_context *ctx, nir_tex_instr *instr,
       assert(instr->op != nir_texop_txf_ms &&
              instr->op != nir_texop_samples_identical);
       assert(instr->sampler_dim  != GLSL_SAMPLER_DIM_BUF);
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, (aco_descriptor_type)(ACO_DESC_PLANE_0 + plane), instr, false, false);
+      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, (aco_descriptor_type)(ACO_DESC_PLANE_0 + plane), instr, false);
    } else if (instr->sampler_dim  == GLSL_SAMPLER_DIM_BUF) {
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_BUFFER, instr, false, false);
+      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_BUFFER, instr, false);
    } else if (instr->op == nir_texop_fragment_mask_fetch) {
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false, false);
+      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false);
    } else {
-      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_IMAGE, instr, false, false);
+      *res_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_IMAGE, instr, false);
    }
    if (samp_ptr) {
-      *samp_ptr = get_sampler_desc(ctx, sampler_deref_instr, ACO_DESC_SAMPLER, instr, false, false);
+      *samp_ptr = get_sampler_desc(ctx, sampler_deref_instr, ACO_DESC_SAMPLER, instr, false);
 
       if (instr->sampler_dim < GLSL_SAMPLER_DIM_RECT && ctx->options->chip_class < GFX8) {
          /* fix sampler aniso on SI/CI: samp[0] = samp[0] & img[7] */
@@ -8619,7 +8619,7 @@ void tex_fetch_ptrs(isel_context *ctx, nir_tex_instr *instr,
    }
    if (fmask_ptr && (instr->op == nir_texop_txf_ms ||
                      instr->op == nir_texop_samples_identical))
-      *fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false, false);
+      *fmask_ptr = get_sampler_desc(ctx, texture_deref_instr, ACO_DESC_FMASK, instr, false);
 }
 
 void build_cube_select(isel_context *ctx, Temp ma, Temp id, Temp deriv,
