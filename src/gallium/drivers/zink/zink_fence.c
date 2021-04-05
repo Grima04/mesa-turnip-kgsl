@@ -201,7 +201,8 @@ zink_fence_finish(struct zink_screen *screen, struct pipe_context *pctx, struct 
    bool tc_finish = tc_fence_finish(ctx, mfence, &timeout_ns);
    struct zink_fence *fence = mfence->fence;
    if (!tc_finish || (fence && !fence->submitted))
-      return fence ? p_atomic_read(&fence->completed) : false;
+      return zink_screen_check_last_finished(screen, mfence->batch_id) ? true :
+             (fence ? p_atomic_read(&fence->completed) : false);
 
    /* this was an invalid flush, just return completed */
    if (!mfence->fence)
