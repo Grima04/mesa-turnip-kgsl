@@ -4575,6 +4575,13 @@ static void visit_tex(struct ac_nir_context *ctx, nir_tex_instr *instr)
       }
    }
 
+   /* Set TRUNC_COORD=0 for textureGather(). */
+   if (instr->op == nir_texop_tg4) {
+      LLVMValueRef dword0 = LLVMBuildExtractElement(ctx->ac.builder, args.sampler, ctx->ac.i32_0, "");
+      dword0 = LLVMBuildAnd(ctx->ac.builder, dword0, LLVMConstInt(ctx->ac.i32, C_008F30_TRUNC_COORD, 0), "");
+      args.sampler = LLVMBuildInsertElement(ctx->ac.builder, args.sampler, dword0, ctx->ac.i32_0, "");
+   }
+
    assert(instr->dest.is_ssa);
    args.d16 = instr->dest.ssa.bit_size == 16;
    args.tfe = instr->is_sparse;
