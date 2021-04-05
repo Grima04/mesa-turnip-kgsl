@@ -413,6 +413,7 @@ nvc0_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_BLEND_EQUATION_ADVANCED:
    case PIPE_CAP_NO_CLIP_ON_COPY_TEX:
    case PIPE_CAP_DEVICE_PROTECTED_CONTENT:
+   case PIPE_CAP_SAMPLER_REDUCTION_MINMAX_ARB:
       return 0;
 
    case PIPE_CAP_VENDOR_ID:

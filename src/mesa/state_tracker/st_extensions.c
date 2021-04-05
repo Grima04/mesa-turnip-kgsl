@@ -811,6 +811,7 @@ void st_init_extensions(struct pipe_screen *screen,
       { o(ARB_spirv_extensions),             PIPE_CAP_GL_SPIRV                         },
       { o(ARB_texture_buffer_object),        PIPE_CAP_TEXTURE_BUFFER_OBJECTS           },
       { o(ARB_texture_cube_map_array),       PIPE_CAP_CUBE_MAP_ARRAY                   },
+      { o(ARB_texture_filter_minmax),        PIPE_CAP_SAMPLER_REDUCTION_MINMAX_ARB     },
       { o(ARB_texture_gather),               PIPE_CAP_MAX_TEXTURE_GATHER_COMPONENTS    },
       { o(ARB_texture_mirror_clamp_to_edge), PIPE_CAP_TEXTURE_MIRROR_CLAMP_TO_EDGE     },
       { o(ARB_texture_multisample),          PIPE_CAP_TEXTURE_MULTISAMPLE              },
@@ -1138,6 +1139,10 @@ void st_init_extensions(struct pipe_screen *screen,
          extension_table[cap_mapping[i].extension_offset] = GL_TRUE;
       }
    }
+
+   /* EXT implies ARB here */
+   if (extensions->EXT_texture_filter_minmax)
+      extensions->ARB_texture_filter_minmax = GL_TRUE;
 
    /* Expose the extensions which directly correspond to gallium formats. */
    init_format_extensions(screen, extensions, rendertarget_mapping,

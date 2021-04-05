@@ -597,7 +597,8 @@ set_tex_parameteri(struct gl_context *ctx,
       goto invalid_pname;
 
    case GL_TEXTURE_REDUCTION_MODE_EXT:
-      if (ctx->Extensions.EXT_texture_filter_minmax) {
+      if (ctx->Extensions.EXT_texture_filter_minmax ||
+          _mesa_has_ARB_texture_filter_minmax(ctx)) {
          GLenum mode = params[0];
 
          if (!_mesa_target_allows_setting_sampler_parameters(texObj->Target))
@@ -2377,7 +2378,8 @@ get_tex_parameterfv(struct gl_context *ctx,
          break;
 
       case GL_TEXTURE_REDUCTION_MODE_EXT:
-         if (!ctx->Extensions.EXT_texture_filter_minmax)
+         if (!ctx->Extensions.EXT_texture_filter_minmax &&
+             !_mesa_has_ARB_texture_filter_minmax(ctx))
             goto invalid_pname;
          *params = (GLfloat) obj->Sampler.Attrib.ReductionMode;
          break;
@@ -2649,7 +2651,8 @@ get_tex_parameteriv(struct gl_context *ctx,
          break;
 
       case GL_TEXTURE_REDUCTION_MODE_EXT:
-         if (!ctx->Extensions.EXT_texture_filter_minmax)
+         if (!ctx->Extensions.EXT_texture_filter_minmax &&
+             !_mesa_has_ARB_texture_filter_minmax(ctx))
             goto invalid_pname;
          *params = obj->Sampler.Attrib.ReductionMode;
          break;

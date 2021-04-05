@@ -4392,6 +4392,7 @@ struct gl_extensions
    GLboolean ARB_texture_env_crossbar;
    GLboolean ARB_texture_env_dot3;
    GLboolean ARB_texture_filter_anisotropic;
+   GLboolean ARB_texture_filter_minmax;
    GLboolean ARB_texture_float;
    GLboolean ARB_texture_gather;
    GLboolean ARB_texture_mirror_clamp_to_edge;
