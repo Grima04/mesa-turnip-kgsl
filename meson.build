@@ -1849,6 +1849,16 @@ dep_xshmfence = null_dep
 dep_xcb_xrandr = null_dep
 dep_xcb_shm = null_dep
 dep_xlib_xrandr = null_dep
+dep_openmp = null_dep
+
+# Even if we find OpenMP, Gitlab CI fails to link with gcc/i386 and clang/anyarch.
+if host_machine.cpu_family() == 'x86_64' and cc.get_id() == 'gcc'
+  dep_openmp = dependency('openmp')
+  if dep_openmp.found()
+    pre_args += ['-DHAVE_OPENMP']
+  endif
+endif
+
 if with_platform_x11
   if with_glx == 'xlib' or with_glx == 'gallium-xlib'
     dep_x11 = dependency('x11')
