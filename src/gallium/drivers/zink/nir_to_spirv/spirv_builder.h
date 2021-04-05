@@ -191,6 +191,9 @@ void
 spirv_builder_emit_interlock(struct spirv_builder *b, bool end);
 
 SpvId
+spirv_builder_emit_unop_const(struct spirv_builder *b, SpvOp op, SpvId result_type, uint64_t operand);
+
+SpvId
 spirv_builder_emit_unop(struct spirv_builder *b, SpvOp op, SpvId result_type,
                         SpvId operand);
 

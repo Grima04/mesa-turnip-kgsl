@@ -467,6 +467,19 @@ spirv_builder_emit_interlock(struct spirv_builder *b, bool end)
    spirv_buffer_emit_word(&b->instructions, (end ? SpvOpEndInvocationInterlockEXT : SpvOpBeginInvocationInterlockEXT) | (1 << 16));
 }
 
+
+SpvId
+spirv_builder_emit_unop_const(struct spirv_builder *b, SpvOp op, SpvId result_type, uint64_t operand)
+{
+   SpvId result = spirv_builder_new_id(b);
+   spirv_buffer_prepare(&b->instructions, b->mem_ctx, 4);
+   spirv_buffer_emit_word(&b->instructions, op | (4 << 16));
+   spirv_buffer_emit_word(&b->instructions, result_type);
+   spirv_buffer_emit_word(&b->instructions, result);
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, operand));
+   return result;
+}
+
 SpvId
 spirv_builder_emit_unop(struct spirv_builder *b, SpvOp op, SpvId result_type,
                         SpvId operand)
