@@ -3,7 +3,6 @@ glx@glx-multi-window-single-context,Fail
 glx@glx-multithread-buffer,Fail
 glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
-glx@glx-tfp,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
 glx@glx_arb_create_context_es2_profile@invalid opengl es version,Fail
@@ -29,7 +28,6 @@ spec@!opengl 1.1@depthstencil-default_fb-drawpixels-24_8 samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=2,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-32f_24_8_rev samples=4,Fail
 spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=2,Fail
-spec@!opengl 1.1@depthstencil-default_fb-drawpixels-float-and-ushort samples=4,Fail
 spec@!opengl 1.1@getteximage-depth,Fail
 spec@!opengl 1.1@getteximage-formats,Fail
 spec@!opengl 1.1@linestipple,Fail

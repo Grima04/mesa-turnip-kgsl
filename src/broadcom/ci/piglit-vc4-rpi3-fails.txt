@@ -9,7 +9,6 @@ glx@glx-multithread-buffer,Fail
 glx@glx-multithread-texture,Timeout
 glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
-glx@glx-tfp,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-depth,Crash
 glx@glx-visuals-stencil -pixmap,Crash
@@ -106,9 +105,6 @@ spec@!opengl 2.1@minmax,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl es 2.0@draw_buffers_gles2,Fail
-spec@amd_performance_monitor@api,Crash
-spec@amd_performance_monitor@measure,Crash
-spec@amd_performance_monitor@vc4,Crash
 spec@arb_arrays_of_arrays@execution@glsl-arrays-copy-size-mismatch,Fail
 spec@arb_depth_texture@depth-level-clamp,Fail
 spec@arb_depth_texture@texwrap formats,Fail
@@ -394,6 +390,10 @@ spec@glsl-1.10@execution@samplers@glsl-fs-sampler-numbering-3,Fail
 spec@glsl-1.10@execution@samplers@in-parameter-array,Fail
 spec@glsl-1.10@execution@texture3d,Fail
 spec@glsl-1.20@built-in constants,Fail
+spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
+spec@glsl-1.20@execution@fs-nan-builtin-min,Fail
+spec@glsl-1.20@execution@vs-nan-builtin-max,Fail
+spec@glsl-1.20@execution@vs-nan-builtin-min,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1d,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1dshadow,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 2d,Fail

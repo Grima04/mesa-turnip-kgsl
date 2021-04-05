@@ -1,2 +1,3 @@
 dEQP-VK.synchronization.op.single_queue.binary_semaphore.write_copy_buffer_read_ssbo_compute_indirect.buffer_16384
+dEQP-VK.synchronization.op.single_queue.binary_semaphore.write_fill_buffer_read_vertex_input.buffer_16384
 dEQP-VK.synchronization.op.single_queue.binary_semaphore.write_update_buffer_read_vertex_input.buffer_16384
