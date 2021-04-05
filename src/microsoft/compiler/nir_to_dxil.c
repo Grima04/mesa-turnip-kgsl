@@ -2457,9 +2457,11 @@ emit_store_output(struct ntd_context *ctx, nir_intrinsic_instr *intr,
                   nir_variable *output)
 {
    nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(output->type));
+   enum overload_type overload = DXIL_F32;
    if (output->data.compact)
       out_type = nir_type_float;
-   enum overload_type overload = get_overload(out_type, 32);
+   else
+      overload = get_overload(out_type, glsl_get_bit_size(output->type));
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.storeOutput", overload);
 
    if (!func)
@@ -2529,7 +2531,7 @@ emit_load_input_array(struct ntd_context *ctx, nir_intrinsic_instr *intr, nir_va
    }
 
    nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(glsl_get_array_element(var->type)));
-   enum overload_type overload = get_overload(out_type, 32);
+   enum overload_type overload = get_overload(out_type, glsl_get_bit_size(glsl_get_array_element(var->type)));
 
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.loadInput", overload);
 
@@ -2605,7 +2607,7 @@ emit_load_input_interpolated(struct ntd_context *ctx, nir_intrinsic_instr *intr,
    const struct dxil_value *vertex_id = dxil_module_get_undef(&ctx->mod, int32_type);
 
    nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(var->type));
-   enum overload_type overload = get_overload(out_type, 32);
+   enum overload_type overload = get_overload(out_type, glsl_get_bit_size(var->type));
 
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.loadInput", overload);
 
@@ -2636,7 +2638,7 @@ emit_load_input_flat(struct ntd_context *ctx, nir_intrinsic_instr *intr, nir_var
    const struct dxil_value *vertex_id = dxil_module_get_int8_const(&ctx->mod, ctx->opts->provoking_vertex);
 
    nir_alu_type out_type = nir_get_nir_type_for_glsl_base_type(glsl_get_base_type(var->type));
-   enum overload_type overload = get_overload(out_type, 32);
+   enum overload_type overload = get_overload(out_type, glsl_get_bit_size(var->type));
 
    const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.attributeAtVertex", overload);
    if (!func)
