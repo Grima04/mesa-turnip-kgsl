@@ -121,11 +121,11 @@ ensure_device_info(int fd)
 {
    /* We can't do this at open time as we're not yet authenticated. */
    if (device == 0) {
-      fail_if(!gen_get_device_info_from_fd(fd, &devinfo),
+      fail_if(!intel_get_device_info_from_fd(fd, &devinfo),
               "failed to identify chipset.\n");
       device = devinfo.chipset_id;
    } else if (devinfo.ver == 0) {
-      fail_if(!gen_get_device_info_from_pci_id(device, &devinfo),
+      fail_if(!intel_get_device_info_from_pci_id(device, &devinfo),
               "failed to identify chipset.\n");
    }
 }

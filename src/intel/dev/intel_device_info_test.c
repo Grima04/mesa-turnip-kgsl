@@ -21,7 +21,7 @@ main(int argc, char *argv[])
    for (uint32_t i = 0; i < ARRAY_SIZE(chipsets); i++) {
       struct intel_device_info devinfo = { 0, };
 
-      assert(gen_get_device_info_from_pci_id(chipsets[i].pci_id, &devinfo));
+      assert(intel_get_device_info_from_pci_id(chipsets[i].pci_id, &devinfo));
 
       assert(devinfo.ver != 0);
       assert(devinfo.num_eu_per_subslice != 0);

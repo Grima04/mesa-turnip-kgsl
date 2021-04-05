@@ -368,7 +368,7 @@ drm_shim_driver_init(void)
 
    /* Use SKL if nothing is specified. */
    i915.device_id = intel_device_name_to_pci_device_id(user_platform ?: "skl");
-   if (!gen_get_device_info_from_pci_id(i915.device_id, &i915.devinfo))
+   if (!intel_get_device_info_from_pci_id(i915.device_id, &i915.devinfo))
       return;
 
    shim_device.bus_type = DRM_BUS_PCI;

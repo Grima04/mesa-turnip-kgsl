@@ -663,12 +663,12 @@ anv_physical_device_try_create(struct anv_instance *instance,
    }
 
    struct intel_device_info devinfo;
-   if (!gen_get_device_info_from_fd(fd, &devinfo)) {
+   if (!intel_get_device_info_from_fd(fd, &devinfo)) {
       result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
       goto fail_fd;
    }
 
-   const char *device_name = gen_get_device_name(devinfo.chipset_id);
+   const char *device_name = intel_get_device_name(devinfo.chipset_id);
 
    if (devinfo.is_haswell) {
       mesa_logw("Haswell Vulkan support is incomplete");

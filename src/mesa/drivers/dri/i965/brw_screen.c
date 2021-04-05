@@ -2538,7 +2538,7 @@ __DRIconfig **brw_init_screen(__DRIscreen *dri_screen)
    screen->driScrnPriv = dri_screen;
    dri_screen->driverPrivate = (void *) screen;
 
-   if (!gen_get_device_info_from_fd(dri_screen->fd, &screen->devinfo))
+   if (!intel_get_device_info_from_fd(dri_screen->fd, &screen->devinfo))
       return NULL;
 
    const struct intel_device_info *devinfo = &screen->devinfo;

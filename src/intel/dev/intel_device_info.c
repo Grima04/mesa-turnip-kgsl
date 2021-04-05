@@ -1222,8 +1222,8 @@ getparam(int fd, uint32_t param, int *value)
 }
 
 bool
-gen_get_device_info_from_pci_id(int pci_id,
-                                struct intel_device_info *devinfo)
+intel_get_device_info_from_pci_id(int pci_id,
+                                  struct intel_device_info *devinfo)
 {
    switch (pci_id) {
 #undef CHIPSET
@@ -1285,7 +1285,7 @@ gen_get_device_info_from_pci_id(int pci_id,
 }
 
 const char *
-gen_get_device_name(int devid)
+intel_get_device_name(int devid)
 {
    switch (devid) {
 #undef CHIPSET
@@ -1404,7 +1404,7 @@ gen_has_get_tiling(int fd)
 }
 
 bool
-gen_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
+intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
 {
    int devid = 0;
 
@@ -1430,14 +1430,14 @@ gen_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    }
 
    if (devid > 0) {
-      if (!gen_get_device_info_from_pci_id(devid, devinfo))
+      if (!intel_get_device_info_from_pci_id(devid, devinfo))
          return false;
       devinfo->no_hw = true;
    } else {
       /* query the device id */
       if (!getparam(fd, I915_PARAM_CHIPSET_ID, &devid))
          return false;
-      if (!gen_get_device_info_from_pci_id(devid, devinfo))
+      if (!intel_get_device_info_from_pci_id(devid, devinfo))
          return false;
       devinfo->no_hw = false;
    }

@@ -145,7 +145,7 @@ iris_get_name(struct pipe_screen *pscreen)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
    static char buf[128];
-   const char *name = gen_get_device_name(screen->pci_id);
+   const char *name = intel_get_device_name(screen->pci_id);
 
    if (!name)
       name = "Intel Unknown";
@@ -781,7 +781,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    if (!screen)
       return NULL;
 
-   if (!gen_get_device_info_from_fd(fd, &screen->devinfo))
+   if (!intel_get_device_info_from_fd(fd, &screen->devinfo))
       return NULL;
    screen->pci_id = screen->devinfo.chipset_id;
    screen->no_hw = screen->devinfo.no_hw;

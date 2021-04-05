@@ -64,7 +64,7 @@ main(int argc, char *argv[])
       if (fd < 0)
          continue;
 
-      bool success = gen_get_device_info_from_fd(fd, &devinfo);
+      bool success = intel_get_device_info_from_fd(fd, &devinfo);
       close(fd);
 
       if (!success)
@@ -72,7 +72,7 @@ main(int argc, char *argv[])
 
       fprintf(stdout, "%s:\n", path);
 
-      fprintf(stdout, "   name: %s\n", gen_get_device_name(devinfo.chipset_id));
+      fprintf(stdout, "   name: %s\n", intel_get_device_name(devinfo.chipset_id));
       fprintf(stdout, "   gen: %u\n", devinfo.ver);
       fprintf(stdout, "   PCI id: 0x%x\n", devinfo.chipset_id);
       fprintf(stdout, "   revision: %u\n", devinfo.revision);

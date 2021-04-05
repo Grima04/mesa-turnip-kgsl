@@ -343,7 +343,7 @@ intel_device_info_num_dual_subslices(UNUSED
 }
 
 int intel_device_name_to_pci_device_id(const char *name);
-const char *gen_get_device_name(int devid);
+const char *intel_get_device_name(int devid);
 
 static inline uint64_t
 intel_device_info_timebase_scale(const struct intel_device_info *devinfo,
@@ -352,9 +352,9 @@ intel_device_info_timebase_scale(const struct intel_device_info *devinfo,
    return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
 }
 
-bool gen_get_device_info_from_fd(int fh, struct intel_device_info *devinfo);
-bool gen_get_device_info_from_pci_id(int pci_id,
-                                     struct intel_device_info *devinfo);
+bool intel_get_device_info_from_fd(int fh, struct intel_device_info *devinfo);
+bool intel_get_device_info_from_pci_id(int pci_id,
+                                       struct intel_device_info *devinfo);
 int gen_get_aperture_size(int fd, uint64_t *size);
 
 #ifdef __cplusplus
