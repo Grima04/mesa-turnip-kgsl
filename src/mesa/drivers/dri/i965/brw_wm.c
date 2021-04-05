@@ -43,7 +43,7 @@
 #include "util/u_math.h"
 
 static void
-assign_fs_binding_table_offsets(const struct gen_device_info *devinfo,
+assign_fs_binding_table_offsets(const struct intel_device_info *devinfo,
                                 const struct gl_program *prog,
                                 const struct brw_wm_prog_key *key,
                                 struct brw_wm_prog_data *prog_data)
@@ -74,7 +74,7 @@ brw_codegen_wm_prog(struct brw_context *brw,
                     struct brw_wm_prog_key *key,
                     struct brw_vue_map *vue_map)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    void *mem_ctx = ralloc_context(NULL);
    struct brw_wm_prog_data prog_data;
    const GLuint *program;
@@ -201,7 +201,7 @@ brw_populate_sampler_prog_key_data(struct gl_context *ctx,
                                    struct brw_sampler_prog_key_data *key)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    GLbitfield mask = prog->SamplersUsed;
 
    while (mask) {
@@ -360,7 +360,7 @@ brw_populate_base_prog_key(struct gl_context *ctx,
 }
 
 void
-brw_populate_default_base_prog_key(const struct gen_device_info *devinfo,
+brw_populate_default_base_prog_key(const struct intel_device_info *devinfo,
                                    const struct brw_program *prog,
                                    struct brw_base_prog_key *key)
 {
@@ -393,7 +393,7 @@ brw_wm_state_dirty(const struct brw_context *brw)
 void
 brw_wm_populate_key(struct brw_context *brw, struct brw_wm_prog_key *key)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    /* BRW_NEW_FRAGMENT_PROGRAM */
    const struct gl_program *prog = brw->programs[MESA_SHADER_FRAGMENT];
@@ -567,7 +567,7 @@ brw_wm_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_wm_prog_key *key,
                             struct gl_program *prog)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
 
    memset(key, 0, sizeof(*key));
 
@@ -606,7 +606,7 @@ bool
 brw_fs_precompile(struct gl_context *ctx, struct gl_program *prog)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_wm_prog_key key;
 
    struct brw_program *bfp = brw_program(prog);

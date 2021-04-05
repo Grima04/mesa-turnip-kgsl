@@ -128,7 +128,7 @@ public:
 
    int fd;
    int ctx_id;
-   gen_device_info devinfo;
+   intel_device_info devinfo;
 
    uint32_t batch_bo_handle;
 #if GFX_VER >= 8

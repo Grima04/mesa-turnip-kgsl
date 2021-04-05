@@ -508,7 +508,7 @@ character_data(void *data, const XML_Char *s, int len)
 }
 
 static int
-devinfo_to_gen(const struct gen_device_info *devinfo, bool x10)
+devinfo_to_gen(const struct intel_device_info *devinfo, bool x10)
 {
    if (devinfo->is_baytrail || devinfo->is_haswell) {
       return devinfo->ver * 10 + 5;
@@ -595,7 +595,7 @@ intel_spec_init(void)
 }
 
 struct intel_spec *
-intel_spec_load(const struct gen_device_info *devinfo)
+intel_spec_load(const struct intel_device_info *devinfo)
 {
    struct parser_context ctx;
    void *buf;
@@ -735,7 +735,7 @@ intel_spec_load_filename(const char *filename)
 }
 
 struct intel_spec *
-intel_spec_load_from_path(const struct gen_device_info *devinfo,
+intel_spec_load_from_path(const struct intel_device_info *devinfo,
                           const char *path)
 {
    size_t filename_len = strlen(path) + 20;

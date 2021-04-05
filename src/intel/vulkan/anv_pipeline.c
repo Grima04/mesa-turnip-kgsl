@@ -362,7 +362,7 @@ static const uint32_t vk_to_gen_primitive_type[] = {
 };
 
 static void
-populate_sampler_prog_key(const struct gen_device_info *devinfo,
+populate_sampler_prog_key(const struct intel_device_info *devinfo,
                           struct brw_sampler_prog_key_data *key)
 {
    /* Almost all multisampled textures are compressed.  The only time when we
@@ -392,7 +392,7 @@ populate_sampler_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_base_prog_key(const struct gen_device_info *devinfo,
+populate_base_prog_key(const struct intel_device_info *devinfo,
                        VkPipelineShaderStageCreateFlags flags,
                        bool robust_buffer_acccess,
                        struct brw_base_prog_key *key)
@@ -408,7 +408,7 @@ populate_base_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_vs_prog_key(const struct gen_device_info *devinfo,
+populate_vs_prog_key(const struct intel_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
                      struct brw_vs_prog_key *key)
@@ -423,7 +423,7 @@ populate_vs_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_tcs_prog_key(const struct gen_device_info *devinfo,
+populate_tcs_prog_key(const struct intel_device_info *devinfo,
                       VkPipelineShaderStageCreateFlags flags,
                       bool robust_buffer_acccess,
                       unsigned input_vertices,
@@ -437,7 +437,7 @@ populate_tcs_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_tes_prog_key(const struct gen_device_info *devinfo,
+populate_tes_prog_key(const struct intel_device_info *devinfo,
                       VkPipelineShaderStageCreateFlags flags,
                       bool robust_buffer_acccess,
                       struct brw_tes_prog_key *key)
@@ -448,7 +448,7 @@ populate_tes_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_gs_prog_key(const struct gen_device_info *devinfo,
+populate_gs_prog_key(const struct intel_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
                      struct brw_gs_prog_key *key)
@@ -459,7 +459,7 @@ populate_gs_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_wm_prog_key(const struct gen_device_info *devinfo,
+populate_wm_prog_key(const struct intel_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
                      const struct anv_subpass *subpass,
@@ -516,7 +516,7 @@ populate_wm_prog_key(const struct gen_device_info *devinfo,
 }
 
 static void
-populate_cs_prog_key(const struct gen_device_info *devinfo,
+populate_cs_prog_key(const struct intel_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
                      bool robust_buffer_acccess,
                      const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info,
@@ -1275,7 +1275,7 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
                                stages[stage].spec_info,
                                stages[stage].shader_sha1);
 
-      const struct gen_device_info *devinfo = &pipeline->base.device->info;
+      const struct intel_device_info *devinfo = &pipeline->base.device->info;
       switch (stage) {
       case MESA_SHADER_VERTEX:
          populate_vs_prog_key(devinfo, sinfo->flags,
@@ -2153,7 +2153,7 @@ anv_pipeline_validate_create_info(const VkGraphicsPipelineCreateInfo *info)
 void
 anv_pipeline_setup_l3_config(struct anv_pipeline *pipeline, bool needs_slm)
 {
-   const struct gen_device_info *devinfo = &pipeline->device->info;
+   const struct intel_device_info *devinfo = &pipeline->device->info;
 
    const struct intel_l3_weights w =
       intel_get_default_l3_weights(devinfo, true, needs_slm);

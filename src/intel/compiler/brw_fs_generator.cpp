@@ -54,7 +54,7 @@ brw_file_from_reg(fs_reg *reg)
 }
 
 static struct brw_reg
-brw_reg_from_fs_reg(const struct gen_device_info *devinfo, fs_inst *inst,
+brw_reg_from_fs_reg(const struct intel_device_info *devinfo, fs_inst *inst,
                     fs_reg *reg, bool compressed)
 {
    struct brw_reg brw_reg;
@@ -550,7 +550,7 @@ fs_generator::generate_mov_indirect(fs_inst *inst,
 
       if (type_sz(reg.type) > 4 &&
           ((devinfo->ver == 7 && !devinfo->is_haswell) ||
-           devinfo->is_cherryview || gen_device_info_is_9lp(devinfo) ||
+           devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
            !devinfo->has_64bit_float || devinfo->verx10 >= 125)) {
          /* IVB has an issue (which we found empirically) where it reads two
           * address register components per channel for indirectly addressed
@@ -715,7 +715,7 @@ fs_generator::generate_shuffle(fs_inst *inst,
 
          if (type_sz(src.type) > 4 &&
              ((devinfo->ver == 7 && !devinfo->is_haswell) ||
-              devinfo->is_cherryview || gen_device_info_is_9lp(devinfo) ||
+              devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
               !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
              * two address register components per channel for indirectly
@@ -2538,7 +2538,7 @@ fs_generator::generate_code(const cfg_t *cfg, int dispatch_width,
          struct brw_reg strided = stride(suboffset(src[0], component),
                                          vstride, width, 0);
          if (type_sz(src[0].type) > 4 &&
-             (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo) ||
+             (devinfo->is_cherryview || intel_device_info_is_9lp(devinfo) ||
               !devinfo->has_64bit_float)) {
             /* IVB has an issue (which we found empirically) where it reads
              * two address register components per channel for indirectly

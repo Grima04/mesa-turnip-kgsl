@@ -53,7 +53,7 @@
 extern "C" {
 #endif
 
-struct gen_device_info;
+struct intel_device_info;
 
 /** Number of general purpose registers (VS, WM, etc) */
 #define BRW_MAX_GRF 128

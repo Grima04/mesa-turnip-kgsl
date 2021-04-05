@@ -51,7 +51,7 @@
 extern "C" {
 #endif
 
-struct gen_device_info;
+struct intel_device_info;
 struct brw_image_param;
 
 #ifndef ISL_GFX_VER
@@ -1040,7 +1040,7 @@ typedef enum {
 } isl_memcpy_type;
 
 struct isl_device {
-   const struct gen_device_info *info;
+   const struct intel_device_info *info;
    bool use_separate_stencil;
    bool has_bit6_swizzling;
 
@@ -1525,7 +1525,7 @@ extern const struct isl_format_layout isl_format_layouts[];
 
 void
 isl_device_init(struct isl_device *dev,
-                const struct gen_device_info *info,
+                const struct intel_device_info *info,
                 bool has_bit6_swizzling);
 
 isl_sample_count_mask_t ATTRIBUTE_CONST
@@ -1549,28 +1549,28 @@ isl_format_get_name(enum isl_format fmt)
 
 enum isl_format isl_format_for_pipe_format(enum pipe_format pf);
 
-bool isl_format_supports_rendering(const struct gen_device_info *devinfo,
+bool isl_format_supports_rendering(const struct intel_device_info *devinfo,
                                    enum isl_format format);
-bool isl_format_supports_alpha_blending(const struct gen_device_info *devinfo,
+bool isl_format_supports_alpha_blending(const struct intel_device_info *devinfo,
                                         enum isl_format format);
-bool isl_format_supports_sampling(const struct gen_device_info *devinfo,
+bool isl_format_supports_sampling(const struct intel_device_info *devinfo,
                                   enum isl_format format);
-bool isl_format_supports_filtering(const struct gen_device_info *devinfo,
+bool isl_format_supports_filtering(const struct intel_device_info *devinfo,
                                    enum isl_format format);
-bool isl_format_supports_vertex_fetch(const struct gen_device_info *devinfo,
+bool isl_format_supports_vertex_fetch(const struct intel_device_info *devinfo,
                                       enum isl_format format);
-bool isl_format_supports_typed_writes(const struct gen_device_info *devinfo,
+bool isl_format_supports_typed_writes(const struct intel_device_info *devinfo,
                                       enum isl_format format);
-bool isl_format_supports_typed_reads(const struct gen_device_info *devinfo,
+bool isl_format_supports_typed_reads(const struct intel_device_info *devinfo,
                                      enum isl_format format);
-bool isl_format_supports_ccs_d(const struct gen_device_info *devinfo,
+bool isl_format_supports_ccs_d(const struct intel_device_info *devinfo,
                                enum isl_format format);
-bool isl_format_supports_ccs_e(const struct gen_device_info *devinfo,
+bool isl_format_supports_ccs_e(const struct intel_device_info *devinfo,
                                enum isl_format format);
-bool isl_format_supports_multisampling(const struct gen_device_info *devinfo,
+bool isl_format_supports_multisampling(const struct intel_device_info *devinfo,
                                        enum isl_format format);
 
-bool isl_formats_are_ccs_e_compatible(const struct gen_device_info *devinfo,
+bool isl_formats_are_ccs_e_compatible(const struct intel_device_info *devinfo,
                                       enum isl_format format1,
                                       enum isl_format format2);
 uint8_t isl_format_get_aux_map_encoding(enum isl_format format);
@@ -1723,14 +1723,14 @@ void isl_color_value_unpack(union isl_color_value *value,
 bool isl_is_storage_image_format(enum isl_format fmt);
 
 enum isl_format
-isl_lower_storage_image_format(const struct gen_device_info *devinfo,
+isl_lower_storage_image_format(const struct intel_device_info *devinfo,
                                enum isl_format fmt);
 
 /* Returns true if this hardware supports typed load/store on a format with
  * the same size as the given format.
  */
 bool
-isl_has_matching_typed_storage_image_format(const struct gen_device_info *devinfo,
+isl_has_matching_typed_storage_image_format(const struct intel_device_info *devinfo,
                                             enum isl_format fmt);
 
 static inline enum isl_tiling
@@ -1914,7 +1914,7 @@ isl_drm_modifier_get_default_aux_state(uint64_t modifier)
  * such as VkImageDrmFormatModifierListCreateInfoEXT.
  */
 uint32_t
-isl_drm_modifier_get_score(const struct gen_device_info *devinfo,
+isl_drm_modifier_get_score(const struct intel_device_info *devinfo,
                            uint64_t modifier);
 
 struct isl_extent2d ATTRIBUTE_CONST
@@ -2018,7 +2018,7 @@ isl_swizzle_is_identity(struct isl_swizzle swizzle)
 }
 
 bool
-isl_swizzle_supports_rendering(const struct gen_device_info *devinfo,
+isl_swizzle_supports_rendering(const struct intel_device_info *devinfo,
                                struct isl_swizzle swizzle);
 
 struct isl_swizzle

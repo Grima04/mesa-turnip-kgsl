@@ -112,7 +112,7 @@ align_u32(uint32_t v, uint32_t a)
    return (v + a - 1) & ~(a - 1);
 }
 
-static struct gen_device_info devinfo = {0};
+static struct intel_device_info devinfo = {0};
 static int device = 0;
 static struct aub_file aub_file;
 
@@ -455,7 +455,7 @@ maybe_init(int fd)
          device_override = true;
       } else if (!strcmp(key, "platform")) {
          fail_if(device != 0, "Device/Platform override specified multiple times.\n");
-         device = gen_device_name_to_pci_device_id(value);
+         device = intel_device_name_to_pci_device_id(value);
          fail_if(device == -1, "Unknown platform '%s'\n", value);
          device_override = true;
       } else if (!strcmp(key, "file")) {

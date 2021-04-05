@@ -120,7 +120,7 @@ namespace {
     * instructions.
     */
    struct instruction_info {
-      instruction_info(const gen_device_info *devinfo, const fs_inst *inst) :
+      instruction_info(const intel_device_info *devinfo, const fs_inst *inst) :
          devinfo(devinfo), op(inst->opcode),
          td(inst->dst.type), sd(DIV_ROUND_UP(inst->size_written, REG_SIZE)),
          tx(get_exec_type(inst)), sx(0), ss(0),
@@ -150,7 +150,7 @@ namespace {
             tx = brw_int_type(8, tx == BRW_REGISTER_TYPE_D);
       }
 
-      instruction_info(const gen_device_info *devinfo,
+      instruction_info(const intel_device_info *devinfo,
                        const vec4_instruction *inst) :
          devinfo(devinfo), op(inst->opcode),
          td(inst->dst.type), sd(DIV_ROUND_UP(inst->size_written, REG_SIZE)),
@@ -174,7 +174,7 @@ namespace {
       }
 
       /** Device information. */
-      const struct gen_device_info *devinfo;
+      const struct intel_device_info *devinfo;
       /** Instruction opcode. */
       opcode op;
       /** Destination type. */
@@ -289,7 +289,7 @@ namespace {
    const perf_desc
    instruction_desc(const instruction_info &info)
    {
-      const struct gen_device_info *devinfo = info.devinfo;
+      const struct intel_device_info *devinfo = info.devinfo;
 
       switch (info.op) {
       case BRW_OPCODE_SYNC:
@@ -1176,7 +1176,7 @@ namespace {
     * Return the dependency ID of a backend_reg, offset by \p delta GRFs.
     */
    dependency_id
-   reg_dependency_id(const gen_device_info *devinfo, const backend_reg &r,
+   reg_dependency_id(const intel_device_info *devinfo, const backend_reg &r,
                      const int delta)
    {
       if (r.file == VGRF) {
@@ -1262,7 +1262,7 @@ namespace {
     * instruction.
     */
    unsigned
-   accum_reg_of_channel(const gen_device_info *devinfo,
+   accum_reg_of_channel(const intel_device_info *devinfo,
                         const backend_instruction *inst,
                         brw_reg_type tx, unsigned i)
    {
@@ -1277,7 +1277,7 @@ namespace {
     * Model the performance behavior of an FS back-end instruction.
     */
    void
-   issue_fs_inst(state &st, const gen_device_info *devinfo,
+   issue_fs_inst(state &st, const intel_device_info *devinfo,
                  const backend_instruction *be_inst)
    {
       const fs_inst *inst = static_cast<const fs_inst *>(be_inst);
@@ -1397,7 +1397,7 @@ namespace {
     * Model the performance behavior of a VEC4 back-end instruction.
     */
    void
-   issue_vec4_instruction(state &st, const gen_device_info *devinfo,
+   issue_vec4_instruction(state &st, const intel_device_info *devinfo,
                           const backend_instruction *be_inst)
    {
       const vec4_instruction *inst =
@@ -1508,7 +1508,7 @@ namespace {
    void
    calculate_performance(performance &p, const backend_shader *s,
                          void (*issue_instruction)(
-                            state &, const gen_device_info *,
+                            state &, const intel_device_info *,
                             const backend_instruction *),
                          unsigned dispatch_width)
    {

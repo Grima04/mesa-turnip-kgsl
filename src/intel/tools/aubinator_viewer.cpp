@@ -61,7 +61,7 @@ struct aub_file {
    uint32_t idx_reg_write;
 
    /* Device state */
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
    struct intel_spec *spec;
 };
 

@@ -89,7 +89,7 @@ image_coord_is_in_bounds(nir_builder *b, nir_deref_instr *deref,
  * the hardware tiling format.
  */
 static nir_ssa_def *
-image_address(nir_builder *b, const struct gen_device_info *devinfo,
+image_address(nir_builder *b, const struct intel_device_info *devinfo,
               nir_deref_instr *deref, nir_ssa_def *coord)
 {
    if (glsl_get_sampler_dim(deref->type) == GLSL_SAMPLER_DIM_1D &&
@@ -259,7 +259,7 @@ get_format_info(enum isl_format fmt)
 }
 
 static nir_ssa_def *
-convert_color_for_load(nir_builder *b, const struct gen_device_info *devinfo,
+convert_color_for_load(nir_builder *b, const struct intel_device_info *devinfo,
                        nir_ssa_def *color,
                        enum isl_format image_fmt, enum isl_format lower_fmt,
                        unsigned dest_components)
@@ -362,7 +362,7 @@ expand_vec:
 
 static bool
 lower_image_load_instr(nir_builder *b,
-                       const struct gen_device_info *devinfo,
+                       const struct intel_device_info *devinfo,
                        nir_intrinsic_instr *intrin)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
@@ -446,7 +446,7 @@ lower_image_load_instr(nir_builder *b,
 }
 
 static nir_ssa_def *
-convert_color_for_store(nir_builder *b, const struct gen_device_info *devinfo,
+convert_color_for_store(nir_builder *b, const struct intel_device_info *devinfo,
                         nir_ssa_def *color,
                         enum isl_format image_fmt, enum isl_format lower_fmt)
 {
@@ -514,7 +514,7 @@ convert_color_for_store(nir_builder *b, const struct gen_device_info *devinfo,
 
 static bool
 lower_image_store_instr(nir_builder *b,
-                        const struct gen_device_info *devinfo,
+                        const struct intel_device_info *devinfo,
                         nir_intrinsic_instr *intrin)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
@@ -592,7 +592,7 @@ lower_image_store_instr(nir_builder *b,
 
 static bool
 lower_image_atomic_instr(nir_builder *b,
-                         const struct gen_device_info *devinfo,
+                         const struct intel_device_info *devinfo,
                          nir_intrinsic_instr *intrin)
 {
    if (devinfo->is_haswell || devinfo->ver >= 8)
@@ -627,7 +627,7 @@ lower_image_atomic_instr(nir_builder *b,
 
 static bool
 lower_image_size_instr(nir_builder *b,
-                       const struct gen_device_info *devinfo,
+                       const struct intel_device_info *devinfo,
                        nir_intrinsic_instr *intrin)
 {
    nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
@@ -676,7 +676,7 @@ lower_image_size_instr(nir_builder *b,
 
 bool
 brw_nir_lower_image_load_store(nir_shader *shader,
-                               const struct gen_device_info *devinfo,
+                               const struct intel_device_info *devinfo,
                                bool *uses_atomic_load_store)
 {
    bool progress = false;

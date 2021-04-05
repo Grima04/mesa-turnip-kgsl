@@ -85,7 +85,7 @@ aligned_bary_size(unsigned dispatch_width)
 static void
 brw_alloc_reg_set(struct brw_compiler *compiler, int dispatch_width)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    int base_reg_count = BRW_MAX_GRF;
    const int index = util_logbase2(dispatch_width / 8);
 
@@ -489,7 +489,7 @@ private:
 
    void *mem_ctx;
    fs_visitor *fs;
-   const gen_device_info *devinfo;
+   const intel_device_info *devinfo;
    const brw_compiler *compiler;
    const fs_live_variables &live;
    int live_instr_count;
@@ -884,7 +884,7 @@ void
 fs_reg_alloc::emit_unspill(const fs_builder &bld, fs_reg dst,
                            uint32_t spill_offset, unsigned count)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const unsigned reg_size = dst.component_size(bld.dispatch_width()) /
                              REG_SIZE;
    assert(count % reg_size == 0);
@@ -940,7 +940,7 @@ void
 fs_reg_alloc::emit_spill(const fs_builder &bld, fs_reg src,
                          uint32_t spill_offset, unsigned count)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const unsigned reg_size = src.component_size(bld.dispatch_width()) /
                              REG_SIZE;
    assert(count % reg_size == 0);

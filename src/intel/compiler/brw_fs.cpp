@@ -44,7 +44,7 @@
 
 using namespace brw;
 
-static unsigned get_lowered_simd_width(const struct gen_device_info *devinfo,
+static unsigned get_lowered_simd_width(const struct intel_device_info *devinfo,
                                        const fs_inst *inst);
 
 void
@@ -431,7 +431,7 @@ fs_inst::has_source_and_destination_hazard() const
 }
 
 bool
-fs_inst::can_do_source_mods(const struct gen_device_info *devinfo) const
+fs_inst::can_do_source_mods(const struct intel_device_info *devinfo) const
 {
    if (devinfo->ver == 6 && is_math())
       return false;
@@ -1092,7 +1092,7 @@ namespace {
 }
 
 unsigned
-fs_inst::flags_read(const gen_device_info *devinfo) const
+fs_inst::flags_read(const intel_device_info *devinfo) const
 {
    if (predicate == BRW_PREDICATE_ALIGN1_ANYV ||
        predicate == BRW_PREDICATE_ALIGN1_ALLV) {
@@ -1794,7 +1794,7 @@ brw_compute_urb_setup_index(struct brw_wm_prog_data *wm_prog_data)
 }
 
 static void
-calculate_urb_setup(const struct gen_device_info *devinfo,
+calculate_urb_setup(const struct intel_device_info *devinfo,
                     const struct brw_wm_prog_key *key,
                     struct brw_wm_prog_data *prog_data,
                     const nir_shader *nir)
@@ -2267,7 +2267,7 @@ fs_visitor::compact_virtual_grfs()
 }
 
 static int
-get_subgroup_id_param_index(const gen_device_info *devinfo,
+get_subgroup_id_param_index(const intel_device_info *devinfo,
                             const brw_stage_prog_data *prog_data)
 {
    if (prog_data->nr_params == 0)
@@ -4459,7 +4459,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
                             const fs_visitor::thread_payload &payload)
 {
    assert(inst->src[FB_WRITE_LOGICAL_SRC_COMPONENTS].file == IMM);
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const fs_reg &color0 = inst->src[FB_WRITE_LOGICAL_SRC_COLOR0];
    const fs_reg &color1 = inst->src[FB_WRITE_LOGICAL_SRC_COLOR1];
    const fs_reg &src0_alpha = inst->src[FB_WRITE_LOGICAL_SRC_SRC0_ALPHA];
@@ -4718,7 +4718,7 @@ lower_fb_write_logical_send(const fs_builder &bld, fs_inst *inst,
 static void
 lower_fb_read_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const fs_builder &ubld = bld.exec_all().group(8, 0);
    const unsigned length = 2;
    const fs_reg header = ubld.vgrf(BRW_REGISTER_TYPE_UD, length);
@@ -4960,7 +4960,7 @@ lower_sampler_logical_send_gfx5(const fs_builder &bld, fs_inst *inst, opcode op,
 }
 
 static bool
-is_high_sampler(const struct gen_device_info *devinfo, const fs_reg &sampler)
+is_high_sampler(const struct intel_device_info *devinfo, const fs_reg &sampler)
 {
    if (devinfo->ver < 8 && !devinfo->is_haswell)
       return false;
@@ -4969,7 +4969,7 @@ is_high_sampler(const struct gen_device_info *devinfo, const fs_reg &sampler)
 }
 
 static unsigned
-sampler_msg_type(const gen_device_info *devinfo,
+sampler_msg_type(const intel_device_info *devinfo,
                  opcode opcode, bool shadow_compare)
 {
    assert(devinfo->ver >= 5);
@@ -5044,7 +5044,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
                                 unsigned coord_components,
                                 unsigned grad_components)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const brw_stage_prog_data *prog_data = bld.shader->stage_prog_data;
    unsigned reg_width = bld.dispatch_width() / 8;
    unsigned header_size = 0, length = 0;
@@ -5420,7 +5420,7 @@ lower_sampler_logical_send_gfx7(const fs_builder &bld, fs_inst *inst, opcode op,
 static void
 lower_sampler_logical_send(const fs_builder &bld, fs_inst *inst, opcode op)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const fs_reg &coordinate = inst->src[TEX_LOGICAL_SRC_COORDINATE];
    const fs_reg &shadow_c = inst->src[TEX_LOGICAL_SRC_SHADOW_C];
    const fs_reg &lod = inst->src[TEX_LOGICAL_SRC_LOD];
@@ -5502,7 +5502,7 @@ static void
 setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
                           const fs_reg &surface, const fs_reg &surface_handle)
 {
-   const ASSERTED gen_device_info *devinfo = bld.shader->devinfo;
+   const ASSERTED intel_device_info *devinfo = bld.shader->devinfo;
 
    /* We must have exactly one of surface and surface_handle */
    assert((surface.file == BAD_FILE) != (surface_handle.file == BAD_FILE));
@@ -5534,7 +5534,7 @@ setup_surface_descriptors(const fs_builder &bld, fs_inst *inst, uint32_t desc,
 static void
 lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
 
    /* Get the logical send arguments. */
    const fs_reg &addr = inst->src[SURFACE_LOGICAL_SRC_ADDRESS];
@@ -5781,7 +5781,7 @@ lower_surface_logical_send(const fs_builder &bld, fs_inst *inst)
 static void
 lower_surface_block_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->ver >= 9);
 
    /* Get the logical send arguments. */
@@ -5867,7 +5867,7 @@ emit_a64_oword_block_header(const fs_builder &bld, const fs_reg &addr)
 static void
 lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
 
    const fs_reg &addr = inst->src[0];
    const fs_reg &src = inst->src[1];
@@ -6026,7 +6026,7 @@ lower_a64_logical_send(const fs_builder &bld, fs_inst *inst)
 static void
 lower_varying_pull_constant_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const brw_compiler *compiler = bld.shader->compiler;
 
    if (devinfo->ver >= 7) {
@@ -6148,7 +6148,7 @@ lower_math_logical_send(const fs_builder &bld, fs_inst *inst)
 static void
 lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    fs_reg global_addr = inst->src[0];
    const fs_reg &btd_record = inst->src[1];
 
@@ -6218,7 +6218,7 @@ lower_btd_logical_send(const fs_builder &bld, fs_inst *inst)
 static void
 lower_trace_ray_logical_send(const fs_builder &bld, fs_inst *inst)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    const fs_reg &bvh_level = inst->src[0];
    assert(inst->src[1].file == BRW_IMMEDIATE_VALUE);
    const uint32_t trace_ray_control = inst->src[1].ud;
@@ -6489,7 +6489,7 @@ is_mixed_float_with_packed_fp16_dst(const fs_inst *inst)
  * excessively restrictive.
  */
 static unsigned
-get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
+get_fpu_lowered_simd_width(const struct intel_device_info *devinfo,
                            const fs_inst *inst)
 {
    /* Maximum execution size representable in the instruction controls. */
@@ -6594,7 +6594,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
       max_width = MIN2(max_width, 16);
 
    /* From the IVB PRMs (applies to other devices that don't have the
-    * gen_device_info::supports_simd16_3src flag set):
+    * intel_device_info::supports_simd16_3src flag set):
     *  "In Align16 access mode, SIMD16 is not allowed for DW operations and
     *   SIMD8 is not allowed for DF operations."
     */
@@ -6686,7 +6686,7 @@ get_fpu_lowered_simd_width(const struct gen_device_info *devinfo,
  * represent).
  */
 static unsigned
-get_sampler_lowered_simd_width(const struct gen_device_info *devinfo,
+get_sampler_lowered_simd_width(const struct intel_device_info *devinfo,
                                const fs_inst *inst)
 {
    /* If we have a min_lod parameter on anything other than a simple sample
@@ -6747,7 +6747,7 @@ get_sampler_lowered_simd_width(const struct gen_device_info *devinfo,
  * original execution size.
  */
 static unsigned
-get_lowered_simd_width(const struct gen_device_info *devinfo,
+get_lowered_simd_width(const struct intel_device_info *devinfo,
                        const fs_inst *inst)
 {
    switch (inst->opcode) {
@@ -8844,7 +8844,7 @@ is_used_in_not_interp_frag_coord(nir_ssa_def *def)
  * also need the BRW_BARYCENTRIC_[NON]PERSPECTIVE_CENTROID mode set up.
  */
 static unsigned
-brw_compute_barycentric_interp_modes(const struct gen_device_info *devinfo,
+brw_compute_barycentric_interp_modes(const struct intel_device_info *devinfo,
                                      const nir_shader *shader)
 {
    unsigned barycentric_interp_modes = 0;
@@ -9053,7 +9053,7 @@ brw_nir_demote_sample_qualifiers(nir_shader *nir)
 
 void
 brw_nir_populate_wm_prog_data(const nir_shader *shader,
-                              const struct gen_device_info *devinfo,
+                              const struct intel_device_info *devinfo,
                               const struct brw_wm_prog_key *key,
                               struct brw_wm_prog_data *prog_data)
 {
@@ -9134,7 +9134,7 @@ brw_compile_fs(const struct brw_compiler *compiler,
 
    prog_data->base.stage = MESA_SHADER_FRAGMENT;
 
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    const unsigned max_subgroup_size = compiler->devinfo->ver >= 6 ? 32 : 16;
 
    brw_nir_apply_key(nir, compiler, &key->base, max_subgroup_size, true);
@@ -9388,7 +9388,7 @@ fill_push_const_block_info(struct brw_push_const_block *block, unsigned dwords)
 }
 
 static void
-cs_fill_push_const_info(const struct gen_device_info *devinfo,
+cs_fill_push_const_info(const struct intel_device_info *devinfo,
                         struct brw_cs_prog_data *cs_prog_data)
 {
    const struct brw_stage_prog_data *prog_data = &cs_prog_data->base;
@@ -9735,7 +9735,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
 }
 
 unsigned
-brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
+brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
                                 const struct brw_cs_prog_data *cs_prog_data,
                                 unsigned group_size)
 {

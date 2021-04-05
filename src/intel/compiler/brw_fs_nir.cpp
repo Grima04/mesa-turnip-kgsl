@@ -3145,7 +3145,7 @@ fs_inst *
 fs_visitor::emit_non_coherent_fb_read(const fs_builder &bld, const fs_reg &dst,
                                       unsigned target)
 {
-   const struct gen_device_info *devinfo = bld.shader->devinfo;
+   const struct intel_device_info *devinfo = bld.shader->devinfo;
 
    assert(bld.shader->stage == MESA_SHADER_FRAGMENT);
    const brw_wm_prog_key *wm_key =
@@ -4458,7 +4458,7 @@ fs_visitor::nir_emit_intrinsic(const fs_builder &bld, nir_intrinsic_instr *instr
             (instr->num_components - 1) * type_sz(dest.type);
 
          bool supports_64bit_indirects =
-            !devinfo->is_cherryview && !gen_device_info_is_9lp(devinfo);
+            !devinfo->is_cherryview && !intel_device_info_is_9lp(devinfo);
 
          if (type_sz(dest.type) != 8 || supports_64bit_indirects) {
             for (unsigned j = 0; j < instr->num_components; j++) {
@@ -6211,7 +6211,7 @@ shuffle_from_32bit_read(const fs_builder &bld,
 fs_reg
 setup_imm_df(const fs_builder &bld, double v)
 {
-   const struct gen_device_info *devinfo = bld.shader->devinfo;
+   const struct intel_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->ver >= 7);
 
    if (devinfo->ver >= 8)

@@ -254,7 +254,7 @@ iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
 
    struct iris_context *ice = (struct iris_context *) ctx;
    struct iris_screen *screen = (struct iris_screen*)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
    if (ice->state.predicate == IRIS_PREDICATE_STATE_DONT_RENDER)

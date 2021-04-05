@@ -37,9 +37,9 @@ libintel_dev = static_library(
 )
 
 if with_tests
-  test('gen_device_info_test',
+  test('intel_device_info_test',
        executable(
-         'gen_device_info_test',
+         'intel_device_info_test',
          'intel_device_info_test.c',
          include_directories : [inc_include, inc_src],
          link_with : libintel_dev,

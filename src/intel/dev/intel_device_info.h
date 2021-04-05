@@ -44,7 +44,7 @@ struct drm_i915_query_topology_info;
 /**
  * Intel hardware information and quirks
  */
-struct gen_device_info
+struct intel_device_info
 {
    /* Driver internal numbers used to differentiate platforms. */
    int ver;
@@ -285,18 +285,18 @@ struct gen_device_info
 
 #ifdef GFX_VER
 
-#define gen_device_info_is_9lp(devinfo) \
+#define intel_device_info_is_9lp(devinfo) \
    (GFX_VER == 9 && ((devinfo)->is_broxton || (devinfo)->is_geminilake))
 
 #else
 
-#define gen_device_info_is_9lp(devinfo) \
+#define intel_device_info_is_9lp(devinfo) \
    ((devinfo)->is_broxton || (devinfo)->is_geminilake)
 
 #endif
 
 static inline bool
-gen_device_info_subslice_available(const struct gen_device_info *devinfo,
+intel_device_info_subslice_available(const struct intel_device_info *devinfo,
                                    int slice, int subslice)
 {
    return (devinfo->subslice_masks[slice * devinfo->subslice_slice_stride +
@@ -304,7 +304,7 @@ gen_device_info_subslice_available(const struct gen_device_info *devinfo,
 }
 
 static inline bool
-gen_device_info_eu_available(const struct gen_device_info *devinfo,
+intel_device_info_eu_available(const struct intel_device_info *devinfo,
                              int slice, int subslice, int eu)
 {
    unsigned subslice_offset = slice * devinfo->eu_slice_stride +
@@ -314,7 +314,7 @@ gen_device_info_eu_available(const struct gen_device_info *devinfo,
 }
 
 static inline uint32_t
-gen_device_info_subslice_total(const struct gen_device_info *devinfo)
+intel_device_info_subslice_total(const struct intel_device_info *devinfo)
 {
    uint32_t total = 0;
 
@@ -325,7 +325,7 @@ gen_device_info_subslice_total(const struct gen_device_info *devinfo)
 }
 
 static inline uint32_t
-gen_device_info_eu_total(const struct gen_device_info *devinfo)
+intel_device_info_eu_total(const struct intel_device_info *devinfo)
 {
    uint32_t total = 0;
 
@@ -336,24 +336,24 @@ gen_device_info_eu_total(const struct gen_device_info *devinfo)
 }
 
 static inline unsigned
-gen_device_info_num_dual_subslices(UNUSED const struct gen_device_info *devinfo)
+intel_device_info_num_dual_subslices(UNUSED const struct intel_device_info *devinfo)
 {
    unreachable("TODO");
 }
 
-int gen_device_name_to_pci_device_id(const char *name);
+int intel_device_name_to_pci_device_id(const char *name);
 const char *gen_get_device_name(int devid);
 
 static inline uint64_t
-gen_device_info_timebase_scale(const struct gen_device_info *devinfo,
+intel_device_info_timebase_scale(const struct intel_device_info *devinfo,
                                uint64_t gpu_timestamp)
 {
    return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
 }
 
-bool gen_get_device_info_from_fd(int fh, struct gen_device_info *devinfo);
+bool gen_get_device_info_from_fd(int fh, struct intel_device_info *devinfo);
 bool gen_get_device_info_from_pci_id(int pci_id,
-                                     struct gen_device_info *devinfo);
+                                     struct intel_device_info *devinfo);
 int gen_get_aperture_size(int fd, uint64_t *size);
 
 #ifdef __cplusplus

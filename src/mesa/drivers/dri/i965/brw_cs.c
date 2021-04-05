@@ -63,7 +63,7 @@ brw_cs_get_parameters(const struct brw_context *brw)
 }
 
 static void
-assign_cs_binding_table_offsets(const struct gen_device_info *devinfo,
+assign_cs_binding_table_offsets(const struct intel_device_info *devinfo,
                                 const struct gl_program *prog,
                                 struct brw_cs_prog_data *prog_data)
 {
@@ -82,7 +82,7 @@ brw_codegen_cs_prog(struct brw_context *brw,
                     struct brw_program *cp,
                     struct brw_cs_prog_key *key)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const GLuint *program;
    void *mem_ctx = ralloc_context(NULL);
    struct brw_cs_prog_data prog_data;
@@ -223,7 +223,7 @@ brw_cs_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_cs_prog_key *key,
                             struct gl_program *prog)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    memset(key, 0, sizeof(*key));
    brw_populate_default_base_prog_key(devinfo, brw_program(prog), &key->base);
 }

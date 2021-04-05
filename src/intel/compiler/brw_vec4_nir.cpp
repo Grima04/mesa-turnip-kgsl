@@ -282,7 +282,7 @@ vec4_visitor::get_indirect_offset(nir_intrinsic_instr *instr)
 static src_reg
 setup_imm_df(const vec4_builder &bld, double v)
 {
-   const gen_device_info *devinfo = bld.shader->devinfo;
+   const intel_device_info *devinfo = bld.shader->devinfo;
    assert(devinfo->ver == 7);
 
    /* gfx7.5 does not support DF immediates straighforward but the DIM

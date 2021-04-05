@@ -252,7 +252,7 @@ brw_get_vertex_surface_type(struct brw_context *brw,
                             const struct gl_vertex_format *glformat)
 {
    int size = glformat->Size;
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const bool is_ivybridge_or_older =
       devinfo->ver <= 7 && !devinfo->is_baytrail && !devinfo->is_haswell;
 
@@ -436,7 +436,7 @@ copy_array_to_vbo_array(struct brw_context *brw,
 void
 brw_prepare_vertices(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    /* BRW_NEW_VERTEX_PROGRAM */
    const struct gl_program *vp = brw->programs[MESA_SHADER_VERTEX];

@@ -1165,7 +1165,7 @@ static nir_shader *
 brw_blorp_build_nir_shader(struct blorp_context *blorp, void *mem_ctx,
                            const struct brw_blorp_blit_prog_key *key)
 {
-   const struct gen_device_info *devinfo = blorp->isl_dev->info;
+   const struct intel_device_info *devinfo = blorp->isl_dev->info;
    nir_ssa_def *src_pos, *dst_pos, *color;
 
    /* Sanity checks */
@@ -1695,7 +1695,7 @@ can_shrink_surface(const struct brw_blorp_surface_info *surf)
 }
 
 static unsigned
-get_max_surface_size(const struct gen_device_info *devinfo,
+get_max_surface_size(const struct intel_device_info *devinfo,
                      const struct brw_blorp_surface_info *surf)
 {
    const unsigned max = devinfo->ver >= 7 ? 16384 : 8192;
@@ -1803,7 +1803,7 @@ try_blorp_blit(struct blorp_batch *batch,
                struct brw_blorp_blit_prog_key *wm_prog_key,
                struct blt_coords *coords)
 {
-   const struct gen_device_info *devinfo = batch->blorp->isl_dev->info;
+   const struct intel_device_info *devinfo = batch->blorp->isl_dev->info;
 
    if (params->dst.surf.usage & ISL_SURF_USAGE_DEPTH_BIT) {
       if (devinfo->ver >= 7) {
@@ -2846,7 +2846,7 @@ blorp_buffer_copy(struct blorp_batch *batch,
                   struct blorp_address dst,
                   uint64_t size)
 {
-   const struct gen_device_info *devinfo = batch->blorp->isl_dev->info;
+   const struct intel_device_info *devinfo = batch->blorp->isl_dev->info;
    uint64_t copy_size = size;
 
    /* This is maximum possible width/height our HW can handle */

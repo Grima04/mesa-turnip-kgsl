@@ -457,7 +457,7 @@ vf_invalidate_for_ib_48bit_transition(UNUSED struct brw_context *brw)
 static void
 genX(emit_vertices)(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    uint32_t *dw;
 
    brw_prepare_vertices(brw);
@@ -1636,7 +1636,7 @@ genX(upload_sf)(struct brw_context *brw)
 
       /* _NEW_LINE */
 #if GFX_VER == 8
-      const struct gen_device_info *devinfo = &brw->screen->devinfo;
+      const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
       if (devinfo->is_cherryview)
          sf.CHVLineWidth = brw_get_line_width(brw);
@@ -1795,7 +1795,7 @@ genX(upload_wm)(struct brw_context *brw)
    UNUSED bool writes_depth =
       wm_prog_data->computed_depth_mode != BRW_PSCDEPTH_OFF;
    UNUSED struct brw_stage_state *stage_state = &brw->wm.base;
-   UNUSED const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
 #if GFX_VER == 6
    /* We can't fold this into gfx6_upload_wm_push_constants(), because
@@ -2121,7 +2121,7 @@ static void
 genX(upload_vs_state)(struct brw_context *brw)
 {
    UNUSED struct gl_context *ctx = &brw->ctx;
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_stage_state *stage_state = &brw->vs.base;
 
    /* BRW_NEW_VS_PROG_DATA */
@@ -2554,7 +2554,7 @@ static void
 genX(upload_gs_state)(struct brw_context *brw)
 {
    UNUSED struct gl_context *ctx = &brw->ctx;
-   UNUSED const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const struct brw_stage_state *stage_state = &brw->gs.base;
    const struct gl_program *gs_prog = brw->programs[MESA_SHADER_GEOMETRY];
    /* BRW_NEW_GEOMETRY_PROGRAM */
@@ -3079,7 +3079,7 @@ UNUSED static const uint32_t push_constant_opcodes[] = {
 static void
 genX(upload_push_constant_packets)(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
 
    UNUSED uint32_t mocs = GFX_VER < 8 ? GFX7_MOCS_L3 : 0;
@@ -3850,7 +3850,7 @@ static void
 genX(upload_ps)(struct brw_context *brw)
 {
    UNUSED const struct gl_context *ctx = &brw->ctx;
-   UNUSED const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    /* BRW_NEW_FS_PROG_DATA */
    const struct brw_wm_prog_data *prog_data =
@@ -4013,7 +4013,7 @@ static const struct brw_tracked_state genX(ps_state) = {
 static void
 genX(upload_hs_state)(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_stage_state *stage_state = &brw->tcs.base;
    struct brw_stage_prog_data *stage_prog_data = stage_state->prog_data;
    const struct brw_vue_prog_data *vue_prog_data =
@@ -4056,7 +4056,7 @@ static const struct brw_tracked_state genX(hs_state) = {
 static void
 genX(upload_ds_state)(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const struct brw_stage_state *stage_state = &brw->tes.base;
    struct brw_stage_prog_data *stage_prog_data = stage_state->prog_data;
 
@@ -4268,7 +4268,7 @@ genX(upload_cs_state)(struct brw_context *brw)
    struct brw_stage_state *stage_state = &brw->cs.base;
    struct brw_stage_prog_data *prog_data = stage_state->prog_data;
    struct brw_cs_prog_data *cs_prog_data = brw_cs_prog_data(prog_data);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    const struct brw_cs_parameters cs_params = brw_cs_get_parameters(brw);
 

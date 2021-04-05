@@ -26,7 +26,7 @@
 
 #include <stdint.h>
 
-struct gen_device_info;
+struct intel_device_info;
 
 struct gen_perf_config;
 struct gen_perf_context;
@@ -39,7 +39,7 @@ void gen_perf_init_context(struct gen_perf_context *perf_ctx,
                            void * mem_ctx, /* ralloc context */
                            void * ctx,  /* driver context (eg, brw_context) */
                            void * bufmgr,  /* eg brw_bufmgr */
-                           const struct gen_device_info *devinfo,
+                           const struct intel_device_info *devinfo,
                            uint32_t hw_ctx,
                            int drm_fd);
 

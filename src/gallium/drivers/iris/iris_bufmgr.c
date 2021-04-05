@@ -1882,7 +1882,7 @@ gem_param(int fd, int name)
  * \param fd File descriptor of the opened DRM device.
  */
 static struct iris_bufmgr *
-iris_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
+iris_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 {
    uint64_t gtt_size = iris_gtt_size(fd);
    if (gtt_size <= IRIS_MEMZONE_OTHER_START)
@@ -1988,7 +1988,7 @@ iris_bufmgr_unref(struct iris_bufmgr *bufmgr)
  * \param fd File descriptor of the opened DRM device.
  */
 struct iris_bufmgr *
-iris_bufmgr_get_for_fd(struct gen_device_info *devinfo, int fd, bool bo_reuse)
+iris_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 {
    struct stat st;
 

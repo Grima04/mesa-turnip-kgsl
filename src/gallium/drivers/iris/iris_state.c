@@ -382,7 +382,7 @@ emit_state(struct iris_batch *batch,
 static void
 flush_before_state_base_change(struct iris_batch *batch)
 {
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
 
    /* Flush before emitting STATE_BASE_ADDRESS.
     *
@@ -838,7 +838,7 @@ calculate_pixel_hashing_table(unsigned n, unsigned m,
 static void
 gfx11_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
    assert(devinfo->ppipe_subslices[2] == 0);
 
    if (devinfo->ppipe_subslices[0] == devinfo->ppipe_subslices[1])
@@ -874,7 +874,7 @@ gfx11_upload_pixel_hashing_tables(struct iris_batch *batch)
 static void
 gfx12_upload_pixel_hashing_tables(struct iris_batch *batch)
 {
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
    /* For each n calculate ppipes_of[n], equal to the number of pixel pipes
     * present with n active dual subslices.
     */
@@ -977,7 +977,7 @@ iris_init_common_context(struct iris_batch *batch)
 static void
 iris_init_render_context(struct iris_batch *batch)
 {
-   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &batch->screen->devinfo;
 
    iris_batch_sync_region_start(batch);
 
@@ -1087,7 +1087,7 @@ iris_init_render_context(struct iris_batch *batch)
 static void
 iris_init_compute_context(struct iris_batch *batch)
 {
-   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &batch->screen->devinfo;
 
    iris_batch_sync_region_start(batch);
 
@@ -1511,7 +1511,7 @@ static bool
 want_pma_fix(struct iris_context *ice)
 {
    UNUSED struct iris_screen *screen = (void *) ice->ctx.screen;
-   UNUSED const struct gen_device_info *devinfo = &screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &screen->devinfo;
    const struct brw_wm_prog_data *wm_prog_data = (void *)
       ice->shaders.prog[MESA_SHADER_FRAGMENT]->prog_data;
    const struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
@@ -2313,7 +2313,7 @@ update_surface_state_addrs(struct u_upload_mgr *mgr,
  * to the single slice of the texture being read.
  */
 static void
-get_rt_read_isl_surf(const struct gen_device_info *devinfo,
+get_rt_read_isl_surf(const struct intel_device_info *devinfo,
                      struct iris_resource *res,
                      enum pipe_texture_target target,
                      struct isl_view *view,
@@ -2413,7 +2413,7 @@ iris_create_sampler_view(struct pipe_context *ctx,
                          const struct pipe_sampler_view *tmpl)
 {
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_sampler_view *isv = calloc(1, sizeof(struct iris_sampler_view));
 
    if (!isv)
@@ -2520,7 +2520,7 @@ iris_create_surface(struct pipe_context *ctx,
                     const struct pipe_surface *tmpl)
 {
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    isl_surf_usage_flags_t usage = 0;
    if (tmpl->writable)
@@ -3549,7 +3549,7 @@ iris_create_vertex_elements(struct pipe_context *ctx,
                             const struct pipe_vertex_element *state)
 {
    struct iris_screen *screen = (struct iris_screen *)ctx->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_vertex_element_state *cso =
       malloc(sizeof(struct iris_vertex_element_state));
 
@@ -4364,7 +4364,7 @@ KSP(const struct iris_compiled_shader *shader)
  * Encode most of 3DSTATE_VS based on the compiled shader.
  */
 static void
-iris_store_vs_state(const struct gen_device_info *devinfo,
+iris_store_vs_state(const struct intel_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -4383,7 +4383,7 @@ iris_store_vs_state(const struct gen_device_info *devinfo,
  * Encode most of 3DSTATE_HS based on the compiled shader.
  */
 static void
-iris_store_tcs_state(const struct gen_device_info *devinfo,
+iris_store_tcs_state(const struct intel_device_info *devinfo,
                      struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -4427,7 +4427,7 @@ iris_store_tcs_state(const struct gen_device_info *devinfo,
  * Encode 3DSTATE_TE and most of 3DSTATE_DS based on the compiled shader.
  */
 static void
-iris_store_tes_state(const struct gen_device_info *devinfo,
+iris_store_tes_state(const struct intel_device_info *devinfo,
                      struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -4464,7 +4464,7 @@ iris_store_tes_state(const struct gen_device_info *devinfo,
  * Encode most of 3DSTATE_GS based on the compiled shader.
  */
 static void
-iris_store_gs_state(const struct gen_device_info *devinfo,
+iris_store_gs_state(const struct intel_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -4511,7 +4511,7 @@ iris_store_gs_state(const struct gen_device_info *devinfo,
  * Encode most of 3DSTATE_PS and 3DSTATE_PS_EXTRA based on the shader.
  */
 static void
-iris_store_fs_state(const struct gen_device_info *devinfo,
+iris_store_fs_state(const struct intel_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_stage_prog_data *prog_data = shader->prog_data;
@@ -4571,7 +4571,7 @@ iris_store_fs_state(const struct gen_device_info *devinfo,
  * This must match the data written by the iris_store_xs_state() functions.
  */
 static void
-iris_store_cs_state(const struct gen_device_info *devinfo,
+iris_store_cs_state(const struct intel_device_info *devinfo,
                     struct iris_compiled_shader *shader)
 {
    struct brw_cs_prog_data *cs_prog_data = (void *) shader->prog_data;
@@ -4628,7 +4628,7 @@ iris_derived_program_state_size(enum iris_program_cache_id cache_id)
  * get most of the state packet without having to reconstruct it.
  */
 static void
-iris_store_derived_program_state(const struct gen_device_info *devinfo,
+iris_store_derived_program_state(const struct intel_device_info *devinfo,
                                  enum iris_program_cache_id cache_id,
                                  struct iris_compiled_shader *shader)
 {
@@ -6845,7 +6845,7 @@ iris_upload_compute_walker(struct iris_context *ice,
 {
    const uint64_t stage_dirty = ice->state.stage_dirty;
    struct iris_screen *screen = batch->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_binder *binder = &ice->state.binder;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
    struct iris_compiled_shader *shader =
@@ -6907,7 +6907,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
 {
    const uint64_t stage_dirty = ice->state.stage_dirty;
    struct iris_screen *screen = batch->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_binder *binder = &ice->state.binder;
    struct iris_shader_state *shs = &ice->state.shaders[MESA_SHADER_COMPUTE];
    struct iris_uncompiled_shader *ish =
@@ -7408,7 +7408,7 @@ iris_emit_raw_pipe_control(struct iris_batch *batch,
                            uint32_t offset,
                            uint64_t imm)
 {
-   UNUSED const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   UNUSED const struct intel_device_info *devinfo = &batch->screen->devinfo;
    enum pipe_control_flags post_sync_flags = get_post_sync_flags(flags);
    enum pipe_control_flags non_lri_post_sync_flags =
       post_sync_flags & ~PIPE_CONTROL_LRI_POST_SYNC_OP;
@@ -7921,7 +7921,7 @@ genX(emit_hashing_mode)(struct iris_context *ice, struct iris_batch *batch,
                         unsigned width, unsigned height, unsigned scale)
 {
 #if GFX_VER == 9
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
    const unsigned slice_hashing[] = {
       /* Because all Gfx9 platforms with more than one slice require
        * three-way subslice hashing, a single "normal" 16x16 slice hashing

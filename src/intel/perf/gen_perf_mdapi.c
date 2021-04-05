@@ -33,7 +33,7 @@
 
 int
 gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
-                                  const struct gen_device_info *devinfo,
+                                  const struct intel_device_info *devinfo,
                                   const struct gen_perf_query_info *query,
                                   const struct gen_perf_query_result *result)
 {
@@ -59,7 +59,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
 
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
-         gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
+         intel_device_info_timebase_scale(devinfo, result->accumulator[0]);
       mdapi_data->CoreFrequency = result->gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = result->gt_frequency[1] != result->gt_frequency[0];
       mdapi_data->SplitOccured = result->query_disjoint;
@@ -84,9 +84,9 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->ReportId = result->hw_id;
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
-         gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
+         intel_device_info_timebase_scale(devinfo, result->accumulator[0]);
       mdapi_data->BeginTimestamp =
-         gen_device_info_timebase_scale(devinfo, result->begin_timestamp);
+         intel_device_info_timebase_scale(devinfo, result->begin_timestamp);
       mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = result->gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = result->gt_frequency[1] != result->gt_frequency[0];
@@ -118,9 +118,9 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
       mdapi_data->ReportId = result->hw_id;
       mdapi_data->ReportsCount = result->reports_accumulated;
       mdapi_data->TotalTime =
-         gen_device_info_timebase_scale(devinfo, result->accumulator[0]);
+         intel_device_info_timebase_scale(devinfo, result->accumulator[0]);
       mdapi_data->BeginTimestamp =
-         gen_device_info_timebase_scale(devinfo, result->begin_timestamp);
+         intel_device_info_timebase_scale(devinfo, result->begin_timestamp);
       mdapi_data->GPUTicks = result->accumulator[1];
       mdapi_data->CoreFrequency = result->gt_frequency[1];
       mdapi_data->CoreFrequencyChanged = result->gt_frequency[1] != result->gt_frequency[0];
@@ -138,7 +138,7 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
 
 void
 gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
-                                        const struct gen_device_info *devinfo)
+                                        const struct intel_device_info *devinfo)
 {
    if (!(devinfo->ver >= 7 && devinfo->ver <= 12))
       return;
@@ -230,7 +230,7 @@ fill_mdapi_perf_query_counter(struct gen_perf_query_info *query,
 
 void
 gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
-                                 const struct gen_device_info *devinfo)
+                                 const struct intel_device_info *devinfo)
 {
    struct gen_perf_query_info *query = NULL;
 

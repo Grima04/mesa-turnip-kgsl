@@ -662,7 +662,7 @@ anv_physical_device_try_create(struct anv_instance *instance,
                         "Unable to open device %s: %m", path);
    }
 
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
    if (!gen_get_device_info_from_fd(fd, &devinfo)) {
       result = vk_error(VK_ERROR_INCOMPATIBLE_DRIVER);
       goto fail_fd;
@@ -831,8 +831,8 @@ anv_physical_device_try_create(struct anv_instance *instance,
       anv_gem_get_param(fd, I915_PARAM_MMAP_GTT_VERSION) >= 4;
 
    /* GENs prior to 8 do not support EU/Subslice info */
-   device->subslice_total = gen_device_info_subslice_total(&device->info);
-   device->eu_total = gen_device_info_eu_total(&device->info);
+   device->subslice_total = intel_device_info_subslice_total(&device->info);
+   device->eu_total = intel_device_info_eu_total(&device->info);
 
    if (device->info.is_cherryview) {
       /* Logical CS threads = EUs per subslice * num threads per EU */
@@ -1765,7 +1765,7 @@ void anv_GetPhysicalDeviceProperties(
     VkPhysicalDeviceProperties*                 pProperties)
 {
    ANV_FROM_HANDLE(anv_physical_device, pdevice, physicalDevice);
-   const struct gen_device_info *devinfo = &pdevice->info;
+   const struct intel_device_info *devinfo = &pdevice->info;
 
    /* See assertions made when programming the buffer surface state. */
    const uint32_t max_raw_buffer_sz = devinfo->ver >= 7 ?

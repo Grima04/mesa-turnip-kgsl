@@ -673,7 +673,7 @@ isl_format_for_pipe_format(enum pipe_format pf)
 }
 
 static unsigned
-format_gen(const struct gen_device_info *devinfo)
+format_gen(const struct intel_device_info *devinfo)
 {
    return devinfo->ver * 10 + (devinfo->is_g4x || devinfo->is_haswell) * 5;
 }
@@ -687,7 +687,7 @@ format_info_exists(enum isl_format format)
 }
 
 bool
-isl_format_supports_rendering(const struct gen_device_info *devinfo,
+isl_format_supports_rendering(const struct intel_device_info *devinfo,
                               enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -697,7 +697,7 @@ isl_format_supports_rendering(const struct gen_device_info *devinfo,
 }
 
 bool
-isl_format_supports_alpha_blending(const struct gen_device_info *devinfo,
+isl_format_supports_alpha_blending(const struct intel_device_info *devinfo,
                                    enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -707,7 +707,7 @@ isl_format_supports_alpha_blending(const struct gen_device_info *devinfo,
 }
 
 bool
-isl_format_supports_sampling(const struct gen_device_info *devinfo,
+isl_format_supports_sampling(const struct intel_device_info *devinfo,
                              enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -727,7 +727,7 @@ isl_format_supports_sampling(const struct gen_device_info *devinfo,
        */
       if (fmtl->txc == ISL_TXC_ASTC)
          return format < ISL_FORMAT_ASTC_HDR_2D_4X4_FLT16;
-   } else if (gen_device_info_is_9lp(devinfo)) {
+   } else if (intel_device_info_is_9lp(devinfo)) {
       const struct isl_format_layout *fmtl = isl_format_get_layout(format);
       /* Support for ASTC HDR exists on Broxton even though big-core
        * GPUs didn't get it until Cannonlake.
@@ -740,7 +740,7 @@ isl_format_supports_sampling(const struct gen_device_info *devinfo,
 }
 
 bool
-isl_format_supports_filtering(const struct gen_device_info *devinfo,
+isl_format_supports_filtering(const struct intel_device_info *devinfo,
                               enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -760,7 +760,7 @@ isl_format_supports_filtering(const struct gen_device_info *devinfo,
        */
       if (fmtl->txc == ISL_TXC_ASTC)
          return format < ISL_FORMAT_ASTC_HDR_2D_4X4_FLT16;
-   } else if (gen_device_info_is_9lp(devinfo)) {
+   } else if (intel_device_info_is_9lp(devinfo)) {
       const struct isl_format_layout *fmtl = isl_format_get_layout(format);
       /* Support for ASTC HDR exists on Broxton even though big-core
        * GPUs didn't get it until Cannonlake.
@@ -773,7 +773,7 @@ isl_format_supports_filtering(const struct gen_device_info *devinfo,
 }
 
 bool
-isl_format_supports_vertex_fetch(const struct gen_device_info *devinfo,
+isl_format_supports_vertex_fetch(const struct intel_device_info *devinfo,
                                  enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -792,7 +792,7 @@ isl_format_supports_vertex_fetch(const struct gen_device_info *devinfo,
  * Returns true if the given format can support typed writes.
  */
 bool
-isl_format_supports_typed_writes(const struct gen_device_info *devinfo,
+isl_format_supports_typed_writes(const struct intel_device_info *devinfo,
                                  enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -813,7 +813,7 @@ isl_format_supports_typed_writes(const struct gen_device_info *devinfo,
  * occurrences.
  */
 bool
-isl_format_supports_typed_reads(const struct gen_device_info *devinfo,
+isl_format_supports_typed_reads(const struct intel_device_info *devinfo,
                                 enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -829,7 +829,7 @@ isl_format_supports_typed_reads(const struct gen_device_info *devinfo,
  * and sample count.  See isl_surf_get_ccs_surf for details.
  */
 bool
-isl_format_supports_ccs_d(const struct gen_device_info *devinfo,
+isl_format_supports_ccs_d(const struct intel_device_info *devinfo,
                           enum isl_format format)
 {
    /* Clear-only compression was first added on Ivy Bridge and was last
@@ -853,7 +853,7 @@ isl_format_supports_ccs_d(const struct gen_device_info *devinfo,
  * such as tiling and sample count.  See isl_surf_get_ccs_surf for details.
  */
 bool
-isl_format_supports_ccs_e(const struct gen_device_info *devinfo,
+isl_format_supports_ccs_e(const struct intel_device_info *devinfo,
                           enum isl_format format)
 {
    if (!format_info_exists(format))
@@ -872,7 +872,7 @@ isl_format_supports_ccs_e(const struct gen_device_info *devinfo,
 }
 
 bool
-isl_format_supports_multisampling(const struct gen_device_info *devinfo,
+isl_format_supports_multisampling(const struct intel_device_info *devinfo,
                                   enum isl_format format)
 {
    /* From the Sandybridge PRM, Volume 4 Part 1 p72, SURFACE_STATE, Surface
@@ -919,7 +919,7 @@ isl_format_supports_multisampling(const struct gen_device_info *devinfo,
  * format-dependent.
  */
 bool
-isl_formats_are_ccs_e_compatible(const struct gen_device_info *devinfo,
+isl_formats_are_ccs_e_compatible(const struct intel_device_info *devinfo,
                                  enum isl_format format1,
                                  enum isl_format format2)
 {

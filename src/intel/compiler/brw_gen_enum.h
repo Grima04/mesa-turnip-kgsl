@@ -45,7 +45,7 @@ enum gen {
 #define GFX_LE(gen) (GFX_LT(gen) | (gen))
 
 static enum gen
-gen_from_devinfo(const struct gen_device_info *devinfo)
+gen_from_devinfo(const struct intel_device_info *devinfo)
 {
    switch (devinfo->verx10) {
    case 40: return GFX4;

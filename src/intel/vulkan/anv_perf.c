@@ -36,7 +36,7 @@
 void
 anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
 {
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
 
    device->perf = NULL;
 

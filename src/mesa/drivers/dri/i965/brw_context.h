@@ -1038,7 +1038,7 @@ struct brw_context
       GLuint cs_start;
       /**
        * URB size in the current configuration.  The units this is expressed
-       * in are somewhat inconsistent, see gen_device_info::urb::size.
+       * in are somewhat inconsistent, see intel_device_info::urb::size.
        *
        * FINISHME: Represent the URB size consistently in KB on all platforms.
        */

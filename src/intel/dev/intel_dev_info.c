@@ -57,7 +57,7 @@ main(int argc, char *argv[])
       return error("Not device found");
 
    for (int i = 0; i < max_devices; i++) {
-      struct gen_device_info devinfo;
+      struct intel_device_info devinfo;
       const char *path = devices[i]->nodes[DRM_NODE_RENDER];
       int fd = open(path, O_RDWR | O_CLOEXEC);
 
@@ -82,11 +82,11 @@ main(int argc, char *argv[])
          n_s += (devinfo.slice_masks & (1u << s)) ? 1 : 0;
          for (unsigned ss = 0; ss < devinfo.num_subslices[s]; ss++) {
             fprintf(stdout, "   slice%u.subslice%u: ", s, ss);
-            if (gen_device_info_subslice_available(&devinfo, s, ss)) {
+            if (intel_device_info_subslice_available(&devinfo, s, ss)) {
                n_ss++;
                for (unsigned eu = 0; eu < devinfo.num_eu_per_subslice; eu++) {
-                  n_eus += gen_device_info_eu_available(&devinfo, s, ss, eu) ? 1 : 0;
-                  fprintf(stdout, "%s", gen_device_info_eu_available(&devinfo, s, ss, eu) ? "1" : "0");
+                  n_eus += intel_device_info_eu_available(&devinfo, s, ss, eu) ? 1 : 0;
+                  fprintf(stdout, "%s", intel_device_info_eu_available(&devinfo, s, ss, eu) ? "1" : "0");
                }
             } else {
                fprintf(stderr, "fused");

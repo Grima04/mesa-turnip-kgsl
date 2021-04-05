@@ -128,7 +128,7 @@ brw_batch_init(struct brw_context *brw)
 {
    struct brw_screen *screen = brw->screen;
    struct brw_batch *batch = &brw->batch;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
       /* The shadow doesn't get relocs written so state decode fails. */
@@ -604,7 +604,7 @@ brw_new_batch(struct brw_context *brw)
 static void
 brw_finish_batch(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    brw->batch.no_wrap = true;
 
@@ -1095,7 +1095,7 @@ load_sized_register_mem(struct brw_context *brw,
                         uint32_t offset,
                         int size)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    int i;
 
    /* MI_LOAD_REGISTER_MEM only exists on Gfx7+. */
@@ -1145,7 +1145,7 @@ void
 brw_store_register_mem32(struct brw_context *brw,
                          struct brw_bo *bo, uint32_t reg, uint32_t offset)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    assert(devinfo->ver >= 6);
 
@@ -1171,7 +1171,7 @@ void
 brw_store_register_mem64(struct brw_context *brw,
                          struct brw_bo *bo, uint32_t reg, uint32_t offset)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    assert(devinfo->ver >= 6);
 
@@ -1271,7 +1271,7 @@ void
 brw_store_data_imm32(struct brw_context *brw, struct brw_bo *bo,
                      uint32_t offset, uint32_t imm)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    assert(devinfo->ver >= 6);
 
@@ -1294,7 +1294,7 @@ void
 brw_store_data_imm64(struct brw_context *brw, struct brw_bo *bo,
                      uint32_t offset, uint64_t imm)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    assert(devinfo->ver >= 6);
 

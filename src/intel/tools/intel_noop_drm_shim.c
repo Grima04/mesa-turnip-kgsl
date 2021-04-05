@@ -40,7 +40,7 @@
 #include "util/vma.h"
 
 struct i915_device {
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
    uint32_t device_id;
 };
 
@@ -367,7 +367,7 @@ drm_shim_driver_init(void)
    const char *user_platform = getenv("INTEL_STUB_GPU_PLATFORM");
 
    /* Use SKL if nothing is specified. */
-   i915.device_id = gen_device_name_to_pci_device_id(user_platform ?: "skl");
+   i915.device_id = intel_device_name_to_pci_device_id(user_platform ?: "skl");
    if (!gen_get_device_info_from_pci_id(i915.device_id, &i915.devinfo))
       return;
 

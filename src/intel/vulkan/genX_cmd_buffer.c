@@ -52,7 +52,7 @@ void
 genX(cmd_buffer_emit_state_base_address)(struct anv_cmd_buffer *cmd_buffer)
 {
    struct anv_device *device = cmd_buffer->device;
-   UNUSED const struct gen_device_info *devinfo = &device->info;
+   UNUSED const struct intel_device_info *devinfo = &device->info;
    uint32_t mocs = isl_mocs(&device->isl_dev, 0, false);
 
    /* If we are emitting a new state base address we probably need to re-emit
@@ -1111,7 +1111,7 @@ transition_color_buffer(struct anv_cmd_buffer *cmd_buffer,
                         bool will_full_fast_clear)
 {
    struct anv_device *device = cmd_buffer->device;
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
    /* Validate the inputs. */
    assert(cmd_buffer);
    assert(image && image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
@@ -2039,7 +2039,7 @@ genX(cmd_buffer_config_l3)(struct anv_cmd_buffer *cmd_buffer,
 void
 genX(cmd_buffer_apply_pipe_flushes)(struct anv_cmd_buffer *cmd_buffer)
 {
-   UNUSED const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   UNUSED const struct intel_device_info *devinfo = &cmd_buffer->device->info;
    enum anv_pipe_bits bits = cmd_buffer->state.pending_pipe_bits;
 
    if (unlikely(cmd_buffer->device->physical->always_flush_cache))
@@ -4800,7 +4800,7 @@ static void
 genX(flush_pipeline_select)(struct anv_cmd_buffer *cmd_buffer,
                             uint32_t pipeline)
 {
-   UNUSED const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   UNUSED const struct intel_device_info *devinfo = &cmd_buffer->device->info;
 
    if (cmd_buffer->state.current_pipeline == pipeline)
       return;
@@ -5091,7 +5091,7 @@ genX(cmd_buffer_emit_hashing_mode)(struct anv_cmd_buffer *cmd_buffer,
                                    unsigned scale)
 {
 #if GFX_VER == 9
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
    const unsigned slice_hashing[] = {
       /* Because all Gfx9 platforms with more than one slice require
        * three-way subslice hashing, a single "normal" 16x16 slice hashing

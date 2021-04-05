@@ -404,7 +404,7 @@ lower_barycentric_at_offset(nir_builder *b, nir_instr *instr, void *data)
 
 void
 brw_nir_lower_fs_inputs(nir_shader *nir,
-                        const struct gen_device_info *devinfo,
+                        const struct intel_device_info *devinfo,
                         const struct brw_wm_prog_key *key)
 {
    nir_foreach_shader_in_variable(var, nir) {
@@ -515,7 +515,7 @@ static nir_variable_mode
 brw_nir_no_indirect_mask(const struct brw_compiler *compiler,
                          gl_shader_stage stage)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    const bool is_scalar = compiler->scalar_stage[stage];
    nir_variable_mode indirect_mask = 0;
 
@@ -679,7 +679,7 @@ static unsigned
 lower_bit_size_callback(const nir_instr *instr, UNUSED void *data)
 {
    const struct brw_compiler *compiler = (const struct brw_compiler *) data;
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
 
    switch (instr->type) {
    case nir_instr_type_alu: {
@@ -795,7 +795,7 @@ void
 brw_preprocess_nir(const struct brw_compiler *compiler, nir_shader *nir,
                    const nir_shader *softfp64)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    UNUSED bool progress; /* Written by OPT */
 
    const bool is_scalar = compiler->scalar_stage[nir->info.stage];
@@ -1031,7 +1031,7 @@ brw_vectorize_lower_mem_access(nir_shader *nir,
                                bool is_scalar,
                                bool robust_buffer_access)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    bool progress = false;
 
    if (is_scalar) {
@@ -1087,7 +1087,7 @@ brw_postprocess_nir(nir_shader *nir, const struct brw_compiler *compiler,
                     bool is_scalar, bool debug_enabled,
                     bool robust_buffer_access)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
 
    UNUSED bool progress; /* Written by OPT */
 
@@ -1236,7 +1236,7 @@ brw_nir_apply_sampler_key(nir_shader *nir,
                           const struct brw_compiler *compiler,
                           const struct brw_sampler_prog_key_data *key_tex)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    nir_lower_tex_options tex_options = {
       .lower_txd_clamp_bindless_sampler = true,
       .lower_txd_clamp_if_sampler_index_not_lt_16 = true,
@@ -1468,7 +1468,7 @@ brw_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic)
 }
 
 enum brw_reg_type
-brw_type_for_nir_type(const struct gen_device_info *devinfo, nir_alu_type type)
+brw_type_for_nir_type(const struct intel_device_info *devinfo, nir_alu_type type)
 {
    switch (type) {
    case nir_type_uint:

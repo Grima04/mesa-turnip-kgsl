@@ -270,7 +270,7 @@ struct pipe_context *
 iris_create_context(struct pipe_screen *pscreen, void *priv, unsigned flags)
 {
    struct iris_screen *screen = (struct iris_screen*)pscreen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_context *ice = rzalloc(NULL, struct iris_context);
 
    if (!ice)

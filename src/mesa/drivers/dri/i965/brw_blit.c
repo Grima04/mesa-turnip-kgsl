@@ -83,7 +83,7 @@ set_blitter_tiling(struct brw_context *brw,
                    bool dst_y_tiled, bool src_y_tiled,
                    uint32_t *__map)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const unsigned n_dwords = devinfo->ver >= 8 ? 5 : 4;
    assert(devinfo->ver >= 6);
 
@@ -197,7 +197,7 @@ static bool
 alignment_valid(struct brw_context *brw, unsigned offset,
                 enum isl_tiling tiling)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    /* Tiled buffers must be page-aligned (4K). */
    if (tiling != ISL_TILING_LINEAR)
@@ -256,7 +256,7 @@ emit_copy_blit(struct brw_context *brw,
                GLshort w, GLshort h,
                enum gl_logicop_mode logic_op)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    GLuint CMD, BR13;
    int dst_y2 = dst_y + h;
    int dst_x2 = dst_x + w;
@@ -628,7 +628,7 @@ brw_emit_immediate_color_expand_blit(struct brw_context *brw,
                                      GLshort w, GLshort h,
                                      enum gl_logicop_mode logic_op)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    int dwords = ALIGN(src_size, 8) / 4;
    uint32_t opcode, br13, blit_cmd;
 
@@ -709,7 +709,7 @@ brw_miptree_set_alpha_to_one(struct brw_context *brw,
                              struct brw_mipmap_tree *mt,
                              int x, int y, int width, int height)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    uint32_t BR13, CMD;
    int pitch, cpp;
 

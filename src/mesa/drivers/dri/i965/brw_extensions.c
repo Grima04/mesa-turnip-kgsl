@@ -37,7 +37,7 @@ void
 brw_init_extensions(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    assert(devinfo->ver >= 4);
 
@@ -374,7 +374,7 @@ brw_init_extensions(struct gl_context *ctx)
       ctx->Extensions.ARB_fragment_shader_interlock = true;
    }
 
-   if (gen_device_info_is_9lp(devinfo))
+   if (intel_device_info_is_9lp(devinfo))
       ctx->Extensions.KHR_texture_compression_astc_hdr = true;
 
    if (devinfo->ver >= 6)

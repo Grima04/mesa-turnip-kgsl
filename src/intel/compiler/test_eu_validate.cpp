@@ -58,7 +58,7 @@ public:
    virtual ~validation_test();
 
    struct brw_codegen *p;
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
 };
 
 validation_test::validation_test()
@@ -75,7 +75,7 @@ validation_test::~validation_test()
 void validation_test::SetUp()
 {
    struct gen_info info = GetParam();
-   int devid = gen_device_name_to_pci_device_id(info.name);
+   int devid = intel_device_name_to_pci_device_id(info.name);
 
    gen_get_device_info_from_pci_id(devid, &devinfo);
 
@@ -2312,7 +2312,7 @@ TEST_P(validation_test, qword_low_power_align1_regioning_restrictions)
       brw_inst_set_src0_width(&devinfo, last_inst, inst[i].src_width);
       brw_inst_set_src0_hstride(&devinfo, last_inst, inst[i].src_hstride);
 
-      if (devinfo.is_cherryview || gen_device_info_is_9lp(&devinfo)) {
+      if (devinfo.is_cherryview || intel_device_info_is_9lp(&devinfo)) {
          EXPECT_EQ(inst[i].expected_result, validate(p));
       } else {
          EXPECT_TRUE(validate(p));
@@ -2444,7 +2444,7 @@ TEST_P(validation_test, qword_low_power_no_indirect_addressing)
       brw_inst_set_src0_width(&devinfo, last_inst, inst[i].src_width);
       brw_inst_set_src0_hstride(&devinfo, last_inst, inst[i].src_hstride);
 
-      if (devinfo.is_cherryview || gen_device_info_is_9lp(&devinfo)) {
+      if (devinfo.is_cherryview || intel_device_info_is_9lp(&devinfo)) {
          EXPECT_EQ(inst[i].expected_result, validate(p));
       } else {
          EXPECT_TRUE(validate(p));
@@ -2591,7 +2591,7 @@ TEST_P(validation_test, qword_low_power_no_64bit_arf)
       brw_inst_set_src0_width(&devinfo, last_inst, inst[i].src_width);
       brw_inst_set_src0_hstride(&devinfo, last_inst, inst[i].src_hstride);
 
-      if (devinfo.is_cherryview || gen_device_info_is_9lp(&devinfo)) {
+      if (devinfo.is_cherryview || intel_device_info_is_9lp(&devinfo)) {
          EXPECT_EQ(inst[i].expected_result, validate(p));
       } else {
          EXPECT_TRUE(validate(p));
@@ -2607,7 +2607,7 @@ TEST_P(validation_test, qword_low_power_no_64bit_arf)
    brw_MAC(p, retype(g0, BRW_REGISTER_TYPE_DF),
               retype(stride(g0, 4, 4, 1), BRW_REGISTER_TYPE_DF),
               retype(stride(g0, 4, 4, 1), BRW_REGISTER_TYPE_DF));
-   if (devinfo.is_cherryview || gen_device_info_is_9lp(&devinfo)) {
+   if (devinfo.is_cherryview || intel_device_info_is_9lp(&devinfo)) {
       EXPECT_FALSE(validate(p));
    } else {
       EXPECT_TRUE(validate(p));
@@ -2809,7 +2809,7 @@ TEST_P(validation_test, qword_low_power_no_depctrl)
       brw_inst_set_no_dd_check(&devinfo, last_inst, inst[i].no_dd_check);
       brw_inst_set_no_dd_clear(&devinfo, last_inst, inst[i].no_dd_clear);
 
-      if (devinfo.is_cherryview || gen_device_info_is_9lp(&devinfo)) {
+      if (devinfo.is_cherryview || intel_device_info_is_9lp(&devinfo)) {
          EXPECT_EQ(inst[i].expected_result, validate(p));
       } else {
          EXPECT_TRUE(validate(p));

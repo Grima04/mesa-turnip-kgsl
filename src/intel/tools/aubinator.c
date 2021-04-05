@@ -59,7 +59,7 @@ static enum { COLOR_AUTO, COLOR_ALWAYS, COLOR_NEVER } option_color;
 
 uint16_t pci_id = 0;
 char *input_file = NULL, *xml_path = NULL;
-struct gen_device_info devinfo;
+struct intel_device_info devinfo;
 struct intel_batch_decode_ctx batch_ctx;
 struct aub_mem mem;
 
@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
    while ((c = getopt_long(argc, argv, "", aubinator_opts, &i)) != -1) {
       switch (c) {
       case 'g': {
-         const int id = gen_device_name_to_pci_device_id(optarg);
+         const int id = intel_device_name_to_pci_device_id(optarg);
          if (id < 0) {
             fprintf(stderr, "can't parse gen: '%s', expected brw, g4x, ilk, "
                             "snb, ivb, hsw, byt, bdw, chv, skl, bxt, kbl, "

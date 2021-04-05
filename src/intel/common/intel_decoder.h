@@ -51,8 +51,8 @@ static inline uint32_t intel_make_gen(uint32_t major, uint32_t minor)
 }
 
 struct intel_group *intel_spec_find_struct(struct intel_spec *spec, const char *name);
-struct intel_spec *intel_spec_load(const struct gen_device_info *devinfo);
-struct intel_spec *intel_spec_load_from_path(const struct gen_device_info *devinfo,
+struct intel_spec *intel_spec_load(const struct intel_device_info *devinfo);
+struct intel_spec *intel_spec_load_from_path(const struct intel_device_info *devinfo,
                                              const char *path);
 struct intel_spec *intel_spec_load_filename(const char *filename);
 void intel_spec_destroy(struct intel_spec *spec);
@@ -236,7 +236,7 @@ struct intel_batch_decode_ctx {
    void *user_data;
 
    FILE *fp;
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
    struct intel_spec *spec;
    enum intel_batch_decode_flags flags;
 
@@ -254,7 +254,7 @@ struct intel_batch_decode_ctx {
 };
 
 void intel_batch_decode_ctx_init(struct intel_batch_decode_ctx *ctx,
-                                 const struct gen_device_info *devinfo,
+                                 const struct intel_device_info *devinfo,
                                  FILE *fp, enum intel_batch_decode_flags flags,
                                  const char *xml_path,
                                  struct intel_batch_decode_bo (*get_bo)(void *,

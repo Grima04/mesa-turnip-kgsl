@@ -327,7 +327,7 @@ static void
 brw_init_driver_functions(struct brw_context *brw,
                           struct dd_function_table *functions)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    _mesa_init_driver_functions(functions);
 
@@ -417,7 +417,7 @@ brw_init_driver_functions(struct brw_context *brw,
 static void
 brw_initialize_spirv_supported_capabilities(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
 
    /* The following SPIR-V capabilities are only supported on gfx7+. In theory
@@ -441,7 +441,7 @@ brw_initialize_spirv_supported_capabilities(struct brw_context *brw)
 static void
 brw_initialize_context_constants(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    const struct brw_compiler *compiler = brw->screen->compiler;
 
@@ -804,7 +804,7 @@ brw_initialize_cs_context_constants(struct brw_context *brw)
 {
    struct gl_context *ctx = &brw->ctx;
    const struct brw_screen *screen = brw->screen;
-   struct gen_device_info *devinfo = &brw->screen->devinfo;
+   struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    /* FINISHME: Do this for all platforms that the kernel supports */
    if (devinfo->is_cherryview &&
@@ -854,7 +854,7 @@ brw_initialize_cs_context_constants(struct brw_context *brw)
 static void
 brw_process_driconf_options(struct brw_context *brw)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    const driOptionCache *const options = &brw->screen->optionCache;
 
@@ -938,7 +938,7 @@ brw_create_context(gl_api api,
 {
    struct gl_context *shareCtx = (struct gl_context *) sharedContextPrivate;
    struct brw_screen *screen = driContextPriv->driScreenPriv->driverPrivate;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    struct dd_function_table functions;
 
    /* Only allow the __DRI_CTX_FLAG_ROBUST_BUFFER_ACCESS flag if the kernel
@@ -1392,7 +1392,7 @@ void
 brw_resolve_for_dri2_flush(struct brw_context *brw,
                            __DRIdrawable *drawable)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    if (devinfo->ver < 6) {
       /* MSAA and fast color clear are not supported, so don't waste time

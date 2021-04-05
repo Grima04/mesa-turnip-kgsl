@@ -541,7 +541,7 @@ finish_seqno(struct iris_batch *batch)
 static void
 iris_finish_batch(struct iris_batch *batch)
 {
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
 
    if (devinfo->ver == 12 && batch->name == IRIS_BATCH_RENDER) {
       /* We re-emit constants at the beginning of every batch as a hardware

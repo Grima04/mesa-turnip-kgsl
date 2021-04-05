@@ -392,7 +392,7 @@ VkResult anv_ResetCommandBuffer(
 void
 anv_cmd_buffer_emit_state_base_address(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
    anv_genX(devinfo, cmd_buffer_emit_state_base_address)(cmd_buffer);
 }
 
@@ -405,7 +405,7 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
                                   uint32_t base_layer,
                                   uint32_t layer_count)
 {
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
    anv_genX(devinfo, cmd_buffer_mark_image_written)(cmd_buffer, image,
                                                     aspect, aux_usage,
                                                     level, base_layer,
@@ -415,7 +415,7 @@ anv_cmd_buffer_mark_image_written(struct anv_cmd_buffer *cmd_buffer,
 void
 anv_cmd_emit_conditional_render_predicate(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
    anv_genX(devinfo, cmd_emit_conditional_render_predicate)(cmd_buffer);
 }
 
@@ -1045,7 +1045,7 @@ anv_cmd_buffer_gfx_push_constants(struct anv_cmd_buffer *cmd_buffer)
 struct anv_state
 anv_cmd_buffer_cs_push_constants(struct anv_cmd_buffer *cmd_buffer)
 {
-   const struct gen_device_info *devinfo = &cmd_buffer->device->info;
+   const struct intel_device_info *devinfo = &cmd_buffer->device->info;
    struct anv_push_constants *data =
       &cmd_buffer->state.compute.base.push_constants;
    struct anv_compute_pipeline *pipeline = cmd_buffer->state.compute.pipeline;

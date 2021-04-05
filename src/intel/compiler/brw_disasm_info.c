@@ -34,7 +34,7 @@ void
 dump_assembly(void *assembly, int start_offset, int end_offset,
               struct disasm_info *disasm, const unsigned *block_latency)
 {
-   const struct gen_device_info *devinfo = disasm->devinfo;
+   const struct intel_device_info *devinfo = disasm->devinfo;
    const char *last_annotation_string = NULL;
    const void *last_annotation_ir = NULL;
 
@@ -104,7 +104,7 @@ dump_assembly(void *assembly, int start_offset, int end_offset,
 }
 
 struct disasm_info *
-disasm_initialize(const struct gen_device_info *devinfo,
+disasm_initialize(const struct intel_device_info *devinfo,
                   const struct cfg_t *cfg)
 {
    struct disasm_info *disasm = ralloc(NULL, struct disasm_info);
@@ -129,7 +129,7 @@ void
 disasm_annotate(struct disasm_info *disasm,
                 struct backend_instruction *inst, unsigned offset)
 {
-   const struct gen_device_info *devinfo = disasm->devinfo;
+   const struct intel_device_info *devinfo = disasm->devinfo;
    const struct cfg_t *cfg = disasm->cfg;
 
    struct inst_group *group;

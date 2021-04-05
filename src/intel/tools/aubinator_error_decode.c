@@ -165,7 +165,7 @@ register_name_from_ring(const struct ring_register_mapping *mapping,
 }
 
 static const char *
-instdone_register_for_ring(const struct gen_device_info *devinfo,
+instdone_register_for_ring(const struct intel_device_info *devinfo,
                            const char *ring_name)
 {
    enum drm_i915_gem_engine_class class;
@@ -206,7 +206,7 @@ instdone_register_for_ring(const struct gen_device_info *devinfo,
 }
 
 static void
-print_pgtbl_err(unsigned int reg, struct gen_device_info *devinfo)
+print_pgtbl_err(unsigned int reg, struct intel_device_info *devinfo)
 {
    if (reg & (1 << 26))
       printf("    Invalid Sampler Cache GTT entry\n");
@@ -237,7 +237,7 @@ print_pgtbl_err(unsigned int reg, struct gen_device_info *devinfo)
 }
 
 static void
-print_snb_fence(struct gen_device_info *devinfo, uint64_t fence)
+print_snb_fence(struct intel_device_info *devinfo, uint64_t fence)
 {
    printf("    %svalid, %c-tiled, pitch: %i, start: 0x%08x, size: %u\n",
           fence & 1 ? "" : "in",
@@ -248,7 +248,7 @@ print_snb_fence(struct gen_device_info *devinfo, uint64_t fence)
 }
 
 static void
-print_i965_fence(struct gen_device_info *devinfo, uint64_t fence)
+print_i965_fence(struct intel_device_info *devinfo, uint64_t fence)
 {
    printf("    %svalid, %c-tiled, pitch: %i, start: 0x%08x, size: %u\n",
           fence & 1 ? "" : "in",
@@ -259,7 +259,7 @@ print_i965_fence(struct gen_device_info *devinfo, uint64_t fence)
 }
 
 static void
-print_fence(struct gen_device_info *devinfo, uint64_t fence)
+print_fence(struct intel_device_info *devinfo, uint64_t fence)
 {
    if (devinfo->ver == 6 || devinfo->ver == 7) {
       return print_snb_fence(devinfo, fence);
@@ -269,7 +269,7 @@ print_fence(struct gen_device_info *devinfo, uint64_t fence)
 }
 
 static void
-print_fault_data(struct gen_device_info *devinfo, uint32_t data1, uint32_t data0)
+print_fault_data(struct intel_device_info *devinfo, uint32_t data1, uint32_t data0)
 {
    uint64_t address;
 
@@ -422,7 +422,7 @@ read_data_file(FILE *file)
    uint32_t ring_head = UINT32_MAX, ring_tail = UINT32_MAX;
    bool ring_wraps = false;
    char *ring_name = NULL;
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
 
    while (getline(&line, &line_size, file) > 0) {
       char *new_ring_name = NULL;

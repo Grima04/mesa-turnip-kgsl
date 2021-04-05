@@ -114,7 +114,7 @@ generate_tex(struct brw_codegen *p,
              struct brw_reg surface_index,
              struct brw_reg sampler_index)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    int msg_type = -1;
 
    if (devinfo->ver >= 5) {
@@ -737,7 +737,7 @@ generate_gs_set_primitive_id(struct brw_codegen *p, struct brw_reg dst)
 static void
 generate_tcs_get_instance_id(struct brw_codegen *p, struct brw_reg dst)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    const bool ivb = devinfo->is_ivybridge || devinfo->is_baytrail;
 
    /* "Instance Count" comes as part of the payload in r0.2 bits 23:17.
@@ -768,7 +768,7 @@ generate_tcs_urb_write(struct brw_codegen *p,
                        vec4_instruction *inst,
                        struct brw_reg urb_header)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
 
    brw_inst *send = brw_next_insn(p, BRW_OPCODE_SEND);
    brw_set_dest(p, send, brw_null_reg());
@@ -952,7 +952,7 @@ generate_vec4_urb_read(struct brw_codegen *p,
                        struct brw_reg dst,
                        struct brw_reg header)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
 
    assert(header.file == BRW_GENERAL_REGISTER_FILE);
    assert(header.type == BRW_REGISTER_TYPE_UD);
@@ -977,7 +977,7 @@ generate_tcs_release_input(struct brw_codegen *p,
                            struct brw_reg vertex,
                            struct brw_reg is_unpaired)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
 
    assert(vertex.file == BRW_IMMEDIATE_VALUE);
    assert(vertex.type == BRW_REGISTER_TYPE_UD);
@@ -1057,7 +1057,7 @@ generate_tcs_create_barrier_header(struct brw_codegen *p,
                                    struct brw_vue_prog_data *prog_data,
                                    struct brw_reg dst)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    const bool ivb = devinfo->is_ivybridge || devinfo->is_baytrail;
    struct brw_reg m0_2 = get_element_ud(dst, 2);
    unsigned instances = ((struct brw_tcs_prog_data *) prog_data)->instances;
@@ -1146,7 +1146,7 @@ generate_scratch_read(struct brw_codegen *p,
                       struct brw_reg dst,
                       struct brw_reg index)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    struct brw_reg header = brw_vec8_grf(0, 0);
 
    gfx6_resolve_implied_move(p, &header, inst->base_mrf);
@@ -1192,7 +1192,7 @@ generate_scratch_write(struct brw_codegen *p,
                        struct brw_reg src,
                        struct brw_reg index)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
       (devinfo->ver >= 7 ? GFX7_SFID_DATAPORT_DATA_CACHE :
        devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_RENDER_CACHE :
@@ -1270,7 +1270,7 @@ generate_pull_constant_load(struct brw_codegen *p,
                             struct brw_reg index,
                             struct brw_reg offset)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    const unsigned target_cache =
       (devinfo->ver >= 6 ? GFX6_SFID_DATAPORT_SAMPLER_CACHE :
        BRW_SFID_DATAPORT_READ);
@@ -1356,7 +1356,7 @@ generate_pull_constant_load_gfx7(struct brw_codegen *p,
                                  struct brw_reg surf_index,
                                  struct brw_reg offset)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    assert(surf_index.type == BRW_REGISTER_TYPE_UD);
 
    if (surf_index.file == BRW_IMMEDIATE_VALUE) {
@@ -1476,7 +1476,7 @@ generate_code(struct brw_codegen *p,
               struct brw_compile_stats *stats,
               bool debug_enabled)
 {
-   const struct gen_device_info *devinfo = p->devinfo;
+   const struct intel_device_info *devinfo = p->devinfo;
    const char *stage_abbrev = _mesa_shader_stage_to_abbrev(nir->info.stage);
    struct disasm_info *disasm_info = disasm_initialize(devinfo, cfg);
 

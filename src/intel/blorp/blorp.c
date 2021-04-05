@@ -335,7 +335,7 @@ blorp_hiz_op(struct blorp_batch *batch, struct blorp_surf *surf,
              uint32_t level, uint32_t start_layer, uint32_t num_layers,
              enum isl_aux_op op)
 {
-   const struct gen_device_info *devinfo = batch->blorp->isl_dev->info;
+   const struct intel_device_info *devinfo = batch->blorp->isl_dev->info;
 
    struct blorp_params params;
    blorp_params_init(&params);

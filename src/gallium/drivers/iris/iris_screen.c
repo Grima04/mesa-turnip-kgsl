@@ -113,7 +113,7 @@ static void
 iris_get_driver_uuid(struct pipe_screen *pscreen, char *uuid)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    intel_uuid_compute_driver_id((uint8_t *)uuid, devinfo, PIPE_UUID_SIZE);
 }
@@ -158,7 +158,7 @@ static int
 iris_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    switch (param) {
    case PIPE_CAP_NPOT_TEXTURES:
@@ -524,7 +524,7 @@ iris_get_compute_param(struct pipe_screen *pscreen,
                        void *ret)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    /* Limit max_threads to 64 for the GPGPU_WALKER command. */
    const unsigned max_threads = MIN2(64, devinfo->max_cs_threads);
@@ -611,7 +611,7 @@ iris_get_timestamp(struct pipe_screen *pscreen)
 
    iris_reg_read(screen->bufmgr, TIMESTAMP | 1, &result);
 
-   result = gen_device_info_timebase_scale(&screen->devinfo, result);
+   result = intel_device_info_timebase_scale(&screen->devinfo, result);
    result &= (1ull << TIMESTAMP_BITS) - 1;
 
    return result;
@@ -684,7 +684,7 @@ iris_getparam_integer(int fd, int param)
 }
 
 static const struct intel_l3_config *
-iris_get_default_l3_config(const struct gen_device_info *devinfo,
+iris_get_default_l3_config(const struct intel_device_info *devinfo,
                            bool compute)
 {
    bool wants_dc_cache = true;
@@ -848,7 +848,7 @@ iris_screen_create(int fd, const struct pipe_screen_config *config)
    slab_create_parent(&screen->transfer_pool,
                       sizeof(struct iris_transfer), 64);
 
-   screen->subslice_total = gen_device_info_subslice_total(&screen->devinfo);
+   screen->subslice_total = intel_device_info_subslice_total(&screen->devinfo);
    assert(screen->subslice_total >= 1);
 
    iris_detect_kernel_features(screen);

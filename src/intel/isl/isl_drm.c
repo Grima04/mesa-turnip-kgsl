@@ -136,7 +136,7 @@ isl_drm_modifier_get_info(uint64_t modifier)
 }
 
 uint32_t
-isl_drm_modifier_get_score(const struct gen_device_info *devinfo,
+isl_drm_modifier_get_score(const struct intel_device_info *devinfo,
                            uint64_t modifier)
 {
    /* FINISHME: Add gfx12 modifiers */

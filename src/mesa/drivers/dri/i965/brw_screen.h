@@ -47,7 +47,7 @@ extern "C" {
 struct brw_screen
 {
    int deviceID;
-   struct gen_device_info devinfo;
+   struct intel_device_info devinfo;
 
    __DRIscreen *driScrnPriv;
 

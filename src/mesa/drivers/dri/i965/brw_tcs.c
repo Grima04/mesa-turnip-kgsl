@@ -40,7 +40,7 @@ brw_codegen_tcs_prog(struct brw_context *brw, struct brw_program *tcp,
 {
    struct gl_context *ctx = &brw->ctx;
    const struct brw_compiler *compiler = brw->screen->compiler;
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    struct brw_stage_state *stage_state = &brw->tcs.base;
    nir_shader *nir;
    struct brw_tcs_prog_data prog_data;
@@ -159,7 +159,7 @@ void
 brw_tcs_populate_key(struct brw_context *brw,
                      struct brw_tcs_prog_key *key)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const struct brw_compiler *compiler = brw->screen->compiler;
    struct brw_program *tcp =
       (struct brw_program *) brw->programs[MESA_SHADER_TESS_CTRL];
@@ -239,7 +239,7 @@ brw_tcs_populate_default_key(const struct brw_compiler *compiler,
                              struct gl_shader_program *sh_prog,
                              struct gl_program *prog)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    struct brw_program *btcp = brw_program(prog);
    const struct gl_linked_shader *tes =
       sh_prog->_LinkedShaders[MESA_SHADER_TESS_EVAL];

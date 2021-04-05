@@ -93,10 +93,10 @@ assert_def_size(nir_ssa_def *def, unsigned num_components, unsigned bit_size)
 
 static inline nir_ssa_def *
 brw_nir_num_rt_stacks(nir_builder *b,
-                      const struct gen_device_info *devinfo)
+                      const struct intel_device_info *devinfo)
 {
    return nir_imul_imm(b, nir_load_ray_num_dss_rt_stacks_intel(b),
-                          gen_device_info_num_dual_subslices(devinfo));
+                          intel_device_info_num_dual_subslices(devinfo));
 }
 
 static inline nir_ssa_def *
@@ -109,7 +109,7 @@ brw_nir_rt_stack_id(nir_builder *b)
 
 static inline nir_ssa_def *
 brw_nir_rt_sw_hotzone_addr(nir_builder *b,
-                           const struct gen_device_info *devinfo)
+                           const struct intel_device_info *devinfo)
 {
    nir_ssa_def *offset32 =
       nir_imul_imm(b, brw_nir_rt_stack_id(b), BRW_RT_SIZEOF_HOTZONE);
@@ -175,7 +175,7 @@ brw_nir_rt_mem_ray_addr(nir_builder *b,
 
 static inline nir_ssa_def *
 brw_nir_rt_sw_stack_addr(nir_builder *b,
-                         const struct gen_device_info *devinfo)
+                         const struct intel_device_info *devinfo)
 {
    nir_ssa_def *addr = nir_load_ray_base_mem_addr_intel(b);
 

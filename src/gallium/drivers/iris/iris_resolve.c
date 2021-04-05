@@ -186,7 +186,7 @@ iris_predraw_resolve_framebuffer(struct iris_context *ice,
 {
    struct pipe_framebuffer_state *cso_fb = &ice->state.framebuffer;
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct gen_device_info *devinfo = &screen->devinfo;
+   struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_uncompiled_shader *ish =
       ice->shaders.uncompiled[MESA_SHADER_FRAGMENT];
    const nir_shader *nir = ish->nir;
@@ -444,7 +444,7 @@ iris_mcs_partial_resolve(struct iris_context *ice,
 }
 
 bool
-iris_sample_with_depth_aux(const struct gen_device_info *devinfo,
+iris_sample_with_depth_aux(const struct intel_device_info *devinfo,
                            const struct iris_resource *res)
 {
    switch (res->aux.usage) {
@@ -814,7 +814,7 @@ iris_resource_texture_aux_usage(struct iris_context *ice,
                                 enum isl_format view_format)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct gen_device_info *devinfo = &screen->devinfo;
+   struct intel_device_info *devinfo = &screen->devinfo;
 
    switch (res->aux.usage) {
    case ISL_AUX_USAGE_HIZ:
@@ -952,7 +952,7 @@ iris_resource_render_aux_usage(struct iris_context *ice,
                                bool draw_aux_disabled)
 {
    struct iris_screen *screen = (void *) ice->ctx.screen;
-   struct gen_device_info *devinfo = &screen->devinfo;
+   struct intel_device_info *devinfo = &screen->devinfo;
 
    if (draw_aux_disabled)
       return ISL_AUX_USAGE_NONE;

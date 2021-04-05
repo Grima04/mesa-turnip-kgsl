@@ -200,7 +200,7 @@ intel_aux_map_get_state_num(struct intel_aux_map_context *ctx)
 struct intel_aux_map_context *
 intel_aux_map_init(void *driver_ctx,
                    struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
-                   const struct gen_device_info *devinfo)
+                   const struct intel_device_info *devinfo)
 {
    struct intel_aux_map_context *ctx;
    if (devinfo->ver < 12)

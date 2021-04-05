@@ -75,7 +75,7 @@ static const uint64_t priority_to_modifier[] = {
 };
 
 static bool
-modifier_is_supported(const struct gen_device_info *devinfo,
+modifier_is_supported(const struct intel_device_info *devinfo,
                       enum pipe_format pfmt, uint64_t modifier)
 {
    /* Check for basic device support. */
@@ -138,7 +138,7 @@ modifier_is_supported(const struct gen_device_info *devinfo,
 }
 
 static uint64_t
-select_best_modifier(struct gen_device_info *devinfo, enum pipe_format pfmt,
+select_best_modifier(struct intel_device_info *devinfo, enum pipe_format pfmt,
                      const uint64_t *modifiers,
                      int count)
 {
@@ -198,7 +198,7 @@ iris_query_dmabuf_modifiers(struct pipe_screen *pscreen,
                             int *count)
 {
    struct iris_screen *screen = (void *) pscreen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    uint64_t all_modifiers[] = {
       DRM_FORMAT_MOD_LINEAR,
@@ -238,7 +238,7 @@ iris_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
                                   bool *external_only)
 {
    struct iris_screen *screen = (void *) pscreen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    if (modifier_is_supported(devinfo, pfmt, modifier)) {
       if (external_only)
@@ -273,7 +273,7 @@ iris_image_view_get_format(struct iris_context *ice,
                            const struct pipe_image_view *img)
 {
    struct iris_screen *screen = (struct iris_screen *)ice->ctx.screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    isl_surf_usage_flags_t usage = ISL_SURF_USAGE_STORAGE_BIT;
    enum isl_format isl_fmt =
@@ -398,7 +398,7 @@ iris_get_depth_stencil_resources(struct pipe_resource *res,
 }
 
 enum isl_dim_layout
-iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
+iris_get_isl_dim_layout(const struct intel_device_info *devinfo,
                         enum isl_tiling tiling,
                         enum pipe_texture_target target)
 {
@@ -531,7 +531,7 @@ create_aux_state_map(struct iris_resource *res, enum isl_aux_state initial)
 static unsigned
 iris_get_aux_clear_color_state_size(struct iris_screen *screen)
 {
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    return devinfo->ver >= 10 ? screen->isl_dev.ss.clear_color_state_size : 0;
 }
 
@@ -539,7 +539,7 @@ static void
 map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
                   enum isl_format format, unsigned plane)
 {
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    if (devinfo->ver >= 12 && isl_aux_usage_has_ccs(res->aux.usage)) {
       void *aux_map_ctx = iris_bufmgr_get_aux_map_context(screen->bufmgr);
       assert(aux_map_ctx);
@@ -555,7 +555,7 @@ map_aux_addresses(struct iris_screen *screen, struct iris_resource *res,
 }
 
 static bool
-want_ccs_e_for_format(const struct gen_device_info *devinfo,
+want_ccs_e_for_format(const struct intel_device_info *devinfo,
                       enum isl_format format)
 {
    if (!isl_format_supports_ccs_e(devinfo, format))
@@ -671,7 +671,7 @@ static bool
 iris_resource_configure_aux(struct iris_screen *screen,
                             struct iris_resource *res, bool imported)
 {
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    /* Try to create the auxiliary surfaces allowed by the modifier or by
     * the user if no modifier is specified.
@@ -978,7 +978,7 @@ iris_resource_create_with_modifiers(struct pipe_screen *pscreen,
                                     int modifiers_count)
 {
    struct iris_screen *screen = (struct iris_screen *)pscreen;
-   struct gen_device_info *devinfo = &screen->devinfo;
+   struct intel_device_info *devinfo = &screen->devinfo;
    struct iris_resource *res = iris_alloc_resource(pscreen, templ);
 
    if (!res)

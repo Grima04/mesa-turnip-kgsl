@@ -216,7 +216,7 @@ brw_set_default_compression_control(struct brw_codegen *p,
  * the currently selected channel enable group untouched.
  */
 void
-brw_inst_set_compression(const struct gen_device_info *devinfo,
+brw_inst_set_compression(const struct intel_device_info *devinfo,
                          brw_inst *inst, bool on)
 {
    if (devinfo->ver >= 6) {
@@ -248,7 +248,7 @@ brw_set_default_compression(struct brw_codegen *p, bool on)
  * [group, group + exec_size) to the instruction passed as argument.
  */
 void
-brw_inst_set_group(const struct gen_device_info *devinfo,
+brw_inst_set_group(const struct intel_device_info *devinfo,
                    brw_inst *inst, unsigned group)
 {
    if (devinfo->ver >= 7) {
@@ -317,7 +317,7 @@ void brw_pop_insn_state( struct brw_codegen *p )
 /***********************************************************************
  */
 void
-brw_init_codegen(const struct gen_device_info *devinfo,
+brw_init_codegen(const struct intel_device_info *devinfo,
                  struct brw_codegen *p, void *mem_ctx)
 {
    memset(p, 0, sizeof(*p));
@@ -465,7 +465,7 @@ brw_create_label(struct brw_label **labels, int offset, void *mem_ctx)
 }
 
 const struct brw_label *
-brw_label_assembly(const struct gen_device_info *devinfo,
+brw_label_assembly(const struct intel_device_info *devinfo,
                    const void *assembly, int start, int end, void *mem_ctx)
 {
    struct brw_label *root_label = NULL;
@@ -512,7 +512,7 @@ brw_label_assembly(const struct gen_device_info *devinfo,
 }
 
 void
-brw_disassemble_with_labels(const struct gen_device_info *devinfo,
+brw_disassemble_with_labels(const struct intel_device_info *devinfo,
                             const void *assembly, int start, int end, FILE *out)
 {
    void *mem_ctx = ralloc_context(NULL);
@@ -525,7 +525,7 @@ brw_disassemble_with_labels(const struct gen_device_info *devinfo,
 }
 
 void
-brw_disassemble(const struct gen_device_info *devinfo,
+brw_disassemble(const struct intel_device_info *devinfo,
                 const void *assembly, int start, int end,
                 const struct brw_label *root_label, FILE *out)
 {
@@ -711,7 +711,7 @@ lookup_opcode_desc(gen *index_gen,
                    const opcode_desc **index_descs,
                    unsigned index_size,
                    unsigned opcode_desc::*key,
-                   const gen_device_info *devinfo,
+                   const intel_device_info *devinfo,
                    unsigned k)
 {
    if (*index_gen != gen_from_devinfo(devinfo)) {
@@ -740,7 +740,7 @@ lookup_opcode_desc(gen *index_gen,
  * generation, or NULL if the opcode is not supported by the device.
  */
 const struct opcode_desc *
-brw_opcode_desc(const struct gen_device_info *devinfo, enum opcode opcode)
+brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
 {
    static __thread gen index_gen = {};
    static __thread const opcode_desc *index_descs[NUM_BRW_OPCODES];
@@ -753,7 +753,7 @@ brw_opcode_desc(const struct gen_device_info *devinfo, enum opcode opcode)
  * generation, or NULL if the opcode is not supported by the device.
  */
 const struct opcode_desc *
-brw_opcode_desc_from_hw(const struct gen_device_info *devinfo, unsigned hw)
+brw_opcode_desc_from_hw(const struct intel_device_info *devinfo, unsigned hw)
 {
    static __thread gen index_gen = {};
    static __thread const opcode_desc *index_descs[128];

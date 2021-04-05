@@ -41,7 +41,7 @@ iris_is_color_fast_clear_compatible(struct iris_context *ice,
                                     const union isl_color_value color)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
 
    if (isl_format_has_int_channel(format)) {
       perf_debug(&ice->dbg, "Integer fast clear not enabled for %s\n",
@@ -343,7 +343,7 @@ clear_color(struct iris_context *ice,
    struct iris_resource *res = (void *) p_res;
 
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
-   const struct gen_device_info *devinfo = &batch->screen->devinfo;
+   const struct intel_device_info *devinfo = &batch->screen->devinfo;
    enum blorp_batch_flags blorp_flags = 0;
 
    if (render_condition_enabled) {
@@ -415,7 +415,7 @@ can_fast_clear_depth(struct iris_context *ice,
    struct pipe_resource *p_res = (void *) res;
    struct pipe_context *ctx = (void *) ice;
    struct iris_screen *screen = (void *) ctx->screen;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    if (INTEL_DEBUG & DEBUG_NO_FAST_CLEAR)
       return false;
@@ -697,7 +697,7 @@ iris_clear_texture(struct pipe_context *ctx,
    struct iris_context *ice = (void *) ctx;
    struct iris_screen *screen = (void *) ctx->screen;
    struct iris_resource *res = (void *) p_res;
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
 
    if (iris_resource_unfinished_aux_import(res))
       iris_resource_finish_aux_import(ctx->screen, res);

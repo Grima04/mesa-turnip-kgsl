@@ -133,7 +133,7 @@ gfx6_upload_push_constants(struct brw_context *brw,
                            const struct brw_stage_prog_data *prog_data,
                            struct brw_stage_state *stage_state)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
 
    bool active = prog_data &&

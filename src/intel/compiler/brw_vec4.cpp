@@ -236,7 +236,7 @@ vec4_instruction::size_read(unsigned arg) const
 }
 
 bool
-vec4_instruction::can_do_source_mods(const struct gen_device_info *devinfo)
+vec4_instruction::can_do_source_mods(const struct intel_device_info *devinfo)
 {
    if (devinfo->ver == 6 && is_math())
       return false;
@@ -271,7 +271,7 @@ vec4_instruction::can_do_cmod()
 }
 
 bool
-vec4_instruction::can_do_writemask(const struct gen_device_info *devinfo)
+vec4_instruction::can_do_writemask(const struct intel_device_info *devinfo)
 {
    switch (opcode) {
    case SHADER_OPCODE_GFX4_SCRATCH_READ:
@@ -1124,7 +1124,7 @@ vec4_visitor::opt_set_dependency_control()
 }
 
 bool
-vec4_instruction::can_reswizzle(const struct gen_device_info *devinfo,
+vec4_instruction::can_reswizzle(const struct intel_device_info *devinfo,
                                 int dst_writemask,
                                 int swizzle,
                                 int swizzle_mask)
@@ -2173,7 +2173,7 @@ stage_uses_interleaved_attributes(unsigned stage,
  * instruction's original execution size.
  */
 static unsigned
-get_lowered_simd_width(const struct gen_device_info *devinfo,
+get_lowered_simd_width(const struct intel_device_info *devinfo,
                        enum shader_dispatch_mode dispatch_mode,
                        unsigned stage, const vec4_instruction *inst)
 {

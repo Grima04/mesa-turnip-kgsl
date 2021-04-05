@@ -257,7 +257,7 @@ choose_isl_surf_usage(VkImageCreateFlags vk_create_flags,
 }
 
 static isl_tiling_flags_t
-choose_isl_tiling_flags(const struct gen_device_info *devinfo,
+choose_isl_tiling_flags(const struct intel_device_info *devinfo,
                         const struct anv_image_create_info *anv_info,
                         const struct isl_drm_modifier_info *isl_mod_info,
                         bool legacy_scanout)
@@ -332,7 +332,7 @@ add_surface(struct anv_device *device,
  * @see anv_image::planes[]::shadow_surface
  */
 static bool
-anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
+anv_image_plane_needs_shadow_surface(const struct intel_device_info *devinfo,
                                      struct anv_format_plane plane_format,
                                      VkImageTiling vk_tiling,
                                      VkImageUsageFlags vk_plane_usage,
@@ -367,7 +367,7 @@ anv_image_plane_needs_shadow_surface(const struct gen_device_info *devinfo,
 }
 
 bool
-anv_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
+anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                              VkImageCreateFlags create_flags,
                              VkFormat vk_format,
                              VkImageTiling vk_tiling,
@@ -1023,7 +1023,7 @@ add_all_surfaces_implicit_layout(
    isl_tiling_flags_t isl_tiling_flags,
    isl_surf_usage_flags_t isl_extra_usage_flags)
 {
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
    VkResult result;
 
    u_foreach_bit(b, image->aspects) {
@@ -1085,7 +1085,7 @@ add_all_surfaces_explicit_layout(
    isl_tiling_flags_t isl_tiling_flags,
    isl_surf_usage_flags_t isl_extra_usage_flags)
 {
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
    const uint32_t mod_plane_count = drm_info->drmFormatModifierPlaneCount;
    const struct isl_drm_modifier_info *isl_mod_info =
       isl_drm_modifier_get_info(drm_info->drmFormatModifier);
@@ -2078,7 +2078,7 @@ vk_image_layout_is_read_only(VkImageLayout layout,
  * @return The primary buffer that should be used for the given layout.
  */
 enum isl_aux_state ATTRIBUTE_PURE
-anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
+anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
                         const VkImageLayout layout)
@@ -2264,7 +2264,7 @@ anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
  * @return The primary buffer that should be used for the given layout.
  */
 enum isl_aux_usage ATTRIBUTE_PURE
-anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
+anv_layout_to_aux_usage(const struct intel_device_info * const devinfo,
                         const struct anv_image * const image,
                         const VkImageAspectFlagBits aspect,
                         const VkImageUsageFlagBits usage,
@@ -2331,7 +2331,7 @@ anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
  * @param layout The current layout of the image aspect(s).
  */
 enum anv_fast_clear_type ATTRIBUTE_PURE
-anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
+anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
                               const struct anv_image * const image,
                               const VkImageAspectFlagBits aspect,
                               const VkImageLayout layout)

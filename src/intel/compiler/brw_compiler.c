@@ -94,7 +94,7 @@ static const struct nir_shader_compiler_options vector_nir_options = {
 };
 
 struct brw_compiler *
-brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo)
+brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo)
 {
    struct brw_compiler *compiler = rzalloc(mem_ctx, struct brw_compiler);
 
@@ -274,7 +274,7 @@ brw_prog_key_size(gl_shader_stage stage)
 }
 
 void
-brw_write_shader_relocs(const struct gen_device_info *devinfo,
+brw_write_shader_relocs(const struct intel_device_info *devinfo,
                         void *program,
                         const struct brw_stage_prog_data *prog_data,
                         struct brw_shader_reloc_value *values,

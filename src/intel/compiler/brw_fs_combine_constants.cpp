@@ -46,7 +46,7 @@ static const bool debug = false;
  * replaced with a GRF source.
  */
 static bool
-could_coissue(const struct gen_device_info *devinfo, const fs_inst *inst)
+could_coissue(const struct intel_device_info *devinfo, const fs_inst *inst)
 {
    if (devinfo->ver != 7)
       return false;
@@ -73,7 +73,7 @@ could_coissue(const struct gen_device_info *devinfo, const fs_inst *inst)
  * Returns true for instructions that don't support immediate sources.
  */
 static bool
-must_promote_imm(const struct gen_device_info *devinfo, const fs_inst *inst)
+must_promote_imm(const struct intel_device_info *devinfo, const fs_inst *inst)
 {
    switch (inst->opcode) {
    case SHADER_OPCODE_POW:
@@ -211,7 +211,7 @@ compare(const void *_a, const void *_b)
 }
 
 static bool
-get_constant_value(const struct gen_device_info *devinfo,
+get_constant_value(const struct intel_device_info *devinfo,
                    const fs_inst *inst, uint32_t src_idx,
                    void *out, brw_reg_type *out_type)
 {
@@ -336,7 +336,7 @@ representable_as_hf(float f, uint16_t *hf)
 }
 
 static bool
-represent_src_as_imm(const struct gen_device_info *devinfo,
+represent_src_as_imm(const struct intel_device_info *devinfo,
                      fs_reg *src)
 {
    /* TODO - Fix the codepath below to use a bfloat16 immediate on XeHP,

@@ -1838,7 +1838,7 @@ brw_bufmgr_ref(struct brw_bufmgr *bufmgr)
  * \param fd File descriptor of the opened DRM device.
  */
 static struct brw_bufmgr *
-brw_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
+brw_bufmgr_create(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 {
    struct brw_bufmgr *bufmgr;
 
@@ -1924,7 +1924,7 @@ brw_bufmgr_create(struct gen_device_info *devinfo, int fd, bool bo_reuse)
 }
 
 struct brw_bufmgr *
-brw_bufmgr_get_for_fd(struct gen_device_info *devinfo, int fd, bool bo_reuse)
+brw_bufmgr_get_for_fd(struct intel_device_info *devinfo, int fd, bool bo_reuse)
 {
    struct stat st;
 

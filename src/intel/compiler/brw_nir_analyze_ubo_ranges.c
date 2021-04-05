@@ -200,7 +200,7 @@ brw_nir_analyze_ubo_ranges(const struct brw_compiler *compiler,
                            const struct brw_vs_prog_key *vs_key,
                            struct brw_ubo_range out_ranges[4])
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
 
    if ((devinfo->ver <= 7 && !devinfo->is_haswell) ||
        !compiler->scalar_stage[nir->info.stage]) {

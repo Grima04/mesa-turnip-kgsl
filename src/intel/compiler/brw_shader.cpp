@@ -161,7 +161,7 @@ brw_texture_offset(const nir_tex_instr *tex, unsigned src,
 }
 
 const char *
-brw_instruction_name(const struct gen_device_info *devinfo, enum opcode op)
+brw_instruction_name(const struct intel_device_info *devinfo, enum opcode op)
 {
    switch (op) {
    case 0 ... NUM_BRW_OPCODES - 1:
@@ -878,7 +878,7 @@ backend_instruction::is_commutative() const
 }
 
 bool
-backend_instruction::is_3src(const struct gen_device_info *devinfo) const
+backend_instruction::is_3src(const struct intel_device_info *devinfo) const
 {
    return ::is_3src(devinfo, opcode);
 }
@@ -1079,7 +1079,7 @@ backend_instruction::reads_accumulator_implicitly() const
 }
 
 bool
-backend_instruction::writes_accumulator_implicitly(const struct gen_device_info *devinfo) const
+backend_instruction::writes_accumulator_implicitly(const struct intel_device_info *devinfo) const
 {
    return writes_accumulator ||
           (devinfo->ver < 6 &&
@@ -1311,7 +1311,7 @@ brw_compile_tes(const struct brw_compiler *compiler,
                 struct brw_compile_stats *stats,
                 char **error_str)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    const bool is_scalar = compiler->scalar_stage[MESA_SHADER_TESS_EVAL];
    const bool debug_enabled = INTEL_DEBUG & DEBUG_TES;
    const unsigned *assembly;

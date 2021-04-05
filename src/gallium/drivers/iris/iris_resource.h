@@ -305,7 +305,7 @@ iris_mocs(const struct iris_bo *bo,
    return isl_mocs(dev, usage, bo && bo->external);
 }
 
-struct iris_format_info iris_format_for_usage(const struct gen_device_info *,
+struct iris_format_info iris_format_for_usage(const struct intel_device_info *,
                                               enum pipe_format pf,
                                               isl_surf_usage_flags_t usage);
 
@@ -459,7 +459,7 @@ iris_resource_access_raw(struct iris_context *ice,
    }
 }
 
-enum isl_dim_layout iris_get_isl_dim_layout(const struct gen_device_info *devinfo,
+enum isl_dim_layout iris_get_isl_dim_layout(const struct intel_device_info *devinfo,
                                             enum isl_tiling tiling,
                                             enum pipe_texture_target target);
 static inline enum isl_surf_dim
@@ -522,7 +522,7 @@ void iris_resource_check_level_layer(const struct iris_resource *res,
 bool iris_resource_level_has_hiz(const struct iris_resource *res,
                                  uint32_t level);
 
-bool iris_sample_with_depth_aux(const struct gen_device_info *devinfo,
+bool iris_sample_with_depth_aux(const struct intel_device_info *devinfo,
                                 const struct iris_resource *res);
 
 bool iris_has_color_unresolved(const struct iris_resource *res,

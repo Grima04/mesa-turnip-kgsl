@@ -256,7 +256,7 @@ struct gen_perf_context {
    void * mem_ctx; /* ralloc context */
    void * ctx;  /* driver context (eg, brw_context) */
    void * bufmgr;
-   const struct gen_device_info *devinfo;
+   const struct intel_device_info *devinfo;
 
    uint32_t hw_ctx;
    int drm_fd;
@@ -573,7 +573,7 @@ gen_perf_init_context(struct gen_perf_context *perf_ctx,
                       void * mem_ctx, /* ralloc context */
                       void * ctx,  /* driver context (eg, brw_context) */
                       void * bufmgr,  /* eg brw_bufmgr */
-                      const struct gen_device_info *devinfo,
+                      const struct intel_device_info *devinfo,
                       uint32_t hw_ctx,
                       int drm_fd)
 {
@@ -759,7 +759,7 @@ gen_perf_begin_query(struct gen_perf_context *perf_ctx,
 
       /* If the OA counters aren't already on, enable them. */
       if (perf_ctx->oa_stream_fd == -1) {
-         const struct gen_device_info *devinfo = perf_ctx->devinfo;
+         const struct intel_device_info *devinfo = perf_ctx->devinfo;
 
          /* The period_exponent gives a sampling period as follows:
           *   sample_period = timestamp_period * 2^(period_exponent + 1)
@@ -1191,7 +1191,7 @@ discard_all_queries(struct gen_perf_context *perf_ctx)
 
 /* Looks for the validity bit of context ID (dword 2) of an OA report. */
 static bool
-oa_report_ctx_id_valid(const struct gen_device_info *devinfo,
+oa_report_ctx_id_valid(const struct intel_device_info *devinfo,
                        const uint32_t *report)
 {
    assert(devinfo->ver >= 8);
@@ -1222,7 +1222,7 @@ static void
 accumulate_oa_reports(struct gen_perf_context *perf_ctx,
                       struct gen_perf_query_object *query)
 {
-   const struct gen_device_info *devinfo = perf_ctx->devinfo;
+   const struct intel_device_info *devinfo = perf_ctx->devinfo;
    uint32_t *start;
    uint32_t *last;
    uint32_t *end;
@@ -1287,7 +1287,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
             /* Ignore reports that come before the start marker.
              * (Note: takes care to allow overflow of 32bit timestamps)
              */
-            if (gen_device_info_timebase_scale(devinfo,
+            if (intel_device_info_timebase_scale(devinfo,
                                                report[1] - start[1]) > 5000000000) {
                continue;
             }
@@ -1295,7 +1295,7 @@ accumulate_oa_reports(struct gen_perf_context *perf_ctx,
             /* Ignore reports that come after the end marker.
              * (Note: takes care to allow overflow of 32bit timestamps)
              */
-            if (gen_device_info_timebase_scale(devinfo,
+            if (intel_device_info_timebase_scale(devinfo,
                                                report[1] - end[1]) <= 5000000000) {
                goto end;
             }
@@ -1552,7 +1552,7 @@ gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
       if (query->queryinfo->kind == GEN_PERF_QUERY_TYPE_OA) {
          written = get_oa_counter_data(perf_ctx, query, data_size, (uint8_t *)data);
       } else {
-         const struct gen_device_info *devinfo = perf_ctx->devinfo;
+         const struct intel_device_info *devinfo = perf_ctx->devinfo;
 
          written = gen_perf_query_result_write_mdapi((uint8_t *)data, data_size,
                                                      devinfo, query->queryinfo,

@@ -65,7 +65,7 @@ test_compact_instruction(struct brw_codegen *p, brw_inst src)
  * become meaningless once fuzzing twiddles a related bit.
  */
 static void
-clear_pad_bits(const struct gen_device_info *devinfo, brw_inst *inst)
+clear_pad_bits(const struct intel_device_info *devinfo, brw_inst *inst)
 {
    if (brw_inst_opcode(devinfo, inst) != BRW_OPCODE_SEND &&
        brw_inst_opcode(devinfo, inst) != BRW_OPCODE_SENDC &&
@@ -83,7 +83,7 @@ clear_pad_bits(const struct gen_device_info *devinfo, brw_inst *inst)
 }
 
 static bool
-skip_bit(const struct gen_device_info *devinfo, brw_inst *src, int bit)
+skip_bit(const struct intel_device_info *devinfo, brw_inst *src, int bit)
 {
    /* pad bit */
    if (bit == 7)
@@ -285,7 +285,7 @@ struct {
 };
 
 static bool
-run_tests(const struct gen_device_info *devinfo)
+run_tests(const struct intel_device_info *devinfo)
 {
    bool fail = false;
 
@@ -330,7 +330,7 @@ run_tests(const struct gen_device_info *devinfo)
 int
 main(UNUSED int argc, UNUSED char **argv)
 {
-   struct gen_device_info *devinfo = (struct gen_device_info *)calloc(1, sizeof(*devinfo));
+   struct intel_device_info *devinfo = (struct intel_device_info *)calloc(1, sizeof(*devinfo));
    bool fail = false;
 
    for (devinfo->ver = 5; devinfo->ver <= 12; devinfo->ver++) {

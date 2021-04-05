@@ -35,7 +35,7 @@ anv_nir_compute_push_layout(const struct anv_physical_device *pdevice,
                             void *mem_ctx)
 {
    const struct brw_compiler *compiler = pdevice->compiler;
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    memset(map->push_ranges, 0, sizeof(map->push_ranges));
 
    bool has_const_ubo = false;

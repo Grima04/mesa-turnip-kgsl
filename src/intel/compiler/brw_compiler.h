@@ -41,7 +41,7 @@ struct brw_program;
 typedef struct nir_shader nir_shader;
 
 struct brw_compiler {
-   const struct gen_device_info *devinfo;
+   const struct intel_device_info *devinfo;
 
    struct {
       struct ra_regs *regs;
@@ -1155,7 +1155,7 @@ GLuint brw_varying_to_offset(const struct brw_vue_map *vue_map, GLuint varying)
    return brw_vue_slot_to_offset(vue_map->varying_to_slot[varying]);
 }
 
-void brw_compute_vue_map(const struct gen_device_info *devinfo,
+void brw_compute_vue_map(const struct intel_device_info *devinfo,
                          struct brw_vue_map *vue_map,
                          uint64_t slots_valid,
                          bool separate_shader,
@@ -1413,7 +1413,7 @@ struct brw_compile_stats {
 /** @} */
 
 struct brw_compiler *
-brw_compiler_create(void *mem_ctx, const struct gen_device_info *devinfo);
+brw_compiler_create(void *mem_ctx, const struct intel_device_info *devinfo);
 
 /**
  * Returns a compiler configuration for use with disk shader cache
@@ -1691,12 +1691,12 @@ brw_cs_push_const_total_size(const struct brw_cs_prog_data *cs_prog_data,
                              unsigned threads);
 
 unsigned
-brw_cs_simd_size_for_group_size(const struct gen_device_info *devinfo,
+brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
                                 const struct brw_cs_prog_data *cs_prog_data,
                                 unsigned group_size);
 
 void
-brw_write_shader_relocs(const struct gen_device_info *devinfo,
+brw_write_shader_relocs(const struct intel_device_info *devinfo,
                         void *program,
                         const struct brw_stage_prog_data *prog_data,
                         struct brw_shader_reloc_value *values,
@@ -1722,7 +1722,7 @@ brw_cs_right_mask(unsigned group_size, unsigned simd_size)
  * '2^n - 1' for some n.
  */
 static inline bool
-brw_stage_has_packed_dispatch(ASSERTED const struct gen_device_info *devinfo,
+brw_stage_has_packed_dispatch(ASSERTED const struct intel_device_info *devinfo,
                               gl_shader_stage stage,
                               const struct brw_stage_prog_data *prog_data)
 {

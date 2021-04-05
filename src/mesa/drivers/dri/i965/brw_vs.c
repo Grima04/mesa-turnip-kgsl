@@ -73,7 +73,7 @@ static GLbitfield64
 brw_vs_outputs_written(struct brw_context *brw, struct brw_vs_prog_key *key,
                        GLbitfield64 user_varyings)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    GLbitfield64 outputs_written = user_varyings;
 
    if (key->copy_edgeflag) {
@@ -117,7 +117,7 @@ brw_codegen_vs_prog(struct brw_context *brw,
                     struct brw_vs_prog_key *key)
 {
    const struct brw_compiler *compiler = brw->screen->compiler;
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    const GLuint *program;
    struct brw_vs_prog_data prog_data;
    struct brw_stage_prog_data *stage_prog_data = &prog_data.base.base;
@@ -257,7 +257,7 @@ brw_vs_populate_key(struct brw_context *brw,
    /* BRW_NEW_VERTEX_PROGRAM */
    struct gl_program *prog = brw->programs[MESA_SHADER_VERTEX];
    struct brw_program *vp = (struct brw_program *) prog;
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    memset(key, 0, sizeof(*key));
 
@@ -333,7 +333,7 @@ brw_vs_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_vs_prog_key *key,
                             struct gl_program *prog)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    struct brw_program *bvp = brw_program(prog);
 
    memset(key, 0, sizeof(*key));

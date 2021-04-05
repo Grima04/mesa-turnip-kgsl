@@ -268,7 +268,7 @@ genX(emit_urb_setup)(struct anv_device *device, struct anv_batch *batch,
                      const unsigned entry_size[4],
                      enum intel_urb_deref_block_size *deref_block_size)
 {
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
 
    unsigned entries[4];
    unsigned start[4];
@@ -1595,7 +1595,7 @@ get_scratch_space(const struct anv_shader_bin *bin)
 static void
 emit_3dstate_vs(struct anv_graphics_pipeline *pipeline)
 {
-   const struct gen_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
    const struct brw_vs_prog_data *vs_prog_data = get_vs_prog_data(pipeline);
    const struct anv_shader_bin *vs_bin =
       pipeline->shaders[MESA_SHADER_VERTEX];
@@ -1679,7 +1679,7 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
       return;
    }
 
-   const struct gen_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
    const struct anv_shader_bin *tcs_bin =
       pipeline->shaders[MESA_SHADER_TESS_CTRL];
    const struct anv_shader_bin *tes_bin =
@@ -1809,7 +1809,7 @@ emit_3dstate_hs_te_ds(struct anv_graphics_pipeline *pipeline,
 static void
 emit_3dstate_gs(struct anv_graphics_pipeline *pipeline)
 {
-   const struct gen_device_info *devinfo = &pipeline->base.device->info;
+   const struct intel_device_info *devinfo = &pipeline->base.device->info;
    const struct anv_shader_bin *gs_bin =
       pipeline->shaders[MESA_SHADER_GEOMETRY];
 
@@ -1995,7 +1995,7 @@ emit_3dstate_ps(struct anv_graphics_pipeline *pipeline,
                 const VkPipelineColorBlendStateCreateInfo *blend,
                 const VkPipelineMultisampleStateCreateInfo *multisample)
 {
-   UNUSED const struct gen_device_info *devinfo = &pipeline->base.device->info;
+   UNUSED const struct intel_device_info *devinfo = &pipeline->base.device->info;
    const struct anv_shader_bin *fs_bin =
       pipeline->shaders[MESA_SHADER_FRAGMENT];
 
@@ -2377,7 +2377,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
    const UNUSED struct anv_shader_bin *cs_bin = pipeline->cs;
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
 
    anv_batch_emit(&pipeline->base.batch, GENX(CFE_STATE), cfe) {
       cfe.MaximumNumberofThreads =
@@ -2408,7 +2408,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
    const struct anv_shader_bin *cs_bin = pipeline->cs;
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
 
    anv_batch_emit(&pipeline->base.batch, GENX(MEDIA_VFE_STATE), vfe) {
 #if GFX_VER > 7

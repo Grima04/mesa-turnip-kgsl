@@ -1437,7 +1437,7 @@ anv_scratch_pool_alloc(struct anv_device *device, struct anv_scratch_pool *pool,
    if (bo != NULL)
       return bo;
 
-   const struct gen_device_info *devinfo = &device->info;
+   const struct intel_device_info *devinfo = &device->info;
 
    unsigned subslices = MAX2(device->physical->subslice_total, 1);
 

@@ -461,7 +461,7 @@ engine_from_engine_class(enum drm_i915_gem_engine_class engine_class)
 }
 
 static void
-get_context_init(const struct gen_device_info *devinfo,
+get_context_init(const struct intel_device_info *devinfo,
                  const struct gen_context_parameters *params,
                  enum drm_i915_gem_engine_class engine_class,
                  uint32_t *data,

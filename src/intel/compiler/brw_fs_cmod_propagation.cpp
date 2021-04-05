@@ -51,7 +51,7 @@
 using namespace brw;
 
 static bool
-cmod_propagate_cmp_to_add(const gen_device_info *devinfo, bblock_t *block,
+cmod_propagate_cmp_to_add(const intel_device_info *devinfo, bblock_t *block,
                           fs_inst *inst)
 {
    bool read_flag = false;
@@ -166,7 +166,7 @@ cmod_propagate_cmp_to_add(const gen_device_info *devinfo, bblock_t *block,
  *    or.z.f0(8)      g78<8,8,1>      g76<8,8,1>UD    g77<8,8,1>UD
  */
 static bool
-cmod_propagate_not(const gen_device_info *devinfo, bblock_t *block,
+cmod_propagate_not(const intel_device_info *devinfo, bblock_t *block,
                    fs_inst *inst)
 {
    const enum brw_conditional_mod cond = brw_negate_cmod(inst->conditional_mod);
@@ -220,7 +220,7 @@ cmod_propagate_not(const gen_device_info *devinfo, bblock_t *block,
 }
 
 static bool
-opt_cmod_propagation_local(const gen_device_info *devinfo, bblock_t *block)
+opt_cmod_propagation_local(const intel_device_info *devinfo, bblock_t *block)
 {
    bool progress = false;
    int ip = block->end_ip + 1;

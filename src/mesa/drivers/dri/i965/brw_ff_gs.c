@@ -47,7 +47,7 @@ void
 brw_codegen_ff_gs_prog(struct brw_context *brw,
                        struct brw_ff_gs_prog_key *key)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_ff_gs_compile c;
    const GLuint *program;
    void *mem_ctx;
@@ -162,7 +162,7 @@ static void
 brw_ff_gs_populate_key(struct brw_context *brw,
                        struct brw_ff_gs_prog_key *key)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    static const unsigned swizzle_for_offset[4] = {
       BRW_SWIZZLE4(0, 1, 2, 3),
       BRW_SWIZZLE4(1, 2, 3, 3),

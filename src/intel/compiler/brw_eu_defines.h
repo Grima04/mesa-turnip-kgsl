@@ -1194,7 +1194,7 @@ tgl_swsb_src_dep(struct tgl_swsb swsb)
  * SWSB annotation.
  */
 static inline uint8_t
-tgl_swsb_encode(const struct gen_device_info *devinfo, struct tgl_swsb swsb)
+tgl_swsb_encode(const struct intel_device_info *devinfo, struct tgl_swsb swsb)
 {
    if (!swsb.mode) {
       const unsigned pipe = devinfo->verx10 < 125 ? 0 :
@@ -1216,7 +1216,7 @@ tgl_swsb_encode(const struct gen_device_info *devinfo, struct tgl_swsb swsb)
  * tgl_swsb.
  */
 static inline struct tgl_swsb
-tgl_swsb_decode(const struct gen_device_info *devinfo, const enum opcode opcode,
+tgl_swsb_decode(const struct intel_device_info *devinfo, const enum opcode opcode,
                 const uint8_t x)
 {
    if (x & 0x80) {

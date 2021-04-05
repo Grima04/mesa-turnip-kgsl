@@ -33,13 +33,13 @@ extern "C" {
 
 void brw_nir_lower_raygen(nir_shader *nir);
 void brw_nir_lower_any_hit(nir_shader *nir,
-                           const struct gen_device_info *devinfo);
+                           const struct intel_device_info *devinfo);
 void brw_nir_lower_closest_hit(nir_shader *nir);
 void brw_nir_lower_miss(nir_shader *nir);
 void brw_nir_lower_callable(nir_shader *nir);
 void brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
                                                  const nir_shader *any_hit,
-                                                 const struct gen_device_info *devinfo);
+                                                 const struct intel_device_info *devinfo);
 
 /* We reserve the first 16B of the stack for callee data pointers */
 #define BRW_BTD_STACK_RESUME_BSR_ADDR_OFFSET 0
@@ -58,10 +58,10 @@ bool brw_nir_lower_shader_calls(nir_shader *shader,
                                 void *mem_ctx);
 
 void brw_nir_lower_rt_intrinsics(nir_shader *shader,
-                                 const struct gen_device_info *devinfo);
+                                 const struct intel_device_info *devinfo);
 void brw_nir_lower_intersection_shader(nir_shader *intersection,
                                        const nir_shader *any_hit,
-                                       const struct gen_device_info *devinfo);
+                                       const struct intel_device_info *devinfo);
 
 nir_shader *
 brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,

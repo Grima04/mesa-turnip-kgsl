@@ -83,7 +83,7 @@ brw_create_nir(struct brw_context *brw,
                gl_shader_stage stage,
                bool is_scalar)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct gl_context *ctx = &brw->ctx;
    const nir_shader_compiler_options *options =
       ctx->Const.ShaderCompilerOptions[stage].NirOptions;
@@ -179,7 +179,7 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
 void
 brw_nir_lower_resources(nir_shader *nir, struct gl_shader_program *shader_prog,
                         struct gl_program *prog,
-                        const struct gen_device_info *devinfo)
+                        const struct intel_device_info *devinfo)
 {
    NIR_PASS_V(nir, brw_nir_lower_uniforms, nir->options->lower_to_scalar);
    NIR_PASS_V(prog->nir, gl_nir_lower_samplers, shader_prog);
@@ -348,7 +348,7 @@ static void
 brw_memory_barrier(struct gl_context *ctx, GLbitfield barriers)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    unsigned bits = PIPE_CONTROL_DATA_CACHE_FLUSH | PIPE_CONTROL_CS_STALL;
    assert(devinfo->ver >= 7 && devinfo->ver <= 11);
 
@@ -386,7 +386,7 @@ static void
 brw_framebuffer_fetch_barrier(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    if (!ctx->Extensions.EXT_shader_framebuffer_fetch) {
       if (devinfo->ver >= 6) {
@@ -436,7 +436,7 @@ brw_alloc_stage_scratch(struct brw_context *brw,
    if (stage_state->scratch_bo)
       brw_bo_unreference(stage_state->scratch_bo);
 
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    unsigned thread_count;
    switch(stage_state->stage) {
    case MESA_SHADER_VERTEX:
@@ -823,7 +823,7 @@ brw_dump_arb_asm(const char *stage, struct gl_program *prog)
 }
 
 void
-brw_setup_tex_for_precompile(const struct gen_device_info *devinfo,
+brw_setup_tex_for_precompile(const struct intel_device_info *devinfo,
                              struct brw_sampler_prog_key_data *tex,
                              const struct gl_program *prog)
 {
@@ -850,7 +850,7 @@ brw_setup_tex_for_precompile(const struct gen_device_info *devinfo,
  * trigger some of our asserts that surface indices are < BRW_MAX_SURFACES.
  */
 uint32_t
-brw_assign_common_binding_table_offsets(const struct gen_device_info *devinfo,
+brw_assign_common_binding_table_offsets(const struct intel_device_info *devinfo,
                                         const struct gl_program *prog,
                                         struct brw_stage_prog_data *stage_prog_data,
                                         uint32_t next_binding_table_offset)

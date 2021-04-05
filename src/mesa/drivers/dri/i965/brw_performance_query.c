@@ -372,11 +372,11 @@ brw_delete_perf_query(struct gl_context *ctx,
 }
 
 /******************************************************************************/
-/* gen_device_info will have incorrect default topology values for unsupported kernels.
+/* intel_device_info will have incorrect default topology values for unsupported kernels.
  * verify kernel support to ensure OA metrics are accurate.
  */
 static bool
-oa_metrics_kernel_support(int fd, const struct gen_device_info *devinfo)
+oa_metrics_kernel_support(int fd, const struct intel_device_info *devinfo)
 {
    if (devinfo->ver >= 10) {
       /* topology uAPI required for CNL+ (kernel 4.17+) make a call to the api
@@ -476,7 +476,7 @@ static unsigned
 brw_init_perf_query_info(struct gl_context *ctx)
 {
    struct brw_context *brw = brw_context(ctx);
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    struct gen_perf_context *perf_ctx = brw->perf_ctx;
    struct gen_perf_config *perf_cfg = gen_perf_config(perf_ctx);

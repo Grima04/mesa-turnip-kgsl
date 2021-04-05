@@ -36,7 +36,7 @@
 #include "compiler/glsl/ir_uniform.h"
 
 static void
-assign_gs_binding_table_offsets(const struct gen_device_info *devinfo,
+assign_gs_binding_table_offsets(const struct intel_device_info *devinfo,
                                 const struct gl_program *prog,
                                 struct brw_gs_prog_data *prog_data)
 {
@@ -55,7 +55,7 @@ brw_codegen_gs_prog(struct brw_context *brw,
                     struct brw_gs_prog_key *key)
 {
    struct brw_compiler *compiler = brw->screen->compiler;
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    struct brw_stage_state *stage_state = &brw->gs.base;
    struct brw_gs_prog_data prog_data;
    bool start_busy = false;
@@ -188,7 +188,7 @@ brw_gs_populate_default_key(const struct brw_compiler *compiler,
                             struct brw_gs_prog_key *key,
                             struct gl_program *prog)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
 
    memset(key, 0, sizeof(*key));
 

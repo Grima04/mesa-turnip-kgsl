@@ -37,7 +37,7 @@ extern "C" {
 #endif
 
 enum brw_reg_file;
-struct gen_device_info;
+struct intel_device_info;
 
 /*
  * The ordering has been chosen so that no enum value is the same as a
@@ -164,27 +164,27 @@ brw_reg_type_from_bit_size(unsigned bit_size,
 #define INVALID_HW_REG_TYPE ((unsigned)-1)
 
 unsigned
-brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
+brw_reg_type_to_hw_type(const struct intel_device_info *devinfo,
                         enum brw_reg_file file, enum brw_reg_type type);
 
 enum brw_reg_type ATTRIBUTE_PURE
-brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
+brw_hw_type_to_reg_type(const struct intel_device_info *devinfo,
                         enum brw_reg_file file, unsigned hw_type);
 
 unsigned
-brw_reg_type_to_a16_hw_3src_type(const struct gen_device_info *devinfo,
+brw_reg_type_to_a16_hw_3src_type(const struct intel_device_info *devinfo,
                                  enum brw_reg_type type);
 
 unsigned
-brw_reg_type_to_a1_hw_3src_type(const struct gen_device_info *devinfo,
+brw_reg_type_to_a1_hw_3src_type(const struct intel_device_info *devinfo,
                                 enum brw_reg_type type);
 
 enum brw_reg_type
-brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
+brw_a16_hw_3src_type_to_reg_type(const struct intel_device_info *devinfo,
                                  unsigned hw_type);
 
 enum brw_reg_type
-brw_a1_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
+brw_a1_hw_3src_type_to_reg_type(const struct intel_device_info *devinfo,
                                 unsigned hw_type, unsigned exec_type);
 
 unsigned

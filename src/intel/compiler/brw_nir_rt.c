@@ -266,7 +266,7 @@ build_terminate_ray(nir_builder *b)
  */
 static bool
 lower_ray_walk_intrinsics(nir_shader *shader,
-                          const struct gen_device_info *devinfo)
+                          const struct intel_device_info *devinfo)
 {
    assert(shader->info.stage == MESA_SHADER_ANY_HIT ||
           shader->info.stage == MESA_SHADER_INTERSECTION);
@@ -352,7 +352,7 @@ brw_nir_lower_raygen(nir_shader *nir)
 }
 
 void
-brw_nir_lower_any_hit(nir_shader *nir, const struct gen_device_info *devinfo)
+brw_nir_lower_any_hit(nir_shader *nir, const struct intel_device_info *devinfo)
 {
    assert(nir->info.stage == MESA_SHADER_ANY_HIT);
    NIR_PASS_V(nir, brw_nir_lower_shader_returns);
@@ -387,7 +387,7 @@ brw_nir_lower_callable(nir_shader *nir)
 void
 brw_nir_lower_combined_intersection_any_hit(nir_shader *intersection,
                                             const nir_shader *any_hit,
-                                            const struct gen_device_info *devinfo)
+                                            const struct intel_device_info *devinfo)
 {
    assert(intersection->info.stage == MESA_SHADER_INTERSECTION);
    assert(any_hit == NULL || any_hit->info.stage == MESA_SHADER_ANY_HIT);
@@ -415,7 +415,7 @@ nir_shader *
 brw_nir_create_raygen_trampoline(const struct brw_compiler *compiler,
                                  void *mem_ctx)
 {
-   const struct gen_device_info *devinfo = compiler->devinfo;
+   const struct intel_device_info *devinfo = compiler->devinfo;
    const nir_shader_compiler_options *nir_options =
       compiler->glsl_compiler_options[MESA_SHADER_COMPUTE].NirOptions;
 

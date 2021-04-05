@@ -320,7 +320,7 @@ static const struct hw_3src_type {
  * The hardware encoding may depend on whether the value is an immediate.
  */
 unsigned
-brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
+brw_reg_type_to_hw_type(const struct intel_device_info *devinfo,
                         enum brw_reg_file file,
                         enum brw_reg_type type)
 {
@@ -364,7 +364,7 @@ brw_reg_type_to_hw_type(const struct gen_device_info *devinfo,
  * The hardware encoding may depend on whether the value is an immediate.
  */
 enum brw_reg_type
-brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
+brw_hw_type_to_reg_type(const struct intel_device_info *devinfo,
                         enum brw_reg_file file, unsigned hw_type)
 {
    const struct hw_type *table;
@@ -406,7 +406,7 @@ brw_hw_type_to_reg_type(const struct gen_device_info *devinfo,
  * for a 3-src align16 instruction
  */
 unsigned
-brw_reg_type_to_a16_hw_3src_type(const struct gen_device_info *devinfo,
+brw_reg_type_to_a16_hw_3src_type(const struct intel_device_info *devinfo,
                                  enum brw_reg_type type)
 {
    const struct hw_3src_type *table;
@@ -431,7 +431,7 @@ brw_reg_type_to_a16_hw_3src_type(const struct gen_device_info *devinfo,
  * for a 3-src align1 instruction
  */
 unsigned
-brw_reg_type_to_a1_hw_3src_type(const struct gen_device_info *devinfo,
+brw_reg_type_to_a1_hw_3src_type(const struct intel_device_info *devinfo,
                                 enum brw_reg_type type)
 {
    if (devinfo->verx10 >= 125) {
@@ -454,7 +454,7 @@ brw_reg_type_to_a1_hw_3src_type(const struct gen_device_info *devinfo,
  * brw_reg_type enumeration value.
  */
 enum brw_reg_type
-brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
+brw_a16_hw_3src_type_to_reg_type(const struct intel_device_info *devinfo,
                                  unsigned hw_type)
 {
    const struct hw_3src_type *table = NULL;
@@ -480,7 +480,7 @@ brw_a16_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
  * brw_reg_type enumeration value.
  */
 enum brw_reg_type
-brw_a1_hw_3src_type_to_reg_type(const struct gen_device_info *devinfo,
+brw_a1_hw_3src_type_to_reg_type(const struct intel_device_info *devinfo,
                                 unsigned hw_type, unsigned exec_type)
 {
    const struct hw_3src_type *table =

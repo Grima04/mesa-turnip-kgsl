@@ -206,7 +206,7 @@ brw_isl_format_for_mesa_format(mesa_format mesa_format)
 void
 brw_screen_init_surface_formats(struct brw_screen *screen)
 {
-   const struct gen_device_info *devinfo = &screen->devinfo;
+   const struct intel_device_info *devinfo = &screen->devinfo;
    mesa_format format;
 
    memset(&screen->mesa_format_supports_texture, 0,
@@ -415,7 +415,7 @@ bool
 brw_render_target_supported(struct brw_context *brw,
                             struct gl_renderbuffer *rb)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
    mesa_format format = rb->Format;
 
    /* Many integer formats are promoted to RGBA (like XRGB8888 is), which means
@@ -519,7 +519,7 @@ translate_tex_format(struct brw_context *brw,
 uint32_t
 brw_depth_format(struct brw_context *brw, mesa_format format)
 {
-   const struct gen_device_info *devinfo = &brw->screen->devinfo;
+   const struct intel_device_info *devinfo = &brw->screen->devinfo;
 
    switch (format) {
    case MESA_FORMAT_Z_UNORM16:

@@ -69,7 +69,7 @@ namespace {
     * instruction (e.g. when TGL_PIPE_NONE is specified in tgl_swsb).
     */
    tgl_pipe
-   inferred_sync_pipe(const struct gen_device_info *devinfo, const fs_inst *inst)
+   inferred_sync_pipe(const struct intel_device_info *devinfo, const fs_inst *inst)
    {
       if (devinfo->verx10 >= 125) {
          bool has_int_src = false, has_long_src = false;
@@ -101,7 +101,7 @@ namespace {
     * RegDist synchronization mechanism.
     */
    tgl_pipe
-   inferred_exec_pipe(const struct gen_device_info *devinfo, const fs_inst *inst)
+   inferred_exec_pipe(const struct intel_device_info *devinfo, const fs_inst *inst)
    {
       const brw_reg_type t = get_exec_type(inst);
       const bool is_dword_multiply = !brw_reg_type_is_floating_point(t) &&
@@ -143,7 +143,7 @@ namespace {
     * instruction.
     */
    unsigned
-   ordered_unit(const struct gen_device_info *devinfo, const fs_inst *inst,
+   ordered_unit(const struct intel_device_info *devinfo, const fs_inst *inst,
                 unsigned p)
    {
       switch (inst->opcode) {
@@ -881,7 +881,7 @@ namespace {
     * dependency is present.
     */
    tgl_sbid_mode
-   baked_unordered_dependency_mode(const struct gen_device_info *devinfo,
+   baked_unordered_dependency_mode(const struct intel_device_info *devinfo,
                                    const fs_inst *inst,
                                    const dependency_list &deps,
                                    const ordered_address &jp)
@@ -910,7 +910,7 @@ namespace {
     * additional SYNC instructions.
     */
    bool
-   baked_ordered_dependency_mode(const struct gen_device_info *devinfo,
+   baked_ordered_dependency_mode(const struct intel_device_info *devinfo,
                                  const fs_inst *inst,
                                  const dependency_list &deps,
                                  const ordered_address &jp)
@@ -948,7 +948,7 @@ namespace {
                           const fs_inst *inst, unsigned ip, scoreboard &sb)
    {
       const bool exec_all = inst->force_writemask_all;
-      const struct gen_device_info *devinfo = shader->devinfo;
+      const struct intel_device_info *devinfo = shader->devinfo;
       const tgl_pipe p = inferred_exec_pipe(devinfo, inst);
       const ordered_address jp = p ? ordered_address(p, jps[ip].jp[IDX(p)]) :
                                      ordered_address();
@@ -1169,7 +1169,7 @@ namespace {
                           const ordered_address *jps,
                           const dependency_list *deps)
    {
-      const struct gen_device_info *devinfo = shader->devinfo;
+      const struct intel_device_info *devinfo = shader->devinfo;
       unsigned ip = 0;
 
       foreach_block_and_inst_safe(block, fs_inst, inst, shader->cfg) {

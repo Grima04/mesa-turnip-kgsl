@@ -129,7 +129,7 @@ mi_adjust_reg_num(uint32_t reg)
 #endif
 
 struct mi_builder {
-   const struct gen_device_info *devinfo;
+   const struct intel_device_info *devinfo;
    __gen_user_data *user_data;
 
 #if GFX_VERx10 >= 75
@@ -143,7 +143,7 @@ struct mi_builder {
 
 static inline void
 mi_builder_init(struct mi_builder *b,
-                const struct gen_device_info *devinfo,
+                const struct intel_device_info *devinfo,
                 __gen_user_data *user_data)
 {
    memset(b, 0, sizeof(*b));

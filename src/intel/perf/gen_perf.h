@@ -41,7 +41,7 @@
 
 #include "drm-uapi/i915_drm.h"
 
-struct gen_device_info;
+struct intel_device_info;
 
 struct gen_perf_config;
 struct gen_perf_query_info;
@@ -383,7 +383,7 @@ struct gen_perf_counter_pass {
 };
 
 void gen_perf_init_metrics(struct gen_perf_config *perf_cfg,
-                           const struct gen_device_info *devinfo,
+                           const struct intel_device_info *devinfo,
                            int drm_fd,
                            bool include_pipeline_statistics);
 
@@ -411,14 +411,14 @@ uint64_t gen_perf_store_configuration(struct gen_perf_config *perf_cfg, int fd,
  *  result.
  */
 void gen_perf_query_result_read_frequencies(struct gen_perf_query_result *result,
-                                            const struct gen_device_info *devinfo,
+                                            const struct intel_device_info *devinfo,
                                             const uint32_t *start,
                                             const uint32_t *end);
 
 /** Store the GT frequency as reported by the RPSTAT register.
  */
 void gen_perf_query_result_read_gt_frequency(struct gen_perf_query_result *result,
-                                             const struct gen_device_info *devinfo,
+                                             const struct intel_device_info *devinfo,
                                              const uint32_t start,
                                              const uint32_t end);
 
@@ -433,7 +433,7 @@ void gen_perf_query_result_read_perfcnts(struct gen_perf_query_result *result,
  */
 void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
                                       const struct gen_perf_query_info *query,
-                                      const struct gen_device_info *devinfo,
+                                      const struct intel_device_info *devinfo,
                                       const uint32_t *start,
                                       const uint32_t *end);
 
@@ -442,7 +442,7 @@ void gen_perf_query_result_accumulate(struct gen_perf_query_result *result,
  */
 void gen_perf_query_result_accumulate_fields(struct gen_perf_query_result *result,
                                              const struct gen_perf_query_info *query,
-                                             const struct gen_device_info *devinfo,
+                                             const struct intel_device_info *devinfo,
                                              const void *start,
                                              const void *end,
                                              bool no_oa_accumulate);
@@ -452,7 +452,7 @@ void gen_perf_query_result_clear(struct gen_perf_query_result *result);
 /** Debug helper printing out query data.
  */
 void gen_perf_query_result_print_fields(const struct gen_perf_query_info *query,
-                                        const struct gen_device_info *devinfo,
+                                        const struct intel_device_info *devinfo,
                                         const void *data);
 
 static inline size_t

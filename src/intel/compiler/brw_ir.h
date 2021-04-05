@@ -90,7 +90,7 @@ struct backend_reg : private brw_reg
 struct bblock_t;
 
 struct backend_instruction : public exec_node {
-   bool is_3src(const struct gen_device_info *devinfo) const;
+   bool is_3src(const struct intel_device_info *devinfo) const;
    bool is_tex() const;
    bool is_math() const;
    bool is_control_flow() const;
@@ -99,7 +99,7 @@ struct backend_instruction : public exec_node {
    bool can_do_saturate() const;
    bool can_do_cmod() const;
    bool reads_accumulator_implicitly() const;
-   bool writes_accumulator_implicitly(const struct gen_device_info *devinfo) const;
+   bool writes_accumulator_implicitly(const struct intel_device_info *devinfo) const;
 
    /**
     * Instructions that use indirect addressing have additional register

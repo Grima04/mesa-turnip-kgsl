@@ -891,7 +891,7 @@ struct anv_physical_device {
        uint8_t                                  device;
        uint8_t                                  function;
     }                                           pci_info;
-    struct gen_device_info                      info;
+    struct intel_device_info                      info;
     /** Amount of "GPU memory" we want to advertise
      *
      * Clearly, this value is bogus since Intel is a UMA architecture.  On
@@ -1182,7 +1182,7 @@ struct anv_device {
 
     struct anv_physical_device *                physical;
     bool                                        no_hw;
-    struct gen_device_info                      info;
+    struct intel_device_info                      info;
     struct isl_device                           isl_dev;
     int                                         context_id;
     int                                         fd;
@@ -3584,17 +3584,17 @@ anv_get_format_planes(VkFormat vk_format)
 }
 
 struct anv_format_plane
-anv_get_format_plane(const struct gen_device_info *devinfo, VkFormat vk_format,
+anv_get_format_plane(const struct intel_device_info *devinfo, VkFormat vk_format,
                      VkImageAspectFlagBits aspect, VkImageTiling tiling);
 
 static inline enum isl_format
-anv_get_isl_format(const struct gen_device_info *devinfo, VkFormat vk_format,
+anv_get_isl_format(const struct intel_device_info *devinfo, VkFormat vk_format,
                    VkImageAspectFlags aspect, VkImageTiling tiling)
 {
    return anv_get_format_plane(devinfo, vk_format, aspect, tiling).isl_format;
 }
 
-bool anv_formats_ccs_e_compatible(const struct gen_device_info *devinfo,
+bool anv_formats_ccs_e_compatible(const struct intel_device_info *devinfo,
                                   VkImageCreateFlags create_flags,
                                   VkFormat vk_format,
                                   VkImageTiling vk_tiling,
@@ -3911,7 +3911,7 @@ anv_image_get_compression_state_addr(const struct anv_device *device,
 
 /* Returns true if a HiZ-enabled depth buffer can be sampled from. */
 static inline bool
-anv_can_sample_with_hiz(const struct gen_device_info * const devinfo,
+anv_can_sample_with_hiz(const struct intel_device_info * const devinfo,
                         const struct anv_image *image)
 {
    if (!(image->aspects & VK_IMAGE_ASPECT_DEPTH_BIT))
@@ -4026,20 +4026,20 @@ anv_image_copy_to_shadow(struct anv_cmd_buffer *cmd_buffer,
                          uint32_t base_layer, uint32_t layer_count);
 
 enum isl_aux_state ATTRIBUTE_PURE
-anv_layout_to_aux_state(const struct gen_device_info * const devinfo,
+anv_layout_to_aux_state(const struct intel_device_info * const devinfo,
                         const struct anv_image *image,
                         const VkImageAspectFlagBits aspect,
                         const VkImageLayout layout);
 
 enum isl_aux_usage ATTRIBUTE_PURE
-anv_layout_to_aux_usage(const struct gen_device_info * const devinfo,
+anv_layout_to_aux_usage(const struct intel_device_info * const devinfo,
                         const struct anv_image *image,
                         const VkImageAspectFlagBits aspect,
                         const VkImageUsageFlagBits usage,
                         const VkImageLayout layout);
 
 enum anv_fast_clear_type ATTRIBUTE_PURE
-anv_layout_to_fast_clear_type(const struct gen_device_info * const devinfo,
+anv_layout_to_fast_clear_type(const struct intel_device_info * const devinfo,
                               const struct anv_image * const image,
                               const VkImageAspectFlagBits aspect,
                               const VkImageLayout layout);
@@ -4199,7 +4199,7 @@ anv_sanitize_image_offset(const VkImageType imageType,
 }
 
 VkFormatFeatureFlags
-anv_get_image_format_features(const struct gen_device_info *devinfo,
+anv_get_image_format_features(const struct intel_device_info *devinfo,
                               VkFormat vk_format,
                               const struct anv_format *anv_format,
                               VkImageTiling vk_tiling,
@@ -4423,7 +4423,7 @@ anv_device_entrypoint_is_enabled(int index, uint32_t core_version,
                                  const struct vk_device_extension_table *device);
 
 const struct vk_device_dispatch_table *
-anv_get_device_dispatch_table(const struct gen_device_info *devinfo);
+anv_get_device_dispatch_table(const struct intel_device_info *devinfo);
 
 static inline uint32_t
 anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)

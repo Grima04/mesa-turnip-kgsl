@@ -88,9 +88,9 @@ gen_perf_append_query_info(struct gen_perf_config *perf, int max_counters)
 }
 
 void gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
-                                             const struct gen_device_info *devinfo);
+                                             const struct intel_device_info *devinfo);
 void gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
-                                      const struct gen_device_info *devinfo);
+                                      const struct intel_device_info *devinfo);
 
 
 #endif /* GEN_PERF_PRIVATE_H */
