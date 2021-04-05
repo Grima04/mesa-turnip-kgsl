@@ -320,7 +320,7 @@ dri_fill_in_modes(struct dri_screen *screen)
                                         depth_buffer_factor, back_buffer_modes,
                                         ARRAY_SIZE(back_buffer_modes),
                                         msaa_modes, 1,
-                                        GL_TRUE, !mixed_color_depth, GL_FALSE);
+                                        GL_TRUE, !mixed_color_depth);
          configs = driConcatConfigs(configs, new_configs);
 
          /* Multi-sample configs without an accumulation buffer. */
@@ -330,7 +330,7 @@ dri_fill_in_modes(struct dri_screen *screen)
                                            depth_buffer_factor, back_buffer_modes,
                                            ARRAY_SIZE(back_buffer_modes),
                                            msaa_modes+1, num_msaa_modes-1,
-                                           GL_FALSE, !mixed_color_depth, GL_FALSE);
+                                           GL_FALSE, !mixed_color_depth);
             configs = driConcatConfigs(configs, new_configs);
          }
       }

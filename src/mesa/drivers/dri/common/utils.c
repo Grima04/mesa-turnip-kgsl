@@ -162,9 +162,6 @@ driGetRendererString( char * buffer, const char * hardware_name,
  * \param color_depth_match Whether the color depth must match the zs depth
  *                          This forces 32-bit color to have 24-bit depth, and
  *                          16-bit color to have 16-bit depth.
- * \param mutable_render_buffer Enable __DRI_ATTRIB_MUTABLE_RENDER_BUFFER,
- *                              which translates to
- *                              EGL_MUTABLE_RENDER_BUFFER_BIT_KHR.
  *
  * \returns
  * Pointer to any array of pointers to the \c __DRIconfig structures created
@@ -178,8 +175,7 @@ driCreateConfigs(mesa_format format,
 		 unsigned num_depth_stencil_bits,
 		 const GLenum * db_modes, unsigned num_db_modes,
 		 const uint8_t * msaa_samples, unsigned num_msaa_modes,
-		 GLboolean enable_accum, GLboolean color_depth_match,
-		 GLboolean mutable_render_buffer)
+		 GLboolean enable_accum, GLboolean color_depth_match)
 {
    static const struct {
       uint32_t masks[4];
@@ -361,7 +357,6 @@ driCreateConfigs(mesa_format format,
 		    modes->samples = msaa_samples[h];
 
 		    modes->sRGBCapable = is_srgb;
-		    modes->mutableRenderBuffer = mutable_render_buffer;
 		}
 	    }
 	}
@@ -503,7 +498,9 @@ driGetConfigAttribIndex(const __DRIconfig *config,
                  __DRI_ATTRIB_TEXTURE_RECTANGLE_BIT;
         break;
     __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE,	sRGBCapable);
-    __ATTRIB(__DRI_ATTRIB_MUTABLE_RENDER_BUFFER,	mutableRenderBuffer);
+    case __DRI_ATTRIB_MUTABLE_RENDER_BUFFER:
+        *value = GL_FALSE;
+        break;
     __ATTRIB(__DRI_ATTRIB_RED_SHIFT,			redShift);
     __ATTRIB(__DRI_ATTRIB_GREEN_SHIFT,			greenShift);
     __ATTRIB(__DRI_ATTRIB_BLUE_SHIFT,			blueShift);
