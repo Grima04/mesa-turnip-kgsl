@@ -5437,8 +5437,10 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
          constant_index = 0;
 
       const uint32_t *samplers = radv_immutable_samplers(layout, binding);
+      uint32_t dword0_mask = tex_instr->op == nir_texop_tg4 ?
+                             C_008F30_TRUNC_COORD : 0xffffffffu;
       return bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
-                        Operand(samplers[constant_index * 4 + 0]),
+                        Operand(samplers[constant_index * 4 + 0] & dword0_mask),
                         Operand(samplers[constant_index * 4 + 1]),
                         Operand(samplers[constant_index * 4 + 2]),
                         Operand(samplers[constant_index * 4 + 3]));
@@ -5500,6 +5502,23 @@ Temp get_sampler_desc(isel_context *ctx, nir_deref_instr *deref_instr,
       res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s8),
                        components[0], components[1], components[2], components[3],
                        components[4], components[5], components[6], components[7]);
+   } else if (desc_type == ACO_DESC_SAMPLER && tex_instr->op == nir_texop_tg4) {
+      Temp components[4];
+      for (unsigned i = 0; i < 4; i++)
+         components[i] = bld.tmp(s1);
+
+      bld.pseudo(aco_opcode::p_split_vector,
+                 Definition(components[0]), Definition(components[1]),
+                 Definition(components[2]), Definition(components[3]), res);
+
+      /* We want to always use the linear filtering truncation behaviour for
+       * nir_texop_tg4, even if the sampler uses nearest/point filtering.
+       */
+      components[0] = bld.sop2(aco_opcode::s_and_b32, bld.def(s1), bld.def(s1, scc),
+                               components[0], Operand((uint32_t)C_008F30_TRUNC_COORD));
+
+      res = bld.pseudo(aco_opcode::p_create_vector, bld.def(s4),
+                       components[0], components[1], components[2], components[3]);
    }
 
    return res;
