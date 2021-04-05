@@ -732,7 +732,7 @@ shared_type_info(const struct glsl_type *type, unsigned *size, unsigned *align)
       glsl_type_is_boolean(type) ? 4 : glsl_get_bit_size(type) / 8;
    unsigned length = glsl_get_vector_elements(type);
    *size = comp_size * length;
-   *align = 4;
+   *align = comp_size;
 }
 
 static void
