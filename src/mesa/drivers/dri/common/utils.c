@@ -340,7 +340,7 @@ driCreateConfigs(mesa_format format,
 		    modes->accumRedBits   = 16 * j;
 		    modes->accumGreenBits = 16 * j;
 		    modes->accumBlueBits  = 16 * j;
-		    modes->accumAlphaBits = (masks[3] != 0) ? 16 * j : 0;
+		    modes->accumAlphaBits = 16 * j;
 
 		    modes->stencilBits = stencil_bits[k];
 		    modes->depthBits = depth_bits[k];
