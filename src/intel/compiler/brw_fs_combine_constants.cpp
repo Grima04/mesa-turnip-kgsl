@@ -339,8 +339,10 @@ static bool
 represent_src_as_imm(const struct gen_device_info *devinfo,
                      fs_reg *src)
 {
-   /* TODO : consider specific platforms also */
-   if (devinfo->ver == 12) {
+   /* TODO - Fix the codepath below to use a bfloat16 immediate on XeHP,
+    *        since HF/F mixed mode has been removed from the hardware.
+    */
+   if (devinfo->ver == 12 && devinfo->verx10 < 125) {
       uint16_t hf;
       if (representable_as_hf(src->f, &hf)) {
          *src = retype(brw_imm_uw(hf), BRW_REGISTER_TYPE_HF);
