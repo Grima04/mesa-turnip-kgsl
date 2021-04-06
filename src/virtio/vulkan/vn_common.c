@@ -14,6 +14,7 @@
 
 #include "util/debug.h"
 #include "util/log.h"
+#include "util/os_misc.h"
 #include "vk_enum_to_str.h"
 
 #if __STDC_VERSION__ >= 201112L
@@ -35,7 +36,7 @@ uint64_t vn_debug;
 static void
 vn_debug_init_once(void)
 {
-   vn_debug = parse_debug_string(getenv("VN_DEBUG"), vn_debug_options);
+   vn_debug = parse_debug_string(os_get_option("VN_DEBUG"), vn_debug_options);
 }
 
 void
