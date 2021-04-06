@@ -1370,6 +1370,9 @@ trace_context_flush(struct pipe_context *_pipe,
       trace_dump_ret(ptr, *fence);
 
    trace_dump_call_end();
+
+   if (flags & PIPE_FLUSH_END_OF_FRAME)
+      trace_dump_check_trigger();
 }
 
 

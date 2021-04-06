@@ -108,6 +108,9 @@ void trace_dump_ptr(const void *value);
 void trace_dump_surface_ptr(struct pipe_surface *_surface);
 void trace_dump_transfer_ptr(struct pipe_transfer *_transfer);
 
+void trace_dump_trigger_active(bool active);
+void trace_dump_check_trigger(void);
+
 /*
  * Code saving macros.
  */
