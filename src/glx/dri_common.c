@@ -157,8 +157,7 @@ static const struct
       __ATTRIB(__DRI_ATTRIB_SWAP_METHOD, swapMethod),
       __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGB, bindToTextureRgb),
       __ATTRIB(__DRI_ATTRIB_BIND_TO_TEXTURE_RGBA, bindToTextureRgba),
-      __ATTRIB(__DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE,
-                     bindToMipmapTexture),
+      __ATTRIB(__DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE, bindToMipmapTexture),
       __ATTRIB(__DRI_ATTRIB_YINVERTED, yInverted),
       __ATTRIB(__DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE, sRGBCapable)
 };
@@ -264,6 +263,18 @@ driConfigEqual(const __DRIcoreExtension *core,
                warned = 1;
             }
             config->numAuxBuffers = 0;
+         }
+         break;
+
+      case __DRI_ATTRIB_BIND_TO_MIPMAP_TEXTURE:
+         if (!scalarEqual(config, attrib, value)) {
+            static int warned;
+            if (!warned) {
+               dri_message(_LOADER_DEBUG,
+                           "Disabling server's tfp mipmap support\n");
+               warned = 1;
+            }
+            config->bindToMipmapTexture = 0;
          }
          break;
 
