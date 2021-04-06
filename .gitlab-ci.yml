@@ -1260,5 +1260,4 @@ meson-mingw32-x86_64:
 .baremetal-deqp-test:
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
-    DEQP_SKIPS: deqp-default-skips.txt
     DEQP_PARALLEL: 0 # Default to number of CPUs
