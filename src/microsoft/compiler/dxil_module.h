@@ -264,6 +264,9 @@ const struct dxil_type *
 dxil_module_get_cbuf_ret_type(struct dxil_module *mod, enum overload_type overload);
 
 const struct dxil_type *
+dxil_module_get_split_double_ret_type(struct dxil_module *mod);
+
+const struct dxil_type *
 dxil_module_get_res_type(struct dxil_module *m, enum dxil_resource_kind kind,
                          enum dxil_component_type comp_type, bool readwrite);
 

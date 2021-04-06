@@ -728,6 +728,15 @@ dxil_module_get_cbuf_ret_type(struct dxil_module *mod, enum overload_type overlo
    return dxil_module_get_struct_type(mod, name, fields, num_fields);
 }
 
+const struct dxil_type *
+dxil_module_get_split_double_ret_type(struct dxil_module *mod)
+{
+   const struct dxil_type *int32_type = dxil_module_get_int_type(mod, 32);
+   const struct dxil_type *fields[2] = { int32_type, int32_type };
+
+   return dxil_module_get_struct_type(mod, "dx.types.splitDouble", fields, 2);
+}
+
 static const struct dxil_type *
 dxil_module_get_type_from_comp_type(struct dxil_module *m, enum dxil_component_type comp_type)
 {

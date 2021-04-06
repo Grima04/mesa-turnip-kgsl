@@ -250,6 +250,9 @@ enum dxil_intr {
    DXIL_INTR_EMIT_STREAM = 97,
    DXIL_INTR_CUT_STREAM = 98,
 
+   DXIL_INTR_MAKE_DOUBLE = 101,
+   DXIL_INTR_SPLIT_DOUBLE = 102,
+
    DXIL_INTR_PRIMITIVE_ID = 108,
 
    DXIL_INTR_LEGACY_F32TOF16 = 130,
@@ -1860,6 +1863,64 @@ emit_vec(struct ntd_context *ctx, nir_alu_instr *alu, unsigned num_inputs)
 }
 
 static bool
+emit_make_double(struct ntd_context *ctx, nir_alu_instr *alu)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.makeDouble", DXIL_F64);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_MAKE_DOUBLE);
+   if (!opcode)
+      return false;
+
+   const struct dxil_value *args[3] = {
+      opcode,
+      get_src(ctx, &alu->src[0].src, 0, nir_type_uint32),
+      get_src(ctx, &alu->src[0].src, 1, nir_type_uint32),
+   };
+   if (!args[1] || !args[2])
+      return false;
+
+   const struct dxil_value *v = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   if (!v)
+      return false;
+   store_dest(ctx, &alu->dest.dest, 0, v, nir_type_float64);
+   return true;
+}
+
+static bool
+emit_split_double(struct ntd_context *ctx, nir_alu_instr *alu)
+{
+   const struct dxil_func *func = dxil_get_function(&ctx->mod, "dx.op.splitDouble", DXIL_F64);
+   if (!func)
+      return false;
+
+   const struct dxil_value *opcode = dxil_module_get_int32_const(&ctx->mod, DXIL_INTR_SPLIT_DOUBLE);
+   if (!opcode)
+      return false;
+
+   const struct dxil_value *args[] = {
+      opcode,
+      get_src(ctx, &alu->src[0].src, 0, nir_type_float64)
+   };
+   if (!args[1])
+      return false;
+
+   const struct dxil_value *v = dxil_emit_call(&ctx->mod, func, args, ARRAY_SIZE(args));
+   if (!v)
+      return false;
+
+   const struct dxil_value *hi = dxil_emit_extractval(&ctx->mod, v, 0);
+   const struct dxil_value *lo = dxil_emit_extractval(&ctx->mod, v, 1);
+   if (!hi || !lo)
+      return false;
+
+   store_dest_value(ctx, &alu->dest.dest, 0, hi);
+   store_dest_value(ctx, &alu->dest.dest, 1, lo);
+   return true;
+}
+
+static bool
 emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
 {
    /* handle vec-instructions first; they are the only ones that produce
@@ -1878,6 +1939,10 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
                         alu->src->src.ssa, alu->src->swizzle[0]));
          return true;
       }
+   case nir_op_pack_double_2x32_dxil:
+      return emit_make_double(ctx, alu);
+   case nir_op_unpack_double_2x32_dxil:
+      return emit_split_double(ctx, alu);
    default:
       /* silence warnings */
       ;
