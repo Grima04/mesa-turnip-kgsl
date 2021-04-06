@@ -391,6 +391,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .has_fsub = true,
       .has_isub = true,
       .lower_mul_2x32_64 = true,
+      .support_16bit_alu = true, /* not quite what it sounds like */
    };
 
    screen->nir_options = default_options;
