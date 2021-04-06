@@ -647,6 +647,12 @@ struct v3d_compile {
          */
         bool disable_tmu_pipelining;
 
+        /* Disable sorting of UBO loads with constant offset. This may
+         * increase the chances of being able to compile shaders with high
+         * register pressure.
+         */
+        bool disable_constant_ubo_load_sorting;
+
         /* Emits ldunif for each new uniform, even if the uniform was already
          * emitted in the same block. Useful to compile shaders with high
          * register pressure or to disable the optimization during uniform
