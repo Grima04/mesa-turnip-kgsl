@@ -35,7 +35,7 @@
 #include "brw_eu_defines.h"
 #include "brw_eu.h"
 #include "brw_shader.h"
-#include "brw_gen_enum.h"
+#include "brw_gfx_ver_enum.h"
 #include "dev/intel_debug.h"
 
 #include "util/ralloc.h"

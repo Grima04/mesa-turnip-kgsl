@@ -26,7 +26,7 @@
 #include <stdbool.h>
 #include "util/ralloc.h"
 #include "brw_eu.h"
-#include "brw_gen_enum.h"
+#include "brw_gfx_ver_enum.h"
 
 static bool
 test_compact_instruction(struct brw_codegen *p, brw_inst src)
