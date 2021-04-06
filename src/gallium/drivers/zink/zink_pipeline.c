@@ -204,7 +204,6 @@ zink_create_compute_pipeline(struct zink_screen *screen, struct zink_compute_pro
 {
    VkComputePipelineCreateInfo pci = {};
    pci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-   pci.flags = VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
    pci.layout = comp->base.layout;
 
    VkPipelineShaderStageCreateInfo stage = {};
