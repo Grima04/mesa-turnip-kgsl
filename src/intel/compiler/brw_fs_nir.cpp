@@ -6041,7 +6041,21 @@ fs_visitor::nir_emit_texture(const fs_builder &bld, nir_tex_instr *instr)
 
    if (instr->op == nir_texop_query_levels) {
       /* # levels is in .w */
-      nir_dest[0] = offset(dst, bld, 3);
+      if (devinfo->ver <= 9) {
+         /**
+          * Wa_1940217:
+          *
+          * When a surface of type SURFTYPE_NULL is accessed by resinfo, the
+          * MIPCount returned is undefined instead of 0.
+          */
+         fs_inst *mov = bld.MOV(bld.null_reg_d(), dst);
+         mov->conditional_mod = BRW_CONDITIONAL_NZ;
+         nir_dest[0] = bld.vgrf(BRW_REGISTER_TYPE_D);
+         fs_inst *sel = bld.SEL(nir_dest[0], offset(dst, bld, 3), brw_imm_d(0));
+         sel->predicate = BRW_PREDICATE_NORMAL;
+      } else {
+         nir_dest[0] = offset(dst, bld, 3);
+      }
    } else if (instr->op == nir_texop_txs &&
               dest_size >= 3 && devinfo->ver < 7) {
       /* Gfx4-6 return 0 instead of 1 for single layer surfaces. */
