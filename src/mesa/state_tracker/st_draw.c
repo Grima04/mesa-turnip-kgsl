@@ -128,109 +128,6 @@ prepare_draw(struct st_context *st, struct gl_context *ctx)
    }
 }
 
-/**
- * This function gets plugged into the VBO module and is called when
- * we have something to render.
- * Basically, translate the information into the format expected by gallium.
- *
- * Try to keep this logic in sync with st_feedback_draw_vbo.
- */
-static void
-st_draw_vbo(struct gl_context *ctx,
-            const struct _mesa_prim *prims,
-            unsigned nr_prims,
-            const struct _mesa_index_buffer *ib,
-	    bool index_bounds_valid,
-            bool primitive_restart,
-            unsigned restart_index,
-            unsigned min_index,
-            unsigned max_index,
-            unsigned num_instances,
-            unsigned base_instance)
-{
-   struct st_context *st = st_context(ctx);
-   struct pipe_draw_info info;
-   unsigned i;
-   unsigned start = 0;
-
-   prepare_draw(st, ctx);
-
-   /* Initialize pipe_draw_info. */
-   info.primitive_restart = false;
-   info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
-   info.restart_index = 0;
-   info.start_instance = base_instance;
-   info.instance_count = num_instances;
-   info.take_index_buffer_ownership = false;
-   info._pad = 0;
-   info.view_mask = 0;
-
-   if (ib) {
-      struct gl_buffer_object *bufobj = ib->obj;
-
-      /* Get index bounds for user buffers. */
-      if (!index_bounds_valid && st->draw_needs_minmax_index) {
-         vbo_get_minmax_indices(ctx, prims, ib, &min_index, &max_index,
-                                nr_prims, primitive_restart, restart_index);
-         index_bounds_valid = true;
-      }
-
-      info.index_size = 1 << ib->index_size_shift;
-      info.index_bounds_valid = index_bounds_valid;
-      info.min_index = min_index;
-      info.max_index = max_index;
-
-      if (bufobj) {
-         /* indices are in a real VBO */
-         info.has_user_indices = false;
-         info.index.resource = st_buffer_object(bufobj)->buffer;
-
-         /* Return if the bound element array buffer doesn't have any backing
-          * storage. (nothing to do)
-          */
-         if (!info.index.resource)
-            return;
-
-         start = pointer_to_offset(ib->ptr) >> ib->index_size_shift;
-      } else {
-         /* indices are in user space memory */
-         info.has_user_indices = true;
-         info.index.user = ib->ptr;
-      }
-
-      info.restart_index = restart_index;
-      info.primitive_restart = primitive_restart;
-   }
-   else {
-      info.index_size = 0;
-      info.has_user_indices = false;
-   }
-
-   /* do actual drawing */
-   for (i = 0; i < nr_prims; i++) {
-      struct pipe_draw_start_count draw;
-
-      draw.count = prims[i].count;
-
-      /* Skip no-op draw calls. */
-      if (!draw.count)
-         continue;
-
-      draw.start = start + prims[i].start;
-
-      info.mode = translate_prim(ctx, prims[i].mode);
-      info.index_bias = prims[i].basevertex;
-      info.drawid = prims[i].draw_id;
-      if (!ib) {
-         info.min_index = draw.start;
-         info.max_index = draw.start + draw.count - 1;
-      }
-
-      /* Don't call u_trim_pipe_prim. Drivers should do it if they need it. */
-      cso_draw_vbo(st->cso_context, &info, NULL, draw);
-   }
-}
-
 static bool ALWAYS_INLINE
 prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
                      struct st_context *st,
@@ -464,7 +361,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
 void
 st_init_draw_functions(struct dd_function_table *functions)
 {
-   functions->Draw = st_draw_vbo;
+   functions->Draw = NULL;
    functions->DrawGallium = st_draw_gallium;
    functions->DrawGalliumComplex = st_draw_gallium_complex;
    functions->DrawIndirect = st_indirect_draw_vbo;
