@@ -278,7 +278,23 @@ fs_visitor::emit_interpolation_setup_gfx6()
       const fs_builder hbld = abld.group(MIN2(16, dispatch_width), i);
       struct brw_reg gi_uw = retype(brw_vec1_grf(1 + i, 0), BRW_REGISTER_TYPE_UW);
 
-      if (devinfo->ver >= 8 || dispatch_width == 8) {
+      if (devinfo->verx10 >= 125) {
+         const fs_builder dbld =
+            abld.exec_all().group(hbld.dispatch_width() * 2, 0);
+         const fs_reg int_pixel_x = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+         const fs_reg int_pixel_y = dbld.vgrf(BRW_REGISTER_TYPE_UW);
+
+         dbld.ADD(int_pixel_x,
+                  fs_reg(stride(suboffset(gi_uw, 4), 2, 8, 0)),
+                  fs_reg(brw_imm_v(0x01000100)));
+         dbld.ADD(int_pixel_y,
+                  fs_reg(stride(suboffset(gi_uw, 5), 2, 8, 0)),
+                  fs_reg(brw_imm_v(0x01010000)));
+
+         hbld.MOV(offset(pixel_x, hbld, i), horiz_stride(int_pixel_x, 2));
+         hbld.MOV(offset(pixel_y, hbld, i), horiz_stride(int_pixel_y, 2));
+
+      } else if (devinfo->ver >= 8 || dispatch_width == 8) {
          /* The "Register Region Restrictions" page says for BDW (and newer,
           * presumably):
           *
