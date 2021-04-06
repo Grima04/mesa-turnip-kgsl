@@ -34,6 +34,7 @@
 #include "compiler/shader_enums.h"
 #include "midgard_pack.h"
 #include "pan_bo.h"
+#include "pan_device.h"
 
 #define PAN_MODIFIER_COUNT 4
 extern uint64_t pan_best_modifiers[PAN_MODIFIER_COUNT];
