@@ -1856,7 +1856,7 @@ emit_load_bo(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                   bo, indices,
                                                   ARRAY_SIZE(indices));
       /* load a single value into the constituents array */
-      if (ssbo)
+      if (ssbo && nir_intrinsic_access(intr) & ACCESS_COHERENT)
          constituents[i] = emit_atomic(ctx, SpvOpAtomicLoad, uint_type, ptr, 0, 0);
       else
          constituents[i] = spirv_builder_emit_load(&ctx->builder, uint_type, ptr);
@@ -2444,7 +2444,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
                                                            ARRAY_SIZE(indices));
                if (is_64bit)
                   component = spirv_builder_emit_composite_extract(&ctx->builder, uint_type, component_split, &j, 1);
-               spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeWorkgroup, 0, component);
+               if (nir_intrinsic_access(intr) & ACCESS_COHERENT)
+                  spirv_builder_emit_atomic_store(&ctx->builder, ptr, SpvScopeWorkgroup, 0, component);
+               else
+                  spirv_builder_emit_store(&ctx->builder, ptr, component);
             }
             write_count++;
          } else if (is_64bit)
