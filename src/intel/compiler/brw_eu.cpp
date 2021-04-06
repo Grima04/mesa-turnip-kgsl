@@ -707,15 +707,15 @@ static const struct opcode_desc opcode_descs[] = {
  * provide efficient constant-time look-up.
  */
 static const opcode_desc *
-lookup_opcode_desc(gen *index_gen,
+lookup_opcode_desc(gfx_ver *index_gen,
                    const opcode_desc **index_descs,
                    unsigned index_size,
                    unsigned opcode_desc::*key,
                    const intel_device_info *devinfo,
                    unsigned k)
 {
-   if (*index_gen != gen_from_devinfo(devinfo)) {
-      *index_gen = gen_from_devinfo(devinfo);
+   if (*index_gen != gfx_ver_from_devinfo(devinfo)) {
+      *index_gen = gfx_ver_from_devinfo(devinfo);
 
       for (unsigned l = 0; l < index_size; l++)
          index_descs[l] = NULL;
@@ -742,7 +742,7 @@ lookup_opcode_desc(gen *index_gen,
 const struct opcode_desc *
 brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
 {
-   static __thread gen index_gen = {};
+   static __thread gfx_ver index_gen = {};
    static __thread const opcode_desc *index_descs[NUM_BRW_OPCODES];
    return lookup_opcode_desc(&index_gen, index_descs, ARRAY_SIZE(index_descs),
                              &opcode_desc::ir, devinfo, opcode);
@@ -755,7 +755,7 @@ brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
 const struct opcode_desc *
 brw_opcode_desc_from_hw(const struct intel_device_info *devinfo, unsigned hw)
 {
-   static __thread gen index_gen = {};
+   static __thread gfx_ver index_gen = {};
    static __thread const opcode_desc *index_descs[128];
    return lookup_opcode_desc(&index_gen, index_descs, ARRAY_SIZE(index_descs),
                              &opcode_desc::hw, devinfo, hw);

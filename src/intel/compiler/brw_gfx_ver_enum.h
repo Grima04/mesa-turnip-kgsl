@@ -24,7 +24,7 @@
 #include "util/macros.h"
 #include "dev/intel_device_info.h"
 
-enum gen {
+enum gfx_ver {
    GFX4    = (1 << 0),
    GFX45   = (1 << 1),
    GFX5    = (1 << 2),
@@ -40,12 +40,12 @@ enum gen {
    GFX_ALL = ~0
 };
 
-#define GFX_LT(gen) ((gen) - 1)
-#define GFX_GE(gen) (~GFX_LT(gen))
-#define GFX_LE(gen) (GFX_LT(gen) | (gen))
+#define GFX_LT(ver) ((ver) - 1)
+#define GFX_GE(ver) (~GFX_LT(ver))
+#define GFX_LE(ver) (GFX_LT(ver) | (ver))
 
-static enum gen
-gen_from_devinfo(const struct intel_device_info *devinfo)
+static enum gfx_ver
+gfx_ver_from_devinfo(const struct intel_device_info *devinfo)
 {
    switch (devinfo->verx10) {
    case 40: return GFX4;
