@@ -31,7 +31,7 @@
 
 #include "drm-uapi/i915_drm.h"
 #include "intel_aub.h"
-#include "gen_context.h"
+#include "intel_context.h"
 
 #ifndef ALIGN
 #define ALIGN(x, y) (((x) + (y)-1) & ~((y)-1))

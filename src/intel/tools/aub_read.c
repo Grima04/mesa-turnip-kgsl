@@ -31,7 +31,7 @@
 #include "util/macros.h"
 
 #include "aub_read.h"
-#include "gen_context.h"
+#include "intel_context.h"
 #include "intel_aub.h"
 
 #define TYPE(dw)       (((dw) >> 29) & 7)
