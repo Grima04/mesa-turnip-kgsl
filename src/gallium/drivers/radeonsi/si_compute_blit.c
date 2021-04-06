@@ -475,12 +475,6 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
 
    void *saved_cs = sctx->cs_shader_state.program;
 
-   if (!is_dcc_decompress) {
-      sctx->cs_user_data[0] = src_box->x | (dstx << 16);
-      sctx->cs_user_data[1] = src_box->y | (dsty << 16);
-      sctx->cs_user_data[2] = src_box->z | (dstz << 16);
-   }
-
    struct pipe_image_view image[2] = {0};
    image[0].resource = src;
    image[0].shader_access = image[0].access = PIPE_IMAGE_ACCESS_READ;
@@ -510,6 +504,12 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
       image[1].access |= SI_IMAGE_ACCESS_DCC_WRITE;
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 2, 0, image);
+
+   if (!is_dcc_decompress) {
+      sctx->cs_user_data[0] = src_box->x | (dstx << 16);
+      sctx->cs_user_data[1] = src_box->y | (dsty << 16);
+      sctx->cs_user_data[2] = src_box->z | (dstz << 16);
+   }
 
    struct pipe_grid_info info = {0};
 
