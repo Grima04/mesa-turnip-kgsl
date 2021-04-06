@@ -800,6 +800,25 @@ trace_context_set_framebuffer_state(struct pipe_context *_pipe,
    trace_dump_call_end();
 }
 
+static void
+trace_context_set_inlinable_constants(struct pipe_context *_pipe, enum pipe_shader_type shader,
+                                      uint num_values, uint32_t *values)
+{
+   struct trace_context *tr_ctx = trace_context(_pipe);
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+   trace_dump_call_begin("pipe_context", "set_inlinable_constants");
+
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg(uint, shader);
+   trace_dump_arg(uint, num_values);
+   trace_dump_array(uint, values, num_values);
+
+   pipe->set_inlinable_constants(pipe, shader, num_values, values);
+
+   trace_dump_call_end();
+}
+
 
 static void
 trace_context_set_polygon_stipple(struct pipe_context *_pipe,
@@ -1997,6 +2016,7 @@ trace_context_create(struct trace_screen *tr_scr,
    TR_CTX_INIT(set_sample_mask);
    TR_CTX_INIT(set_constant_buffer);
    TR_CTX_INIT(set_framebuffer_state);
+   TR_CTX_INIT(set_inlinable_constants);
    TR_CTX_INIT(set_polygon_stipple);
    TR_CTX_INIT(set_scissor_states);
    TR_CTX_INIT(set_viewport_states);
