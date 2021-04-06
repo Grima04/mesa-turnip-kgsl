@@ -901,12 +901,10 @@ fs_visitor::fs_visitor(const struct brw_compiler *compiler, void *log_data,
                        const nir_shader *shader,
                        unsigned dispatch_width,
                        int shader_time_index,
-                       bool debug_enabled,
-                       const struct brw_vue_map *input_vue_map)
+                       bool debug_enabled)
    : backend_shader(compiler, log_data, mem_ctx, shader, prog_data,
                     debug_enabled),
      key(key), gs_compile(NULL), prog_data(prog_data),
-     input_vue_map(input_vue_map),
      live_analysis(this), regpressure_analysis(this),
      performance_analysis(this),
      dispatch_width(dispatch_width),

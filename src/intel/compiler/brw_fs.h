@@ -100,8 +100,7 @@ public:
               const nir_shader *shader,
               unsigned dispatch_width,
               int shader_time_index,
-              bool debug_enabled,
-              const struct brw_vue_map *input_vue_map = NULL);
+              bool debug_enabled);
    fs_visitor(const struct brw_compiler *compiler, void *log_data,
               void *mem_ctx,
               struct brw_gs_compile *gs_compile,
@@ -345,8 +344,6 @@ public:
    struct brw_gs_compile *gs_compile;
 
    struct brw_stage_prog_data *prog_data;
-
-   const struct brw_vue_map *input_vue_map;
 
    brw_analysis<brw::fs_live_variables, backend_shader> live_analysis;
    brw_analysis<brw::register_pressure, fs_visitor> regpressure_analysis;
