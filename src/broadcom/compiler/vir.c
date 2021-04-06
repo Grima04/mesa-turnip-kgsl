@@ -525,6 +525,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                                       void *debug_output_data),
                  void *debug_output_data,
                  int program_id, int variant_id,
+                 uint32_t min_threads_for_reg_alloc,
                  bool disable_tmu_pipelining,
                  bool fallback_scheduler)
 {
@@ -539,6 +540,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->debug_output = debug_output;
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
+        c->min_threads_for_reg_alloc = min_threads_for_reg_alloc;
         c->fallback_scheduler = fallback_scheduler;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
 
@@ -1264,16 +1266,34 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
 {
         struct v3d_compile *c;
 
-        static const char *strategies[] = {
-                "default",
-                "disable TMU pipelining",
-                "fallback scheduler"
+        /* This is a list of incremental changes to the compilation strategy
+         * that will be used to try to compile the shader successfully. The
+         * default strategy is to enable all optimizations which will have
+         * the highest register pressure but is expected to produce most
+         * optimal code. Following strategies incrementally disable specific
+         * optimizations that are known to contribute to register pressure
+         * in order to be able to compile the shader successfully while meeting
+         * thread count requirements.
+         *
+         * V3D 4.1+ has a min thread count of 2, but we can use 1 here to also
+         * cover previous hardware as well (meaning that we are not limiting
+         * register allocation to any particular thread count). This is fine
+         * because v3d_nir_to_vir will cap this to the actual minimum.
+         */
+        struct v3d_compiler_strategy {
+                const char *name;
+                uint32_t min_threads_for_reg_alloc;
+        } static const strategies[] = {
+                { "default",                  1 },
+                { "disable TMU pipelining",   1 },
+                { "fallback scheduler",       1 }
         };
 
         for (int i = 0; i < ARRAY_SIZE(strategies); i++) {
                 c = vir_compile_init(compiler, key, s,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
+                                     strategies[i].min_threads_for_reg_alloc,
                                      i > 0, /* Disable TMU pipelining */
                                      i > 1  /* Fallback_scheduler */);
 
@@ -1289,7 +1309,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 char *debug_msg;
                 int ret = asprintf(&debug_msg,
                                    "Falling back to strategy '%s' for %s",
-                                   strategies[i + 1],
+                                   strategies[i + 1].name,
                                    vir_get_stage_name(c));
 
                 if (ret >= 0) {
@@ -1318,6 +1338,11 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                         c->debug_output(debug_msg, c->debug_output_data);
                         free(debug_msg);
                 }
+        }
+
+        if (c->compilation_result != V3D_COMPILATION_SUCCEEDED) {
+                fprintf(stderr, "Failed to compile %s with any strategy.\n",
+                        vir_get_stage_name(c));
         }
 
         struct v3d_prog_data *prog_data;

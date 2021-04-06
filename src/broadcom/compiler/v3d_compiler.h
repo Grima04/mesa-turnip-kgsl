@@ -654,6 +654,14 @@ struct v3d_compile {
          */
         bool disable_ldunif_opt;
 
+        /* Minimum number of threads we are willing to use to register allocate
+         * a shader with the current compilation strategy. This only prevents
+         * us from lowering the thread count to register allocate successfully,
+         * which can be useful when we prefer doing other changes to the
+         * compilation strategy before dropping thread count.
+         */
+        uint32_t min_threads_for_reg_alloc;
+
         /* Last UBO index and offset used with a unifa/ldunifa sequence and the
          * block where it was emitted. This is used to skip unifa writes (and
          * their 3 delay slot) when the next UBO load reads right after the

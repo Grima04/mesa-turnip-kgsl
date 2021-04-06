@@ -3919,11 +3919,11 @@ v3d_nir_to_vir(struct v3d_compile *c)
                         }
                 }
 
-                if (c->threads == min_threads) {
-                        if (c->fallback_scheduler) {
+                if (c->threads <= MAX2(c->min_threads_for_reg_alloc, min_threads)) {
+                        if (V3D_DEBUG & V3D_DEBUG_PERF) {
                                 fprintf(stderr,
-                                        "Failed to register allocate at %d "
-                                        "threads with any strategy.\n",
+                                        "Failed to register allocate %s at "
+                                        "%d threads.\n", vir_get_stage_name(c),
                                         c->threads);
                         }
                         c->compilation_result =
