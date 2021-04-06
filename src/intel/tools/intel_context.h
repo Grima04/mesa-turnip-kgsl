@@ -90,13 +90,13 @@
    } while (0)
 
 
-struct gen_context_parameters {
+struct intel_context_parameters {
    uint64_t pml4_addr;
    uint64_t ring_addr;
    uint32_t ring_size;
 };
 
-typedef void (*gen_context_init_t)(const struct gen_context_parameters *, uint32_t *, uint32_t *);
+typedef void (*intel_context_init_t)(const struct intel_context_parameters *, uint32_t *, uint32_t *);
 
 #include "gfx8_context.h"
 #include "gfx10_context.h"
