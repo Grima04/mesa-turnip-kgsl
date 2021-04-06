@@ -255,6 +255,18 @@ driConfigEqual(const __DRIcoreExtension *core,
          }
          break;
 
+      case __DRI_ATTRIB_AUX_BUFFERS:
+         if (!scalarEqual(config, attrib, value)) {
+            static int warned;
+            if (!warned) {
+               dri_message(_LOADER_DEBUG,
+                           "Disabling server's aux buffer support\n");
+               warned = 1;
+            }
+            config->numAuxBuffers = 0;
+         }
+         break;
+
       default:
          if (!scalarEqual(config, attrib, value))
             return GL_FALSE;
