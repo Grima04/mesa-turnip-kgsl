@@ -1555,11 +1555,13 @@ get_cast_op(nir_alu_instr *alu)
       return DXIL_CAST_FPTOUI;
 
    /* int -> float */
+   case nir_op_i2f16:
    case nir_op_i2f32:
    case nir_op_i2f64:
       return DXIL_CAST_SITOFP;
 
    /* uint -> float */
+   case nir_op_u2f16:
    case nir_op_u2f32:
    case nir_op_u2f64:
       return DXIL_CAST_UITOFP;
@@ -1733,6 +1735,22 @@ static bool emit_select(struct ntd_context *ctx, nir_alu_instr *alu,
 
    store_alu_dest(ctx, alu, 0, v);
    return true;
+}
+
+static bool
+emit_b2f16(struct ntd_context *ctx, nir_alu_instr *alu, const struct dxil_value *val)
+{
+   assert(val);
+
+   struct dxil_module *m = &ctx->mod;
+
+   const struct dxil_value *c1 = dxil_module_get_float16_const(m, 0x3C00);
+   const struct dxil_value *c0 = dxil_module_get_float16_const(m, 0);
+
+   if (!c0 || !c1)
+      return false;
+
+   return emit_select(ctx, alu, val, c1, c0);
 }
 
 static bool
@@ -2056,6 +2074,7 @@ emit_alu(struct ntd_context *ctx, nir_alu_instr *alu)
       return emit_cast(ctx, alu, src[0]);
 
    case nir_op_f2b32: return emit_f2b32(ctx, alu, src[0]);
+   case nir_op_b2f16: return emit_b2f16(ctx, alu, src[0]);
    case nir_op_b2f32: return emit_b2f32(ctx, alu, src[0]);
    default:
       NIR_INSTR_UNSUPPORTED(&alu->instr);
