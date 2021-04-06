@@ -260,18 +260,6 @@ vbo_get_minmax_indices_gallium(struct gl_context *ctx,
                                const struct pipe_draw_start_count *draws,
                                unsigned num_draws);
 
-void
-vbo_sw_primitive_restart(struct gl_context *ctx,
-                         const struct _mesa_prim *prim,
-                         GLuint nr_prims,
-                         const struct _mesa_index_buffer *ib,
-                         GLuint num_instances, GLuint base_instance,
-                         struct gl_buffer_object *indirect,
-                         GLsizeiptr indirect_offset,
-                         bool primitive_restart,
-                         unsigned restart_index);
-
-
 const struct gl_array_attributes*
 _vbo_current_attrib(const struct gl_context *ctx, gl_vert_attrib attr);
 
