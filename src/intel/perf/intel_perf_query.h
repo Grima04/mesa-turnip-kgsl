@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_PERF_QUERY_H
-#define GEN_PERF_QUERY_H
+#ifndef INTEL_PERF_QUERY_H
+#define INTEL_PERF_QUERY_H
 
 #include <stdint.h>
 
@@ -78,4 +78,4 @@ void gen_perf_dump_query(struct gen_perf_context *perf_ctx,
                          struct gen_perf_query_object *obj,
                          void *current_batch);
 
-#endif /* GEN_PERF_QUERY_H */
+#endif /* INTEL_PERF_QUERY_H */

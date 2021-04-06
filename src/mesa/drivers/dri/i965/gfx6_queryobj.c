@@ -34,7 +34,7 @@
 #include "brw_context.h"
 #include "brw_defines.h"
 #include "brw_state.h"
-#include "perf/gen_perf_regs.h"
+#include "perf/intel_perf_regs.h"
 #include "brw_batch.h"
 #include "brw_buffer_objects.h"
 

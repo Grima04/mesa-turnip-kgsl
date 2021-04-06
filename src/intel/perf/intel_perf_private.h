@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_PERF_PRIVATE_H
-#define GEN_PERF_PRIVATE_H
+#ifndef INTEL_PERF_PRIVATE_H
+#define INTEL_PERF_PRIVATE_H
 
-#include "gen_perf.h"
+#include "intel_perf.h"
 
 static inline uint64_t to_user_pointer(void *ptr)
 {
@@ -93,4 +93,4 @@ void gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
                                       const struct intel_device_info *devinfo);
 
 
-#endif /* GEN_PERF_PRIVATE_H */
+#endif /* INTEL_PERF_PRIVATE_H */

@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_PERF_MDAPI_H
-#define GEN_PERF_MDAPI_H
+#ifndef INTEL_PERF_MDAPI_H
+#define INTEL_PERF_MDAPI_H
 
 #include <stdint.h>
 
@@ -157,4 +157,4 @@ static inline void gen_perf_query_mdapi_write_marker(void *data, uint32_t data_s
    }
 }
 
-#endif /* GEN_PERF_MDAPI_H */
+#endif /* INTEL_PERF_MDAPI_H */

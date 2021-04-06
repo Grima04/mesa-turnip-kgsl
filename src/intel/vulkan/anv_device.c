@@ -48,7 +48,7 @@
 #include "common/intel_aux_map.h"
 #include "common/intel_defines.h"
 #include "common/intel_uuid.h"
-#include "perf/gen_perf.h"
+#include "perf/intel_perf.h"
 
 #include "genxml/gen7_pack.h"
 

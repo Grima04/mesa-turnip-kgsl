@@ -685,7 +685,7 @@ def main():
     c("#include \"" + os.path.basename(args.header) + "\"")
 
     c(textwrap.dedent("""\
-        #include "perf/gen_perf.h"
+        #include "perf/intel_perf.h"
 
 
         #define MIN(a, b) ((a < b) ? (a) : (b))

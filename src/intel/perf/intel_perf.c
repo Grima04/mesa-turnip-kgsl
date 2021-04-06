@@ -40,11 +40,11 @@
 #include "dev/intel_debug.h"
 #include "dev/intel_device_info.h"
 
-#include "perf/gen_perf.h"
-#include "perf/gen_perf_regs.h"
-#include "perf/gen_perf_mdapi.h"
-#include "perf/gen_perf_metrics.h"
-#include "perf/gen_perf_private.h"
+#include "perf/intel_perf.h"
+#include "perf/intel_perf_regs.h"
+#include "perf/intel_perf_mdapi.h"
+#include "perf/intel_perf_metrics.h"
+#include "perf/intel_perf_private.h"
 
 #include "util/bitscan.h"
 #include "util/macros.h"

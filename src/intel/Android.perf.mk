@@ -38,7 +38,7 @@ LOCAL_SRC_FILES := $(GEN_PERF_FILES)
 LOCAL_GENERATED_SOURCES += $(addprefix $(intermediates)/, \
 	$(GEN_PERF_GENERATED_FILES))
 
-$(intermediates)/perf/gen_perf_metrics.c: $(LOCAL_PATH)/perf/gen_perf.py $(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
+$(intermediates)/perf/intel_perf_metrics.c: $(LOCAL_PATH)/perf/gen_perf.py $(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
 	@echo "target Generated: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	@mkdir -p $(dir $@)
 	$(hide) $(MESA_PYTHON2) $< \
@@ -46,7 +46,7 @@ $(intermediates)/perf/gen_perf_metrics.c: $(LOCAL_PATH)/perf/gen_perf.py $(addpr
 	--header=$(@:%.c=%.h) \
 	$(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
 
-$(intermediates)/perf/gen_perf_metrics.h: $(intermediates)/perf/gen_perf_metrics.c
+$(intermediates)/perf/intel_perf_metrics.h: $(intermediates)/perf/intel_perf_metrics.c
 
 include $(MESA_COMMON_MK)
 include $(BUILD_STATIC_LIBRARY)

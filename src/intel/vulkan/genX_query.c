@@ -42,9 +42,9 @@
 #define __gen_address_offset anv_address_add
 #define __gen_get_batch_address(b, a) anv_batch_address(b, a)
 #include "common/mi_builder.h"
-#include "perf/gen_perf.h"
-#include "perf/gen_perf_mdapi.h"
-#include "perf/gen_perf_regs.h"
+#include "perf/intel_perf.h"
+#include "perf/intel_perf_mdapi.h"
+#include "perf/intel_perf_regs.h"
 
 #include "vk_util.h"
 

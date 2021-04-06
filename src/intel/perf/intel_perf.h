@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_PERF_H
-#define GEN_PERF_H
+#ifndef INTEL_PERF_H
+#define INTEL_PERF_H
 
 #include <stdio.h>
 #include <stdbool.h>
@@ -510,4 +510,4 @@ void gen_perf_get_counters_passes(struct gen_perf_config *perf,
                                   uint32_t counter_indices_count,
                                   struct gen_perf_counter_pass *counter_pass);
 
-#endif /* GEN_PERF_H */
+#endif /* INTEL_PERF_H */

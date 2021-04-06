@@ -28,11 +28,11 @@
 #include "dev/intel_debug.h"
 #include "dev/intel_device_info.h"
 
-#include "perf/gen_perf.h"
-#include "perf/gen_perf_mdapi.h"
-#include "perf/gen_perf_private.h"
-#include "perf/gen_perf_query.h"
-#include "perf/gen_perf_regs.h"
+#include "perf/intel_perf.h"
+#include "perf/intel_perf_mdapi.h"
+#include "perf/intel_perf_private.h"
+#include "perf/intel_perf_query.h"
+#include "perf/intel_perf_regs.h"
 
 #include "drm-uapi/i915_drm.h"
 

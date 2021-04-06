@@ -28,8 +28,8 @@
 #include "anv_private.h"
 #include "vk_util.h"
 
-#include "perf/gen_perf.h"
-#include "perf/gen_perf_mdapi.h"
+#include "perf/intel_perf.h"
+#include "perf/intel_perf_mdapi.h"
 
 #include "util/mesa-sha1.h"
 

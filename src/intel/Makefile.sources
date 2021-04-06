@@ -370,14 +370,14 @@ GEN_PERF_XML_FILES = \
 	perf/oa-adl.xml
 
 GEN_PERF_FILES = \
-	perf/gen_perf.c \
-	perf/gen_perf.h \
-	perf/gen_perf_mdapi.c \
-	perf/gen_perf_mdapi.h \
-	perf/gen_perf_private.h \
-	perf/gen_perf_query.h \
-	perf/gen_perf_query.c
+	perf/intel_perf.c \
+	perf/intel_perf.h \
+	perf/intel_perf_mdapi.c \
+	perf/intel_perf_mdapi.h \
+	perf/intel_perf_private.h \
+	perf/intel_perf_query.h \
+	perf/intel_perf_query.c
 
 GEN_PERF_GENERATED_FILES = \
-	perf/gen_perf_metrics.c \
-	perf/gen_perf_metrics.h
+	perf/intel_perf_metrics.c \
+	perf/intel_perf_metrics.h

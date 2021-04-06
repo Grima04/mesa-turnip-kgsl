@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef GEN_PERF_REGS_H
-#define GEN_PERF_REGS_H
+#ifndef INTEL_PERF_REGS_H
+#define INTEL_PERF_REGS_H
 
 #define INTEL_MASK(high, low) (((1u<<((high)-(low)+1))-1)<<(low))
 
@@ -92,4 +92,4 @@
 #define GFX6_SO_NUM_PRIMS_WRITTEN       0x2288
 #define GFX7_SO_NUM_PRIMS_WRITTEN(n)    (0x5200 + (n) * 8)
 
-#endif /* GEN_PERF_REGS_H */
+#endif /* INTEL_PERF_REGS_H */

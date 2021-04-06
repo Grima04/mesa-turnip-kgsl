@@ -50,8 +50,8 @@
 #include "common/intel_decoder.h"
 #include "brw_screen.h"
 #include "brw_tex_obj.h"
-#include "perf/gen_perf.h"
-#include "perf/gen_perf_query.h"
+#include "perf/intel_perf.h"
+#include "perf/intel_perf_query.h"
 
 #ifdef __cplusplus
 extern "C" {

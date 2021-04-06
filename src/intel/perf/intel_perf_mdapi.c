@@ -21,10 +21,10 @@
  * IN THE SOFTWARE.
  */
 
-#include "gen_perf.h"
-#include "gen_perf_mdapi.h"
-#include "gen_perf_private.h"
-#include "gen_perf_regs.h"
+#include "intel_perf.h"
+#include "intel_perf_mdapi.h"
+#include "intel_perf_private.h"
+#include "intel_perf_regs.h"
 
 #include "dev/intel_device_info.h"
 
