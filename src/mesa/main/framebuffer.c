@@ -436,8 +436,8 @@ _mesa_update_framebuffer_visual(struct gl_context *ctx,
             fb->Visual.greenBits = _mesa_get_format_bits(fmt, GL_GREEN_BITS);
             fb->Visual.blueBits = _mesa_get_format_bits(fmt, GL_BLUE_BITS);
             fb->Visual.alphaBits = _mesa_get_format_bits(fmt, GL_ALPHA_BITS);
-            fb->Visual.rgbBits = fb->Visual.redBits
-               + fb->Visual.greenBits + fb->Visual.blueBits;
+            fb->Visual.rgbBits = fb->Visual.redBits + fb->Visual.greenBits +
+                                 fb->Visual.blueBits + fb->Visual.alphaBits;
             if (_mesa_is_format_srgb(fmt))
                 fb->Visual.sRGBCapable = ctx->Extensions.EXT_sRGB;
             break;

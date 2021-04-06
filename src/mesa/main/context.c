@@ -280,7 +280,7 @@ _mesa_initialize_visual( struct gl_config *vis,
    vis->greenBits        = greenBits;
    vis->blueBits         = blueBits;
    vis->alphaBits        = alphaBits;
-   vis->rgbBits          = redBits + greenBits + blueBits;
+   vis->rgbBits          = redBits + greenBits + blueBits + alphaBits;
 
    vis->depthBits      = depthBits;
    vis->stencilBits    = stencilBits;
