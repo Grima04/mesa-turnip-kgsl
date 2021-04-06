@@ -60,23 +60,23 @@ iris_get_monitor_info(struct pipe_screen *pscreen, unsigned index,
    info->name = counter->name;
    info->query_type = PIPE_QUERY_DRIVER_SPECIFIC + index;
 
-   if (counter->type == GEN_PERF_COUNTER_TYPE_THROUGHPUT)
+   if (counter->type == INTEL_PERF_COUNTER_TYPE_THROUGHPUT)
       info->result_type = PIPE_DRIVER_QUERY_RESULT_TYPE_AVERAGE;
    else
       info->result_type = PIPE_DRIVER_QUERY_RESULT_TYPE_CUMULATIVE;
    switch (counter->data_type) {
-   case GEN_PERF_COUNTER_DATA_TYPE_BOOL32:
-   case GEN_PERF_COUNTER_DATA_TYPE_UINT32:
+   case INTEL_PERF_COUNTER_DATA_TYPE_BOOL32:
+   case INTEL_PERF_COUNTER_DATA_TYPE_UINT32:
       info->type = PIPE_DRIVER_QUERY_TYPE_UINT;
       assert(counter->raw_max <= UINT32_MAX);
       info->max_value.u32 = (uint32_t)counter->raw_max;
       break;
-   case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
+   case INTEL_PERF_COUNTER_DATA_TYPE_UINT64:
       info->type = PIPE_DRIVER_QUERY_TYPE_UINT64;
       info->max_value.u64 = counter->raw_max;
       break;
-   case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
-   case GEN_PERF_COUNTER_DATA_TYPE_DOUBLE:
+   case INTEL_PERF_COUNTER_DATA_TYPE_FLOAT:
+   case INTEL_PERF_COUNTER_DATA_TYPE_DOUBLE:
       info->type = PIPE_DRIVER_QUERY_TYPE_FLOAT;
       info->max_value.f = counter->raw_max;
       break;
@@ -300,17 +300,17 @@ iris_get_monitor_result(struct pipe_context *ctx,
          &info->counters[current_counter];
       assert(intel_perf_query_counter_get_size(counter));
       switch (counter->data_type) {
-      case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
+      case INTEL_PERF_COUNTER_DATA_TYPE_UINT64:
          result[i].u64 = *(uint64_t*)(monitor->result_buffer + counter->offset);
          break;
-      case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
+      case INTEL_PERF_COUNTER_DATA_TYPE_FLOAT:
          result[i].f = *(float*)(monitor->result_buffer + counter->offset);
          break;
-      case GEN_PERF_COUNTER_DATA_TYPE_UINT32:
-      case GEN_PERF_COUNTER_DATA_TYPE_BOOL32:
+      case INTEL_PERF_COUNTER_DATA_TYPE_UINT32:
+      case INTEL_PERF_COUNTER_DATA_TYPE_BOOL32:
          result[i].u64 = *(uint32_t*)(monitor->result_buffer + counter->offset);
          break;
-      case GEN_PERF_COUNTER_DATA_TYPE_DOUBLE: {
+      case INTEL_PERF_COUNTER_DATA_TYPE_DOUBLE: {
          double v = *(double*)(monitor->result_buffer + counter->offset);
          result[i].f = v;
          break;

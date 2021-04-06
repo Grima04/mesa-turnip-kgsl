@@ -508,7 +508,7 @@ load_pipeline_statistic_metrics(struct intel_perf_config *perf_cfg,
    struct intel_perf_query_info *query =
       intel_perf_append_query_info(perf_cfg, MAX_STAT_COUNTERS);
 
-   query->kind = GEN_PERF_QUERY_TYPE_PIPELINE;
+   query->kind = INTEL_PERF_QUERY_TYPE_PIPELINE;
    query->name = "Pipeline Statistics Registers";
 
    intel_perf_query_add_basic_stat_reg(query, IA_VERTICES_COUNT,
@@ -1159,11 +1159,11 @@ query_accumulator_offset(const struct intel_perf_query_info *query,
                          uint8_t index)
 {
    switch (type) {
-   case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+   case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
       return query->perfcnt_offset + index;
-   case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+   case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
       return query->b_offset + index;
-   case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+   case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
       return query->c_offset + index;
    default:
       unreachable("Invalid register type");
@@ -1184,7 +1184,7 @@ intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result
    for (uint32_t r = 0; r < layout->n_fields; r++) {
       struct intel_perf_query_field *field = &layout->fields[r];
 
-      if (field->type == GEN_PERF_QUERY_FIELD_TYPE_MI_RPC) {
+      if (field->type == INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC) {
          intel_perf_query_result_read_frequencies(result, devinfo,
                                                 start + field->location,
                                                 end + field->location);
@@ -1217,7 +1217,7 @@ intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result
          /* RPSTAT is a bit of a special case because its begin/end values
           * represent frequencies. We store it in a separate location.
           */
-         if (field->type == GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT)
+         if (field->type == INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT)
             intel_perf_query_result_read_gt_frequency(result, devinfo, v0, v1);
          else
             result->accumulator[query_accumulator_offset(query, field->type, field->index)] = v1 - v0;
@@ -1244,15 +1244,15 @@ intel_perf_query_result_print_fields(const struct intel_perf_query_info *query,
       const uint32_t *value32 = data + field->location;
 
       switch (field->type) {
-      case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+      case INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC:
          fprintf(stderr, "MI_RPC:\n");
          fprintf(stderr, "  TS: 0x%08x\n", *(value32 + 1));
          fprintf(stderr, "  CLK: 0x%08x\n", *(value32 + 3));
          break;
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
          fprintf(stderr, "B%u: 0x%08x\n", field->index, *value32);
          break;
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
          fprintf(stderr, "C%u: 0x%08x\n", field->index, *value32);
          break;
       default:
@@ -1280,7 +1280,7 @@ add_query_register(struct intel_perf_query_field_layout *layout,
    /* Align MI_RPC to 64bytes (HW requirement) & 64bit registers to 8bytes
     * (shows up nicely in the debugger).
     */
-   if (type == GEN_PERF_QUERY_FIELD_TYPE_MI_RPC)
+   if (type == INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC)
       layout->size = align(layout->size, 64);
    else if (size % 8 == 0)
       layout->size = align(layout->size, 8);
@@ -1310,51 +1310,51 @@ intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
 
    layout->fields = rzalloc_array(perf_cfg, struct intel_perf_query_field, 5 + 16);
 
-   add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_MI_RPC,
+   add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC,
                       0, 256, 0);
 
    if (devinfo->ver <= 11) {
       struct intel_perf_query_field *field =
          add_query_register(layout,
-                            GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+                            INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
                             PERF_CNT_1_DW0, 8, 0);
       field->mask = PERF_CNT_VALUE_MASK;
 
       field = add_query_register(layout,
-                                 GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
+                                 INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT,
                                  PERF_CNT_2_DW0, 8, 1);
       field->mask = PERF_CNT_VALUE_MASK;
    }
 
    if (devinfo->ver == 8 && !devinfo->is_cherryview) {
       add_query_register(layout,
-                         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
+                         INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
                          GFX7_RPSTAT1, 4, 0);
    }
 
    if (devinfo->ver >= 9) {
       add_query_register(layout,
-                         GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
+                         INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT,
                          GFX9_RPSTAT0, 4, 0);
    }
 
    if (!can_use_mi_rpc_bc_counters(devinfo)) {
       if (devinfo->ver >= 8 && devinfo->ver <= 11) {
          for (uint32_t i = 0; i < GFX8_N_OA_PERF_B32; i++) {
-            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
                                GFX8_OA_PERF_B32(i), 4, i);
          }
          for (uint32_t i = 0; i < GFX8_N_OA_PERF_C32; i++) {
-            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
                                GFX8_OA_PERF_C32(i), 4, i);
          }
       } else if (devinfo->ver == 12) {
          for (uint32_t i = 0; i < GFX12_N_OAG_PERF_B32; i++) {
-            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
+            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B,
                                GFX12_OAG_PERF_B32(i), 4, i);
          }
          for (uint32_t i = 0; i < GFX12_N_OAG_PERF_C32; i++) {
-            add_query_register(layout, GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
+            add_query_register(layout, INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C,
                                GFX12_OAG_PERF_C32(i), 4, i);
          }
       }

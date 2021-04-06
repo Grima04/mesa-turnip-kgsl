@@ -146,7 +146,7 @@ intel_perf_register_mdapi_statistic_query(struct intel_perf_config *perf_cfg,
    struct intel_perf_query_info *query =
       intel_perf_append_query_info(perf_cfg, MAX_STAT_COUNTERS);
 
-   query->kind = GEN_PERF_QUERY_TYPE_PIPELINE;
+   query->kind = INTEL_PERF_QUERY_TYPE_PIPELINE;
    query->name = "Intel_Raw_Pipeline_Statistics_Query";
 
    /* The order has to match mdapi_pipeline_metrics. */
@@ -205,7 +205,7 @@ fill_mdapi_perf_query_counter(struct intel_perf_query_info *query,
 
    counter->name = name;
    counter->desc = "Raw counter value";
-   counter->type = GEN_PERF_COUNTER_TYPE_RAW;
+   counter->type = INTEL_PERF_COUNTER_TYPE_RAW;
    counter->data_type = data_type;
    counter->offset = data_offset;
 
@@ -219,14 +219,14 @@ fill_mdapi_perf_query_counter(struct intel_perf_query_info *query,
                                  (uint8_t *) &struct_name.field_name -  \
                                  (uint8_t *) &struct_name,              \
                                  sizeof(struct_name.field_name),        \
-                                 GEN_PERF_COUNTER_DATA_TYPE_##type_name)
+                                 INTEL_PERF_COUNTER_DATA_TYPE_##type_name)
 #define MDAPI_QUERY_ADD_ARRAY_COUNTER(ctx, query, struct_name, field_name, idx, type_name) \
    fill_mdapi_perf_query_counter(query,                                 \
                                  ralloc_asprintf(ctx, "%s%i", #field_name, idx), \
                                  (uint8_t *) &struct_name.field_name[idx] - \
                                  (uint8_t *) &struct_name,              \
                                  sizeof(struct_name.field_name[0]),     \
-                                 GEN_PERF_COUNTER_DATA_TYPE_##type_name)
+                                 INTEL_PERF_COUNTER_DATA_TYPE_##type_name)
 
 void
 intel_perf_register_mdapi_oa_query(struct intel_perf_config *perf,
@@ -349,9 +349,9 @@ intel_perf_register_mdapi_oa_query(struct intel_perf_config *perf,
       break;
    }
 
-   query->kind = GEN_PERF_QUERY_TYPE_RAW;
+   query->kind = INTEL_PERF_QUERY_TYPE_RAW;
    query->name = "Intel_Raw_Hardware_Counters_Set_0_Query";
-   query->guid = GEN_PERF_QUERY_GUID_MDAPI;
+   query->guid = INTEL_PERF_QUERY_GUID_MDAPI;
 
    {
       /* Accumulation buffer offsets copied from an actual query... */

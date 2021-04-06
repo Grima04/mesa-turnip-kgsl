@@ -48,8 +48,8 @@ intel_perf_query_add_stat_reg(struct intel_perf_query_info *query, uint32_t reg,
    counter = &query->counters[query->n_counters];
    counter->name = counter->symbol_name = name;
    counter->desc = description;
-   counter->type = GEN_PERF_COUNTER_TYPE_RAW;
-   counter->data_type = GEN_PERF_COUNTER_DATA_TYPE_UINT64;
+   counter->type = INTEL_PERF_COUNTER_TYPE_RAW;
+   counter->data_type = INTEL_PERF_COUNTER_DATA_TYPE_UINT64;
    counter->offset = sizeof(uint64_t) * query->n_counters;
    counter->pipeline_stat.reg = reg;
    counter->pipeline_stat.numerator = numerator;

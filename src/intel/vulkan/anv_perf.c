@@ -82,13 +82,13 @@ anv_physical_device_init_perf(struct anv_physical_device *device, int fd)
       struct intel_perf_query_field *field = &layout->fields[f];
 
       switch (field->type) {
-      case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+      case INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC:
          device->n_perf_query_commands++;
          break;
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
          device->n_perf_query_commands += field->size / 4;
          break;
       }
@@ -226,7 +226,7 @@ VkResult anv_AcquirePerformanceConfigurationINTEL(
    if (!(INTEL_DEBUG & DEBUG_NO_OACONFIG)) {
       config->register_config =
          intel_perf_load_configuration(device->physical->perf, device->fd,
-                                     GEN_PERF_QUERY_GUID_MDAPI);
+                                     INTEL_PERF_QUERY_GUID_MDAPI);
       if (!config->register_config) {
          vk_object_free(&device->vk, NULL, config);
          return VK_INCOMPLETE;
@@ -304,32 +304,32 @@ void anv_UninitializePerformanceApiINTEL(
 /* VK_KHR_performance_query */
 static const VkPerformanceCounterUnitKHR
 intel_perf_counter_unit_to_vk_unit[] = {
-   [GEN_PERF_COUNTER_UNITS_BYTES]                                = VK_PERFORMANCE_COUNTER_UNIT_BYTES_KHR,
-   [GEN_PERF_COUNTER_UNITS_HZ]                                   = VK_PERFORMANCE_COUNTER_UNIT_HERTZ_KHR,
-   [GEN_PERF_COUNTER_UNITS_NS]                                   = VK_PERFORMANCE_COUNTER_UNIT_NANOSECONDS_KHR,
-   [GEN_PERF_COUNTER_UNITS_US]                                   = VK_PERFORMANCE_COUNTER_UNIT_NANOSECONDS_KHR, /* todo */
-   [GEN_PERF_COUNTER_UNITS_PIXELS]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_TEXELS]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_THREADS]                              = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_PERCENT]                              = VK_PERFORMANCE_COUNTER_UNIT_PERCENTAGE_KHR,
-   [GEN_PERF_COUNTER_UNITS_MESSAGES]                             = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_NUMBER]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_CYCLES]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_EVENTS]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_UTILIZATION]                          = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_EU_SENDS_TO_L3_CACHE_LINES]           = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_EU_ATOMIC_REQUESTS_TO_L3_CACHE_LINES] = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_EU_REQUESTS_TO_L3_CACHE_LINES]        = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
-   [GEN_PERF_COUNTER_UNITS_EU_BYTES_PER_L3_CACHE_LINE]           = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_BYTES]                                = VK_PERFORMANCE_COUNTER_UNIT_BYTES_KHR,
+   [INTEL_PERF_COUNTER_UNITS_HZ]                                   = VK_PERFORMANCE_COUNTER_UNIT_HERTZ_KHR,
+   [INTEL_PERF_COUNTER_UNITS_NS]                                   = VK_PERFORMANCE_COUNTER_UNIT_NANOSECONDS_KHR,
+   [INTEL_PERF_COUNTER_UNITS_US]                                   = VK_PERFORMANCE_COUNTER_UNIT_NANOSECONDS_KHR, /* todo */
+   [INTEL_PERF_COUNTER_UNITS_PIXELS]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_TEXELS]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_THREADS]                              = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_PERCENT]                              = VK_PERFORMANCE_COUNTER_UNIT_PERCENTAGE_KHR,
+   [INTEL_PERF_COUNTER_UNITS_MESSAGES]                             = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_NUMBER]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_CYCLES]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_EVENTS]                               = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_UTILIZATION]                          = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_EU_SENDS_TO_L3_CACHE_LINES]           = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_EU_ATOMIC_REQUESTS_TO_L3_CACHE_LINES] = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_EU_REQUESTS_TO_L3_CACHE_LINES]        = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
+   [INTEL_PERF_COUNTER_UNITS_EU_BYTES_PER_L3_CACHE_LINE]           = VK_PERFORMANCE_COUNTER_UNIT_GENERIC_KHR,
 };
 
 static const VkPerformanceCounterStorageKHR
 intel_perf_counter_data_type_to_vk_storage[] = {
-   [GEN_PERF_COUNTER_DATA_TYPE_BOOL32] = VK_PERFORMANCE_COUNTER_STORAGE_UINT32_KHR,
-   [GEN_PERF_COUNTER_DATA_TYPE_UINT32] = VK_PERFORMANCE_COUNTER_STORAGE_UINT32_KHR,
-   [GEN_PERF_COUNTER_DATA_TYPE_UINT64] = VK_PERFORMANCE_COUNTER_STORAGE_UINT64_KHR,
-   [GEN_PERF_COUNTER_DATA_TYPE_FLOAT]  = VK_PERFORMANCE_COUNTER_STORAGE_FLOAT32_KHR,
-   [GEN_PERF_COUNTER_DATA_TYPE_DOUBLE] = VK_PERFORMANCE_COUNTER_STORAGE_FLOAT64_KHR,
+   [INTEL_PERF_COUNTER_DATA_TYPE_BOOL32] = VK_PERFORMANCE_COUNTER_STORAGE_UINT32_KHR,
+   [INTEL_PERF_COUNTER_DATA_TYPE_UINT32] = VK_PERFORMANCE_COUNTER_STORAGE_UINT32_KHR,
+   [INTEL_PERF_COUNTER_DATA_TYPE_UINT64] = VK_PERFORMANCE_COUNTER_STORAGE_UINT64_KHR,
+   [INTEL_PERF_COUNTER_DATA_TYPE_FLOAT]  = VK_PERFORMANCE_COUNTER_STORAGE_FLOAT32_KHR,
+   [INTEL_PERF_COUNTER_DATA_TYPE_DOUBLE] = VK_PERFORMANCE_COUNTER_STORAGE_FLOAT64_KHR,
 };
 
 VkResult anv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
@@ -438,23 +438,23 @@ anv_perf_write_pass_results(struct intel_perf_config *perf,
          continue;
 
       switch (pool->pass_query[pass]->kind) {
-      case GEN_PERF_QUERY_TYPE_PIPELINE: {
-         assert(counter_pass->counter->data_type == GEN_PERF_COUNTER_DATA_TYPE_UINT64);
+      case INTEL_PERF_QUERY_TYPE_PIPELINE: {
+         assert(counter_pass->counter->data_type == INTEL_PERF_COUNTER_DATA_TYPE_UINT64);
          uint32_t accu_offset = counter_pass->counter->offset / sizeof(uint64_t);
          results[c].uint64 = accumulated_results->accumulator[accu_offset];
          break;
       }
 
-      case GEN_PERF_QUERY_TYPE_OA:
-      case GEN_PERF_QUERY_TYPE_RAW:
+      case INTEL_PERF_QUERY_TYPE_OA:
+      case INTEL_PERF_QUERY_TYPE_RAW:
          switch (counter_pass->counter->data_type) {
-         case GEN_PERF_COUNTER_DATA_TYPE_UINT64:
+         case INTEL_PERF_COUNTER_DATA_TYPE_UINT64:
             results[c].uint64 =
                counter_pass->counter->oa_counter_read_uint64(perf,
                                                              counter_pass->query,
                                                              accumulated_results);
             break;
-         case GEN_PERF_COUNTER_DATA_TYPE_FLOAT:
+         case INTEL_PERF_COUNTER_DATA_TYPE_FLOAT:
             results[c].float32 =
                counter_pass->counter->oa_counter_read_float(perf,
                                                             counter_pass->query,
@@ -471,8 +471,8 @@ anv_perf_write_pass_results(struct intel_perf_config *perf,
       }
 
       /* The Vulkan extension only has nanoseconds as a unit */
-      if (counter_pass->counter->units == GEN_PERF_COUNTER_UNITS_US) {
-         assert(counter_pass->counter->data_type == GEN_PERF_COUNTER_DATA_TYPE_UINT64);
+      if (counter_pass->counter->units == INTEL_PERF_COUNTER_UNITS_US) {
+         assert(counter_pass->counter->data_type == INTEL_PERF_COUNTER_DATA_TYPE_UINT64);
          results[c].uint64 *= 1000;
       }
    }

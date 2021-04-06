@@ -860,16 +860,16 @@ emit_perf_intel_query(struct anv_cmd_buffer *cmd_buffer,
          &layout->fields[end ? f : (layout->n_fields - 1 - f)];
 
       switch (field->type) {
-      case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+      case INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC:
          anv_batch_emit(&cmd_buffer->batch, GENX(MI_REPORT_PERF_COUNT), rpc) {
             rpc.MemoryAddress = anv_address_add(data_addr, field->location);
          }
          break;
 
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
-      case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C: {
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+      case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C: {
          struct anv_address addr = anv_address_add(data_addr, field->location);
          struct mi_value src = field->size == 8 ?
             mi_reg64(field->mmio_offset) :
@@ -962,7 +962,7 @@ void genX(CmdBeginQueryIndexedEXT)(
                   mi_reg64(ANV_PERF_QUERY_OFFSET_REG));
             cmd_buffer->self_mod_locations[reloc_idx++] = mi_store_address(&b, reg_addr);
 
-            if (field->type != GEN_PERF_QUERY_FIELD_TYPE_MI_RPC &&
+            if (field->type != INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC &&
                 field->size == 8) {
                reg_addr =
                   mi_iadd(
@@ -1004,7 +1004,7 @@ void genX(CmdBeginQueryIndexedEXT)(
          void *dws;
 
          switch (field->type) {
-         case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+         case INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC:
             dws = anv_batch_emitn(&cmd_buffer->batch,
                                   GENX(MI_REPORT_PERF_COUNT_length),
                                   GENX(MI_REPORT_PERF_COUNT),
@@ -1015,10 +1015,10 @@ void genX(CmdBeginQueryIndexedEXT)(
                                       GENX(MI_REPORT_PERF_COUNT_MemoryAddress_start) / 8);
             break;
 
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
             dws =
                anv_batch_emitn(&cmd_buffer->batch,
                                GENX(MI_STORE_REGISTER_MEM_length),
@@ -1141,7 +1141,7 @@ void genX(CmdEndQueryIndexedEXT)(
          const struct intel_perf_query_field *field = &layout->fields[r];
 
          switch (field->type) {
-         case GEN_PERF_QUERY_FIELD_TYPE_MI_RPC:
+         case INTEL_PERF_QUERY_FIELD_TYPE_MI_RPC:
             dws = anv_batch_emitn(&cmd_buffer->batch,
                                   GENX(MI_REPORT_PERF_COUNT_length),
                                   GENX(MI_REPORT_PERF_COUNT),
@@ -1152,10 +1152,10 @@ void genX(CmdEndQueryIndexedEXT)(
                                       GENX(MI_REPORT_PERF_COUNT_MemoryAddress_start) / 8);
             break;
 
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
-         case GEN_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_PERFCNT:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_RPSTAT:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_B:
+         case INTEL_PERF_QUERY_FIELD_TYPE_SRM_OA_C:
             dws =
                anv_batch_emitn(&cmd_buffer->batch,
                                GENX(MI_STORE_REGISTER_MEM_length),
