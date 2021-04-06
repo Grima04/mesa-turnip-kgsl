@@ -703,6 +703,23 @@ trace_screen_create(struct pipe_screen *screen)
 {
    struct trace_screen *tr_scr;
 
+#ifdef ZINK_WITH_SWRAST_VK
+   /* if zink+lavapipe is enabled, ensure that only one driver is traced */
+   const char *driver = debug_get_option("MESA_LOADER_DRIVER_OVERRIDE", NULL);
+   if (driver && !strcmp(driver, "zink")) {
+      /* the user wants zink: check whether they want to trace zink or lavapipe */
+      bool trace_lavapipe = debug_get_bool_option("ZINK_TRACE_LAVAPIPE", NULL);
+      if (!strncmp(screen->get_name(screen), "zink", 4)) {
+         /* this is the zink screen: only trace if lavapipe tracing is disabled */
+         if (trace_lavapipe)
+            return screen;
+      } else {
+         /* this is the llvmpipe screen: only trace if lavapipe tracing is enabled */
+         if (!trace_lavapipe)
+            return screen;
+      }
+   }
+#endif
    if (!trace_enabled())
       goto error1;
 
