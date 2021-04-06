@@ -1988,7 +1988,7 @@ anv_queue_execbuf_locked(struct anv_queue *queue,
    if (has_perf_query) {
       struct anv_query_pool *query_pool = submit->perf_query_pool;
       assert(submit->perf_query_pass < query_pool->n_passes);
-      struct gen_perf_query_info *query_info =
+      struct intel_perf_query_info *query_info =
          query_pool->pass_query[submit->perf_query_pass];
 
       /* Some performance queries just the pipeline statistic HW, no need for

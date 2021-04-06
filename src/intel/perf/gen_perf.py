@@ -286,10 +286,10 @@ def output_counter_read(gen, set, counter):
         read_eq = counter.get('equation')
 
         c("static " + ret_type)
-        c(counter.read_sym + "(UNUSED struct gen_perf_config *perf,\n")
+        c(counter.read_sym + "(UNUSED struct intel_perf_config *perf,\n")
         c_indent(len(counter.read_sym) + 1)
-        c("const struct gen_perf_query_info *query,\n")
-        c("const struct gen_perf_query_result *results)\n")
+        c("const struct intel_perf_query_info *query,\n")
+        c("const struct intel_perf_query_result *results)\n")
         c_outdent(len(counter.read_sym) + 1)
 
         c("{")
@@ -321,7 +321,7 @@ def output_counter_max(gen, set, counter):
             ret_type = "uint64_t"
 
         c("static " + ret_type)
-        c(counter.max_sym() + "(struct gen_perf_config *perf)\n")
+        c(counter.max_sym() + "(struct intel_perf_config *perf)\n")
         c("{")
         c_indent(3)
         output_rpn_equation_code(set, counter, max_eq)
@@ -468,7 +468,7 @@ def generate_register_configs(set):
             c_indent(3)
 
         registers = register_config.findall('register')
-        c("static const struct gen_perf_query_register_prog %s[] = {" % t)
+        c("static const struct intel_perf_query_register_prog %s[] = {" % t)
         c_indent(3)
         for register in registers:
             c("{ .reg = %s, .val = %s }," % (register.get('address'), register.get('value')))
@@ -666,7 +666,7 @@ def main():
     h(textwrap.dedent("""\
         #pragma once
 
-        struct gen_perf_config;
+        struct intel_perf_config;
 
         """))
 
@@ -709,11 +709,11 @@ def main():
 
             c("\n")
             c("\nstatic void\n")
-            c("{0}_register_{1}_counter_query(struct gen_perf_config *perf)\n".format(gen.chipset, set.underscore_name))
+            c("{0}_register_{1}_counter_query(struct intel_perf_config *perf)\n".format(gen.chipset, set.underscore_name))
             c("{\n")
             c_indent(3)
 
-            c("struct gen_perf_query_info *query = rzalloc(perf, struct gen_perf_query_info);\n")
+            c("struct intel_perf_query_info *query = rzalloc(perf, struct intel_perf_query_info);\n")
             c("\n")
             c("query->perf = perf;\n")
             c("query->kind = GEN_PERF_QUERY_TYPE_OA;\n")
@@ -721,7 +721,7 @@ def main():
             c("query->symbol_name = \"" + set.symbol_name + "\";\n")
             c("query->guid = \"" + set.hw_config_guid + "\";\n")
 
-            c("query->counters = rzalloc_array(query, struct gen_perf_query_counter, %u);" % len(counters))
+            c("query->counters = rzalloc_array(query, struct intel_perf_query_counter, %u);" % len(counters))
             c("query->n_counters = 0;")
             c("query->oa_metrics_set_id = 0; /* determined at runtime, via sysfs */")
 
@@ -751,7 +751,7 @@ def main():
 
 
             c("\n")
-            c("struct gen_perf_query_counter *counter = query->counters;\n")
+            c("struct intel_perf_query_counter *counter = query->counters;\n")
 
             c("\n")
             c("/* Note: we're assuming there can't be any variation in the definition ")
@@ -767,7 +767,7 @@ def main():
                 offset = output_counter_report(set, counter, offset)
 
 
-            c("\nquery->data_size = counter->offset + gen_perf_query_counter_get_size(counter);\n")
+            c("\nquery->data_size = counter->offset + intel_perf_query_counter_get_size(counter);\n")
 
             c_outdent(3)
             c("}");
@@ -777,10 +777,10 @@ def main():
             c_outdent(3)
             c("}\n")
 
-        h("void gen_oa_register_queries_" + gen.chipset + "(struct gen_perf_config *perf);\n")
+        h("void gen_oa_register_queries_" + gen.chipset + "(struct intel_perf_config *perf);\n")
 
         c("\nvoid")
-        c("gen_oa_register_queries_" + gen.chipset + "(struct gen_perf_config *perf)")
+        c("gen_oa_register_queries_" + gen.chipset + "(struct intel_perf_config *perf)")
         c("{")
         c_indent(3)
 

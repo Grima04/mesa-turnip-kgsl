@@ -14,13 +14,13 @@ foreach hw : gen_hw_metrics
   gen_hw_metrics_xml_files += 'oa-@0@.xml'.format(hw)
 endforeach
 
-gen_perf_sources = [
+intel_perf_sources = [
   'intel_perf.c',
   'intel_perf_query.c',
   'intel_perf_mdapi.c',
 ]
 
-gen_perf_sources += custom_target(
+intel_perf_sources += custom_target(
   'intel-perf-sources',
   input : gen_hw_metrics_xml_files,
   output : [ 'intel_perf_metrics.c', 'intel_perf_metrics.h' ],
@@ -33,7 +33,7 @@ gen_perf_sources += custom_target(
 
 libintel_perf = static_library(
   'intel_perf',
-  gen_perf_sources,
+  intel_perf_sources,
   include_directories : [
     inc_include, inc_src, inc_intel,
   ],

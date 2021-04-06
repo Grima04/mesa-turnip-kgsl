@@ -84,9 +84,9 @@ struct anv_image_view;
 struct anv_instance;
 
 struct intel_aux_map_context;
-struct gen_perf_config;
-struct gen_perf_counter_pass;
-struct gen_perf_query_result;
+struct intel_perf_config;
+struct intel_perf_counter_pass;
+struct intel_perf_query_result;
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vk_icd.h>
@@ -903,7 +903,7 @@ struct anv_physical_device {
     bool                                        supports_48bit_addresses;
     struct brw_compiler *                       compiler;
     struct isl_device                           isl_dev;
-    struct gen_perf_config *                    perf;
+    struct intel_perf_config *                    perf;
     /*
      * Number of commands required to implement a performance query begin +
      * end.
@@ -4393,9 +4393,9 @@ struct anv_query_pool {
    uint32_t                                     data_offset;
    uint32_t                                     snapshot_size;
    uint32_t                                     n_counters;
-   struct gen_perf_counter_pass                *counter_pass;
+   struct intel_perf_counter_pass                *counter_pass;
    uint32_t                                     n_passes;
-   struct gen_perf_query_info                 **pass_query;
+   struct intel_perf_query_info                 **pass_query;
 };
 
 static inline uint32_t khr_perf_query_preamble_offset(const struct anv_query_pool *pool,
@@ -4444,16 +4444,16 @@ anv_get_subpass_id(const struct anv_cmd_state * const cmd_state)
 struct anv_performance_configuration_intel {
    struct vk_object_base      base;
 
-   struct gen_perf_registers *register_config;
+   struct intel_perf_registers *register_config;
 
    uint64_t                   config_id;
 };
 
 void anv_physical_device_init_perf(struct anv_physical_device *device, int fd);
 void anv_device_perf_init(struct anv_device *device);
-void anv_perf_write_pass_results(struct gen_perf_config *perf,
+void anv_perf_write_pass_results(struct intel_perf_config *perf,
                                  struct anv_query_pool *pool, uint32_t pass,
-                                 const struct gen_perf_query_result *accumulated_results,
+                                 const struct intel_perf_query_result *accumulated_results,
                                  union VkPerformanceCounterResultKHR *results);
 
 #define ANV_FROM_HANDLE(__anv_type, __name, __handle) \

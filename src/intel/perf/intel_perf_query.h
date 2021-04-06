@@ -28,14 +28,14 @@
 
 struct intel_device_info;
 
-struct gen_perf_config;
-struct gen_perf_context;
-struct gen_perf_query_object;
+struct intel_perf_config;
+struct intel_perf_context;
+struct intel_perf_query_object;
 
-struct gen_perf_context *gen_perf_new_context(void *parent);
+struct intel_perf_context *intel_perf_new_context(void *parent);
 
-void gen_perf_init_context(struct gen_perf_context *perf_ctx,
-                           struct gen_perf_config *perf_cfg,
+void intel_perf_init_context(struct intel_perf_context *perf_ctx,
+                           struct intel_perf_config *perf_cfg,
                            void * mem_ctx, /* ralloc context */
                            void * ctx,  /* driver context (eg, brw_context) */
                            void * bufmgr,  /* eg brw_bufmgr */
@@ -43,39 +43,39 @@ void gen_perf_init_context(struct gen_perf_context *perf_ctx,
                            uint32_t hw_ctx,
                            int drm_fd);
 
-const struct gen_perf_query_info* gen_perf_query_info(const struct gen_perf_query_object *);
+const struct intel_perf_query_info* intel_perf_query_info(const struct intel_perf_query_object *);
 
-struct gen_perf_config *gen_perf_config(struct gen_perf_context *ctx);
+struct intel_perf_config *intel_perf_config(struct intel_perf_context *ctx);
 
-int gen_perf_active_queries(struct gen_perf_context *perf_ctx,
-                            const struct gen_perf_query_info *query);
+int intel_perf_active_queries(struct intel_perf_context *perf_ctx,
+                            const struct intel_perf_query_info *query);
 
-struct gen_perf_query_object *
-gen_perf_new_query(struct gen_perf_context *, unsigned query_index);
+struct intel_perf_query_object *
+intel_perf_new_query(struct intel_perf_context *, unsigned query_index);
 
 
-bool gen_perf_begin_query(struct gen_perf_context *perf_ctx,
-                          struct gen_perf_query_object *query);
-void gen_perf_end_query(struct gen_perf_context *perf_ctx,
-                        struct gen_perf_query_object *query);
-void gen_perf_wait_query(struct gen_perf_context *perf_ctx,
-                         struct gen_perf_query_object *query,
+bool intel_perf_begin_query(struct intel_perf_context *perf_ctx,
+                          struct intel_perf_query_object *query);
+void intel_perf_end_query(struct intel_perf_context *perf_ctx,
+                        struct intel_perf_query_object *query);
+void intel_perf_wait_query(struct intel_perf_context *perf_ctx,
+                         struct intel_perf_query_object *query,
                          void *current_batch);
-bool gen_perf_is_query_ready(struct gen_perf_context *perf_ctx,
-                             struct gen_perf_query_object *query,
+bool intel_perf_is_query_ready(struct intel_perf_context *perf_ctx,
+                             struct intel_perf_query_object *query,
                              void *current_batch);
-void gen_perf_delete_query(struct gen_perf_context *perf_ctx,
-                           struct gen_perf_query_object *query);
-void gen_perf_get_query_data(struct gen_perf_context *perf_ctx,
-                             struct gen_perf_query_object *query,
+void intel_perf_delete_query(struct intel_perf_context *perf_ctx,
+                           struct intel_perf_query_object *query);
+void intel_perf_get_query_data(struct intel_perf_context *perf_ctx,
+                             struct intel_perf_query_object *query,
                              void *current_batch,
                              int data_size,
                              unsigned *data,
                              unsigned *bytes_written);
 
-void gen_perf_dump_query_count(struct gen_perf_context *perf_ctx);
-void gen_perf_dump_query(struct gen_perf_context *perf_ctx,
-                         struct gen_perf_query_object *obj,
+void intel_perf_dump_query_count(struct intel_perf_context *perf_ctx);
+void intel_perf_dump_query(struct intel_perf_context *perf_ctx,
+                         struct intel_perf_query_object *obj,
                          void *current_batch);
 
 #endif /* INTEL_PERF_QUERY_H */

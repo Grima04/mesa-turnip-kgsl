@@ -974,7 +974,7 @@ brw_create_context(gl_api api,
       return false;
    }
    brw->mem_ctx = ralloc_context(NULL);
-   brw->perf_ctx = gen_perf_new_context(brw->mem_ctx);
+   brw->perf_ctx = intel_perf_new_context(brw->mem_ctx);
 
    driContextPriv->driverPrivate = brw;
    brw->driContext = driContextPriv;

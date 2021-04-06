@@ -37,11 +37,11 @@ static inline uint64_t to_const_user_pointer(const void *ptr)
 }
 
 static inline void
-gen_perf_query_add_stat_reg(struct gen_perf_query_info *query, uint32_t reg,
+intel_perf_query_add_stat_reg(struct intel_perf_query_info *query, uint32_t reg,
                             uint32_t numerator, uint32_t denominator,
                             const char *name, const char *description)
 {
-   struct gen_perf_query_counter *counter;
+   struct intel_perf_query_counter *counter;
 
    assert(query->n_counters < query->max_counters);
 
@@ -59,19 +59,19 @@ gen_perf_query_add_stat_reg(struct gen_perf_query_info *query, uint32_t reg,
 }
 
 static inline void
-gen_perf_query_add_basic_stat_reg(struct gen_perf_query_info *query,
+intel_perf_query_add_basic_stat_reg(struct intel_perf_query_info *query,
                                   uint32_t reg, const char *name)
 {
-   gen_perf_query_add_stat_reg(query, reg, 1, 1, name, name);
+   intel_perf_query_add_stat_reg(query, reg, 1, 1, name, name);
 }
 
-static inline struct gen_perf_query_info *
-gen_perf_append_query_info(struct gen_perf_config *perf, int max_counters)
+static inline struct intel_perf_query_info *
+intel_perf_append_query_info(struct intel_perf_config *perf, int max_counters)
 {
-   struct gen_perf_query_info *query;
+   struct intel_perf_query_info *query;
 
    perf->queries = reralloc(perf, perf->queries,
-                            struct gen_perf_query_info,
+                            struct intel_perf_query_info,
                             ++perf->n_queries);
    query = &perf->queries[perf->n_queries - 1];
    memset(query, 0, sizeof(*query));
@@ -81,15 +81,15 @@ gen_perf_append_query_info(struct gen_perf_config *perf, int max_counters)
    if (max_counters > 0) {
       query->max_counters = max_counters;
       query->counters =
-         rzalloc_array(perf, struct gen_perf_query_counter, max_counters);
+         rzalloc_array(perf, struct intel_perf_query_counter, max_counters);
    }
 
    return query;
 }
 
-void gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
+void intel_perf_register_mdapi_statistic_query(struct intel_perf_config *perf_cfg,
                                              const struct intel_device_info *devinfo);
-void gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
+void intel_perf_register_mdapi_oa_query(struct intel_perf_config *perf,
                                       const struct intel_device_info *devinfo);
 
 

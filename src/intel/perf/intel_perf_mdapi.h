@@ -28,7 +28,7 @@
 
 #include "dev/intel_device_info.h"
 
-struct gen_perf_query_result;
+struct intel_perf_query_result;
 
 /* Guid has to matches with MDAPI's. */
 #define GEN_PERF_QUERY_GUID_MDAPI "2f01b241-7014-42a7-9eb6-a925cad3daba"
@@ -127,12 +127,12 @@ struct mdapi_pipeline_metrics {
    uint64_t Reserved1; /* Gfx10+ */
 };
 
-int gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
+int intel_perf_query_result_write_mdapi(void *data, uint32_t data_size,
                                       const struct intel_device_info *devinfo,
-                                      const struct gen_perf_query_info *query,
-                                      const struct gen_perf_query_result *result);
+                                      const struct intel_perf_query_info *query,
+                                      const struct intel_perf_query_result *result);
 
-static inline void gen_perf_query_mdapi_write_marker(void *data, uint32_t data_size,
+static inline void intel_perf_query_mdapi_write_marker(void *data, uint32_t data_size,
                                                      const struct intel_device_info *devinfo,
                                                      uint64_t value)
 {

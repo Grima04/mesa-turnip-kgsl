@@ -32,10 +32,10 @@
 
 
 int
-gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
+intel_perf_query_result_write_mdapi(void *data, uint32_t data_size,
                                   const struct intel_device_info *devinfo,
-                                  const struct gen_perf_query_info *query,
-                                  const struct gen_perf_query_result *result)
+                                  const struct intel_perf_query_info *query,
+                                  const struct intel_perf_query_result *result)
 {
    switch (devinfo->ver) {
    case 7: {
@@ -137,47 +137,47 @@ gen_perf_query_result_write_mdapi(void *data, uint32_t data_size,
 }
 
 void
-gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
+intel_perf_register_mdapi_statistic_query(struct intel_perf_config *perf_cfg,
                                         const struct intel_device_info *devinfo)
 {
    if (!(devinfo->ver >= 7 && devinfo->ver <= 12))
       return;
 
-   struct gen_perf_query_info *query =
-      gen_perf_append_query_info(perf_cfg, MAX_STAT_COUNTERS);
+   struct intel_perf_query_info *query =
+      intel_perf_append_query_info(perf_cfg, MAX_STAT_COUNTERS);
 
    query->kind = GEN_PERF_QUERY_TYPE_PIPELINE;
    query->name = "Intel_Raw_Pipeline_Statistics_Query";
 
    /* The order has to match mdapi_pipeline_metrics. */
-   gen_perf_query_add_basic_stat_reg(query, IA_VERTICES_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, IA_VERTICES_COUNT,
                                      "N vertices submitted");
-   gen_perf_query_add_basic_stat_reg(query, IA_PRIMITIVES_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, IA_PRIMITIVES_COUNT,
                                      "N primitives submitted");
-   gen_perf_query_add_basic_stat_reg(query, VS_INVOCATION_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, VS_INVOCATION_COUNT,
                                      "N vertex shader invocations");
-   gen_perf_query_add_basic_stat_reg(query, GS_INVOCATION_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, GS_INVOCATION_COUNT,
                                      "N geometry shader invocations");
-   gen_perf_query_add_basic_stat_reg(query, GS_PRIMITIVES_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, GS_PRIMITIVES_COUNT,
                                      "N geometry shader primitives emitted");
-   gen_perf_query_add_basic_stat_reg(query, CL_INVOCATION_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, CL_INVOCATION_COUNT,
                                      "N primitives entering clipping");
-   gen_perf_query_add_basic_stat_reg(query, CL_PRIMITIVES_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, CL_PRIMITIVES_COUNT,
                                      "N primitives leaving clipping");
    if (devinfo->is_haswell || devinfo->ver == 8) {
-      gen_perf_query_add_stat_reg(query, PS_INVOCATION_COUNT, 1, 4,
+      intel_perf_query_add_stat_reg(query, PS_INVOCATION_COUNT, 1, 4,
                                   "N fragment shader invocations",
                                   "N fragment shader invocations");
    } else {
-      gen_perf_query_add_basic_stat_reg(query, PS_INVOCATION_COUNT,
+      intel_perf_query_add_basic_stat_reg(query, PS_INVOCATION_COUNT,
                                         "N fragment shader invocations");
    }
-   gen_perf_query_add_basic_stat_reg(query, HS_INVOCATION_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, HS_INVOCATION_COUNT,
                                      "N TCS shader invocations");
-   gen_perf_query_add_basic_stat_reg(query, DS_INVOCATION_COUNT,
+   intel_perf_query_add_basic_stat_reg(query, DS_INVOCATION_COUNT,
                                      "N TES shader invocations");
    if (devinfo->ver >= 7) {
-      gen_perf_query_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
+      intel_perf_query_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
                                         "N compute shader invocations");
    }
 
@@ -185,7 +185,7 @@ gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
       /* Reuse existing CS invocation register until we can expose this new
        * one.
        */
-      gen_perf_query_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
+      intel_perf_query_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
                                         "Reserved1");
    }
 
@@ -193,13 +193,13 @@ gen_perf_register_mdapi_statistic_query(struct gen_perf_config *perf_cfg,
 }
 
 static void
-fill_mdapi_perf_query_counter(struct gen_perf_query_info *query,
+fill_mdapi_perf_query_counter(struct intel_perf_query_info *query,
                               const char *name,
                               uint32_t data_offset,
                               uint32_t data_size,
-                              enum gen_perf_counter_data_type data_type)
+                              enum intel_perf_counter_data_type data_type)
 {
-   struct gen_perf_query_counter *counter = &query->counters[query->n_counters];
+   struct intel_perf_query_counter *counter = &query->counters[query->n_counters];
 
    assert(query->n_counters <= query->max_counters);
 
@@ -211,7 +211,7 @@ fill_mdapi_perf_query_counter(struct gen_perf_query_info *query,
 
    query->n_counters++;
 
-   assert(counter->offset + gen_perf_query_counter_get_size(counter) <= query->data_size);
+   assert(counter->offset + intel_perf_query_counter_get_size(counter) <= query->data_size);
 }
 
 #define MDAPI_QUERY_ADD_COUNTER(query, struct_name, field_name, type_name) \
@@ -229,10 +229,10 @@ fill_mdapi_perf_query_counter(struct gen_perf_query_info *query,
                                  GEN_PERF_COUNTER_DATA_TYPE_##type_name)
 
 void
-gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
+intel_perf_register_mdapi_oa_query(struct intel_perf_config *perf,
                                  const struct intel_device_info *devinfo)
 {
-   struct gen_perf_query_info *query = NULL;
+   struct intel_perf_query_info *query = NULL;
 
    /* MDAPI requires different structures for pretty much every generation
     * (right now we have definitions for gen 7 to 12).
@@ -242,7 +242,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
 
    switch (devinfo->ver) {
    case 7: {
-      query = gen_perf_append_query_info(perf, 1 + 45 + 16 + 7);
+      query = intel_perf_append_query_info(perf, 1 + 45 + 16 + 7);
       query->oa_format = I915_OA_FORMAT_A45_B8_C8;
 
       struct gfx7_mdapi_metrics metric_data;
@@ -267,7 +267,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
       break;
    }
    case 8: {
-      query = gen_perf_append_query_info(perf, 2 + 36 + 16 + 16);
+      query = intel_perf_append_query_info(perf, 2 + 36 + 16 + 16);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
       struct gfx8_mdapi_metrics metric_data;
@@ -304,7 +304,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
    case 9:
    case 11:
    case 12: {
-      query = gen_perf_append_query_info(perf, 2 + 36 + 16 + 16 + 16 + 2);
+      query = intel_perf_append_query_info(perf, 2 + 36 + 16 + 16 + 16 + 2);
       query->oa_format = I915_OA_FORMAT_A32u40_A4u32_B8_C8;
 
       struct gfx9_mdapi_metrics metric_data;
@@ -355,7 +355,7 @@ gen_perf_register_mdapi_oa_query(struct gen_perf_config *perf,
 
    {
       /* Accumulation buffer offsets copied from an actual query... */
-      const struct gen_perf_query_info *copy_query =
+      const struct intel_perf_query_info *copy_query =
          &perf->queries[0];
 
       query->gpu_time_offset = copy_query->gpu_time_offset;

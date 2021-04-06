@@ -683,7 +683,7 @@ enum brw_predicate_state {
 struct shader_times;
 
 struct intel_l3_config;
-struct gen_perf;
+struct intel_perf;
 
 struct brw_uploader {
    struct brw_bufmgr *bufmgr;
@@ -1187,7 +1187,7 @@ struct brw_context
       bool supported;
    } predicate;
 
-   struct gen_perf_context *perf_ctx;
+   struct intel_perf_context *perf_ctx;
 
    int num_atoms[BRW_NUM_PIPELINES];
    const struct brw_tracked_state render_atoms[76];
