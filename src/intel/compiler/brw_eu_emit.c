@@ -620,7 +620,7 @@ brw_inst_set_state(const struct gen_device_info *devinfo,
    brw_inst_set_access_mode(devinfo, insn, state->access_mode);
    brw_inst_set_mask_control(devinfo, insn, state->mask_control);
    if (devinfo->ver >= 12)
-      brw_inst_set_swsb(devinfo, insn, tgl_swsb_encode(state->swsb));
+      brw_inst_set_swsb(devinfo, insn, tgl_swsb_encode(devinfo, state->swsb));
    brw_inst_set_saturate(devinfo, insn, state->saturate);
    brw_inst_set_pred_control(devinfo, insn, state->predicate);
    brw_inst_set_pred_inv(devinfo, insn, state->pred_inv);

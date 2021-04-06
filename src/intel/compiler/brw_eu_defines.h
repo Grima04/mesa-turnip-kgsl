@@ -35,6 +35,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include "util/macros.h"
+#include "dev/gen_device_info.h"
 
 /* The following hunk, up-to "Execution Unit" is used by both the
  * intel/compiler and i965 codebase. */
@@ -1098,11 +1099,33 @@ operator|=(tgl_sbid_mode &x, tgl_sbid_mode y)
 #endif
 
 /**
+ * TGL+ SWSB RegDist synchronization pipeline.
+ *
+ * On TGL all instructions that use the RegDist synchronization mechanism are
+ * considered to be executed as a single in-order pipeline, therefore only the
+ * TGL_PIPE_FLOAT pipeline is applicable.  On XeHP+ platforms there are two
+ * additional asynchronous ALU pipelines (which still execute instructions
+ * in-order and use the RegDist synchronization mechanism).  TGL_PIPE_NONE
+ * doesn't provide any RegDist pipeline synchronization information and allows
+ * the hardware to infer the pipeline based on the source types of the
+ * instruction.  TGL_PIPE_ALL can be used when synchronization with all ALU
+ * pipelines is intended.
+ */
+enum tgl_pipe {
+   TGL_PIPE_NONE = 0,
+   TGL_PIPE_FLOAT,
+   TGL_PIPE_INT,
+   TGL_PIPE_LONG,
+   TGL_PIPE_ALL
+};
+
+/**
  * Logical representation of the SWSB scheduling information of a hardware
  * instruction.  The binary representation is slightly more compact.
  */
 struct tgl_swsb {
    unsigned regdist : 3;
+   enum tgl_pipe pipe : 3;
    unsigned sbid : 4;
    enum tgl_sbid_mode mode : 3;
 };
@@ -1115,7 +1138,7 @@ struct tgl_swsb {
 static inline struct tgl_swsb
 tgl_swsb_regdist(unsigned d)
 {
-   const struct tgl_swsb swsb = { d };
+   const struct tgl_swsb swsb = { d, d ? TGL_PIPE_ALL : TGL_PIPE_NONE };
    assert(swsb.regdist == d);
    return swsb;
 }
@@ -1127,7 +1150,7 @@ tgl_swsb_regdist(unsigned d)
 static inline struct tgl_swsb
 tgl_swsb_sbid(enum tgl_sbid_mode mode, unsigned sbid)
 {
-   const struct tgl_swsb swsb = { 0, sbid, mode };
+   const struct tgl_swsb swsb = { 0, TGL_PIPE_NONE, sbid, mode };
    assert(swsb.sbid == sbid);
    return swsb;
 }
@@ -1151,6 +1174,7 @@ tgl_swsb_dst_dep(struct tgl_swsb swsb, unsigned regdist)
 {
    swsb.regdist = regdist;
    swsb.mode = swsb.mode & TGL_SBID_SET;
+   swsb.pipe = (regdist ? TGL_PIPE_ALL : TGL_PIPE_NONE);
    return swsb;
 }
 
@@ -1170,10 +1194,15 @@ tgl_swsb_src_dep(struct tgl_swsb swsb)
  * SWSB annotation.
  */
 static inline uint8_t
-tgl_swsb_encode(struct tgl_swsb swsb)
+tgl_swsb_encode(const struct gen_device_info *devinfo, struct tgl_swsb swsb)
 {
    if (!swsb.mode) {
-      return swsb.regdist;
+      const unsigned pipe = devinfo->verx10 < 125 ? 0 :
+         swsb.pipe == TGL_PIPE_FLOAT ? 0x10 :
+         swsb.pipe == TGL_PIPE_INT ? 0x18 :
+         swsb.pipe == TGL_PIPE_LONG ? 0x50 :
+         swsb.pipe == TGL_PIPE_ALL ? 0x8 : 0;
+      return pipe | swsb.regdist;
    } else if (swsb.regdist) {
       return 0x80 | swsb.regdist << 4 | swsb.sbid;
    } else {
@@ -1187,10 +1216,12 @@ tgl_swsb_encode(struct tgl_swsb swsb)
  * tgl_swsb.
  */
 static inline struct tgl_swsb
-tgl_swsb_decode(enum opcode opcode, uint8_t x)
+tgl_swsb_decode(const struct gen_device_info *devinfo, const enum opcode opcode,
+                const uint8_t x)
 {
    if (x & 0x80) {
-      const struct tgl_swsb swsb = { (x & 0x70u) >> 4, x & 0xfu,
+      const struct tgl_swsb swsb = { (x & 0x70u) >> 4, TGL_PIPE_NONE,
+                                     x & 0xfu,
                                      (opcode == BRW_OPCODE_SEND ||
                                       opcode == BRW_OPCODE_SENDC ||
                                       opcode == BRW_OPCODE_MATH) ?
@@ -1203,7 +1234,14 @@ tgl_swsb_decode(enum opcode opcode, uint8_t x)
    } else if ((x & 0x70) == 0x40) {
       return tgl_swsb_sbid(TGL_SBID_SET, x & 0xfu);
    } else {
-      return tgl_swsb_regdist(x & 0x7u);
+      const struct tgl_swsb swsb = { x & 0x7u,
+                                     ((x & 0x78) == 0x10 ? TGL_PIPE_FLOAT :
+                                      (x & 0x78) == 0x18 ? TGL_PIPE_INT :
+                                      (x & 0x78) == 0x50 ? TGL_PIPE_LONG :
+                                      (x & 0x78) == 0x8 ? TGL_PIPE_ALL :
+                                      TGL_PIPE_NONE) };
+      assert(devinfo->verx10 >= 125 || swsb.pipe == TGL_PIPE_NONE);
+      return swsb;
    }
 }
 
