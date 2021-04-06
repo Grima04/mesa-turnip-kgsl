@@ -1452,7 +1452,7 @@ struct opcode_desc {
    const char *name;
    int nsrc;
    int ndst;
-   int gens;
+   int gfx_vers;
 };
 
 const struct opcode_desc *

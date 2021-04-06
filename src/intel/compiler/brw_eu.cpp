@@ -589,7 +589,7 @@ brw_disassemble(const struct intel_device_info *devinfo,
 }
 
 static const struct opcode_desc opcode_descs[] = {
-   /* IR,                 HW,  name,      nsrc, ndst, gens */
+   /* IR,                 HW,  name,      nsrc, ndst, gfx_vers */
    { BRW_OPCODE_ILLEGAL,  0,   "illegal", 0,    0,    GFX_ALL },
    { BRW_OPCODE_SYNC,     1,   "sync",    1,    0,    GFX_GE(GFX12) },
    { BRW_OPCODE_MOV,      1,   "mov",     1,    1,    GFX_LT(GFX12) },
@@ -721,7 +721,7 @@ lookup_opcode_desc(gfx_ver *index_gen,
          index_descs[l] = NULL;
 
       for (unsigned i = 0; i < ARRAY_SIZE(opcode_descs); i++) {
-         if (opcode_descs[i].gens & *index_gen) {
+         if (opcode_descs[i].gfx_vers & *index_gen) {
             const unsigned l = opcode_descs[i].*key;
             assert(l < index_size && !index_descs[l]);
             index_descs[l] = &opcode_descs[i];

@@ -271,7 +271,7 @@ gen_f0_1_MOV_GRF_GRF(struct brw_codegen *p)
 
 struct {
    void (*func)(struct brw_codegen *p);
-   int gens;
+   int gfx_vers;
 } tests[] = {
    { gen_MOV_GRF_GRF,          GFX_ALL      },
    { gen_ADD_GRF_GRF_GRF,      GFX_ALL      },
@@ -290,7 +290,7 @@ run_tests(const struct intel_device_info *devinfo)
    bool fail = false;
 
    for (unsigned i = 0; i < ARRAY_SIZE(tests); i++) {
-      if ((tests[i].gens & gfx_ver_from_devinfo(devinfo)) == 0)
+      if ((tests[i].gfx_vers & gfx_ver_from_devinfo(devinfo)) == 0)
          continue;
 
       for (int align_16 = 0; align_16 <= 1; align_16++) {
