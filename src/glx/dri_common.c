@@ -205,17 +205,6 @@ driConfigEqual(const __DRIcoreExtension *core,
             return GL_FALSE;
          break;
 
-      case __DRI_ATTRIB_CONFIG_CAVEAT:
-         if (value & __DRI_ATTRIB_NON_CONFORMANT_CONFIG)
-            glxValue = GLX_NON_CONFORMANT_CONFIG;
-         else if (value & __DRI_ATTRIB_SLOW_BIT)
-            glxValue = GLX_SLOW_CONFIG;
-         else
-            glxValue = GLX_NONE;
-         if (glxValue != config->visualRating)
-            return GL_FALSE;
-         break;
-
       case __DRI_ATTRIB_BIND_TO_TEXTURE_TARGETS:
          glxValue = 0;
          if (value & __DRI_ATTRIB_TEXTURE_1D_BIT)
@@ -240,6 +229,30 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, glxValue))
             return GL_FALSE;
 
+         break;
+
+      /* Nerf some attributes we can safely ignore if the server claims to
+       * support them but the driver does not.
+       */
+      case __DRI_ATTRIB_CONFIG_CAVEAT:
+         if (value & __DRI_ATTRIB_NON_CONFORMANT_CONFIG)
+            glxValue = GLX_NON_CONFORMANT_CONFIG;
+         else if (value & __DRI_ATTRIB_SLOW_BIT)
+            glxValue = GLX_SLOW_CONFIG;
+         else
+            glxValue = GLX_NONE;
+         if (glxValue != config->visualRating) {
+            if (config->visualRating == GLX_NONE) {
+               static int warned;
+               if (!warned) {
+                  dri_message(_LOADER_DEBUG,
+                              "Not downgrading visual rating\n");
+                  warned = 1;
+               }
+            } else {
+               return GL_FALSE;
+            }
+         }
          break;
 
       default:
