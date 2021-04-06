@@ -827,6 +827,7 @@ radv_fast_clear_flush_image_inplace(struct radv_cmd_buffer *cmd_buffer,
 	}
 	radv_describe_layout_transition(cmd_buffer, &barrier);
 
+	assert(cmd_buffer->queue_family_index == RADV_QUEUE_GENERAL);
 	radv_emit_color_decompress(cmd_buffer, image, subresourceRange, false);
 }
 
