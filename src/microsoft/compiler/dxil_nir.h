@@ -45,6 +45,7 @@ bool dxil_nir_lower_memcpy_deref(nir_shader *shader);
 bool dxil_nir_lower_upcast_phis(nir_shader *shader, unsigned min_bit_size);
 bool dxil_nir_lower_fp16_casts(nir_shader *shader);
 bool dxil_nir_split_clip_cull_distance(nir_shader *shader);
+bool dxil_nir_lower_double_math(nir_shader *shader);
 
 nir_ssa_def *
 build_load_ubo_dxil(nir_builder *b, nir_ssa_def *buffer,
