@@ -87,6 +87,10 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    NIR_PASS_V(nir, nir_lower_var_copies);
    NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
 
+   NIR_PASS_V(nir, nir_lower_alu_to_scalar, NULL, NULL);
+   NIR_PASS_V(nir, nir_opt_dce);
+   NIR_PASS_V(nir, dxil_nir_lower_double_math);
+
    {
       bool progress;
       do
