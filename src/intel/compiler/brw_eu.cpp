@@ -703,25 +703,25 @@ static const struct opcode_desc opcode_descs[] = {
  * matching entry.
  *
  * This is implemented by using an index data structure (storage for which is
- * provided by the caller as \p index_gen and \p index_descs) in order to
+ * provided by the caller as \p index_ver and \p index_descs) in order to
  * provide efficient constant-time look-up.
  */
 static const opcode_desc *
-lookup_opcode_desc(gfx_ver *index_gen,
+lookup_opcode_desc(gfx_ver *index_ver,
                    const opcode_desc **index_descs,
                    unsigned index_size,
                    unsigned opcode_desc::*key,
                    const intel_device_info *devinfo,
                    unsigned k)
 {
-   if (*index_gen != gfx_ver_from_devinfo(devinfo)) {
-      *index_gen = gfx_ver_from_devinfo(devinfo);
+   if (*index_ver != gfx_ver_from_devinfo(devinfo)) {
+      *index_ver = gfx_ver_from_devinfo(devinfo);
 
       for (unsigned l = 0; l < index_size; l++)
          index_descs[l] = NULL;
 
       for (unsigned i = 0; i < ARRAY_SIZE(opcode_descs); i++) {
-         if (opcode_descs[i].gfx_vers & *index_gen) {
+         if (opcode_descs[i].gfx_vers & *index_ver) {
             const unsigned l = opcode_descs[i].*key;
             assert(l < index_size && !index_descs[l]);
             index_descs[l] = &opcode_descs[i];
@@ -742,9 +742,9 @@ lookup_opcode_desc(gfx_ver *index_gen,
 const struct opcode_desc *
 brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
 {
-   static __thread gfx_ver index_gen = {};
+   static __thread gfx_ver index_ver = {};
    static __thread const opcode_desc *index_descs[NUM_BRW_OPCODES];
-   return lookup_opcode_desc(&index_gen, index_descs, ARRAY_SIZE(index_descs),
+   return lookup_opcode_desc(&index_ver, index_descs, ARRAY_SIZE(index_descs),
                              &opcode_desc::ir, devinfo, opcode);
 }
 
@@ -755,8 +755,8 @@ brw_opcode_desc(const struct intel_device_info *devinfo, enum opcode opcode)
 const struct opcode_desc *
 brw_opcode_desc_from_hw(const struct intel_device_info *devinfo, unsigned hw)
 {
-   static __thread gfx_ver index_gen = {};
+   static __thread gfx_ver index_ver = {};
    static __thread const opcode_desc *index_descs[128];
-   return lookup_opcode_desc(&index_gen, index_descs, ARRAY_SIZE(index_descs),
+   return lookup_opcode_desc(&index_ver, index_descs, ARRAY_SIZE(index_descs),
                              &opcode_desc::hw, devinfo, hw);
 }
