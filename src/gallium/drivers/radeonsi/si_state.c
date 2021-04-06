@@ -4455,8 +4455,7 @@ static void *si_create_sampler_state(struct pipe_context *ctx,
    struct si_sampler_state *rstate = CALLOC_STRUCT(si_sampler_state);
    unsigned max_aniso = sscreen->force_aniso >= 0 ? sscreen->force_aniso : state->max_anisotropy;
    unsigned max_aniso_ratio = si_tex_aniso_filter(max_aniso);
-   bool trunc_coord = !sscreen->options.no_trunc_coord &&
-                      state->min_img_filter == PIPE_TEX_FILTER_NEAREST &&
+   bool trunc_coord = state->min_img_filter == PIPE_TEX_FILTER_NEAREST &&
                       state->mag_img_filter == PIPE_TEX_FILTER_NEAREST &&
                       state->compare_mode == PIPE_TEX_COMPARE_NONE;
    union pipe_color_union clamped_border_color;
