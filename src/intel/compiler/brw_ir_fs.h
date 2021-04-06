@@ -570,7 +570,12 @@ has_dst_aligned_region_restriction(const gen_device_info *devinfo,
 
    if (type_sz(dst_type) > 4 || type_sz(exec_type) > 4 ||
        (type_sz(exec_type) == 4 && is_dword_multiply))
-      return devinfo->is_cherryview || gen_device_info_is_9lp(devinfo);
+      return devinfo->is_cherryview || gen_device_info_is_9lp(devinfo) ||
+             devinfo->verx10 >= 125;
+
+   else if (brw_reg_type_is_floating_point(inst->dst.type))
+      return devinfo->verx10 >= 125;
+
    else
       return false;
 }
