@@ -348,7 +348,7 @@ VULKAN_GFX125_FILES := \
 	vulkan/gfx8_cmd_buffer.c \
 	$(VULKAN_GENX_FILES)
 
-GEN_PERF_XML_FILES = \
+INTEL_PERF_XML_FILES = \
 	perf/oa-hsw.xml \
 	perf/oa-bdw.xml \
 	perf/oa-chv.xml \
@@ -369,7 +369,7 @@ GEN_PERF_XML_FILES = \
 	perf/oa-dg1.xml \
 	perf/oa-adl.xml
 
-GEN_PERF_FILES = \
+INTEL_PERF_FILES = \
 	perf/intel_perf.c \
 	perf/intel_perf.h \
 	perf/intel_perf_mdapi.c \
@@ -378,6 +378,6 @@ GEN_PERF_FILES = \
 	perf/intel_perf_query.h \
 	perf/intel_perf_query.c
 
-GEN_PERF_GENERATED_FILES = \
+INTEL_PERF_GENERATED_FILES = \
 	perf/intel_perf_metrics.c \
 	perf/intel_perf_metrics.h

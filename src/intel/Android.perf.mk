@@ -33,18 +33,18 @@ intermediates := $(call local-generated-sources-dir)
 
 LOCAL_C_INCLUDES := $(MESA_TOP)/include/drm-uapi
 
-LOCAL_SRC_FILES := $(GEN_PERF_FILES)
+LOCAL_SRC_FILES := $(INTEL_PERF_FILES)
 
 LOCAL_GENERATED_SOURCES += $(addprefix $(intermediates)/, \
-	$(GEN_PERF_GENERATED_FILES))
+	$(INTEL_PERF_GENERATED_FILES))
 
-$(intermediates)/perf/intel_perf_metrics.c: $(LOCAL_PATH)/perf/gen_perf.py $(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
+$(intermediates)/perf/intel_perf_metrics.c: $(LOCAL_PATH)/perf/gen_perf.py $(addprefix $(MESA_TOP)/src/intel/,$(INTEL_PERF_XML_FILES))
 	@echo "target Generated: $(PRIVATE_MODULE) <= $(notdir $(@))"
 	@mkdir -p $(dir $@)
 	$(hide) $(MESA_PYTHON2) $< \
 	--code=$@ \
 	--header=$(@:%.c=%.h) \
-	$(addprefix $(MESA_TOP)/src/intel/,$(GEN_PERF_XML_FILES))
+	$(addprefix $(MESA_TOP)/src/intel/,$(INTEL_PERF_XML_FILES))
 
 $(intermediates)/perf/intel_perf_metrics.h: $(intermediates)/perf/intel_perf_metrics.c
 
