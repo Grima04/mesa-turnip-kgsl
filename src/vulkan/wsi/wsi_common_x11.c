@@ -1202,6 +1202,8 @@ static void *
 x11_manage_fifo_queues(void *state)
 {
    struct x11_swapchain *chain = state;
+   struct wsi_x11_connection *wsi_conn =
+      wsi_x11_get_connection((struct wsi_device*)chain->base.wsi, chain->conn);
    VkResult result = VK_SUCCESS;
 
    assert(chain->has_present_queue);
@@ -1225,7 +1227,9 @@ x11_manage_fifo_queues(void *state)
          return NULL;
       }
 
-      if (chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR) {
+      if (chain->base.present_mode == VK_PRESENT_MODE_MAILBOX_KHR ||
+          (chain->base.present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR &&
+           wsi_conn->is_xwayland)) {
          result = chain->base.wsi->WaitForFences(chain->base.device, 1,
                                         &chain->base.fences[image_index],
                                         true, UINT64_MAX);
