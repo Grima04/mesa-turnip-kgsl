@@ -1767,8 +1767,8 @@ special_requirements_for_handling_double_precision_data_types(
       (brw_inst_src1_type(devinfo, inst) == BRW_REGISTER_TYPE_D ||
        brw_inst_src1_type(devinfo, inst) == BRW_REGISTER_TYPE_UD);
 
-   if (dst_type_size != 8 && exec_type_size != 8 && !is_integer_dword_multiply)
-      return (struct string){};
+   const bool is_double_precision =
+      dst_type_size == 8 || exec_type_size == 8 || is_integer_dword_multiply;
 
    for (unsigned i = 0; i < num_sources; i++) {
       unsigned vstride, width, hstride, type_size, reg, subreg, address_mode;
@@ -1799,6 +1799,9 @@ special_requirements_for_handling_double_precision_data_types(
       }
 #undef DO_SRC
 
+      const unsigned src_stride = hstride * type_size;
+      const unsigned dst_stride = dst_hstride * dst_type_size;
+
       /* The PRMs say that for CHV, BXT:
        *
        *    When source or destination datatype is 64b or operation is integer
@@ -1812,11 +1815,9 @@ special_requirements_for_handling_double_precision_data_types(
        *
        * We assume that the restriction applies to GLK as well.
        */
-      if (brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1 &&
+      if (is_double_precision &&
+          brw_inst_access_mode(devinfo, inst) == BRW_ALIGN_1 &&
           (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
-         unsigned src_stride = hstride * type_size;
-         unsigned dst_stride = dst_hstride * dst_type_size;
-
          ERROR_IF(!is_scalar_region &&
                   (src_stride % 8 != 0 ||
                    dst_stride % 8 != 0 ||
@@ -1840,7 +1841,8 @@ special_requirements_for_handling_double_precision_data_types(
        *
        * We assume that the restriction applies to GLK as well.
        */
-      if (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo)) {
+      if (is_double_precision &&
+          (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
          ERROR_IF(BRW_ADDRESS_REGISTER_INDIRECT_REGISTER == address_mode ||
                   BRW_ADDRESS_REGISTER_INDIRECT_REGISTER == dst_address_mode,
                   "Indirect addressing is not allowed when the execution type "
@@ -1856,7 +1858,8 @@ special_requirements_for_handling_double_precision_data_types(
        *
        * We assume that the restriction does not apply to the null register.
        */
-      if (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo)) {
+      if (is_double_precision &&
+          (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
          ERROR_IF(brw_inst_opcode(devinfo, inst) == BRW_OPCODE_MAC ||
                   brw_inst_acc_wr_control(devinfo, inst) ||
                   (BRW_ARCHITECTURE_REGISTER_FILE == file &&
@@ -1865,6 +1868,51 @@ special_requirements_for_handling_double_precision_data_types(
                    dst_reg != BRW_ARF_NULL),
                   "Architecture registers cannot be used when the execution "
                   "type is 64-bit");
+      }
+
+      /* From the hardware spec section "Register Region Restrictions":
+       *
+       * "In case where source or destination datatype is 64b or operation is
+       *  integer DWord multiply [or in case where a floating point data type
+       *  is used as destination]:
+       *
+       *   1. Register Regioning patterns where register data bit locations
+       *      are changed between source and destination are not supported on
+       *      Src0 and Src1 except for broadcast of a scalar.
+       *
+       *   2. Explicit ARF registers except null and accumulator must not be
+       *      used."
+       */
+      if (devinfo->verx10 >= 125 &&
+          (brw_reg_type_is_floating_point(dst_type) ||
+           is_double_precision)) {
+         ERROR_IF(!is_scalar_region &&
+                  (vstride != width * hstride ||
+                   src_stride != dst_stride ||
+                   subreg != dst_subreg),
+                  "Register Regioning patterns where register data bit "
+                  "locations are changed between source and destination are not "
+                  "supported except for broadcast of a scalar.");
+
+         ERROR_IF((file == BRW_ARCHITECTURE_REGISTER_FILE &&
+                   reg != BRW_ARF_NULL && !(reg >= BRW_ARF_ACCUMULATOR && reg < BRW_ARF_FLAG)) ||
+                  (dst_file == BRW_ARCHITECTURE_REGISTER_FILE &&
+                   dst_reg != BRW_ARF_NULL && dst_reg != BRW_ARF_ACCUMULATOR),
+                  "Explicit ARF registers except null and accumulator must not "
+                  "be used.");
+      }
+
+      /* From the hardware spec section "Register Region Restrictions":
+       *
+       * "Vx1 and VxH indirect addressing for Float, Half-Float, Double-Float and
+       *  Quad-Word data must not be used."
+       */
+      if (devinfo->verx10 >= 125 &&
+          (brw_reg_type_is_floating_point(type) || type_sz(type) == 8)) {
+         ERROR_IF(address_mode == BRW_ADDRESS_REGISTER_INDIRECT_REGISTER &&
+                  vstride == BRW_VERTICAL_STRIDE_ONE_DIMENSIONAL,
+                  "Vx1 and VxH indirect addressing for Float, Half-Float, "
+                  "Double-Float and Quad-Word data must not be used");
       }
    }
 
@@ -1875,7 +1923,7 @@ special_requirements_for_handling_double_precision_data_types(
     *
     * We assume that the restriction applies to all Gfx8+ parts.
     */
-   if (devinfo->ver >= 8) {
+   if (is_double_precision && devinfo->ver >= 8) {
       enum brw_reg_type src0_type = brw_inst_src0_type(devinfo, inst);
       enum brw_reg_type src1_type =
          num_sources > 1 ? brw_inst_src1_type(devinfo, inst) : src0_type;
@@ -1897,7 +1945,8 @@ special_requirements_for_handling_double_precision_data_types(
     *
     * We assume that the restriction applies to GLK as well.
     */
-   if (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo)) {
+   if (is_double_precision &&
+       (devinfo->is_cherryview || gen_device_info_is_9lp(devinfo))) {
       ERROR_IF(brw_inst_no_dd_check(devinfo, inst) ||
                brw_inst_no_dd_clear(devinfo, inst),
                "DepCtrl is not allowed when the execution type is 64-bit");
