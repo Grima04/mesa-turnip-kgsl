@@ -617,9 +617,10 @@ radv_device_finish_meta_btoi_r32g32b32_state(struct radv_device *device)
 }
 
 static nir_shader *
-build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d)
+build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d, int samples)
 {
-	enum glsl_sampler_dim dim = is_3d ? GLSL_SAMPLER_DIM_3D : GLSL_SAMPLER_DIM_2D;
+	bool is_multisampled = samples > 1;
+	enum glsl_sampler_dim dim = is_3d ? GLSL_SAMPLER_DIM_3D : is_multisampled ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
 	const struct glsl_type *buf_type = glsl_sampler_type(dim,
 							     false,
 							     false,
@@ -627,7 +628,7 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d)
 	const struct glsl_type *img_type = glsl_image_type(dim,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, is_3d ? "meta_itoi_cs_3d" : "meta_itoi_cs");
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, is_3d ? "meta_itoi_cs_3d-%d" : "meta_itoi_cs-%d", samples);
 	b.shader->info.cs.local_size[0] = 8;
 	b.shader->info.cs.local_size[1] = 8;
 	b.shader->info.cs.local_size[2] = 1;
@@ -658,27 +659,70 @@ build_nir_itoi_compute_shader(struct radv_device *dev, bool is_3d)
 
 	nir_ssa_def *dst_coord = nir_iadd(&b, global_id, dst_offset);
 
-	nir_tex_instr *tex = nir_tex_instr_create(b.shader, 3);
-	tex->sampler_dim = dim;
-	tex->op = nir_texop_txf;
-	tex->src[0].src_type = nir_tex_src_coord;
-	tex->src[0].src = nir_src_for_ssa(nir_channels(&b, src_coord, is_3d ? 0x7 : 0x3));
-	tex->src[1].src_type = nir_tex_src_lod;
-	tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
-	tex->src[2].src_type = nir_tex_src_texture_deref;
-	tex->src[2].src = nir_src_for_ssa(input_img_deref);
-	tex->dest_type = nir_type_float32;
-	tex->is_array = false;
-	tex->coord_components = is_3d ? 3 : 2;
+	nir_tex_instr *tex_instr[8];
+	for (uint32_t i = 0; i < samples; i++) {
+		tex_instr[i] = nir_tex_instr_create(b.shader, is_multisampled ? 4 : 3);
 
-	nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
-	nir_builder_instr_insert(&b, &tex->instr);
+		nir_tex_instr *tex = tex_instr[i];
+		tex->sampler_dim = dim;
+		tex->op = is_multisampled ? nir_texop_txf_ms : nir_texop_txf;
+		tex->src[0].src_type = nir_tex_src_coord;
+		tex->src[0].src = nir_src_for_ssa(nir_channels(&b, src_coord, is_3d ? 0x7 : 0x3));
+		tex->src[1].src_type = nir_tex_src_lod;
+		tex->src[1].src = nir_src_for_ssa(nir_imm_int(&b, 0));
+		tex->src[2].src_type = nir_tex_src_texture_deref;
+		tex->src[2].src = nir_src_for_ssa(input_img_deref);
+		if (is_multisampled) {
+			tex->src[3].src_type = nir_tex_src_ms_index;
+			tex->src[3].src = nir_src_for_ssa(nir_imm_int(&b, i));
+		}
+		tex->dest_type = nir_type_float32;
+		tex->is_array = false;
+		tex->coord_components = is_3d ? 3 : 2;
 
-	nir_ssa_def *outval = &tex->dest.ssa;
-	nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa,
-	                      dst_coord, nir_ssa_undef(&b, 1, 32), outval, nir_imm_int(&b, 0));
+		nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, "tex");
+		nir_builder_instr_insert(&b, &tex->instr);
+	}
+
+	for (uint32_t i = 0; i < samples; i++) {
+		nir_ssa_def *outval = &tex_instr[i]->dest.ssa;
+		nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa,
+		                      dst_coord, nir_imm_int(&b, i), outval, nir_imm_int(&b, 0));
+	}
 
 	return b.shader;
+}
+
+static VkResult
+create_itoi_pipeline(struct radv_device *device,
+		     int samples,
+		     VkPipeline *pipeline)
+{
+	struct radv_meta_state *state = &device->meta_state;
+	nir_shader *cs = build_nir_itoi_compute_shader(device, false, samples);
+	VkResult result;
+
+	VkPipelineShaderStageCreateInfo pipeline_shader_stage = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+		.module = vk_shader_module_handle_from_nir(cs),
+		.pName = "main",
+		.pSpecializationInfo = NULL,
+	};
+
+	VkComputePipelineCreateInfo vk_pipeline_info = {
+		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		.stage = pipeline_shader_stage,
+		.flags = 0,
+		.layout = state->itoi.img_p_layout,
+	};
+
+	result = radv_CreateComputePipelines(radv_device_to_handle(device),
+					     radv_pipeline_cache_to_handle(&state->cache),
+					     1, &vk_pipeline_info, NULL,
+					     pipeline);
+	ralloc_free(cs);
+	return result;
 }
 
 /* image to image - don't write use image accessors */
@@ -686,10 +730,7 @@ static VkResult
 radv_device_init_meta_itoi_state(struct radv_device *device)
 {
 	VkResult result;
-	nir_shader *cs = build_nir_itoi_compute_shader(device, false);
-	nir_shader *cs_3d = NULL;
-	if (device->physical_device->rad_info.chip_class >= GFX9)
-		cs_3d = build_nir_itoi_compute_shader(device, true);
+
 	/*
 	 * two descriptors one for the image being sampled
 	 * one for the buffer being written.
@@ -739,31 +780,17 @@ radv_device_init_meta_itoi_state(struct radv_device *device)
 	if (result != VK_SUCCESS)
 		goto fail;
 
-	/* compute shader */
-
-	VkPipelineShaderStageCreateInfo pipeline_shader_stage = {
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-		.module = vk_shader_module_handle_from_nir(cs),
-		.pName = "main",
-		.pSpecializationInfo = NULL,
-	};
-
-	VkComputePipelineCreateInfo vk_pipeline_info = {
-		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-		.stage = pipeline_shader_stage,
-		.flags = 0,
-		.layout = device->meta_state.itoi.img_p_layout,
-	};
-
-	result = radv_CreateComputePipelines(radv_device_to_handle(device),
-					     radv_pipeline_cache_to_handle(&device->meta_state.cache),
-					     1, &vk_pipeline_info, NULL,
-					     &device->meta_state.itoi.pipeline);
-	if (result != VK_SUCCESS)
-		goto fail;
+	for (uint32_t i = 0; i < MAX_SAMPLES_LOG2; i++) {
+		uint32_t samples = 1 << i;
+		result = create_itoi_pipeline(device, samples,
+					      &device->meta_state.itoi.pipeline[i]);
+		if (result != VK_SUCCESS)
+			goto fail;
+	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		nir_shader *cs_3d = build_nir_itoi_compute_shader(device, true, 1);
+
 		VkPipelineShaderStageCreateInfo pipeline_shader_stage_3d = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
 .stage = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -783,15 +810,11 @@ radv_device_init_meta_itoi_state(struct radv_device *device)
 						     radv_pipeline_cache_to_handle(&device->meta_state.cache),
 						     1, &vk_pipeline_info_3d, NULL,
 						     &device->meta_state.itoi.pipeline_3d);
-
 		ralloc_free(cs_3d);
 	}
-	ralloc_free(cs);
 
 	return VK_SUCCESS;
 fail:
-	ralloc_free(cs);
-	ralloc_free(cs_3d);
 	return result;
 }
 
@@ -805,8 +828,12 @@ radv_device_finish_meta_itoi_state(struct radv_device *device)
 	radv_DestroyDescriptorSetLayout(radv_device_to_handle(device),
 				        state->itoi.img_ds_layout,
 					&state->alloc);
-	radv_DestroyPipeline(radv_device_to_handle(device),
-			     state->itoi.pipeline, &state->alloc);
+
+	for (uint32_t i = 0; i < MAX_SAMPLES_LOG2; ++i) {
+		radv_DestroyPipeline(radv_device_to_handle(device),
+				     state->itoi.pipeline[i], &state->alloc);
+	}
+
 	if (device->physical_device->rad_info.chip_class >= GFX9)
 		radv_DestroyPipeline(radv_device_to_handle(device),
 				     state->itoi.pipeline_3d, &state->alloc);
@@ -1899,9 +1926,10 @@ radv_meta_image_to_image_cs(struct radv_cmd_buffer *cmd_buffer,
 			    unsigned num_rects,
 			    struct radv_meta_blit2d_rect *rects)
 {
-	VkPipeline pipeline = cmd_buffer->device->meta_state.itoi.pipeline;
 	struct radv_device *device = cmd_buffer->device;
 	struct radv_image_view src_view, dst_view;
+	uint32_t samples = src->image->info.samples;
+	uint32_t samples_log2 = ffs(samples) - 1;
 
 	if (src->format == VK_FORMAT_R32G32B32_UINT ||
 	    src->format == VK_FORMAT_R32G32B32_SINT ||
@@ -1916,6 +1944,7 @@ radv_meta_image_to_image_cs(struct radv_cmd_buffer *cmd_buffer,
 
 	itoi_bind_descriptors(cmd_buffer, &src_view, &dst_view);
 
+	VkPipeline pipeline = cmd_buffer->device->meta_state.itoi.pipeline[samples_log2];
 	if (device->physical_device->rad_info.chip_class >= GFX9 &&
 	    (src->image->type == VK_IMAGE_TYPE_3D || dst->image->type == VK_IMAGE_TYPE_3D))
 		pipeline = cmd_buffer->device->meta_state.itoi.pipeline_3d;
