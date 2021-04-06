@@ -47,8 +47,8 @@
 #include "ac_surface_test_common.h"
 
 /*
- * The main goal of this test is to validate that our dcc addressing functions
- * match addrlib behavior.
+ * The main goal of this test is to validate that our dcc/htile addressing
+ * functions match addrlib behavior.
  */
 
 /* DCC address computation without mipmapping. */
@@ -109,22 +109,20 @@ static unsigned gfx9_dcc_addr_from_coord(const struct radeon_info *info,
    return (address >> 1) ^ (pipeXor << m_pipeInterleaveLog2);
 }
 
-/* DCC address computation without mipmapping and MSAA. */
-static unsigned gfx10_dcc_addr_from_coord(const struct radeon_info *info,
-                                          /* Shader key inputs: */
-                                          /* equation varies with bpp and pipe_aligned */
-                                          const uint16_t *equation, unsigned bpp,
-                                          unsigned meta_block_width, unsigned meta_block_height,
-                                          /* Shader inputs: */
-                                          unsigned dcc_pitch, unsigned dcc_slice_size,
-                                          unsigned x, unsigned y, unsigned z,
-                                          unsigned pipe_xor)
+/* DCC/HTILE address computation for GFX10. */
+static unsigned gfx10_meta_addr_from_coord(const struct radeon_info *info,
+                                           /* Shader key inputs: */
+                                           const uint16_t *equation,
+                                           unsigned meta_block_width, unsigned meta_block_height,
+                                           unsigned blkSizeLog2,
+                                           /* Shader inputs: */
+                                           unsigned meta_pitch, unsigned meta_slice_size,
+                                           unsigned x, unsigned y, unsigned z,
+                                           unsigned pipe_xor)
 {
    /* The compiled shader shouldn't be complicated considering there are a lot of constants here. */
-   unsigned bpp_log2 = util_logbase2(bpp >> 3);
    unsigned meta_block_width_log2 = util_logbase2(meta_block_width);
    unsigned meta_block_height_log2 = util_logbase2(meta_block_height);
-   unsigned blkSizeLog2 = meta_block_width_log2 + meta_block_height_log2 + bpp_log2 - 8;
 
    unsigned coord[] = {x, y, z, 0};
    unsigned address = 0;
@@ -150,13 +148,36 @@ static unsigned gfx10_dcc_addr_from_coord(const struct radeon_info *info,
    unsigned m_pipeInterleaveLog2 = 8 + G_0098F8_PIPE_INTERLEAVE_SIZE_GFX9(info->gb_addr_config);
    unsigned xb = x >> meta_block_width_log2;
    unsigned yb = y >> meta_block_height_log2;
-   unsigned pb = dcc_pitch >> meta_block_width_log2;
+   unsigned pb = meta_pitch >> meta_block_width_log2;
    unsigned blkIndex = (yb * pb) + xb;
    unsigned pipeXor = ((pipe_xor & pipeMask) << m_pipeInterleaveLog2) & blkMask;
 
-   return (dcc_slice_size * z) +
+   return (meta_slice_size * z) +
           (blkIndex * (1 << blkSizeLog2)) +
           ((address >> 1) ^ pipeXor);
+}
+
+/* DCC address computation without mipmapping and MSAA. */
+static unsigned gfx10_dcc_addr_from_coord(const struct radeon_info *info,
+                                          /* Shader key inputs: */
+                                          /* equation varies with bpp and pipe_aligned */
+                                          const uint16_t *equation, unsigned bpp,
+                                          unsigned meta_block_width, unsigned meta_block_height,
+                                          /* Shader inputs: */
+                                          unsigned dcc_pitch, unsigned dcc_slice_size,
+                                          unsigned x, unsigned y, unsigned z,
+                                          unsigned pipe_xor)
+{
+   unsigned bpp_log2 = util_logbase2(bpp >> 3);
+   unsigned meta_block_width_log2 = util_logbase2(meta_block_width);
+   unsigned meta_block_height_log2 = util_logbase2(meta_block_height);
+   unsigned blkSizeLog2 = meta_block_width_log2 + meta_block_height_log2 + bpp_log2 - 8;
+
+   return gfx10_meta_addr_from_coord(info, equation,
+                                     meta_block_width, meta_block_height,
+                                     blkSizeLog2,
+                                     dcc_pitch, dcc_slice_size,
+                                     x, y, z, pipe_xor);
 }
 
 static bool one_dcc_address_test(const char *name, const char *test, ADDR_HANDLE addrlib,
@@ -346,6 +367,139 @@ static void run_dcc_address_test(const char *name, const struct radeon_info *inf
    printf("%16s total: %u, fail: %u\n", name, total, fails);
 }
 
+/* HTILE address computation without mipmapping. */
+static unsigned gfx10_htile_addr_from_coord(const struct radeon_info *info,
+                                            const uint16_t *equation,
+                                            unsigned meta_block_width,
+                                            unsigned meta_block_height,
+                                            unsigned htile_pitch, unsigned htile_slice_size,
+                                            unsigned x, unsigned y, unsigned z,
+                                            unsigned pipe_xor)
+{
+   unsigned meta_block_width_log2 = util_logbase2(meta_block_width);
+   unsigned meta_block_height_log2 = util_logbase2(meta_block_height);
+   unsigned blkSizeLog2 = meta_block_width_log2 + meta_block_height_log2 - 4;
+
+   return gfx10_meta_addr_from_coord(info, equation,
+                                     meta_block_width, meta_block_height,
+                                     blkSizeLog2,
+                                     htile_pitch, htile_slice_size,
+                                     x, y, z, pipe_xor);
+}
+
+static bool one_htile_address_test(const char *name, const char *test, ADDR_HANDLE addrlib,
+                                   const struct radeon_info *info,
+                                   unsigned width, unsigned height, unsigned depth,
+                                   unsigned bpp, unsigned swizzle_mode,
+                                   unsigned start_x, unsigned start_y, unsigned start_z)
+{
+   ADDR2_COMPUTE_PIPEBANKXOR_INPUT xin = {0};
+   ADDR2_COMPUTE_PIPEBANKXOR_OUTPUT xout = {0};
+   ADDR2_COMPUTE_HTILE_INFO_INPUT hin = {0};
+   ADDR2_COMPUTE_HTILE_INFO_OUTPUT hout = {0};
+   ADDR2_COMPUTE_HTILE_ADDRFROMCOORD_INPUT in = {0};
+   ADDR2_COMPUTE_HTILE_ADDRFROMCOORD_OUTPUT out = {0};
+   ADDR2_META_MIP_INFO meta_mip_info[RADEON_SURF_MAX_LEVELS] = {0};
+
+   hout.pMipInfo = meta_mip_info;
+
+   /* Compute HTILE info. */
+   hin.hTileFlags.pipeAligned = 1;
+   hin.hTileFlags.rbAligned = 1;
+   hin.depthFlags.depth = 1;
+   hin.depthFlags.texture = 1;
+   hin.depthFlags.opt4space = 1;
+   hin.swizzleMode = in.swizzleMode = xin.swizzleMode = swizzle_mode;
+   hin.unalignedWidth = in.unalignedWidth = width;
+   hin.unalignedHeight = in.unalignedHeight = height;
+   hin.numSlices = in.numSlices = depth;
+   hin.numMipLevels = in.numMipLevels = 1; /* addrlib can't do HtileAddrFromCoord with mipmapping. */
+   hin.firstMipIdInTail = 1;
+
+   int ret = Addr2ComputeHtileInfo(addrlib, &hin, &hout);
+   assert(ret == ADDR_OK);
+
+   /* Compute xor. */
+   static AddrFormat format[] = {
+      ADDR_FMT_8, /* unused */
+      ADDR_FMT_16,
+      ADDR_FMT_32,
+   };
+   xin.flags = hin.depthFlags;
+   xin.resourceType = ADDR_RSRC_TEX_2D;
+   xin.format = format[util_logbase2(bpp / 8)];
+   xin.numFrags = xin.numSamples = in.numSamples = 1;
+
+   ret = Addr2ComputePipeBankXor(addrlib, &xin, &xout);
+   assert(ret == ADDR_OK);
+
+   in.hTileFlags = hin.hTileFlags;
+   in.depthflags = xin.flags;
+   in.bpp = bpp;
+   in.pipeXor = xout.pipeBankXor;
+
+   for (in.x = start_x; in.x < width; in.x++) {
+      for (in.y = start_y; in.y < height; in.y++) {
+         for (in.slice = start_z; in.slice < depth; in.slice++) {
+            int r = Addr2ComputeHtileAddrFromCoord(addrlib, &in, &out);
+            if (r != ADDR_OK) {
+               printf("%s addrlib error: %s\n", name, test);
+               abort();
+            }
+
+            unsigned addr =
+               gfx10_htile_addr_from_coord(info, hout.equation.gfx10_bits,
+                                           hout.metaBlkWidth, hout.metaBlkHeight,
+                                           hout.pitch, hout.sliceSize,
+                                           in.x, in.y, in.slice, in.pipeXor);
+            if (out.addr != addr) {
+               printf("%s fail (%s) at %ux%ux%u: expected = %llu, got = %u\n",
+                      name, test, in.x, in.y, in.slice, out.addr, addr);
+               return false;
+            }
+         }
+      }
+   }
+
+   return true;
+}
+
+static void run_htile_address_test(const char *name, const struct radeon_info *info, bool full)
+{
+   unsigned total = 0;
+   unsigned fails = 0;
+   unsigned first_size = 0, last_size = 6*6 - 1, max_bpp = 32;
+
+   /* The test coverage is reduced for Gitlab CI because it timeouts. */
+   if (!full) {
+      first_size = last_size = 0;
+   }
+
+#ifdef HAVE_OPENMP
+#pragma omp parallel for
+#endif
+   for (unsigned size = first_size; size <= last_size; size++) {
+      unsigned width = 8 + 379 * (size % 6);
+      unsigned height = 8 + 379 * (size / 6);
+
+      struct ac_addrlib *ac_addrlib = ac_addrlib_create(info, NULL);
+      ADDR_HANDLE addrlib = ac_addrlib_get_handle(ac_addrlib);
+
+      for (unsigned depth = 1; depth <= 2; depth *= 2) {
+         for (unsigned bpp = 16; bpp <= max_bpp; bpp *= 2) {
+            if (one_htile_address_test(name, name, addrlib, info, width, height, depth,
+                                       bpp, ADDR_SW_64KB_Z_X, 0, 0, 0)) {
+            } else {
+               p_atomic_inc(&fails);
+            }
+            p_atomic_inc(&total);
+         }
+      }
+
+      ac_addrlib_destroy(ac_addrlib);
+   }
+   printf("%16s total: %u, fail: %u\n", name, total, fails);
+}
 int main(int argc, char **argv)
 {
    bool full = false;
@@ -355,10 +509,22 @@ int main(int argc, char **argv)
    else
       puts("Specify --full to run the full test.");
 
+   puts("DCC:");
    for (unsigned i = 0; i < ARRAY_SIZE(testcases); ++i) {
       struct radeon_info info = get_radeon_info(&testcases[i]);
 
       run_dcc_address_test(testcases[i].name, &info, full);
+   }
+
+   puts("HTILE:");
+   for (unsigned i = 0; i < ARRAY_SIZE(testcases); ++i) {
+      struct radeon_info info = get_radeon_info(&testcases[i]);
+
+      /* Only GFX10+ is currently supported. */
+      if (info.chip_class < GFX10)
+         continue;
+
+      run_htile_address_test(testcases[i].name, &info, full);
    }
 
    return 0;
