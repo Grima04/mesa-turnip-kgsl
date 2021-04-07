@@ -3072,14 +3072,9 @@ lower_bit_size_callback(const nir_instr *instr, void *_)
       switch (alu->op) {
       case nir_op_iabs:
       case nir_op_bitfield_select:
-      case nir_op_udiv:
-      case nir_op_idiv:
-      case nir_op_umod:
-      case nir_op_imod:
       case nir_op_imul_high:
       case nir_op_umul_high:
       case nir_op_ineg:
-      case nir_op_irem:
       case nir_op_isign:
          return 32;
       case nir_op_imax:
@@ -3369,9 +3364,6 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
             }
 
             if (nir_lower_bit_size(nir[i], lower_bit_size_callback, device)) {
-               // TODO: lower idiv beforehand
-               if (nir_lower_idiv(nir[i], nir_lower_idiv_precise))
-                  NIR_PASS_V(nir[i], nir_opt_algebraic_late); /* needed for removing ineg again */
                NIR_PASS_V(nir[i], nir_opt_constant_folding);
                NIR_PASS_V(nir[i], nir_opt_dce);
             }
