@@ -835,6 +835,12 @@ struct radv_device {
 
    /* Whether the user forced VRS rates on GFX10.3+. */
    enum radv_force_vrs force_vrs;
+
+   /* Depth image for VRS when not bound by the app. */
+   struct {
+      struct radv_image *image;
+      struct radv_device_memory *mem;
+   } vrs;
 };
 
 VkResult _radv_device_set_lost(struct radv_device *device, const char *file, int line,
@@ -1511,6 +1517,7 @@ void radv_depth_stencil_resolve_subpass_fs(struct radv_cmd_buffer *cmd_buffer,
 void radv_emit_default_sample_locations(struct radeon_cmdbuf *cs, int nr_samples);
 unsigned radv_get_default_max_sample_dist(int log_samples);
 void radv_device_init_msaa(struct radv_device *device);
+VkResult radv_device_init_vrs_image(struct radv_device *device);
 
 void radv_update_ds_clear_metadata(struct radv_cmd_buffer *cmd_buffer,
                                    const struct radv_image_view *iview,
