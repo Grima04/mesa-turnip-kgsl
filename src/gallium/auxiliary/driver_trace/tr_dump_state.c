@@ -487,6 +487,24 @@ void trace_dump_framebuffer_state(const struct pipe_framebuffer_state *state)
    trace_dump_struct_end();
 }
 
+void trace_dump_framebuffer_state_deep(const struct pipe_framebuffer_state *state)
+{
+   if (!trace_dumping_enabled_locked())
+      return;
+
+   trace_dump_struct_begin("pipe_framebuffer_state");
+
+   trace_dump_member(uint, state, width);
+   trace_dump_member(uint, state, height);
+   trace_dump_member(uint, state, samples);
+   trace_dump_member(uint, state, layers);
+   trace_dump_member(uint, state, nr_cbufs);
+   trace_dump_member_array(surface, state, cbufs);
+   trace_dump_member(surface, state, zsbuf);
+
+   trace_dump_struct_end();
+}
+
 
 void trace_dump_sampler_state(const struct pipe_sampler_state *state)
 {
@@ -563,6 +581,12 @@ void trace_dump_sampler_view_template(const struct pipe_sampler_view *state,
    trace_dump_member(uint, state, swizzle_a);
 
    trace_dump_struct_end();
+}
+
+
+void trace_dump_surface(const struct pipe_surface *surface)
+{
+   trace_dump_surface_template(surface, surface ? surface->texture->target : 0);
 }
 
 

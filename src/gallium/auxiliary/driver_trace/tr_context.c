@@ -90,14 +90,18 @@ trace_surface_unwrap(struct trace_context *tr_ctx,
 
 static void
 dump_fb_state(struct trace_context *tr_ctx,
-              const char *method)
+              const char *method,
+              bool deep)
 {
    struct pipe_context *pipe = tr_ctx->pipe;
 
    trace_dump_call_begin("pipe_context", method);
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(framebuffer_state, &tr_ctx->unwrapped_state);
+   if (deep)
+      trace_dump_arg(framebuffer_state_deep, &tr_ctx->unwrapped_state);
+   else
+      trace_dump_arg(framebuffer_state, &tr_ctx->unwrapped_state);
    trace_dump_call_end();
 
    tr_ctx->seen_fb_state = true;
@@ -114,7 +118,7 @@ trace_context_draw_vbo(struct pipe_context *_pipe,
    struct pipe_context *pipe = tr_ctx->pipe;
 
    if (!tr_ctx->seen_fb_state && trace_dump_is_triggered())
-      dump_fb_state(tr_ctx, "current_framebuffer_state");
+      dump_fb_state(tr_ctx, "current_framebuffer_state", true);
 
    trace_dump_call_begin("pipe_context", "draw_vbo");
 
@@ -870,7 +874,7 @@ trace_context_set_framebuffer_state(struct pipe_context *_pipe,
    tr_ctx->unwrapped_state.zsbuf = trace_surface_unwrap(tr_ctx, state->zsbuf);
    state = &tr_ctx->unwrapped_state;
 
-   dump_fb_state(tr_ctx, "set_framebuffer_state");
+   dump_fb_state(tr_ctx, "set_framebuffer_state", trace_dump_is_triggered());
 
    pipe->set_framebuffer_state(pipe, state);
 }
