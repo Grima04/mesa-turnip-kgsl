@@ -247,6 +247,8 @@ lower_idiv(nir_builder *b, nir_instr *instr, void *_data)
    nir_ssa_def *numer = nir_ssa_for_alu_src(b, alu, 0);
    nir_ssa_def *denom = nir_ssa_for_alu_src(b, alu, 1);
 
+   b->exact = true;
+
    if (numer->bit_size < 32)
       return convert_instr_small(b, alu->op, numer, denom, options);
    else if (options->imprecise_32bit_lowering)
