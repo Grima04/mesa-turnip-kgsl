@@ -72,6 +72,8 @@ lower_fragcolor_instr(nir_intrinsic_instr *instr, nir_builder *b, unsigned max_d
    /* translate gl_FragColor -> gl_FragData since this is already handled */
    out->data.location = FRAG_RESULT_DATA0;
    nir_component_mask_t writemask = nir_intrinsic_write_mask(instr);
+   b->shader->info.outputs_written &= ~BITFIELD64_BIT(FRAG_RESULT_COLOR);
+   b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DATA0);
 
    for (unsigned i = 1; i < max_draw_buffers; i++) {
       char name[28];
@@ -83,6 +85,7 @@ lower_fragcolor_instr(nir_intrinsic_instr *instr, nir_builder *b, unsigned max_d
       out_color->data.driver_location = i;
       out_color->data.index = out->data.index;
       nir_store_var(b, out_color, frag_color, writemask);
+      b->shader->info.outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DATA0 + i);
    }
    return true;
 }
