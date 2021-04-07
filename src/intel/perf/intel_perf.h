@@ -96,7 +96,7 @@ enum intel_perf_counter_units {
    INTEL_PERF_COUNTER_UNITS_MAX
 };
 
-struct gen_pipeline_stat {
+struct intel_pipeline_stat {
    uint32_t reg;
    uint32_t numerator;
    uint32_t denominator;
@@ -186,7 +186,7 @@ struct intel_perf_query_counter {
       float (*oa_counter_read_float)(struct intel_perf_config *perf,
                                      const struct intel_perf_query_info *query,
                                      const struct intel_perf_query_result *results);
-      struct gen_pipeline_stat pipeline_stat;
+      struct intel_pipeline_stat pipeline_stat;
    };
 };
 

@@ -435,52 +435,52 @@ static perf_register_oa_queries_t
 get_register_queries_function(const struct intel_device_info *devinfo)
 {
    if (devinfo->is_haswell)
-      return gen_oa_register_queries_hsw;
+      return intel_oa_register_queries_hsw;
    if (devinfo->is_cherryview)
-      return gen_oa_register_queries_chv;
+      return intel_oa_register_queries_chv;
    if (devinfo->is_broadwell)
-      return gen_oa_register_queries_bdw;
+      return intel_oa_register_queries_bdw;
    if (devinfo->is_broxton)
-      return gen_oa_register_queries_bxt;
+      return intel_oa_register_queries_bxt;
    if (devinfo->is_skylake) {
       if (devinfo->gt == 2)
-         return gen_oa_register_queries_sklgt2;
+         return intel_oa_register_queries_sklgt2;
       if (devinfo->gt == 3)
-         return gen_oa_register_queries_sklgt3;
+         return intel_oa_register_queries_sklgt3;
       if (devinfo->gt == 4)
-         return gen_oa_register_queries_sklgt4;
+         return intel_oa_register_queries_sklgt4;
    }
    if (devinfo->is_kabylake) {
       if (devinfo->gt == 2)
-         return gen_oa_register_queries_kblgt2;
+         return intel_oa_register_queries_kblgt2;
       if (devinfo->gt == 3)
-         return gen_oa_register_queries_kblgt3;
+         return intel_oa_register_queries_kblgt3;
    }
    if (devinfo->is_geminilake)
-      return gen_oa_register_queries_glk;
+      return intel_oa_register_queries_glk;
    if (devinfo->is_coffeelake) {
       if (devinfo->gt == 2)
-         return gen_oa_register_queries_cflgt2;
+         return intel_oa_register_queries_cflgt2;
       if (devinfo->gt == 3)
-         return gen_oa_register_queries_cflgt3;
+         return intel_oa_register_queries_cflgt3;
    }
    if (devinfo->ver == 11) {
       if (devinfo->is_elkhartlake)
-         return gen_oa_register_queries_ehl;
-      return gen_oa_register_queries_icl;
+         return intel_oa_register_queries_ehl;
+      return intel_oa_register_queries_icl;
    }
    if (devinfo->is_tigerlake) {
       if (devinfo->gt == 1)
-         return gen_oa_register_queries_tglgt1;
+         return intel_oa_register_queries_tglgt1;
       if (devinfo->gt == 2)
-         return gen_oa_register_queries_tglgt2;
+         return intel_oa_register_queries_tglgt2;
    }
    if (devinfo->is_rocketlake)
-      return gen_oa_register_queries_rkl;
+      return intel_oa_register_queries_rkl;
    if (devinfo->is_dg1)
-      return gen_oa_register_queries_dg1;
+      return intel_oa_register_queries_dg1;
    if (devinfo->is_alderlake)
-      return gen_oa_register_queries_adl;
+      return intel_oa_register_queries_adl;
 
    return NULL;
 }

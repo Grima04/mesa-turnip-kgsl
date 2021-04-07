@@ -348,25 +348,25 @@ VkResult anv_EnumeratePhysicalDeviceQueueFamilyPerformanceQueryCountersKHR(
    VK_OUTARRAY_MAKE(out_desc, pCounterDescriptions, &desc_count);
 
    for (int c = 0; c < (perf ? perf->n_counters : 0); c++) {
-      const struct intel_perf_query_counter *gen_counter = perf->counter_infos[c].counter;
+      const struct intel_perf_query_counter *intel_counter = perf->counter_infos[c].counter;
 
       vk_outarray_append(&out, counter) {
-         counter->unit = intel_perf_counter_unit_to_vk_unit[gen_counter->units];
+         counter->unit = intel_perf_counter_unit_to_vk_unit[intel_counter->units];
          counter->scope = VK_QUERY_SCOPE_COMMAND_KHR;
-         counter->storage = intel_perf_counter_data_type_to_vk_storage[gen_counter->data_type];
+         counter->storage = intel_perf_counter_data_type_to_vk_storage[intel_counter->data_type];
 
          unsigned char sha1_result[20];
-         _mesa_sha1_compute(gen_counter->symbol_name,
-                            strlen(gen_counter->symbol_name),
+         _mesa_sha1_compute(intel_counter->symbol_name,
+                            strlen(intel_counter->symbol_name),
                             sha1_result);
          memcpy(counter->uuid, sha1_result, sizeof(counter->uuid));
       }
 
       vk_outarray_append(&out_desc, desc) {
          desc->flags = 0; /* None so far. */
-         snprintf(desc->name, sizeof(desc->name), "%s", gen_counter->name);
-         snprintf(desc->category, sizeof(desc->category), "%s", gen_counter->category);
-         snprintf(desc->description, sizeof(desc->description), "%s", gen_counter->desc);
+         snprintf(desc->name, sizeof(desc->name), "%s", intel_counter->name);
+         snprintf(desc->category, sizeof(desc->category), "%s", intel_counter->category);
+         snprintf(desc->description, sizeof(desc->description), "%s", intel_counter->desc);
       }
    }
 

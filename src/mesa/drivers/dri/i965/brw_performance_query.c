@@ -172,7 +172,7 @@ intel_counter_type_enum_to_gl_type(enum intel_perf_counter_type type)
 }
 
 static GLuint
-gen_counter_data_type_to_gl_type(enum intel_perf_counter_data_type type)
+intel_counter_data_type_to_gl_type(enum intel_perf_counter_data_type type)
 {
    switch (type) {
    case INTEL_PERF_COUNTER_DATA_TYPE_BOOL32: return GL_PERFQUERY_COUNTER_DATA_BOOL32_INTEL;
@@ -212,7 +212,7 @@ brw_get_perf_counter_info(struct gl_context *ctx,
    *offset = counter->offset;
    *data_size = intel_perf_query_counter_get_size(counter);
    *type_enum = intel_counter_type_enum_to_gl_type(counter->type);
-   *data_type_enum = gen_counter_data_type_to_gl_type(counter->data_type);
+   *data_type_enum = intel_counter_data_type_to_gl_type(counter->data_type);
    *raw_max = counter->raw_max;
 }
 

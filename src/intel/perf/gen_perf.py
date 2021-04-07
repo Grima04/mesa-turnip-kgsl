@@ -777,10 +777,10 @@ def main():
             c_outdent(3)
             c("}\n")
 
-        h("void gen_oa_register_queries_" + gen.chipset + "(struct intel_perf_config *perf);\n")
+        h("void intel_oa_register_queries_" + gen.chipset + "(struct intel_perf_config *perf);\n")
 
         c("\nvoid")
-        c("gen_oa_register_queries_" + gen.chipset + "(struct intel_perf_config *perf)")
+        c("intel_oa_register_queries_" + gen.chipset + "(struct intel_perf_config *perf)")
         c("{")
         c_indent(3)
 

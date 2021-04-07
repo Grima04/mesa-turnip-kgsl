@@ -1,4 +1,4 @@
-gen_hw_metrics = [
+intel_hw_metrics = [
   'hsw',
   'bdw', 'chv',
   'sklgt2', 'sklgt3', 'sklgt4',
@@ -9,9 +9,9 @@ gen_hw_metrics = [
   'tglgt1', 'tglgt2', 'rkl', 'dg1', 'adl',
 ]
 
-gen_hw_metrics_xml_files = []
-foreach hw : gen_hw_metrics
-  gen_hw_metrics_xml_files += 'oa-@0@.xml'.format(hw)
+intel_hw_metrics_xml_files = []
+foreach hw : intel_hw_metrics
+  intel_hw_metrics_xml_files += 'oa-@0@.xml'.format(hw)
 endforeach
 
 intel_perf_sources = [
@@ -22,7 +22,7 @@ intel_perf_sources = [
 
 intel_perf_sources += custom_target(
   'intel-perf-sources',
-  input : gen_hw_metrics_xml_files,
+  input : intel_hw_metrics_xml_files,
   output : [ 'intel_perf_metrics.c', 'intel_perf_metrics.h' ],
   command : [
     prog_python, files('gen_perf.py'),
