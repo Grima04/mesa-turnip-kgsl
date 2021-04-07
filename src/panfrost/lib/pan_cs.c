@@ -913,3 +913,25 @@ pan_emit_bifrost_tiler(const struct panfrost_device *dev,
                 tiler.sample_pattern = pan_sample_pattern(nr_samples);
         }
 }
+
+void
+pan_emit_fragment_job(const struct panfrost_device *dev,
+                      const struct pan_fb_info *fb,
+                      mali_ptr fbd,
+                      void *out)
+{
+        pan_section_pack(out, FRAGMENT_JOB, HEADER, header) {
+                header.type = MALI_JOB_TYPE_FRAGMENT;
+                header.index = 1;
+        }
+
+        pan_section_pack(out, FRAGMENT_JOB, PAYLOAD, payload) {
+                payload.bound_min_x = fb->extent.minx >> MALI_TILE_SHIFT;
+                payload.bound_min_y = fb->extent.miny >> MALI_TILE_SHIFT;
+
+                /* Batch max values are inclusive, we need to subtract 1. */
+                payload.bound_max_x = fb->extent.maxx >> MALI_TILE_SHIFT;
+                payload.bound_max_y = fb->extent.maxy >> MALI_TILE_SHIFT;
+                payload.framebuffer = fbd;
+        }
+}

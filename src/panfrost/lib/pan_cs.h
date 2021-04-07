@@ -136,4 +136,10 @@ pan_emit_bifrost_tiler(const struct panfrost_device *dev,
                        mali_ptr heap,
                        void *out);
 
+void
+pan_emit_fragment_job(const struct panfrost_device *dev,
+                      const struct pan_fb_info *fb,
+                      mali_ptr fbd,
+                      void *out);
+
 #endif
