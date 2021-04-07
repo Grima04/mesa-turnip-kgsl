@@ -151,6 +151,8 @@ kernel+rootfs_armhf:
     - meson-testing
 
 .lava-traces-base:
+  variables:
+    LAVA_TEST_SCRIPT: "/install/piglit/run.sh"
   artifacts:
     reports:
       junit: results/junit.xml
@@ -158,7 +160,7 @@ kernel+rootfs_armhf:
 .lava-piglit:
   variables:
     TEST_SUITE: "piglit"
-    LAVA_TEST_SCRIPT: "/install/piglit/run.sh"
+    LAVA_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
 
 .lava-piglit-traces:amd64:
   extends:
@@ -177,3 +179,8 @@ kernel+rootfs_armhf:
     - .lava-test:arm64
     - .lava-piglit
     - .lava-traces-base
+
+.lava-piglit:amd64:
+  extends:
+    - .lava-test:amd64
+    - .lava-piglit
