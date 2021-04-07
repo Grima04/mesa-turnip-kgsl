@@ -27,9 +27,9 @@
 #include "util/bitset.h"
 #include "util/ralloc.h"
 
-static const struct gen_info {
+static const struct intel_gfx_info {
    const char *name;
-} gens[] = {
+} gfx_names[] = {
    { "brw", },
    { "g4x", },
    { "ilk", },
@@ -50,7 +50,7 @@ static const struct gen_info {
    { "tgl", },
 };
 
-class validation_test: public ::testing::TestWithParam<struct gen_info> {
+class validation_test: public ::testing::TestWithParam<struct intel_gfx_info> {
    virtual void SetUp();
 
 public:
@@ -74,7 +74,7 @@ validation_test::~validation_test()
 
 void validation_test::SetUp()
 {
-   struct gen_info info = GetParam();
+   struct intel_gfx_info info = GetParam();
    int devid = intel_device_name_to_pci_device_id(info.name);
 
    intel_get_device_info_from_pci_id(devid, &devinfo);
@@ -82,7 +82,7 @@ void validation_test::SetUp()
    brw_init_codegen(&devinfo, p, p);
 }
 
-struct gen_name {
+struct gfx_name {
    template <class ParamType>
    std::string
    operator()(const ::testing::TestParamInfo<ParamType>& info) const {
@@ -91,8 +91,8 @@ struct gen_name {
 };
 
 INSTANTIATE_TEST_CASE_P(eu_assembly, validation_test,
-                        ::testing::ValuesIn(gens),
-                        gen_name());
+                        ::testing::ValuesIn(gfx_names),
+                        gfx_name());
 
 static bool
 validate(struct brw_codegen *p)
@@ -2833,14 +2833,14 @@ TEST_P(validation_test, gfx11_no_byte_src_1_2)
          unsigned hstride;
       } srcs[3];
 
-      int  gen;
+      int  gfx_ver;
       bool expected_result;
    } inst[] = {
 #define INST(opcode, access_mode, dst_type,                             \
              src0_type, src0_vstride, src0_width, src0_hstride,         \
              src1_type, src1_vstride, src1_width, src1_hstride,         \
              src2_type,                                                 \
-             gen, expected_result)                                      \
+             gfx_ver, expected_result)                                  \
       {                                                                 \
          BRW_OPCODE_##opcode,                                           \
          BRW_ALIGN_##access_mode,                                       \
@@ -2862,7 +2862,7 @@ TEST_P(validation_test, gfx11_no_byte_src_1_2)
                BRW_REGISTER_TYPE_##src2_type,                           \
             },                                                          \
          },                                                             \
-         gen,                                                           \
+         gfx_ver,                                                       \
          expected_result,                                               \
       }
 
@@ -2886,8 +2886,8 @@ TEST_P(validation_test, gfx11_no_byte_src_1_2)
 
 
    for (unsigned i = 0; i < ARRAY_SIZE(inst); i++) {
-      /* Skip instruction not meant for this gen. */
-      if (devinfo.ver != inst[i].gen)
+      /* Skip instruction not meant for this gfx_ver. */
+      if (devinfo.ver != inst[i].gfx_ver)
          continue;
 
       brw_push_insn_state(p);
