@@ -2557,7 +2557,7 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
          bld.vop1(aco_opcode::v_cvt_f32_ubyte0, Definition(dst), src);
       } else if (input_size <= 32) {
          if (input_size == 16)
-            src = convert_int(ctx, bld, src, instr->src[0].src.ssa->bit_size, 32, true);
+            src = convert_int(ctx, bld, src, instr->src[0].src.ssa->bit_size, 32, false);
          bld.vop1(aco_opcode::v_cvt_f32_u32, Definition(dst), src);
       } else {
          assert(input_size == 64);
