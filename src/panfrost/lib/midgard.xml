@@ -648,7 +648,7 @@
     <field name="Indices" size="64" start="4:0" type="address"/>
   </struct>
 
-  <struct name="Draw" size="30">
+  <struct name="Draw" size="30" align="64">
     <field name="Four Components Per Vertex" size="1" start="0:0" type="bool"/>
     <field name="Draw Descriptor Is 64b" size="1" start="0:1" type="bool"/>
     <field name="Texture Descriptor Is 64b" size="1" start="0:2" type="bool"/>
@@ -680,7 +680,7 @@
     <field name="FBD" size="64" start="28:0" type="address"/>
   </struct>
 
-  <struct name="Draw Padding" size="2">
+  <struct name="Draw Padding" size="2" align="8">
   </struct>
 
   <struct name="Surface" align="8">
