@@ -1525,6 +1525,24 @@ static void ac_copy_dcc_equation(const struct radeon_info *info,
    }
 }
 
+static void ac_copy_htile_equation(const struct radeon_info *info,
+                                   ADDR2_COMPUTE_HTILE_INFO_OUTPUT *htile,
+                                   struct gfx9_meta_equation *equation)
+{
+   equation->meta_block_width = htile->metaBlkWidth;
+   equation->meta_block_height = htile->metaBlkHeight;
+
+   /* gfx9_meta_equation doesn't store the first 8 and the last 4 elements. They must be 0. */
+   for (unsigned i = 0; i < 8; i++)
+      assert(htile->equation.gfx10_bits[i] == 0);
+
+   for (unsigned i = ARRAY_SIZE(equation->u.gfx10_bits) + 8; i < 72; i++)
+      assert(htile->equation.gfx10_bits[i] == 0);
+
+   memcpy(equation->u.gfx10_bits, htile->equation.gfx10_bits + 8,
+          sizeof(equation->u.gfx10_bits));
+}
+
 static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_info *info,
                                 const struct ac_surf_config *config, struct radeon_surf *surf,
                                 bool compressed, ADDR2_COMPUTE_SURFACE_INFO_INPUT *in)
@@ -1668,6 +1686,8 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       if (!surf->num_meta_levels)
          surf->meta_size = 0;
 
+      if (info->chip_class >= GFX10)
+         ac_copy_htile_equation(info, &hout, &surf->u.gfx9.zs.htile_equation);
       return 0;
    }
 

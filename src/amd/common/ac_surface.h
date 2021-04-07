@@ -173,16 +173,19 @@ struct gfx9_surf_level {
 /**
  * Meta address equation.
  *
+ * DCC/HTILE address equation for doing DCC/HTILE address computations in shaders.
+ *
+ * ac_surface_meta_address_test.c contains the reference implementation.
+ * ac_nir_{dcc,htile}_addr_from_coord is the NIR implementation.
+ *
  * For DCC:
- *
- * DCC address equation for doing DCC address computations in shaders.
- *
- * ac_surface_dcc_address_test.c contains the reference implementation.
- * ac_nir_dcc_addr_from_coord is the NIR implementation.
- *
  * The gfx9 equation doesn't support mipmapping.
  * The gfx10 equation doesn't support mipmapping and MSAA.
  * (those are also limitations of Addr2ComputeDccAddrFromCoord)
+ *
+ * For HTILE:
+ * The gfx9 equation isn't implemented.
+ * The gfx10 equation doesn't support mipmapping.
  */
 struct gfx9_meta_equation {
    uint16_t meta_block_width;
@@ -213,6 +216,8 @@ struct gfx9_meta_equation {
       /* The gfx10 DCC equation is chip-specific, it requires 64KB_R_X, and it varies with:
        * - bpp
        * - pipe_aligned
+       *
+       * The gfx10 HTILE equation is chip-specific.
        */
       uint16_t gfx10_bits[60];
    } u;
@@ -285,6 +290,9 @@ struct gfx9_surf_layout {
          uint64_t stencil_offset; /* separate stencil */
          uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
          uint8_t stencil_swizzle_mode;
+
+         /* For HTILE VRS. */
+         struct gfx9_meta_equation htile_equation;
       } zs;
    };
 };
