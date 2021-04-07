@@ -346,12 +346,12 @@ static const struct brw_image_format brw_image_formats[] = {
 
 static const struct {
    uint64_t modifier;
-   unsigned since_gen;
+   unsigned since_ver;
 } supported_modifiers[] = {
-   { .modifier = DRM_FORMAT_MOD_LINEAR       , .since_gen = 1 },
-   { .modifier = I915_FORMAT_MOD_X_TILED     , .since_gen = 1 },
-   { .modifier = I915_FORMAT_MOD_Y_TILED     , .since_gen = 6 },
-   { .modifier = I915_FORMAT_MOD_Y_TILED_CCS , .since_gen = 9 },
+   { .modifier = DRM_FORMAT_MOD_LINEAR       , .since_ver = 1 },
+   { .modifier = I915_FORMAT_MOD_X_TILED     , .since_ver = 1 },
+   { .modifier = I915_FORMAT_MOD_Y_TILED     , .since_ver = 6 },
+   { .modifier = I915_FORMAT_MOD_Y_TILED_CCS , .since_ver = 9 },
 };
 
 static bool
@@ -396,7 +396,7 @@ modifier_is_supported(const struct intel_device_info *devinfo,
       if (supported_modifiers[i].modifier != modifier)
          continue;
 
-      return supported_modifiers[i].since_gen <= devinfo->ver;
+      return supported_modifiers[i].since_ver <= devinfo->ver;
    }
 
    return false;
