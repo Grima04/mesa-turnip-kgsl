@@ -4176,7 +4176,7 @@ bool si_update_shaders(struct si_context *sctx)
       }
    }
 
-   if (sctx->screen->debug_flags & DBG(SQTT)) {
+   if (unlikely(sctx->screen->debug_flags & DBG(SQTT) && sctx->thread_trace)) {
       /* Pretend the bound shaders form a vk pipeline */
       uint32_t pipeline_code_hash = 0;
       uint64_t base_address = ~0;
@@ -4195,10 +4195,10 @@ bool si_update_shaders(struct si_context *sctx)
 
       struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
       if (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline_code_hash)) {
-         si_sqtt_register_pipeline(sctx, pipeline_code_hash, base_address);
+         si_sqtt_register_pipeline(sctx, pipeline_code_hash, base_address, false);
       }
 
-      si_sqtt_describe_pipeline_bind(sctx, pipeline_code_hash);
+      si_sqtt_describe_pipeline_bind(sctx, pipeline_code_hash, 0);
    }
 
    if (si_pm4_state_enabled_and_changed(sctx, ls) || si_pm4_state_enabled_and_changed(sctx, hs) ||

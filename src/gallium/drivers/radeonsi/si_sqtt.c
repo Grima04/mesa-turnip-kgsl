@@ -26,6 +26,7 @@
 
 #include "si_pipe.h"
 #include "si_build_pm4.h"
+#include "si_compute.h"
 
 #include "ac_rgp.h"
 #include "ac_sqtt.h"
@@ -949,7 +950,8 @@ si_sqtt_pipe_to_rgp_shader_stage(struct si_shader_key* key, enum pipe_shader_typ
 
 static bool
 si_sqtt_add_code_object(struct si_context* sctx,
-                        uint64_t pipeline_hash)
+                        uint64_t pipeline_hash,
+                        bool is_compute)
 {
    struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
    struct rgp_code_object *code_object = &thread_trace_data->rgp_code_object;
@@ -965,16 +967,22 @@ si_sqtt_add_code_object(struct si_context* sctx,
    record->pipeline_hash[1] = pipeline_hash;
 
    for (unsigned i = 0; i < PIPE_SHADER_TYPES; i++) {
-      if (i != PIPE_SHADER_COMPUTE) {
+      struct si_shader *shader;
+      enum rgp_hardware_stages hw_stage;
+
+      if (is_compute) {
+         if (i != PIPE_SHADER_COMPUTE)
+            continue;
+         shader = &sctx->cs_shader_state.program->shader;
+         hw_stage = RGP_HW_STAGE_CS;
+      } else if (i != PIPE_SHADER_COMPUTE) {
          if (!sctx->shaders[i].cso || !sctx->shaders[i].current)
             continue;
+         shader = sctx->shaders[i].current;
+         hw_stage = si_sqtt_pipe_to_rgp_shader_stage(&shader->key, i);
       } else {
-         /* TODO */
          continue;
       }
-
-      struct si_shader *shader = sctx->shaders[i].current;
-      enum rgp_hardware_stages hw_stage = si_sqtt_pipe_to_rgp_shader_stage(&shader->key, i);
 
       uint8_t *code = malloc(shader->binary.uploaded_code_size);
       if (!code) {
@@ -1008,7 +1016,7 @@ si_sqtt_add_code_object(struct si_context* sctx,
 }
 
 bool
-si_sqtt_register_pipeline(struct si_context* sctx, uint64_t pipeline_hash, uint64_t base_address)
+si_sqtt_register_pipeline(struct si_context* sctx, uint64_t pipeline_hash, uint64_t base_address, bool is_compute)
 {
    struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
 
@@ -1022,12 +1030,13 @@ si_sqtt_register_pipeline(struct si_context* sctx, uint64_t pipeline_hash, uint6
    if (!result)
       return false;
 
-   return si_sqtt_add_code_object(sctx, pipeline_hash);
+   return si_sqtt_add_code_object(sctx, pipeline_hash, is_compute);
 }
 
 void
 si_sqtt_describe_pipeline_bind(struct si_context* sctx,
-                               uint64_t pipeline_hash)
+                               uint64_t pipeline_hash,
+                               int bind_point)
 {
    struct rgp_sqtt_marker_pipeline_bind marker = {0};
    struct radeon_cmdbuf *cs = &sctx->gfx_cs;
@@ -1038,7 +1047,7 @@ si_sqtt_describe_pipeline_bind(struct si_context* sctx,
 
    marker.identifier = RGP_SQTT_MARKER_IDENTIFIER_BIND_PIPELINE;
    marker.cb_id = 0;
-   marker.bind_point = 0 /* VK_PIPELINE_BIND_POINT_GRAPHICS */;
+   marker.bind_point = bind_point;
    marker.api_pso_hash[0] = pipeline_hash;
    marker.api_pso_hash[1] = pipeline_hash >> 32;
 

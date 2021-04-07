@@ -307,6 +307,21 @@ static void si_bind_compute_state(struct pipe_context *ctx, void *state)
 
    sctx->compute_shaderbuf_sgprs_dirty = true;
    sctx->compute_image_sgprs_dirty = true;
+
+   if (unlikely((sctx->screen->debug_flags & DBG(SQTT)) && sctx->thread_trace)) {
+      uint32_t pipeline_code_hash = _mesa_hash_data_with_seed(
+         program->shader.binary.elf_buffer,
+         program->shader.binary.elf_size,
+         0);
+      uint64_t base_address = program->shader.bo->gpu_address;
+
+      struct ac_thread_trace_data *thread_trace_data = sctx->thread_trace;
+      if (!si_sqtt_pipeline_is_registered(thread_trace_data, pipeline_code_hash)) {
+         si_sqtt_register_pipeline(sctx, pipeline_code_hash, base_address, true);
+      }
+
+      si_sqtt_describe_pipeline_bind(sctx, pipeline_code_hash, 1);
+   }
 }
 
 static void si_set_global_binding(struct pipe_context *ctx, unsigned first, unsigned n,
