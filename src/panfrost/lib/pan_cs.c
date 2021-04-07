@@ -575,6 +575,10 @@ pan_emit_bifrost_mfbd_params(const struct panfrost_device *dev,
         pan_section_pack(fbd, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, params) {
                 params.sample_locations =
                         panfrost_sample_positions(dev, pan_sample_pattern(fb->nr_samples));
+                params.pre_frame_0 = fb->bifrost.pre_post.modes[0];
+                params.pre_frame_1 = fb->bifrost.pre_post.modes[1];
+                params.post_frame = fb->bifrost.pre_post.modes[2];
+                params.frame_shader_dcds = fb->bifrost.pre_post.dcds.gpu;
         }
 }
 

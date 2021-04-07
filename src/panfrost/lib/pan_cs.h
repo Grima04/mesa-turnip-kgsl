@@ -93,6 +93,13 @@ struct pan_tls_info {
         } wls;
 };
 
+struct pan_fb_bifrost_info {
+        struct {
+                struct panfrost_ptr dcds;
+                enum mali_pre_post_frame_shader_mode modes[3];
+        } pre_post;
+};
+
 struct pan_fb_info {
         unsigned width, height;
         struct {
@@ -107,6 +114,10 @@ struct pan_fb_info {
                 unsigned stride;
                 mali_ptr base;
         } tile_map;
+
+        union {
+                struct pan_fb_bifrost_info bifrost;
+        };
 };
 
 unsigned
