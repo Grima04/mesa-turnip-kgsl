@@ -1392,6 +1392,7 @@
     <value name="Never" value="0"/>
     <value name="Always" value="1"/>
     <value name="Intersect" value="2"/>
+    <value name="Early ZS always" value="3"/>
   </enum>
 
   <struct name="Bifrost Framebuffer Parameters">
