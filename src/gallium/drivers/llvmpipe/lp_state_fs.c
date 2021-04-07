@@ -1132,12 +1132,19 @@ generate_fs_loop(struct gallivm_state *gallivm,
             z = interp->pos[2];
          }
       }
+
       /*
        * Clamp according to ARB_depth_clamp semantics.
        */
       if (key->depth_clamp) {
          z = lp_build_depth_clamp(gallivm, builder, type, context_ptr,
                                   thread_data_ptr, z);
+      } else {
+         struct lp_build_context f32_bld;
+         lp_build_context_init(&f32_bld, gallivm, type);
+         z = lp_build_clamp(&f32_bld, z,
+                            lp_build_const_vec(gallivm, type, 0.0),
+                            lp_build_const_vec(gallivm, type, 1.0));
       }
 
       if (s_out != -1 && outputs[s_out][1]) {
