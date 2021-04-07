@@ -3110,6 +3110,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal) {
                 disassemble_bifrost(stdout, binary->data, binary->size,
                                     bifrost_debug & BIFROST_DBG_VERBOSE);
+                fflush(stdout);
         }
 
         /* Pad the shader with enough zero bytes to trick the prefetcher,

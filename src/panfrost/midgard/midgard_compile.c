@@ -3197,6 +3197,7 @@ midgard_compile_shader_nir(nir_shader *nir,
         if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
                 disassemble_midgard(stdout, binary->data,
                                     binary->size, inputs->gpu_id);
+                fflush(stdout);
         }
 
         if ((midgard_debug & MIDGARD_DBG_SHADERDB || inputs->shaderdb) &&
