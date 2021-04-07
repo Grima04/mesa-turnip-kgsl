@@ -3645,14 +3645,14 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
                                            s->info.gs.vertices_out);
       break;
    case MESA_SHADER_COMPUTE:
+      if (s->info.cs.shared_size)
+         create_shared_block(&ctx, s->info.cs.shared_size);
+
       if (s->info.cs.local_size[0] || s->info.cs.local_size[1] || s->info.cs.local_size[2])
          spirv_builder_emit_exec_mode_literal3(&ctx.builder, entry_point, SpvExecutionModeLocalSize,
                                                (uint32_t[3]){(uint32_t)s->info.cs.local_size[0], (uint32_t)s->info.cs.local_size[1],
                                                (uint32_t)s->info.cs.local_size[2]});
-      if (s->info.cs.shared_size)
-         create_shared_block(&ctx, s->info.cs.shared_size);
-
-      if (BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_LOCAL_GROUP_SIZE)) {
+      else {
          SpvId sizes[3];
          uint32_t ids[] = {ZINK_WORKGROUP_SIZE_X, ZINK_WORKGROUP_SIZE_Y, ZINK_WORKGROUP_SIZE_Z};
          const char *names[] = {"x", "y", "z"};
