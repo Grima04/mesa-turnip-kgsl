@@ -3045,7 +3045,9 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
    }
    SpvId actual_dest_type = dest_type;
    if (dref)
-      actual_dest_type = spirv_builder_type_float(&ctx->builder, 32);
+      actual_dest_type =
+         spirv_builder_type_float(&ctx->builder,
+                                  nir_dest_bit_size(tex->dest));
 
    SpvId result;
    if (offset)
