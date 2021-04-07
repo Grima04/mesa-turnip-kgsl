@@ -239,7 +239,7 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
    return result;
 }
 
-static void
+void
 vn_instance_wait_roundtrip(struct vn_instance *instance,
                            uint32_t roundtrip_seqno)
 {
@@ -252,14 +252,6 @@ vn_instance_wait_roundtrip(struct vn_instance *instance,
          break;
       vn_relax(&iter);
    } while (true);
-}
-
-static void
-vn_instance_roundtrip(struct vn_instance *instance)
-{
-   uint32_t roundtrip_seqno;
-   if (vn_instance_submit_roundtrip(instance, &roundtrip_seqno) == VK_SUCCESS)
-      vn_instance_wait_roundtrip(instance, roundtrip_seqno);
 }
 
 struct vn_instance_submission {
@@ -471,11 +463,15 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
    return VK_SUCCESS;
 }
 
-static void
-vn_instance_ring_wait(struct vn_instance *instance)
+VkResult
+vn_instance_ring_submit(struct vn_instance *instance,
+                        const struct vn_cs_encoder *cs)
 {
-   struct vn_ring *ring = &instance->ring.ring;
-   vn_ring_wait_all(ring);
+   mtx_lock(&instance->ring.mutex);
+   VkResult result = vn_instance_ring_submit_locked(instance, cs, NULL, NULL);
+   mtx_unlock(&instance->ring.mutex);
+
+   return result;
 }
 
 static bool
@@ -7083,10 +7079,7 @@ vn_EndCommandBuffer(VkCommandBuffer commandBuffer)
    }
 
    vn_instance_wait_roundtrip(instance, cmd->cs.current_buffer_roundtrip);
-   mtx_lock(&instance->ring.mutex);
-   VkResult result =
-      vn_instance_ring_submit_locked(instance, &cmd->cs, NULL, NULL);
-   mtx_unlock(&instance->ring.mutex);
+   VkResult result = vn_instance_ring_submit(instance, &cmd->cs);
    if (result != VK_SUCCESS) {
       cmd->state = VN_COMMAND_BUFFER_STATE_INVALID;
       return vn_error(instance, result);

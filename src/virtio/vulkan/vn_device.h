@@ -424,6 +424,29 @@ VkResult
 vn_instance_submit_roundtrip(struct vn_instance *instance,
                              uint32_t *roundtrip_seqno);
 
+void
+vn_instance_wait_roundtrip(struct vn_instance *instance,
+                           uint32_t roundtrip_seqno);
+
+static inline void
+vn_instance_roundtrip(struct vn_instance *instance)
+{
+   uint32_t roundtrip_seqno;
+   if (vn_instance_submit_roundtrip(instance, &roundtrip_seqno) == VK_SUCCESS)
+      vn_instance_wait_roundtrip(instance, roundtrip_seqno);
+}
+
+VkResult
+vn_instance_ring_submit(struct vn_instance *instance,
+                        const struct vn_cs_encoder *cs);
+
+static inline void
+vn_instance_ring_wait(struct vn_instance *instance)
+{
+   struct vn_ring *ring = &instance->ring.ring;
+   vn_ring_wait_all(ring);
+}
+
 struct vn_instance_submit_command {
    /* empty command implies errors */
    struct vn_cs_encoder command;
