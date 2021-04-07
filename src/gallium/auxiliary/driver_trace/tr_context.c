@@ -25,9 +25,11 @@
  *
  **************************************************************************/
 
+#include "util/ralloc.h"
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/simple_list.h"
+#include "util/u_framebuffer.h"
 
 #include "pipe/p_format.h"
 #include "pipe/p_screen.h"
@@ -86,6 +88,20 @@ trace_surface_unwrap(struct trace_context *tr_ctx,
    return tr_surf->surface;
 }
 
+static void
+dump_fb_state(struct trace_context *tr_ctx,
+              const char *method)
+{
+   struct pipe_context *pipe = tr_ctx->pipe;
+
+   trace_dump_call_begin("pipe_context", method);
+
+   trace_dump_arg(ptr, pipe);
+   trace_dump_arg(framebuffer_state, &tr_ctx->unwrapped_state);
+   trace_dump_call_end();
+
+   tr_ctx->seen_fb_state = true;
+}
 
 static void
 trace_context_draw_vbo(struct pipe_context *_pipe,
@@ -96,6 +112,9 @@ trace_context_draw_vbo(struct pipe_context *_pipe,
 {
    struct trace_context *tr_ctx = trace_context(_pipe);
    struct pipe_context *pipe = tr_ctx->pipe;
+
+   if (!tr_ctx->seen_fb_state && trace_dump_is_triggered())
+      dump_fb_state(tr_ctx, "current_framebuffer_state");
 
    trace_dump_call_begin("pipe_context", "draw_vbo");
 
@@ -291,6 +310,12 @@ trace_context_create_blend_state(struct pipe_context *_pipe,
 
    trace_dump_call_end();
 
+   struct pipe_blend_state *blend = ralloc(tr_ctx, struct pipe_blend_state);
+   if (blend) {
+      memcpy(blend, state, sizeof(struct pipe_blend_state));
+      _mesa_hash_table_insert(&tr_ctx->blend_states, result, blend);
+   }
+
    return result;
 }
 
@@ -305,9 +330,13 @@ trace_context_bind_blend_state(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_blend_state");
 
    trace_dump_arg(ptr, pipe);
-   if (trace_dump_is_triggered())
-      trace_dump_arg(blend_state, state);
-   else
+   if (state && trace_dump_is_triggered()) {
+      struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->blend_states, state);
+      if (he)
+         trace_dump_arg(blend_state, he->data);
+      else
+         trace_dump_arg(blend_state, NULL);
+   } else
       trace_dump_arg(ptr, state);
 
    pipe->bind_blend_state(pipe, state);
@@ -329,6 +358,14 @@ trace_context_delete_blend_state(struct pipe_context *_pipe,
    trace_dump_arg(ptr, state);
 
    pipe->delete_blend_state(pipe, state);
+
+   if (state) {
+      struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->blend_states, state);
+      if (he) {
+         free(he->data);
+         _mesa_hash_table_remove(&tr_ctx->blend_states, he);
+      }
+   }
 
    trace_dump_call_end();
 }
@@ -421,6 +458,12 @@ trace_context_create_rasterizer_state(struct pipe_context *_pipe,
 
    trace_dump_call_end();
 
+   struct pipe_rasterizer_state *rasterizer = ralloc(tr_ctx, struct pipe_rasterizer_state);
+   if (rasterizer) {
+      memcpy(rasterizer, state, sizeof(struct pipe_rasterizer_state));
+      _mesa_hash_table_insert(&tr_ctx->rasterizer_states, result, rasterizer);
+   }
+
    return result;
 }
 
@@ -435,9 +478,13 @@ trace_context_bind_rasterizer_state(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_rasterizer_state");
 
    trace_dump_arg(ptr, pipe);
-   if (trace_dump_is_triggered())
-      trace_dump_arg(rasterizer_state, state);
-   else
+   if (state && trace_dump_is_triggered()) {
+      struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->rasterizer_states, state);
+      if (he)
+         trace_dump_arg(rasterizer_state, he->data);
+      else
+         trace_dump_arg(rasterizer_state, NULL);
+   } else
       trace_dump_arg(ptr, state);
 
    pipe->bind_rasterizer_state(pipe, state);
@@ -461,6 +508,14 @@ trace_context_delete_rasterizer_state(struct pipe_context *_pipe,
    pipe->delete_rasterizer_state(pipe, state);
 
    trace_dump_call_end();
+
+   if (state) {
+      struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->rasterizer_states, state);
+      if (he) {
+         free(he->data);
+         _mesa_hash_table_remove(&tr_ctx->rasterizer_states, he);
+      }
+   }
 }
 
 
@@ -483,6 +538,12 @@ trace_context_create_depth_stencil_alpha_state(struct pipe_context *_pipe,
 
    trace_dump_call_end();
 
+   struct pipe_depth_stencil_alpha_state *depth_stencil_alpha = ralloc(tr_ctx, struct pipe_depth_stencil_alpha_state);
+   if (depth_stencil_alpha) {
+      memcpy(depth_stencil_alpha, state, sizeof(struct pipe_depth_stencil_alpha_state));
+      _mesa_hash_table_insert(&tr_ctx->depth_stencil_alpha_states, result, depth_stencil_alpha);
+   }
+
    return result;
 }
 
@@ -497,9 +558,13 @@ trace_context_bind_depth_stencil_alpha_state(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_depth_stencil_alpha_state");
 
    trace_dump_arg(ptr, pipe);
-   if (trace_dump_is_triggered())
-      trace_dump_arg(depth_stencil_alpha_state, state);
-   else
+   if (state && trace_dump_is_triggered()) {
+      struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->depth_stencil_alpha_states, state);
+      if (he)
+         trace_dump_arg(depth_stencil_alpha_state, he->data);
+      else
+         trace_dump_arg(depth_stencil_alpha_state, NULL);
+   } else
       trace_dump_arg(ptr, state);
 
    pipe->bind_depth_stencil_alpha_state(pipe, state);
@@ -523,6 +588,14 @@ trace_context_delete_depth_stencil_alpha_state(struct pipe_context *_pipe,
    pipe->delete_depth_stencil_alpha_state(pipe, state);
 
    trace_dump_call_end();
+
+   if (state) {
+      struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->depth_stencil_alpha_states, state);
+      if (he) {
+         free(he->data);
+         _mesa_hash_table_remove(&tr_ctx->depth_stencil_alpha_states, he);
+      }
+   }
 }
 
 
@@ -786,27 +859,20 @@ trace_context_set_framebuffer_state(struct pipe_context *_pipe,
 {
    struct trace_context *tr_ctx = trace_context(_pipe);
    struct pipe_context *pipe = tr_ctx->pipe;
-   struct pipe_framebuffer_state unwrapped_state;
    unsigned i;
 
-
    /* Unwrap the input state */
-   memcpy(&unwrapped_state, state, sizeof(unwrapped_state));
+   memcpy(&tr_ctx->unwrapped_state, state, sizeof(tr_ctx->unwrapped_state));
    for (i = 0; i < state->nr_cbufs; ++i)
-      unwrapped_state.cbufs[i] = trace_surface_unwrap(tr_ctx, state->cbufs[i]);
+      tr_ctx->unwrapped_state.cbufs[i] = trace_surface_unwrap(tr_ctx, state->cbufs[i]);
    for (i = state->nr_cbufs; i < PIPE_MAX_COLOR_BUFS; ++i)
-      unwrapped_state.cbufs[i] = NULL;
-   unwrapped_state.zsbuf = trace_surface_unwrap(tr_ctx, state->zsbuf);
-   state = &unwrapped_state;
+      tr_ctx->unwrapped_state.cbufs[i] = NULL;
+   tr_ctx->unwrapped_state.zsbuf = trace_surface_unwrap(tr_ctx, state->zsbuf);
+   state = &tr_ctx->unwrapped_state;
 
-   trace_dump_call_begin("pipe_context", "set_framebuffer_state");
-
-   trace_dump_arg(ptr, pipe);
-   trace_dump_arg(framebuffer_state, state);
+   dump_fb_state(tr_ctx, "set_framebuffer_state");
 
    pipe->set_framebuffer_state(pipe, state);
-
-   trace_dump_call_end();
 }
 
 static void
@@ -1380,8 +1446,10 @@ trace_context_flush(struct pipe_context *_pipe,
 
    trace_dump_call_end();
 
-   if (flags & PIPE_FLUSH_END_OF_FRAME)
+   if (flags & PIPE_FLUSH_END_OF_FRAME) {
       trace_dump_check_trigger();
+      tr_ctx->seen_fb_state = false;
+   }
 }
 
 
@@ -1473,7 +1541,7 @@ trace_context_destroy(struct pipe_context *_pipe)
 
    pipe->destroy(pipe);
 
-   FREE(tr_ctx);
+   ralloc_free(tr_ctx);
 }
 
 
@@ -1984,9 +2052,13 @@ trace_context_create(struct trace_screen *tr_scr,
    if (!trace_enabled())
       goto error1;
 
-   tr_ctx = CALLOC_STRUCT(trace_context);
+   tr_ctx = ralloc(NULL, struct trace_context);
    if (!tr_ctx)
       goto error1;
+
+   _mesa_hash_table_init(&tr_ctx->blend_states, tr_ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   _mesa_hash_table_init(&tr_ctx->rasterizer_states, tr_ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   _mesa_hash_table_init(&tr_ctx->depth_stencil_alpha_states, tr_ctx, _mesa_hash_pointer, _mesa_key_pointer_equal);
 
    tr_ctx->base.priv = pipe->priv; /* expose wrapped priv data */
    tr_ctx->base.screen = &tr_scr->base;
