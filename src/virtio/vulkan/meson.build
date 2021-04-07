@@ -31,6 +31,7 @@ virtio_icd = custom_target(
 )
 
 libvn_files = files(
+  'vn_command_buffer.c',
   'vn_common.c',
   'vn_cs.c',
   'vn_device.c',
