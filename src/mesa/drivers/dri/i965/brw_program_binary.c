@@ -64,7 +64,7 @@ brw_get_program_binary_driver_sha1(struct gl_context *ctx, uint8_t *sha1)
 
 enum driver_cache_blob_part {
    END_PART,
-   GEN_PART,
+   INTEL_PART,
    NIR_PART,
 };
 
@@ -81,7 +81,7 @@ blob_parts_valid(void *blob, uint32_t size)
       if (part_type == END_PART)
          return reader.current == reader.end;
       switch ((enum driver_cache_blob_part)part_type) {
-      case GEN_PART:
+      case INTEL_PART:
       case NIR_PART:
          /* Read the uint32_t part-size and skip over it */
          blob_skip_bytes(&reader, blob_read_uint32(&reader));
@@ -119,7 +119,7 @@ driver_blob_is_ready(void *blob, uint32_t size, bool with_intel_program)
    } else if (!blob_parts_valid(blob, size)) {
       unreachable("Driver blob format is bad!");
       return false;
-   } else if (blob_has_part(blob, size, GEN_PART) == with_intel_program) {
+   } else if (blob_has_part(blob, size, INTEL_PART) == with_intel_program) {
       return true;
    } else {
       return false;
@@ -205,7 +205,7 @@ brw_program_deserialize_driver_blob(struct gl_context *ctx,
       if ((enum driver_cache_blob_part)part_type == END_PART)
          break;
       switch ((enum driver_cache_blob_part)part_type) {
-      case GEN_PART: {
+      case INTEL_PART: {
          ASSERTED uint32_t gen_size = blob_read_uint32(&reader);
          assert(!reader.overrun &&
                 (uintptr_t)(reader.end - reader.current) > gen_size);
@@ -266,7 +266,7 @@ serialize_intel_part(struct blob *writer, struct gl_context *ctx,
        * use _mesa_streaming_load_memcpy to read from the program mapped
        * memory.
        */
-      blob_write_uint32(writer, GEN_PART);
+      blob_write_uint32(writer, INTEL_PART);
       intptr_t size_offset = blob_reserve_uint32(writer);
       size_t gen_start = writer->size;
       blob_write_bytes(writer, &key, brw_prog_key_size(stage));
