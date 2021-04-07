@@ -1223,7 +1223,6 @@ struct anv_device {
     struct anv_address                          workaround_address;
 
     struct anv_bo *                             trivial_batch_bo;
-    struct anv_bo *                             hiz_clear_bo;
     struct anv_state                            null_surface_state;
 
     struct anv_pipeline_cache                   default_pipeline_cache;
@@ -3844,7 +3843,8 @@ anv_image_get_clear_color_addr(UNUSED const struct anv_device *device,
                                const struct anv_image *image,
                                VkImageAspectFlagBits aspect)
 {
-   assert(image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+   assert(image->aspects & (VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV |
+                            VK_IMAGE_ASPECT_DEPTH_BIT));
 
    uint32_t plane = anv_image_aspect_to_plane(image->aspects, aspect);
    const struct anv_image_memory_range *mem_range =

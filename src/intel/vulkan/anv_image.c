@@ -459,7 +459,8 @@ add_aux_state_tracking_buffer(struct anv_device *device,
 {
    assert(image && device);
    assert(image->planes[plane].aux_usage != ISL_AUX_USAGE_NONE &&
-          image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV);
+          image->aspects & (VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV |
+                            VK_IMAGE_ASPECT_DEPTH_BIT));
 
    const unsigned clear_color_state_size = device->info.ver >= 10 ?
       device->isl_dev.ss.clear_color_state_size :
@@ -578,9 +579,14 @@ add_aux_surface_if_supported(struct anv_device *device,
          image->planes[plane].aux_usage = ISL_AUX_USAGE_HIZ_CCS;
       }
 
-      return add_surface(device, image, &image->planes[plane].aux_surface,
-                         ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
-                         ANV_OFFSET_IMPLICIT);
+      result = add_surface(device, image, &image->planes[plane].aux_surface,
+                           ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane,
+                           ANV_OFFSET_IMPLICIT);
+      if (result != VK_SUCCESS)
+         return result;
+
+      if (image->planes[plane].aux_usage == ISL_AUX_USAGE_HIZ_CCS_WT)
+         return add_aux_state_tracking_buffer(device, image, plane);
    } else if (aspect == VK_IMAGE_ASPECT_STENCIL_BIT) {
 
       if (INTEL_DEBUG & DEBUG_NO_RBC)
@@ -903,10 +909,6 @@ check_memory_bindings(const struct anv_device *device,
       }
 
       /* Check fast clear state */
-      assert((plane->fast_clear_memory_range.size > 0) ==
-             (plane->aux_usage != ISL_AUX_USAGE_NONE &&
-              image->aspects & VK_IMAGE_ASPECT_ANY_COLOR_BIT_ANV));
-
       if (plane->fast_clear_memory_range.size > 0) {
          enum anv_image_memory_binding binding = primary_binding;
 
@@ -2575,14 +2577,7 @@ anv_image_fill_surface_state(struct anv_device *device,
 
       struct anv_address clear_address = ANV_NULL_ADDRESS;
       if (device->info.ver >= 10 && isl_aux_usage_has_fast_clears(aux_usage)) {
-         if (aspect == VK_IMAGE_ASPECT_DEPTH_BIT) {
-            clear_address = (struct anv_address) {
-               .bo = device->hiz_clear_bo,
-               .offset = 0,
-            };
-         } else {
-            clear_address = anv_image_get_clear_color_addr(device, image, aspect);
-         }
+         clear_address = anv_image_get_clear_color_addr(device, image, aspect);
       }
       state_inout->clear_address = clear_address;
 
