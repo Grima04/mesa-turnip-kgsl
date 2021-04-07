@@ -742,6 +742,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
          surf->meta_size = AddrHtileOut->htileBytes;
          surf->meta_slice_size = AddrHtileOut->sliceSize;
          surf->meta_alignment_log2 = util_logbase2(AddrHtileOut->baseAlign);
+         surf->meta_pitch = AddrHtileOut->pitch;
          surf->num_meta_levels = level + 1;
       }
    }
@@ -1668,6 +1669,7 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       surf->meta_size = hout.htileBytes;
       surf->meta_slice_size = hout.sliceSize;
       surf->meta_alignment_log2 = util_logbase2(hout.baseAlign);
+      surf->meta_pitch = hout.pitch;
       surf->num_meta_levels = in->numMipLevels;
 
       for (unsigned i = 0; i < in->numMipLevels; i++) {

@@ -360,6 +360,7 @@ struct radeon_surf {
    /* DCC and HTILE (they are very small) */
    uint32_t meta_size;
    uint32_t meta_slice_size;
+   uint32_t meta_pitch;
 
    uint32_t cmask_size;
    uint32_t cmask_slice_size;
