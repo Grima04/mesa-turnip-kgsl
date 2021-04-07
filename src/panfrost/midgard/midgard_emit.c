@@ -401,9 +401,67 @@ mir_pack_tex_ooo(midgard_block *block, midgard_bundle *bundle, midgard_instructi
         ins->texture.out_of_order = count;
 }
 
-/* Load store masks are 4-bits. Load/store ops pack for that. vec4 is the
- * natural mask width; vec8 is constrained to be in pairs, vec2 is duplicated. TODO: 8-bit?
+/* Load store masks are 4-bits. Load/store ops pack for that.
+ * For most operations, vec4 is the natural mask width; vec8 is constrained to
+ * be in pairs, vec2 is duplicated. TODO: 8-bit?
+ * For common stores (i.e. ST.*), each bit masks a single byte in the 32-bit
+ * case, 2 bytes in the 64-bit case and 4 bytes in the 128-bit case.
  */
+
+static unsigned
+midgard_pack_common_store_mask(midgard_instruction *ins) {
+        unsigned comp_sz = nir_alu_type_get_type_size(ins->dest_type);
+        unsigned mask = ins->mask;
+        unsigned packed = 0;
+        unsigned nr_comp;
+
+        switch (ins->op) {
+                case midgard_op_st_u8:
+                        packed |= mask & 1;
+                        break;
+                case midgard_op_st_u16:
+                        nr_comp = 16 / comp_sz;
+                        for (int i = 0; i < nr_comp; i++) {
+                                if (mask & (1 << i)) {
+                                        if (comp_sz == 16)
+                                                packed |= 0x3;
+                                        else if (comp_sz == 8)
+                                                packed |= 1 << i;
+                                }
+                        }
+                        break;
+                case midgard_op_st_u32:
+                case midgard_op_st_u64:
+                case midgard_op_st_u128: {
+                        unsigned total_sz = 32;
+                        if (ins->op == midgard_op_st_u128)
+                                total_sz = 128;
+                        else if (ins->op == midgard_op_st_u64)
+                                total_sz = 64;
+
+                        nr_comp = total_sz / comp_sz;
+
+                        /* Each writemask bit masks 1/4th of the value to be stored. */
+                        assert(comp_sz >= total_sz / 4);
+
+                        for (int i = 0; i < nr_comp; i++) {
+                                if (mask & (1 << i)) {
+                                        if (comp_sz == total_sz)
+                                                packed |= 0xF;
+                                        else if (comp_sz == total_sz / 2)
+                                                packed |= 0x3 << i;
+                                        else if (comp_sz == total_sz / 4)
+                                                packed |= 0x1 << i;
+                                }
+                        }
+                        break;
+                }
+                default:
+                        unreachable("unexpected ldst opcode");
+        }
+
+        return packed;
+}
 
 static void
 mir_pack_ldst_mask(midgard_instruction *ins)
@@ -411,22 +469,26 @@ mir_pack_ldst_mask(midgard_instruction *ins)
         unsigned sz = nir_alu_type_get_type_size(ins->dest_type);
         unsigned packed = ins->mask;
 
-        if (sz == 64) {
-                packed = ((ins->mask & 0x2) ? (0x8 | 0x4) : 0) |
-                         ((ins->mask & 0x1) ? (0x2 | 0x1) : 0);
-        } else if (sz == 16) {
-                packed = 0;
-
-                for (unsigned i = 0; i < 4; ++i) {
-                        /* Make sure we're duplicated */
-                        bool u = (ins->mask & (1 << (2*i + 0))) != 0;
-                        ASSERTED bool v = (ins->mask & (1 << (2*i + 1))) != 0;
-                        assert(u == v);
-
-                        packed |= (u << i);
-                }
+        if (OP_IS_COMMON_STORE(ins->op)) {
+                packed = midgard_pack_common_store_mask(ins);
         } else {
-                assert(sz == 32);
+                if (sz == 64) {
+                        packed = ((ins->mask & 0x2) ? (0x8 | 0x4) : 0) |
+                                ((ins->mask & 0x1) ? (0x2 | 0x1) : 0);
+                } else if (sz == 16) {
+                        packed = 0;
+
+                        for (unsigned i = 0; i < 4; ++i) {
+                                /* Make sure we're duplicated */
+                                bool u = (ins->mask & (1 << (2*i + 0))) != 0;
+                                ASSERTED bool v = (ins->mask & (1 << (2*i + 1))) != 0;
+                                assert(u == v);
+
+                                packed |= (u << i);
+                        }
+                } else {
+                        assert(sz == 32);
+                }
         }
 
         ins->load_store.mask = packed;

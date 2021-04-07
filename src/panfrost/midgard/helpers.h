@@ -79,6 +79,11 @@
                 OP_IS_UNSIGNED_CMP(op) \
         )
 
+#define OP_IS_COMMON_STORE(op) ( \
+                op >= midgard_op_st_u8 && \
+                op <= midgard_op_st_u128 \
+        )
+
 /* ALU control words are single bit fields with a lot of space */
 
 #define ALU_ENAB_VEC_MUL  (1 << 17)
