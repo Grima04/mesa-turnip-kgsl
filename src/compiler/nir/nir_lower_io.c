@@ -2249,7 +2249,7 @@ lower_vars_to_explicit(nir_shader *shader,
       offset = shader->scratch_size;
       break;
    case nir_var_mem_shared:
-      offset = 0;
+      offset = shader->info.shared_size;
       break;
    case nir_var_mem_constant:
       offset = shader->constant_data_size;
