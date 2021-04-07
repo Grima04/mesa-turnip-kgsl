@@ -2814,7 +2814,7 @@ should_split_wrmask(const nir_instr *instr, UNUSED const void *data)
 }
 
 static void
-bi_optimize_nir(nir_shader *nir)
+bi_optimize_nir(nir_shader *nir, bool is_blend)
 {
         bool progress;
         unsigned lower_flrp = 16 | 32 | 64;
@@ -2908,13 +2908,16 @@ bi_optimize_nir(nir_shader *nir)
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
 
         /* Backend scheduler is purely local, so do some global optimizations
-         * to reduce register pressure */
+         * to reduce register pressure.  Skip the passes for blend shaders to
+         * workaround the lack of precolouring. */
         nir_move_options move_all =
                 nir_move_const_undef | nir_move_load_ubo | nir_move_load_input |
                 nir_move_comparisons | nir_move_copies | nir_move_load_ssbo;
 
-        NIR_PASS_V(nir, nir_opt_sink, move_all);
-        NIR_PASS_V(nir, nir_opt_move, move_all);
+        if (!is_blend) {
+                NIR_PASS_V(nir, nir_opt_sink, move_all);
+                NIR_PASS_V(nir, nir_opt_move, move_all);
+        }
 
         NIR_PASS(progress, nir, nir_lower_load_const_to_scalar);
 
@@ -3046,7 +3049,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         // TODO: re-enable when fp16 is flipped on
         // NIR_PASS_V(nir, nir_lower_mediump_outputs);
 
-        bi_optimize_nir(nir);
+        bi_optimize_nir(nir, ctx->inputs->is_blend);
 
         NIR_PASS_V(nir, pan_nir_reorder_writeout);
 
