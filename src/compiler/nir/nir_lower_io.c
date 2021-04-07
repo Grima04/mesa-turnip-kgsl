@@ -2289,7 +2289,6 @@ lower_vars_to_explicit(nir_shader *shader,
       break;
    case nir_var_mem_shared:
       shader->info.shared_size = offset;
-      shader->shared_size = offset;
       break;
    case nir_var_mem_constant:
       shader->constant_data_size = offset;

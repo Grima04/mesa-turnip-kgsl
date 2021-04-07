@@ -6067,7 +6067,6 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
          size = MAX2(size, glsl_get_explicit_size(var->type, align_to_stride));
       }
       b->shader->info.shared_size = size;
-      b->shader->shared_size = size;
    }
 
    /* Unparent the shader from the vtn_builder before we delete the builder */

@@ -3466,9 +3466,6 @@ typedef struct nir_shader {
     */
    unsigned num_inputs, num_uniforms, num_outputs;
 
-   /** Size in bytes of required shared memory */
-   unsigned shared_size;
-
    /** Size in bytes of required scratch space */
    unsigned scratch_size;
 

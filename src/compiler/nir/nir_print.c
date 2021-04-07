@@ -1637,7 +1637,7 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
    fprintf(fp, "uniforms: %u\n", shader->num_uniforms);
    if (shader->info.num_ubos)
       fprintf(fp, "ubos: %u\n", shader->info.num_ubos);
-   fprintf(fp, "shared: %u\n", shader->shared_size);
+   fprintf(fp, "shared: %u\n", shader->info.shared_size);
    if (shader->scratch_size)
       fprintf(fp, "scratch: %u\n", shader->scratch_size);
    if (shader->constant_data_size)
