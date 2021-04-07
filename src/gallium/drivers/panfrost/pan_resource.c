@@ -109,7 +109,7 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         rsc->modifier_constant = true;
 
         rsc->state.slices[0].data_valid = true;
-        panfrost_resource_set_damage_region(NULL, &rsc->base, 0, NULL);
+        panfrost_resource_set_damage_region(pscreen, &rsc->base, 0, NULL);
 
         /* If we import an AFBC resource, it should be in a format that's
          * supported, otherwise we don't know if the fixup is expected to be
@@ -601,7 +601,7 @@ panfrost_resource_create_with_modifier(struct pipe_screen *screen,
         if (drm_is_afbc(so->image.layout.modifier))
                 panfrost_resource_init_afbc_headers(so);
 
-        panfrost_resource_set_damage_region(NULL, &so->base, 0, NULL);
+        panfrost_resource_set_damage_region(screen, &so->base, 0, NULL);
 
         if (template->bind & PIPE_BIND_INDEX_BUFFER)
                 so->index_cache = rzalloc(so, struct panfrost_minmax_cache);

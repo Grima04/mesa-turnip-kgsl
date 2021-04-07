@@ -1158,8 +1158,9 @@ panfrost_batch_submit(struct panfrost_batch *batch,
                 if (!batch->key.cbufs[i])
                         continue;
 
-                panfrost_resource_set_damage_region(NULL,
-                                batch->key.cbufs[i]->texture, 0, NULL);
+                panfrost_resource_set_damage_region(batch->ctx->base.screen,
+                                                    batch->key.cbufs[i]->texture,
+                                                    0, NULL);
         }
 
 out:
