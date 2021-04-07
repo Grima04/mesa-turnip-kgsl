@@ -1002,13 +1002,14 @@ radv_device_finish_meta_itoi_r32g32b32_state(struct radv_device *device)
 }
 
 static nir_shader *
-build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d)
+build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d, int samples)
 {
-	enum glsl_sampler_dim dim = is_3d ? GLSL_SAMPLER_DIM_3D : GLSL_SAMPLER_DIM_2D;
+	bool is_multisampled = samples > 1;
+	enum glsl_sampler_dim dim = is_3d ? GLSL_SAMPLER_DIM_3D : is_multisampled ? GLSL_SAMPLER_DIM_MS : GLSL_SAMPLER_DIM_2D;
 	const struct glsl_type *img_type = glsl_image_type(dim,
 							   false,
 							   GLSL_TYPE_FLOAT);
-	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, is_3d ? "meta_cleari_cs_3d" : "meta_cleari_cs");
+	nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, is_3d ? "meta_cleari_cs_3d-%d" : "meta_cleari_cs-%d", samples);
 	b.shader->info.cs.local_size[0] = 8;
 	b.shader->info.cs.local_size[1] = 8;
 	b.shader->info.cs.local_size[2] = 1;
@@ -1039,20 +1040,50 @@ build_nir_cleari_compute_shader(struct radv_device *dev, bool is_3d)
 	comps[3] = nir_imm_int(&b, 0);
 	global_id = nir_vec(&b, comps, 4);
 
-	nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa,
-	                      global_id, nir_ssa_undef(&b, 1, 32), clear_val, nir_imm_int(&b, 0));
+	for (uint32_t i = 0; i < samples; i++) {
+		nir_image_deref_store(&b, &nir_build_deref_var(&b, output_img)->dest.ssa,
+		                      global_id, nir_imm_int(&b, i), clear_val,
+				      nir_imm_int(&b, 0));
+	}
 
 	return b.shader;
+}
+
+static VkResult
+create_cleari_pipeline(struct radv_device *device,
+		       int samples,
+		       VkPipeline *pipeline)
+{
+	nir_shader *cs = build_nir_cleari_compute_shader(device, false, samples);
+	VkResult result;
+
+	VkPipelineShaderStageCreateInfo pipeline_shader_stage = {
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
+		.module = vk_shader_module_handle_from_nir(cs),
+		.pName = "main",
+		.pSpecializationInfo = NULL,
+	};
+
+	VkComputePipelineCreateInfo vk_pipeline_info = {
+		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+		.stage = pipeline_shader_stage,
+		.flags = 0,
+		.layout = device->meta_state.cleari.img_p_layout,
+	};
+
+	result = radv_CreateComputePipelines(radv_device_to_handle(device),
+					     radv_pipeline_cache_to_handle(&device->meta_state.cache),
+					     1, &vk_pipeline_info, NULL,
+					     pipeline);
+	ralloc_free(cs);
+	return result;
 }
 
 static VkResult
 radv_device_init_meta_cleari_state(struct radv_device *device)
 {
 	VkResult result;
-	nir_shader *cs = build_nir_cleari_compute_shader(device, false);
-	nir_shader *cs_3d = NULL;
-	if (device->physical_device->rad_info.chip_class >= GFX9)
-		cs_3d = build_nir_cleari_compute_shader(device, true);
 
 	/*
 	 * two descriptors one for the image being sampled
@@ -1096,32 +1127,17 @@ radv_device_init_meta_cleari_state(struct radv_device *device)
 	if (result != VK_SUCCESS)
 		goto fail;
 
-	/* compute shader */
-
-	VkPipelineShaderStageCreateInfo pipeline_shader_stage = {
-		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-		.stage = VK_SHADER_STAGE_COMPUTE_BIT,
-		.module = vk_shader_module_handle_from_nir(cs),
-		.pName = "main",
-		.pSpecializationInfo = NULL,
-	};
-
-	VkComputePipelineCreateInfo vk_pipeline_info = {
-		.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
-		.stage = pipeline_shader_stage,
-		.flags = 0,
-		.layout = device->meta_state.cleari.img_p_layout,
-	};
-
-	result = radv_CreateComputePipelines(radv_device_to_handle(device),
-					     radv_pipeline_cache_to_handle(&device->meta_state.cache),
-					     1, &vk_pipeline_info, NULL,
-					     &device->meta_state.cleari.pipeline);
-	if (result != VK_SUCCESS)
-		goto fail;
-
+	for (uint32_t i = 0; i < MAX_SAMPLES_LOG2; i++) {
+		uint32_t samples = 1 << i;
+		result = create_cleari_pipeline(device, samples,
+						&device->meta_state.cleari.pipeline[i]);
+		if (result != VK_SUCCESS)
+			goto fail;
+	}
 
 	if (device->physical_device->rad_info.chip_class >= GFX9) {
+		nir_shader *cs_3d = build_nir_cleari_compute_shader(device, true, 1);
+
 		/* compute shader */
 		VkPipelineShaderStageCreateInfo pipeline_shader_stage_3d = {
 			.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -1142,16 +1158,11 @@ radv_device_init_meta_cleari_state(struct radv_device *device)
 						     radv_pipeline_cache_to_handle(&device->meta_state.cache),
 						     1, &vk_pipeline_info_3d, NULL,
 						     &device->meta_state.cleari.pipeline_3d);
-		if (result != VK_SUCCESS)
-			goto fail;
-
 		ralloc_free(cs_3d);
 	}
-	ralloc_free(cs);
+
 	return VK_SUCCESS;
 fail:
-	ralloc_free(cs);
-	ralloc_free(cs_3d);
 	return result;
 }
 
@@ -1165,8 +1176,13 @@ radv_device_finish_meta_cleari_state(struct radv_device *device)
 	radv_DestroyDescriptorSetLayout(radv_device_to_handle(device),
 				        state->cleari.img_ds_layout,
 					&state->alloc);
-	radv_DestroyPipeline(radv_device_to_handle(device),
-			     state->cleari.pipeline, &state->alloc);
+
+
+	for (uint32_t i = 0; i < MAX_SAMPLES_LOG2; ++i) {
+		radv_DestroyPipeline(radv_device_to_handle(device),
+				     state->cleari.pipeline[i], &state->alloc);
+	}
+
 	radv_DestroyPipeline(radv_device_to_handle(device),
 			     state->cleari.pipeline_3d, &state->alloc);
 }
@@ -2027,9 +2043,10 @@ radv_meta_clear_image_cs(struct radv_cmd_buffer *cmd_buffer,
 			 struct radv_meta_blit2d_surf *dst,
 			 const VkClearColorValue *clear_color)
 {
-	VkPipeline pipeline = cmd_buffer->device->meta_state.cleari.pipeline;
 	struct radv_device *device = cmd_buffer->device;
 	struct radv_image_view dst_iview;
+	uint32_t samples = dst->image->info.samples;
+	uint32_t samples_log2 = ffs(samples) - 1;
 
 	if (dst->format == VK_FORMAT_R32G32B32_UINT ||
 	    dst->format == VK_FORMAT_R32G32B32_SINT ||
@@ -2041,6 +2058,7 @@ radv_meta_clear_image_cs(struct radv_cmd_buffer *cmd_buffer,
 	create_iview(cmd_buffer, dst, &dst_iview);
 	cleari_bind_descriptors(cmd_buffer, &dst_iview);
 
+	VkPipeline pipeline = cmd_buffer->device->meta_state.cleari.pipeline[samples_log2];
 	if (device->physical_device->rad_info.chip_class >= GFX9 &&
 	    dst->image->type == VK_IMAGE_TYPE_3D)
 		pipeline = cmd_buffer->device->meta_state.cleari.pipeline_3d;
