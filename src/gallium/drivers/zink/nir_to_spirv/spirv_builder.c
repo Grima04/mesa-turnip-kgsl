@@ -28,6 +28,7 @@
 #include "util/ralloc.h"
 #include "util/u_bitcast.h"
 #include "util/u_memory.h"
+#include "util/half_float.h"
 #include "util/hash_table.h"
 #define XXH_INLINE_ALL
 #include "util/xxhash.h"
@@ -1408,7 +1409,7 @@ spirv_builder_const_bool(struct spirv_builder *b, bool val)
 SpvId
 spirv_builder_const_int(struct spirv_builder *b, int width, int64_t val)
 {
-   assert(width >= 32);
+   assert(width >= 16);
    SpvId type = spirv_builder_type_int(b, width);
    if (width <= 32)
       return emit_constant_32(b, type, val);
@@ -1437,12 +1438,16 @@ spirv_builder_spec_const_uint(struct spirv_builder *b, int width)
 SpvId
 spirv_builder_const_float(struct spirv_builder *b, int width, double val)
 {
-   assert(width >= 32);
+   assert(width >= 16);
    SpvId type = spirv_builder_type_float(b, width);
-   if (width <= 32)
+   if (width == 16)
+      return emit_constant_32(b, type, _mesa_float_to_half(val));
+   else if (width == 32)
       return emit_constant_32(b, type, u_bitcast_f2u(val));
-   else
+   else if (width == 64)
       return emit_constant_64(b, type, u_bitcast_d2u(val));
+
+   unreachable("unhandled float-width");
 }
 
 SpvId
