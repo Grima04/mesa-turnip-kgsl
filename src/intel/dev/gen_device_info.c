@@ -310,8 +310,7 @@ static const struct gen_device_info gen_device_info_byt = {
    GFX7_FEATURES,                \
    .is_haswell = true,           \
    .verx10 = 75,                 \
-   .supports_simd16_3src = true, \
-   .has_resource_streamer = true
+   .supports_simd16_3src = true
 
 static const struct gen_device_info gen_device_info_hsw_gt1 = {
    HSW_FEATURES, .gt = 1,
@@ -403,7 +402,6 @@ static const struct gen_device_info gen_device_info_hsw_gt3 = {
 #define GFX8_FEATURES                               \
    .ver = 8,                                        \
    .has_hiz_and_separate_stencil = true,            \
-   .has_resource_streamer = true,                   \
    .must_use_separate_stencil = true,               \
    .has_llc = true,                                 \
    .has_sample_with_hiz = false,                    \
