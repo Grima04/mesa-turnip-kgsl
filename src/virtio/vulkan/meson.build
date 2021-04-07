@@ -37,6 +37,7 @@ libvn_files = files(
   'vn_device.c',
   'vn_icd.c',
   'vn_pipeline.c',
+  'vn_query_pool.c',
   'vn_ring.c',
   'vn_renderer_virtgpu.c',
   'vn_renderer_vtest.c',

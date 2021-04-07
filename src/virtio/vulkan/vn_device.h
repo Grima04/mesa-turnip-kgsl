@@ -344,17 +344,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_event,
                                VkEvent,
                                VK_OBJECT_TYPE_EVENT)
 
-struct vn_query_pool {
-   struct vn_object_base base;
-
-   VkAllocationCallbacks allocator;
-   uint32_t result_array_size;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_query_pool,
-                               base.base,
-                               VkQueryPool,
-                               VK_OBJECT_TYPE_QUERY_POOL)
-
 VkResult
 vn_instance_submit_roundtrip(struct vn_instance *instance,
                              uint32_t *roundtrip_seqno);
