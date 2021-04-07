@@ -305,7 +305,10 @@ trace_context_bind_blend_state(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_blend_state");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(ptr, state);
+   if (trace_dump_is_triggered())
+      trace_dump_arg(blend_state, state);
+   else
+      trace_dump_arg(ptr, state);
 
    pipe->bind_blend_state(pipe, state);
 
@@ -432,7 +435,10 @@ trace_context_bind_rasterizer_state(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_rasterizer_state");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(ptr, state);
+   if (trace_dump_is_triggered())
+      trace_dump_arg(rasterizer_state, state);
+   else
+      trace_dump_arg(ptr, state);
 
    pipe->bind_rasterizer_state(pipe, state);
 
@@ -491,7 +497,10 @@ trace_context_bind_depth_stencil_alpha_state(struct pipe_context *_pipe,
    trace_dump_call_begin("pipe_context", "bind_depth_stencil_alpha_state");
 
    trace_dump_arg(ptr, pipe);
-   trace_dump_arg(ptr, state);
+   if (trace_dump_is_triggered())
+      trace_dump_arg(depth_stencil_alpha_state, state);
+   else
+      trace_dump_arg(ptr, state);
 
    pipe->bind_depth_stencil_alpha_state(pipe, state);
 

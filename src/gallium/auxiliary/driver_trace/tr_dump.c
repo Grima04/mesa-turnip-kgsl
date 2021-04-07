@@ -99,6 +99,12 @@ trace_dump_check_trigger(void)
    mtx_unlock(&call_mutex);
 }
 
+bool
+trace_dump_is_triggered(void)
+{
+   return trigger_active && !!trigger_filename;
+}
+
 static inline void
 trace_dump_write(const char *buf, size_t size)
 {
