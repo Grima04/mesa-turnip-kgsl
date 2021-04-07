@@ -1978,14 +1978,14 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
 }
 
 static inline void
-mem_barrier(struct zink_batch *batch, VkPipelineStageFlags stage, VkAccessFlags src, VkAccessFlags dst)
+mem_barrier(struct zink_batch *batch, VkPipelineStageFlags src_stage, VkPipelineStageFlags dst_stage, VkAccessFlags src, VkAccessFlags dst)
 {
    VkMemoryBarrier mb;
    mb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
    mb.pNext = NULL;
    mb.srcAccessMask = src;
    mb.dstAccessMask = dst;
-   vkCmdPipelineBarrier(batch->state->cmdbuf, stage, stage, 0, 1, &mb, 0, NULL, 0, NULL);
+   vkCmdPipelineBarrier(batch->state->cmdbuf, src_stage, dst_stage, 0, 1, &mb, 0, NULL, 0, NULL);
 }
 
 static void
@@ -2010,47 +2010,44 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
       /* TODO: this should flush all persistent buffers in use as I think */
    }
 
-   if (flags & (PIPE_BARRIER_SHADER_BUFFER | PIPE_BARRIER_TEXTURE |
-                PIPE_BARRIER_IMAGE | PIPE_BARRIER_GLOBAL_BUFFER))
-      mem_barrier(batch, all_flags, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-                                    VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT);
+   if (flags & (PIPE_BARRIER_TEXTURE | PIPE_BARRIER_SHADER_BUFFER | PIPE_BARRIER_IMAGE))
+      mem_barrier(batch, all_flags, all_flags, VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
 
-   if (flags & (PIPE_BARRIER_QUERY_BUFFER | PIPE_BARRIER_IMAGE))
-      mem_barrier(batch, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                  VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
-                  VK_ACCESS_TRANSFER_READ_BIT | VK_ACCESS_TRANSFER_WRITE_BIT);
+   if (flags & PIPE_BARRIER_QUERY_BUFFER)
+      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT);
 
    if (flags & PIPE_BARRIER_VERTEX_BUFFER)
-      mem_barrier(batch, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-                  VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT,
+      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT,
                   VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT);
 
    if (flags & PIPE_BARRIER_INDEX_BUFFER)
-      mem_barrier(batch, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
-                  VK_ACCESS_INDEX_READ_BIT,
+      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT,
                   VK_ACCESS_INDEX_READ_BIT);
 
-   if (flags & (PIPE_BARRIER_CONSTANT_BUFFER | PIPE_BARRIER_IMAGE))
-      mem_barrier(batch, all_flags,
-                  VK_ACCESS_UNIFORM_READ_BIT,
+   if (flags & PIPE_BARRIER_CONSTANT_BUFFER)
+      mem_barrier(batch, all_flags, all_flags,
+                  VK_ACCESS_SHADER_WRITE_BIT,
                   VK_ACCESS_UNIFORM_READ_BIT);
 
    if (flags & PIPE_BARRIER_INDIRECT_BUFFER)
-      mem_barrier(batch, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
-                  VK_ACCESS_INDIRECT_COMMAND_READ_BIT,
+      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT,
                   VK_ACCESS_INDIRECT_COMMAND_READ_BIT);
 
    if (flags & PIPE_BARRIER_FRAMEBUFFER) {
-      mem_barrier(batch, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
-                  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
-      mem_barrier(batch, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                  VK_ACCESS_SHADER_WRITE_BIT,
+                  VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT);
+      mem_barrier(batch, all_flags, VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                   VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT);
    }
    if (flags & PIPE_BARRIER_STREAMOUT_BUFFER)
-      mem_barrier(batch, VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
-                  VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
+      mem_barrier(batch, all_flags,
+                  VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_TRANSFORM_FEEDBACK_BIT_EXT,
                   VK_ACCESS_TRANSFORM_FEEDBACK_WRITE_BIT_EXT |
                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_WRITE_BIT_EXT,
                   VK_ACCESS_TRANSFORM_FEEDBACK_COUNTER_READ_BIT_EXT);
