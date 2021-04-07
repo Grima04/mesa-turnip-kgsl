@@ -390,8 +390,10 @@ handle_interface_descriptor_data(struct intel_batch_decode_ctx *ctx,
    ctx_disassemble_program(ctx, ksp, "compute shader");
    fprintf(ctx->fp, "\n");
 
-   dump_samplers(ctx, sampler_offset, sampler_count);
-   dump_binding_table(ctx, binding_table_offset, binding_entry_count);
+   if (sampler_count)
+      dump_samplers(ctx, sampler_offset, sampler_count);
+   if (binding_entry_count)
+      dump_binding_table(ctx, binding_table_offset, binding_entry_count);
 }
 
 static void
