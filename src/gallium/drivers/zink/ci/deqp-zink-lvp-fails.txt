@@ -15,10 +15,6 @@ dEQP-GLES3.functional.draw.random.31,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_mag,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_dst_x,Fail
 dEQP-GLES3.functional.fbo.blit.rect.nearest_consistency_min_reverse_src_x,Fail
-dEQP-GLES3.functional.fbo.invalidate.whole.unbind_blit_msaa_stencil,Fail
-dEQP-GLES3.functional.fbo.invalidate.whole.unbind_blit_stencil,Fail
-dEQP-GLES3.functional.fbo.msaa.2_samples.depth32f_stencil8,Fail
-dEQP-GLES3.functional.fbo.msaa.4_samples.depth_component24,Fail
 dEQP-GLES3.functional.fragment_out.array.int.r16i_highp_ivec3,Fail
 dEQP-GLES3.functional.fragment_out.array.int.r16i_lowp_ivec3,Fail
 dEQP-GLES3.functional.fragment_out.array.int.r16i_mediump_ivec3,Fail
@@ -182,8 +178,6 @@ dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler2dshadow_
 dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler2d_vec3_fixed_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler2d_vec4_fixed_vertex,Fail
 dEQP-GLES3.functional.shaders.texture_functions.textureprojgrad.sampler3d_fixed_vertex,Fail
-KHR-GL32.packed_depth_stencil.blit.depth24_stencil8,Fail
-KHR-GL32.packed_depth_stencil.blit.depth32f_stencil8,Fail
 KHR-GL32.transform_feedback.capture_geometry_separate_test,Fail
 KHR-GL32.transform_feedback.capture_vertex_interleaved_test,Fail
 KHR-GL32.transform_feedback.capture_vertex_separate_test,Fail
