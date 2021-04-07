@@ -415,12 +415,15 @@ void trace_dump_blend_state(const struct pipe_blend_state *state)
 
    trace_dump_struct_begin("pipe_blend_state");
 
-   trace_dump_member(bool, state, dither);
-
+   trace_dump_member(bool, state, independent_blend_enable);
    trace_dump_member(bool, state, logicop_enable);
    trace_dump_member(uint, state, logicop_func);
-
-   trace_dump_member(bool, state, independent_blend_enable);
+   trace_dump_member(bool, state, dither);
+   trace_dump_member(bool, state, alpha_to_coverage);
+   trace_dump_member(bool, state, alpha_to_coverage_dither);
+   trace_dump_member(bool, state, alpha_to_one);
+   trace_dump_member(uint, state, max_rt);
+   trace_dump_member(uint, state, advanced_blend_func);
 
    trace_dump_member_begin("rt");
    if (state->independent_blend_enable)
