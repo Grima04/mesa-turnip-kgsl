@@ -102,6 +102,11 @@ struct pan_fb_info {
         unsigned rt_count;
         struct pan_fb_color_attachment rts[8];
         struct pan_fb_zs_attachment zs;
+
+        struct {
+                unsigned stride;
+                mali_ptr base;
+        } tile_map;
 };
 
 unsigned

@@ -933,5 +933,10 @@ pan_emit_fragment_job(const struct panfrost_device *dev,
                 payload.bound_max_x = fb->extent.maxx >> MALI_TILE_SHIFT;
                 payload.bound_max_y = fb->extent.maxy >> MALI_TILE_SHIFT;
                 payload.framebuffer = fbd;
+                if (fb->tile_map.base) {
+                        payload.has_tile_enable_map = true;
+                        payload.tile_enable_map = fb->tile_map.base;
+                        payload.tile_enable_map_row_stride = fb->tile_map.stride;
+                }
         }
 }
