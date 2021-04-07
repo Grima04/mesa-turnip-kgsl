@@ -3320,10 +3320,11 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          if (!radv_use_llvm_for_stage(device, i))
             nir_opt_idiv_const(nir[i], 8);
 
-         nir_lower_idiv(nir[i], &(nir_lower_idiv_options){
-                                   .imprecise_32bit_lowering = false,
-                                   .allow_fp16 = true,
-                                });
+         nir_lower_idiv(nir[i],
+                        &(nir_lower_idiv_options){
+                           .imprecise_32bit_lowering = false,
+                           .allow_fp16 = device->physical_device->rad_info.chip_class >= GFX9,
+                        });
 
          nir_opt_sink(nir[i], nir_move_load_input | nir_move_const_undef | nir_move_copies);
          nir_opt_move(nir[i], nir_move_load_input | nir_move_const_undef | nir_move_copies);
