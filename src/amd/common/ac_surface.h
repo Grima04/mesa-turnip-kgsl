@@ -466,6 +466,13 @@ nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info
                                         nir_ssa_def *dcc_slice_size,
                                         nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
                                         nir_ssa_def *sample, nir_ssa_def *pipe_xor);
+
+nir_ssa_def *ac_nir_htile_addr_from_coord(nir_builder *b, const struct radeon_info *info,
+                                          struct gfx9_meta_equation *equation,
+                                          nir_ssa_def *htile_pitch,
+                                          nir_ssa_def *htile_slice_size,
+                                          nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
+                                          nir_ssa_def *pipe_xor);
 #endif
 
 #ifdef __cplusplus
