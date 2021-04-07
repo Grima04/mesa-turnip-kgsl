@@ -189,7 +189,7 @@ padding_is_good(int fd, uint32_t handle)
     * if the bo is not cache coherent we likely need to
     * invalidate the cache lines to get it.
     */
-   gen_invalidate_range(mapped, PADDING_SIZE);
+   intel_invalidate_range(mapped, PADDING_SIZE);
 
    expected_value = handle & 0xFF;
    for (uint32_t i = 0; i < PADDING_SIZE; ++i) {

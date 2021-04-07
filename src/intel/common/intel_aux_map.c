@@ -101,7 +101,7 @@ struct aux_map_buffer {
 struct intel_aux_map_context {
    void *driver_ctx;
    pthread_mutex_t mutex;
-   struct gen_mapped_pinned_buffer_alloc *buffer_alloc;
+   struct intel_mapped_pinned_buffer_alloc *buffer_alloc;
    uint32_t num_buffers;
    struct list_head buffers;
    uint64_t level3_base_addr;
@@ -199,7 +199,7 @@ intel_aux_map_get_state_num(struct intel_aux_map_context *ctx)
 
 struct intel_aux_map_context *
 intel_aux_map_init(void *driver_ctx,
-                   struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
+                   struct intel_mapped_pinned_buffer_alloc *buffer_alloc,
                    const struct intel_device_info *devinfo)
 {
    struct intel_aux_map_context *ctx;

@@ -1113,7 +1113,7 @@ brw_bo_map_cpu(struct brw_context *brw, struct brw_bo *bo, unsigned flags)
        * LLC entirely requiring us to keep dirty pixels for the scanout
        * out of any cache.)
        */
-      gen_invalidate_range(bo->map_cpu, bo->size);
+      intel_invalidate_range(bo->map_cpu, bo->size);
    }
 
    return bo->map_cpu;

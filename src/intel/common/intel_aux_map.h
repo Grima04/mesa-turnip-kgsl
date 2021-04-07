@@ -53,7 +53,7 @@ struct intel_device_info;
 
 struct intel_aux_map_context *
 intel_aux_map_init(void *driver_ctx,
-                   struct gen_mapped_pinned_buffer_alloc *buffer_alloc,
+                   struct intel_mapped_pinned_buffer_alloc *buffer_alloc,
                    const struct intel_device_info *devinfo);
 
 void
