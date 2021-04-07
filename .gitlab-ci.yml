@@ -427,7 +427,7 @@ arm_build:
     - .fdo.container-build@debian@arm64v8
     - .container
   variables:
-    MESA_IMAGE_TAG: &arm_build "2021-04-01-u-boot-tools"
+    MESA_IMAGE_TAG: &arm_build "2021-04-07-lavacli-1-1"
 
 .use-arm_build:
   extends:
