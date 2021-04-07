@@ -4482,6 +4482,8 @@ emit_compute_walker(struct anv_cmd_buffer *cmd_buffer,
             cmd_buffer->state.samplers[MESA_SHADER_COMPUTE].offset,
          .BindingTablePointer =
             cmd_buffer->state.binding_tables[MESA_SHADER_COMPUTE].offset,
+         .BindingTableEntryCount =
+            1 + MIN2(pipeline->cs->bind_map.surface_count, 30),
          .NumberofThreadsinGPGPUThreadGroup = cs_params.threads,
          .SharedLocalMemorySize = encode_slm_size(GFX_VER,
                                                   prog_data->base.total_shared),
