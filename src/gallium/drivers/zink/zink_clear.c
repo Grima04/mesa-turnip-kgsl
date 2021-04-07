@@ -492,8 +492,9 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
 
    if (!zink_fb_clear_enabled(ctx, i))
       return;
-   if (zink_resource(pres)->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
-      assert(!ctx->batch.in_rp);
+   if (ctx->batch.in_rp)
+      zink_clear_framebuffer(ctx, BITFIELD_BIT(i));
+   else if (zink_resource(pres)->aspect == VK_IMAGE_ASPECT_COLOR_BIT) {
       if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.cbufs[i]))
          /* this will automatically trigger all the clears */
          zink_batch_rp(ctx);
@@ -510,7 +511,6 @@ fb_clears_apply_internal(struct zink_context *ctx, struct pipe_resource *pres, i
       zink_fb_clear_reset(ctx, i);
       return;
    } else {
-      assert(!ctx->batch.in_rp);
       if (zink_fb_clear_needs_explicit(fb_clear) || !check_3d_layers(ctx->fb_state.zsbuf))
          /* this will automatically trigger all the clears */
          zink_batch_rp(ctx);
