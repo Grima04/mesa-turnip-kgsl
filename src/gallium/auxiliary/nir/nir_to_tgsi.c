@@ -2411,6 +2411,7 @@ ntt_optimize_nir(struct nir_shader *s, struct pipe_screen *screen)
 
       NIR_PASS(progress, s, nir_copy_prop);
       NIR_PASS(progress, s, nir_opt_algebraic);
+      NIR_PASS(progress, s, nir_opt_constant_folding);
       NIR_PASS(progress, s, nir_opt_remove_phis);
       NIR_PASS(progress, s, nir_opt_conditional_discard);
       NIR_PASS(progress, s, nir_opt_dce);
