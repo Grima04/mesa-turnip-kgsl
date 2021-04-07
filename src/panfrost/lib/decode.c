@@ -271,6 +271,11 @@ pandecode_sample_locations(const void *fb, int job_no)
         }
 }
 
+static void
+pandecode_dcd(const struct MALI_DRAW *p,
+              int job_no, enum mali_job_type job_type,
+              char *suffix, bool is_bifrost, unsigned gpu_id);
+
 static struct pandecode_fbd
 pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_bifrost, unsigned gpu_id)
 {
@@ -280,8 +285,31 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_bifros
 
         struct pandecode_fbd info;
 
-        if (is_bifrost)
+        if (is_bifrost) {
                 pandecode_sample_locations(fb, job_no);
+                pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, bparams);
+                unsigned dcd_size = MALI_DRAW_LENGTH + MALI_DRAW_PADDING_LENGTH;
+                if (bparams.pre_frame_0 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
+                        const void *PANDECODE_PTR_VAR(dcd, mem, bparams.frame_shader_dcds + (0 * dcd_size));
+                        pan_unpack(dcd, DRAW, draw);
+                        pandecode_log("Pre frame 0:\n");
+                        pandecode_dcd(&draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", true, gpu_id);
+                }
+
+                if (bparams.pre_frame_1 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
+                        const void *PANDECODE_PTR_VAR(dcd, mem, bparams.frame_shader_dcds + (1 * dcd_size));
+                        pan_unpack(dcd, DRAW, draw);
+                        pandecode_log("Pre frame 1:\n");
+                        pandecode_dcd(&draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", true, gpu_id);
+                }
+
+                if (bparams.post_frame != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
+                        const void *PANDECODE_PTR_VAR(dcd, mem, bparams.frame_shader_dcds + (2 * dcd_size));
+                        pan_unpack(dcd, DRAW, draw);
+                        pandecode_log("Post frame:\n");
+                        pandecode_dcd(&draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", true, gpu_id);
+                }
+        }
  
         pandecode_log("Multi-Target Framebuffer:\n");
         pandecode_indent++;
@@ -506,6 +534,7 @@ shader_type_for_job(unsigned type)
         switch (type) {
         case MALI_JOB_TYPE_VERTEX:  return "VERTEX";
         case MALI_JOB_TYPE_TILER:   return "FRAGMENT";
+        case MALI_JOB_TYPE_FRAGMENT: return "FRAGMENT";
         case MALI_JOB_TYPE_COMPUTE: return "COMPUTE";
         default: return "UNKNOWN";
         }
@@ -809,7 +838,7 @@ pandecode_dcd(const struct MALI_DRAW *p,
                 /* MRT blend fields are used whenever MFBD is used, with
                  * per-RT descriptors */
 
-                if (job_type == MALI_JOB_TYPE_TILER &&
+                if ((job_type == MALI_JOB_TYPE_TILER || job_type == MALI_JOB_TYPE_FRAGMENT) &&
                     (is_bifrost || p->fbd & MALI_FBD_TAG_IS_MFBD)) {
                         void* blend_base = ((void *) cl) + MALI_RENDERER_STATE_LENGTH;
 
