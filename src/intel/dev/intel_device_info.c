@@ -1377,7 +1377,7 @@ intel_get_aperture_size(int fd, uint64_t *size)
 }
 
 static bool
-gen_has_get_tiling(int fd)
+has_get_tiling(int fd)
 {
    int ret;
 
@@ -1476,7 +1476,7 @@ intel_get_device_info_from_fd(int fd, struct intel_device_info *devinfo)
    }
 
    intel_get_aperture_size(fd, &devinfo->aperture_bytes);
-   devinfo->has_tiling_uapi = gen_has_get_tiling(fd);
+   devinfo->has_tiling_uapi = has_get_tiling(fd);
 
    return true;
 }
