@@ -63,15 +63,15 @@ foreach g : [['40', isl_gfx4_files], ['50', []], ['60', isl_gfx6_files],
              ['70', isl_gfx7_files], ['75', []], ['80', isl_gfx8_files],
              ['90', isl_gfx9_files], ['110', []], ['120', isl_gfx12_files],
              ['125', isl_gfx12_files]]
-  _gen = g[0]
+  _gfx_ver = g[0]
   isl_per_hw_ver_libs += static_library(
-    'isl_per_hw_ver@0@'.format(_gen),
+    'isl_per_hw_ver@0@'.format(_gfx_ver),
     [g[1], isl_per_hw_ver_files, gen_xml_pack],
     include_directories : [inc_include, inc_src, inc_gallium, inc_intel],
     dependencies : idep_mesautil,
     c_args : [
       no_override_init_args,
-      '-DGFX_VERx10=@0@'.format(_gen)
+      '-DGFX_VERx10=@0@'.format(_gfx_ver)
     ],
     gnu_symbol_visibility : 'hidden',
   )

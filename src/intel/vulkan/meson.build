@@ -62,16 +62,16 @@ foreach g : [['70', ['gfx7_cmd_buffer.c']], ['75', ['gfx7_cmd_buffer.c']],
              ['80', ['gfx8_cmd_buffer.c']], ['90', ['gfx8_cmd_buffer.c']],
              ['110', ['gfx8_cmd_buffer.c']], ['120', ['gfx8_cmd_buffer.c']],
              ['125', ['gfx8_cmd_buffer.c']]]
-  _gen = g[0]
+  _gfx_ver = g[0]
   libanv_per_hw_ver_libs += static_library(
-    'anv_per_hw_ver@0@'.format(_gen),
+    'anv_per_hw_ver@0@'.format(_gfx_ver),
     [anv_per_hw_ver_files, g[1], anv_entrypoints[0]],
     include_directories : [
       inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_compiler, inc_intel, inc_vulkan_wsi,
     ],
     c_args : [
       no_override_init_args, c_sse2_args,
-      '-DGFX_VERx10=@0@'.format(_gen),
+      '-DGFX_VERx10=@0@'.format(_gfx_ver),
     ],
     gnu_symbol_visibility : 'hidden',
     dependencies : [
