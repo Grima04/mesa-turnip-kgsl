@@ -324,9 +324,9 @@ convert_yuv_to_rgb(nir_builder *b, nir_tex_instr *tex,
 
    nir_ssa_def *offset =
       nir_vec4(b,
-               nir_imm_float(b, offset_vals[0]),
-               nir_imm_float(b, offset_vals[1]),
-               nir_imm_float(b, offset_vals[2]),
+               nir_imm_floatN_t(b, offset_vals[0], a->bit_size),
+               nir_imm_floatN_t(b, offset_vals[1], a->bit_size),
+               nir_imm_floatN_t(b, offset_vals[2], a->bit_size),
                a);
 
    offset = nir_f2fN(b, offset, bit_size);
