@@ -320,7 +320,11 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 	/* do idiv lowering after first opt loop to get a chance to propagate
 	 * constants for divide by immed power-of-two:
 	 */
-	const bool idiv_progress = OPT(s, nir_lower_idiv, nir_lower_idiv_fast);
+	nir_lower_idiv_options idiv_options = {
+		.imprecise_32bit_lowering = true,
+		.allow_fp16 = true,
+	};
+	const bool idiv_progress = OPT(s, nir_lower_idiv, &idiv_options);
 
 	if (idiv_progress)
 		ir3_optimize_loop(s);

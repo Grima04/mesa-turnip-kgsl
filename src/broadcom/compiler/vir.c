@@ -1397,7 +1397,11 @@ v3d_attempt_compile(struct v3d_compile *c)
         NIR_PASS_V(c->s, v3d_nir_lower_io, c);
         NIR_PASS_V(c->s, v3d_nir_lower_txf_ms, c);
         NIR_PASS_V(c->s, v3d_nir_lower_image_load_store);
-        NIR_PASS_V(c->s, nir_lower_idiv, nir_lower_idiv_fast);
+        nir_lower_idiv_options idiv_options = {
+                .imprecise_32bit_lowering = true,
+                .allow_fp16 = true,
+        };
+        NIR_PASS_V(c->s, nir_lower_idiv, &idiv_options);
 
         if (c->key->robust_buffer_access) {
            /* v3d_nir_lower_robust_buffer_access assumes constant buffer

@@ -2316,7 +2316,11 @@ vc4_shader_ntq(struct vc4_context *vc4, enum qstage stage,
 
         NIR_PASS_V(c->s, vc4_nir_lower_io, c);
         NIR_PASS_V(c->s, vc4_nir_lower_txf_ms, c);
-        NIR_PASS_V(c->s, nir_lower_idiv, nir_lower_idiv_fast);
+        nir_lower_idiv_options idiv_options = {
+                .imprecise_32bit_lowering = true,
+                .allow_fp16 = true,
+        };
+        NIR_PASS_V(c->s, nir_lower_idiv, &idiv_options);
 
         vc4_optimize_nir(c->s);
 

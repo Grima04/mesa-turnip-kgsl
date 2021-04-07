@@ -2834,7 +2834,11 @@ bi_optimize_nir(nir_shader *nir)
 
         NIR_PASS(progress, nir, nir_lower_int64);
 
-        NIR_PASS(progress, nir, nir_lower_idiv, nir_lower_idiv_fast);
+        nir_lower_idiv_options idiv_options = {
+                .imprecise_32bit_lowering = true,
+                .allow_fp16 = true,
+        };
+        NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
 
         NIR_PASS(progress, nir, nir_lower_tex, &lower_tex_options);
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);

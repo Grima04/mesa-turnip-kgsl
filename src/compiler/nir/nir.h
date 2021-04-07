@@ -4855,19 +4855,26 @@ enum nir_lower_non_uniform_access_type {
 bool nir_lower_non_uniform_access(nir_shader *shader,
                                   enum nir_lower_non_uniform_access_type);
 
-enum nir_lower_idiv_path {
-   /* This path is based on NV50LegalizeSSA::handleDIV(). It is the faster of
-    * the two but it is not exact in some cases (for example, 1091317713u /
-    * 1034u gives 5209173 instead of 1055432) */
-   nir_lower_idiv_fast,
-   /* This path is based on AMDGPUTargetLowering::LowerUDIVREM() and
-    * AMDGPUTargetLowering::LowerSDIVREM(). It requires more instructions than
-    * the nv50 path and many of them are integer multiplications, so it is
-    * probably slower. It should always return the correct result, though. */
-   nir_lower_idiv_precise,
-};
+typedef struct {
+   /* If true, a 32-bit division lowering based on NV50LegalizeSSA::handleDIV()
+    * is used. It is the faster of the two but it is not exact in some cases
+    * (for example, 1091317713u / 1034u gives 5209173 instead of 1055432).
+    *
+    * If false, a lowering based on AMDGPUTargetLowering::LowerUDIVREM() and
+    * AMDGPUTargetLowering::LowerSDIVREM() is used. It requires more
+    * instructions than the nv50 path and many of them are integer
+    * multiplications, so it is probably slower. It should always return the
+    * correct result, though.
+    */
+   bool imprecise_32bit_lowering;
 
-bool nir_lower_idiv(nir_shader *shader, enum nir_lower_idiv_path path);
+   /* Whether 16-bit floating point arithmetic should be allowed in 8-bit
+    * division lowering
+    */
+   bool allow_fp16;
+} nir_lower_idiv_options;
+
+bool nir_lower_idiv(nir_shader *shader, const nir_lower_idiv_options *options);
 
 typedef struct nir_input_attachment_options {
    bool use_fragcoord_sysval;

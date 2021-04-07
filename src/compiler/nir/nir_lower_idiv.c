@@ -200,11 +200,12 @@ convert_instr_precise(nir_builder *bld, nir_op op,
 
 static nir_ssa_def *
 convert_instr_small(nir_builder *b, nir_op op,
-      nir_ssa_def *numer, nir_ssa_def *denom)
+      nir_ssa_def *numer, nir_ssa_def *denom,
+      const nir_lower_idiv_options *options)
 {
    unsigned sz = numer->bit_size;
    nir_alu_type int_type = nir_op_infos[op].output_type | sz;
-   nir_alu_type float_type = nir_type_float | (sz * 2);
+   nir_alu_type float_type = nir_type_float | (options->allow_fp16 ? sz * 2 : 32);
 
    nir_ssa_def *p = nir_type_convert(b, numer, int_type, float_type);
    nir_ssa_def *q = nir_type_convert(b, denom, int_type, float_type);
@@ -240,18 +241,18 @@ convert_instr_small(nir_builder *b, nir_op op,
 static nir_ssa_def *
 lower_idiv(nir_builder *b, nir_instr *instr, void *_data)
 {
-   enum nir_lower_idiv_path *path = _data;
+   const nir_lower_idiv_options *options = _data;
    nir_alu_instr *alu = nir_instr_as_alu(instr);
 
    nir_ssa_def *numer = nir_ssa_for_alu_src(b, alu, 0);
    nir_ssa_def *denom = nir_ssa_for_alu_src(b, alu, 1);
 
    if (numer->bit_size < 32)
-      return convert_instr_small(b, alu->op, numer, denom);
-   else if (*path == nir_lower_idiv_precise)
-      return convert_instr_precise(b, alu->op, numer, denom);
-   else
+      return convert_instr_small(b, alu->op, numer, denom, options);
+   else if (options->imprecise_32bit_lowering)
       return convert_instr(b, alu->op, numer, denom);
+   else
+      return convert_instr_precise(b, alu->op, numer, denom);
 }
 
 static bool
@@ -278,10 +279,10 @@ inst_is_idiv(const nir_instr *instr, UNUSED const void *_state)
 }
 
 bool
-nir_lower_idiv(nir_shader *shader, enum nir_lower_idiv_path path)
+nir_lower_idiv(nir_shader *shader, const nir_lower_idiv_options *options)
 {
    return nir_shader_lower_instructions(shader,
          inst_is_idiv,
          lower_idiv,
-         &path);
+         (void *)options);
 }

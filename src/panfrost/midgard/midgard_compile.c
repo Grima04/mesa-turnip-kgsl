@@ -296,7 +296,11 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
                 (nir->options->lower_flrp64 ? 64 : 0);
 
         NIR_PASS(progress, nir, nir_lower_regs_to_ssa);
-        NIR_PASS(progress, nir, nir_lower_idiv, nir_lower_idiv_fast);
+        nir_lower_idiv_options idiv_options = {
+                .imprecise_32bit_lowering = true,
+                .allow_fp16 = true,
+        };
+        NIR_PASS(progress, nir, nir_lower_idiv, &idiv_options);
 
         nir_lower_tex_options lower_tex_options = {
                 .lower_txs_lod = true,
