@@ -749,10 +749,9 @@ pandecode_samplers(mali_ptr samplers, unsigned sampler_count, int job_no, bool i
 }
 
 static void
-pandecode_vertex_tiler_postfix_pre(
-                const struct MALI_DRAW *p,
-                int job_no, enum mali_job_type job_type,
-                char *suffix, bool is_bifrost, unsigned gpu_id)
+pandecode_dcd(const struct MALI_DRAW *p,
+              int job_no, enum mali_job_type job_type,
+              char *suffix, bool is_bifrost, unsigned gpu_id)
 {
         struct pandecode_mapped_memory *attr_mem;
 
@@ -927,7 +926,7 @@ pandecode_vertex_compute_geometry_job(const struct MALI_JOB_HEADER *h,
 {
         struct mali_compute_job_packed *PANDECODE_PTR_VAR(p, mem, job);
         pan_section_unpack(p, COMPUTE_JOB, DRAW, draw);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", is_bifrost, gpu_id);
+        pandecode_dcd(&draw, job_no, h->type, "", is_bifrost, gpu_id);
 
         pandecode_log("Vertex Job Payload:\n");
         pandecode_indent++;
@@ -946,7 +945,7 @@ pandecode_tiler_job_bfr(const struct MALI_JOB_HEADER *h,
         struct mali_bifrost_tiler_job_packed *PANDECODE_PTR_VAR(p, mem, job);
         pan_section_unpack(p, BIFROST_TILER_JOB, DRAW, draw);
         pan_section_unpack(p, BIFROST_TILER_JOB, TILER, tiler_ptr);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", true, gpu_id);
+        pandecode_dcd(&draw, job_no, h->type, "", true, gpu_id);
 
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
@@ -970,7 +969,7 @@ pandecode_tiler_job_mdg(const struct MALI_JOB_HEADER *h,
 {
         struct mali_midgard_tiler_job_packed *PANDECODE_PTR_VAR(p, mem, job);
         pan_section_unpack(p, MIDGARD_TILER_JOB, DRAW, draw);
-        pandecode_vertex_tiler_postfix_pre(&draw, job_no, h->type, "", false, gpu_id);
+        pandecode_dcd(&draw, job_no, h->type, "", false, gpu_id);
 
         pandecode_log("Tiler Job Payload:\n");
         pandecode_indent++;
