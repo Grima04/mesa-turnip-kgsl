@@ -269,7 +269,6 @@ VULKAN_FILES := \
 	vulkan/anv_formats.c \
 	vulkan/anv_genX.h \
 	vulkan/anv_image.c \
-	vulkan/anv_intel.c \
 	vulkan/anv_measure.c \
 	vulkan/anv_measure.h \
 	vulkan/anv_nir.h \
