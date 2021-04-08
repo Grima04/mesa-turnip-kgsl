@@ -2638,14 +2638,14 @@ emit_ldunifa(struct v3d_compile *c, struct qreg *result)
                 *result = vir_emit_def(c, ldunifa);
         else
                 vir_emit_nondef(c, ldunifa);
-        c->last_unifa_offset += 4;
+        c->current_unifa_offset += 4;
 }
 
 static void
 ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
         /* Every ldunifa auto-increments the unifa address by 4 bytes, so our
-         * last unifa offset is 4 bytes ahead of the offset of the last load.
+         * current unifa offset is 4 bytes ahead of the offset of the last load.
          */
         static const int32_t max_unifa_skip_dist =
                 MAX_UNIFA_SKIP_DISTANCE - 4;
@@ -2670,17 +2670,17 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         bool skip_unifa = false;
         uint32_t ldunifa_skips = 0;
         if (dynamic_src) {
-                c->last_unifa_block = NULL;
-        } else if (c->cur_block == c->last_unifa_block &&
-                   c->last_unifa_index == index &&
-                   c->last_unifa_offset <= const_offset &&
-                   c->last_unifa_offset + max_unifa_skip_dist >= const_offset) {
+                c->current_unifa_block = NULL;
+        } else if (c->cur_block == c->current_unifa_block &&
+                   c->current_unifa_index == index &&
+                   c->current_unifa_offset <= const_offset &&
+                   c->current_unifa_offset + max_unifa_skip_dist >= const_offset) {
                 skip_unifa = true;
-                ldunifa_skips = (const_offset - c->last_unifa_offset) / 4;
+                ldunifa_skips = (const_offset - c->current_unifa_offset) / 4;
         } else {
-                c->last_unifa_block = c->cur_block;
-                c->last_unifa_index = index;
-                c->last_unifa_offset = const_offset;
+                c->current_unifa_block = c->cur_block;
+                c->current_unifa_index = index;
+                c->current_unifa_offset = const_offset;
         }
 
         if (!skip_unifa) {

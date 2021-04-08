@@ -668,14 +668,14 @@ struct v3d_compile {
          */
         uint32_t min_threads_for_reg_alloc;
 
-        /* Last UBO index and offset used with a unifa/ldunifa sequence and the
-         * block where it was emitted. This is used to skip unifa writes (and
-         * their 3 delay slot) when the next UBO load reads right after the
-         * previous one in the same block.
+        /* The UBO index and block used with the last unifa load, as well as the
+         * current unifa offset *after* emitting that load. This is used to skip
+         * unifa writes (and their 3 delay slot) when the next UBO load reads
+         * right after the previous one in the same block.
          */
-        struct qblock *last_unifa_block;
-        int32_t last_unifa_index;
-        uint32_t last_unifa_offset;
+        struct qblock *current_unifa_block;
+        int32_t current_unifa_index;
+        uint32_t current_unifa_offset;
 
         /* State for whether we're executing on each channel currently.  0 if
          * yes, otherwise a block number + 1 that the channel jumped to.
