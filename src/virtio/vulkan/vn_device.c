@@ -15,7 +15,10 @@
 #include "git_sha1.h"
 #include "util/driconf.h"
 #include "util/mesa-sha1.h"
-#include "venus-protocol/vn_protocol_driver.h"
+#include "venus-protocol/vn_protocol_driver_device.h"
+#include "venus-protocol/vn_protocol_driver_info.h"
+#include "venus-protocol/vn_protocol_driver_instance.h"
+#include "venus-protocol/vn_protocol_driver_transport.h"
 
 #include "vn_device_memory.h"
 #include "vn_icd.h"
