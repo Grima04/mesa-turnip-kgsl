@@ -16,6 +16,7 @@
 #include "venus-protocol/vn_protocol_driver_sampler_ycbcr_conversion.h"
 
 #include "vn_device.h"
+#include "vn_device_memory.h"
 
 /* image commands */
 

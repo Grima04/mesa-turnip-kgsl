@@ -14,6 +14,7 @@
 #include "venus-protocol/vn_protocol_driver_buffer_view.h"
 
 #include "vn_device.h"
+#include "vn_device_memory.h"
 
 /* buffer commands */
 
