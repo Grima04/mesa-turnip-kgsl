@@ -261,7 +261,7 @@ ir3_collect_info(struct ir3_shader_variant *v)
 				nops_count = 1 + instr->repeat;
 				info->instrs_per_cat[0] += nops_count;
 			} else {
-				info->instrs_per_cat[opc_cat(instr->opc)] += instrs_count;
+				info->instrs_per_cat[opc_cat(instr->opc)] += 1 + instr->repeat;
 				info->instrs_per_cat[0] += nops_count;
 			}
 
