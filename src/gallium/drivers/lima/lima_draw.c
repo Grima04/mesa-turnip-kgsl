@@ -1183,6 +1183,17 @@ lima_draw_vbo(struct pipe_context *pctx,
       lima_draw_vbo_indexed(pctx, info, &draws[0]);
    else
       lima_draw_vbo_count(pctx, info, &draws[0]);
+
+   job->draws++;
+   /* Flush job if we hit the limit of draws per job otherwise we may
+    * hit tile heap size limit */
+   if (job->draws > MAX_DRAWS_PER_JOB) {
+      unsigned resolve = job->resolve;
+      lima_do_job(job);
+      job = lima_job_get(ctx);
+      /* Subsequent job will need to resolve the same buffers */
+      lima_update_job_wb(ctx, resolve);
+   }
 }
 
 void

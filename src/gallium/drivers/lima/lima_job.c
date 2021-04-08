@@ -99,6 +99,7 @@ lima_job_create(struct lima_context *ctx)
 
    s->damage_rect.minx = s->damage_rect.miny = 0xffff;
    s->damage_rect.maxx = s->damage_rect.maxy = 0;
+   s->draws = 0;
 
    s->clear.depth = 0x00ffffff;
 
@@ -301,7 +302,7 @@ lima_job_get_damage(struct lima_job *job)
 static bool
 lima_fb_cbuf_needs_reload(struct lima_job *job)
 {
-   if (!(job->key.cbuf && (job->resolve & PIPE_CLEAR_COLOR0)))
+   if (!job->key.cbuf)
       return false;
 
    struct lima_surface *surf = lima_surface(job->key.cbuf);
@@ -323,7 +324,7 @@ lima_fb_cbuf_needs_reload(struct lima_job *job)
 static bool
 lima_fb_zsbuf_needs_reload(struct lima_job *job)
 {
-   if (!(job->key.zsbuf && (job->resolve & (PIPE_CLEAR_DEPTH | PIPE_CLEAR_STENCIL))))
+   if (!job->key.zsbuf)
       return false;
 
    struct lima_surface *surf = lima_surface(job->key.zsbuf);
