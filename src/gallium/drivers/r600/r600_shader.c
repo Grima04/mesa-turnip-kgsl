@@ -179,14 +179,14 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 		pipe_shader_type_from_mesa(sel->nir->info.stage);
 	
 	bool dump = r600_can_dump_shader(&rctx->screen->b, processor);
-	unsigned use_sb = !(rctx->screen->b.debug_flags & DBG_NO_SB) /*&&
-		!(rscreen->b.debug_flags & DBG_NIR)*/;
+	unsigned use_sb = !(rctx->screen->b.debug_flags & (DBG_NO_SB | DBG_NIR)) ||
+                          (rctx->screen->b.debug_flags & DBG_NIR_SB);
 	unsigned sb_disasm;
 	unsigned export_shader;
 	
 	shader->shader.bc.isa = rctx->isa;
 	
-	if (!(rscreen->b.debug_flags & DBG_NIR)) {
+	if (!(rscreen->b.debug_flags & DBG_NIR_PREFERRED)) {
 		assert(sel->ir_type == PIPE_SHADER_IR_TGSI);
 		r = r600_shader_from_tgsi(rctx, shader, key);
 		if (r) {
@@ -221,7 +221,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
 				tgsi_dump(sel->tokens, 0);
 			}
 			
-			if (rscreen->b.debug_flags & DBG_NIR) {
+			if (rscreen->b.debug_flags & (DBG_NIR_PREFERRED)) {
 				fprintf(stderr, "--NIR --------------------------------------------------------\n");
 				nir_print_shader(sel->nir, stderr);
 			}
@@ -286,7 +286,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
            char fname[1024];
            snprintf(fname, 1024, "shader_from_%s_%d.cpp",
                     (sel->ir_type == PIPE_SHADER_IR_TGSI ?
-                        (rscreen->b.debug_flags & DBG_NIR ? "tgsi-nir" : "tgsi")
+                        (rscreen->b.debug_flags & DBG_NIR_PREFERRED ? "tgsi-nir" : "tgsi")
                       : "nir"), nshader);
            f = fopen(fname, "w");
            print_shader_info(f, nshader++, &shader->shader);
@@ -297,7 +297,7 @@ int r600_pipe_shader_create(struct pipe_context *ctx,
               tgsi_dump_to_file(sel->tokens, 0, f);
            }
 
-           if (rscreen->b.debug_flags & DBG_NIR){
+           if (rscreen->b.debug_flags & DBG_NIR_PREFERRED){
               fprintf(f, "/****NIR **********************************\n");
               nir_print_shader(sel->nir, f);
            }

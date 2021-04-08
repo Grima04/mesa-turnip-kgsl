@@ -55,6 +55,7 @@ static const struct debug_named_value r600_debug_options[] = {
 	{ "sbnofallback", DBG_SB_NO_FALLBACK, "Abort on errors instead of fallback" },
 	{ "sbdisasm", DBG_SB_DISASM, "Use sb disassembler for shader dumps" },
 	{ "sbsafemath", DBG_SB_SAFEMATH, "Disable unsafe math optimizations" },
+        { "nirsb", DBG_NIR_SB, "Enable NIR with SB optimizer"},
 
 	DEBUG_NAMED_VALUE_END /* must be last */
 };
@@ -245,7 +246,7 @@ fail:
 }
 
 static bool is_nir_enabled(struct r600_common_screen *screen) {
-   return (screen->debug_flags & DBG_NIR &&
+   return ((screen->debug_flags & DBG_NIR_PREFERRED) &&
        screen->family >= CHIP_CEDAR &&
        screen->family < CHIP_CAYMAN);
 }
