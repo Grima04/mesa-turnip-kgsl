@@ -802,6 +802,12 @@ v3d_update_compiled_vs(struct v3d_context *v3d, uint8_t prim_mode)
                                0, tail_bytes);
                 }
                 key->num_used_outputs = shader_state->num_tf_outputs;
+        } else {
+                key->num_used_outputs = v3d->prog.gs_bin->prog_data.gs->num_inputs;
+                STATIC_ASSERT(sizeof(key->used_outputs) ==
+                              sizeof(v3d->prog.gs_bin->prog_data.gs->input_slots));
+                memcpy(key->used_outputs, v3d->prog.gs_bin->prog_data.gs->input_slots,
+                       sizeof(key->used_outputs));
         }
 
         struct v3d_compiled_shader *cs =
