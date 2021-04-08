@@ -4505,26 +4505,13 @@ VkResult anv_CreateFramebuffer(
     *    If flags includes VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR,
     *    parameter pAttachments is ignored.
     */
-   if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR)) {
+   if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR))
       size += sizeof(struct anv_image_view *) * pCreateInfo->attachmentCount;
-      framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (framebuffer == NULL)
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
-      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-         ANV_FROM_HANDLE(anv_image_view, iview, pCreateInfo->pAttachments[i]);
-         framebuffer->attachments[i] = iview;
-      }
-      framebuffer->attachment_count = pCreateInfo->attachmentCount;
-   } else {
-      framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
-                              VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-      if (framebuffer == NULL)
-         return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
-
-      framebuffer->attachment_count = 0;
-   }
+   framebuffer = vk_alloc2(&device->vk.alloc, pAllocator, size, 8,
+                           VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (framebuffer == NULL)
+      return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    vk_object_base_init(&device->vk, &framebuffer->base,
                        VK_OBJECT_TYPE_FRAMEBUFFER);
@@ -4532,6 +4519,14 @@ VkResult anv_CreateFramebuffer(
    framebuffer->width = pCreateInfo->width;
    framebuffer->height = pCreateInfo->height;
    framebuffer->layers = pCreateInfo->layers;
+
+   if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR)) {
+      for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+         ANV_FROM_HANDLE(anv_image_view, iview, pCreateInfo->pAttachments[i]);
+         framebuffer->attachments[i] = iview;
+      }
+      framebuffer->attachment_count = pCreateInfo->attachmentCount;
+   }
 
    *pFramebuffer = anv_framebuffer_to_handle(framebuffer);
 
