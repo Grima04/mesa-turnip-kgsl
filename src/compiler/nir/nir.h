@@ -4045,6 +4045,8 @@ nir_if *nir_block_get_following_if(nir_block *block);
 
 nir_loop *nir_block_get_following_loop(nir_block *block);
 
+nir_block **nir_block_get_predecessors_sorted(const nir_block *block, void *mem_ctx);
+
 void nir_index_local_regs(nir_function_impl *impl);
 void nir_index_ssa_defs(nir_function_impl *impl);
 unsigned nir_index_instrs(nir_function_impl *impl);

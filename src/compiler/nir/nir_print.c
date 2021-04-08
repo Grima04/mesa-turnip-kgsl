@@ -1410,15 +1410,6 @@ print_instr(const nir_instr *instr, print_state *state, unsigned tabs)
    }
 }
 
-static int
-compare_block_index(const void *p1, const void *p2)
-{
-   const nir_block *block1 = *((const nir_block **) p1);
-   const nir_block *block2 = *((const nir_block **) p2);
-
-   return (int) block1->index - (int) block2->index;
-}
-
 static void print_cf_node(nir_cf_node *node, print_state *state,
                           unsigned tabs);
 
@@ -1430,18 +1421,7 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    print_tabs(tabs, fp);
    fprintf(fp, "block block_%u:\n", block->index);
 
-   /* sort the predecessors by index so we consistently print the same thing */
-
-   nir_block **preds =
-      malloc(block->predecessors->entries * sizeof(nir_block *));
-
-   unsigned i = 0;
-   set_foreach(block->predecessors, entry) {
-      preds[i++] = (nir_block *) entry->key;
-   }
-
-   qsort(preds, block->predecessors->entries, sizeof(nir_block *),
-         compare_block_index);
+   nir_block **preds = nir_block_get_predecessors_sorted(block, NULL);
 
    print_tabs(tabs, fp);
    fprintf(fp, "/* preds: ");
@@ -1450,7 +1430,7 @@ print_block(nir_block *block, print_state *state, unsigned tabs)
    }
    fprintf(fp, "*/\n");
 
-   free(preds);
+   ralloc_free(preds);
 
    nir_foreach_instr(instr, block) {
       print_instr(instr, state, tabs);
