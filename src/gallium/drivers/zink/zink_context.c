@@ -1188,7 +1188,9 @@ zink_begin_render_pass(struct zink_context *ctx, struct zink_batch *batch)
          assert(ctx->framebuffer->rp->state.clears);
       }
       if (zink_fb_clear_needs_explicit(fb_clear)) {
-         for (int j = !zink_fb_clear_element_needs_explicit(clear); j < zink_fb_clear_count(fb_clear); j++)
+         for (int j = !zink_fb_clear_element_needs_explicit(clear);
+              (clear_buffers & PIPE_CLEAR_DEPTHSTENCIL) != PIPE_CLEAR_DEPTHSTENCIL && j < zink_fb_clear_count(fb_clear);
+              j++)
             clear_buffers |= zink_fb_clear_element(fb_clear, j)->zs.bits;
       }
    }
