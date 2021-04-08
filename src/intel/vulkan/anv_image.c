@@ -1624,6 +1624,8 @@ void anv_GetImageSubresourceLayout(
 {
    ANV_FROM_HANDLE(anv_image, image, _image);
 
+   assert(__builtin_popcount(subresource->aspectMask) == 1);
+
    const struct anv_surface *surface;
    if (subresource->aspectMask == VK_IMAGE_ASPECT_PLANE_1_BIT &&
        image->drm_format_mod != DRM_FORMAT_MOD_INVALID &&
@@ -1639,8 +1641,6 @@ void anv_GetImageSubresourceLayout(
                                                  subresource->aspectMask);
       surface = &image->planes[plane].primary_surface;
    }
-
-   assert(__builtin_popcount(subresource->aspectMask) == 1);
 
    layout->offset = surface->memory_range.offset;
    layout->rowPitch = surface->isl.row_pitch_B;
