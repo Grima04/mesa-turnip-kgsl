@@ -105,6 +105,9 @@
  *    indicate this. Ignoring the flag will lead to failures.
  *    The threaded context uses its own buffer invalidation mechanism.
  *
+ * 4) PIPE_MAP_ONCE can no longer be used to infer that a buffer will not be mapped
+ *    a second time before it is unmapped.
+ *
  *
  * Rules for fences
  * ----------------
