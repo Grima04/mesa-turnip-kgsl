@@ -708,16 +708,16 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
    expected_fourcc = 0;
 
    for (i = 0; i < num_attribs && attrib_list; i++) {
-      if ((attrib_list[i].type == VASurfaceAttribPixelFormat) &&
-          (attrib_list[i].flags & VA_SURFACE_ATTRIB_SETTABLE)) {
+      if (!(attrib_list[i].flags & VA_SURFACE_ATTRIB_SETTABLE))
+         continue;
+
+      switch (attrib_list[i].type) {
+      case VASurfaceAttribPixelFormat:
          if (attrib_list[i].value.type != VAGenericValueTypeInteger)
             return VA_STATUS_ERROR_INVALID_PARAMETER;
          expected_fourcc = attrib_list[i].value.value.i;
-      }
-
-      if ((attrib_list[i].type == VASurfaceAttribMemoryType) &&
-          (attrib_list[i].flags & VA_SURFACE_ATTRIB_SETTABLE)) {
-
+         break;
+      case VASurfaceAttribMemoryType:
          if (attrib_list[i].value.type != VAGenericValueTypeInteger)
             return VA_STATUS_ERROR_INVALID_PARAMETER;
 
@@ -729,13 +729,14 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
          default:
             return VA_STATUS_ERROR_UNSUPPORTED_MEMORY_TYPE;
          }
-      }
-
-      if ((attrib_list[i].type == VASurfaceAttribExternalBufferDescriptor) &&
-          (attrib_list[i].flags == VA_SURFACE_ATTRIB_SETTABLE)) {
+         break;
+      case VASurfaceAttribExternalBufferDescriptor:
          if (attrib_list[i].value.type != VAGenericValueTypePointer)
             return VA_STATUS_ERROR_INVALID_PARAMETER;
          memory_attribute = (VASurfaceAttribExternalBuffers *)attrib_list[i].value.value.p;
+         break;
+      default:
+         return VA_STATUS_ERROR_ATTR_NOT_SUPPORTED;
       }
    }
 
