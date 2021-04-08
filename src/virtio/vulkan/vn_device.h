@@ -203,41 +203,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_device_memory,
                                VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 
-struct vn_image {
-   struct vn_object_base base;
-
-   VkMemoryRequirements2 memory_requirements[4];
-   VkMemoryDedicatedRequirements dedicated_requirements[4];
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_image,
-                               base.base,
-                               VkImage,
-                               VK_OBJECT_TYPE_IMAGE)
-
-struct vn_image_view {
-   struct vn_object_base base;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_image_view,
-                               base.base,
-                               VkImageView,
-                               VK_OBJECT_TYPE_IMAGE_VIEW)
-
-struct vn_sampler {
-   struct vn_object_base base;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_sampler,
-                               base.base,
-                               VkSampler,
-                               VK_OBJECT_TYPE_SAMPLER)
-
-struct vn_sampler_ycbcr_conversion {
-   struct vn_object_base base;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_sampler_ycbcr_conversion,
-                               base.base,
-                               VkSamplerYcbcrConversion,
-                               VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
-
 struct vn_event {
    struct vn_object_base base;
 };
