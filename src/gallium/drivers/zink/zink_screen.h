@@ -54,6 +54,8 @@ struct zink_screen {
    bool threaded;
    uint32_t curr_batch; //the current batch id
    uint32_t last_finished; //this is racy but ultimately doesn't matter
+   VkSemaphore sem;
+   VkSemaphore prev_sem;
 
    bool device_lost;
    struct sw_winsys *winsys;
@@ -190,6 +192,10 @@ zink_screen_check_last_finished(struct zink_screen *screen, uint32_t batch_id)
    }
    return screen->last_finished >= batch_id;
 }
+
+bool
+zink_screen_init_semaphore(struct zink_screen *screen);
+
 
 static inline struct zink_screen *
 zink_screen(struct pipe_screen *pipe)

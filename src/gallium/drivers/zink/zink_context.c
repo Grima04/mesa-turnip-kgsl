@@ -301,10 +301,6 @@ zink_context_destroy(struct pipe_context *pctx)
 
    pipe_resource_reference(&ctx->dummy_vertex_buffer, NULL);
    pipe_resource_reference(&ctx->dummy_xfb_buffer, NULL);
-   if (ctx->batch.sem)
-      vkDestroySemaphore(screen->dev, ctx->batch.sem, NULL);
-   if (ctx->batch.prev_sem)
-      vkDestroySemaphore(screen->dev, ctx->batch.prev_sem, NULL);
 
    if (ctx->tc)
       util_queue_destroy(&ctx->batch.flush_queue);
@@ -2028,7 +2024,7 @@ timeline_wait(struct zink_context *ctx, uint32_t batch_id, uint64_t timeout)
    wi.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
    wi.semaphoreCount = 1;
    /* handle batch_id overflow */
-   wi.pSemaphores = batch_id > ctx->curr_batch ? &ctx->batch.prev_sem : &ctx->batch.sem;
+   wi.pSemaphores = batch_id > ctx->curr_batch ? &screen->prev_sem : &screen->sem;
    uint64_t batch_id64 = batch_id;
    wi.pValues = &batch_id64;
    bool success = false;

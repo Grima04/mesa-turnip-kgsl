@@ -154,8 +154,6 @@ create_batch_state(struct zink_context *ctx)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    struct zink_batch_state *bs = rzalloc(NULL, struct zink_batch_state);
    bs->have_timelines = ctx->have_timelines;
-   if (ctx->have_timelines)
-      bs->sem = ctx->batch.sem;
    VkCommandPoolCreateInfo cpci = {};
    cpci.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
    cpci.queueFamilyIndex = screen->gfx_queue;
@@ -252,20 +250,6 @@ get_batch_state(struct zink_context *ctx, struct zink_batch *batch)
    return bs;
 }
 
-static void
-init_semaphore(struct zink_context *ctx, struct zink_batch *batch)
-{
-   struct zink_screen *screen = zink_screen(ctx->base.screen);
-   VkSemaphoreCreateInfo sci = {};
-   VkSemaphoreTypeCreateInfo tci = {};
-   sci.pNext = &tci;
-   sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-   tci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
-   tci.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
-   if (vkCreateSemaphore(screen->dev, &sci, NULL, &batch->sem) != VK_SUCCESS)
-      ctx->have_timelines = false;
-}
-
 void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
@@ -273,18 +257,12 @@ zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
    bool fresh = !batch->state;
 
    if (ctx->have_timelines) {
-      bool do_reset = false;
-      if (screen->last_finished > ctx->curr_batch && ctx->curr_batch == 1) {
-         do_reset = true;
-         /* semaphore signal values can never decrease,
-          * so we need a new semaphore anytime we overflow
-          */
-         if (ctx->batch.prev_sem)
-            vkDestroySemaphore(screen->dev, ctx->batch.prev_sem, NULL);
-         ctx->batch.prev_sem = ctx->batch.sem;
+      if (fresh || (screen->last_finished > ctx->curr_batch && ctx->curr_batch == 1)) {
+         if (!zink_screen_init_semaphore(screen)) {
+            debug_printf("timeline init failed, things are about to go dramatically wrong.");
+            ctx->have_timelines = false;
+         }
       }
-      if (fresh || do_reset)
-         init_semaphore(ctx, batch);
    }
 
    batch->state = get_batch_state(ctx, batch);
@@ -351,7 +329,7 @@ submit_queue(void *data, int thread_index)
       tsi.signalSemaphoreValueCount = 1;
       tsi.pSignalSemaphoreValues = &batch_id;
       si.signalSemaphoreCount = 1;
-      si.pSignalSemaphores = &bs->sem;
+      si.pSignalSemaphores = &zink_screen(bs->ctx->base.screen)->sem;
    }
 
    struct wsi_memory_signal_submit_info mem_signal = {

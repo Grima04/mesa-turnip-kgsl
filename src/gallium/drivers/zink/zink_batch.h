@@ -89,8 +89,6 @@ struct zink_batch {
    uint32_t last_batch_id;
    VkQueue queue; //gfx+compute
    VkQueue thread_queue; //gfx+compute
-   VkSemaphore sem;
-   VkSemaphore prev_sem;
    struct util_queue flush_queue; //TODO: move to wsi
 
    bool has_work;

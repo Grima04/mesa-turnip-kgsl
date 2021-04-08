@@ -956,6 +956,12 @@ zink_destroy_screen(struct pipe_screen *pscreen)
    simple_mtx_destroy(&screen->mem_cache_mtx);
    vkDestroyPipelineCache(screen->dev, screen->pipeline_cache, NULL);
 
+   if (screen->sem)
+      vkDestroySemaphore(screen->dev, screen->sem, NULL);
+   if (screen->prev_sem)
+      vkDestroySemaphore(screen->dev, screen->prev_sem, NULL);
+
+
    vkDestroyDevice(screen->dev, NULL);
    vkDestroyInstance(screen->instance, NULL);
 
@@ -1323,6 +1329,30 @@ populate_format_props(struct zink_screen *screen)
       } else
          vkGetPhysicalDeviceFormatProperties(screen->pdev, format, &screen->format_props[i]);
    }
+}
+
+bool
+zink_screen_init_semaphore(struct zink_screen *screen)
+{
+   VkSemaphoreCreateInfo sci = {};
+   VkSemaphoreTypeCreateInfo tci = {};
+   VkSemaphore sem;
+   sci.pNext = &tci;
+   sci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+   tci.sType = VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO;
+   tci.semaphoreType = VK_SEMAPHORE_TYPE_TIMELINE;
+
+   if (vkCreateSemaphore(screen->dev, &sci, NULL, &sem) == VK_SUCCESS) {
+      /* semaphore signal values can never decrease,
+       * so we need a new semaphore anytime we overflow
+       */
+      if (screen->prev_sem)
+         vkDestroySemaphore(screen->dev, screen->prev_sem, NULL);
+      screen->sem = sem;
+      return true;
+   }
+   screen->info.have_KHR_timeline_semaphore = false;
+   return false;
 }
 
 static uint32_t
