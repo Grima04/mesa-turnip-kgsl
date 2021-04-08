@@ -11294,6 +11294,37 @@ void ngg_nogs_export_primitives(isel_context *ctx)
    end_divergent_if(ctx, &ic);
 }
 
+void ngg_nogs_export_prim_id(isel_context *ctx)
+{
+   if (!ctx->args->options->key.vs_common_out.export_prim_id)
+      return;
+
+   Temp prim_id;
+
+   if (ctx->stage == vertex_ngg) {
+      /* Wait for GS threads to store primitive ID in LDS. */
+      Builder bld(ctx->program, ctx->block);
+      create_workgroup_barrier(bld);
+
+      /* Calculate LDS address where the GS threads stored the primitive ID. */
+      Temp thread_id_in_tg = thread_id_in_threadgroup(ctx);
+      Temp addr = bld.v_mul24_imm(bld.def(v1), thread_id_in_tg, 4u);
+
+      /* Load primitive ID from LDS. */
+      prim_id = load_lds(ctx, 4, bld.tmp(v1), addr, 0u, 4u);
+   } else if (ctx->stage == tess_eval_ngg) {
+      /* TES: Just use the patch ID as the primitive ID. */
+      prim_id = get_arg(ctx, ctx->args->ac.tes_patch_id);
+   } else {
+      unreachable("unsupported NGG non-GS shader stage.");
+   }
+
+   ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
+   ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = prim_id;
+
+   export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, nullptr);
+}
+
 void ngg_nogs_export_vertices(isel_context *ctx)
 {
    Builder bld(ctx->program, ctx->block);
@@ -11303,31 +11334,7 @@ void ngg_nogs_export_vertices(isel_context *ctx)
    create_vs_exports(ctx);
 
    /* Export primitive ID */
-   if (ctx->args->options->key.vs_common_out.export_prim_id) {
-      Temp prim_id;
-
-      if (ctx->stage == vertex_ngg) {
-         /* Wait for GS threads to store primitive ID in LDS. */
-         create_workgroup_barrier(bld);
-
-         /* Calculate LDS address where the GS threads stored the primitive ID. */
-         Temp thread_id_in_tg = thread_id_in_threadgroup(ctx);
-         Temp addr = bld.v_mul24_imm(bld.def(v1), thread_id_in_tg, 4u);
-
-         /* Load primitive ID from LDS. */
-         prim_id = load_lds(ctx, 4, bld.tmp(v1), addr, 0u, 4u);
-      } else if (ctx->stage == tess_eval_ngg) {
-         /* TES: Just use the patch ID as the primitive ID. */
-         prim_id = get_arg(ctx, ctx->args->ac.tes_patch_id);
-      } else {
-         unreachable("unsupported NGG non-GS shader stage.");
-      }
-
-      ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
-      ctx->outputs.temps[VARYING_SLOT_PRIMITIVE_ID * 4u] = prim_id;
-
-      export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, nullptr);
-   }
+   ngg_nogs_export_prim_id(ctx);
 }
 
 void ngg_nogs_prelude(isel_context *ctx)
