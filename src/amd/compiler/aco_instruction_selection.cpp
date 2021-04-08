@@ -10325,33 +10325,6 @@ static void export_vs_psiz_layer_viewport_vrs(isel_context *ctx, int *next_pos)
    ctx->block->instructions.emplace_back(std::move(exp));
 }
 
-static void create_export_phis(isel_context *ctx)
-{
-   /* Used when exports are needed, but the output temps are defined in a preceding block.
-    * This function will set up phis in order to access the outputs in the next block.
-    */
-
-   assert(ctx->block->instructions.back()->opcode == aco_opcode::p_logical_start);
-   aco_ptr<Instruction> logical_start = aco_ptr<Instruction>(ctx->block->instructions.back().release());
-   ctx->block->instructions.pop_back();
-
-   Builder bld(ctx->program, ctx->block);
-
-   for (unsigned slot = 0; slot <= VARYING_SLOT_VAR31; ++slot) {
-      uint64_t mask = ctx->outputs.mask[slot];
-      for (unsigned i = 0; i < 4; ++i) {
-         if (!(mask & (1 << i)))
-            continue;
-
-         Temp old = ctx->outputs.temps[slot * 4 + i];
-         Temp phi = bld.pseudo(aco_opcode::p_phi, bld.def(v1), old, Operand(v1));
-         ctx->outputs.temps[slot * 4 + i] = phi;
-      }
-   }
-
-   bld.insert(std::move(logical_start));
-}
-
 static void create_vs_exports(isel_context *ctx)
 {
    assert(ctx->stage.hw == HWStage::VS || ctx->stage.hw == HWStage::NGG);
@@ -11300,9 +11273,7 @@ void ngg_nogs_export_primitives(isel_context *ctx)
 
 void ngg_nogs_export_prim_id(isel_context *ctx)
 {
-   if (!ctx->args->options->key.vs_common_out.export_prim_id)
-      return;
-
+   assert(ctx->args->options->key.vs_common_out.export_prim_id);
    Temp prim_id;
 
    if (ctx->stage == vertex_ngg) {
@@ -11329,17 +11300,6 @@ void ngg_nogs_export_prim_id(isel_context *ctx)
    export_vs_varying(ctx, VARYING_SLOT_PRIMITIVE_ID, false, nullptr);
 }
 
-void ngg_nogs_export_vertices(isel_context *ctx)
-{
-   Builder bld(ctx->program, ctx->block);
-
-   /* Export VS outputs */
-   create_vs_exports(ctx);
-
-   /* Export primitive ID */
-   ngg_nogs_export_prim_id(ctx);
-}
-
 void ngg_nogs_prelude(isel_context *ctx)
 {
    ngg_emit_sendmsg_gs_alloc_req(ctx);
@@ -11352,18 +11312,18 @@ void ngg_nogs_late_export_finale(isel_context *ctx)
 {
    assert(!ctx->ngg_nogs_early_prim_export);
 
-   /* VS exports are output to registers in a predecessor block. Emit phis to get them into this block. */
-   create_export_phis(ctx);
    /* Export VS/TES primitives. */
    ngg_nogs_export_primitives(ctx);
 
-   /* What comes next must be executed on ES threads. */
-   if_context ic;
-   Temp is_es_thread = merged_wave_info_to_mask(ctx, 0);
-   begin_divergent_if_then(ctx, &ic, is_es_thread);
-   ngg_nogs_export_vertices(ctx);
-   begin_divergent_if_else(ctx, &ic);
-   end_divergent_if(ctx, &ic);
+   /* Export the primitive ID for VS - needs to read LDS written by GS threads. */
+   if (ctx->args->options->key.vs_common_out.export_prim_id && ctx->stage.has(SWStage::VS)) {
+      if_context ic;
+      Temp is_es_thread = merged_wave_info_to_mask(ctx, 0);
+      begin_divergent_if_then(ctx, &ic, is_es_thread);
+      ngg_nogs_export_prim_id(ctx);
+      begin_divergent_if_else(ctx, &ic);
+      end_divergent_if(ctx, &ic);
+   }
 }
 
 std::pair<Temp, Temp> ngg_gs_workgroup_reduce_and_scan(isel_context *ctx, Temp src_mask)
@@ -11853,8 +11813,10 @@ void select_program(Program *program,
 
       if (ctx.stage.hw == HWStage::VS) {
          create_vs_exports(&ctx);
-      } else if (ngg_no_gs && ctx.ngg_nogs_early_prim_export) {
-         ngg_nogs_export_vertices(&ctx);
+      } else if (ngg_no_gs) {
+         create_vs_exports(&ctx);
+         if (ctx.args->options->key.vs_common_out.export_prim_id && (ctx.ngg_nogs_early_prim_export || ctx.stage.has(SWStage::TES)))
+            ngg_nogs_export_prim_id(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
          Builder bld(ctx.program, ctx.block);
          bld.barrier(aco_opcode::p_barrier,
