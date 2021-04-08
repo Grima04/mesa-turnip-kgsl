@@ -2249,6 +2249,7 @@ VkResult anv_CreateSemaphore(
       else
          result = timeline_semaphore_create(device, &semaphore->permanent, timeline_value);
       if (result != VK_SUCCESS) {
+         vk_object_base_finish(&semaphore->base);
          vk_free2(&device->vk.alloc, pAllocator, semaphore);
          return result;
       }
@@ -2259,6 +2260,7 @@ VkResult anv_CreateSemaphore(
       else
          result = timeline_semaphore_create(device, &semaphore->permanent, timeline_value);
       if (result != VK_SUCCESS) {
+         vk_object_base_finish(&semaphore->base);
          vk_free2(&device->vk.alloc, pAllocator, semaphore);
          return result;
       }
@@ -2269,6 +2271,7 @@ VkResult anv_CreateSemaphore(
          semaphore->permanent.type = ANV_SEMAPHORE_TYPE_DRM_SYNCOBJ;
          semaphore->permanent.syncobj = anv_gem_syncobj_create(device, 0);
          if (!semaphore->permanent.syncobj) {
+            vk_object_base_finish(&semaphore->base);
             vk_free2(&device->vk.alloc, pAllocator, semaphore);
             return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
          }
@@ -2278,6 +2281,7 @@ VkResult anv_CreateSemaphore(
       }
    } else {
       assert(!"Unknown handle type");
+      vk_object_base_finish(&semaphore->base);
       vk_free2(&device->vk.alloc, pAllocator, semaphore);
       return vk_error(VK_ERROR_INVALID_EXTERNAL_HANDLE);
    }
