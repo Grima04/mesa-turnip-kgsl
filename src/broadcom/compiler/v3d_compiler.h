@@ -61,6 +61,13 @@
  */
 #define MAX_TMU_QUEUE_SIZE 8
 
+/**
+ * Maximum offset distance in bytes between two consecutive constant UBO loads
+ * for the same UBO where we would favor updating the unifa address by emitting
+ * dummy ldunifa instructions to avoid writing the unifa register.
+ */
+#define MAX_UNIFA_SKIP_DISTANCE 16
+
 struct nir_builder;
 
 struct v3d_fs_inputs {

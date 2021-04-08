@@ -2644,6 +2644,12 @@ emit_ldunifa(struct v3d_compile *c, struct qreg *result)
 static void
 ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
 {
+        /* Every ldunifa auto-increments the unifa address by 4 bytes, so our
+         * last unifa offset is 4 bytes ahead of the offset of the last load.
+         */
+        static const int32_t max_unifa_skip_dist =
+                MAX_UNIFA_SKIP_DISTANCE - 4;
+
         bool dynamic_src = !nir_src_is_const(instr->src[1]);
         uint32_t const_offset =
                 dynamic_src ? 0 : nir_src_as_uint(instr->src[1]);
@@ -2656,7 +2662,10 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 index++;
 
         /* We can only keep track of the last unifa address we used with
-         * constant offset loads.
+         * constant offset loads. If the new load targets the same UBO and
+         * is close enough to the previous load, we can skip the unifa register
+         * write by emitting dummy ldunifa instructions to update the unifa
+         * address.
          */
         bool skip_unifa = false;
         uint32_t ldunifa_skips = 0;
@@ -2665,7 +2674,7 @@ ntq_emit_load_ubo_unifa(struct v3d_compile *c, nir_intrinsic_instr *instr)
         } else if (c->cur_block == c->last_unifa_block &&
                    c->last_unifa_index == index &&
                    c->last_unifa_offset <= const_offset &&
-                   c->last_unifa_offset + 12 >= const_offset) {
+                   c->last_unifa_offset + max_unifa_skip_dist >= const_offset) {
                 skip_unifa = true;
                 ldunifa_skips = (const_offset - c->last_unifa_offset) / 4;
         } else {
