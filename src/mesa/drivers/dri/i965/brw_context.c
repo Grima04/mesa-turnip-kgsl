@@ -1607,7 +1607,7 @@ brw_query_dri2_buffers(struct brw_context *brw,
    __DRIscreen *dri_screen = brw->screen->driScrnPriv;
    struct gl_framebuffer *fb = drawable->driverPrivate;
    int i = 0;
-   unsigned attachments[8];
+   unsigned attachments[__DRI_BUFFER_COUNT];
 
    struct brw_renderbuffer *front_rb;
    struct brw_renderbuffer *back_rb;

@@ -361,7 +361,7 @@ void
 radeon_update_renderbuffers(__DRIcontext *context, __DRIdrawable *drawable,
 			    GLboolean front_only)
 {
-	unsigned int attachments[10];
+	unsigned int attachments[__DRI_BUFFER_COUNT];
 	__DRIbuffer *buffers = NULL;
 	__DRIscreen *screen;
 	struct radeon_renderbuffer *rb;
