@@ -1083,7 +1083,7 @@ zink_transfer_unmap(struct pipe_context *pctx,
       zink_transfer_flush_region(pctx, ptrans, &ptrans->box);
    }
 
-   if (trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res)
+   if (trans->base.b.usage & PIPE_MAP_ONCE && !trans->staging_res && !screen->threaded)
       unmap_resource(screen, res);
    if ((trans->base.b.usage & PIPE_MAP_PERSISTENT) && !(trans->base.b.usage & PIPE_MAP_COHERENT))
       res->obj->persistent_maps--;
