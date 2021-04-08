@@ -565,9 +565,6 @@ anv_image_from_gralloc(VkDevice device_h,
                                                base_info->tiling);
    assert(format != ISL_FORMAT_UNSUPPORTED);
 
-   anv_info.stride = gralloc_info->stride *
-                     (isl_format_get_layout(format)->bpb / 8);
-
    result = anv_image_create(device_h, &anv_info, alloc, &image_h);
    image = anv_image_from_handle(image_h);
    if (result != VK_SUCCESS)
