@@ -571,6 +571,10 @@ emit_alu(struct ir3_context *ctx, nir_alu_instr *alu)
 	case nir_op_imad24_ir3:
 		dst[0] = ir3_MAD_S24(b, src[0], 0, src[1], 0, src[2], 0);
 		break;
+	case nir_op_imul:
+		compile_assert(ctx, nir_dest_bit_size(alu->dest.dest) == 16);
+		dst[0] = ir3_MUL_S24(b, src[0], 0, src[1], 0);
+		break;
 	case nir_op_imul24:
 		dst[0] = ir3_MUL_S24(b, src[0], 0, src[1], 0);
 		break;
