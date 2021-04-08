@@ -203,25 +203,6 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_device_memory,
                                VkDeviceMemory,
                                VK_OBJECT_TYPE_DEVICE_MEMORY)
 
-struct vn_buffer {
-   struct vn_object_base base;
-
-   VkMemoryRequirements2 memory_requirements;
-   VkMemoryDedicatedRequirements dedicated_requirements;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_buffer,
-                               base.base,
-                               VkBuffer,
-                               VK_OBJECT_TYPE_BUFFER)
-
-struct vn_buffer_view {
-   struct vn_object_base base;
-};
-VK_DEFINE_NONDISP_HANDLE_CASTS(vn_buffer_view,
-                               base.base,
-                               VkBufferView,
-                               VK_OBJECT_TYPE_BUFFER_VIEW)
-
 struct vn_image {
    struct vn_object_base base;
 
