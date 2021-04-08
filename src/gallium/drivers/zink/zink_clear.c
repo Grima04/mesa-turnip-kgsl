@@ -252,6 +252,12 @@ zink_clear_framebuffer(struct zink_context *ctx, unsigned clear_buffers)
 {
    unsigned to_clear = 0;
    struct pipe_framebuffer_state *fb_state = &ctx->fb_state;
+#ifndef NDEBUG
+   assert(!(clear_buffers & PIPE_CLEAR_DEPTHSTENCIL) || zink_fb_clear_enabled(ctx, PIPE_MAX_COLOR_BUFS));
+   for (int i = 0; i < fb_state->nr_cbufs && clear_buffers >= PIPE_CLEAR_COLOR0; i++) {
+      assert(!(clear_buffers & (PIPE_CLEAR_COLOR0 << i)) || zink_fb_clear_enabled(ctx, i));
+   }
+#endif
    while (clear_buffers) {
       struct zink_framebuffer_clear *color_clear = NULL;
       struct zink_framebuffer_clear *zs_clear = NULL;
