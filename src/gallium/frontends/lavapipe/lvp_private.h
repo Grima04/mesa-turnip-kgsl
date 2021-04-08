@@ -209,6 +209,8 @@ struct lvp_image {
    VkImageType type;
    VkDeviceSize size;
    uint32_t alignment;
+   struct pipe_memory_allocation *pmem;
+   unsigned memory_offset;
    struct pipe_resource *bo;
 };
 
@@ -1104,6 +1106,8 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
                           struct lvp_fence *fence,
                           struct lvp_cmd_buffer *cmd_buffer);
 
+struct lvp_image *lvp_swapchain_get_image(VkSwapchainKHR swapchain,
+					  uint32_t index);
 enum pipe_format vk_format_to_pipe(VkFormat format);
 
 static inline VkImageAspectFlags

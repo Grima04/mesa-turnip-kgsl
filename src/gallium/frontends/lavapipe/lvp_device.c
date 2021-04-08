@@ -1543,13 +1543,41 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_BindImageMemory2(VkDevice _device,
 {
    LVP_FROM_HANDLE(lvp_device, device, _device);
    for (uint32_t i = 0; i < bindInfoCount; ++i) {
-      LVP_FROM_HANDLE(lvp_device_memory, mem, pBindInfos[i].memory);
-      LVP_FROM_HANDLE(lvp_image, image, pBindInfos[i].image);
+      const VkBindImageMemoryInfo *bind_info = &pBindInfos[i];
+      LVP_FROM_HANDLE(lvp_device_memory, mem, bind_info->memory);
+      LVP_FROM_HANDLE(lvp_image, image, bind_info->image);
+      bool did_bind = false;
 
-      device->pscreen->resource_bind_backing(device->pscreen,
-                                             image->bo,
-                                             mem->pmem,
-                                             pBindInfos[i].memoryOffset);
+      vk_foreach_struct_const(s, bind_info->pNext) {
+         switch (s->sType) {
+         case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR: {
+            const VkBindImageMemorySwapchainInfoKHR *swapchain_info =
+               (const VkBindImageMemorySwapchainInfoKHR *) s;
+            struct lvp_image *swapchain_image =
+               lvp_swapchain_get_image(swapchain_info->swapchain,
+                                       swapchain_info->imageIndex);
+
+            image->pmem = swapchain_image->pmem;
+            image->memory_offset = swapchain_image->memory_offset;
+            device->pscreen->resource_bind_backing(device->pscreen,
+                                                   image->bo,
+                                                   image->pmem,
+                                                   image->memory_offset);
+            did_bind = true;
+         }
+         default:
+            break;
+         }
+      }
+
+      if (!did_bind) {
+         image->pmem = mem->pmem;
+         image->memory_offset = bind_info->memoryOffset;
+         device->pscreen->resource_bind_backing(device->pscreen,
+                                                image->bo,
+                                                mem->pmem,
+                                                bind_info->memoryOffset);
+      }
    }
    return VK_SUCCESS;
 }
