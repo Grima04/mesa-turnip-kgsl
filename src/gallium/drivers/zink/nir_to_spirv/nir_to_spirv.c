@@ -3066,11 +3066,30 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
       store_dest(ctx, &tex->dest, result, tex->dest_type);
       return;
    }
-   SpvId actual_dest_type = dest_type;
+   SpvId actual_dest_type;
    if (dref)
       actual_dest_type =
          spirv_builder_type_float(&ctx->builder,
                                   nir_dest_bit_size(tex->dest));
+   else {
+      unsigned num_components = nir_dest_num_components(tex->dest);
+      switch (nir_alu_type_get_base_type(tex->dest_type)) {
+      case nir_type_int:
+         actual_dest_type = get_ivec_type(ctx, 32, num_components);
+         break;
+
+      case nir_type_uint:
+         actual_dest_type = get_uvec_type(ctx, 32, num_components);
+         break;
+
+      case nir_type_float:
+         actual_dest_type = get_fvec_type(ctx, 32, num_components);
+         break;
+
+      default:
+         unreachable("unexpected nir_alu_type");
+      }
+   }
 
    SpvId result;
    if (offset)
@@ -3087,7 +3106,7 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                  load, coord, emit_uint_const(ctx, 32, tex->component),
                                                  lod, sample, const_offset, offset, dref);
       } else
-         result = spirv_builder_emit_image_fetch(&ctx->builder, dest_type,
+         result = spirv_builder_emit_image_fetch(&ctx->builder, actual_dest_type,
                                                  image, coord, lod, sample, const_offset, offset);
    } else {
       result = spirv_builder_emit_image_sample(&ctx->builder,
@@ -3107,6 +3126,11 @@ emit_tex(struct ntv_context *ctx, nir_tex_instr *tex)
                                                       dest_type,
                                                       components,
                                                       4);
+   }
+
+   if (nir_dest_bit_size(tex->dest) != 32) {
+      /* convert FP32 to FP16 */
+      result = emit_unop(ctx, SpvOpFConvert, dest_type, result);
    }
 
    store_dest(ctx, &tex->dest, result, tex->dest_type);
