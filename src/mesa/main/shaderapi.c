@@ -2623,7 +2623,7 @@ _mesa_copy_linked_program_data(const struct gl_shader_program *src,
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      dst->info.cs.shared_size = src->Comp.SharedSize;
+      dst->info.shared_size = src->Comp.SharedSize;
       break;
    }
    default:

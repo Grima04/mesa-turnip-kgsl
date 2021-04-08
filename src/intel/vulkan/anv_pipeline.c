@@ -1717,15 +1717,15 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                  nir_var_mem_shared, nir_address_format_32bit_offset);
 
       if (stage.nir->info.cs.zero_initialize_shared_memory &&
-          stage.nir->info.cs.shared_size > 0) {
+          stage.nir->info.shared_size > 0) {
          /* The effective Shared Local Memory size is at least 1024 bytes and
           * is always rounded to a power of two, so it is OK to align the size
           * used by the shader to chunk_size -- which does simplify the logic.
           */
          const unsigned chunk_size = 16;
-         const unsigned shared_size = ALIGN(stage.nir->info.cs.shared_size, chunk_size);
+         const unsigned shared_size = ALIGN(stage.nir->info.shared_size, chunk_size);
          assert(shared_size <=
-                calculate_gen_slm_size(compiler->devinfo->ver, stage.nir->info.cs.shared_size));
+                calculate_gen_slm_size(compiler->devinfo->ver, stage.nir->info.shared_size));
 
          NIR_PASS_V(stage.nir, nir_zero_initialize_shared_memory,
                     shared_size, chunk_size);

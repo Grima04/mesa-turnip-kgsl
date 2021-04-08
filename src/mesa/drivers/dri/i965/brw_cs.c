@@ -92,7 +92,7 @@ brw_codegen_cs_prog(struct brw_context *brw,
 
    memset(&prog_data, 0, sizeof(prog_data));
 
-   if (cp->program.info.cs.shared_size > 64 * 1024) {
+   if (cp->program.info.shared_size > 64 * 1024) {
       cp->program.sh.data->LinkStatus = LINKING_FAILURE;
       const char *error_str =
          "Compute shader used more than 64KB of shared variables";

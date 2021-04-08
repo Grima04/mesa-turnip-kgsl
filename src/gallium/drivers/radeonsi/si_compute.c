@@ -237,7 +237,7 @@ static void *si_create_compute_state(struct pipe_context *ctx, const struct pipe
       si_const_and_shader_buffer_descriptors_idx(PIPE_SHADER_COMPUTE);
    sel->sampler_and_images_descriptors_index =
       si_sampler_and_image_descriptors_idx(PIPE_SHADER_COMPUTE);
-   sel->info.base.cs.shared_size = cso->req_local_mem;
+   sel->info.base.shared_size = cso->req_local_mem;
    program->shader.selector = &program->sel;
    program->ir_type = cso->ir_type;
    program->private_size = cso->req_private_mem;
@@ -481,9 +481,9 @@ static bool si_switch_compute_shader(struct si_context *sctx, struct si_compute 
        * tracker, then we will set LDS_SIZE to 512 bytes rather than 256.
        */
       if (sctx->chip_class <= GFX6) {
-         lds_blocks += align(program->sel.info.base.cs.shared_size, 256) >> 8;
+         lds_blocks += align(program->sel.info.base.shared_size, 256) >> 8;
       } else {
-         lds_blocks += align(program->sel.info.base.cs.shared_size, 512) >> 9;
+         lds_blocks += align(program->sel.info.base.shared_size, 512) >> 9;
       }
 
       /* TODO: use si_multiwave_lds_size_workaround */
@@ -625,7 +625,7 @@ static void si_setup_user_sgprs_co_v2(struct si_context *sctx, const amd_kernel_
       dispatch.grid_size_z = util_cpu_to_le32(info->grid[2] * info->block[2]);
 
       dispatch.private_segment_size = util_cpu_to_le32(program->private_size);
-      dispatch.group_segment_size = util_cpu_to_le32(program->sel.info.base.cs.shared_size);
+      dispatch.group_segment_size = util_cpu_to_le32(program->sel.info.base.shared_size);
 
       dispatch.kernarg_address = util_cpu_to_le64(kernel_args_va);
 

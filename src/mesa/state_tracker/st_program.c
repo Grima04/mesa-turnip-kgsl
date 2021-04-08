@@ -548,7 +548,7 @@ st_create_nir_shader(struct st_context *st, struct pipe_shader_state *state)
    case MESA_SHADER_COMPUTE: {
       struct pipe_compute_state cs = {0};
       cs.ir_type = state->type;
-      cs.req_local_mem = nir->info.cs.shared_size;
+      cs.req_local_mem = nir->info.shared_size;
 
       if (state->type == PIPE_SHADER_IR_NIR)
          cs.prog = state->ir.nir;
@@ -890,7 +890,7 @@ st_create_common_variant(struct st_context *st,
    case MESA_SHADER_COMPUTE: {
       struct pipe_compute_state cs = {0};
       cs.ir_type = state.type;
-      cs.req_local_mem = stp->Base.info.cs.shared_size;
+      cs.req_local_mem = stp->Base.info.shared_size;
 
       if (state.type == PIPE_SHADER_IR_NIR)
          cs.prog = state.ir.nir;

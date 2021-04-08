@@ -426,7 +426,7 @@ static LLVMValueRef si_llvm_get_block_size(struct ac_shader_abi *abi)
 static void si_llvm_declare_compute_memory(struct si_shader_context *ctx)
 {
    struct si_shader_selector *sel = ctx->shader->selector;
-   unsigned lds_size = sel->info.base.cs.shared_size;
+   unsigned lds_size = sel->info.base.shared_size;
 
    LLVMTypeRef i8p = LLVMPointerType(ctx->ac.i8, AC_ADDR_SPACE_LDS);
    LLVMValueRef var;
@@ -487,7 +487,7 @@ static bool si_nir_build_llvm(struct si_shader_context *ctx, struct nir_shader *
                                                       nir->info.cs.user_data_components_amd);
       }
 
-      if (ctx->shader->selector->info.base.cs.shared_size)
+      if (ctx->shader->selector->info.base.shared_size)
          si_llvm_declare_compute_memory(ctx);
    }
 

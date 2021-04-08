@@ -217,7 +217,7 @@ pan_shader_compile(const struct panfrost_device *dev,
                                  &info->varyings.input_count);
                 break;
         case MESA_SHADER_COMPUTE:
-                info->wls_size = s->info.cs.shared_size;
+                info->wls_size = s->info.shared_size;
                 break;
         default:
                 unreachable("Unknown shader state");

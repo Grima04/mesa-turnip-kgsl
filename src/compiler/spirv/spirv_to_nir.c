@@ -6066,7 +6066,7 @@ spirv_to_nir(const uint32_t *words, size_t word_count,
          const bool align_to_stride = false;
          size = MAX2(size, glsl_get_explicit_size(var->type, align_to_stride));
       }
-      b->shader->info.cs.shared_size = size;
+      b->shader->info.shared_size = size;
       b->shader->shared_size = size;
    }
 

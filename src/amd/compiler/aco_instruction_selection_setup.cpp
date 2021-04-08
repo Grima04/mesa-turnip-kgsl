@@ -474,7 +474,7 @@ setup_variables(isel_context *ctx, nir_shader *nir)
       break;
    }
    case MESA_SHADER_COMPUTE: {
-      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.cs.shared_size, ctx->program->dev.lds_encoding_granule);
+      ctx->program->config->lds_size = DIV_ROUND_UP(nir->info.shared_size, ctx->program->dev.lds_encoding_granule);
       break;
    }
    case MESA_SHADER_VERTEX: {

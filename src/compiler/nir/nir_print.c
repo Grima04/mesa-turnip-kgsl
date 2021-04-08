@@ -1629,7 +1629,7 @@ nir_print_shader_annotated(nir_shader *shader, FILE *fp,
               shader->info.cs.local_size[1],
               shader->info.cs.local_size[2],
               shader->info.cs.local_size_variable ? " (variable)" : "");
-      fprintf(fp, "shared-size: %u\n", shader->info.cs.shared_size);
+      fprintf(fp, "shared-size: %u\n", shader->info.shared_size);
    }
 
    fprintf(fp, "inputs: %u\n", shader->num_inputs);

@@ -5083,7 +5083,7 @@ static void setup_shared(struct ac_nir_context *ctx, struct nir_shader *nir)
    if (ctx->ac.lds)
       return;
 
-   LLVMTypeRef type = LLVMArrayType(ctx->ac.i8, nir->info.cs.shared_size);
+   LLVMTypeRef type = LLVMArrayType(ctx->ac.i8, nir->info.shared_size);
 
    LLVMValueRef lds =
       LLVMAddGlobalInAddressSpace(ctx->ac.module, type, "compute_lds", AC_ADDR_SPACE_LDS);

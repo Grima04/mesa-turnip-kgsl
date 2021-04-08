@@ -674,7 +674,7 @@ lvp_pipeline_compile(struct lvp_pipeline *pipeline,
       struct pipe_compute_state shstate = {0};
       shstate.prog = (void *)pipeline->pipeline_nir[MESA_SHADER_COMPUTE];
       shstate.ir_type = PIPE_SHADER_IR_NIR;
-      shstate.req_local_mem = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.cs.shared_size;
+      shstate.req_local_mem = pipeline->pipeline_nir[MESA_SHADER_COMPUTE]->info.shared_size;
       pipeline->shader_cso[PIPE_SHADER_COMPUTE] = device->queue.ctx->create_compute_state(device->queue.ctx, &shstate);
    } else {
       struct pipe_shader_state shstate = {0};

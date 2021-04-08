@@ -9445,7 +9445,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    const bool debug_enabled = INTEL_DEBUG & DEBUG_CS;
 
    prog_data->base.stage = MESA_SHADER_COMPUTE;
-   prog_data->base.total_shared = nir->info.cs.shared_size;
+   prog_data->base.total_shared = nir->info.shared_size;
 
    /* Generate code for all the possible SIMD variants. */
    bool generate_all;

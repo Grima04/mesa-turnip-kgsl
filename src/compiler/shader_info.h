@@ -183,6 +183,11 @@ typedef struct shader_info {
    /* SPV_KHR_float_controls: execution mode for floating point ops */
    uint16_t float_controls_execution_mode;
 
+   /**
+    * Size of shared variables accessed by compute/task/mesh shaders.
+    */
+   unsigned shared_size;
+
    uint16_t inlinable_uniform_dw_offsets[MAX_INLINABLE_UNIFORMS];
    uint8_t num_inlinable_uniforms:4;
 
@@ -376,11 +381,6 @@ typedef struct shader_info {
          enum gl_derivative_group derivative_group:2;
 
          bool zero_initialize_shared_memory;
-
-         /**
-          * Size of shared variables accessed by the compute shader.
-          */
-         unsigned shared_size;
 
          /**
           * pointer size is:

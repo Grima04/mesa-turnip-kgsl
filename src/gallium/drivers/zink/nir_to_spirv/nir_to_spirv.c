@@ -3666,8 +3666,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
                                            s->info.gs.vertices_out);
       break;
    case MESA_SHADER_COMPUTE:
-      if (s->info.cs.shared_size)
-         create_shared_block(&ctx, s->info.cs.shared_size);
+      if (s->info.shared_size)
+         create_shared_block(&ctx, s->info.shared_size);
 
       if (s->info.cs.local_size[0] || s->info.cs.local_size[1] || s->info.cs.local_size[2])
          spirv_builder_emit_exec_mode_literal3(&ctx.builder, entry_point, SpvExecutionModeLocalSize,

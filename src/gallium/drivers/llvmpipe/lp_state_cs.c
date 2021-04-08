@@ -456,10 +456,10 @@ llvmpipe_create_compute_state(struct pipe_context *pipe,
       shader->base.type = PIPE_SHADER_IR_NIR;
 
       pipe->screen->finalize_nir(pipe->screen, shader->base.ir.nir, false);
-      shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.cs.shared_size;
+      shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
    } else if (templ->ir_type == PIPE_SHADER_IR_NIR) {
       shader->base.ir.nir = (struct nir_shader *)templ->prog;
-      shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.cs.shared_size;
+      shader->req_local_mem += ((struct nir_shader *)shader->base.ir.nir)->info.shared_size;
    }
    if (shader->base.type == PIPE_SHADER_IR_TGSI) {
       /* get/save the summary info for this shader */

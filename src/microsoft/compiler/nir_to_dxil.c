@@ -4039,7 +4039,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
       }
    }
 
-   if (s->info.cs.shared_size && shader_has_shared_ops(s)) {
+   if (s->info.shared_size && shader_has_shared_ops(s)) {
       const struct dxil_type *type;
       unsigned size;
 
@@ -4053,7 +4053,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
       * pointer is in the groupshared address space, making the 32-bit -> 64-bit
       * pointer cast impossible.
       */
-      size = ALIGN_POT(s->info.cs.shared_size, sizeof(uint32_t));
+      size = ALIGN_POT(s->info.shared_size, sizeof(uint32_t));
       type = dxil_module_get_array_type(&ctx->mod,
                                         dxil_module_get_int_type(&ctx->mod, 32),
                                         size / sizeof(uint32_t));

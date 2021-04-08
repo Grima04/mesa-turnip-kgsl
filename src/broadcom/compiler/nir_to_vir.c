@@ -3642,7 +3642,7 @@ nir_to_vir(struct v3d_compile *c)
                         ffs(util_next_power_of_two(MAX2(wg_size, 64))) - 1;
                 assert(c->local_invocation_index_bits <= 8);
 
-                if (c->s->info.cs.shared_size) {
+                if (c->s->info.shared_size) {
                         struct qreg wg_in_mem = vir_SHR(c, c->cs_payload[1],
                                                         vir_uniform_ui(c, 16));
                         if (c->s->info.cs.local_size[0] != 1 ||
@@ -3655,7 +3655,7 @@ nir_to_vir(struct v3d_compile *c)
                                                     vir_uniform_ui(c, wg_mask));
                         }
                         struct qreg shared_per_wg =
-                                vir_uniform_ui(c, c->s->info.cs.shared_size);
+                                vir_uniform_ui(c, c->s->info.shared_size);
 
                         c->cs_shared_offset =
                                 vir_ADD(c,
