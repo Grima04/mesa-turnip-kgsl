@@ -10360,6 +10360,8 @@ static void create_vs_exports(isel_context *ctx)
                                   ? &ctx->program->info->tes.outinfo
                                   : &ctx->program->info->vs.outinfo;
 
+   ctx->block->kind |= block_kind_export_end;
+
    if (outinfo->export_prim_id && ctx->stage.hw != HWStage::NGG) {
       ctx->outputs.mask[VARYING_SLOT_PRIMITIVE_ID] |= 0x1;
       if (ctx->stage.has(SWStage::TES))
@@ -10701,6 +10703,8 @@ static void create_fs_exports(isel_context *ctx)
 
    if (!exported)
       create_fs_null_export(ctx);
+
+   ctx->block->kind |= block_kind_export_end;
 }
 
 static void create_workgroup_barrier(Builder& bld)
@@ -11330,7 +11334,6 @@ void ngg_nogs_export_vertices(isel_context *ctx)
    Builder bld(ctx->program, ctx->block);
 
    /* Export VS outputs */
-   ctx->block->kind |= block_kind_export_end;
    create_vs_exports(ctx);
 
    /* Export primitive ID */
@@ -11687,7 +11690,6 @@ void ngg_gs_export_vertices(isel_context *ctx, Temp wg_vtx_cnt, Temp tid_in_tg, 
 
    /* Export the vertex parameters. */
    create_vs_exports(ctx);
-   ctx->block->kind |= block_kind_export_end;
 
    begin_divergent_if_else(ctx, &ic);
    end_divergent_if(ctx, &ic);
@@ -11851,7 +11853,6 @@ void select_program(Program *program,
 
       if (ctx.stage.hw == HWStage::VS) {
          create_vs_exports(&ctx);
-         ctx.block->kind |= block_kind_export_end;
       } else if (ngg_no_gs && ctx.ngg_nogs_early_prim_export) {
          ngg_nogs_export_vertices(&ctx);
       } else if (nir->info.stage == MESA_SHADER_GEOMETRY && !ngg_gs) {
@@ -11863,7 +11864,6 @@ void select_program(Program *program,
 
       if (ctx.stage == fragment_fs) {
          create_fs_exports(&ctx);
-         ctx.block->kind |= block_kind_export_end;
       }
 
       if (endif_merged_wave_info) {
@@ -11966,7 +11966,6 @@ void select_gs_copy_shader(Program *program, struct nir_shader *gs_shader,
 
       if (stream == 0) {
          create_vs_exports(&ctx);
-         ctx.block->kind |= block_kind_export_end;
       }
 
       if (!stream_id.isConstant()) {
