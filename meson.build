@@ -1605,6 +1605,8 @@ if with_llvm
 
   if draw_with_llvm
     pre_args += '-DDRAW_LLVM_AVAILABLE'
+  elif with_swrast_vk
+    error('Lavapipe requires LLVM draw support.')
   elif with_gallium_swr
     error('SWR requires LLVM draw support.')
   endif
@@ -1634,8 +1636,8 @@ if with_llvm
       cpp_args += '-fno-rtti'
     endif
   endif
-elif with_amd_vk or with_gallium_radeonsi or with_gallium_swr
-  error('The following drivers require LLVM: Radv, RadeonSI, SWR. One of these is enabled, but LLVM is disabled.')
+elif with_amd_vk or with_gallium_radeonsi or with_gallium_swr or with_swrast_vk
+  error('The following drivers require LLVM: Radv, RadeonSI, SWR, Lavapipe. One of these is enabled, but LLVM is disabled.')
 elif with_gallium_opencl
   error('The OpenCL "Clover" state tracker requires LLVM, but LLVM is disabled.')
 elif with_microsoft_clc
