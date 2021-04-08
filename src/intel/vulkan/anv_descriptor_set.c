@@ -880,6 +880,7 @@ VkResult anv_CreateDescriptorPool(
                                             0 /* explicit_address */,
                                             &pool->bo);
       if (result != VK_SUCCESS) {
+         vk_object_base_finish(&pool->base);
          vk_free2(&device->vk.alloc, pAllocator, pool);
          return result;
       }
