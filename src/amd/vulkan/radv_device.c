@@ -7056,22 +7056,11 @@ VkResult radv_CreateFramebuffer(
 	framebuffer->layers = pCreateInfo->layers;
 	framebuffer->imageless = !!imageless_create_info;
 
-	if (imageless_create_info) {
-		for (unsigned i = 0; i < imageless_create_info->attachmentImageInfoCount; ++i) {
-			const VkFramebufferAttachmentImageInfo *attachment =
-				imageless_create_info->pAttachmentImageInfos + i;
-			framebuffer->width = MIN2(framebuffer->width, attachment->width);
-			framebuffer->height = MIN2(framebuffer->height, attachment->height);
-			framebuffer->layers = MIN2(framebuffer->layers, attachment->layerCount);
-		}
-	} else {
+	if (!imageless_create_info) {
 		for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 			VkImageView _iview = pCreateInfo->pAttachments[i];
 			struct radv_image_view *iview = radv_image_view_from_handle(_iview);
 			framebuffer->attachments[i] = iview;
-			framebuffer->width = MIN2(framebuffer->width, iview->extent.width);
-			framebuffer->height = MIN2(framebuffer->height, iview->extent.height);
-			framebuffer->layers = MIN2(framebuffer->layers, radv_surface_max_layer_count(iview));
 		}
 	}
 
