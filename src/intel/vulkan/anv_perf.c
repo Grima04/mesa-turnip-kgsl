@@ -218,8 +218,8 @@ VkResult anv_AcquirePerformanceConfigurationINTEL(
    ANV_FROM_HANDLE(anv_device, device, _device);
    struct anv_performance_configuration_intel *config;
 
-   config = vk_alloc(&device->vk.alloc, sizeof(*config), 8,
-                     VK_SYSTEM_ALLOCATION_SCOPE_DEVICE);
+   config = vk_object_alloc(&device->vk, NULL, sizeof(*config),
+                            VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL);
    if (!config)
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
@@ -228,7 +228,7 @@ VkResult anv_AcquirePerformanceConfigurationINTEL(
          gen_perf_load_configuration(device->physical->perf, device->fd,
                                      GEN_PERF_QUERY_GUID_MDAPI);
       if (!config->register_config) {
-         vk_free(&device->vk.alloc, config);
+         vk_object_free(&device->vk, NULL, config);
          return VK_INCOMPLETE;
       }
 
@@ -237,15 +237,12 @@ VkResult anv_AcquirePerformanceConfigurationINTEL(
                                       config->register_config, NULL /* guid */);
       if (ret < 0) {
          ralloc_free(config->register_config);
-         vk_free(&device->vk.alloc, config);
+         vk_object_free(&device->vk, NULL, config);
          return VK_INCOMPLETE;
       }
 
       config->config_id = ret;
    }
-
-   vk_object_base_init(&device->vk, &config->base,
-                       VK_OBJECT_TYPE_PERFORMANCE_CONFIGURATION_INTEL);
 
    *pConfiguration = anv_performance_configuration_intel_to_handle(config);
 
@@ -263,8 +260,8 @@ VkResult anv_ReleasePerformanceConfigurationINTEL(
       intel_ioctl(device->fd, DRM_IOCTL_I915_PERF_REMOVE_CONFIG, &config->config_id);
 
    ralloc_free(config->register_config);
-   vk_object_base_finish(&config->base);
-   vk_free(&device->vk.alloc, config);
+
+   vk_object_free(&device->vk, NULL, config);
 
    return VK_SUCCESS;
 }

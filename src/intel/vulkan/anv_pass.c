@@ -328,15 +328,13 @@ VkResult anv_CreateRenderPass2(
    VK_MULTIALLOC_DECL(&ma, struct anv_subpass_attachment, subpass_attachments,
                       subpass_attachment_count);
 
-   if (!vk_multialloc_alloc2(&ma, &device->vk.alloc, pAllocator,
-                             VK_SYSTEM_ALLOCATION_SCOPE_OBJECT))
+   if (!vk_object_multizalloc(&device->vk, &ma, pAllocator,
+                              VK_OBJECT_TYPE_RENDER_PASS))
       return vk_error(VK_ERROR_OUT_OF_HOST_MEMORY);
 
    /* Clear the subpasses along with the parent pass. This required because
     * each array member of anv_subpass must be a valid pointer if not NULL.
     */
-   memset(pass, 0, ma.size);
-   vk_object_base_init(&device->vk, &pass->base, VK_OBJECT_TYPE_RENDER_PASS);
    pass->attachment_count = pCreateInfo->attachmentCount;
    pass->subpass_count = pCreateInfo->subpassCount;
    pass->attachments = attachments;
@@ -468,8 +466,7 @@ void anv_DestroyRenderPass(
    if (!pass)
       return;
 
-   vk_object_base_finish(&pass->base);
-   vk_free2(&device->vk.alloc, pAllocator, pass);
+   vk_object_free(&device->vk, pAllocator, pass);
 }
 
 void anv_GetRenderAreaGranularity(
