@@ -2991,10 +2991,30 @@ ntq_emit_intrinsic(struct v3d_compile *c, nir_intrinsic_instr *instr)
                 break;
 
         case nir_intrinsic_load_per_vertex_input: {
-                /* col: vertex index, row = varying index */
+                /* The vertex shader writes all its used outputs into
+                 * consecutive VPM offsets, so if any output component is
+                 * unused, its VPM offset is used by the next used
+                 * component. This means that we can't assume that each
+                 * location will use 4 consecutive scalar offsets in the VPM
+                 * and we need to compute the VPM offset for each input by
+                 * going through the inputs and finding the one that matches
+                 * our location and component.
+                 *
+                 * col: vertex index, row = varying index
+                 */
+                int32_t row_idx = -1;
+                for (int i = 0; i < c->num_inputs; i++) {
+                        struct v3d_varying_slot slot = c->input_slots[i];
+                        if (v3d_slot_get_slot(slot) == nir_intrinsic_io_semantics(instr).location &&
+                            v3d_slot_get_component(slot) == nir_intrinsic_component(instr)) {
+                                row_idx = i;
+                                break;
+                        }
+                }
+
+                assert(row_idx != -1);
+
                 struct qreg col = ntq_get_src(c, instr->src[0], 0);
-                uint32_t row_idx = nir_intrinsic_base(instr) * 4 +
-                                   nir_intrinsic_component(instr);
                 for (int i = 0; i < instr->num_components; i++) {
                         struct qreg row = vir_uniform_ui(c, row_idx++);
                         ntq_store_dest(c, &instr->dest, i,
