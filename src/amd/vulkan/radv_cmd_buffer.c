@@ -2307,6 +2307,37 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
           */
          radv_load_ds_clear_metadata(cmd_buffer, iview);
       }
+   } else if (subpass->vrs_attachment && cmd_buffer->device->vrs.image) {
+      /* When a subpass uses a VRS attachment without binding a depth/stencil attachment, we have to
+       * bind our internal depth buffer that contains the VRS data as part of HTILE.
+       */
+      VkImageLayout layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+      struct radv_image *image = cmd_buffer->device->vrs.image;
+      struct radv_ds_buffer_info ds;
+      struct radv_image_view iview;
+
+      radv_image_view_init(&iview, cmd_buffer->device,
+                           &(VkImageViewCreateInfo){
+                              .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                              .image = radv_image_to_handle(image),
+                              .viewType = radv_meta_get_view_type(image),
+                              .format = image->vk_format,
+                              .subresourceRange =
+                                 {
+                                    .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                                    .baseMipLevel = 0,
+                                    .levelCount = 1,
+                                    .baseArrayLayer = 0,
+                                    .layerCount = 1,
+                                 },
+                           },
+                           NULL);
+
+      radv_initialise_ds_surface(cmd_buffer->device, &ds, &iview);
+
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, image->bo);
+
+      radv_emit_fb_ds_state(cmd_buffer, &ds, &iview, layout, false);
    } else {
       if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9)
          radeon_set_context_reg_seq(cmd_buffer->cs, R_028038_DB_Z_INFO, 2);
