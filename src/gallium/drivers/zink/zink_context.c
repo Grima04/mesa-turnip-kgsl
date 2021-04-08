@@ -1947,11 +1947,11 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
       dmb.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
       dmb.pNext = NULL;
       dmb.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-      dmb.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+      dmb.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
       vkCmdPipelineBarrier(
          ctx->batch.state->cmdbuf,
          VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
-         VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
          0,
          1, &dmb,
          0, NULL,
@@ -1959,17 +1959,17 @@ zink_texture_barrier(struct pipe_context *pctx, unsigned flags)
       );
    } else {
       bmb.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      bmb.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+      bmb.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
    }
    if (ctx->framebuffer->state.num_attachments > 1) {
       bmb.srcAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-      bmb.dstAccessMask |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+      bmb.dstAccessMask |= VK_ACCESS_SHADER_READ_BIT;
    }
    if (bmb.srcAccessMask)
       vkCmdPipelineBarrier(
          ctx->batch.state->cmdbuf,
          VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-         VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
          0,
          1, &bmb,
          0, NULL,
