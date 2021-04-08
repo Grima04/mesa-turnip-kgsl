@@ -11785,6 +11785,10 @@ void select_program(Program *program,
             fix_ls_vgpr_init_bug(&ctx, startpgm);
 
          split_arguments(&ctx, startpgm);
+
+         if (program->stage.has(SWStage::VS) || program->stage.has(SWStage::TES)) {
+            Builder(ctx.program, ctx.block).sopp(aco_opcode::s_setprio, -1u, 0x3u);
+         }
       }
 
       if (ngg_no_gs)
