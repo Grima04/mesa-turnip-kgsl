@@ -841,7 +841,8 @@ zink_shader_create(struct zink_screen *screen, struct nir_shader *nir,
       create_vs_pushconst(nir);
    else if (nir->info.stage == MESA_SHADER_TESS_CTRL ||
             nir->info.stage == MESA_SHADER_TESS_EVAL) {
-      NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in | nir_var_shader_out, UINT_MAX);
+      NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_shader_in |
+                 nir_var_shader_out, UINT32_MAX);
       NIR_PASS_V(nir, nir_lower_io_arrays_to_elements_no_indirects, false);
    } else if (nir->info.stage == MESA_SHADER_KERNEL)
       create_cs_pushconst(nir);
