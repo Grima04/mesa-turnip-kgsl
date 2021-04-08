@@ -315,13 +315,13 @@ emit_tmu_general_store_writes(struct v3d_compile *c,
          * are enabled in the writemask and emit the TMUD
          * instructions for them.
          */
+        assert(*writemask != 0);
         uint32_t first_component = ffs(*writemask) - 1;
         uint32_t last_component = first_component;
         while (*writemask & BITFIELD_BIT(last_component + 1))
                 last_component++;
 
-        assert(first_component >= 0 &&
-               first_component <= last_component &&
+        assert(first_component <= last_component &&
                last_component < instr->num_components);
 
         for (int i = first_component; i <= last_component; i++) {
