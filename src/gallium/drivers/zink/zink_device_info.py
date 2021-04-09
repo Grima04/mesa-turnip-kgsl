@@ -131,6 +131,10 @@ EXTENSIONS = [
     Extension("VK_EXT_4444_formats",
         alias="format_4444",
         features=True),
+    Extension("VK_EXT_scalar_block_layout",
+        alias="scalar_block_layout",
+        features=True,
+        conditions=["$feats.scalarBlockLayout"]),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
