@@ -34,6 +34,7 @@
 # - layout, per enum util_format_layout, in shortened lower caps
 # - pixel block's width
 # - pixel block's height
+# - pixel block's depth, in number of pixels
 # - channel encoding (only meaningful for plain layout), containing for each
 #   channel the following information:
 #   - type, one of
