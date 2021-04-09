@@ -214,6 +214,9 @@ radv_render_pass_compile(struct radv_render_pass *pass)
           subpass->ds_resolve_attachment->attachment == VK_ATTACHMENT_UNUSED)
          subpass->ds_resolve_attachment = NULL;
 
+      if (subpass->vrs_attachment && subpass->vrs_attachment->attachment == VK_ATTACHMENT_UNUSED)
+         subpass->vrs_attachment = NULL;
+
       for (uint32_t j = 0; j < subpass->attachment_count; j++) {
          struct radv_subpass_attachment *subpass_att = &subpass->attachments[j];
          if (subpass_att->attachment == VK_ATTACHMENT_UNUSED)
@@ -297,11 +300,14 @@ radv_num_subpass_attachments2(const VkSubpassDescription2 *desc)
 {
    const VkSubpassDescriptionDepthStencilResolve *ds_resolve =
       vk_find_struct_const(desc->pNext, SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE);
+   const VkFragmentShadingRateAttachmentInfoKHR *vrs =
+      vk_find_struct_const(desc->pNext, FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
 
    return desc->inputAttachmentCount + desc->colorAttachmentCount +
           (desc->pResolveAttachments ? desc->colorAttachmentCount : 0) +
           (desc->pDepthStencilAttachment != NULL) +
-          (ds_resolve && ds_resolve->pDepthStencilResolveAttachment);
+          (ds_resolve && ds_resolve->pDepthStencilResolveAttachment) +
+          (vrs && vrs->pFragmentShadingRateAttachment);
 }
 
 static bool
@@ -496,6 +502,18 @@ radv_CreateRenderPass2(VkDevice _device, const VkRenderPassCreateInfo2 *pCreateI
 
          subpass->depth_resolve_mode = ds_resolve->depthResolveMode;
          subpass->stencil_resolve_mode = ds_resolve->stencilResolveMode;
+      }
+
+      const VkFragmentShadingRateAttachmentInfoKHR *vrs =
+         vk_find_struct_const(desc->pNext, FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR);
+
+      if (vrs && vrs->pFragmentShadingRateAttachment) {
+         subpass->vrs_attachment = p++;
+
+         *subpass->vrs_attachment = (struct radv_subpass_attachment){
+            .attachment = vrs->pFragmentShadingRateAttachment->attachment,
+            .layout = vrs->pFragmentShadingRateAttachment->layout,
+         };
       }
    }
 

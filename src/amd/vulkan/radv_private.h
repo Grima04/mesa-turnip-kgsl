@@ -2283,6 +2283,7 @@ struct radv_subpass {
    struct radv_subpass_attachment *resolve_attachments;
    struct radv_subpass_attachment *depth_stencil_attachment;
    struct radv_subpass_attachment *ds_resolve_attachment;
+   struct radv_subpass_attachment *vrs_attachment;
    VkResolveModeFlagBits depth_resolve_mode;
    VkResolveModeFlagBits stencil_resolve_mode;
 
