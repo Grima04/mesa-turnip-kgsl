@@ -793,7 +793,7 @@ add_primary_surface(struct anv_device *device,
                       ANV_IMAGE_MEMORY_BINDING_PLANE_0 + plane, offset);
 }
 
-#ifdef DEBUG
+#ifndef NDEBUG
 static bool MUST_CHECK
 memory_range_is_aligned(struct anv_image_memory_range memory_range)
 {
