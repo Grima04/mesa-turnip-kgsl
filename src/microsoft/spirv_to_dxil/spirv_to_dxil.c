@@ -110,6 +110,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
    NIR_PASS_V(nir, nir_lower_samplers);
+   NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
 
    struct nir_to_dxil_options opts = {.vulkan_environment = true};
 
