@@ -16,3 +16,10 @@ dEQP-GLES31.functional.ssbo.layout.random.all_shared_buffer.36
 # Some compute jobs take more 0.5s, the maximum allowed by the
 # kernel driver
 dEQP-GLES31.functional.draw_indirect.compute_interop.large.*
+
+# Numerical instability causes failures with FP16. Forcing highp in the GLSL
+# compiler is one workaround, but these tests are suspected to be buggy with a
+# fix pending upstream. See
+# https://gitlab.freedesktop.org/mesa/mesa/-/merge_requests/10394
+dEQP-GLES3.functional.shaders.matrix.inverse.dynamic.mediump_mat2_float_vertex
+dEQP-GLES3.functional.shaders.matrix.inverse.dynamic.lowp_mat2_float_vertex
