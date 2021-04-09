@@ -1687,6 +1687,125 @@ equals_gfx_program(const void *a, const void *b)
    return memcmp(a, b, sizeof(struct zink_shader *) * (ZINK_SHADER_COUNT)) == 0;
 }
 
+/* TODO: remove for wsi */
+static void
+copy_scanout(struct zink_context *ctx, struct zink_resource *res)
+{
+   VkImageCopy region = {};
+   struct pipe_box box = {0, 0, 0,
+                          u_minify(res->base.b.width0, 0),
+                          u_minify(res->base.b.height0, 0), res->base.b.array_size};
+   box.depth = util_num_layers(&res->base.b, 0);
+   struct pipe_box *src_box = &box;
+   unsigned dstz = 0;
+
+   region.srcSubresource.aspectMask = res->aspect;
+   region.srcSubresource.mipLevel = 0;
+   switch (res->base.b.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.srcSubresource.baseArrayLayer = src_box->z;
+      region.srcSubresource.layerCount = src_box->depth;
+      region.srcOffset.z = 0;
+      region.extent.depth = 1;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
+      region.srcSubresource.baseArrayLayer = 0;
+      region.srcSubresource.layerCount = 1;
+      region.srcOffset.z = src_box->z;
+      region.extent.depth = src_box->depth;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.srcSubresource.baseArrayLayer = 0;
+      region.srcSubresource.layerCount = 1;
+      region.srcOffset.z = 0;
+      region.extent.depth = 1;
+   }
+
+   region.srcOffset.x = src_box->x;
+   region.srcOffset.y = src_box->y;
+
+   region.dstSubresource.aspectMask = res->aspect;
+   region.dstSubresource.mipLevel = 0;
+   switch (res->base.b.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.dstSubresource.baseArrayLayer = dstz;
+      region.dstSubresource.layerCount = src_box->depth;
+      region.dstOffset.z = 0;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
+      region.dstSubresource.baseArrayLayer = 0;
+      region.dstSubresource.layerCount = 1;
+      region.dstOffset.z = dstz;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.dstSubresource.baseArrayLayer = 0;
+      region.dstSubresource.layerCount = 1;
+      region.dstOffset.z = 0;
+   }
+
+   region.dstOffset.x = 0;
+   region.dstOffset.y = 0;
+   region.extent.width = src_box->width;
+   region.extent.height = src_box->height;
+   zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+   VkImageSubresourceRange isr = {
+      res->aspect,
+      0, VK_REMAINING_MIP_LEVELS,
+      0, VK_REMAINING_ARRAY_LAYERS
+   };
+   VkImageMemoryBarrier imb = {
+      VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      NULL,
+      0,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_QUEUE_FAMILY_IGNORED,
+      VK_QUEUE_FAMILY_IGNORED,
+      res->scanout_obj->image,
+      isr
+   };
+   vkCmdPipelineBarrier(
+      ctx->batch.state->cmdbuf,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      0,
+      0, NULL,
+      0, NULL,
+      1, &imb
+   );
+
+   vkCmdCopyImage(ctx->batch.state->cmdbuf, res->obj->image, res->layout,
+                  res->scanout_obj->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                  1, &region);
+   imb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   imb.dstAccessMask = 0;
+   imb.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   imb.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+   vkCmdPipelineBarrier(
+      ctx->batch.state->cmdbuf,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+      0,
+      0, NULL,
+      0, NULL,
+      1, &imb
+   );
+}
+
 static void
 zink_flush(struct pipe_context *pctx,
            struct pipe_fence_handle **pfence,
@@ -1704,14 +1823,14 @@ zink_flush(struct pipe_context *pctx,
       zink_begin_render_pass(ctx, batch);
    }
 
-   if (flags & PIPE_FLUSH_END_OF_FRAME && ctx->fb_state.nr_cbufs) {
+   if (flags & PIPE_FLUSH_END_OF_FRAME) {
       zink_end_render_pass(ctx, batch);
-      for (int i = 0; i < ctx->fb_state.nr_cbufs; i++)
-         zink_resource_image_barrier(ctx, batch,
-                                     ctx->fb_state.cbufs[i] ? zink_resource(ctx->fb_state.cbufs[i]->texture) : NULL,
-                                     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, 0, 0);
-      if (zink_screen(pctx->screen)->needs_mesa_flush_wsi && ctx->fb_state.cbufs[0])
-         batch->state->flush_res = zink_resource(ctx->fb_state.cbufs[0]->texture);
+      if (ctx->flush_res) {
+         copy_scanout(ctx, ctx->flush_res);
+         if (zink_screen(pctx->screen)->needs_mesa_flush_wsi)
+            batch->state->flush_res = ctx->flush_res;
+         ctx->flush_res = NULL;
+      }
    }
 
    if (!batch->has_work) {
@@ -2047,9 +2166,15 @@ zink_memory_barrier(struct pipe_context *pctx, unsigned flags)
 }
 
 static void
-zink_flush_resource(struct pipe_context *pipe,
-                    struct pipe_resource *resource)
+zink_flush_resource(struct pipe_context *pctx,
+                    struct pipe_resource *pres)
 {
+   struct zink_context *ctx = zink_context(pctx);
+   /* TODO: this is not futureproof and should be updated once proper
+    * WSI support is added
+    */
+   if (pres->bind & (PIPE_BIND_SHARED | PIPE_BIND_SCANOUT))
+      ctx->flush_res = zink_resource(pres);
 }
 
 void

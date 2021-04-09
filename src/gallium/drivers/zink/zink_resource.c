@@ -162,6 +162,7 @@ zink_resource_destroy(struct pipe_screen *pscreen,
       util_range_destroy(&res->valid_buffer_range);
 
    zink_resource_object_reference(screen, &res->obj, NULL);
+   zink_resource_object_reference(screen, &res->scanout_obj, NULL);
    threaded_resource_deinit(pres);
    FREE(res);
 }
@@ -248,7 +249,7 @@ get_image_usage(struct zink_screen *screen, VkImageTiling tiling, const struct p
       usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
    if (feats & VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
       usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)
+   if (feats & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT && !((bind & (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT)) == (PIPE_BIND_LINEAR | PIPE_BIND_SCANOUT)))
       usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
 
    if ((templ->nr_samples <= 1 || screen->info.feats.features.shaderStorageImageMultisample) &&
@@ -359,6 +360,8 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
 
    VkMemoryRequirements reqs = {};
    VkMemoryPropertyFlags flags;
+   bool scanout = templ->bind & PIPE_BIND_SCANOUT;
+   bool shared = templ->bind & PIPE_BIND_SHARED;
 
    pipe_reference_init(&obj->reference, 1);
    util_dynarray_init(&obj->desc_set_refs.refs, NULL);
@@ -382,8 +385,13 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          emici.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
          ici.pNext = &emici;
 
-         /* TODO: deal with DRM modifiers here */
-         ici.tiling = VK_IMAGE_TILING_LINEAR;
+         if (ici.tiling == VK_IMAGE_TILING_OPTIMAL) {
+            // TODO: remove for wsi
+            ici.pNext = NULL;
+            scanout = false;
+            shared = false;
+         }
+
       }
 
       if (optimal_tiling)
@@ -417,7 +425,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          .scanout = true,
       };
 
-      if (screen->needs_mesa_wsi && (templ->bind & PIPE_BIND_SCANOUT)) {
+      if (screen->needs_mesa_wsi && scanout) {
          image_wsi_info.pNext = ici.pNext;
          ici.pNext = &image_wsi_info;
       }
@@ -460,7 +468,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
    }
 
    VkExportMemoryAllocateInfo emai = {};
-   if (templ->bind & PIPE_BIND_SHARED) {
+   if (templ->bind & PIPE_BIND_SHARED && shared) {
       emai.sType = VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO;
       emai.handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
 
@@ -487,7 +495,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
       NULL,
    };
 
-   if (screen->needs_mesa_wsi && (templ->bind & PIPE_BIND_SCANOUT)) {
+   if (screen->needs_mesa_wsi && scanout) {
       memory_wsi_info.implicit_sync = true;
 
       memory_wsi_info.pNext = mai.pNext;
@@ -574,6 +582,13 @@ resource_create(struct pipe_screen *pscreen,
       res->layout = VK_IMAGE_LAYOUT_UNDEFINED;
       res->optimal_tiling = optimal_tiling;
       res->aspect = aspect_from_format(templ->format);
+      if (res->base.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED) && optimal_tiling) {
+         // TODO: remove for wsi
+         struct pipe_resource templ2 = res->base.b;
+         templ2.bind = (res->base.b.bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED)) | PIPE_BIND_LINEAR;
+         res->scanout_obj = resource_object_create(screen, &templ2, whandle, &optimal_tiling);
+         assert(!optimal_tiling);
+      }
    }
 
    if (screen->winsys && (templ->bind & PIPE_BIND_DISPLAY_TARGET)) {
@@ -606,6 +621,8 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
 {
    struct zink_resource *res = zink_resource(tex);
    struct zink_screen *screen = zink_screen(pscreen);
+   //TODO: remove for wsi
+   struct zink_resource_object *obj = res->scanout_obj ? res->scanout_obj : res->obj;
 
    if (res->base.b.target != PIPE_BUFFER) {
       VkImageSubresource sub_res = {};
@@ -613,7 +630,7 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
 
       sub_res.aspectMask = res->aspect;
 
-      vkGetImageSubresourceLayout(screen->dev, res->obj->image, &sub_res, &sub_res_layout);
+      vkGetImageSubresourceLayout(screen->dev, obj->image, &sub_res, &sub_res_layout);
 
       whandle->stride = sub_res_layout.rowPitch;
    }
@@ -623,7 +640,8 @@ zink_resource_get_handle(struct pipe_screen *pscreen,
       VkMemoryGetFdInfoKHR fd_info = {};
       int fd;
       fd_info.sType = VK_STRUCTURE_TYPE_MEMORY_GET_FD_INFO_KHR;
-      fd_info.memory = res->obj->mem;
+      //TODO: remove for wsi
+      fd_info.memory = obj->mem;
       fd_info.handleType = VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT;
       VkResult result = (*screen->vk_GetMemoryFdKHR)(screen->dev, &fd_info, &fd);
       if (result != VK_SUCCESS)

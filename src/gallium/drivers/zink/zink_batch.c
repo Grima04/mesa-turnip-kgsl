@@ -338,7 +338,7 @@ submit_queue(void *data, int thread_index)
    };
 
    if (bs->flush_res) {
-      mem_signal.memory = bs->flush_res->obj->mem;
+      mem_signal.memory = bs->flush_res->scanout_obj ? bs->flush_res->scanout_obj->mem : bs->flush_res->obj->mem;
       si.pNext = &mem_signal;
    }
 

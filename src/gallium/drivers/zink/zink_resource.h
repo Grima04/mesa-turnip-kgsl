@@ -88,6 +88,7 @@ struct zink_resource {
    VkAccessFlags access;
 
    struct zink_resource_object *obj;
+   struct zink_resource_object *scanout_obj; //TODO: remove for wsi
    union {
       struct util_range valid_buffer_range;
       struct {
