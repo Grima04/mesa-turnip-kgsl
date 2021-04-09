@@ -770,7 +770,7 @@ meson-android:
     LLVM_VERSION: ""
     PKG_CONFIG_LIBDIR: "/disable/non/android/system/pc/files"
   script:
-    - PKG_CONFIG_PATH=/usr/local/lib/aarch64-linux-android/pkgconfig/:/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/pkgconfig/ CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost,vc4,v3d VULKAN_DRIVERS=freedreno,broadcom .gitlab-ci/meson/build.sh
+    - PKG_CONFIG_PATH=/usr/local/lib/aarch64-linux-android/pkgconfig/:/android-ndk-r21d/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/pkgconfig/ CROSS=aarch64-linux-android GALLIUM_DRIVERS=etnaviv,freedreno,lima,panfrost,vc4,v3d VULKAN_DRIVERS=freedreno,broadcom,virtio-experimental .gitlab-ci/meson/build.sh
     # x86_64 build:
     # Can't do Intel because gen_decoder.c currently requires libexpat, which
     # is not a dependency that AOSP wants to accept.  Can't do Radeon because
@@ -873,7 +873,7 @@ meson-clang:
       -D glvnd=true
     DRI_DRIVERS: "auto"
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
     CC: "ccache clang-10"
     CXX: "ccache clang++-10"
 
@@ -961,7 +961,7 @@ meson-vulkan:
       -D c_args=-fno-sanitize-recover=all
       -D cpp_args=-fno-sanitize-recover=all
     UBSAN_OPTIONS: "print_stacktrace=1"
-    VULKAN_DRIVERS: intel,amd,freedreno,broadcom
+    VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
     EXTRA_OPTION: >
       -D vulkan-layers=device-select,overlay
       -D build-aco-tests=true
@@ -973,7 +973,7 @@ meson-i386:
     - .use-i386_build
   variables:
     CROSS: i386
-    VULKAN_DRIVERS: intel,amd,swrast
+    VULKAN_DRIVERS: intel,amd,swrast,virtio-experimental
     GALLIUM_DRIVERS: "iris,nouveau,r300,r600,radeonsi,swrast,virgl,zink"
     DRI_DRIVERS: "i915,i965,r100,r200,nouveau"
     EXTRA_OPTION: >
