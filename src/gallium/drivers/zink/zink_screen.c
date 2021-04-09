@@ -1203,6 +1203,11 @@ load_device_extensions(struct zink_screen *screen)
    }
 #endif // VK_EXTX_PORTABILITY_SUBSET_EXTENSION_NAME
 
+   if (screen->info.have_KHR_swapchain) {
+      GET_PROC_ADDR(CreateSwapchainKHR);
+      GET_PROC_ADDR(DestroySwapchainKHR);
+   }
+
    return true;
 }
 

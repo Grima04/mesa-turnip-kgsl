@@ -146,6 +146,9 @@ struct zink_screen {
    PFN_vkGetIOSurfaceMVK vk_GetIOSurfaceMVK;
 #endif
 
+   PFN_vkCreateSwapchainKHR vk_CreateSwapchainKHR;
+   PFN_vkDestroySwapchainKHR vk_DestroySwapchainKHR;
+
    struct {
       bool dual_color_blend_by_location;
       bool inline_uniforms;

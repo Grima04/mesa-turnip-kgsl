@@ -137,6 +137,7 @@ EXTENSIONS = [
         alias="scalar_block_layout",
         features=True,
         conditions=["$feats.scalarBlockLayout"]),
+    Extension("VK_KHR_swapchain"),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
