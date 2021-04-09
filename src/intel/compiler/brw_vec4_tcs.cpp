@@ -390,7 +390,8 @@ brw_compile_tcs(const struct brw_compiler *compiler,
    if (key->quads_workaround)
       brw_nir_apply_tcs_quads_workaround(nir);
 
-   brw_postprocess_nir(nir, compiler, is_scalar, debug_enabled);
+   brw_postprocess_nir(nir, compiler, is_scalar, debug_enabled,
+                       key->base.robust_buffer_access);
 
    bool has_primitive_id =
       BITSET_TEST(nir->info.system_values_read, SYSTEM_VALUE_PRIMITIVE_ID);

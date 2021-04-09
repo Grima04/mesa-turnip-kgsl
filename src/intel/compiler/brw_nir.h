@@ -135,7 +135,8 @@ bool brw_nir_lower_mem_access_bit_sizes(nir_shader *shader,
 void brw_postprocess_nir(nir_shader *nir,
                          const struct brw_compiler *compiler,
                          bool is_scalar,
-                         bool debug_enabled);
+                         bool debug_enabled,
+                         bool robust_buffer_access);
 
 bool brw_nir_clamp_image_1d_2d_array_sizes(nir_shader *shader);
 

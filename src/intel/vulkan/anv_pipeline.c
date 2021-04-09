@@ -394,6 +394,7 @@ populate_sampler_prog_key(const struct gen_device_info *devinfo,
 static void
 populate_base_prog_key(const struct gen_device_info *devinfo,
                        VkPipelineShaderStageCreateFlags flags,
+                       bool robust_buffer_acccess,
                        struct brw_base_prog_key *key)
 {
    if (flags & VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT)
@@ -401,17 +402,20 @@ populate_base_prog_key(const struct gen_device_info *devinfo,
    else
       key->subgroup_size_type = BRW_SUBGROUP_SIZE_API_CONSTANT;
 
+   key->robust_buffer_access = robust_buffer_acccess;
+
    populate_sampler_prog_key(devinfo, &key->tex);
 }
 
 static void
 populate_vs_prog_key(const struct gen_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
+                     bool robust_buffer_acccess,
                      struct brw_vs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, &key->base);
+   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 
    /* XXX: Handle vertex input work-arounds */
 
@@ -421,12 +425,13 @@ populate_vs_prog_key(const struct gen_device_info *devinfo,
 static void
 populate_tcs_prog_key(const struct gen_device_info *devinfo,
                       VkPipelineShaderStageCreateFlags flags,
+                      bool robust_buffer_acccess,
                       unsigned input_vertices,
                       struct brw_tcs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, &key->base);
+   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 
    key->input_vertices = input_vertices;
 }
@@ -434,33 +439,36 @@ populate_tcs_prog_key(const struct gen_device_info *devinfo,
 static void
 populate_tes_prog_key(const struct gen_device_info *devinfo,
                       VkPipelineShaderStageCreateFlags flags,
+                      bool robust_buffer_acccess,
                       struct brw_tes_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, &key->base);
+   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 }
 
 static void
 populate_gs_prog_key(const struct gen_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
+                     bool robust_buffer_acccess,
                      struct brw_gs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, &key->base);
+   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 }
 
 static void
 populate_wm_prog_key(const struct gen_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
+                     bool robust_buffer_acccess,
                      const struct anv_subpass *subpass,
                      const VkPipelineMultisampleStateCreateInfo *ms_info,
                      struct brw_wm_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, &key->base);
+   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 
    /* We set this to 0 here and set to the actual value before we call
     * brw_compile_fs.
@@ -510,12 +518,13 @@ populate_wm_prog_key(const struct gen_device_info *devinfo,
 static void
 populate_cs_prog_key(const struct gen_device_info *devinfo,
                      VkPipelineShaderStageCreateFlags flags,
+                     bool robust_buffer_acccess,
                      const VkPipelineShaderStageRequiredSubgroupSizeCreateInfoEXT *rss_info,
                      struct brw_cs_prog_key *key)
 {
    memset(key, 0, sizeof(*key));
 
-   populate_base_prog_key(devinfo, flags, &key->base);
+   populate_base_prog_key(devinfo, flags, robust_buffer_acccess, &key->base);
 
    if (rss_info) {
       assert(key->base.subgroup_size_type != BRW_SUBGROUP_SIZE_VARYING);
@@ -1269,23 +1278,31 @@ anv_pipeline_compile_graphics(struct anv_graphics_pipeline *pipeline,
       const struct gen_device_info *devinfo = &pipeline->base.device->info;
       switch (stage) {
       case MESA_SHADER_VERTEX:
-         populate_vs_prog_key(devinfo, sinfo->flags, &stages[stage].key.vs);
+         populate_vs_prog_key(devinfo, sinfo->flags,
+                              pipeline->base.device->robust_buffer_access,
+                              &stages[stage].key.vs);
          break;
       case MESA_SHADER_TESS_CTRL:
          populate_tcs_prog_key(devinfo, sinfo->flags,
+                               pipeline->base.device->robust_buffer_access,
                                info->pTessellationState->patchControlPoints,
                                &stages[stage].key.tcs);
          break;
       case MESA_SHADER_TESS_EVAL:
-         populate_tes_prog_key(devinfo, sinfo->flags, &stages[stage].key.tes);
+         populate_tes_prog_key(devinfo, sinfo->flags,
+                               pipeline->base.device->robust_buffer_access,
+                               &stages[stage].key.tes);
          break;
       case MESA_SHADER_GEOMETRY:
-         populate_gs_prog_key(devinfo, sinfo->flags, &stages[stage].key.gs);
+         populate_gs_prog_key(devinfo, sinfo->flags,
+                              pipeline->base.device->robust_buffer_access,
+                              &stages[stage].key.gs);
          break;
       case MESA_SHADER_FRAGMENT: {
          const bool raster_enabled =
             !info->pRasterizationState->rasterizerDiscardEnable;
          populate_wm_prog_key(devinfo, sinfo->flags,
+                              pipeline->base.device->robust_buffer_access,
                               pipeline->subpass,
                               raster_enabled ? info->pMultisampleState : NULL,
                               &stages[stage].key.wm);
@@ -1662,6 +1679,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                            PIPELINE_SHADER_STAGE_REQUIRED_SUBGROUP_SIZE_CREATE_INFO_EXT);
 
    populate_cs_prog_key(&pipeline->base.device->info, info->stage.flags,
+                        pipeline->base.device->robust_buffer_access,
                         rss_info, &stage.key.cs);
 
    ANV_FROM_HANDLE(anv_pipeline_layout, layout, info->layout);

@@ -256,6 +256,8 @@ struct brw_base_prog_key {
    enum brw_subgroup_size_type subgroup_size_type;
 
    struct brw_sampler_prog_key_data tex;
+
+   bool robust_buffer_access;
 };
 
 /**
