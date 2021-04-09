@@ -355,7 +355,7 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
    bool needs_reset;
    enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, &needs_reset);
 
-   if (status != PIPE_NO_RESET) {
+   if (status != PIPE_NO_RESET && !(sctx->context_flags & SI_CONTEXT_FLAG_AUX)) {
       /* Call the gallium frontend to set a no-op API dispatch. */
       if (sctx->device_reset_callback.reset) {
          sctx->device_reset_callback.reset(sctx->device_reset_callback.data, status);
