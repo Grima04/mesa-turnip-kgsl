@@ -162,7 +162,7 @@ calculate_iterations(ir_rvalue *from, ir_rvalue *to, ir_rvalue *increment,
          iter = new(mem_ctx) ir_constant(int32_t(iter_value + bias[i]));
          break;
       case GLSL_TYPE_INT16:
-         iter = new(mem_ctx) ir_constant(uint16_t(iter_value + bias[i]));
+         iter = new(mem_ctx) ir_constant(int16_t(iter_value + bias[i]));
          break;
       case GLSL_TYPE_INT64:
          iter = new(mem_ctx) ir_constant(int64_t(iter_value + bias[i]));
