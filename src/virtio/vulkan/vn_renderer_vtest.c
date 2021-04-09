@@ -908,7 +908,6 @@ vtest_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
 
    info->has_dmabuf_import = false;
    info->has_cache_management = false;
-   info->has_timeline_sync = true;
    info->has_external_sync = false;
    info->has_implicit_fencing = false;
 

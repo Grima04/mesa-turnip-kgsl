@@ -1250,9 +1250,6 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
          props->apiVersion = VK_HEADER_VERSION_COMPLETE;
       if (props->apiVersion > vn_info_vk_xml_version())
          props->apiVersion = vn_info_vk_xml_version();
-      if (!instance->renderer_info.has_timeline_sync &&
-          props->apiVersion >= VK_API_VERSION_1_2)
-         props->apiVersion = VK_MAKE_VERSION(1, 1, 130);
    }
 
    props->driverVersion = vk_get_driver_version();
@@ -1503,8 +1500,6 @@ vn_physical_device_init_extensions(struct vn_physical_device *physical_dev)
    struct vk_device_extension_table recognized;
    vn_physical_device_get_supported_extensions(physical_dev, &supported,
                                                &recognized);
-   if (!instance->renderer_info.has_timeline_sync)
-      recognized.KHR_timeline_semaphore = false;
 
    physical_dev->extension_spec_versions =
       vk_zalloc(alloc,

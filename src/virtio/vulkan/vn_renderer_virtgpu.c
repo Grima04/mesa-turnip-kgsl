@@ -1248,7 +1248,6 @@ virtgpu_get_info(struct vn_renderer *renderer, struct vn_renderer_info *info)
     */
    info->has_cache_management = false;
    /* TODO drm_syncobj */
-   info->has_timeline_sync = false;
    info->has_external_sync = false;
 
    info->has_implicit_fencing = false;

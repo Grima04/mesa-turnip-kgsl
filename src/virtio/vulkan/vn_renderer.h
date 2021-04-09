@@ -106,7 +106,6 @@ struct vn_renderer_info {
 
    bool has_dmabuf_import;
    bool has_cache_management;
-   bool has_timeline_sync;
    bool has_external_sync;
    bool has_implicit_fencing;
 
