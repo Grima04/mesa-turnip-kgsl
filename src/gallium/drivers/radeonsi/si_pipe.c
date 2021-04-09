@@ -620,6 +620,8 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
    if (sscreen->info.has_hw_decode) {
       sctx->b.create_video_codec = si_uvd_create_decoder;
       sctx->b.create_video_buffer = si_video_buffer_create;
+      if (screen->resource_create_with_modifiers)
+         sctx->b.create_video_buffer_with_modifiers = si_video_buffer_create_with_modifiers;
    } else {
       sctx->b.create_video_codec = vl_create_decoder;
       sctx->b.create_video_buffer = vl_video_buffer_create;
