@@ -1590,8 +1590,19 @@ tu_CmdCopyImage(VkCommandBuffer commandBuffer,
    TU_FROM_HANDLE(tu_image, src_image, srcImage);
    TU_FROM_HANDLE(tu_image, dst_image, destImage);
 
-   for (uint32_t i = 0; i < regionCount; ++i)
+   for (uint32_t i = 0; i < regionCount; ++i) {
+      if (src_image->vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT) {
+         VkImageCopy info = pRegions[i];
+         u_foreach_bit(b, pRegions[i].dstSubresource.aspectMask) {
+            info.srcSubresource.aspectMask = BIT(b);
+            info.dstSubresource.aspectMask = BIT(b);
+            tu_copy_image_to_image(cmd, src_image, dst_image, &info);
+         }
+         continue;
+      }
+
       tu_copy_image_to_image(cmd, src_image, dst_image, pRegions + i);
+   }
 }
 
 static void
