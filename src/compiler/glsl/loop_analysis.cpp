@@ -107,7 +107,7 @@ calculate_iterations(ir_rvalue *from, ir_rvalue *to, ir_rvalue *increment,
       return -1;
    }
 
-   if (!iter->type->is_integer_32() && !iter->type->is_integer_64()) {
+   if (!iter->type->is_integer()) {
       const ir_expression_operation op = iter->type->is_double()
          ? ir_unop_d2i : ir_unop_f2i;
       ir_rvalue *cast =
