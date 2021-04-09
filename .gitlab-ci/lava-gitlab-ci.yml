@@ -12,9 +12,9 @@
   extends:
     - .kernel+rootfs
   variables:
-    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.10-rc2-for-mesa-ci/linux-v5.10-rc2-for-mesa-ci.tar.gz"
+    KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.11-for-mesa-ci/linux-v5.11-for-mesa-ci.tar.gz"
     INSTALL_KERNEL_MODULES: 1
-    MESA_ROOTFS_TAG: &lava-rootfs "2021-04-20-piglit-radeonsi"
+    MESA_ROOTFS_TAG: &lava-rootfs "2021-04-20-kernel-5.11"
     MINIO_SUFFIX: "lava"
 
 kernel+rootfs_amd64:
