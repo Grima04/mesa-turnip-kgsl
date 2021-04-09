@@ -826,19 +826,17 @@ emit_globals(struct ntd_context *ctx, nir_shader *s, unsigned size)
 }
 
 static bool
-emit_uav(struct ntd_context *ctx, nir_variable *var, unsigned count)
+emit_uav(struct ntd_context *ctx, unsigned binding, unsigned count,
+         enum dxil_component_type comp_type, enum dxil_resource_kind res_kind, const char *name)
 {
    assert(ctx->num_uav_arrays < ARRAY_SIZE(ctx->uav_metadata_nodes));
    assert(ctx->num_uavs < ARRAY_SIZE(ctx->uav_handles));
 
    unsigned id = ctx->num_uav_arrays;
-   unsigned idx = var->data.binding;
-   resource_array_layout layout = { id, idx, count };
+   resource_array_layout layout = { id, binding, count };
 
-   enum dxil_component_type comp_type = dxil_get_comp_type(var->type);
-   enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
    const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, true /* readwrite */);
-   const struct dxil_mdnode *uav_meta = emit_uav_metadata(&ctx->mod, res_type, var->name,
+   const struct dxil_mdnode *uav_meta = emit_uav_metadata(&ctx->mod, res_type, name,
                                                           &layout, comp_type, res_kind);
 
    if (!uav_meta)
@@ -847,18 +845,31 @@ emit_uav(struct ntd_context *ctx, nir_variable *var, unsigned count)
    ctx->uav_metadata_nodes[ctx->num_uav_arrays++] = uav_meta;
    if (ctx->num_uav_arrays > 8)
       ctx->mod.feats.use_64uavs = 1;
-   add_resource(ctx, DXIL_RES_UAV_TYPED, &layout);
+
+   add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, &layout);
 
    for (unsigned i = 0; i < count; ++i) {
       const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_UAV,
-                                                                           id, idx + i, false);
+                                                                           id, binding + i, false);
       if (!handle)
          return false;
 
-      ctx->uav_handles[ctx->num_uavs++] = handle;
+      ctx->uav_handles[binding + i] = handle;
+      ctx->num_uavs++;
    }
 
    return true;
+}
+
+static bool
+emit_uav_var(struct ntd_context *ctx, nir_variable *var, unsigned count)
+{
+   unsigned binding = var->data.binding;
+   enum dxil_component_type comp_type = dxil_get_comp_type(var->type);
+   enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
+   const char *name = var->name;
+
+   return emit_uav(ctx, binding, count, comp_type, res_kind, name);
 }
 
 static unsigned get_dword_size(const struct glsl_type *type)
@@ -4048,6 +4059,20 @@ emit_scratch(struct ntd_context *ctx, nir_shader *s)
    return true;
 }
 
+static bool
+emit_ssbos(struct ntd_context *ctx, nir_shader *s)
+{
+   nir_foreach_variable_with_modes(var, s, nir_var_mem_ssbo) {
+      unsigned count = 1;
+      if (glsl_type_is_array(var->type))
+         count = glsl_get_length(var->type);
+      if (!emit_uav(ctx, var->data.binding, count, DXIL_COMP_TYPE_INVALID, DXIL_RESOURCE_KIND_RAW_BUFFER, var->name))
+         return false;
+   }
+
+   return true;
+}
+
 /* The validator complains if we don't have ops that reference a global variable. */
 static bool
 shader_has_shared_ops(struct nir_shader *s)
@@ -4093,7 +4118,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    sort_uniforms_by_binding_and_remove_structs(s);
 
    /* CBVs */
-   if (!emit_cbvs(ctx, s, opts))
+   if (!emit_cbvs(ctx, s))
       return false;
 
    /* Samplers */
@@ -4157,12 +4182,15 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
          return false;
       if (!emit_global_consts(ctx, s))
          return false;
+   } else {
+      if (!emit_ssbos(ctx, s))
+         return false;
    }
 
    nir_foreach_variable_with_modes(var, s, nir_var_uniform) {
       unsigned count = glsl_type_get_image_count(var->type);
       if (var->data.mode == nir_var_uniform && count) {
-         if (!emit_uav(ctx, var, count))
+         if (!emit_uav_var(ctx, var, count))
             return false;
       }
    }
