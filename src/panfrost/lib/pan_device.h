@@ -42,6 +42,10 @@
 
 #include <midgard_pack.h>
 
+#if defined(__cplusplus)
+extern "C" {
+#endif
+
 /* Driver limits */
 #define PAN_MAX_CONST_BUFFERS 16
 
@@ -258,5 +262,9 @@ pan_is_bifrost(const struct panfrost_device *dev)
 {
         return dev->arch >= 6 && dev->arch <= 7;
 }
+
+#if defined(__cplusplus)
+} // extern "C"
+#endif
 
 #endif

@@ -80,3 +80,9 @@ libpanfrost_decode = static_library(
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,
 )
+
+libpanfrost_dep = declare_dependency(
+  link_with: [libpanfrost_lib, libpanfrost_decode, libpanfrost_midgard, libpanfrost_bifrost],
+  include_directories: [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_panfrost_hw, inc_panfrost],
+  dependencies: [dep_libdrm, idep_nir, idep_midgard_pack],
+)
