@@ -795,12 +795,8 @@ emit_globals(struct ntd_context *ctx, nir_shader *s, unsigned size)
    if (!size)
       return true;
 
-   const struct dxil_type *type = dxil_module_get_int_type(&ctx->mod, 32);
-   if (!type)
-      return false;
-
-   const struct dxil_type *struct_type =
-      dxil_module_get_struct_type(&ctx->mod, NULL, &type, 1);
+   const struct dxil_type *struct_type = dxil_module_get_res_type(&ctx->mod,
+      DXIL_RESOURCE_KIND_RAW_BUFFER, DXIL_COMP_TYPE_INVALID, true /* readwrite */);
    if (!struct_type)
       return false;
 
