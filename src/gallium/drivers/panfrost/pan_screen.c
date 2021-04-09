@@ -59,7 +59,6 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"msgs",      PAN_DBG_MSGS,	"Print debug messages"},
         {"trace",     PAN_DBG_TRACE,    "Trace the command stream"},
         {"deqp",      PAN_DBG_DEQP,     "Hacks for dEQP"},
-        {"afbc",      PAN_DBG_AFBC,     "Enable AFBC buffer sharing"},
         {"sync",      PAN_DBG_SYNC,     "Wait for each job's completion and check for any GPU fault"},
         {"precompile", PAN_DBG_PRECOMPILE, "Precompile shaders for shader-db"},
         {"fp16",     PAN_DBG_FP16,     "Enable 16-bit support"},
@@ -558,9 +557,6 @@ panfrost_walk_dmabuf_modifiers(struct pipe_screen *screen,
 
         /* Don't advertise AFBC before T760 */
         afbc &= !(dev->quirks & MIDGARD_NO_AFBC);
-
-        /* XXX: AFBC scanout is broken on mainline RK3399 with older kernels */
-        afbc &= (dev->debug & PAN_DBG_AFBC);
 
         unsigned count = 0;
 
