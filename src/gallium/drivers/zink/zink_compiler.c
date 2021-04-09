@@ -387,6 +387,7 @@ zink_screen_init_compiler(struct zink_screen *screen)
       .lower_vector_cmp = true,
       .lower_int64_options = 0,
       .lower_doubles_options = ~nir_lower_fp64_full_software,
+      .lower_uniforms_to_ubo = true,
       .has_fsub = true,
       .has_isub = true,
       .lower_mul_2x32_64 = true,
@@ -906,7 +907,7 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr, bool optimize)
       tex_opts.lower_tg4_offsets = true;
       NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
    }
-   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, false);
+   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, true, false);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
    optimize_nir(nir);
