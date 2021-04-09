@@ -1341,16 +1341,6 @@ static void si_query_dmabuf_modifiers(struct pipe_screen *screen,
 {
    struct si_screen *sscreen = (struct si_screen *)screen;
 
-   if (util_format_is_yuv(format)) {
-      if (max) {
-         *modifiers = DRM_FORMAT_MOD_LINEAR;
-         if (external_only)
-            *external_only = 1;
-      }
-      *count = 1;
-      return;
-   }
-
    unsigned ac_mod_count = max;
    ac_get_supported_modifiers(&sscreen->info, &(struct ac_modifier_options) {
          .dcc = !(sscreen->debug_flags & DBG(NO_DCC)),
@@ -1361,7 +1351,7 @@ static void si_query_dmabuf_modifiers(struct pipe_screen *screen,
       }, format, &ac_mod_count,  max ? modifiers : NULL);
    if (max && external_only) {
       for (unsigned i = 0; i < ac_mod_count; ++i)
-         external_only[i] = 0;
+         external_only[i] = util_format_is_yuv(format);
    }
    *count = ac_mod_count;
 }
