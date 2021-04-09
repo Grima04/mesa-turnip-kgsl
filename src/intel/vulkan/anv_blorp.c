@@ -268,11 +268,10 @@ get_blorp_surf_for_anv_image(const struct anv_device *device,
             };
             blorp_surf->clear_color_addr =
                anv_to_blorp_address(clear_color_addr);
-         } else {
-            blorp_surf->clear_color = (union isl_color_value) {
-               .f32 = { ANV_HZ_FC_VAL },
-            };
          }
+         blorp_surf->clear_color = (union isl_color_value) {
+            .f32 = { ANV_HZ_FC_VAL },
+         };
       }
    }
 }
@@ -1626,7 +1625,6 @@ anv_image_clear_depth_stencil(struct anv_cmd_buffer *cmd_buffer,
                                    image, VK_IMAGE_ASPECT_DEPTH_BIT,
                                    0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                    depth_aux_usage, &depth);
-      depth.clear_color.f32[0] = ANV_HZ_FC_VAL;
    }
 
    struct blorp_surf stencil = {};
@@ -1703,7 +1701,6 @@ anv_image_hiz_op(struct anv_cmd_buffer *cmd_buffer,
                                 image, VK_IMAGE_ASPECT_DEPTH_BIT,
                                 0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                 image->planes[plane].aux_usage, &surf);
-   surf.clear_color.f32[0] = ANV_HZ_FC_VAL;
 
    blorp_hiz_op(&batch, &surf, level, base_layer, layer_count, hiz_op);
 
@@ -1734,7 +1731,6 @@ anv_image_hiz_clear(struct anv_cmd_buffer *cmd_buffer,
                                    image, VK_IMAGE_ASPECT_DEPTH_BIT,
                                    0, ANV_IMAGE_LAYOUT_EXPLICIT_AUX,
                                    image->planes[plane].aux_usage, &depth);
-      depth.clear_color.f32[0] = ANV_HZ_FC_VAL;
    }
 
    struct blorp_surf stencil = {};
