@@ -3209,27 +3209,74 @@ emit_shared_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 }
 
 static bool
+emit_vulkan_resource_index(struct ntd_context *ctx, nir_intrinsic_instr *intr)
+{
+   unsigned int binding = nir_intrinsic_binding(intr);
+   /* We currently do not support non-zero sets */
+   assert(nir_intrinsic_desc_set(intr) == 0);
+
+   bool const_index = nir_src_is_const(intr->src[0]);
+   if (const_index) {
+      binding += nir_src_as_const_value(intr->src[0])->u32;
+   }
+
+   const struct dxil_value *index_value = dxil_module_get_int32_const(&ctx->mod, binding);
+   if (!index_value)
+      return false;
+   if (!const_index) {
+      index_value = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD,
+         index_value, get_src(ctx, &intr->src[0], 0, nir_type_uint32), 0);
+      if (!index_value)
+         return false;
+   }
+
+   store_dest(ctx, &intr->dest, 0, index_value, nir_type_uint32);
+   store_dest(ctx, &intr->dest, 1, dxil_module_get_int32_const(&ctx->mod, 0), nir_type_uint32);
+   return true;
+}
+
+static bool
 emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    nir_intrinsic_instr* index = nir_src_as_intrinsic(intr->src[0]);
    /* We currently do not support reindex */
    assert(index && index->intrinsic == nir_intrinsic_vulkan_resource_index);
-   unsigned int binding = nir_intrinsic_binding(index);
-   /* We currently do not support non-zero sets */
-   assert(nir_intrinsic_desc_set(index) == 0);
+
+   unsigned binding = nir_intrinsic_binding(index);
+   bool const_index = nir_src_is_const(index->src[0]);
+   if (const_index) {
+      binding += nir_src_as_const_value(index->src[0])->u32;
+   }
+
+   const struct dxil_value *handle = NULL;
+   const struct dxil_value **handle_entry = NULL;
+   enum dxil_resource_class resource_class;
 
    switch (nir_intrinsic_desc_type(intr)) {
-   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
+   case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+      handle_entry = &ctx->cbv_handles[binding];
+      resource_class = DXIL_RESOURCE_CLASS_CBV;
       break;
-   }
+   case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+      handle_entry = &ctx->uav_handles[binding];
+      resource_class = DXIL_RESOURCE_CLASS_UAV;
+      break;
    default:
       unreachable("unknown descriptor type");
       return false;
    }
 
-   store_ssa_def(ctx, &intr->dest.ssa, 0, ctx->cbv_handles[binding]);
-   store_ssa_def(ctx, &intr->dest.ssa, 1, dxil_module_get_int32_const(
-                 &ctx->mod, 0));
+   handle = *handle_entry;
+   if (!handle || !const_index) {
+      handle = emit_createhandle_call(ctx, resource_class,
+         0,
+         get_src(ctx, &intr->src[0], 0, nir_type_uint32), false);
+      if (const_index)
+         *handle_entry = handle;
+   }
+
+   store_dest_value(ctx, &intr->dest, 0, handle);
+   store_dest(ctx, &intr->dest, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32), nir_type_uint32);
 
    return true;
 }
@@ -3338,7 +3385,7 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return emit_image_size(ctx, intr);
 
    case nir_intrinsic_vulkan_resource_index:
-      return true;
+      return emit_vulkan_resource_index(ctx, intr);
    case nir_intrinsic_load_vulkan_descriptor:
       return emit_load_vulkan_descriptor(ctx, intr);
 
