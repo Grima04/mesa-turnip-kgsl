@@ -338,7 +338,7 @@ optimise_nir(nir_shader *nir, unsigned quirks, bool is_blend)
          * to UBO ordinarily, but it isn't as aggressive as we need. */
 
         NIR_PASS(progress, nir, nir_opt_peephole_select, 64, false, true);
-        NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, false);
+        NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, true, false);
 
         do {
                 progress = false;
