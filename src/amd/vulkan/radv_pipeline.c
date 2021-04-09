@@ -1236,9 +1236,8 @@ gfx103_pipeline_init_vrs_state(struct radv_pipeline *pipeline,
       vrs->pa_cl_vrs_cntl = S_028848_SAMPLE_ITER_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
    }
 
-   /* Primitive and HTILE combiners are always passthrough. */
-   vrs->pa_cl_vrs_cntl |= S_028848_PRIMITIVE_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU) |
-                          S_028848_HTILE_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
+   /* The primitive combiner is always passthrough. */
+   vrs->pa_cl_vrs_cntl |= S_028848_PRIMITIVE_RATE_COMBINER_MODE(V_028848_VRS_COMB_MODE_PASSTHRU);
 }
 
 static bool

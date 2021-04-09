@@ -1523,10 +1523,41 @@ static void
 radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
 {
    struct radv_pipeline *pipeline = cmd_buffer->state.pipeline;
+   const struct radv_subpass *subpass = cmd_buffer->state.subpass;
    struct radv_dynamic_state *d = &cmd_buffer->state.dynamic;
    uint32_t rate_x = MIN2(2, d->fragment_shading_rate.size.width) - 1;
    uint32_t rate_y = MIN2(2, d->fragment_shading_rate.size.height) - 1;
    uint32_t pa_cl_vrs_cntl = pipeline->graphics.vrs.pa_cl_vrs_cntl;
+   uint32_t vertex_comb_mode = d->fragment_shading_rate.combiner_ops[0];
+   uint32_t htile_comb_mode = d->fragment_shading_rate.combiner_ops[1];
+
+   if (subpass && !subpass->vrs_attachment) {
+      /* When the current subpass has no VRS attachment, the VRS rates are expected to be 1x1, so we
+       * can cheat by tweaking the different combiner modes.
+       */
+      switch (htile_comb_mode) {
+      case VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MIN_KHR:
+         /* The result of min(A, 1x1) is always 1x1. */
+         FALLTHROUGH;
+      case VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR:
+         /* Force the per-draw VRS rate to 1x1. */
+         rate_x = rate_y = 0;
+
+         /* As the result of min(A, 1x1) or replace(A, 1x1) are always 1x1, set the vertex rate
+          * combiner mode as passthrough.
+          */
+         vertex_comb_mode = V_028848_VRS_COMB_MODE_PASSTHRU;
+         break;
+      case VK_FRAGMENT_SHADING_RATE_COMBINER_OP_MAX_KHR:
+         /* The result of max(A, 1x1) is always A. */
+         FALLTHROUGH;
+      case VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR:
+         /* Nothing to do here because the SAMPLE_ITER combiner mode should already be passthrough. */
+         break;
+      default:
+         break;
+      }
+   }
 
    /* Emit per-draw VRS rate which is the first combiner. */
    radeon_set_uconfig_reg(cmd_buffer->cs, R_03098C_GE_VRS_RATE,
@@ -1535,7 +1566,12 @@ radv_emit_fragment_shading_rate(struct radv_cmd_buffer *cmd_buffer)
    /* VERTEX_RATE_COMBINER_MODE controls the combiner mode between the
     * draw rate and the vertex rate.
     */
-   pa_cl_vrs_cntl |= S_028848_VERTEX_RATE_COMBINER_MODE(d->fragment_shading_rate.combiner_ops[0]);
+   pa_cl_vrs_cntl |= S_028848_VERTEX_RATE_COMBINER_MODE(vertex_comb_mode);
+
+   /* HTILE_RATE_COMBINER_MODE controls the combiner mode between the primitive rate and the HTILE
+    * rate.
+    */
+   pa_cl_vrs_cntl |= S_028848_HTILE_RATE_COMBINER_MODE(htile_comb_mode);
 
    radeon_set_context_reg(cmd_buffer->cs, R_028848_PA_CL_VRS_CNTL, pa_cl_vrs_cntl);
 }
