@@ -309,6 +309,13 @@ void st_init_limits(struct pipe_screen *screen,
          pc->MediumInt = pc->HighInt = pc->LowInt;
       }
 
+      if (screen->get_shader_param(screen, sh, PIPE_SHADER_CAP_FP16)) {
+         pc->LowFloat.RangeMin = 15;
+         pc->LowFloat.RangeMax = 15;
+         pc->LowFloat.Precision = 10;
+         pc->MediumFloat = pc->LowFloat;
+      }
+
       /* TODO: make these more fine-grained if anyone needs it */
       options->MaxIfDepth =
          screen->get_shader_param(screen, sh,
