@@ -1525,17 +1525,16 @@ struct pipe_screen *
 zink_create_screen(struct sw_winsys *winsys)
 {
 #ifdef ZINK_WITH_SWRAST_VK
-   char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE"), *gallium_driver = NULL;
+   char *use_lavapipe = getenv("ZINK_USE_LAVAPIPE");
    if (use_lavapipe) {
       /**
-      * HACK: Temorarily unset $GALLIUM_DRIVER to prevent Lavapipe from
+      * HACK: unset $GALLIUM_DRIVER to prevent Lavapipe from
       * recursively trying to use zink as the gallium driver.
       *
       * This is not thread-safe, so if an application creates another
-      * context in another thread at the same time, well, we're out of
-      * luck!
+      * context in another thread at the same time, it may or may not use zink,
+      * but at least it won't abort.
       */
-      gallium_driver = getenv("GALLIUM_DRIVER");
 #ifdef _WIN32
       _putenv("GALLIUM_DRIVER=llvmpipe");
 #else
@@ -1549,14 +1548,8 @@ zink_create_screen(struct sw_winsys *winsys)
       ret->winsys = winsys;
 
 #ifdef ZINK_WITH_SWRAST_VK
-   if (gallium_driver) {
-#ifdef _WIN32
-      char envstr[64] = "";
-      snprintf(envstr, 64, "GALLIUM_DRIVER=%s", gallium_driver);
-      _putenv(envstr);
-#else
-      setenv("GALLIUM_DRIVER", gallium_driver, 1);
-#endif
+   if (use_lavapipe) {
+      printf("zink running on lavapipe: if you see VK_ERROR_OUT_OF_HOST_MEMORY from lavapipe, try again.\n");
    }
 #endif
 
