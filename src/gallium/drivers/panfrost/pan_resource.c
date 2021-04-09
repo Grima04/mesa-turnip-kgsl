@@ -127,14 +127,16 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
                 unsigned tile_h =
                         panfrost_block_dim(whandle->modifier, false, 0);
 
-                rsc->layout.slices[0].afbc.body_size =
-                        rsc->layout.slices[0].row_stride *
-                        DIV_ROUND_UP(templat->height0, tile_h);
                 rsc->layout.slices[0].afbc.header_size =
                         panfrost_afbc_header_size(templat->width0, templat->height0);
+
                 rsc->layout.slices[0].afbc.row_stride =
                         DIV_ROUND_UP(templat->width0, tile_w) *
                         AFBC_HEADER_BYTES_PER_TILE;
+
+                rsc->layout.slices[0].afbc.body_size =
+                        rsc->layout.slices[0].row_stride *
+                        DIV_ROUND_UP(templat->height0, tile_h);
         }
 
         if (dev->ro) {

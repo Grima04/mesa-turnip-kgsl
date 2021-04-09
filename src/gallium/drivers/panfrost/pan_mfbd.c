@@ -184,6 +184,7 @@ panfrost_mfbd_rt_set_buf(struct pipe_surface *surf,
                         rt->afbc.chunk_size = 9;
                         rt->midgard_afbc.sparse = true;
                         rt->afbc.body_size = slice->afbc.body_size;
+                        assert(rt->afbc.body_size > 0);
                 }
 
                 panfrost_get_afbc_pointers(rsrc, level, first_layer,
