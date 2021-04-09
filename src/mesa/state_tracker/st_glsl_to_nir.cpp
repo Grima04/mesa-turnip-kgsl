@@ -1005,12 +1005,10 @@ st_unpacked_uniforms_type_size(const struct glsl_type *type, bool bindless)
 void
 st_nir_lower_uniforms(struct st_context *st, nir_shader *nir)
 {
-   unsigned multiplier = 16;
    if (st->ctx->Const.PackedDriverUniformStorage) {
       NIR_PASS_V(nir, nir_lower_io, nir_var_uniform,
                  st_packed_uniforms_type_size,
                  (nir_lower_io_options)0);
-      multiplier = 4;
    } else {
       NIR_PASS_V(nir, nir_lower_io, nir_var_uniform,
                  st_unpacked_uniforms_type_size,
@@ -1018,7 +1016,9 @@ st_nir_lower_uniforms(struct st_context *st, nir_shader *nir)
    }
 
    if (nir->options->lower_uniforms_to_ubo)
-      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, multiplier);
+      NIR_PASS_V(nir, nir_lower_uniforms_to_ubo,
+                 st->ctx->Const.PackedDriverUniformStorage,
+                 !st->ctx->Const.NativeIntegers);
 }
 
 /* Last third of preparing nir from glsl, which happens after shader

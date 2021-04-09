@@ -147,7 +147,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
 
    uint32_t num_ubos_before_lower_to_ubo = nir->info.num_ubos;
    uint32_t num_uniforms_before_lower_to_ubo = nir->num_uniforms;
-   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
+   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, false);
    shader->has_default_ubo0 = num_uniforms_before_lower_to_ubo > 0 &&
                               nir->info.num_ubos > num_ubos_before_lower_to_ubo;
 

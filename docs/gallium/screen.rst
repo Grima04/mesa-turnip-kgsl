@@ -481,7 +481,8 @@ The integer capabilities:
   those bits set, pipe_context::set_constant_buffer(.., 0, ..) is ignored
   by the driver, and the driver can throw assertion failures.
 * ``PIPE_CAP_PACKED_UNIFORMS``: True if the driver supports packed uniforms
-  as opposed to padding to vec4s.
+  as opposed to padding to vec4s.  Requires ``PIPE_SHADER_CAP_INTEGERS`` if
+  ``lower_uniforms_to_ubo`` is set.
 * ``PIPE_CAP_CONSERVATIVE_RASTER_POST_SNAP_TRIANGLES``: Whether the
   ``PIPE_CONSERVATIVE_RASTER_POST_SNAP`` mode is supported for triangles.
   The post-snap mode means the conservative rasterization occurs after

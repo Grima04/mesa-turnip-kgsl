@@ -123,7 +123,7 @@ TEST_F(nir_lower_ubo_test, basic)
    nir_ssa_def *offset = nir_imm_int(&b, 4);
    nir_load_uniform(&b, 1, 32, offset);
 
-   nir_lower_uniforms_to_ubo(b.shader, 16);
+   nir_lower_uniforms_to_ubo(b.shader, false, false);
    nir_opt_constant_folding(b.shader);
 
    ASSERT_TRUE(etna_nir_lower_ubo_to_uniform(b.shader));

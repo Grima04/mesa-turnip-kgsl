@@ -2718,8 +2718,8 @@ nir_to_tgsi(struct nir_shader *s,
 
    if (!original_options->lower_uniforms_to_ubo) {
       NIR_PASS_V(s, nir_lower_uniforms_to_ubo,
-                 screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS) ?
-                 4 : 16);
+                 screen->get_param(screen, PIPE_CAP_PACKED_UNIFORMS),
+                 !native_integers);
    }
 
    /* Do lowering so we can directly translate f64/i64 NIR ALU ops to TGSI --

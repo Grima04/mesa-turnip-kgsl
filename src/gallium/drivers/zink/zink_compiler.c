@@ -914,7 +914,7 @@ zink_shader_finalize(struct pipe_screen *pscreen, void *nirptr, bool optimize)
       tex_opts.lower_tg4_offsets = true;
       NIR_PASS_V(nir, nir_lower_tex, &tex_opts);
    }
-   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, 16);
+   NIR_PASS_V(nir, nir_lower_uniforms_to_ubo, false, false);
    if (nir->info.stage == MESA_SHADER_GEOMETRY)
       NIR_PASS_V(nir, nir_lower_gs_intrinsics, nir_lower_gs_intrinsics_per_stream);
    optimize_nir(nir);

@@ -3435,8 +3435,6 @@ typedef struct nir_shader_compiler_options {
    unsigned max_unroll_iterations;
    unsigned max_unroll_iterations_aggressive;
 
-   /* For the non-zero value of the enum corresponds multiplier when
-    * calling lower_uniforms_to_ubo */
    bool lower_uniforms_to_ubo;
 
    nir_lower_int64_options lower_int64_options;
@@ -4633,7 +4631,7 @@ bool nir_vectorize_tess_levels(nir_shader *shader);
 bool nir_lower_fragcolor(nir_shader *shader);
 bool nir_lower_fragcoord_wtrans(nir_shader *shader);
 void nir_lower_viewport_transform(nir_shader *shader);
-bool nir_lower_uniforms_to_ubo(nir_shader *shader, int multiplier);
+bool nir_lower_uniforms_to_ubo(nir_shader *shader, bool dword_packed, bool load_vec4);
 
 typedef struct nir_lower_subgroups_options {
    uint8_t subgroup_size;
