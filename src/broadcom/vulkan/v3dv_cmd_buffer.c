@@ -4305,6 +4305,33 @@ cmd_buffer_restart_job_for_msaa_if_needed(struct v3dv_cmd_buffer *cmd_buffer)
 }
 
 static void
+emit_index_buffer(struct v3dv_cmd_buffer *cmd_buffer)
+{
+   struct v3dv_job *job = cmd_buffer->state.job;
+   assert(job);
+
+   /* We flag all state as dirty when we create a new job so make sure we
+    * have a valid index buffer before attempting to emit state for it.
+    */
+   struct v3dv_buffer *ibuffer =
+      v3dv_buffer_from_handle(cmd_buffer->state.index_buffer.buffer);
+   if (ibuffer) {
+      v3dv_cl_ensure_space_with_branch(
+         &job->bcl, cl_packet_length(INDEX_BUFFER_SETUP));
+      v3dv_return_if_oom(cmd_buffer, NULL);
+
+      const uint32_t offset = cmd_buffer->state.index_buffer.offset;
+      cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
+         ib.address = v3dv_cl_address(ibuffer->mem->bo,
+                                      ibuffer->mem_offset + offset);
+         ib.size = ibuffer->mem->bo->size;
+      }
+   }
+
+   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_INDEX_BUFFER;
+}
+
+static void
 cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
    assert(cmd_buffer->state.gfx.pipeline);
@@ -4361,6 +4388,9 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
    if (*dirty & V3DV_CMD_DIRTY_VIEWPORT) {
       emit_viewport(cmd_buffer);
    }
+
+   if (*dirty & V3DV_CMD_DIRTY_INDEX_BUFFER)
+      emit_index_buffer(cmd_buffer);
 
    const uint32_t dynamic_stencil_dirty_flags =
       V3DV_CMD_DIRTY_STENCIL_COMPARE_MASK |
@@ -4639,40 +4669,18 @@ v3dv_CmdBindIndexBuffer(VkCommandBuffer commandBuffer,
                         VkIndexType indexType)
 {
    V3DV_FROM_HANDLE(v3dv_cmd_buffer, cmd_buffer, commandBuffer);
-   V3DV_FROM_HANDLE(v3dv_buffer, ibuffer, buffer);
-
-   struct v3dv_job *job = cmd_buffer->state.job;
-   assert(job);
-
-   v3dv_cl_ensure_space_with_branch(
-      &job->bcl, cl_packet_length(INDEX_BUFFER_SETUP));
-   v3dv_return_if_oom(cmd_buffer, NULL);
 
    const uint32_t index_size = get_index_size(indexType);
-
-   /* If we have started a new job we always need to emit index buffer state.
-    * We know we are in that scenario because that is the only case where we
-    * set the dirty bit.
-    */
-   if (!(cmd_buffer->state.dirty & V3DV_CMD_DIRTY_INDEX_BUFFER)) {
-      if (buffer == cmd_buffer->state.index_buffer.buffer &&
-          offset == cmd_buffer->state.index_buffer.offset &&
-          index_size == cmd_buffer->state.index_buffer.index_size) {
-         return;
-      }
-   }
-
-   cl_emit(&job->bcl, INDEX_BUFFER_SETUP, ib) {
-      ib.address = v3dv_cl_address(ibuffer->mem->bo,
-                                   ibuffer->mem_offset + offset);
-      ib.size = ibuffer->mem->bo->size;
+   if (buffer == cmd_buffer->state.index_buffer.buffer &&
+       offset == cmd_buffer->state.index_buffer.offset &&
+       index_size == cmd_buffer->state.index_buffer.index_size) {
+      return;
    }
 
    cmd_buffer->state.index_buffer.buffer = buffer;
    cmd_buffer->state.index_buffer.offset = offset;
    cmd_buffer->state.index_buffer.index_size = index_size;
-
-   cmd_buffer->state.dirty &= ~V3DV_CMD_DIRTY_INDEX_BUFFER;
+   cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_INDEX_BUFFER;
 }
 
 void
