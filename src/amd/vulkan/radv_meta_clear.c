@@ -2014,11 +2014,23 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
    else
       internal_clear_value.depthStencil = clear_value->depthStencil;
 
+   bool disable_compression = false;
+
    if (format == VK_FORMAT_E5B9G9R9_UFLOAT_PACK32) {
-      uint32_t value;
-      format = VK_FORMAT_R32_UINT;
-      value = float3_to_rgb9e5(clear_value->color.float32);
-      internal_clear_value.color.uint32[0] = value;
+      bool blendable;
+      if (cs ? !radv_is_storage_image_format_supported(cmd_buffer->device->physical_device, format)
+             : !radv_is_colorbuffer_format_supported(cmd_buffer->device->physical_device, format,
+                                                     &blendable)) {
+         format = VK_FORMAT_R32_UINT;
+         internal_clear_value.color.uint32[0] = float3_to_rgb9e5(clear_value->color.float32);
+
+         uint32_t queue_mask = radv_image_queue_family_mask(image, cmd_buffer->queue_family_index,
+                                                            cmd_buffer->queue_family_index);
+
+         /* Don't use compressed image stores because they will use an incompatible format. */
+         if (radv_layout_dcc_compressed(cmd_buffer->device, image, image_layout, false, queue_mask))
+            disable_compression = cs;
+      }
    }
 
    if (format == VK_FORMAT_R4G4_UNORM_PACK8) {
@@ -2053,14 +2065,24 @@ radv_cmd_clear_image(struct radv_cmd_buffer *cmd_buffer, struct radv_image *imag
                surf.level = range->baseMipLevel + l;
                surf.layer = range->baseArrayLayer + s;
                surf.aspect_mask = range->aspectMask;
-               surf.disable_compression = false;
+               surf.disable_compression = disable_compression;
                radv_meta_clear_image_cs(cmd_buffer, &surf, &internal_clear_value.color);
             } else {
+               assert(!disable_compression);
                radv_clear_image_layer(cmd_buffer, image, image_layout, range, format, l, s,
                                       &internal_clear_value);
             }
          }
       }
+   }
+
+   if (disable_compression) {
+      enum radv_cmd_flush_bits flush_bits = 0;
+      for (unsigned i = 0; i < range_count; i++) {
+         if (radv_dcc_enabled(image, ranges[i].baseMipLevel))
+            flush_bits |= radv_clear_dcc(cmd_buffer, image, &ranges[i], 0xffffffffu);
+      }
+      cmd_buffer->state.flush_bits |= flush_bits;
    }
 }
 

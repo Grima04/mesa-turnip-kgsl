@@ -501,7 +501,7 @@ radv_is_atomic_format_supported(VkFormat format)
           format == VK_FORMAT_R64_SINT;
 }
 
-static bool
+bool
 radv_is_storage_image_format_supported(struct radv_physical_device *physical_device,
                                        VkFormat format)
 {
