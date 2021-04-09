@@ -756,6 +756,8 @@ radv_CreateDescriptorPool(VkDevice _device, const VkDescriptorPoolCreateInfo *pC
             if (radv_mutable_descriptor_type_size_alignment(
                    &mutable_info->pMutableDescriptorTypeLists[i], &mutable_size,
                    &mutable_alignment)) {
+               /* 32 as we may need to align for images */
+               mutable_size = align(mutable_size, 32);
                bo_size += mutable_size * pCreateInfo->pPoolSizes[i].descriptorCount;
             }
          } else {
