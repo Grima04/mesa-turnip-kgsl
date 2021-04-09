@@ -2330,4 +2330,14 @@ void lp_build_opt_nir(struct nir_shader *nir)
 
    } while (progress);
    nir_lower_bool_to_int32(nir);
+
+   do {
+      progress = false;
+      NIR_PASS(progress, nir, nir_opt_algebraic_late);
+      if (progress) {
+         NIR_PASS_V(nir, nir_copy_prop);
+         NIR_PASS_V(nir, nir_opt_dce);
+         NIR_PASS_V(nir, nir_opt_cse);
+      }
+   } while (progress);
 }
