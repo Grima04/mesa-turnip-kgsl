@@ -96,8 +96,13 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
        !(flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION))
       return;
 
-   if (ctx->b.get_device_reset_status(&ctx->b) != PIPE_NO_RESET)
-      return;
+    /* Calling get_device_reset_status is useful to re-create the
+     * aux context if needed.
+     * This cs will be submitted even if a reset is detected; in this
+     * case it'll treated as a no-op. This ensures that all states
+     * are properly reset.
+     */
+   ctx->b.get_device_reset_status(&ctx->b);
 
    if (sscreen->debug_flags & DBG(CHECK_VM))
       flags &= ~PIPE_FLUSH_ASYNC;
