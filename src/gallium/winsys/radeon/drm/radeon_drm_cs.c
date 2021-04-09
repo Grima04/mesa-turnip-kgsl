@@ -87,14 +87,20 @@ static void radeon_drm_ctx_destroy(struct radeon_winsys_ctx *ctx)
 }
 
 static enum pipe_reset_status
-radeon_drm_ctx_query_reset_status(struct radeon_winsys_ctx *rctx)
+radeon_drm_ctx_query_reset_status(struct radeon_winsys_ctx *rctx, bool *needs_reset)
 {
    struct radeon_ctx *ctx = (struct radeon_ctx*)rctx;
 
    unsigned latest = radeon_drm_get_gpu_reset_counter(ctx->ws);
 
-   if (ctx->gpu_reset_counter == latest)
+   if (ctx->gpu_reset_counter == latest) {
+      if (needs_reset)
+         *needs_reset = false;
       return PIPE_NO_RESET;
+   }
+
+   if (needs_reset)
+      *needs_reset = true;
 
    ctx->gpu_reset_counter = latest;
    return PIPE_UNKNOWN_CONTEXT_RESET;

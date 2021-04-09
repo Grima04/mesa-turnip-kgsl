@@ -491,7 +491,8 @@ struct radeon_winsys {
    /**
     * Query a GPU reset status.
     */
-   enum pipe_reset_status (*ctx_query_reset_status)(struct radeon_winsys_ctx *ctx);
+   enum pipe_reset_status (*ctx_query_reset_status)(struct radeon_winsys_ctx *ctx,
+                                                    bool *needs_reset);
 
    /**
     * Create a command stream.

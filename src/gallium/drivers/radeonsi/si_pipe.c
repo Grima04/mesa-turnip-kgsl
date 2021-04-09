@@ -352,7 +352,8 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
 {
    struct si_context *sctx = (struct si_context *)ctx;
    struct si_screen *sscreen = sctx->screen;
-   enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx);
+   bool needs_reset;
+   enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, &needs_reset);
 
    if (status != PIPE_NO_RESET) {
       /* Call the gallium frontend to set a no-op API dispatch. */

@@ -487,7 +487,7 @@ static enum pipe_reset_status r600_get_reset_status(struct pipe_context *ctx)
 {
 	struct r600_common_context *rctx = (struct r600_common_context *)ctx;
 
-	return rctx->ws->ctx_query_reset_status(rctx->ctx);
+	return rctx->ws->ctx_query_reset_status(rctx->ctx, NULL);
 }
 
 static void r600_set_debug_callback(struct pipe_context *ctx,

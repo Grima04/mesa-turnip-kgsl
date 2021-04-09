@@ -334,10 +334,13 @@ static void amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
 }
 
 static enum pipe_reset_status
-amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx)
+amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool *needs_reset)
 {
    struct amdgpu_ctx *ctx = (struct amdgpu_ctx*)rwctx;
    int r;
+
+   if (needs_reset)
+      *needs_reset = false;
 
    /* Return a failure due to a GPU hang. */
    if (ctx->ws->info.drm_minor >= 24) {
@@ -350,6 +353,8 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx)
       }
 
       if (flags & AMDGPU_CTX_QUERY2_FLAGS_RESET) {
+         if (needs_reset)
+               *needs_reset = flags & AMDGPU_CTX_QUERY2_FLAGS_VRAMLOST;
          if (flags & AMDGPU_CTX_QUERY2_FLAGS_GUILTY)
             return PIPE_GUILTY_CONTEXT_RESET;
          else
@@ -364,6 +369,8 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx)
          return PIPE_NO_RESET;
       }
 
+      if (needs_reset)
+         *needs_reset = true;
       switch (result) {
       case AMDGPU_CTX_GUILTY_RESET:
          return PIPE_GUILTY_CONTEXT_RESET;
@@ -376,9 +383,13 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx)
 
    /* Return a failure due to a rejected command submission. */
    if (ctx->ws->num_total_rejected_cs > ctx->initial_num_total_rejected_cs) {
+      if (needs_reset)
+         *needs_reset = true;
       return ctx->num_rejected_cs ? PIPE_GUILTY_CONTEXT_RESET :
                                     PIPE_INNOCENT_CONTEXT_RESET;
    }
+   if (needs_reset)
+      *needs_reset = false;
    return PIPE_NO_RESET;
 }
 
