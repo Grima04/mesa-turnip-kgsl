@@ -425,7 +425,7 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          .scanout = true,
       };
 
-      if (screen->needs_mesa_wsi && scanout) {
+      if ((screen->needs_mesa_wsi || screen->needs_mesa_flush_wsi) && scanout) {
          image_wsi_info.pNext = ici.pNext;
          ici.pNext = &image_wsi_info;
       }
