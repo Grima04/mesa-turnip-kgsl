@@ -653,11 +653,12 @@ add_kernel_inputs_var(struct clc_dxil_object *dxil, nir_shader *nir,
 
    size = align(size, 4);
 
+   const struct glsl_type *array_type = glsl_array_type(glsl_uint_type(), size / 4, 4);
+   const struct glsl_struct_field field = { array_type, "arr" };
    nir_variable *var =
       nir_variable_create(nir, nir_var_mem_ubo,
-                          glsl_array_type(glsl_uint_type(),
-                                          size / 4, 0),
-                          "kernel_inputs");
+         glsl_struct_type(&field, 1, "kernel_inputs", false),
+         "kernel_inputs");
    var->data.binding = (*cbv_id)++;
    var->data.how_declared = nir_var_hidden;
    return var;
@@ -668,12 +669,15 @@ add_work_properties_var(struct clc_dxil_object *dxil,
                            struct nir_shader *nir, unsigned *cbv_id)
 {
    struct clc_dxil_metadata *metadata = &dxil->metadata;
+   const struct glsl_type *array_type =
+      glsl_array_type(glsl_uint_type(),
+         sizeof(struct clc_work_properties_data) / sizeof(unsigned),
+         sizeof(unsigned));
+   const struct glsl_struct_field field = { array_type, "arr" };
    nir_variable *var =
       nir_variable_create(nir, nir_var_mem_ubo,
-                          glsl_array_type(glsl_uint_type(),
-                                          sizeof(struct clc_work_properties_data) / sizeof(unsigned),
-                                          0),
-                          "kernel_work_properies");
+         glsl_struct_type(&field, 1, "kernel_work_properties", false),
+         "kernel_work_properies");
    var->data.binding = (*cbv_id)++;
    var->data.how_declared = nir_var_hidden;
    return var;

@@ -403,6 +403,7 @@ struct ntd_context {
    const struct dxil_mdnode *cbv_metadata_nodes[MAX_CBVS];
    const struct dxil_value *cbv_handles[MAX_CBVS];
    unsigned num_cbvs;
+   unsigned num_cbv_arrays;
 
    const struct dxil_mdnode *sampler_metadata_nodes[MAX_SAMPLERS];
    const struct dxil_value *sampler_handles[MAX_SAMPLERS];
@@ -862,12 +863,11 @@ emit_uav(struct ntd_context *ctx, nir_variable *var, unsigned count)
 
 static unsigned get_dword_size(const struct glsl_type *type)
 {
-   unsigned factor = 1;
    if (glsl_type_is_array(type)) {
-      factor = glsl_get_aoa_size(type);
       type = glsl_without_array(type);
    }
-   return (factor * glsl_get_components(type));
+   assert(glsl_type_is_struct(type) || glsl_type_is_interface(type));
+   return glsl_get_explicit_size(type, false);
 }
 
 static bool
@@ -998,9 +998,9 @@ emit_global_consts(struct ntd_context *ctx, nir_shader *s)
 
 static bool
 emit_cbv(struct ntd_context *ctx, unsigned binding,
-         unsigned size, char *name)
+         unsigned size, unsigned count, char *name)
 {
-   unsigned idx = ctx->num_cbvs;
+   unsigned idx = ctx->num_cbv_arrays;
 
    assert(idx < ARRAY_SIZE(ctx->cbv_metadata_nodes));
 
@@ -1008,24 +1008,27 @@ emit_cbv(struct ntd_context *ctx, unsigned binding,
    const struct dxil_type *array_type = dxil_module_get_array_type(&ctx->mod, float32, size);
    const struct dxil_type *buffer_type = dxil_module_get_struct_type(&ctx->mod, name,
                                                                      &array_type, 1);
-   resource_array_layout layout = {idx, binding, 1};
-   const struct dxil_mdnode *cbv_meta = emit_cbv_metadata(&ctx->mod, buffer_type,
+   const struct dxil_type *final_type = count > 1 ? dxil_module_get_array_type(&ctx->mod, buffer_type, count) : buffer_type;
+   resource_array_layout layout = {idx, binding, count};
+   const struct dxil_mdnode *cbv_meta = emit_cbv_metadata(&ctx->mod, final_type,
                                                           name, &layout, 4 * size);
 
    if (!cbv_meta)
       return false;
 
-   ctx->cbv_metadata_nodes[ctx->num_cbvs] = cbv_meta;
+   ctx->cbv_metadata_nodes[ctx->num_cbv_arrays++] = cbv_meta;
    add_resource(ctx, DXIL_RES_CBV, &layout);
 
-   const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_CBV,
-                                                                        idx, binding, false);
-   if (!handle)
-      return false;
+   for (unsigned i = 0; i < count; ++i) {
+      const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_CBV,
+                                                                           idx, binding + i, false);
+      if (!handle)
+         return false;
 
-   assert(!ctx->cbv_handles[binding]);
-   ctx->cbv_handles[binding] = handle;
-   ctx->num_cbvs++;
+      assert(!ctx->cbv_handles[binding + i]);
+      ctx->cbv_handles[binding + i] = handle;
+      ctx->num_cbvs++;
+   }
 
    return true;
 }
@@ -1033,7 +1036,10 @@ emit_cbv(struct ntd_context *ctx, unsigned binding,
 static bool
 emit_ubo_var(struct ntd_context *ctx, nir_variable *var)
 {
-   return emit_cbv(ctx, var->data.binding, get_dword_size(var->type), var->name);
+   unsigned count = 1;
+   if (glsl_type_is_array(var->type))
+      count = glsl_get_length(var->type);
+   return emit_cbv(ctx, var->data.binding, get_dword_size(var->type), count, var->name);
 }
 
 static bool
@@ -1182,7 +1188,7 @@ emit_resources(struct ntd_context *ctx)
    }
 
    if (ctx->num_cbvs) {
-      resources_nodes[2] = dxil_get_metadata_node(&ctx->mod, ctx->cbv_metadata_nodes, ctx->num_cbvs);
+      resources_nodes[2] = dxil_get_metadata_node(&ctx->mod, ctx->cbv_metadata_nodes, ctx->num_cbv_arrays);
       emit_resources = true;
    }
 
@@ -3207,7 +3213,7 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
          break;
       char name[64];
       snprintf(name, sizeof(name), "__ubo%d", binding);
-      if (!emit_cbv(ctx, binding, 16384 /*4096 vec4's*/, name))
+      if (!emit_cbv(ctx, binding, 16384 /*4096 vec4's*/, 1, name))
          return false;
       break;
    }
@@ -4011,7 +4017,7 @@ emit_cbvs(struct ntd_context *ctx, nir_shader *s)
       for (int i = ctx->opts->ubo_binding_offset; i < s->info.num_ubos; ++i) {
          char name[64];
          snprintf(name, sizeof(name), "__ubo%d", i);
-         if (!emit_cbv(ctx, i, 16384 /*4096 vec4's*/, name))
+         if (!emit_cbv(ctx, i, 16384 /*4096 vec4's*/, 1, name))
             return false;
       }
    }
