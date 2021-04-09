@@ -1651,8 +1651,13 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
    decode->dt_uv_pitch = decode->dt_pitch / 2;
 
+   if (luma->surface.meta_offset) {
+      RVID_ERR("DCC surfaces not supported.\n");
+      return NULL;
+   }
+
    decode->dt_tiling_mode = 0;
-   decode->dt_swizzle_mode = RDECODE_SW_MODE_LINEAR;
+   decode->dt_swizzle_mode = luma->surface.u.gfx9.swizzle_mode;
    decode->dt_array_mode = RDECODE_ARRAY_MODE_LINEAR;
    decode->dt_field_mode = ((struct vl_video_buffer *)target)->base.interlaced;
    decode->dt_surf_tile_config = 0;
