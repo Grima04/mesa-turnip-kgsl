@@ -76,8 +76,6 @@ struct vn_queue_submission {
    uint32_t wait_semaphore_count;
    uint32_t wait_wsi_count;
 
-   uint32_t sync_count;
-
    struct {
       void *storage;
 
@@ -87,11 +85,6 @@ struct vn_queue_submission {
          VkBindSparseInfo *bind_sparse_batches;
       };
       VkSemaphore *semaphores;
-
-      struct vn_renderer_sync **syncs;
-      uint64_t *sync_values;
-
-      uint32_t *batch_sync_counts;
    } temp;
 };
 
@@ -137,8 +130,6 @@ vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
       unreachable("unexpected batch type");
       break;
    }
-
-   submit->sync_count = 0;
 }
 
 static VkResult
@@ -148,9 +139,6 @@ vn_queue_submission_alloc_storage(struct vn_queue_submission *submit)
    const VkAllocationCallbacks *alloc = &queue->device->base.base.alloc;
    size_t alloc_size = 0;
    size_t semaphores_offset = 0;
-   size_t syncs_offset = 0;
-   size_t sync_values_offset = 0;
-   size_t batch_sync_counts_offset = 0;
 
    /* we want to filter out VN_SYNC_TYPE_WSI_SIGNALED wait semaphores */
    if (submit->wait_wsi_count) {
@@ -171,19 +159,6 @@ vn_queue_submission_alloc_storage(struct vn_queue_submission *submit)
                     (submit->wait_semaphore_count - submit->wait_wsi_count);
    }
 
-   if (submit->sync_count) {
-      syncs_offset = alloc_size;
-      alloc_size += sizeof(*submit->temp.syncs) * submit->sync_count;
-
-      alloc_size = (alloc_size + 7) & ~7;
-      sync_values_offset = alloc_size;
-      alloc_size += sizeof(*submit->temp.sync_values) * submit->sync_count;
-
-      batch_sync_counts_offset = alloc_size;
-      alloc_size +=
-         sizeof(*submit->temp.batch_sync_counts) * submit->batch_count;
-   }
-
    if (!alloc_size) {
       submit->temp.storage = NULL;
       return VK_SUCCESS;
@@ -196,11 +171,6 @@ vn_queue_submission_alloc_storage(struct vn_queue_submission *submit)
 
    submit->temp.batches = submit->temp.storage;
    submit->temp.semaphores = submit->temp.storage + semaphores_offset;
-
-   submit->temp.syncs = submit->temp.storage + syncs_offset;
-   submit->temp.sync_values = submit->temp.storage + sync_values_offset;
-   submit->temp.batch_sync_counts =
-      submit->temp.storage + batch_sync_counts_offset;
 
    return VK_SUCCESS;
 }
@@ -265,15 +235,6 @@ vn_queue_submission_filter_batch_wsi_semaphores(
    return dst_count;
 }
 
-static uint32_t
-vn_queue_submission_setup_batch_syncs(struct vn_queue_submission *submit,
-                                      uint32_t batch_index,
-                                      uint32_t sync_base)
-{
-   assert(!submit->sync_count);
-   return 0;
-}
-
 static void
 vn_queue_submission_setup_batches(struct vn_queue_submission *submit)
 {
@@ -300,18 +261,12 @@ vn_queue_submission_setup_batches(struct vn_queue_submission *submit)
    }
 
    uint32_t wait_sem_base = 0;
-   uint32_t sync_base = 0;
    for (uint32_t i = 0; i < submit->batch_count; i++) {
       if (submit->wait_wsi_count) {
          wait_sem_base += vn_queue_submission_filter_batch_wsi_semaphores(
             submit, i, wait_sem_base);
       }
-
-      sync_base +=
-         vn_queue_submission_setup_batch_syncs(submit, i, sync_base);
    }
-
-   assert(sync_base == submit->sync_count);
 }
 
 static VkResult
@@ -372,32 +327,6 @@ vn_queue_submission_cleanup(struct vn_queue_submission *submit)
    vk_free(alloc, submit->temp.storage);
 }
 
-static void
-vn_queue_submit_syncs(struct vn_queue *queue,
-                      struct vn_renderer_sync *const *syncs,
-                      const uint64_t *sync_values,
-                      uint32_t sync_count,
-                      struct vn_renderer_bo *wsi_bo)
-{
-   struct vn_instance *instance = queue->device->instance;
-   const struct vn_renderer_submit_batch batch = {
-      .sync_queue_index = queue->sync_queue_index,
-      .vk_queue_id = queue->base.id,
-      .syncs = syncs,
-      .sync_values = sync_values,
-      .sync_count = sync_count,
-   };
-   const struct vn_renderer_submit submit = {
-      .bos = &wsi_bo,
-      .bo_count = wsi_bo ? 1 : 0,
-      .batches = &batch,
-      .batch_count = 1,
-   };
-
-   vn_renderer_submit(instance->renderer, &submit);
-   vn_instance_roundtrip(instance);
-}
-
 VkResult
 vn_QueueSubmit(VkQueue _queue,
                uint32_t submitCount,
@@ -431,25 +360,29 @@ vn_QueueSubmit(VkQueue _queue,
       return vn_error(dev->instance, result);
    }
 
-   if (submit.sync_count || wsi_mem) {
-      vn_queue_submit_syncs(queue, submit.temp.syncs, submit.temp.sync_values,
-                            submit.sync_count,
-                            wsi_mem ? wsi_mem->base_bo : NULL);
-   }
-
    /* XXX The implicit fence won't work because the host is not aware of it.
     * It is guest-only and the guest kernel does not wait.  We need kernel
     * support, or better yet, an explicit fence that the host is aware of.
     *
     * vn_AcquireNextImage2KHR is also broken.
     */
-   if (wsi_mem && VN_DEBUG(WSI)) {
-      static uint32_t ratelimit;
-      if (ratelimit < 10) {
-         vn_log(dev->instance, "forcing vkQueueWaitIdle before presenting");
-         ratelimit++;
+   if (wsi_mem) {
+      if (!VN_DEBUG(WSI)) {
+         vn_renderer_submit(dev->instance->renderer,
+                            &(const struct vn_renderer_submit){
+                               .bos = &wsi_mem->base_bo,
+                               .bo_count = 1,
+                            });
+      } else {
+         static uint32_t ratelimit;
+         if (ratelimit < 10) {
+            vn_log(dev->instance,
+                   "forcing vkQueueWaitIdle before presenting");
+            ratelimit++;
+         }
+
+         vn_QueueWaitIdle(submit.queue);
       }
-      vn_QueueWaitIdle(submit.queue);
    }
 
    vn_queue_submission_cleanup(&submit);
@@ -478,11 +411,6 @@ vn_QueueBindSparse(VkQueue _queue,
    if (result != VK_SUCCESS) {
       vn_queue_submission_cleanup(&submit);
       return vn_error(dev->instance, result);
-   }
-
-   if (submit.sync_count) {
-      vn_queue_submit_syncs(queue, submit.temp.syncs, submit.temp.sync_values,
-                            submit.sync_count, NULL);
    }
 
    vn_queue_submission_cleanup(&submit);
