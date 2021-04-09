@@ -796,7 +796,7 @@ public:
     */
    bool is_integer_16_32() const
    {
-      return is_integer_16() || is_integer_32() || is_integer_64();
+      return is_integer_16() || is_integer_32();
    }
 
    /**
