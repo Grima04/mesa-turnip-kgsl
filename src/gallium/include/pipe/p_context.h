@@ -1101,6 +1101,14 @@ struct pipe_context {
    void (*set_context_param)(struct pipe_context *ctx,
                              enum pipe_context_param param,
                              unsigned value);
+
+   /**
+    * Creates a video buffer as decoding target, with modifiers.
+    */
+   struct pipe_video_buffer *(*create_video_buffer_with_modifiers)(struct pipe_context *context,
+                                                                   const struct pipe_video_buffer *templat,
+                                                                   const uint64_t *modifiers,
+                                                                   unsigned int modifiers_count);
 };
 
 
