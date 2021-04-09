@@ -785,6 +785,17 @@ radv_physical_device_get_format_properties(struct radv_physical_device *physical
    if (vk_format_is_compressed(format))
       linear = 0;
 
+   /* From the Vulkan spec 1.2.163:
+    *
+    * "VK_FORMAT_FEATURE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR must be supported for the
+    *  following formats if the attachmentFragmentShadingRate feature is supported:"
+    *
+    * - VK_FORMAT_R8_UINT
+    */
+   if (format == VK_FORMAT_R8_UINT) {
+      tiled |= VK_FORMAT_FEATURE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
+   }
+
    out_properties->linearTilingFeatures = linear;
    out_properties->optimalTilingFeatures = tiled;
    out_properties->bufferFeatures = buffer;
