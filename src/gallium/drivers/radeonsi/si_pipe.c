@@ -371,8 +371,9 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
       sscreen->aux_context->destroy(sscreen->aux_context);
 
       sscreen->aux_context = si_create_context(
-         &sscreen->b, (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
-                         (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+         &sscreen->b, SI_CONTEXT_FLAG_AUX |
+                      (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+                      (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
       sscreen->aux_context->set_log_context(sscreen->aux_context, aux_log);
       simple_mtx_unlock(&sscreen->aux_context_lock);
    }
