@@ -3209,12 +3209,6 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 
    switch (nir_intrinsic_desc_type(intr)) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER: {
-      if (ctx->cbv_handles[binding])
-         break;
-      char name[64];
-      snprintf(name, sizeof(name), "__ubo%d", binding);
-      if (!emit_cbv(ctx, binding, 16384 /*4096 vec4's*/, 1, name))
-         return false;
       break;
    }
    default:
@@ -4008,7 +4002,7 @@ prepare_phi_values(struct ntd_context *ctx, nir_shader *shader)
 static bool
 emit_cbvs(struct ntd_context *ctx, nir_shader *s)
 {
-   if (s->info.stage == MESA_SHADER_KERNEL) {
+   if (s->info.stage == MESA_SHADER_KERNEL || ctx->opts->vulkan_environment) {
       nir_foreach_variable_with_modes(var, s, nir_var_mem_ubo) {
          if (!emit_ubo_var(ctx, var))
             return false;
@@ -4099,9 +4093,8 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    sort_uniforms_by_binding_and_remove_structs(s);
 
    /* CBVs */
-   if(!opts->vulkan_environment)
-      if (!emit_cbvs(ctx, s))
-         return false;
+   if (!emit_cbvs(ctx, s, opts))
+      return false;
 
    /* Samplers */
    binding = 0;
