@@ -417,8 +417,10 @@ resource_object_create(struct zink_screen *screen, const struct pipe_resource *t
          .scanout = true,
       };
 
-      if (screen->needs_mesa_wsi && (templ->bind & PIPE_BIND_SCANOUT))
+      if (screen->needs_mesa_wsi && (templ->bind & PIPE_BIND_SCANOUT)) {
+         image_wsi_info.pNext = ici.pNext;
          ici.pNext = &image_wsi_info;
+      }
 
       VkResult result = vkCreateImage(screen->dev, &ici, NULL, &obj->image);
       if (result != VK_SUCCESS) {
