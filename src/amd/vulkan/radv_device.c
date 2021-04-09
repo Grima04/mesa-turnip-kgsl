@@ -6629,6 +6629,10 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
          if (device->physical_device->rad_info.chip_class == GFX9) {
             ds->db_htile_surface |= S_028ABC_RB_ALIGNED(1);
          }
+
+         if (radv_image_has_vrs_htile(device, iview->image)) {
+            ds->db_htile_surface |= S_028ABC_VRS_HTILE_ENCODING(V_028ABC_VRS_HTILE_4BIT_ENCODING);
+         }
       }
    } else {
       const struct legacy_surf_level *level_info = &surf->u.legacy.level[level];

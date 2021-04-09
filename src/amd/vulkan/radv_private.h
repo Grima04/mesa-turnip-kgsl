@@ -1921,6 +1921,17 @@ radv_image_has_htile(const struct radv_image *image)
 }
 
 /**
+ * Return whether the image has VRS HTILE metadata for depth surfaces
+ */
+static inline bool
+radv_image_has_vrs_htile(const struct radv_device *device, const struct radv_image *image)
+{
+   /* Any depth buffer can potentially use VRS. */
+   return device->attachment_vrs_enabled && radv_image_has_htile(image) &&
+          (image->usage & VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
+/**
  * Return whether HTILE metadata is enabled for a level.
  */
 static inline bool
