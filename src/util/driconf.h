@@ -415,8 +415,8 @@
                   "If set to true, recompile shaders with integer or boolean constants when the values are known. Can cause stutter, but can increase slightly performance.")
 
 #define DRI_CONF_NINE_SHMEM_LIMIT() \
-   DRI_CONF_OPT_I(texture_memory_limit, 512, 0, 0, \
-                  "In MB the limit of virtual memory used for textures until shmem files are unmapped (default 512MB, 32bits only). If negative disables shmem. Set to a low amount to reduce virtual memory usage, but can inccur a small perf hit if too low.")
+   DRI_CONF_OPT_I(texture_memory_limit, 128, 0, 0, \
+                  "In MB the limit of virtual memory used for textures until shmem files are unmapped (default 128MB, 32bits only). If negative disables shmem. Set to a low amount to reduce virtual memory usage, but can incur a small perf hit if too low.")
 
 #define DRI_CONF_NINE_FORCESWRENDERINGONCPU(def) \
    DRI_CONF_OPT_B(force_sw_rendering_on_cpu, def, \
