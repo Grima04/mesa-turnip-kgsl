@@ -1415,7 +1415,7 @@ pre_hash_descriptor_states(struct zink_screen *screen)
 }
 
 static void
-check_base_requements(struct zink_screen *screen)
+check_base_requirements(struct zink_screen *screen)
 {
    if (!screen->info.feats.features.logicOp ||
        !screen->info.feats.features.fillModeNonSolid ||
@@ -1486,7 +1486,7 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    if (!load_device_extensions(screen))
       goto fail;
 
-   check_base_requements(screen);
+   check_base_requirements(screen);
 
    screen->base.get_name = zink_get_name;
    screen->base.get_vendor = zink_get_vendor;
