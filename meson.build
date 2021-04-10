@@ -1636,6 +1636,14 @@ if with_llvm
       cpp_args += '-fno-rtti'
     endif
   endif
+
+  if cc.get_id() == 'msvc'
+    # Suppress "/DELAYLOAD:ole32.dll/shell32.dll ignored" warnings that LLVM adds
+    add_project_link_arguments(
+      '/ignore:4199',
+      language : ['c', 'cpp'],
+    )
+  endif
 elif with_amd_vk or with_gallium_radeonsi or with_gallium_swr or with_swrast_vk
   error('The following drivers require LLVM: Radv, RadeonSI, SWR, Lavapipe. One of these is enabled, but LLVM is disabled.')
 elif with_gallium_opencl
