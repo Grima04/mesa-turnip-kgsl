@@ -557,11 +557,14 @@ panfrost_direct_draw(struct panfrost_context *ctx,
         /* Emit all sort of descriptors. */
         mali_ptr varyings = 0, vs_vary = 0, fs_vary = 0, pos = 0, psiz = 0;
 
+        bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
+
         panfrost_emit_varying_descriptor(batch,
                                          ctx->padded_count *
                                          ctx->instance_count,
                                          &vs_vary, &fs_vary, &varyings,
-                                         NULL, &pos, &psiz);
+                                         NULL, &pos, &psiz,
+                                         point_coord_replace);
 
         mali_ptr attribs, attrib_bufs;
         attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);
@@ -654,9 +657,12 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
         ctx->instance_count = ctx->vertex_count = ctx->padded_count = 0;
         ctx->offset_start = 0;
 
+        bool point_coord_replace = (info->mode == PIPE_PRIM_POINTS);
+
         panfrost_emit_varying_descriptor(batch, 0,
                                          &vs_vary, &fs_vary, &varyings,
-                                         &varying_buf_count, &pos, &psiz);
+                                         &varying_buf_count, &pos, &psiz,
+                                         point_coord_replace);
 
         mali_ptr attribs, attrib_bufs;
         attribs = panfrost_emit_vertex_data(batch, &attrib_bufs);

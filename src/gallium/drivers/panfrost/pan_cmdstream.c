@@ -2107,7 +2107,8 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
                                  mali_ptr *buffers,
                                  unsigned *buffer_count,
                                  mali_ptr *position,
-                                 mali_ptr *psiz)
+                                 mali_ptr *psiz,
+                                 bool point_coord_replace)
 {
         /* Load the shaders */
         struct panfrost_context *ctx = batch->ctx;
@@ -2131,7 +2132,7 @@ panfrost_emit_varying_descriptor(struct panfrost_batch *batch,
         uint16_t point_coord_mask = ctx->rasterizer->base.sprite_coord_enable;
 
         /* TODO: point sprites need lowering on Bifrost */
-        if (pan_is_bifrost(dev))
+        if (!point_coord_replace || pan_is_bifrost(dev))
                 point_coord_mask =  0;
 
         unsigned present = pan_varying_present(dev, vs, fs, point_coord_mask);
