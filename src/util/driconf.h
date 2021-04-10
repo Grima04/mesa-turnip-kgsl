@@ -400,7 +400,7 @@
 
 #define DRI_CONF_NINE_TEARFREEDISCARD(def) \
    DRI_CONF_OPT_B(tearfree_discard, def, \
-                  "Whether to make d3d's presentation mode DISCARD (games usually use that mode) Tear Free. If rendering above screen refresh, some frames will get skipped. false by default.")
+                  "Whether to make d3d's presentation mode DISCARD (games usually use that mode) Tear Free. If rendering above screen refresh, some frames will get skipped. true by default.")
 
 #define DRI_CONF_NINE_CSMT(def) \
    DRI_CONF_OPT_I(csmt_force, def, 0, 0, \
