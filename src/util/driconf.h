@@ -418,6 +418,10 @@
    DRI_CONF_OPT_I(texture_memory_limit, 512, 0, 0, \
                   "In MB the limit of virtual memory used for textures until shmem files are unmapped (default 512MB, 32bits only). If negative disables shmem. Set to a low amount to reduce virtual memory usage, but can inccur a small perf hit if too low.")
 
+#define DRI_CONF_NINE_FORCESWRENDERINGONCPU(def) \
+   DRI_CONF_OPT_B(force_sw_rendering_on_cpu, def, \
+                  "If set to false, emulates software rendering on the requested device, else uses a software renderer.")
+
 /**
  * \brief radeonsi specific configuration options
  */

@@ -61,6 +61,7 @@ const driOptionDescription __driConfigOptionsNine[] = {
         DRI_CONF_NINE_DYNAMICTEXTUREWORKAROUND(true)
         DRI_CONF_NINE_SHADERINLINECONSTANTS(false)
         DRI_CONF_NINE_SHMEM_LIMIT()
+        DRI_CONF_NINE_FORCESWRENDERINGONCPU(false)
     DRI_CONF_SECTION_END
     DRI_CONF_SECTION_DEBUG
         DRI_CONF_OVERRIDE_VRAM_SIZE()
@@ -101,13 +102,13 @@ drm_destroy( struct d3dadapter9_context *ctx )
 {
     struct d3dadapter9drm_context *drm = (struct d3dadapter9drm_context *)ctx;
 
-    if (ctx->ref)
+    if (ctx->ref && ctx->hal != ctx->ref)
         ctx->ref->destroy(ctx->ref);
     /* because ref is a wrapper around hal, freeing ref frees hal too. */
     else if (ctx->hal)
         ctx->hal->destroy(ctx->hal);
 
-    if (drm->swdev)
+    if (drm->swdev && drm->swdev != drm->dev)
         pipe_loader_release(&drm->swdev, 1);
     if (drm->dev)
         pipe_loader_release(&drm->dev, 1);
@@ -214,6 +215,7 @@ drm_create_adapter( int fd,
     driOptionCache userInitOptions;
     int throttling_value_user = -2;
     int override_vendorid = -1;
+    bool sw_rendering;
 
     if (!ctx) { return E_OUTOFMEMORY; }
 
@@ -283,17 +285,18 @@ drm_create_adapter( int fd,
     ctx->base.shader_inline_constants = driQueryOptionb(&userInitOptions, "shader_inline_constants");
     ctx->base.memfd_virtualsizelimit = driQueryOptioni(&userInitOptions, "texture_memory_limit");
     ctx->base.override_vram_size = driQueryOptioni(&userInitOptions, "override_vram_size");
+    sw_rendering = driQueryOptionb(&userInitOptions, "force_sw_rendering_on_cpu");
 
     driDestroyOptionCache(&userInitOptions);
     driDestroyOptionInfo(&defaultInitOptions);
 
     /* wrap it to create a software screen that can share resources */
-    if (pipe_loader_sw_probe_wrapped(&ctx->swdev, ctx->base.hal))
+    if (sw_rendering && pipe_loader_sw_probe_wrapped(&ctx->swdev, ctx->base.hal))
         ctx->base.ref = pipe_loader_create_screen(ctx->swdev);
-
-    if (!ctx->base.ref) {
-        ERR("Couldn't wrap drm screen to swrast screen. Software devices "
-            "will be unavailable.\n");
+    else {
+        /* Use the hardware for sw rendering */
+        ctx->swdev = ctx->dev;
+        ctx->base.ref = ctx->base.hal;
     }
 
     /* read out PCI info */
