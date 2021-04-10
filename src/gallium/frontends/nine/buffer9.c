@@ -165,7 +165,6 @@ NineBuffer9_ctor( struct NineBuffer9 *This,
                                              Size, 1, 0), 32);
         if (!This->managed.data)
             return E_OUTOFMEMORY;
-        memset(This->managed.data, 0, Size);
         This->managed.dirty = TRUE;
         u_box_1d(0, Size, &This->managed.dirty_box);
         u_box_1d(0, 0, &This->managed.valid_region);
