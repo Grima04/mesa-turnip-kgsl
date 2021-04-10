@@ -365,6 +365,7 @@ d3d9_to_pipe_format_checked(struct pipe_screen *screen,
                 return PIPE_FORMAT_NONE;
             if (format_check_internal(PIPE_FORMAT_R32G32B32X32_FLOAT))
                 return PIPE_FORMAT_R32G32B32X32_FLOAT;
+            break;
         default:
             break;
     }

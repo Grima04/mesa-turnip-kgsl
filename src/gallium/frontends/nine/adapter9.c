@@ -378,6 +378,7 @@ NineAdapter9_CheckDeviceFormat( struct NineAdapter9 *This,
          * on NV chips). */
         if (Usage == 0)
             bind |= PIPE_BIND_RENDER_TARGET; /* A current requirement of our impl, which we should get rid of. */
+        break;
     default:
         break;
     }
