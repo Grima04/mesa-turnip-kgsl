@@ -118,6 +118,15 @@
       .value = { ._string = #def },                             \
    },
 
+#define DRI_CONF_OPT_S_NODEF(_name, _desc) {                    \
+      .desc = _desc,                                            \
+      .info = {                                                 \
+         .name = #_name,                                        \
+         .type = DRI_STRING,                                    \
+      },                                                        \
+      .value = { ._string = "" },                               \
+   },
+
 /**
  * \brief Debugging options
  */
@@ -207,8 +216,8 @@
    DRI_CONF_OPT_B(allow_incorrect_primitive_id, def, \
                   "Allows drawing display list using merged draws (might cause invalid gl_PrimitiveID values).")
 
-#define DRI_CONF_FORCE_GL_VENDOR(def) \
-   DRI_CONF_OPT_S(force_gl_vendor, def, "Override GPU vendor string.")
+#define DRI_CONF_FORCE_GL_VENDOR() \
+   DRI_CONF_OPT_S_NODEF(force_gl_vendor, "Override GPU vendor string.")
 
 #define DRI_CONF_FORCE_COMPAT_PROFILE(def) \
    DRI_CONF_OPT_B(force_compat_profile, def, \
@@ -224,12 +233,12 @@
 #define DRI_CONF_TRANSCODE_ETC(def) \
    DRI_CONF_OPT_B(transcode_etc, def, "Transcode ETC formats to DXTC if unsupported")
 
-#define DRI_CONF_GLX_EXTENSION_OVERRIDE(def) \
-   DRI_CONF_OPT_S(glx_extension_override, def, \
+#define DRI_CONF_GLX_EXTENSION_OVERRIDE() \
+   DRI_CONF_OPT_S_NODEF(glx_extension_override, \
                   "Allow enabling/disabling a list of GLX extensions")
 
-#define DRI_CONF_INDIRECT_GL_EXTENSION_OVERRIDE(def) \
-   DRI_CONF_OPT_S(indirect_gl_extension_override, def, \
+#define DRI_CONF_INDIRECT_GL_EXTENSION_OVERRIDE() \
+   DRI_CONF_OPT_S_NODEF(indirect_gl_extension_override, \
                   "Allow enabling/disabling a list of indirect-GL extensions")
 
 #define DRI_CONF_DISABLE_PROTECTED_CONTENT_CHECK(def) \
@@ -361,11 +370,11 @@
  */
 #define DRI_CONF_SECTION_INITIALIZATION DRI_CONF_SECTION("Initialization")
 
-#define DRI_CONF_DEVICE_ID_PATH_TAG(def) \
-   DRI_CONF_OPT_S(device_id, def, "Define the graphic device to use if possible")
+#define DRI_CONF_DEVICE_ID_PATH_TAG() \
+   DRI_CONF_OPT_S_NODEF(device_id, "Define the graphic device to use if possible")
 
-#define DRI_CONF_DRI_DRIVER(def) \
-   DRI_CONF_OPT_S(dri_driver, def, "Override the DRI driver to load")
+#define DRI_CONF_DRI_DRIVER() \
+   DRI_CONF_OPT_S_NODEF(dri_driver, "Override the DRI driver to load")
 
 /**
  * \brief Gallium-Nine specific configuration options
