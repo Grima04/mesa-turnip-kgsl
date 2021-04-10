@@ -11409,7 +11409,7 @@ std::pair<Temp, Temp> ngg_gs_workgroup_reduce_and_scan(isel_context *ctx, Temp s
 
    /* The first lane of each wave loads every wave's results from LDS, to avoid bank conflicts */
    Temp reduction_per_wave_vector = load_lds(ctx, 4u * num_lds_dwords, bld.tmp(RegClass(RegType::vgpr, num_lds_dwords)),
-                                             bld.copy(bld.def(v1), Operand(0u)), ctx->ngg_gs_scratch_addr, 4u);
+                                             bld.copy(bld.def(v1), Operand(0u)), ctx->ngg_gs_scratch_addr, 16u);
 
    begin_divergent_if_else(ctx, &ic);
    end_divergent_if(ctx, &ic);
