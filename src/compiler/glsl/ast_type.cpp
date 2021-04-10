@@ -22,7 +22,7 @@
  */
 
 #include "ast.h"
-#include "string_buffer.h"
+#include "util/string_buffer.h"
 
 void
 ast_type_specifier::print(void) const
