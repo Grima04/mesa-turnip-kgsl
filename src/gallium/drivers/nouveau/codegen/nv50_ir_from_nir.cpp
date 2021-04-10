@@ -2222,7 +2222,7 @@ Converter::visit(nir_intrinsic_instr *insn)
          break;
       case nir_intrinsic_bindless_image_samples:
          mask = 0x8;
-         /* fallthrough */
+         FALLTHROUGH;
       case nir_intrinsic_image_samples:
          ty = TYPE_U32;
          bindless = op == nir_intrinsic_bindless_image_samples;

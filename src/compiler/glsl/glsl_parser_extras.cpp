@@ -475,7 +475,7 @@ _mesa_glsl_parse_state::process_version_directive(YYLTYPE *locp, int version,
 
       case API_OPENGLES:
 	 assert(!"Should not get here.");
-	 /* FALLTHROUGH */
+	 FALLTHROUGH;
 
       case API_OPENGLES2:
 	 this->language_version = 100;

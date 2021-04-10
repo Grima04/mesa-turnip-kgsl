@@ -1120,7 +1120,7 @@ droid_get_buffers_parse_attachments(struct dri2_egl_surface *dri2_surf,
 
             break;
          }
-         /* fall through for pbuffers */
+         FALLTHROUGH; /* for pbuffers */
       case __DRI_BUFFER_DEPTH:
       case __DRI_BUFFER_STENCIL:
       case __DRI_BUFFER_ACCUM:
