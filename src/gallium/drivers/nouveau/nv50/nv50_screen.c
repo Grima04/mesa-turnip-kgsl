@@ -61,6 +61,12 @@ nv50_screen_is_format_supported(struct pipe_screen *pscreen,
    if (MAX2(1, sample_count) != MAX2(1, storage_sample_count))
       return false;
 
+   /* Short-circuit the rest of the logic -- this is used by the gallium frontend
+    * to determine valid MS levels in a no-attachments scenario.
+    */
+   if (format == PIPE_FORMAT_NONE && bindings & PIPE_BIND_RENDER_TARGET)
+      return true;
+
    switch (format) {
    case PIPE_FORMAT_Z16_UNORM:
       if (nv50_screen(pscreen)->tesla->oclass < NVA0_3D_CLASS)
@@ -238,6 +244,7 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_CLIP_PLANES:
    case PIPE_CAP_PACKED_STREAM_OUTPUT:
    case PIPE_CAP_CLEAR_SCISSORED:
+   case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
       return 1;
    case PIPE_CAP_SEAMLESS_CUBE_MAP:
       return 1; /* class_3d >= NVA0_3D_CLASS; */
@@ -290,7 +297,6 @@ nv50_screen_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
    case PIPE_CAP_PCI_BUS:
    case PIPE_CAP_PCI_DEVICE:
    case PIPE_CAP_PCI_FUNCTION:
-   case PIPE_CAP_FRAMEBUFFER_NO_ATTACHMENT:
    case PIPE_CAP_ROBUST_BUFFER_ACCESS_BEHAVIOR:
    case PIPE_CAP_PRIMITIVE_RESTART_FOR_PATCHES:
    case PIPE_CAP_TGSI_VOTE:
