@@ -191,6 +191,18 @@ vn_instance_init_renderer(struct vn_instance *instance)
    version = vn_info_vk_xml_version();
    if (instance->renderer_info.vk_xml_version > version)
       instance->renderer_info.vk_xml_version = version;
+   if (instance->renderer_info.vk_xml_version < VN_MIN_RENDERER_VERSION) {
+      if (VN_DEBUG(INIT)) {
+         vn_log(instance, "vk xml version %d.%d.%d < %d.%d.%d",
+                VK_VERSION_MAJOR(instance->renderer_info.vk_xml_version),
+                VK_VERSION_MINOR(instance->renderer_info.vk_xml_version),
+                VK_VERSION_PATCH(instance->renderer_info.vk_xml_version),
+                VK_VERSION_MAJOR(VN_MIN_RENDERER_VERSION),
+                VK_VERSION_MINOR(VN_MIN_RENDERER_VERSION),
+                VK_VERSION_PATCH(VN_MIN_RENDERER_VERSION));
+      }
+      return VK_ERROR_INITIALIZATION_FAILED;
+   }
 
    version = vn_info_extension_spec_version("VK_EXT_command_serialization");
    if (instance->renderer_info.vk_ext_command_serialization_spec_version >
