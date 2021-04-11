@@ -503,6 +503,11 @@ agx_compile_shader_nir(nir_shader *nir,
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
       agx_print_shader(ctx, stdout);
 
+   agx_ra(ctx);
+
+   if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
+      agx_print_shader(ctx, stdout);
+
    if ((agx_debug & AGX_DBG_SHADERDB) && !skip_internal)
       agx_print_stats(ctx, binary->size, stderr);
 

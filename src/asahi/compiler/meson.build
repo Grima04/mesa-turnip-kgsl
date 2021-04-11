@@ -22,6 +22,7 @@
 libasahi_agx_files = files(
   'agx_compile.c',
   'agx_print.c',
+  'agx_register_allocate.c',
 )
 
 agx_opcodes_h = custom_target(
