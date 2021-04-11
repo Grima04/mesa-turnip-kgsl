@@ -4349,11 +4349,14 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          spv_check_supported(kernel_image, cap);
          break;
 
+      case SpvCapabilityImageReadWrite:
+         spv_check_supported(kernel_image_read_write, cap);
+         break;
+
       case SpvCapabilityLiteralSampler:
          spv_check_supported(literal_sampler, cap);
          break;
 
-      case SpvCapabilityImageReadWrite:
       case SpvCapabilityImageMipmap:
       case SpvCapabilityPipes:
       case SpvCapabilityDeviceEnqueue:
