@@ -750,6 +750,21 @@ meson-android:
     - .use-android_build
   variables:
     UNWIND: "disabled"
+    C_ARGS: >
+      -Wno-error=absolute-value
+      -Wno-error=asm-operand-widths
+      -Wno-error=constant-conversion
+      -Wno-error=enum-conversion
+      -Wno-error=extern-initializer
+      -Wno-error=initializer-overrides
+      -Wno-error=missing-braces
+      -Wno-error=sometimes-uninitialized
+      -Wno-error=tautological-constant-out-of-range-compare
+      -Wno-error=unused-function
+      -Wno-error=unused-label
+    CPP_ARGS: >
+      -Wno-error=deprecated-declarations
+      -Wno-error=non-virtual-dtor
     DRI_LOADERS: >
       -D glx=disabled
       -D gbm=disabled
@@ -760,6 +775,7 @@ meson-android:
       -D llvm=disabled
       -D platform-sdk-version=26
       -D valgrind=false
+      -D werror=true
     GALLIUM_ST: >
       -D dri3=disabled
       -D gallium-vdpau=disabled
@@ -869,9 +885,47 @@ meson-clang:
   extends: .meson-build
   variables:
     UNWIND: "enabled"
+    C_ARGS: >
+      -Wno-error=absolute-value
+      -Wno-error=constant-conversion
+      -Wno-error=constant-logical-operand
+      -Wno-error=enum-conversion
+      -Wno-error=gnu-variable-sized-type-not-at-end
+      -Wno-error=implicit-const-int-float-conversion
+      -Wno-error=initializer-overrides
+      -Wno-error=misleading-indentation
+      -Wno-error=mismatched-tags
+      -Wno-error=missing-braces
+      -Wno-error=overloaded-virtual
+      -Wno-error=self-assign
+      -Wno-error=sometimes-uninitialized
+      -Wno-error=tautological-constant-compare
+      -Wno-error=tautological-constant-out-of-range-compare
+      -Wno-error=tautological-overlap-compare
+      -Wno-error=typedef-redefinition
+      -Wno-error=unused-function
+      -Wno-error=unused-private-field
+      -Wno-error=xor-used-as-pow
+    CPP_ARGS: >
+      -Wno-error=c99-designator
+      -Wno-error=constant-logical-operand
+      -Wno-error=deprecated-declarations
+      -Wno-error=implicit-const-int-float-conversion
+      -Wno-error=mismatched-tags
+      -Wno-error=missing-braces
+      -Wno-error=overloaded-virtual
+      -Wno-error=self-assign
+      -Wno-error=sometimes-uninitialized
+      -Wno-error=tautological-constant-out-of-range-compare
+      -Wno-error=unused-const-variable
+      -Wno-error=unused-private-field
+      -Wno-error=unused-value
+      -Wno-error=unused-variable
     DRI_LOADERS: >
       -D glvnd=true
     DRI_DRIVERS: "auto"
+    EXTRA_OPTION: >
+      -D werror=true
     GALLIUM_DRIVERS: "iris,nouveau,kmsro,r300,r600,freedreno,swr,swrast,svga,v3d,vc4,virgl,etnaviv,panfrost,lima,zink,radeonsi,tegra,d3d12"
     VULKAN_DRIVERS: intel,amd,freedreno,broadcom,virtio-experimental
     CC: clang
