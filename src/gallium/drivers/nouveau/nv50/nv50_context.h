@@ -328,7 +328,7 @@ nv50_cb_push(struct nouveau_context *nv,
 /* nv50_vbo.c */
 void nv50_draw_vbo(struct pipe_context *, const struct pipe_draw_info *,
                    const struct pipe_draw_indirect_info *indirect,
-                   const struct pipe_draw_start_count *draws,
+                   const struct pipe_draw_start_count_bias *draws,
                    unsigned num_draws);
 
 void *
@@ -343,7 +343,7 @@ void nv50_vertex_arrays_validate(struct nv50_context *nv50);
 /* nv50_push.c */
 void nv50_push_vbo(struct nv50_context *, const struct pipe_draw_info *,
                    const struct pipe_draw_indirect_info *indirect,
-                   const struct pipe_draw_start_count *draw);
+                   const struct pipe_draw_start_count_bias *draw);
 
 /* nv84_video.c */
 struct pipe_video_codec *

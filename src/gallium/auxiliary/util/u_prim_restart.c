@@ -100,7 +100,7 @@ enum pipe_error
 util_translate_prim_restart_ib(struct pipe_context *context,
                                const struct pipe_draw_info *info,
                                const struct pipe_draw_indirect_info *indirect_info,
-                               const struct pipe_draw_start_count *draw,
+                               const struct pipe_draw_start_count_bias *draw,
                                struct pipe_resource **dst_buffer)
 {
    struct pipe_screen *screen = context->screen;
@@ -224,12 +224,12 @@ enum pipe_error
 util_draw_vbo_without_prim_restart(struct pipe_context *context,
                                    const struct pipe_draw_info *info,
                                    const struct pipe_draw_indirect_info *indirect_info,
-                                   const struct pipe_draw_start_count *draw)
+                                   const struct pipe_draw_start_count_bias *draw)
 {
    const void *src_map;
    struct range_info ranges = {0};
    struct pipe_draw_info new_info;
-   struct pipe_draw_start_count new_draw;
+   struct pipe_draw_start_count_bias new_draw;
    struct pipe_transfer *src_transfer = NULL;
    unsigned i, start, count;
    DrawElementsIndirectCommand indirect;

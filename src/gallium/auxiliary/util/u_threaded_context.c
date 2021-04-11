@@ -192,7 +192,7 @@ tc_batch_execute(void *job, UNUSED int thread_index)
              first_info->info.drawid == 0 &&
              is_next_call_a_mergeable_draw(first_info, next, &next_info)) {
             /* Merge up to 256 draw calls. */
-            struct pipe_draw_start_count multi[256];
+            struct pipe_draw_start_count_bias multi[256];
             unsigned num_draws = 2;
 
             /* u_threaded_context stores start/count in min/max_index for single draws. */
@@ -2389,10 +2389,10 @@ tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
 
    /* u_threaded_context stores start/count in min/max_index for single draws. */
    /* Drivers using u_threaded_context shouldn't use min/max_index. */
-   struct pipe_draw_start_count *draw =
-      (struct pipe_draw_start_count *)&info->info.min_index;
-   STATIC_ASSERT(offsetof(struct pipe_draw_start_count, start) == 0);
-   STATIC_ASSERT(offsetof(struct pipe_draw_start_count, count) == 4);
+   struct pipe_draw_start_count_bias *draw =
+      (struct pipe_draw_start_count_bias *)&info->info.min_index;
+   STATIC_ASSERT(offsetof(struct pipe_draw_start_count_bias, start) == 0);
+   STATIC_ASSERT(offsetof(struct pipe_draw_start_count_bias, count) == 4);
 
    info->info.index_bounds_valid = false;
    info->info.has_user_indices = false;
@@ -2406,7 +2406,7 @@ tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
 struct tc_draw_indirect {
    struct pipe_draw_info info;
    struct pipe_draw_indirect_info indirect;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 };
 
 static void
@@ -2429,7 +2429,7 @@ tc_call_draw_indirect(struct pipe_context *pipe, union tc_payload *payload)
 struct tc_draw_multi {
    struct pipe_draw_info info;
    unsigned num_draws;
-   struct pipe_draw_start_count slot[]; /* variable-sized array */
+   struct pipe_draw_start_count_bias slot[]; /* variable-sized array */
 };
 
 static void
@@ -2452,7 +2452,7 @@ tc_call_draw_multi(struct pipe_context *pipe, union tc_payload *payload)
 void
 tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             const struct pipe_draw_indirect_info *indirect,
-            const struct pipe_draw_start_count *draws,
+            const struct pipe_draw_start_count_bias *draws,
             unsigned num_draws)
 {
    STATIC_ASSERT(DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX +

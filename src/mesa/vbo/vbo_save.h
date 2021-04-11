@@ -72,7 +72,7 @@ struct vbo_save_vertex_list {
       struct _mesa_index_buffer ib;
       struct pipe_draw_info info;
       unsigned char *mode;
-      struct pipe_draw_start_count *start_count;
+      struct pipe_draw_start_count_bias *start_count;
       unsigned num_draws;
    } merged;
 

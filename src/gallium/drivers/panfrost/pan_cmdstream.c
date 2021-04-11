@@ -63,7 +63,7 @@ panfrost_bo_access_for_stage(enum pipe_shader_type stage)
 mali_ptr
 panfrost_get_index_buffer_bounded(struct panfrost_context *ctx,
                                   const struct pipe_draw_info *info,
-                                  const struct pipe_draw_start_count *draw,
+                                  const struct pipe_draw_start_count_bias *draw,
                                   unsigned *min_index, unsigned *max_index)
 {
         struct panfrost_resource *rsrc = pan_resource(info->index.resource);

@@ -997,7 +997,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
 static void
 v3d_update_primitives_generated_counter(struct v3d_context *v3d,
                                         const struct pipe_draw_info *info,
-                                        const struct pipe_draw_start_count *draw)
+                                        const struct pipe_draw_start_count_bias *draw)
 {
         assert(!v3d->prog.gs);
 
@@ -1106,7 +1106,7 @@ v3d_check_compiled_shaders(struct v3d_context *v3d)
 static void
 v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count *draws,
+             const struct pipe_draw_start_count_bias *draws,
              unsigned num_draws)
 {
         if (num_draws > 1) {

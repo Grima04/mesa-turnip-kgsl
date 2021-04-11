@@ -855,7 +855,7 @@ void iris_copy_region(struct blorp_context *blorp,
 
 void iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
                    const struct pipe_draw_indirect_info *indirect,
-                   const struct pipe_draw_start_count *draws,
+                   const struct pipe_draw_start_count_bias *draws,
                    unsigned num_draws);
 void iris_launch_grid(struct pipe_context *, const struct pipe_grid_info *);
 

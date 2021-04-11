@@ -192,7 +192,7 @@ static void draw( void )
 {
    union pipe_color_union clear_color = { {1,0,1,1} };
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    ctx->clear(ctx, PIPE_CLEAR_COLOR, NULL, &clear_color, 0, 0);
 

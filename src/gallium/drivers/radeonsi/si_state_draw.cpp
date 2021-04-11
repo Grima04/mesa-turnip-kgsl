@@ -964,7 +964,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 template <chip_class GFX_VERSION, si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
                                  const struct pipe_draw_indirect_info *indirect,
-                                 const struct pipe_draw_start_count *draws,
+                                 const struct pipe_draw_start_count_bias *draws,
                                  unsigned num_draws,
                                  struct pipe_resource *indexbuf, unsigned index_size,
                                  unsigned index_offset, unsigned instance_count,
@@ -1454,7 +1454,7 @@ static bool si_upload_and_prefetch_VB_descriptors(struct si_context *sctx)
 
 static void si_get_draw_start_count(struct si_context *sctx, const struct pipe_draw_info *info,
                                     const struct pipe_draw_indirect_info *indirect,
-                                    const struct pipe_draw_start_count *draws,
+                                    const struct pipe_draw_start_count_bias *draws,
                                     unsigned num_draws, unsigned *start, unsigned *count)
 {
    if (indirect && !indirect->count_from_stream_output) {
@@ -1668,7 +1668,7 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has
 static void si_draw_vbo(struct pipe_context *ctx,
                         const struct pipe_draw_info *info,
                         const struct pipe_draw_indirect_info *indirect,
-                        const struct pipe_draw_start_count *draws,
+                        const struct pipe_draw_start_count_bias *draws,
                         unsigned num_draws)
 {
    /* Keep code that uses the least number of local variables as close to the beginning
@@ -2232,7 +2232,7 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    pipe->bind_vs_state(pipe, si_get_blitter_vs(sctx, type, num_instances));
 
    struct pipe_draw_info info = {};
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    info.mode = SI_PRIM_RECTANGLE_LIST;
    info.instance_count = num_instances;
@@ -2311,7 +2311,7 @@ static void si_init_draw_vbo_all_families(struct si_context *sctx)
 static void si_invalid_draw_vbo(struct pipe_context *pipe,
                                 const struct pipe_draw_info *info,
                                 const struct pipe_draw_indirect_info *indirect,
-                                const struct pipe_draw_start_count *draws,
+                                const struct pipe_draw_start_count_bias *draws,
                                 unsigned num_draws)
 {
    unreachable("vertex shader not bound");

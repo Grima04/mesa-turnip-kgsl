@@ -117,7 +117,7 @@ static void
 iris_update_draw_parameters(struct iris_context *ice,
                             const struct pipe_draw_info *info,
                             const struct pipe_draw_indirect_info *indirect,
-                            const struct pipe_draw_start_count *draw)
+                            const struct pipe_draw_start_count_bias *draw)
 {
    bool changed = false;
 
@@ -179,7 +179,7 @@ static void
 iris_indirect_draw_vbo(struct iris_context *ice,
                        const struct pipe_draw_info *dinfo,
                        const struct pipe_draw_indirect_info *dindirect,
-                       const struct pipe_draw_start_count *draw)
+                       const struct pipe_draw_start_count_bias *draw)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
    struct pipe_draw_info info = *dinfo;
@@ -224,7 +224,7 @@ static void
 iris_simple_draw_vbo(struct iris_context *ice,
                      const struct pipe_draw_info *draw,
                      const struct pipe_draw_indirect_info *indirect,
-                     const struct pipe_draw_start_count *sc)
+                     const struct pipe_draw_start_count_bias *sc)
 {
    struct iris_batch *batch = &ice->batches[IRIS_BATCH_RENDER];
 
@@ -241,7 +241,7 @@ iris_simple_draw_vbo(struct iris_context *ice,
 void
 iris_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
               const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count *draws,
+              const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {

@@ -49,7 +49,7 @@ static void
 tegra_draw_vbo(struct pipe_context *pcontext,
                const struct pipe_draw_info *pinfo,
                const struct pipe_draw_indirect_info *pindirect,
-               const struct pipe_draw_start_count *draws,
+               const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
    if (num_draws > 1) {

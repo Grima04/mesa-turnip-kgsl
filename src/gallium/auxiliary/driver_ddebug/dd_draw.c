@@ -353,7 +353,7 @@ dd_dump_flush(struct dd_draw_state *dstate, struct call_flush *info, FILE *f)
 static void
 dd_dump_draw_vbo(struct dd_draw_state *dstate, struct pipe_draw_info *info,
                  const struct pipe_draw_indirect_info *indirect,
-                 const struct pipe_draw_start_count *draw, FILE *f)
+                 const struct pipe_draw_start_count_bias *draw, FILE *f)
 {
    int sh, i;
 
@@ -1304,7 +1304,7 @@ static void
 dd_context_draw_vbo(struct pipe_context *_pipe,
                     const struct pipe_draw_info *info,
                     const struct pipe_draw_indirect_info *indirect,
-                    const struct pipe_draw_start_count *draws,
+                    const struct pipe_draw_start_count_bias *draws,
                     unsigned num_draws)
 {
    struct dd_context *dctx = dd_context(_pipe);

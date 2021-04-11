@@ -176,7 +176,7 @@ util_draw_indirect(struct pipe_context *pipe,
    }
 
    for (unsigned i = 0; i < draw_count; i++) {
-      struct pipe_draw_start_count draw;
+      struct pipe_draw_start_count_bias draw;
 
       draw.count = params[0];
       info.instance_count = params[1];
@@ -195,7 +195,7 @@ util_draw_indirect(struct pipe_context *pipe,
 void
 util_draw_multi(struct pipe_context *pctx, const struct pipe_draw_info *info,
                 const struct pipe_draw_indirect_info *indirect,
-                const struct pipe_draw_start_count *draws,
+                const struct pipe_draw_start_count_bias *draws,
                 unsigned num_draws)
 {
    struct pipe_draw_info tmp_info = *info;

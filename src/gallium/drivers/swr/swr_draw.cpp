@@ -39,7 +39,7 @@
 static void
 swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count *draws,
+             const struct pipe_draw_start_count_bias *draws,
              unsigned num_draws)
 {
    if (num_draws > 1) {
@@ -82,7 +82,7 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    swr_update_draw_context(ctx);
 
    struct pipe_draw_info resolved_info;
-   struct pipe_draw_start_count resolved_draw;
+   struct pipe_draw_start_count_bias resolved_draw;
    /* DrawTransformFeedback */
    if (indirect && indirect->count_from_stream_output) {
       // trick copied from softpipe to modify const struct *info

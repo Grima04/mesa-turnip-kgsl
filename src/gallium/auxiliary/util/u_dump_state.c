@@ -935,9 +935,9 @@ util_dump_draw_info(FILE *stream, const struct pipe_draw_info *state)
 }
 
 void
-util_dump_draw_start_count(FILE *stream, const struct pipe_draw_start_count *state)
+util_dump_draw_start_count(FILE *stream, const struct pipe_draw_start_count_bias *state)
 {
-   util_dump_struct_begin(stream, "pipe_draw_start_count");
+   util_dump_struct_begin(stream, "pipe_draw_start_count_bias");
    util_dump_member(stream, uint, state, start);
    util_dump_member(stream, uint, state, count);
    util_dump_struct_end(stream);

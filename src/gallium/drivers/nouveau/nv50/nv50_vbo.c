@@ -759,7 +759,7 @@ nv50_draw_vbo_kick_notify(struct nouveau_pushbuf *chan)
 void
 nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
               const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count *draws,
+              const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {

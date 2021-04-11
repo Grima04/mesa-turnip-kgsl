@@ -56,7 +56,7 @@ DEBUG_GET_ONCE_BOOL_OPTION(draw_no_fse, "DRAW_NO_FSE", FALSE)
 static boolean
 draw_pt_arrays(struct draw_context *draw,
                unsigned prim,
-               const struct pipe_draw_start_count *draw_info,
+               const struct pipe_draw_start_count_bias *draw_info,
                unsigned num_draws)
 {
    struct draw_pt_front_end *frontend = NULL;
@@ -363,7 +363,7 @@ prim_restart_loop(struct draw_context *draw,
                   const void *elements)
 {
    const unsigned elt_max = draw->pt.user.eltMax;
-   struct pipe_draw_start_count cur;
+   struct pipe_draw_start_count_bias cur;
    cur.start = start;
    cur.count = 0;
 
@@ -414,7 +414,7 @@ prim_restart_loop(struct draw_context *draw,
 static void
 draw_pt_arrays_restart(struct draw_context *draw,
                        const struct pipe_draw_info *info,
-                       const struct pipe_draw_start_count *draw_info,
+                       const struct pipe_draw_start_count_bias *draw_info,
                        unsigned num_draws)
 {
    const unsigned prim = info->mode;
@@ -444,13 +444,13 @@ draw_pt_arrays_restart(struct draw_context *draw,
 static void
 resolve_draw_info(const struct pipe_draw_info *raw_info,
                   const struct pipe_draw_indirect_info *indirect,
-                  const struct pipe_draw_start_count *raw_draw,
+                  const struct pipe_draw_start_count_bias *raw_draw,
                   struct pipe_draw_info *info,
-                  struct pipe_draw_start_count *draw,
+                  struct pipe_draw_start_count_bias *draw,
                   struct pipe_vertex_buffer *vertex_buffer)
 {
    memcpy(info, raw_info, sizeof(struct pipe_draw_info));
-   memcpy(draw, raw_draw, sizeof(struct pipe_draw_start_count));
+   memcpy(draw, raw_draw, sizeof(struct pipe_draw_start_count_bias));
 
    struct draw_so_target *target =
       (struct draw_so_target *)indirect->count_from_stream_output;
@@ -469,7 +469,7 @@ resolve_draw_info(const struct pipe_draw_info *raw_info,
 static void
 draw_instances(struct draw_context *draw,
                const struct pipe_draw_info *info,
-               const struct pipe_draw_start_count *draws,
+               const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
    unsigned instance;
@@ -507,15 +507,15 @@ void
 draw_vbo(struct draw_context *draw,
          const struct pipe_draw_info *info,
          const struct pipe_draw_indirect_info *indirect,
-         const struct pipe_draw_start_count *draws,
+         const struct pipe_draw_start_count_bias *draws,
          unsigned num_draws)
 {
    unsigned index_limit;
    unsigned fpstate = util_fpstate_get();
    struct pipe_draw_info resolved_info;
-   struct pipe_draw_start_count resolved_draw;
+   struct pipe_draw_start_count_bias resolved_draw;
    struct pipe_draw_info *use_info = (struct pipe_draw_info *)info;
-   struct pipe_draw_start_count *use_draws = (struct pipe_draw_start_count *)draws;
+   struct pipe_draw_start_count_bias *use_draws = (struct pipe_draw_start_count_bias *)draws;
 
    if (info->instance_count == 0)
       return;

@@ -100,11 +100,11 @@ void
 util_primconvert_draw_vbo(struct primconvert_context *pc,
                           const struct pipe_draw_info *info,
                           const struct pipe_draw_indirect_info *indirect,
-                          const struct pipe_draw_start_count *draws,
+                          const struct pipe_draw_start_count_bias *draws,
                           unsigned num_draws)
 {
    struct pipe_draw_info new_info;
-   struct pipe_draw_start_count new_draw;
+   struct pipe_draw_start_count_bias new_draw;
    struct pipe_transfer *src_transfer = NULL;
    u_translate_func trans_func;
    u_generate_func gen_func;
@@ -128,7 +128,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
       return;
    }
 
-   const struct pipe_draw_start_count *draw = &draws[0];
+   const struct pipe_draw_start_count_bias *draw = &draws[0];
 
    /* Filter out degenerate primitives, u_upload_alloc() will assert
     * on size==0 so just bail:

@@ -290,7 +290,7 @@ vc4_hw_2116_workaround(struct pipe_context *pctx, int vert_count)
 static void
 vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count *draws,
+             const struct pipe_draw_start_count_bias *draws,
              unsigned num_draws)
 {
         if (num_draws > 1) {

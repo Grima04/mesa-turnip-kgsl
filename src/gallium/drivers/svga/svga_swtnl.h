@@ -41,7 +41,7 @@ enum pipe_error
 svga_swtnl_draw_vbo(struct svga_context *svga,
                     const struct pipe_draw_info *info,
                     const struct pipe_draw_indirect_info *indirect,
-                    const struct pipe_draw_start_count *draw);
+                    const struct pipe_draw_start_count_bias *draw);
 
 
 #endif

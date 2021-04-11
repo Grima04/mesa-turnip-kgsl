@@ -90,13 +90,13 @@ _mesa_set_draw_vao(struct gl_context *ctx, struct gl_vertex_array_object *vao,
 void
 _mesa_draw_gallium_fallback(struct gl_context *ctx,
                             struct pipe_draw_info *info,
-                            const struct pipe_draw_start_count *draws,
+                            const struct pipe_draw_start_count_bias *draws,
                             unsigned num_draws);
 
 void
 _mesa_draw_gallium_complex_fallback(struct gl_context *ctx,
                                     struct pipe_draw_info *info,
-                                    const struct pipe_draw_start_count *draws,
+                                    const struct pipe_draw_start_count_bias *draws,
                                     const unsigned char *mode,
                                     const int *base_vertex,
                                     unsigned num_draws);

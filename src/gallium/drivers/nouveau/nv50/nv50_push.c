@@ -240,7 +240,7 @@ nv50_prim_gl(unsigned prim)
 void
 nv50_push_vbo(struct nv50_context *nv50, const struct pipe_draw_info *info,
               const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count *draw)
+              const struct pipe_draw_start_count_bias *draw)
 {
    struct push_context ctx;
    unsigned i, index_size;

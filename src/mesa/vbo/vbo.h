@@ -45,7 +45,7 @@ extern "C" {
 
 struct gl_context;
 struct pipe_draw_info;
-struct pipe_draw_start_count;
+struct pipe_draw_start_count_bias;
 
 /**
  * Max number of primitives (number of glBegin/End pairs) per VBO.
@@ -107,7 +107,7 @@ struct vbo_exec_context
    struct {
       /* Multi draw where the mode can vary between draws. */
       struct pipe_draw_info info;
-      struct pipe_draw_start_count draw[VBO_MAX_PRIM];
+      struct pipe_draw_start_count_bias draw[VBO_MAX_PRIM];
       GLubyte mode[VBO_MAX_PRIM];            /**< primitive modes per draw */
       struct vbo_markers markers[VBO_MAX_PRIM];
       unsigned prim_count;
@@ -257,7 +257,7 @@ vbo_get_minmax_indices(struct gl_context *ctx, const struct _mesa_prim *prim,
 bool
 vbo_get_minmax_indices_gallium(struct gl_context *ctx,
                                struct pipe_draw_info *info,
-                               const struct pipe_draw_start_count *draws,
+                               const struct pipe_draw_start_count_bias *draws,
                                unsigned num_draws);
 
 const struct gl_array_attributes*

@@ -739,7 +739,7 @@ int virgl_encoder_set_index_buffer(struct virgl_context *ctx,
 int virgl_encoder_draw_vbo(struct virgl_context *ctx,
                            const struct pipe_draw_info *info,
                            const struct pipe_draw_indirect_info *indirect,
-                           const struct pipe_draw_start_count *draw)
+                           const struct pipe_draw_start_count_bias *draw)
 {
    uint32_t length = VIRGL_DRAW_VBO_SIZE;
    if (info->mode == PIPE_PRIM_PATCHES)

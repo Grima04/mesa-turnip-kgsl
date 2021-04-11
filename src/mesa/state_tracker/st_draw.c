@@ -133,7 +133,7 @@ prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
                      struct st_context *st,
                      struct gl_context *ctx,
                      struct pipe_draw_info *info,
-                     const struct pipe_draw_start_count *draws,
+                     const struct pipe_draw_start_count_bias *draws,
                      unsigned num_draws)
 {
    if (info->index_size) {
@@ -173,7 +173,7 @@ prepare_indexed_draw(/* pass both st and ctx to reduce dereferences */
 static void
 st_draw_gallium(struct gl_context *ctx,
                 struct pipe_draw_info *info,
-                const struct pipe_draw_start_count *draws,
+                const struct pipe_draw_start_count_bias *draws,
                 unsigned num_draws)
 {
    struct st_context *st = st_context(ctx);
@@ -189,7 +189,7 @@ st_draw_gallium(struct gl_context *ctx,
 static void
 st_draw_gallium_complex(struct gl_context *ctx,
                         struct pipe_draw_info *info,
-                        const struct pipe_draw_start_count *draws,
+                        const struct pipe_draw_start_count_bias *draws,
                         const unsigned char *mode,
                         const int *base_vertex,
                         unsigned num_draws)
@@ -281,7 +281,7 @@ st_indirect_draw_vbo(struct gl_context *ctx,
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
    struct pipe_draw_indirect_info indirect;
-   struct pipe_draw_start_count draw = {0};
+   struct pipe_draw_start_count_bias draw = {0};
 
    assert(stride);
    prepare_draw(st, ctx);
@@ -339,7 +339,7 @@ st_draw_transform_feedback(struct gl_context *ctx, GLenum mode,
    struct st_context *st = st_context(ctx);
    struct pipe_draw_info info;
    struct pipe_draw_indirect_info indirect;
-   struct pipe_draw_start_count draw = {0};
+   struct pipe_draw_start_count_bias draw = {0};
 
    prepare_draw(st, ctx);
 

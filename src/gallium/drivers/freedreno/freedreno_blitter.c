@@ -241,7 +241,7 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
       .max_index = 1,
       .instance_count = MAX2(1, pfb->layers),
    };
-   struct pipe_draw_start_count draw = {
+	struct pipe_draw_start_count_bias draw = {
       .count = 2,
    };
    pctx->draw_vbo(pctx, &info, NULL, &draw, 1);

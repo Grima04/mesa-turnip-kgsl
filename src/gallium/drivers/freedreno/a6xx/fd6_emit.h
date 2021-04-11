@@ -90,7 +90,7 @@ struct fd6_emit {
    const struct fd_vertex_state *vtx;
    const struct pipe_draw_info *info;
    const struct pipe_draw_indirect_info *indirect;
-   const struct pipe_draw_start_count *draw;
+	const struct pipe_draw_start_count_bias *draw;
    struct ir3_cache_key key;
    enum fd_dirty_3d_state dirty;
    uint32_t dirty_groups;

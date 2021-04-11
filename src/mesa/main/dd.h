@@ -65,7 +65,7 @@ struct util_queue_monitoring;
 struct _mesa_prim;
 struct _mesa_index_buffer;
 struct pipe_draw_info;
-struct pipe_draw_start_count;
+struct pipe_draw_start_count_bias;
 
 /* GL_ARB_vertex_buffer_object */
 /* Modifies GL_MAP_UNSYNCHRONIZED_BIT to allow driver to fail (return
@@ -581,7 +581,7 @@ struct dd_function_table {
     */
    void (*DrawGallium)(struct gl_context *ctx,
                        struct pipe_draw_info *info,
-                       const struct pipe_draw_start_count *draws,
+                       const struct pipe_draw_start_count_bias *draws,
                        unsigned num_draws);
 
    /**
@@ -600,7 +600,7 @@ struct dd_function_table {
     */
    void (*DrawGalliumComplex)(struct gl_context *ctx,
                               struct pipe_draw_info *info,
-                              const struct pipe_draw_start_count *draws,
+                              const struct pipe_draw_start_count_bias *draws,
                               const unsigned char *mode,
                               const int *base_vertex,
                               unsigned num_draws);

@@ -414,7 +414,7 @@ nvc0_cb_bo_push(struct nouveau_context *,
 /* nvc0_vbo.c */
 void nvc0_draw_vbo(struct pipe_context *, const struct pipe_draw_info *,
                    const struct pipe_draw_indirect_info *indirect,
-                   const struct pipe_draw_start_count *draws,
+                   const struct pipe_draw_start_count_bias *draws,
                    unsigned num_draws);
 
 void *
@@ -440,10 +440,10 @@ nvc0_video_buffer_create(struct pipe_context *pipe,
 /* nvc0_push.c */
 void nvc0_push_vbo(struct nvc0_context *, const struct pipe_draw_info *,
                    const struct pipe_draw_indirect_info *indirect,
-                   const struct pipe_draw_start_count *draw);
+                   const struct pipe_draw_start_count_bias *draw);
 void nvc0_push_vbo_indirect(struct nvc0_context *, const struct pipe_draw_info *,
                             const struct pipe_draw_indirect_info *indirect,
-                            const struct pipe_draw_start_count *draw);
+                            const struct pipe_draw_start_count_bias *draw);
 
 /* nve4_compute.c */
 void nve4_launch_grid(struct pipe_context *, const struct pipe_grid_info *);

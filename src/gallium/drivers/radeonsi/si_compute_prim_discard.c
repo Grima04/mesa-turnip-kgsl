@@ -954,7 +954,7 @@ static bool si_check_ring_space(struct si_context *sctx, unsigned out_indexbuf_s
 
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
-                                      const struct pipe_draw_start_count *draws,
+                                      const struct pipe_draw_start_count_bias *draws,
                                       unsigned num_draws, bool primitive_restart,
                                       unsigned total_count)
 {
@@ -1023,7 +1023,7 @@ si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe
 
       /* Split single draws if splitting multi draws isn't enough. */
       struct pipe_draw_info split_draw = *info;
-      struct pipe_draw_start_count split_draw_range = draws[0];
+      struct pipe_draw_start_count_bias split_draw_range = draws[0];
       unsigned base_start = split_draw_range.start;
 
       split_draw.primitive_restart = primitive_restart;

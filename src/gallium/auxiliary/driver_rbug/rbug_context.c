@@ -116,7 +116,7 @@ rbug_draw_block_locked(struct rbug_context *rb_pipe, int flag)
 static void
 rbug_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *_info,
               const struct pipe_draw_indirect_info *_indirect,
-              const struct pipe_draw_start_count *draws,
+              const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    struct rbug_context *rb_pipe = rbug_context(_pipe);

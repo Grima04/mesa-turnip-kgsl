@@ -734,9 +734,10 @@ struct pipe_draw_indirect_info
    struct pipe_stream_output_target *count_from_stream_output;
 };
 
-struct pipe_draw_start_count {
+struct pipe_draw_start_count_bias {
    unsigned start;
    unsigned count;
+   int index_bias; /**< a bias to be added to each index */
 };
 
 /**

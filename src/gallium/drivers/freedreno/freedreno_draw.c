@@ -226,7 +226,7 @@ batch_draw_tracking(struct fd_batch *batch, const struct pipe_draw_info *info,
 
 static void
 update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
-                  const struct pipe_draw_start_count *draws,
+                  const struct pipe_draw_start_count_bias *draws,
                   unsigned num_draws) assert_dt
 {
    ctx->stats.draw_calls++;
@@ -266,7 +266,7 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 static void
 fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
             const struct pipe_draw_indirect_info *indirect,
-            const struct pipe_draw_start_count *draws, unsigned num_draws) in_dt
+            const struct pipe_draw_start_count_bias *draws, unsigned num_draws) in_dt
 {
    struct fd_context *ctx = fd_context(pctx);
 

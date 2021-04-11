@@ -37,7 +37,7 @@ struct push_context {
 static void nvc0_push_upload_vertex_ids(struct push_context *,
                                         struct nvc0_context *,
                                         const struct pipe_draw_info *,
-                                        const struct pipe_draw_start_count *draw);
+                                        const struct pipe_draw_start_count_bias *draw);
 
 static void
 nvc0_push_context_init(struct nvc0_context *nvc0, struct push_context *ctx)
@@ -493,7 +493,7 @@ typedef struct {
 void
 nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
                        const struct pipe_draw_indirect_info *indirect,
-                       const struct pipe_draw_start_count *draw)
+                       const struct pipe_draw_start_count_bias *draw)
 {
    /* The strategy here is to just read the commands from the indirect buffer
     * and do the draws. This is suboptimal, but will only happen in the case
@@ -516,7 +516,7 @@ nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *i
    uint8_t *buf_data = nouveau_resource_map_offset(
             &nvc0->base, buf, indirect->offset, NOUVEAU_BO_RD);
    struct pipe_draw_info single = *info;
-   struct pipe_draw_start_count sdraw = *draw;
+   struct pipe_draw_start_count_bias sdraw = *draw;
    for (i = 0; i < draw_count; i++, buf_data += indirect->stride) {
       if (info->index_size) {
          DrawElementsIndirectCommand *cmd = (void *)buf_data;
@@ -557,7 +557,7 @@ nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *i
 void
 nvc0_push_vbo(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
               const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count *draw)
+              const struct pipe_draw_start_count_bias *draw)
 {
    struct push_context ctx;
    unsigned i, index_size;
@@ -711,7 +711,7 @@ static void
 nvc0_push_upload_vertex_ids(struct push_context *ctx,
                             struct nvc0_context *nvc0,
                             const struct pipe_draw_info *info,
-                            const struct pipe_draw_start_count *draw)
+                            const struct pipe_draw_start_count_bias *draw)
 
 {
    struct nouveau_pushbuf *push = ctx->push;

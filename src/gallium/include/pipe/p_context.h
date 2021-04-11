@@ -50,7 +50,7 @@ struct pipe_depth_stencil_alpha_state;
 struct pipe_device_reset_callback;
 struct pipe_draw_info;
 struct pipe_draw_indirect_info;
-struct pipe_draw_start_count;
+struct pipe_draw_start_count_bias;
 struct pipe_grid_info;
 struct pipe_fence_handle;
 struct pipe_framebuffer_state;
@@ -138,7 +138,7 @@ struct pipe_context {
    void (*draw_vbo)(struct pipe_context *pipe,
                     const struct pipe_draw_info *info,
                     const struct pipe_draw_indirect_info *indirect,
-                    const struct pipe_draw_start_count *draws,
+                    const struct pipe_draw_start_count_bias *draws,
                     unsigned num_draws);
    /*@}*/
 

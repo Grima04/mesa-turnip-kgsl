@@ -196,7 +196,7 @@ emit_vertices_seq(struct push_context *ctx, unsigned start, unsigned count)
 
 void
 nv30_push_vbo(struct nv30_context *nv30, const struct pipe_draw_info *info,
-              const struct pipe_draw_start_count *draw)
+              const struct pipe_draw_start_count_bias *draw)
 {
    struct push_context ctx;
    unsigned i, index_size;

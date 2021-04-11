@@ -168,7 +168,7 @@ fill_sampler_descriptors(struct d3d12_context *ctx,
 static unsigned
 fill_state_vars(struct d3d12_context *ctx,
                 const struct pipe_draw_info *dinfo,
-                const struct pipe_draw_start_count *draw,
+                const struct pipe_draw_start_count_bias *draw,
                 struct d3d12_shader *shader,
                 uint32_t *values)
 {
@@ -244,7 +244,7 @@ check_descriptors_left(struct d3d12_context *ctx)
 static void
 set_graphics_root_parameters(struct d3d12_context *ctx,
                              const struct pipe_draw_info *dinfo,
-                             const struct pipe_draw_start_count *draw)
+                             const struct pipe_draw_start_count_bias *draw)
 {
    unsigned num_params = 0;
 
@@ -358,7 +358,7 @@ static void
 twoface_emulation(struct d3d12_context *ctx,
                   struct d3d12_rasterizer_state *rast,
                   const struct pipe_draw_info *dinfo,
-                  const struct pipe_draw_start_count *draw)
+                  const struct pipe_draw_start_count_bias *draw)
 {
    /* draw backfaces */
    ctx->base.bind_rasterizer_state(&ctx->base, rast->twoface_back);
@@ -424,7 +424,7 @@ void
 d3d12_draw_vbo(struct pipe_context *pctx,
                const struct pipe_draw_info *dinfo,
                const struct pipe_draw_indirect_info *indirect,
-               const struct pipe_draw_start_count *draws,
+               const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
    if (num_draws > 1) {

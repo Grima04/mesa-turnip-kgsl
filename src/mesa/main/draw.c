@@ -936,7 +936,7 @@ _mesa_validate_MultiDrawElementsIndirectCount(struct gl_context *ctx,
 void
 _mesa_draw_gallium_fallback(struct gl_context *ctx,
                             struct pipe_draw_info *info,
-                            const struct pipe_draw_start_count *draws,
+                            const struct pipe_draw_start_count_bias *draws,
                             unsigned num_draws)
 {
    struct _mesa_index_buffer ib;
@@ -1066,7 +1066,7 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
 void
 _mesa_draw_gallium_complex_fallback(struct gl_context *ctx,
                                     struct pipe_draw_info *info,
-                                    const struct pipe_draw_start_count *draws,
+                                    const struct pipe_draw_start_count_bias *draws,
                                     const unsigned char *mode,
                                     const int *base_vertex,
                                     unsigned num_draws)
@@ -1320,7 +1320,7 @@ _mesa_draw_arrays(struct gl_context *ctx, GLenum mode, GLint start,
     * draws.
     */
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    info.mode = mode;
    info.vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
@@ -1647,7 +1647,7 @@ _mesa_MultiDrawArrays(GLenum mode, const GLint *first,
       return;
 
    struct pipe_draw_info info;
-   struct pipe_draw_start_count *draw;
+   struct pipe_draw_start_count_bias *draw;
 
    ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
 
@@ -1762,7 +1762,7 @@ _mesa_validated_drawrangeelements(struct gl_context *ctx, GLenum mode,
    }
 
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
    unsigned index_size_shift = get_index_size_shift(type);
    struct gl_buffer_object *index_bo = ctx->Array.VAO->IndexBufferObj;
 
@@ -2197,7 +2197,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
          * greater than UINT32_MAX bytes.
          */
         max_index_ptr - min_index_ptr <= UINT32_MAX)) {
-      struct pipe_draw_start_count *draw;
+      struct pipe_draw_start_count_bias *draw;
 
       ALLOC_PRIMS(draw, primcount, "glMultiDrawElements");
 
@@ -2228,7 +2228,7 @@ _mesa_validated_multidrawelements(struct gl_context *ctx, GLenum mode,
       info.increment_draw_id = false;
 
       for (int i = 0; i < primcount; i++) {
-         struct pipe_draw_start_count draw;
+         struct pipe_draw_start_count_bias draw;
 
          if (!count[i])
             continue;

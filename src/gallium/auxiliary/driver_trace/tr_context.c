@@ -111,7 +111,7 @@ static void
 trace_context_draw_vbo(struct pipe_context *_pipe,
                        const struct pipe_draw_info *info,
                        const struct pipe_draw_indirect_info *indirect,
-                       const struct pipe_draw_start_count *draws,
+                       const struct pipe_draw_start_count_bias *draws,
                        unsigned num_draws)
 {
    struct trace_context *tr_ctx = trace_context(_pipe);

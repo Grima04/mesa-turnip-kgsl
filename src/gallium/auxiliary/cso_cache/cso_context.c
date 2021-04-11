@@ -1403,7 +1403,7 @@ void
 cso_draw_vbo(struct cso_context *cso,
              const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count draw)
+             const struct pipe_draw_start_count_bias draw)
 {
    struct u_vbuf *vbuf = cso->vbuf_current;
 
@@ -1429,7 +1429,7 @@ cso_draw_vbo(struct cso_context *cso,
 void
 cso_multi_draw(struct cso_context *cso,
                struct pipe_draw_info *info,
-               const struct pipe_draw_start_count *draws,
+               const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
    struct u_vbuf *vbuf = cso->vbuf_current;
@@ -1458,7 +1458,7 @@ void
 cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
 {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    util_draw_init_info(&info);
 
@@ -1479,7 +1479,7 @@ cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
                           uint start_instance, uint instance_count)
 {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    util_draw_init_info(&info);
 

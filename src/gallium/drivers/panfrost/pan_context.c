@@ -173,7 +173,7 @@ static void
 panfrost_statistics_record(
                 struct panfrost_context *ctx,
                 const struct pipe_draw_info *info,
-                const struct pipe_draw_start_count *draw)
+                const struct pipe_draw_start_count_bias *draw)
 {
         if (!ctx->active_queries)
                 return;
@@ -288,7 +288,7 @@ panfrost_is_implicit_prim_restart(const struct pipe_draw_info *info)
 static void
 panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                          const struct pipe_draw_info *info,
-                         const struct pipe_draw_start_count *draw,
+                         const struct pipe_draw_start_count_bias *draw,
                          void *invocation_template,
                          mali_ptr shared_mem, mali_ptr indices,
                          mali_ptr fs_vary, mali_ptr varyings,
@@ -408,7 +408,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
 static void
 panfrost_direct_draw(struct panfrost_context *ctx,
                      const struct pipe_draw_info *info,
-                     const struct pipe_draw_start_count *draw)
+                     const struct pipe_draw_start_count_bias *draw)
 {
         if (!draw->count || !info->instance_count)
                 return;
@@ -536,10 +536,10 @@ static void
 panfrost_indirect_draw(struct panfrost_context *ctx,
                        const struct pipe_draw_info *info,
                        const struct pipe_draw_indirect_info *indirect,
-                       const struct pipe_draw_start_count *draw)
+                       const struct pipe_draw_start_count_bias *draw)
 {
         if (indirect->count_from_stream_output) {
-                struct pipe_draw_start_count tmp_draw = *draw;
+                struct pipe_draw_start_count_bias tmp_draw = *draw;
                 struct panfrost_streamout_target *so =
                         pan_so_target(indirect->count_from_stream_output);
 
@@ -689,7 +689,7 @@ static void
 panfrost_draw_vbo(struct pipe_context *pipe,
                   const struct pipe_draw_info *info,
                   const struct pipe_draw_indirect_info *indirect,
-                  const struct pipe_draw_start_count *draws,
+                  const struct pipe_draw_start_count_bias *draws,
                   unsigned num_draws)
 {
         struct panfrost_context *ctx = pan_context(pipe);

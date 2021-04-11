@@ -377,7 +377,7 @@ nv30_render_validate(struct nv30_context *nv30)
 
 void
 nv30_render_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
-                const struct pipe_draw_start_count *draw_one)
+                const struct pipe_draw_start_count_bias *draw_one)
 {
    struct nv30_context *nv30 = nv30_context(pipe);
    struct draw_context *draw = nv30->draw;

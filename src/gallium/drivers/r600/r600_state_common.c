@@ -2075,7 +2075,7 @@ static inline void r600_emit_rasterizer_prim_state(struct r600_context *rctx)
 
 static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info *info,
                           const struct pipe_draw_indirect_info *indirect,
-                          const struct pipe_draw_start_count *draws,
+                          const struct pipe_draw_start_count_bias *draws,
                           unsigned num_draws)
 {
 	if (num_draws > 1) {

@@ -441,7 +441,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
    /* draw here */
    for (i = 0; i < nr_prims; i++) {
-      struct pipe_draw_start_count d;
+      struct pipe_draw_start_count_bias d;
 
       d.count = prims[i].count;
 

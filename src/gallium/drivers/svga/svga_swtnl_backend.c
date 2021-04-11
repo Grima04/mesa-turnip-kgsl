@@ -334,7 +334,7 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
       .min_index = svga_render->min_index,
       .max_index = svga_render->max_index,
    };
-   const struct pipe_draw_start_count draw = {
+   const struct pipe_draw_start_count_bias draw = {
       .start = 0,
       .count = nr_indices,
    };

@@ -406,7 +406,7 @@ void u_vbuf_destroy(struct u_vbuf *mgr)
 static enum pipe_error
 u_vbuf_translate_buffers(struct u_vbuf *mgr, struct translate_key *key,
                          const struct pipe_draw_info *info,
-                         const struct pipe_draw_start_count *draw,
+                         const struct pipe_draw_start_count_bias *draw,
                          unsigned vb_mask, unsigned out_vb,
                          int start_vertex, unsigned num_vertices,
                          int min_index, boolean unroll_indices)
@@ -609,7 +609,7 @@ u_vbuf_translate_find_free_vb_slots(struct u_vbuf *mgr,
 static boolean
 u_vbuf_translate_begin(struct u_vbuf *mgr,
                        const struct pipe_draw_info *info,
-                       const struct pipe_draw_start_count *draw,
+                       const struct pipe_draw_start_count_bias *draw,
                        int start_vertex, unsigned num_vertices,
                        int min_index, boolean unroll_indices)
 {
@@ -1236,7 +1236,7 @@ u_vbuf_get_minmax_index_mapped(const struct pipe_draw_info *info,
 
 void u_vbuf_get_minmax_index(struct pipe_context *pipe,
                              const struct pipe_draw_info *info,
-                             const struct pipe_draw_start_count *draw,
+                             const struct pipe_draw_start_count_bias *draw,
                              unsigned *out_min_index, unsigned *out_max_index)
 {
    struct pipe_transfer *transfer = NULL;
@@ -1287,7 +1287,7 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
    assert(info->index_size);
 
    for (unsigned i = 0; i < draw_count; i++) {
-      struct pipe_draw_start_count draw;
+      struct pipe_draw_start_count_bias draw;
       unsigned offset = i * stride / 4;
 
       draw.count = indirect_data[offset + 0];
@@ -1302,7 +1302,7 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
 
 void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
                      const struct pipe_draw_indirect_info *indirect,
-                     const struct pipe_draw_start_count draw)
+                     const struct pipe_draw_start_count_bias draw)
 {
    struct pipe_context *pipe = mgr->pipe;
    int start_vertex;
@@ -1314,7 +1314,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
    const uint32_t incompatible_vb_mask =
       mgr->incompatible_vb_mask & used_vb_mask;
    struct pipe_draw_info new_info;
-   struct pipe_draw_start_count new_draw;
+   struct pipe_draw_start_count_bias new_draw;
 
    /* Normal draw. No fallback and no user buffers. */
    if (!incompatible_vb_mask &&

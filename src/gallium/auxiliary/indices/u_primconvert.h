@@ -48,7 +48,7 @@ void util_primconvert_save_rasterizer_state(struct primconvert_context *pc,
 void util_primconvert_draw_vbo(struct primconvert_context *pc,
                                const struct pipe_draw_info *info,
                                const struct pipe_draw_indirect_info *indirect,
-                               const struct pipe_draw_start_count *draws,
+                               const struct pipe_draw_start_count_bias *draws,
                                unsigned num_draws);
 
 #endif /* U_PRIMCONVERT_H_ */

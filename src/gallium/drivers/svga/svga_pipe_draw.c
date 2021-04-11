@@ -45,7 +45,7 @@
 static enum pipe_error
 retry_draw_range_elements(struct svga_context *svga,
                           const struct pipe_draw_info *info,
-                          const struct pipe_draw_start_count *draw,
+                          const struct pipe_draw_start_count_bias *draw,
                           unsigned count)
 {
    SVGA_STATS_TIME_PUSH(svga_sws(svga), SVGA_STATS_TIME_DRAWELEMENTS);
@@ -219,7 +219,7 @@ get_vcount_from_stream_output(struct svga_context *svga,
 static void
 svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
               const struct pipe_draw_indirect_info *indirect,
-              const struct pipe_draw_start_count *draws,
+              const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {

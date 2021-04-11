@@ -74,7 +74,7 @@ draw_impl(struct fd_context *ctx, struct fd_ringbuffer *ring,
 static bool
 fd4_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
              const struct pipe_draw_indirect_info *indirect,
-             const struct pipe_draw_start_count *draw,
+             const struct pipe_draw_start_count_bias *draw,
              unsigned index_offset) in_dt
 {
    struct fd4_context *fd4_ctx = fd4_context(ctx);

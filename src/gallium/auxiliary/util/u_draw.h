@@ -55,7 +55,7 @@ util_draw_arrays(struct pipe_context *pipe,
                  uint count)
 {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    util_draw_init_info(&info);
    info.mode = mode;
@@ -77,7 +77,7 @@ util_draw_elements(struct pipe_context *pipe,
                    uint count)
 {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    util_draw_init_info(&info);
    info.index.user = indices;
@@ -101,7 +101,7 @@ util_draw_arrays_instanced(struct pipe_context *pipe,
                            uint instance_count)
 {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    util_draw_init_info(&info);
    info.mode = mode;
@@ -129,7 +129,7 @@ util_draw_elements_instanced(struct pipe_context *pipe,
                              uint instance_count)
 {
    struct pipe_draw_info info;
-   struct pipe_draw_start_count draw;
+   struct pipe_draw_start_count_bias draw;
 
    util_draw_init_info(&info);
    info.index.user = indices;
@@ -161,7 +161,7 @@ util_draw_indirect(struct pipe_context *pipe,
 void
 util_draw_multi(struct pipe_context *pctx, const struct pipe_draw_info *info,
                 const struct pipe_draw_indirect_info *indirect,
-                const struct pipe_draw_start_count *draws,
+                const struct pipe_draw_start_count_bias *draws,
                 unsigned num_draws);
 
 unsigned

@@ -2355,7 +2355,7 @@ CSMT_ITEM_NO_WAIT(nine_context_clear_fb,
 
 static inline void
 init_draw_info(struct pipe_draw_info *info,
-               struct pipe_draw_start_count *draw,
+               struct pipe_draw_start_count_bias *draw,
                struct NineDevice9 *dev, D3DPRIMITIVETYPE type, UINT count)
 {
     info->mode = d3dprimitivetype_to_pipe_prim(type);
@@ -2376,7 +2376,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_primitive,
 {
     struct nine_context *context = &device->context;
     struct pipe_draw_info info;
-    struct pipe_draw_start_count draw;
+    struct pipe_draw_start_count_bias draw;
 
     nine_update_state(device);
 
@@ -2401,7 +2401,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive,
 {
     struct nine_context *context = &device->context;
     struct pipe_draw_info info;
-    struct pipe_draw_start_count draw;
+    struct pipe_draw_start_count_bias draw;
 
     nine_update_state(device);
 
@@ -2431,7 +2431,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
 {
     struct nine_context *context = &device->context;
     struct pipe_draw_info info;
-    struct pipe_draw_start_count draw;
+    struct pipe_draw_start_count_bias draw;
 
     nine_update_state(device);
 

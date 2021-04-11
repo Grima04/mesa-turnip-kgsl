@@ -743,7 +743,7 @@ struct lvp_cmd_draw {
    uint32_t instance_count;
    uint32_t first_instance;
    uint32_t draw_count;
-   struct pipe_draw_start_count draws[0];
+   struct pipe_draw_start_count_bias draws[0];
 };
 
 struct lvp_cmd_draw_indexed {
@@ -752,7 +752,7 @@ struct lvp_cmd_draw_indexed {
    uint32_t first_instance;
    bool calc_start;
    uint32_t draw_count;
-   struct pipe_draw_start_count draws[0];
+   struct pipe_draw_start_count_bias draws[0];
 };
 
 struct lvp_cmd_draw_indirect {

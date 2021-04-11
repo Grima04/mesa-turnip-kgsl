@@ -37,7 +37,7 @@ struct r300_stencilref_context {
     void (*draw_vbo)(struct pipe_context *pipe,
                      const struct pipe_draw_info *info,
                      const struct pipe_draw_indirect_info *indirect,
-                     const struct pipe_draw_start_count *draws,
+                     const struct pipe_draw_start_count_bias *draws,
                      unsigned num_draws);
 
     uint32_t rs_cull_mode;
@@ -106,7 +106,7 @@ static void r300_stencilref_end(struct r300_context *r300)
 static void r300_stencilref_draw_vbo(struct pipe_context *pipe,
                                      const struct pipe_draw_info *info,
                                      const struct pipe_draw_indirect_info *indirect,
-                                     const struct pipe_draw_start_count *draws,
+                                     const struct pipe_draw_start_count_bias *draws,
                                      unsigned num_draws)
 {
     struct r300_context *r300 = r300_context(pipe);

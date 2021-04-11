@@ -807,7 +807,7 @@ compile_vertex_list(struct gl_context *ctx)
       node->merged.info.index_size = 4;
       node->merged.info.instance_count = 1;
       node->merged.info.index.gl_bo = node->merged.ib.obj;
-      node->merged.start_count = malloc(merged_prim_count * sizeof(struct pipe_draw_start_count));
+      node->merged.start_count = malloc(merged_prim_count * sizeof(struct pipe_draw_start_count_bias));
       if (merged_prim_count == 1) {
          node->merged.info.mode = merged_prims[0].mode;
          node->merged.mode = NULL;
