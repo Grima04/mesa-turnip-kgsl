@@ -48,6 +48,65 @@ int agx_debug = 0;
       fprintf(stderr, "%s:%d: "fmt, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
+static void
+agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_jump(agx_builder *b, nir_jump_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_instr(agx_builder *b, struct nir_instr *instr)
+{
+   switch (instr->type) {
+   case nir_instr_type_load_const:
+      agx_emit_load_const(b, nir_instr_as_load_const(instr));
+      break;
+
+   case nir_instr_type_intrinsic:
+      agx_emit_intrinsic(b, nir_instr_as_intrinsic(instr));
+      break;
+
+   case nir_instr_type_alu:
+      agx_emit_alu(b, nir_instr_as_alu(instr));
+      break;
+
+   case nir_instr_type_tex:
+      agx_emit_tex(b, nir_instr_as_tex(instr));
+      break;
+
+   case nir_instr_type_jump:
+      agx_emit_jump(b, nir_instr_as_jump(instr));
+      break;
+
+   default:
+      unreachable("should've been lowered");
+   }
+}
+
 static agx_block *
 agx_create_block(agx_context *ctx)
 {
@@ -69,7 +128,7 @@ emit_block(agx_context *ctx, nir_block *block)
    agx_builder _b = agx_init_builder(ctx, agx_after_block(blk));
 
    nir_foreach_instr(instr, block) {
-      /* stub */
+      agx_emit_instr(&_b, instr);
    }
 
    return blk;
