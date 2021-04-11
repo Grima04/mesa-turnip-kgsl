@@ -4286,8 +4286,9 @@ vtn_handle_preamble_instruction(struct vtn_builder *b, SpvOp opcode,
          break;
 
       case SpvCapabilityLinkage:
-         vtn_warn("Unsupported SPIR-V capability: %s",
-                  spirv_capability_to_string(cap));
+         if (!b->options->create_library)
+            vtn_warn("Unsupported SPIR-V capability: %s",
+                     spirv_capability_to_string(cap));
          break;
 
       case SpvCapabilitySparseResidency:
