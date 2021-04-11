@@ -64,10 +64,15 @@ enum tc_call_id {
 
 /* This is actually variable-sized, because indirect isn't allocated if it's
  * not needed. */
-struct tc_draw_single {
+struct tc_draw_single_drawid {
    struct pipe_draw_info info;
    unsigned index_bias;
    unsigned drawid_offset;
+};
+
+struct tc_draw_single {
+   struct pipe_draw_info info;
+   unsigned index_bias;
 };
 
 typedef void (*tc_execute)(struct pipe_context *pipe, union tc_payload *payload);
@@ -157,8 +162,7 @@ is_next_call_a_mergeable_draw(struct tc_draw_single *first_info,
                  sizeof(struct pipe_draw_info) - 4);
    /* All fields must be the same except start and count. */
    /* u_threaded_context stores start/count in min/max_index for single draws. */
-   return (*next_info)->drawid_offset == 0 &&
-          memcmp((uint32_t*)&first_info->info,
+   return memcmp((uint32_t*)&first_info->info,
                  (uint32_t*)&(*next_info)->info,
                  DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX) == 0;
 }
@@ -190,7 +194,6 @@ tc_batch_execute(void *job, UNUSED int thread_index)
 
          /* If at least 2 consecutive draw calls can be merged... */
          if (next != last && next->call_id == TC_CALL_draw_single &&
-             first_info->drawid_offset == 0 &&
              is_next_call_a_mergeable_draw(first_info, next, &next_info)) {
             /* Merge up to 256 draw calls. */
             struct pipe_draw_start_count_bias multi[256];
@@ -2390,6 +2393,30 @@ out_of_memory:
 }
 
 static void
+tc_call_draw_single_drawid(struct pipe_context *pipe, union tc_payload *payload)
+{
+   struct tc_draw_single_drawid *info = (struct tc_draw_single_drawid*)payload;
+
+   /* u_threaded_context stores start/count in min/max_index for single draws. */
+   /* Drivers using u_threaded_context shouldn't use min/max_index. */
+   struct pipe_draw_start_count_bias draw;
+   STATIC_ASSERT(offsetof(struct pipe_draw_start_count_bias, start) == 0);
+   STATIC_ASSERT(offsetof(struct pipe_draw_start_count_bias, count) == 4);
+
+   draw.start = info->info.min_index;
+   draw.count = info->info.max_index;
+   draw.index_bias = info->index_bias;
+
+   info->info.index_bounds_valid = false;
+   info->info.has_user_indices = false;
+   info->info.take_index_buffer_ownership = false;
+
+   pipe->draw_vbo(pipe, &info->info, info->drawid_offset, NULL, &draw, 1);
+   if (info->info.index_size)
+      pipe_resource_reference(&info->info.index.resource, NULL);
+}
+
+static void
 tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
 {
    struct tc_draw_single *info = (struct tc_draw_single*)payload;
@@ -2406,7 +2433,7 @@ tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
    info->info.has_user_indices = false;
    info->info.take_index_buffer_ownership = false;
 
-   pipe->draw_vbo(pipe, &info->info, info->drawid_offset, NULL, &draw, 1);
+   pipe->draw_vbo(pipe, &info->info, 0, NULL, &draw, 1);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
 }
@@ -2514,24 +2541,28 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          if (unlikely(!buffer))
             return;
 
-         struct tc_draw_single *p =
-            tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
+         struct tc_draw_single_drawid *p = drawid_offset > 0 ?
+            tc_add_struct_typed_call(tc, TC_CALL_draw_single_drawid, tc_draw_single_drawid) :
+            (struct tc_draw_single_drawid *)tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
          memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
          p->info.index.resource = buffer;
-         p->drawid_offset = drawid_offset;
+         if (drawid_offset > 0)
+            p->drawid_offset = drawid_offset;
          /* u_threaded_context stores start/count in min/max_index for single draws. */
          p->info.min_index = offset >> util_logbase2(index_size);
          p->info.max_index = draws[0].count;
          p->index_bias = draws[0].index_bias;
       } else {
          /* Non-indexed call or indexed with a real index buffer. */
-         struct tc_draw_single *p =
-            tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
+         struct tc_draw_single_drawid *p = drawid_offset > 0 ?
+            tc_add_struct_typed_call(tc, TC_CALL_draw_single_drawid, tc_draw_single_drawid) :
+            (struct tc_draw_single_drawid *)tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
          if (index_size && !info->take_index_buffer_ownership) {
             tc_set_resource_reference(&p->info.index.resource,
                                       info->index.resource);
          }
-         p->drawid_offset = drawid_offset;
+         if (drawid_offset > 0)
+            p->drawid_offset = drawid_offset;
          memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
          /* u_threaded_context stores start/count in min/max_index for single draws. */
          p->info.min_index = draws[0].start;
