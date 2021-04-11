@@ -77,7 +77,18 @@ agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
 static void
 agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 {
-   unreachable("stub");
+   nir_src *offset = nir_get_io_offset_src(instr);
+   assert(nir_src_is_const(*offset) && "todo: indirects");
+   unsigned imm_index = nir_intrinsic_base(instr);
+   imm_index += nir_intrinsic_component(instr);
+   imm_index += nir_src_as_uint(*offset);
+
+   /* nir_lower_io_to_scalar */
+   assert(nir_intrinsic_write_mask(instr) == 0x1);
+
+   agx_st_vary(b,
+               agx_immediate(imm_index),
+               agx_src_index(&instr->src[0]));
 }
 
 static void
