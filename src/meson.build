@@ -98,6 +98,9 @@ endif
 if with_gallium_nouveau
   subdir('nouveau')
 endif
+if with_tools.contains('asahi')
+  subdir('asahi')
+endif
 subdir('mesa')
 subdir('loader')
 if with_platform_haiku

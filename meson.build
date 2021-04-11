@@ -71,6 +71,7 @@ if with_tools.contains('all')
     'nir',
     'nouveau',
     'xvmc',
+    'asahi',
   ]
 endif
 with_clc = false
