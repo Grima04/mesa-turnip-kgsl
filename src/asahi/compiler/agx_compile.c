@@ -94,7 +94,24 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 static void
 agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 {
-   unreachable("stub");
+   const nir_variable *var =
+      nir_find_variable_with_driver_location(b->shader->nir,
+            nir_var_shader_out, nir_intrinsic_base(instr));
+   assert(var);
+
+   unsigned loc = var->data.location;
+   assert(var->data.index == 0 && "todo: dual-source blending");
+   assert((loc == FRAG_RESULT_COLOR || loc == FRAG_RESULT_DATA0) && "todo: MRT");
+   unsigned rt = (loc == FRAG_RESULT_COLOR) ? 0 :
+                 (loc - FRAG_RESULT_DATA0);
+
+   /* TODO: Reverse-engineer interactions with MRT */
+   agx_writeout(b, 0xC200);
+   agx_writeout(b, 0x000C);
+
+   /* Emit the blend op itself */
+   agx_blend(b, agx_src_index(&instr->src[0]),
+             b->shader->key->fs.tib_formats[rt]);
 }
 
 static void
