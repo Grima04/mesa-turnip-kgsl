@@ -55,12 +55,70 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
 }
 
 static void
-agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
+agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
 {
    unreachable("stub");
 }
 
 static void
+agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   unreachable("stub");
+}
+
+static void
+agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
+{
+  agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest ?
+     agx_dest_index(&instr->dest) : agx_null();
+  gl_shader_stage stage = b->shader->stage;
+
+  switch (instr->intrinsic) {
+  case nir_intrinsic_load_barycentric_pixel:
+  case nir_intrinsic_load_barycentric_centroid:
+  case nir_intrinsic_load_barycentric_sample:
+  case nir_intrinsic_load_barycentric_at_sample:
+  case nir_intrinsic_load_barycentric_at_offset:
+     /* handled later via load_vary */
+     break;
+  case nir_intrinsic_load_interpolated_input:
+  case nir_intrinsic_load_input:
+     if (stage == MESA_SHADER_FRAGMENT)
+        agx_emit_load_vary(b, instr);
+     else if (stage == MESA_SHADER_VERTEX)
+        agx_emit_load_attr(b, instr);
+     else
+        unreachable("Unsupported shader stage");
+     break;
+
+  case nir_intrinsic_store_output:
+     if (stage == MESA_SHADER_FRAGMENT)
+        agx_emit_fragment_out(b, instr);
+     else if (stage == MESA_SHADER_VERTEX)
+        agx_emit_store_vary(b, instr);
+     else
+        unreachable("Unsupported shader stage");
+     break;
+
+  default:
+       fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
+       assert(0);
+  }
+}
+
+static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
    unreachable("stub");
