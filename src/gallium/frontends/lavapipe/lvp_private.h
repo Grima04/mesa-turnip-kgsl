@@ -748,7 +748,6 @@ struct lvp_cmd_draw {
 
 struct lvp_cmd_draw_indexed {
    uint32_t instance_count;
-   uint32_t vertex_offset;
    uint32_t first_instance;
    bool calc_start;
    uint32_t draw_count;

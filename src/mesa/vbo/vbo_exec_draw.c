@@ -336,7 +336,6 @@ vbo_exec_vtx_flush(struct vbo_exec_context *exec)
          ctx->Driver.DrawGalliumComplex(ctx, &exec->vtx.info,
                                         exec->vtx.draw,
                                         exec->vtx.mode,
-                                        NULL,
                                         exec->vtx.prim_count);
 
          /* Get new storage -- unless asked not to. */

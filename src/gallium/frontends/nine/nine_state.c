@@ -2383,7 +2383,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_primitive,
     init_draw_info(&info, &draw, device, PrimitiveType, PrimitiveCount);
     info.index_size = 0;
     draw.start = StartVertex;
-    info.index_bias = 0;
+    draw.index_bias = 0;
     info.min_index = draw.start;
     info.max_index = draw.start + draw.count - 1;
     info.index.resource = NULL;
@@ -2408,7 +2408,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive,
     init_draw_info(&info, &draw, device, PrimitiveType, PrimitiveCount);
     info.index_size = context->index_size;
     draw.start = context->index_offset / context->index_size + StartIndex;
-    info.index_bias = BaseVertexIndex;
+    draw.index_bias = BaseVertexIndex;
     info.index_bounds_valid = true;
     /* These don't include index bias: */
     info.min_index = MinVertexIndex;
@@ -2438,7 +2438,7 @@ CSMT_ITEM_NO_WAIT(nine_context_draw_indexed_primitive_from_vtxbuf_idxbuf,
     init_draw_info(&info, &draw, device, PrimitiveType, PrimitiveCount);
     info.index_size = index_size;
     draw.start = index_offset / info.index_size;
-    info.index_bias = 0;
+    draw.index_bias = 0;
     info.index_bounds_valid = true;
     info.min_index = MinVertexIndex;
     info.max_index = MinVertexIndex + NumVertices - 1;

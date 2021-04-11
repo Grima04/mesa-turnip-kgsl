@@ -788,7 +788,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
    /* NOTE: caller must ensure that (min_index + index_bias) is >= 0 */
    if (info->index_bounds_valid) {
-      nv50->vb_elt_first = info->min_index + (info->index_size ? info->index_bias : 0);
+      nv50->vb_elt_first = info->min_index + (info->index_size ? draws->index_bias : 0);
       nv50->vb_elt_limit = info->max_index - info->min_index;
    } else {
       nv50->vb_elt_first = 0;
@@ -912,7 +912,7 @@ nv50_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
       nv50_draw_elements(nv50, shorten, info,
                          info->mode, draws[0].start, draws[0].count,
-                         info->instance_count, info->index_bias, info->index_size);
+                         info->instance_count, draws->index_bias, info->index_size);
    } else
    if (unlikely(indirect && indirect->count_from_stream_output)) {
       nva0_draw_stream_output(nv50, info, indirect);

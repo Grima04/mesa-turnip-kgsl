@@ -756,17 +756,13 @@ struct pipe_draw_info
    bool increment_draw_id:1;  /**< whether drawid increments for direct draws */
    bool take_index_buffer_ownership:1; /**< callee inherits caller's refcount
          (no need to reference indexbuf, but still needs to unreference it) */
-   char _pad:1;               /**< padding for memcmp */
+   bool index_bias_varies:1;   /**< true if index_bias varies between draws */
 
    unsigned start_instance; /**< first instance id */
    unsigned instance_count; /**< number of instances */
 
    unsigned drawid; /**< id of this draw in a multidraw */
-
-   /**
-    * For indexed drawing, these fields apply after index lookup.
-    */
-   int index_bias; /**< a bias to be added to each index */
+   int _pad2; /**< padding for memcmp and index_bias reuse */
 
    /**
     * Primitive restart enable/index (only applies to indexed drawing)

@@ -202,6 +202,7 @@ static void draw( void )
    info.mode = PIPE_PRIM_TRIANGLES;
    draw.start = 0;
    draw.count = 3;
+   draw.index_bias = 0;
    /* draw NUM_INST triangles */
    info.instance_count = NUM_INST;
 

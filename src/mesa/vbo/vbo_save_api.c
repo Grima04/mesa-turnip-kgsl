@@ -818,6 +818,7 @@ compile_vertex_list(struct gl_context *ctx)
       for (unsigned i = 0; i < merged_prim_count; i++) {
          node->merged.start_count[i].start = merged_prims[i].start;
          node->merged.start_count[i].count = merged_prims[i].count;
+         node->merged.start_count[i].index_bias = 0;
          if (merged_prim_count > 1)
             node->merged.mode[i] = merged_prims[i].mode;
       }

@@ -1293,7 +1293,7 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
       draw.count = indirect_data[offset + 0];
       info->instance_count = indirect_data[offset + 1];
       draw.start = indirect_data[offset + 2];
-      info->index_bias = indirect_data[offset + 3];
+      draw.index_bias = indirect_data[offset + 3];
       info->start_instance = indirect_data[offset + 4];
 
       u_vbuf_draw_vbo(mgr, info, NULL, draw);
@@ -1400,7 +1400,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
           * The driver will not look at these values because indirect != NULL.
           * These values determine the user buffer bounds to upload.
           */
-         new_info.index_bias = index_bias0;
+         new_draw.index_bias = index_bias0;
          new_info.index_bounds_valid = true;
          new_info.min_index = ~0u;
          new_info.max_index = 0;
@@ -1510,7 +1510,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
 
          assert(min_index <= max_index);
 
-         start_vertex = min_index + new_info.index_bias;
+         start_vertex = min_index + new_draw.index_bias;
          num_vertices = max_index + 1 - min_index;
 
          /* Primitive restart doesn't work when unrolling indices.
@@ -1550,7 +1550,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
 
       if (unroll_indices) {
          new_info.index_size = 0;
-         new_info.index_bias = 0;
+         new_draw.index_bias = 0;
          new_info.index_bounds_valid = true;
          new_info.min_index = 0;
          new_info.max_index = new_draw.count - 1;

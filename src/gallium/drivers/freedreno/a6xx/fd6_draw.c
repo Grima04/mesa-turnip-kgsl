@@ -302,7 +302,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       }
    }
 
-   uint32_t index_start = info->index_size ? info->index_bias : draw->start;
+	uint32_t index_start = info->index_size ? draw->index_bias : draw->start;
    if (ctx->last.dirty || (ctx->last.index_start != index_start)) {
       OUT_PKT4(ring, REG_A6XX_VFD_INDEX_OFFSET, 1);
       OUT_RING(ring, index_start); /* VFD_INDEX_OFFSET */

@@ -565,7 +565,7 @@ zink_draw_vbo(struct pipe_context *pctx,
             update_drawid(ctx, draw_id);
             vkCmdDrawIndexed(batch->state->cmdbuf,
                draws[i].count, dinfo->instance_count,
-               need_index_buffer_unref ? 0 : draws[i].start, dinfo->index_bias, dinfo->start_instance);
+               need_index_buffer_unref ? 0 : draws[i].start, draws[i].index_bias, dinfo->start_instance);
             if (dinfo->increment_draw_id)
                draw_id++;
         }

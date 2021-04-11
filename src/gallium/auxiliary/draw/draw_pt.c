@@ -153,6 +153,7 @@ draw_pt_arrays(struct draw_context *draw,
       } else
          draw_pt_split_prim(prim, &first, &incr);
       count = draw_pt_trim_count(draw_info[i].count, first, incr);
+      draw->pt.user.eltBias = draw->pt.user.eltSize ? draw_info[i].index_bias : 0;
       if (count >= first)
          frontend->run( frontend, draw_info[i].start, count );
 
@@ -245,7 +246,7 @@ void draw_pt_destroy( struct draw_context *draw )
  * Debug- print the first 'count' vertices.
  */
 static void
-draw_print_arrays(struct draw_context *draw, uint prim, int start, uint count)
+draw_print_arrays(struct draw_context *draw, uint prim, int start, uint count, int index_bias)
 {
    uint i;
 
@@ -282,9 +283,9 @@ draw_print_arrays(struct draw_context *draw, uint prim, int start, uint count)
             assert(0);
             return;
          }
-         ii += draw->pt.user.eltBias;
+         ii += index_bias;
          debug_printf("Element[%u + %u] + %i -> Vertex %u:\n", start, i,
-                      draw->pt.user.eltBias, ii);
+                      index_bias, ii);
       }
       else {
          /* non-indexed arrays */
@@ -358,22 +359,20 @@ draw_print_arrays(struct draw_context *draw, uint prim, int start, uint count)
 static inline void
 prim_restart_loop(struct draw_context *draw,
                   const struct pipe_draw_info *info,
-                  unsigned start,
-                  unsigned count,
+                  const struct pipe_draw_start_count_bias *draw_info,
                   const void *elements)
 {
    const unsigned elt_max = draw->pt.user.eltMax;
-   struct pipe_draw_start_count_bias cur;
-   cur.start = start;
+   struct pipe_draw_start_count_bias cur = *draw_info;
    cur.count = 0;
 
    /* The largest index within a loop using the i variable as the index.
     * Used for overflow detection */
    const unsigned MAX_LOOP_IDX = 0xffffffff;
 
-   for (unsigned j = 0; j < count; j++) {
+   for (unsigned j = 0; j < draw_info->count; j++) {
       unsigned restart_idx = 0;
-      unsigned i = draw_overflow_uadd(start, j, MAX_LOOP_IDX);
+      unsigned i = draw_overflow_uadd(draw_info->start, j, MAX_LOOP_IDX);
       switch (draw->pt.user.eltSize) {
       case 1:
          restart_idx = ((const uint8_t*)elements)[i];
@@ -424,7 +423,7 @@ draw_pt_arrays_restart(struct draw_context *draw,
    if (draw->pt.user.eltSize) {
       /* indexed prims (draw_elements) */
       for (unsigned i = 0; i < num_draws; i++)
-         prim_restart_loop(draw, info, draw_info[i].start, draw_info[i].count, draw->pt.user.elts);
+         prim_restart_loop(draw, info, &draw_info[i], draw->pt.user.elts);
    }
    else {
       /* Non-indexed prims (draw_arrays).
@@ -536,7 +535,6 @@ draw_vbo(struct draw_context *draw,
    if (info->index_size)
       assert(draw->pt.user.elts);
 
-   draw->pt.user.eltBias = use_info->index_size ? use_info->index_bias : 0;
    draw->pt.user.min_index = use_info->index_bounds_valid ? use_info->min_index : 0;
    draw->pt.user.max_index = use_info->index_bounds_valid ? use_info->max_index : ~0;
    draw->pt.user.eltSize = use_info->index_size ? draw->pt.user.eltSizeIB : 0;
@@ -578,7 +576,7 @@ draw_vbo(struct draw_context *draw,
 
    if (0) {
       for (unsigned i = 0; i < num_draws; i++)
-         draw_print_arrays(draw, use_info->mode, use_draws[i].start, MIN2(use_draws[i].count, 20));
+         draw_print_arrays(draw, use_info->mode, use_draws[i].start, MIN2(use_draws[i].count, 20), use_draws[i].index_bias);
    }
 
    index_limit = util_draw_max_index(draw->pt.vertex_buffer,

@@ -335,7 +335,7 @@ panfrost_draw_emit_tiler(struct panfrost_batch *batch,
                 if (info->index_size) {
                         cfg.index_type = panfrost_translate_index_size(info->index_size);
                         cfg.indices = indices;
-                        cfg.base_vertex_offset = info->index_bias - ctx->offset_start;
+                        cfg.base_vertex_offset = draw->index_bias - ctx->offset_start;
                 }
         }
 
@@ -447,7 +447,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
 
         /* Take into account a negative bias */
         ctx->indirect_draw = false;
-        ctx->vertex_count = draw->count + (info->index_size ? abs(info->index_bias) : 0);
+        ctx->vertex_count = draw->count + (info->index_size ? abs(draw->index_bias) : 0);
         ctx->instance_count = info->instance_count;
         ctx->active_prim = info->mode;
 
@@ -472,7 +472,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
 
                 /* Use the corresponding values */
                 vertex_count = max_index - min_index + 1;
-                ctx->offset_start = min_index + info->index_bias;
+                ctx->offset_start = min_index + draw->index_bias;
         } else {
                 ctx->offset_start = draw->start;
         }
@@ -623,7 +623,7 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
         panfrost_draw_emit_vertex(batch, info, &invocation, shared_mem,
                                   vs_vary, varyings, attribs, attrib_bufs,
                                   vertex.cpu);
-        panfrost_draw_emit_tiler(batch, info, NULL, &invocation, shared_mem,
+        panfrost_draw_emit_tiler(batch, info, draw, &invocation, shared_mem,
                                  index_buf ? index_buf->ptr.gpu : 0,
                                  fs_vary, varyings, pos, psiz, tiler.cpu);
 

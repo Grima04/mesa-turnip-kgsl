@@ -254,7 +254,7 @@ swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
                                           draws[0].count,
                                           info->instance_count,
                                           draws[0].start,
-                                          info->index_bias,
+                                          draws->index_bias,
                                           info->start_instance);
    else
       ctx->api.pfnSwrDrawInstanced(ctx->swrContext,

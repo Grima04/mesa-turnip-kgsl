@@ -1656,7 +1656,7 @@ static inline unsigned si_get_minimum_num_gfx_cs_dwords(struct si_context *sctx,
     * Also reserve space for stopping queries at the end of IB, because
     * the number of active queries is unlimited in theory.
     */
-   return 2048 + sctx->num_cs_dw_queries_suspend + num_draws * 9;
+   return 2048 + sctx->num_cs_dw_queries_suspend + num_draws * 10;
 }
 
 static inline void si_context_add_resource_size(struct si_context *sctx, struct pipe_resource *r)

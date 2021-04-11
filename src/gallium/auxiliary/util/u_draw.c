@@ -181,7 +181,7 @@ util_draw_indirect(struct pipe_context *pipe,
       draw.count = params[0];
       info.instance_count = params[1];
       draw.start = params[2];
-      info.index_bias = info_in->index_size ? params[3] : 0;
+      draw.index_bias = info_in->index_size ? params[3] : 0;
       info.start_instance = info_in->index_size ? params[4] : params[3];
       info.drawid = i;
 

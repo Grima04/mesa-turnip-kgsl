@@ -6801,7 +6801,7 @@ iris_upload_render_state(struct iris_context *ice,
          prim.StartVertexLocation = sc->start;
 
          if (draw->index_size) {
-            prim.BaseVertexLocation += draw->index_bias;
+            prim.BaseVertexLocation += sc->index_bias;
          }
       }
    }

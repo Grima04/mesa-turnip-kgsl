@@ -2140,7 +2140,6 @@ static void handle_draw_indexed(struct lvp_cmd_buffer_entry *cmd,
    state->info.index.resource = state->index_buffer;
    state->info.start_instance = cmd->u.draw_indexed.first_instance;
    state->info.instance_count = cmd->u.draw_indexed.instance_count;
-   state->info.index_bias = cmd->u.draw_indexed.vertex_offset;
    state->info.view_mask = subpass->view_mask;
 
    if (state->info.primitive_restart)

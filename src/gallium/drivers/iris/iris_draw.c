@@ -132,7 +132,7 @@ iris_update_draw_parameters(struct iris_context *ice,
          changed = true;
          ice->draw.params_valid = false;
       } else {
-         int firstvertex = info->index_size ? info->index_bias : draw->start;
+         int firstvertex = info->index_size ? draw->index_bias : draw->start;
 
          if (!ice->draw.params_valid ||
              ice->draw.params.firstvertex != firstvertex ||

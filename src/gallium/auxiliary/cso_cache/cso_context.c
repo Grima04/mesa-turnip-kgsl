@@ -1469,6 +1469,7 @@ cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
 
    draw.start = start;
    draw.count = count;
+   draw.index_bias = 0;
 
    cso_draw_vbo(cso, &info, NULL, draw);
 }
@@ -1492,6 +1493,7 @@ cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
 
    draw.start = start;
    draw.count = count;
+   draw.index_bias = 0;
 
    cso_draw_vbo(cso, &info, NULL, draw);
 }

@@ -451,7 +451,7 @@ st_feedback_draw_vbo(struct gl_context *ctx,
       d.start = start + prims[i].start;
 
       info.mode = prims[i].mode;
-      info.index_bias = prims[i].basevertex;
+      d.index_bias = prims[i].basevertex;
       info.drawid = prims[i].draw_id;
       if (!ib) {
          info.min_index = d.start;

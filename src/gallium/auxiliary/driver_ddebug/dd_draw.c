@@ -358,7 +358,7 @@ dd_dump_draw_vbo(struct dd_draw_state *dstate, struct pipe_draw_info *info,
    int sh, i;
 
    DUMP(draw_info, info);
-   DUMP(draw_start_count, draw);
+   DUMP(draw_start_count_bias, draw);
    if (indirect) {
       if (indirect->buffer)
          DUMP_M(resource, indirect, buffer);

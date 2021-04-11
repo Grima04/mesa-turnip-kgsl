@@ -120,7 +120,7 @@ struct pipe_context {
     * - PIPE_CAP_MULTI_DRAW_INDIRECT_PARAMS: Indirect draw count
     *
     * Differences against glMultiDraw and glMultiMode:
-    * - "info->mode" and "info->index_bias" are always constant due to the lack
+    * - "info->mode" and "draws->index_bias" are always constant due to the lack
     *   of hardware support and CPU performance concerns. Only start and count
     *   vary.
     * - if "info->increment_draw_id" is false, draw_id doesn't change between

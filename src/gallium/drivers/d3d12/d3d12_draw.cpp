@@ -190,7 +190,7 @@ fill_state_vars(struct d3d12_context *ctx,
          size += 4;
          break;
       case D3D12_STATE_VAR_FIRST_VERTEX:
-         ptr[0] = dinfo->index_size ? dinfo->index_bias : draw->start;
+         ptr[0] = dinfo->index_size ? draw->index_bias : draw->start;
          size += 4;
          break;
       case D3D12_STATE_VAR_DEPTH_TRANSFORM:
@@ -716,7 +716,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
 
    if (dinfo->index_size > 0)
       ctx->cmdlist->DrawIndexedInstanced(draws[0].count, dinfo->instance_count,
-                                         draws[0].start, dinfo->index_bias,
+                                         draws[0].start, draws[0].index_bias,
                                          dinfo->start_instance);
    else
       ctx->cmdlist->DrawInstanced(draws[0].count, dinfo->instance_count,

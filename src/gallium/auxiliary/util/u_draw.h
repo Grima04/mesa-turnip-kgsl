@@ -64,6 +64,7 @@ util_draw_arrays(struct pipe_context *pipe,
 
    draw.start = start;
    draw.count = count;
+   draw.index_bias = 0;
 
    pipe->draw_vbo(pipe, &info, NULL, &draw, 1);
 }
@@ -84,7 +85,7 @@ util_draw_elements(struct pipe_context *pipe,
    info.has_user_indices = true;
    info.index_size = index_size;
    info.mode = mode;
-   info.index_bias = index_bias;
+   draw.index_bias = index_bias;
 
    draw.start = start;
    draw.count = count;
@@ -113,6 +114,7 @@ util_draw_arrays_instanced(struct pipe_context *pipe,
 
    draw.start = start;
    draw.count = count;
+   draw.index_bias = 0;
 
    pipe->draw_vbo(pipe, &info, NULL, &draw, 1);
 }
@@ -136,7 +138,7 @@ util_draw_elements_instanced(struct pipe_context *pipe,
    info.has_user_indices = true;
    info.index_size = index_size;
    info.mode = mode;
-   info.index_bias = index_bias;
+   draw.index_bias = index_bias;
    info.start_instance = start_instance;
    info.instance_count = instance_count;
 

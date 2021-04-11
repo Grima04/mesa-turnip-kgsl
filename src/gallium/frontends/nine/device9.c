@@ -3308,7 +3308,7 @@ NineDevice9_ProcessVertices( struct NineDevice9 *This,
     draw.instance_count = 1;
     draw.index_size = 0;
     sc.start = 0;
-    draw.index_bias = 0;
+    sc.index_bias = 0;
     draw.min_index = 0;
     draw.max_index = VertexCount - 1;
 

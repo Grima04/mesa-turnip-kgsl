@@ -647,7 +647,7 @@ nv30_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
       nv30_draw_elements(nv30, shorten, info,
                          info->mode, draws[0].start, draws[0].count,
-                         info->instance_count, info->index_bias, info->index_size);
+                         info->instance_count, draws[0].index_bias, info->index_size);
    }
 
    nv30_state_release(nv30);

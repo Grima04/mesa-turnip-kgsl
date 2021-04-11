@@ -585,16 +585,14 @@ struct dd_function_table {
                        unsigned num_draws);
 
    /**
-    * Same as DrawGallium, but base_vertex and mode can also change between draws.
+    * Same as DrawGallium, but mode can also change between draws.
     *
-    * If index_bias != NULL, index_bias changes for each draw.
     * If mode != NULL, mode changes for each draw.
     * At least one of them must be non-NULL.
     *
     * "info" is not const and the following fields can be changed by
     * the callee in addition to the fields listed by DrawGallium:
     * - info->mode (if mode != NULL)
-    * - info->index_bias (if index_bias != NULL)
     *
     * This function exists to decrease complexity of DrawGallium.
     */
@@ -602,7 +600,6 @@ struct dd_function_table {
                               struct pipe_draw_info *info,
                               const struct pipe_draw_start_count_bias *draws,
                               const unsigned char *mode,
-                              const int *base_vertex,
                               unsigned num_draws);
 
    /**

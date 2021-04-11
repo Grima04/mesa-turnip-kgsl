@@ -329,7 +329,6 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
       .index.user = indices,
       .start_instance = 0,
       .instance_count = 1,
-      .index_bias = bias,
       .index_bounds_valid = true,
       .min_index = svga_render->min_index,
       .max_index = svga_render->max_index,
@@ -337,6 +336,7 @@ svga_vbuf_render_draw_elements(struct vbuf_render *render,
    const struct pipe_draw_start_count_bias draw = {
       .start = 0,
       .count = nr_indices,
+      .index_bias = bias,
    };
 
    assert((svga_render->vbuf_offset - svga_render->vdecl_offset)

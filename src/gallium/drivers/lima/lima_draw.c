@@ -830,7 +830,7 @@ lima_update_gp_attribute_info(struct lima_context *ctx, const struct pipe_draw_i
 
       lima_job_add_bo(job, LIMA_PIPE_GP, res->bo, LIMA_SUBMIT_BO_READ);
 
-      unsigned start = info->index_size ? (ctx->min_index + info->index_bias) : draw->start;
+      unsigned start = info->index_size ? (ctx->min_index + draw->index_bias) : draw->start;
       attribute[n++] = res->bo->va + pvb->buffer_offset + pve->src_offset
          + start * pvb->stride;
       attribute[n++] = (pvb->stride << 11) |

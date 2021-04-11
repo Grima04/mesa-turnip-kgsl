@@ -512,7 +512,7 @@ static void r300_draw_elements_immediate(struct r300_context *r300,
     /* 19 dwords for r300_draw_elements_immediate. Give up if the function fails. */
     if (!r300_prepare_for_rendering(r300,
             PREP_EMIT_STATES | PREP_VALIDATE_VBOS | PREP_EMIT_VARRAYS |
-            PREP_INDEXED, NULL, 2+count_dwords, 0, info->index_bias, -1))
+            PREP_INDEXED, NULL, 2+count_dwords, 0, draw->index_bias, -1))
         return;
 
     r300_emit_draw_init(r300, info->mode, info->max_index);
@@ -528,13 +528,13 @@ static void r300_draw_elements_immediate(struct r300_context *r300,
         OUT_CS(R300_VAP_VF_CNTL__PRIM_WALK_INDICES | (draw->count << 16) |
                r300_translate_primitive(info->mode));
 
-        if (info->index_bias && !r300->screen->caps.is_r500) {
+        if (draw->index_bias && !r300->screen->caps.is_r500) {
             for (i = 0; i < draw->count-1; i += 2)
-                OUT_CS(((ptr1[i+1] + info->index_bias) << 16) |
-                        (ptr1[i]   + info->index_bias));
+                OUT_CS(((ptr1[i+1] + draw->index_bias) << 16) |
+                        (ptr1[i]   + draw->index_bias));
 
             if (draw->count & 1)
-                OUT_CS(ptr1[i] + info->index_bias);
+                OUT_CS(ptr1[i] + draw->index_bias);
         } else {
             for (i = 0; i < draw->count-1; i += 2)
                 OUT_CS(((ptr1[i+1]) << 16) |
@@ -552,13 +552,13 @@ static void r300_draw_elements_immediate(struct r300_context *r300,
         OUT_CS(R300_VAP_VF_CNTL__PRIM_WALK_INDICES | (draw->count << 16) |
                r300_translate_primitive(info->mode));
 
-        if (info->index_bias && !r300->screen->caps.is_r500) {
+        if (draw->index_bias && !r300->screen->caps.is_r500) {
             for (i = 0; i < draw->count-1; i += 2)
-                OUT_CS(((ptr2[i+1] + info->index_bias) << 16) |
-                        (ptr2[i]   + info->index_bias));
+                OUT_CS(((ptr2[i+1] + draw->index_bias) << 16) |
+                        (ptr2[i]   + draw->index_bias));
 
             if (draw->count & 1)
-                OUT_CS(ptr2[i] + info->index_bias);
+                OUT_CS(ptr2[i] + draw->index_bias);
         } else {
             OUT_CS_TABLE(ptr2, count_dwords);
         }
@@ -572,9 +572,9 @@ static void r300_draw_elements_immediate(struct r300_context *r300,
                R300_VAP_VF_CNTL__INDEX_SIZE_32bit |
                r300_translate_primitive(info->mode));
 
-        if (info->index_bias && !r300->screen->caps.is_r500) {
+        if (draw->index_bias && !r300->screen->caps.is_r500) {
             for (i = 0; i < draw->count; i++)
-                OUT_CS(ptr4[i] + info->index_bias);
+                OUT_CS(ptr4[i] + draw->index_bias);
         } else {
             OUT_CS_TABLE(ptr4, count_dwords);
         }
@@ -600,8 +600,8 @@ static void r300_draw_elements(struct r300_context *r300,
     int buffer_offset = 0, index_offset = 0; /* for index bias emulation */
     uint16_t indices3[3];
 
-    if (info->index_bias && !r300->screen->caps.is_r500) {
-        r300_split_index_bias(r300, info->index_bias, &buffer_offset,
+    if (draw->index_bias && !r300->screen->caps.is_r500) {
+        r300_split_index_bias(r300, draw->index_bias, &buffer_offset,
                               &index_offset);
     }
 
@@ -635,7 +635,7 @@ static void r300_draw_elements(struct r300_context *r300,
     /* 19 dwords for emit_draw_elements. Give up if the function fails. */
     if (!r300_prepare_for_rendering(r300,
             PREP_EMIT_STATES | PREP_VALIDATE_VBOS | PREP_EMIT_VARRAYS |
-            PREP_INDEXED, indexBuffer, 19, buffer_offset, info->index_bias,
+            PREP_INDEXED, indexBuffer, 19, buffer_offset, draw->index_bias,
             instance_id))
         goto done;
 
@@ -662,7 +662,7 @@ static void r300_draw_elements(struct r300_context *r300,
             if (count) {
                 if (!r300_prepare_for_rendering(r300,
                         PREP_VALIDATE_VBOS | PREP_EMIT_VARRAYS | PREP_INDEXED,
-                        indexBuffer, 19, buffer_offset, info->index_bias,
+                        indexBuffer, 19, buffer_offset, draw->index_bias,
                         instance_id))
                     goto done;
             }

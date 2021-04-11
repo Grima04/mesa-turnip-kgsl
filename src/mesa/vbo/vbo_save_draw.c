@@ -238,7 +238,6 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
                ctx->Driver.DrawGalliumComplex(ctx, info,
                                               node->merged.start_count,
                                               node->merged.mode,
-                                              NULL,
                                               node->merged.num_draws);
             } else {
                ctx->Driver.DrawGallium(ctx, info,

@@ -98,7 +98,6 @@ _mesa_draw_gallium_complex_fallback(struct gl_context *ctx,
                                     struct pipe_draw_info *info,
                                     const struct pipe_draw_start_count_bias *draws,
                                     const unsigned char *mode,
-                                    const int *base_vertex,
                                     unsigned num_draws);
 
 void GLAPIENTRY

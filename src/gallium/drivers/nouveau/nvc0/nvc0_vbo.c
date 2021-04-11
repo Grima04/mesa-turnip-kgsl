@@ -944,7 +944,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
    /* NOTE: caller must ensure that (min_index + index_bias) is >= 0 */
    if (info->index_bounds_valid) {
-      nvc0->vb_elt_first = info->min_index + (info->index_size ? info->index_bias : 0);
+      nvc0->vb_elt_first = info->min_index + (info->index_size ? draws->index_bias : 0);
       nvc0->vb_elt_limit = info->max_index - info->min_index;
    } else {
       nvc0->vb_elt_first = 0;
@@ -1032,7 +1032,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       PUSH_DATA (push, screen->uniform_bo->offset + NVC0_CB_AUX_INFO(0));
       BEGIN_1IC0(push, NVC0_3D(CB_POS), 1 + 3);
       PUSH_DATA (push, NVC0_CB_AUX_DRAW_INFO);
-      PUSH_DATA (push, info->index_size ? info->index_bias : 0);
+      PUSH_DATA (push, info->index_size ? draws->index_bias : 0);
       PUSH_DATA (push, info->start_instance);
       PUSH_DATA (push, info->drawid);
    }
@@ -1121,7 +1121,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
       nvc0_draw_elements(nvc0, shorten, info,
                          info->mode, draws[0].start, draws[0].count,
-                         info->instance_count, info->index_bias, info->index_size);
+                         info->instance_count, draws->index_bias, info->index_size);
    } else {
       nvc0_draw_arrays(nvc0,
                        info->mode, draws[0].start, draws[0].count,

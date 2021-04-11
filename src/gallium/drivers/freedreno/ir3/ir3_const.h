@@ -474,7 +474,7 @@ ir3_emit_vs_driver_params(const struct ir3_shader_variant *v,
    uint32_t offset = const_state->offsets.driver_param;
    uint32_t vertex_params[IR3_DP_VS_COUNT] = {
       [IR3_DP_DRAWID] = 0, /* filled by hw (CP_DRAW_INDIRECT_MULTI) */
-      [IR3_DP_VTXID_BASE] = info->index_size ? info->index_bias : draw->start,
+      [IR3_DP_VTXID_BASE] = info->index_size ? draw->index_bias : draw->start,
       [IR3_DP_INSTID_BASE] = info->start_instance,
       [IR3_DP_VTXCNT_MAX] = ctx->streamout.max_tf_vtx,
    };

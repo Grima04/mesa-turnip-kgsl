@@ -141,7 +141,6 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    new_info.index_bounds_valid = info->index_bounds_valid;
    new_info.min_index = info->min_index;
    new_info.max_index = info->max_index;
-   new_info.index_bias = info->index_size ? info->index_bias : 0;
    new_info.start_instance = info->start_instance;
    new_info.instance_count = info->instance_count;
    new_info.primitive_restart = info->primitive_restart;
@@ -181,6 +180,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    u_upload_alloc(pc->pipe->stream_uploader, 0, new_info.index_size * new_draw.count, 4,
                   &ib_offset, &new_info.index.resource, &dst);
    new_draw.start = ib_offset / new_info.index_size;
+   new_draw.index_bias = info->index_size ? draw->index_bias : 0;
 
    if (info->index_size) {
       trans_func(src, draw->start, draw->count, new_draw.count, info->restart_index, dst);
