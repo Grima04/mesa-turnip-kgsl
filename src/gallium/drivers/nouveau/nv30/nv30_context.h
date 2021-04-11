@@ -203,6 +203,7 @@ nv30_draw_init(struct pipe_context *pipe);
 
 void
 nv30_render_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+                unsigned drawid_offset,
                 const struct pipe_draw_start_count_bias *draw);
 
 bool

@@ -6569,6 +6569,7 @@ static void
 iris_upload_render_state(struct iris_context *ice,
                          struct iris_batch *batch,
                          const struct pipe_draw_info *draw,
+                         unsigned drawid_offset,
                          const struct pipe_draw_indirect_info *indirect,
                          const struct pipe_draw_start_count_bias *sc)
 {
@@ -6687,7 +6688,7 @@ iris_upload_render_state(struct iris_context *ice,
 
             /* comparison = draw id < draw count */
             struct mi_value comparison =
-               mi_ult(&b, mi_imm(draw->drawid),
+               mi_ult(&b, mi_imm(drawid_offset),
                           mi_mem32(ro_bo(draw_count_bo, draw_count_offset)));
 
             /* predicate = comparison & conditional rendering predicate */
@@ -6697,7 +6698,7 @@ iris_upload_render_state(struct iris_context *ice,
             uint32_t mi_predicate;
 
             /* Upload the id of the current primitive to MI_PREDICATE_SRC1. */
-            iris_load_register_imm64(batch, MI_PREDICATE_SRC1, draw->drawid);
+            iris_load_register_imm64(batch, MI_PREDICATE_SRC1, drawid_offset);
             /* Upload the current draw count from the draw parameters buffer
              * to MI_PREDICATE_SRC0.
              */
@@ -6706,7 +6707,7 @@ iris_upload_render_state(struct iris_context *ice,
             /* Zero the top 32-bits of MI_PREDICATE_SRC0 */
             iris_load_register_imm32(batch, MI_PREDICATE_SRC0 + 4, 0);
 
-            if (draw->drawid == 0) {
+            if (drawid_offset == 0) {
                mi_predicate = MI_PREDICATE | MI_PREDICATE_LOADOP_LOADINV |
                               MI_PREDICATE_COMBINEOP_SET |
                               MI_PREDICATE_COMPAREOP_SRCS_EQUAL;

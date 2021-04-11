@@ -225,12 +225,13 @@ etna_get_fs(struct etna_context *ctx, struct etna_shader_key key)
 
 static void
 etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
               const struct pipe_draw_indirect_info *indirect,
               const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pctx, info, indirect, draws, num_draws);
+      util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -254,7 +255,7 @@ etna_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (!(ctx->prim_hwsupport & (1 << info->mode))) {
       struct primconvert_context *primconvert = ctx->primconvert;
       util_primconvert_save_rasterizer_state(primconvert, ctx->rasterizer);
-      util_primconvert_draw_vbo(primconvert, info, indirect, draws, num_draws);
+      util_primconvert_draw_vbo(primconvert, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 

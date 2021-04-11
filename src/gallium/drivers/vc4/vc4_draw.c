@@ -290,12 +290,13 @@ vc4_hw_2116_workaround(struct pipe_context *pctx, int vert_count)
 
 static void
 vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *draws,
              unsigned num_draws)
 {
         if (num_draws > 1) {
-                util_draw_multi(pctx, info, indirect, draws, num_draws);
+                util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
                 return;
         }
 
@@ -319,7 +320,7 @@ vc4_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                         info = &local_info;
                 } else {
                         util_primconvert_save_rasterizer_state(vc4->primconvert, &vc4->rasterizer->base);
-                        util_primconvert_draw_vbo(vc4->primconvert, info, indirect, draws, num_draws);
+                        util_primconvert_draw_vbo(vc4->primconvert, info, drawid_offset, indirect, draws, num_draws);
                         perf_debug("Fallback conversion for %d %s vertices\n",
                                    draws[0].count, u_prim_name(info->mode));
                         return;

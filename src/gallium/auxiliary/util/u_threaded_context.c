@@ -66,6 +66,7 @@ enum tc_call_id {
  * not needed. */
 struct tc_draw_single {
    struct pipe_draw_info info;
+   unsigned drawid_offset;
 };
 
 typedef void (*tc_execute)(struct pipe_context *pipe, union tc_payload *payload);
@@ -121,6 +122,7 @@ simplify_draw_info(struct pipe_draw_info *info)
    info->take_index_buffer_ownership = false;
    info->index_bias_varies = false;
    info->_pad2 = 0;
+   info->_pad3 = 0;
 
    /* This shouldn't be set when merging single draws. */
    info->increment_draw_id = false;
@@ -156,10 +158,10 @@ is_next_call_a_mergeable_draw(struct tc_draw_single *first_info,
                  sizeof(struct pipe_draw_info) - 8);
    STATIC_ASSERT(offsetof(struct pipe_draw_info, max_index) ==
                  sizeof(struct pipe_draw_info) - 4);
-
    /* All fields must be the same except start and count. */
    /* u_threaded_context stores start/count in min/max_index for single draws. */
-   return memcmp((uint32_t*)&first_info->info,
+   return (*next_info)->drawid_offset == 0 &&
+          memcmp((uint32_t*)&first_info->info,
                  (uint32_t*)&(*next_info)->info,
                  DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX) == 0;
 }
@@ -194,7 +196,7 @@ tc_batch_execute(void *job, UNUSED int thread_index)
 
          /* If at least 2 consecutive draw calls can be merged... */
          if (next != last && next->call_id == TC_CALL_draw_single &&
-             first_info->info.drawid == 0 &&
+             first_info->drawid_offset == 0 &&
              is_next_call_a_mergeable_draw(first_info, next, &next_info, &index_bias)) {
             /* Merge up to 256 draw calls. */
             struct pipe_draw_start_count_bias multi[256];
@@ -228,7 +230,7 @@ tc_batch_execute(void *job, UNUSED int thread_index)
             }
 
             first_info->info.index_bias_varies = index_bias_varies;
-            pipe->draw_vbo(pipe, &first_info->info, NULL, multi, num_draws);
+            pipe->draw_vbo(pipe, &first_info->info, 0, NULL, multi, num_draws);
             if (first_info->info.index_size)
                pipe_resource_reference(&first_info->info.index.resource, NULL);
             iter = next;
@@ -236,7 +238,7 @@ tc_batch_execute(void *job, UNUSED int thread_index)
          } else {
             /* reset original index_bias from before simplify_draw_info() */
             first_info->info._pad2 = first_index_bias;
-            if (next != last && next->call_id == TC_CALL_draw_single && first_info->info.drawid == 0 && next_info)
+            if (next != last && next->call_id == TC_CALL_draw_single && first_info->drawid == 0 && next_info)
                /* in this case, simplify_draw_info() will have zeroed the data here as well */
                next_info->info._pad2 = index_bias;
          }
@@ -2416,7 +2418,7 @@ tc_call_draw_single(struct pipe_context *pipe, union tc_payload *payload)
    info->info.has_user_indices = false;
    info->info.take_index_buffer_ownership = false;
 
-   pipe->draw_vbo(pipe, &info->info, NULL, &draw, 1);
+   pipe->draw_vbo(pipe, &info->info, info->drawid_offset, NULL, &draw, 1);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
 }
@@ -2435,7 +2437,7 @@ tc_call_draw_indirect(struct pipe_context *pipe, union tc_payload *payload)
    info->info.index_bounds_valid = false;
    info->info.take_index_buffer_ownership = false;
 
-   pipe->draw_vbo(pipe, &info->info, &info->indirect, &info->draw, 1);
+   pipe->draw_vbo(pipe, &info->info, 0, &info->indirect, &info->draw, 1);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
 
@@ -2459,7 +2461,7 @@ tc_call_draw_multi(struct pipe_context *pipe, union tc_payload *payload)
    info->info.index_bounds_valid = false;
    info->info.take_index_buffer_ownership = false;
 
-   pipe->draw_vbo(pipe, &info->info, NULL, info->slot, info->num_draws);
+   pipe->draw_vbo(pipe, &info->info, 0, NULL, info->slot, info->num_draws);
    if (info->info.index_size)
       pipe_resource_reference(&info->info.index.resource, NULL);
 }
@@ -2469,6 +2471,7 @@ tc_call_draw_multi(struct pipe_context *pipe, union tc_payload *payload)
 
 void
 tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
+            unsigned drawid_offset,
             const struct pipe_draw_indirect_info *indirect,
             const struct pipe_draw_start_count_bias *draws,
             unsigned num_draws)
@@ -2527,6 +2530,7 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             tc_add_struct_typed_call(tc, TC_CALL_draw_single, tc_draw_single);
          memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX);
          p->info.index.resource = buffer;
+         p->drawid_offset = drawid_offset;
          /* u_threaded_context stores start/count in min/max_index for single draws. */
          p->info.min_index = offset >> util_logbase2(index_size);
          p->info.max_index = draws[0].count;
@@ -2539,6 +2543,7 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
             tc_set_resource_reference(&p->info.index.resource,
                                       info->index.resource);
          }
+         p->drawid_offset = drawid_offset;
          memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
          /* u_threaded_context stores start/count in min/max_index for single draws. */
          p->info.min_index = draws[0].start;

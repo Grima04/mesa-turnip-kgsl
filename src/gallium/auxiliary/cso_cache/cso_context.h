@@ -178,6 +178,7 @@ cso_set_vertex_buffers_and_elements(struct cso_context *ctx,
 void
 cso_draw_vbo(struct cso_context *cso,
              const struct pipe_draw_info *info,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias draw);
 
@@ -185,6 +186,7 @@ cso_draw_vbo(struct cso_context *cso,
 void
 cso_multi_draw(struct cso_context *cso,
                struct pipe_draw_info *info,
+               unsigned drawid_offset,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws);
 

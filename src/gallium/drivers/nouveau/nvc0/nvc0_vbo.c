@@ -805,12 +805,13 @@ nvc0_draw_stream_output(struct nvc0_context *nvc0,
 
 static void
 nvc0_draw_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
+                   unsigned drawid_offset,
                    const struct pipe_draw_indirect_info *indirect)
 {
    struct nouveau_pushbuf *push = nvc0->base.pushbuf;
    struct nv04_resource *buf = nv04_resource(indirect->buffer);
    struct nv04_resource *buf_count = nv04_resource(indirect->indirect_draw_count);
-   unsigned size, macro, count = indirect->draw_count, drawid = info->drawid;
+   unsigned size, macro, count = indirect->draw_count, drawid = drawid_offset;
    uint32_t offset = buf->offset + indirect->offset;
    struct nvc0_screen *screen = nvc0->screen;
 
@@ -924,12 +925,13 @@ nvc0_update_prim_restart(struct nvc0_context *nvc0, bool en, uint32_t index)
 
 void
 nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
               const struct pipe_draw_indirect_info *indirect,
               const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pipe, info, indirect, draws, num_draws);
+      util_draw_multi(pipe, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -1034,7 +1036,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
       PUSH_DATA (push, NVC0_CB_AUX_DRAW_INFO);
       PUSH_DATA (push, info->index_size ? draws->index_bias : 0);
       PUSH_DATA (push, info->start_instance);
-      PUSH_DATA (push, info->drawid);
+      PUSH_DATA (push, drawid_offset);
    }
 
    if (nvc0->screen->base.class_3d < NVE4_3D_CLASS &&
@@ -1077,7 +1079,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
    if (nvc0->state.vbo_mode) {
       if (indirect && indirect->buffer)
-         nvc0_push_vbo_indirect(nvc0, info, indirect, &draws[0]);
+         nvc0_push_vbo_indirect(nvc0, info, drawid_offset, indirect, &draws[0]);
       else
          nvc0_push_vbo(nvc0, info, indirect, &draws[0]);
       goto cleanup;
@@ -1108,7 +1110,7 @@ nvc0_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
    }
 
    if (unlikely(indirect && indirect->buffer)) {
-      nvc0_draw_indirect(nvc0, info, indirect);
+      nvc0_draw_indirect(nvc0, info, drawid_offset, indirect);
    } else
    if (unlikely(indirect && indirect->count_from_stream_output)) {
       nvc0_draw_stream_output(nvc0, info, indirect);

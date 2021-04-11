@@ -505,6 +505,7 @@ draw_instances(struct draw_context *draw,
 void
 draw_vbo(struct draw_context *draw,
          const struct pipe_draw_info *info,
+         unsigned drawid_offset,
          const struct pipe_draw_indirect_info *indirect,
          const struct pipe_draw_start_count_bias *draws,
          unsigned num_draws)
@@ -538,7 +539,7 @@ draw_vbo(struct draw_context *draw,
    draw->pt.user.min_index = use_info->index_bounds_valid ? use_info->min_index : 0;
    draw->pt.user.max_index = use_info->index_bounds_valid ? use_info->max_index : ~0;
    draw->pt.user.eltSize = use_info->index_size ? draw->pt.user.eltSizeIB : 0;
-   draw->pt.user.drawid = use_info->drawid;
+   draw->pt.user.drawid = drawid_offset;
    draw->pt.user.increment_draw_id = use_info->increment_draw_id;
    draw->pt.user.viewid = 0;
    draw->pt.vertices_per_patch = use_info->vertices_per_patch;

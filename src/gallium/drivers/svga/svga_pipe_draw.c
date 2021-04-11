@@ -218,12 +218,13 @@ get_vcount_from_stream_output(struct svga_context *svga,
 
 static void
 svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+              unsigned drawid_offset,
               const struct pipe_draw_indirect_info *indirect,
               const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pipe, info, indirect, draws, num_draws);
+      util_draw_multi(pipe, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -282,7 +283,7 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
    if (need_fallback_prim_restart(svga, info)) {
       enum pipe_error r;
-      r = util_draw_vbo_without_prim_restart(pipe, info, indirect, &draws[0]);
+      r = util_draw_vbo_without_prim_restart(pipe, info, drawid_offset, indirect, &draws[0]);
       assert(r == PIPE_OK);
       (void) r;
       goto done;
@@ -311,7 +312,7 @@ svga_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
 
       /* Avoid leaking the previous hwtnl bias to swtnl */
       svga_hwtnl_set_index_bias(svga->hwtnl, 0);
-      ret = svga_swtnl_draw_vbo(svga, info, indirect, &draws[0]);
+      ret = svga_swtnl_draw_vbo(svga, info, drawid_offset, indirect, &draws[0]);
    }
    else {
       if (!svga_update_state_retry(svga, SVGA_STATE_HW_DRAW)) {

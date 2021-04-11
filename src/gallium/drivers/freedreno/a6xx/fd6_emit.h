@@ -89,6 +89,7 @@ struct fd6_emit {
    struct fd_context *ctx;
    const struct fd_vertex_state *vtx;
    const struct pipe_draw_info *info;
+	unsigned drawid_offset;
    const struct pipe_draw_indirect_info *indirect;
 	const struct pipe_draw_start_count_bias *draw;
    struct ir3_cache_key key;

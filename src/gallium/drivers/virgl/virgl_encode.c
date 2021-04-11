@@ -738,6 +738,7 @@ int virgl_encoder_set_index_buffer(struct virgl_context *ctx,
 
 int virgl_encoder_draw_vbo(struct virgl_context *ctx,
                            const struct pipe_draw_info *info,
+                           unsigned drawid_offset,
                            const struct pipe_draw_indirect_info *indirect,
                            const struct pipe_draw_start_count_bias *draw)
 {
@@ -764,7 +765,7 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
       virgl_encoder_write_dword(ctx->cbuf, 0);
    if (length >= VIRGL_DRAW_VBO_SIZE_TESS) {
       virgl_encoder_write_dword(ctx->cbuf, info->vertices_per_patch); /* vertices per patch */
-      virgl_encoder_write_dword(ctx->cbuf, info->drawid); /* drawid */
+      virgl_encoder_write_dword(ctx->cbuf, drawid_offset); /* drawid */
    }
    if (length == VIRGL_DRAW_VBO_SIZE_INDIRECT) {
       virgl_encoder_write_res(ctx, virgl_resource(indirect->buffer));

@@ -62,6 +62,7 @@ struct iris_vtable {
    void (*upload_render_state)(struct iris_context *ice,
                                struct iris_batch *batch,
                                const struct pipe_draw_info *draw,
+                               unsigned drawid_offset,
                                const struct pipe_draw_indirect_info *indirect,
                                const struct pipe_draw_start_count_bias *sc);
    void (*update_surface_base_address)(struct iris_batch *batch,

@@ -216,7 +216,7 @@ static void draw( void )
                                       indices);
    }
 
-   ctx->draw_vbo(ctx, &info, NULL, &draw, 1);
+   ctx->draw_vbo(ctx, &info, 0, NULL, &draw, 1);
 
    pipe_resource_reference(&info.index.resource, NULL);
 

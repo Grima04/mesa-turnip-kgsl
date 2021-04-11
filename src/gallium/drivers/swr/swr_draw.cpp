@@ -38,17 +38,19 @@
  */
 static void
 swr_draw_vbo(struct pipe_context *pipe, const struct pipe_draw_info *info,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *draws,
              unsigned num_draws)
 {
    if (num_draws > 1) {
       struct pipe_draw_info tmp_info = *info;
+      unsigned drawid = drawid_offset;
 
       for (unsigned i = 0; i < num_draws; i++) {
-         swr_draw_vbo(pipe, &tmp_info, indirect, &draws[i], 1);
+         swr_draw_vbo(pipe, &tmp_info, drawid, indirect, &draws[i], 1);
          if (tmp_info.increment_draw_id)
-            tmp_info.drawid++;
+            drawid++;
       }
       return;
    }

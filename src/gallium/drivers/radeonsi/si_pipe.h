@@ -886,6 +886,7 @@ struct si_small_prim_cull_info {
 
 typedef void (*pipe_draw_vbo_func)(struct pipe_context *pipe,
                                    const struct pipe_draw_info *info,
+                                   unsigned drawid_offset,
                                    const struct pipe_draw_indirect_info *indirect,
                                    const struct pipe_draw_start_count_bias *draws,
                                    unsigned num_draws);
@@ -1481,6 +1482,7 @@ enum si_prim_discard_outcome
 void si_build_prim_discard_compute_shader(struct si_shader_context *ctx);
 enum si_prim_discard_outcome
 si_prepare_prim_discard_or_split_draw(struct si_context *sctx, const struct pipe_draw_info *info,
+                                      unsigned drawid_offset,
                                       const struct pipe_draw_start_count_bias *draws,
                                       unsigned num_draws, bool primitive_restart,
                                       unsigned total_count);

@@ -581,6 +581,7 @@ struct dd_function_table {
     */
    void (*DrawGallium)(struct gl_context *ctx,
                        struct pipe_draw_info *info,
+                       unsigned drawid_offset,
                        const struct pipe_draw_start_count_bias *draws,
                        unsigned num_draws);
 
@@ -598,6 +599,7 @@ struct dd_function_table {
     */
    void (*DrawGalliumMultiMode)(struct gl_context *ctx,
                               struct pipe_draw_info *info,
+                              unsigned drawid_offset,
                               const struct pipe_draw_start_count_bias *draws,
                               const unsigned char *mode,
                               unsigned num_draws);

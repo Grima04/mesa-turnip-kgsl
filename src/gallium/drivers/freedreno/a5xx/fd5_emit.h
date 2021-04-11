@@ -45,6 +45,7 @@ struct fd5_emit {
    const struct fd_vertex_state *vtx;
    const struct fd5_program_state *prog;
    const struct pipe_draw_info *info;
+        unsigned drawid_offset;
    const struct pipe_draw_indirect_info *indirect;
 	const struct pipe_draw_start_count_bias *draw;
    bool binning_pass;

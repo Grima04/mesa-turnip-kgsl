@@ -963,6 +963,7 @@ static void si_emit_draw_registers(struct si_context *sctx,
 
 template <chip_class GFX_VERSION, si_has_ngg NGG, si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
 static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw_info *info,
+                                 unsigned drawid_base,
                                  const struct pipe_draw_indirect_info *indirect,
                                  const struct pipe_draw_start_count_bias *draws,
                                  unsigned num_draws,
@@ -1056,7 +1057,6 @@ static void si_emit_draw_packets(struct si_context *sctx, const struct pipe_draw
 
    unsigned sh_base_reg = sctx->shader_pointers.sh_base[PIPE_SHADER_VERTEX];
    bool render_cond_bit = sctx->render_cond_enabled;
-   unsigned drawid_base = info->drawid;
 
    if (indirect) {
       assert(num_draws == 1);
@@ -1734,6 +1734,7 @@ template <chip_class GFX_VERSION, si_has_tess HAS_TESS, si_has_gs HAS_GS, si_has
           si_has_prim_discard_cs ALLOW_PRIM_DISCARD_CS>
 static void si_draw_vbo(struct pipe_context *ctx,
                         const struct pipe_draw_info *info,
+                        unsigned drawid_offset,
                         const struct pipe_draw_indirect_info *indirect,
                         const struct pipe_draw_start_count_bias *draws,
                         unsigned num_draws)
@@ -1951,7 +1952,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
               (instance_count == 1 ||
                (instance_count <= USHRT_MAX && index_size && index_size <= 2) ||
                pd_msg("instance_count too large or index_size == 4 or DrawArraysInstanced"))) &&
-       ((info->drawid == 0 && (num_draws == 1 || !info->increment_draw_id)) ||
+       ((drawid_offset == 0 && (num_draws == 1 || !info->increment_draw_id)) ||
         !sctx->shader.vs.cso->info.uses_drawid || pd_msg("draw_id > 0")) &&
        (!sctx->render_cond || pd_msg("render condition")) &&
        /* Forced enablement ignores pipeline statistics queries. */
@@ -1978,7 +1979,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
         * dispatches can run ahead. */
        (si_all_vs_resources_read_only(sctx, index_size ? indexbuf : NULL) ||
         pd_msg("write reference"))) {
-      switch (si_prepare_prim_discard_or_split_draw(sctx, info, draws, num_draws,
+      switch (si_prepare_prim_discard_or_split_draw(sctx, info, drawid_offset, draws, num_draws,
                                                     primitive_restart, total_direct_count)) {
       case SI_PRIM_DISCARD_ENABLED:
          original_index_size = index_size;
@@ -2191,7 +2192,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
       si_emit_draw_packets<GFX_VERSION, NGG,
                            !HAS_TESS && !HAS_GS ? PRIM_DISCARD_CS_OFF : ALLOW_PRIM_DISCARD_CS>
-            (sctx, info, indirect, draws, num_draws, indexbuf, index_size,
+            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf, index_size,
              index_offset, instance_count, dispatch_prim_discard_cs,
              original_index_size);
       /* <-- CUs are busy here. */
@@ -2231,7 +2232,7 @@ static void si_draw_vbo(struct pipe_context *ctx,
 
       si_emit_draw_packets<GFX_VERSION, NGG,
                            !HAS_TESS && !HAS_GS ? PRIM_DISCARD_CS_OFF : ALLOW_PRIM_DISCARD_CS>
-            (sctx, info, indirect, draws, num_draws, indexbuf, index_size,
+            (sctx, info, drawid_offset, indirect, draws, num_draws, indexbuf, index_size,
              index_offset, instance_count,
              dispatch_prim_discard_cs, original_index_size);
 
@@ -2312,7 +2313,7 @@ static void si_draw_rectangle(struct blitter_context *blitter, void *vertex_elem
    sctx->vertex_buffer_pointer_dirty = false;
    sctx->vertex_buffer_user_sgprs_dirty = false;
 
-   pipe->draw_vbo(pipe, &info, NULL, &draw, 1);
+   pipe->draw_vbo(pipe, &info, 0, NULL, &draw, 1);
 }
 
 extern "C"
@@ -2377,6 +2378,7 @@ static void si_init_draw_vbo_all_families(struct si_context *sctx)
 
 static void si_invalid_draw_vbo(struct pipe_context *pipe,
                                 const struct pipe_draw_info *info,
+                                unsigned drawid_offset,
                                 const struct pipe_draw_indirect_info *indirect,
                                 const struct pipe_draw_start_count_bias *draws,
                                 unsigned num_draws)

@@ -153,6 +153,7 @@ draw_impl(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 static bool
 fd2_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *pinfo,
+			 unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *pdraw,
              unsigned index_offset) assert_dt

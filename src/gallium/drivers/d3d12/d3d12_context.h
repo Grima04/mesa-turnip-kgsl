@@ -290,6 +290,7 @@ d3d12_apply_resource_states(struct d3d12_context* ctx);
 void
 d3d12_draw_vbo(struct pipe_context *pctx,
                const struct pipe_draw_info *dinfo,
+               unsigned drawid_offset,
                const struct pipe_draw_indirect_info *indirect,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws);

@@ -48,12 +48,13 @@ tegra_destroy(struct pipe_context *pcontext)
 static void
 tegra_draw_vbo(struct pipe_context *pcontext,
                const struct pipe_draw_info *pinfo,
+               unsigned drawid_offset,
                const struct pipe_draw_indirect_info *pindirect,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pcontext, pinfo, pindirect, draws, num_draws);
+      util_draw_multi(pcontext, pinfo, drawid_offset, pindirect, draws, num_draws);
       return;
    }
 
@@ -80,7 +81,7 @@ tegra_draw_vbo(struct pipe_context *pcontext,
       pinfo = &info;
    }
 
-   context->gpu->draw_vbo(context->gpu, pinfo, pindirect, draws, num_draws);
+   context->gpu->draw_vbo(context->gpu, pinfo, drawid_offset, pindirect, draws, num_draws);
 }
 
 static void

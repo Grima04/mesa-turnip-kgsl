@@ -860,12 +860,13 @@ static void virgl_clear_texture(struct pipe_context *ctx,
 
 static void virgl_draw_vbo(struct pipe_context *ctx,
                            const struct pipe_draw_info *dinfo,
+                           unsigned drawid_offset,
                            const struct pipe_draw_indirect_info *indirect,
                            const struct pipe_draw_start_count_bias *draws,
                            unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(ctx, dinfo, indirect, draws, num_draws);
+      util_draw_multi(ctx, dinfo, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -884,7 +885,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
 
    if (!(rs->caps.caps.v1.prim_mask & (1 << dinfo->mode))) {
       util_primconvert_save_rasterizer_state(vctx->primconvert, &vctx->rs_state.rs);
-      util_primconvert_draw_vbo(vctx->primconvert, dinfo, indirect, draws, num_draws);
+      util_primconvert_draw_vbo(vctx->primconvert, dinfo, drawid_offset, indirect, draws, num_draws);
       return;
    }
    if (info.index_size) {
@@ -912,7 +913,7 @@ static void virgl_draw_vbo(struct pipe_context *ctx,
    if (info.index_size)
       virgl_hw_set_index_buffer(vctx, &ib);
 
-   virgl_encoder_draw_vbo(vctx, &info, indirect, &draws[0]);
+   virgl_encoder_draw_vbo(vctx, &info, drawid_offset, indirect, &draws[0]);
 
    pipe_resource_reference(&ib.buffer, NULL);
 

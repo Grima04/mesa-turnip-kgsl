@@ -132,6 +132,7 @@ fixup_draw_state(struct fd_context *ctx, struct fd6_emit *emit) assert_dt
 
 static bool
 fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *draw,
              unsigned index_offset) assert_dt
@@ -142,6 +143,7 @@ fd6_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       .ctx = ctx,
       .vtx = &ctx->vtx,
       .info = info,
+		.drawid_offset = drawid_offset,
       .indirect = indirect,
       .draw = draw,
       .key = {

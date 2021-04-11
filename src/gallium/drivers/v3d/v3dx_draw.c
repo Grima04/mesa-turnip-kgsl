@@ -1105,12 +1105,13 @@ v3d_check_compiled_shaders(struct v3d_context *v3d)
 
 static void
 v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias *draws,
              unsigned num_draws)
 {
         if (num_draws > 1) {
-                util_draw_multi(pctx, info, indirect, draws, num_draws);
+                util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
                 return;
         }
 
@@ -1139,14 +1140,14 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
                 }
 
                 if (info->restart_index != mask) {
-                        util_draw_vbo_without_prim_restart(pctx, info, indirect, &draws[0]);
+                        util_draw_vbo_without_prim_restart(pctx, info, drawid_offset, indirect, &draws[0]);
                         return;
                 }
         }
 
         if (info->mode >= PIPE_PRIM_QUADS && info->mode <= PIPE_PRIM_POLYGON) {
                 util_primconvert_save_rasterizer_state(v3d->primconvert, &v3d->rasterizer->base);
-                util_primconvert_draw_vbo(v3d->primconvert, info, indirect, draws, num_draws);
+                util_primconvert_draw_vbo(v3d->primconvert, info, drawid_offset, indirect, draws, num_draws);
                 perf_debug("Fallback conversion for %d %s vertices\n",
                            draws[0].count, u_prim_name(info->mode));
                 return;

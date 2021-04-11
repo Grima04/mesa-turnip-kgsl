@@ -131,12 +131,14 @@ struct pipe_context {
     *
     * \param pipe          context
     * \param info          draw info
+    * \param drawid_offset offset to add for drawid param of each draw
     * \param indirect      indirect multi draws
     * \param draws         array of (start, count) pairs for direct draws
     * \param num_draws     number of direct draws; 1 for indirect multi draws
     */
    void (*draw_vbo)(struct pipe_context *pipe,
                     const struct pipe_draw_info *info,
+                    unsigned drawid_offset,
                     const struct pipe_draw_indirect_info *indirect,
                     const struct pipe_draw_start_count_bias *draws,
                     unsigned num_draws);

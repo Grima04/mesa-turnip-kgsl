@@ -265,6 +265,7 @@ update_draw_stats(struct fd_context *ctx, const struct pipe_draw_info *info,
 
 static void
 fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
+		unsigned drawid_offset,
             const struct pipe_draw_indirect_info *indirect,
             const struct pipe_draw_start_count_bias *draws, unsigned num_draws) in_dt
 {
@@ -290,7 +291,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
       if (ctx->streamout.num_targets > 0)
          mesa_loge("stream-out with emulated prims");
       util_primconvert_save_rasterizer_state(ctx->primconvert, ctx->rasterizer);
-      util_primconvert_draw_vbo(ctx->primconvert, info, indirect, draws,
+      util_primconvert_draw_vbo(ctx->primconvert, info, drawid_offset, indirect, draws,
                                 num_draws);
       return;
    }
@@ -302,7 +303,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    if (info->index_size) {
       if (info->has_user_indices) {
          if (num_draws > 1) {
-            util_draw_multi(pctx, info, indirect, draws, num_draws);
+				util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
             return;
          }
          if (!util_upload_index_buffer(pctx, info, &draws[0], &indexbuf,
@@ -318,7 +319,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    }
 
    if ((ctx->streamout.num_targets > 0) && (num_draws > 1)) {
-      util_draw_multi(pctx, info, indirect, draws, num_draws);
+		util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -361,7 +362,7 @@ fd_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
    batch->cost += ctx->draw_cost;
 
    for (unsigned i = 0; i < num_draws; i++) {
-      if (ctx->draw_vbo(ctx, info, indirect, &draws[i], index_offset))
+		if (ctx->draw_vbo(ctx, info, drawid_offset, indirect, &draws[i], index_offset))
          batch->needs_flush = true;
 
       batch->num_vertices += draws[i].count * info->instance_count;

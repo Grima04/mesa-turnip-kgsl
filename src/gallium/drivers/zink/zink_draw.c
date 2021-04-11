@@ -282,6 +282,7 @@ update_drawid(struct zink_context *ctx, unsigned draw_id)
 void
 zink_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *dinfo,
+              unsigned drawid_offset,
               const struct pipe_draw_indirect_info *dindirect,
               const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
@@ -304,7 +305,7 @@ zink_draw_vbo(struct pipe_context *pctx,
    zink_maybe_flush_or_stall(ctx);
 
    if (dinfo->primitive_restart && !restart_supported(dinfo->mode)) {
-       util_draw_vbo_without_prim_restart(pctx, dinfo, dindirect, &draws[0]);
+       util_draw_vbo_without_prim_restart(pctx, dinfo, drawid_offset, dindirect, &draws[0]);
        return;
    }
    if (dinfo->mode == PIPE_PRIM_QUADS ||
@@ -313,7 +314,7 @@ zink_draw_vbo(struct pipe_context *pctx,
        (dinfo->mode == PIPE_PRIM_TRIANGLE_FAN && !screen->have_triangle_fans) ||
        dinfo->mode == PIPE_PRIM_LINE_LOOP) {
       util_primconvert_save_rasterizer_state(ctx->primconvert, &rast_state->base);
-      util_primconvert_draw_vbo(ctx->primconvert, dinfo, dindirect, draws, num_draws);
+      util_primconvert_draw_vbo(ctx->primconvert, dinfo, drawid_offset, dindirect, draws, num_draws);
       return;
    }
    if (ctx->gfx_pipeline_state.vertices_per_patch != dinfo->vertices_per_patch)
@@ -523,7 +524,7 @@ zink_draw_vbo(struct pipe_context *pctx,
       screen->vk_CmdBeginTransformFeedbackEXT(batch->state->cmdbuf, 0, ctx->num_so_targets, counter_buffers, counter_buffer_offsets);
    }
 
-   unsigned draw_id = dinfo->drawid;
+   unsigned draw_id = drawid_offset;
    if (dinfo->index_size > 0) {
       VkIndexType index_type;
       unsigned index_size = dinfo->index_size;

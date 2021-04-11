@@ -244,7 +244,7 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
 	struct pipe_draw_start_count_bias draw = {
       .count = 2,
    };
-   pctx->draw_vbo(pctx, &info, NULL, &draw, 1);
+	pctx->draw_vbo(pctx, &info, 0, NULL, &draw, 1);
 
    /* We expect that this should not have triggered a change in pfb: */
    assert(util_framebuffer_state_equal(pfb, &ctx->framebuffer));

@@ -326,7 +326,7 @@ nv50_cb_push(struct nouveau_context *nv,
              unsigned offset, unsigned words, const uint32_t *data);
 
 /* nv50_vbo.c */
-void nv50_draw_vbo(struct pipe_context *, const struct pipe_draw_info *,
+void nv50_draw_vbo(struct pipe_context *, const struct pipe_draw_info *, unsigned,
                    const struct pipe_draw_indirect_info *indirect,
                    const struct pipe_draw_start_count_bias *draws,
                    unsigned num_draws);

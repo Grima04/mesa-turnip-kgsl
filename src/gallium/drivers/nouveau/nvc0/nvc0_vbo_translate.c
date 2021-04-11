@@ -492,6 +492,7 @@ typedef struct {
 
 void
 nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *info,
+                       unsigned drawid_offset,
                        const struct pipe_draw_indirect_info *indirect,
                        const struct pipe_draw_start_count_bias *draw)
 {
@@ -543,7 +544,7 @@ nvc0_push_vbo_indirect(struct nvc0_context *nvc0, const struct pipe_draw_info *i
          PUSH_DATA (push, NVC0_CB_AUX_DRAW_INFO);
          PUSH_DATA (push, sdraw.index_bias);
          PUSH_DATA (push, single.start_instance);
-         PUSH_DATA (push, single.drawid + i);
+         PUSH_DATA (push, drawid_offset + i);
       }
 
       nvc0_push_vbo(nvc0, &single, NULL, &sdraw);

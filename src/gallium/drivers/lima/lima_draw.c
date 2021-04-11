@@ -1135,12 +1135,13 @@ lima_draw_vbo_count(struct pipe_context *pctx,
 static void
 lima_draw_vbo(struct pipe_context *pctx,
               const struct pipe_draw_info *info,
+              unsigned drawid_offset,
               const struct pipe_draw_indirect_info *indirect,
               const struct pipe_draw_start_count_bias *draws,
               unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pctx, info, indirect, draws, num_draws);
+      util_draw_multi(pctx, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 

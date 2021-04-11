@@ -1402,6 +1402,7 @@ cso_restore_state(struct cso_context *cso)
 void
 cso_draw_vbo(struct cso_context *cso,
              const struct pipe_draw_info *info,
+             unsigned drawid_offset,
              const struct pipe_draw_indirect_info *indirect,
              const struct pipe_draw_start_count_bias draw)
 {
@@ -1418,10 +1419,10 @@ cso_draw_vbo(struct cso_context *cso,
           indirect->count_from_stream_output == NULL);
 
    if (vbuf) {
-      u_vbuf_draw_vbo(vbuf, info, indirect, draw);
+      u_vbuf_draw_vbo(vbuf, info, drawid_offset, indirect, draw);
    } else {
       struct pipe_context *pipe = cso->pipe;
-      pipe->draw_vbo(pipe, info, indirect, &draw, 1);
+      pipe->draw_vbo(pipe, info, drawid_offset, indirect, &draw, 1);
    }
 }
 
@@ -1429,6 +1430,7 @@ cso_draw_vbo(struct cso_context *cso,
 void
 cso_multi_draw(struct cso_context *cso,
                struct pipe_draw_info *info,
+               unsigned drawid_offset,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
@@ -1441,16 +1443,17 @@ cso_multi_draw(struct cso_context *cso,
       if (num_draws > 1 && info->take_index_buffer_ownership)
          p_atomic_add(&info->index.resource->reference.count, num_draws - 1);
 
+      unsigned drawid = drawid_offset;
       for (unsigned i = 0; i < num_draws; i++) {
-         u_vbuf_draw_vbo(vbuf, info, NULL, draws[i]);
+         u_vbuf_draw_vbo(vbuf, info, drawid, NULL, draws[i]);
 
          if (info->increment_draw_id)
-            info->drawid++;
+            drawid++;
       }
    } else {
       struct pipe_context *pipe = cso->pipe;
 
-      pipe->draw_vbo(pipe, info, NULL, draws, num_draws);
+      pipe->draw_vbo(pipe, info, drawid_offset, NULL, draws, num_draws);
    }
 }
 
@@ -1471,7 +1474,7 @@ cso_draw_arrays(struct cso_context *cso, uint mode, uint start, uint count)
    draw.count = count;
    draw.index_bias = 0;
 
-   cso_draw_vbo(cso, &info, NULL, draw);
+   cso_draw_vbo(cso, &info, 0, NULL, draw);
 }
 
 void
@@ -1495,5 +1498,5 @@ cso_draw_arrays_instanced(struct cso_context *cso, uint mode,
    draw.count = count;
    draw.index_bias = 0;
 
-   cso_draw_vbo(cso, &info, NULL, draw);
+   cso_draw_vbo(cso, &info, 0, NULL, draw);
 }

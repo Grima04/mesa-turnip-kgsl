@@ -110,6 +110,7 @@ dump_fb_state(struct trace_context *tr_ctx,
 static void
 trace_context_draw_vbo(struct pipe_context *_pipe,
                        const struct pipe_draw_info *info,
+                       unsigned drawid_offset,
                        const struct pipe_draw_indirect_info *indirect,
                        const struct pipe_draw_start_count_bias *draws,
                        unsigned num_draws)
@@ -124,6 +125,7 @@ trace_context_draw_vbo(struct pipe_context *_pipe,
 
    trace_dump_arg(ptr,  pipe);
    trace_dump_arg(draw_info, info);
+   trace_dump_arg(int, drawid_offset);
    trace_dump_arg(draw_indirect_info, indirect);
    trace_dump_arg_begin("draws");
    trace_dump_struct_array(draw_start_count, draws, num_draws);
@@ -132,7 +134,7 @@ trace_context_draw_vbo(struct pipe_context *_pipe,
 
    trace_dump_trace_flush();
 
-   pipe->draw_vbo(pipe, info, indirect, draws, num_draws);
+   pipe->draw_vbo(pipe, info, drawid_offset, indirect, draws, num_draws);
 
    trace_dump_call_end();
 }

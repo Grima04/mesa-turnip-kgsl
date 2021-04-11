@@ -452,13 +452,12 @@ st_feedback_draw_vbo(struct gl_context *ctx,
 
       info.mode = prims[i].mode;
       d.index_bias = prims[i].basevertex;
-      info.drawid = prims[i].draw_id;
       if (!ib) {
          info.min_index = d.start;
          info.max_index = d.start + d.count - 1;
       }
 
-      draw_vbo(draw, &info, NULL, &d, 1);
+      draw_vbo(draw, &info, prims[i].draw_id, NULL, &d, 1);
    }
 
    /* unmap images */

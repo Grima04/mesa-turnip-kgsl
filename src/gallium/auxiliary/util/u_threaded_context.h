@@ -410,6 +410,7 @@ threaded_context_flush(struct pipe_context *_pipe,
 
 void
 tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
+            unsigned drawid_offset,
             const struct pipe_draw_indirect_info *indirect,
             const struct pipe_draw_start_count_bias *draws,
             unsigned num_draws);

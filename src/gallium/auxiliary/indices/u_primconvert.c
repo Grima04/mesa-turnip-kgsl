@@ -99,6 +99,7 @@ util_primconvert_save_rasterizer_state(struct primconvert_context *pc,
 void
 util_primconvert_draw_vbo(struct primconvert_context *pc,
                           const struct pipe_draw_info *info,
+                          unsigned drawid_offset,
                           const struct pipe_draw_indirect_info *indirect,
                           const struct pipe_draw_start_count_bias *draws,
                           unsigned num_draws)
@@ -124,7 +125,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    }
 
    if (num_draws > 1) {
-      util_draw_multi(pc->pipe, info, indirect, draws, num_draws);
+      util_draw_multi(pc->pipe, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -203,7 +204,7 @@ util_primconvert_draw_vbo(struct primconvert_context *pc,
    u_upload_unmap(pc->pipe->stream_uploader);
 
    /* to the translated draw: */
-   pc->pipe->draw_vbo(pc->pipe, &new_info, NULL, &new_draw, 1);
+   pc->pipe->draw_vbo(pc->pipe, &new_info, drawid_offset, NULL, &new_draw, 1);
 
    pipe_resource_reference(&new_info.index.resource, NULL);
 }

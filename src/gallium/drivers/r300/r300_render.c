@@ -788,12 +788,13 @@ static unsigned r300_max_vertex_count(struct r300_context *r300)
 
 static void r300_draw_vbo(struct pipe_context* pipe,
                           const struct pipe_draw_info *dinfo,
+                          unsigned drawid_offset,
                           const struct pipe_draw_indirect_info *indirect,
                           const struct pipe_draw_start_count_bias *draws,
                           unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pipe, dinfo, indirect, draws, num_draws);
+      util_draw_multi(pipe, dinfo, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -855,12 +856,13 @@ static void r300_draw_vbo(struct pipe_context* pipe,
 /* SW TCL elements, using Draw. */
 static void r300_swtcl_draw_vbo(struct pipe_context* pipe,
                                 const struct pipe_draw_info *info,
+                                unsigned drawid_offset,
                                 const struct pipe_draw_indirect_info *indirect,
                                 const struct pipe_draw_start_count_bias *draws,
                                 unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pipe, info, indirect, draws, num_draws);
+      util_draw_multi(pipe, info, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -884,7 +886,7 @@ static void r300_swtcl_draw_vbo(struct pipe_context* pipe,
 
     r300_update_derived_state(r300);
 
-    draw_vbo(r300->draw, info, NULL, &draw, 1);
+    draw_vbo(r300->draw, info, drawid_offset, NULL, &draw, 1);
     draw_flush(r300->draw);
 }
 

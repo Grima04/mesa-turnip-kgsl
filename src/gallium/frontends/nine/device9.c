@@ -3315,7 +3315,7 @@ NineDevice9_ProcessVertices( struct NineDevice9 *This,
 
     pipe_sw->set_stream_output_targets(pipe_sw, 1, &target, offsets);
 
-    pipe_sw->draw_vbo(pipe_sw, &draw, NULL, &sc, 1);
+    pipe_sw->draw_vbo(pipe_sw, &draw, 0, NULL, &sc, 1);
 
     pipe_sw->set_stream_output_targets(pipe_sw, 0, NULL, 0);
     pipe_sw->stream_output_target_destroy(pipe_sw, target);

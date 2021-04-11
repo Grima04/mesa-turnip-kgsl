@@ -362,7 +362,7 @@ twoface_emulation(struct d3d12_context *ctx,
 {
    /* draw backfaces */
    ctx->base.bind_rasterizer_state(&ctx->base, rast->twoface_back);
-   d3d12_draw_vbo(&ctx->base, dinfo, NULL, draw, 1);
+   d3d12_draw_vbo(&ctx->base, dinfo, 0, NULL, draw, 1);
 
    /* restore real state */
    ctx->base.bind_rasterizer_state(&ctx->base, rast);
@@ -423,12 +423,13 @@ d3d12_last_vertex_stage(struct d3d12_context *ctx)
 void
 d3d12_draw_vbo(struct pipe_context *pctx,
                const struct pipe_draw_info *dinfo,
+               unsigned drawid_offset,
                const struct pipe_draw_indirect_info *indirect,
                const struct pipe_draw_start_count_bias *draws,
                unsigned num_draws)
 {
    if (num_draws > 1) {
-      util_draw_multi(pctx, dinfo, indirect, draws, num_draws);
+      util_draw_multi(pctx, dinfo, drawid_offset, indirect, draws, num_draws);
       return;
    }
 
@@ -453,7 +454,7 @@ d3d12_draw_vbo(struct pipe_context *pctx,
 
       ctx->initial_api_prim = dinfo->mode;
       util_primconvert_save_rasterizer_state(ctx->primconvert, &ctx->gfx_pipeline_state.rast->base);
-      util_primconvert_draw_vbo(ctx->primconvert, dinfo, indirect, draws, num_draws);
+      util_primconvert_draw_vbo(ctx->primconvert, dinfo, drawid_offset, indirect, draws, num_draws);
       return;
    }
 

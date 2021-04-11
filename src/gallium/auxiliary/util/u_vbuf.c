@@ -1275,6 +1275,7 @@ static void u_vbuf_set_driver_vertex_buffers(struct u_vbuf *mgr)
 
 static void
 u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
+                               unsigned drawid_offset,
                                unsigned *indirect_data, unsigned stride,
                                unsigned draw_count)
 {
@@ -1296,11 +1297,12 @@ u_vbuf_split_indexed_multidraw(struct u_vbuf *mgr, struct pipe_draw_info *info,
       draw.index_bias = indirect_data[offset + 3];
       info->start_instance = indirect_data[offset + 4];
 
-      u_vbuf_draw_vbo(mgr, info, NULL, draw);
+      u_vbuf_draw_vbo(mgr, info, drawid_offset, NULL, draw);
    }
 }
 
 void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
+                     unsigned drawid_offset,
                      const struct pipe_draw_indirect_info *indirect,
                      const struct pipe_draw_start_count_bias draw)
 {
@@ -1326,7 +1328,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
          u_vbuf_set_driver_vertex_buffers(mgr);
       }
 
-      pipe->draw_vbo(pipe, info, indirect, &draw, 1);
+      pipe->draw_vbo(pipe, info, drawid_offset, indirect, &draw, 1);
       return;
    }
 
@@ -1369,7 +1371,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
          /* If we invoke the translate path, we have to split the multidraw. */
          if (incompatible_vb_mask ||
              mgr->ve->incompatible_elem_mask) {
-            u_vbuf_split_indexed_multidraw(mgr, &new_info, data,
+            u_vbuf_split_indexed_multidraw(mgr, &new_info, drawid_offset, data,
                                            indirect->stride, draw_count);
             free(data);
             return;
@@ -1385,7 +1387,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
 
          /* Split the multidraw if index_bias is different. */
          if (!index_bias_same) {
-            u_vbuf_split_indexed_multidraw(mgr, &new_info, data,
+            u_vbuf_split_indexed_multidraw(mgr, &new_info, drawid_offset, data,
                                            indirect->stride, draw_count);
             free(data);
             return;
@@ -1597,7 +1599,7 @@ void u_vbuf_draw_vbo(struct u_vbuf *mgr, const struct pipe_draw_info *info,
    u_upload_unmap(pipe->stream_uploader);
    u_vbuf_set_driver_vertex_buffers(mgr);
 
-   pipe->draw_vbo(pipe, &new_info, indirect, &new_draw, 1);
+   pipe->draw_vbo(pipe, &new_info, drawid_offset, indirect, &new_draw, 1);
 
    if (mgr->using_translate) {
       u_vbuf_translate_end(mgr);
