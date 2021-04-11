@@ -21,6 +21,7 @@
 
 libasahi_agx_files = files(
   'agx_compile.c',
+  'agx_print.c',
 )
 
 agx_opcodes_h = custom_target(
@@ -62,9 +63,9 @@ idep_agx_builder_h = declare_dependency(
 
 libasahi_compiler = static_library(
   'asahi_compiler',
-  [libasahi_agx_files],
+  [libasahi_agx_files, agx_opcodes_c],
   include_directories : [inc_include, inc_src, inc_mesa, inc_gallium, inc_gallium_aux, inc_mapi],
-  dependencies: [idep_nir],
+  dependencies: [idep_nir, idep_agx_opcodes_h, idep_agx_builder_h],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   build_by_default : false,

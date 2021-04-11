@@ -145,6 +145,39 @@ compile_shader(char **argv)
       NIR_PASS_V(nir[i], gl_nir_lower_buffers, prog);
       NIR_PASS_V(nir[i], nir_opt_constant_folding);
 
+      struct agx_shader_info out = { 0 };
+      struct agx_shader_key keys[2] = {
+         {
+            .vs = {
+               .num_vbufs = 1,
+               .vbuf_strides = { 16 },
+               .attributes = {
+                  {
+                     .buf = 0,
+                     .src_offset = 0,
+                     .format = AGX_FORMAT_I32,
+                     .nr_comps_minus_1 = 4 - 1
+                  }
+               },
+            }
+         },
+         {
+            .fs = {
+               .tib_formats = { AGX_FORMAT_U8NORM }
+            }
+         }
+      };
+
+      agx_compile_shader_nir(nir[i], &keys[i], &binary, &out);
+
+      char *fn = NULL;
+      asprintf(&fn, "shader_%u.bin", i);
+      assert(fn != NULL);
+      FILE *fp = fopen(fn, "wb");
+      fwrite(binary.data, 1, binary.size, fp);
+      fclose(fp);
+      free(fn);
+
       util_dynarray_clear(&binary);
    }
 
