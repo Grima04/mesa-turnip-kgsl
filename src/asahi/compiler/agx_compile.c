@@ -48,12 +48,75 @@ int agx_debug = 0;
       fprintf(stderr, "%s:%d: "fmt, \
             __FUNCTION__, __LINE__, ##__VA_ARGS__); } while (0)
 
+static agx_block *
+agx_create_block(agx_context *ctx)
+{
+   agx_block *blk = rzalloc(ctx, agx_block);
+
+   blk->predecessors = _mesa_set_create(blk,
+         _mesa_hash_pointer, _mesa_key_pointer_equal);
+
+   return blk;
+}
+
+static agx_block *
+emit_block(agx_context *ctx, nir_block *block)
+{
+   agx_block *blk = agx_create_block(ctx);
+   list_addtail(&blk->link, &ctx->blocks);
+   list_inithead(&blk->instructions);
+
+   agx_builder _b = agx_init_builder(ctx, agx_after_block(blk));
+
+   nir_foreach_instr(instr, block) {
+      /* stub */
+   }
+
+   return blk;
+}
+
+static void
+emit_if(agx_context *ctx, nir_if *nif)
+{
+   unreachable("if-statements todo");
+}
+
+static void
+emit_loop(agx_context *ctx, nir_loop *nloop)
+{
+   unreachable("loops todo");
+}
 
 static agx_block *
 emit_cf_list(agx_context *ctx, struct exec_list *list)
 {
-   /* stub */
-   return NULL;
+   agx_block *start_block = NULL;
+
+   foreach_list_typed(nir_cf_node, node, node, list) {
+      switch (node->type) {
+      case nir_cf_node_block: {
+         agx_block *block = emit_block(ctx, nir_cf_node_as_block(node));
+
+         if (!start_block)
+            start_block = block;
+
+         break;
+      }
+
+      case nir_cf_node_if:
+         emit_if(ctx, nir_cf_node_as_if(node));
+         break;
+
+      case nir_cf_node_loop:
+         emit_loop(ctx, nir_cf_node_as_loop(node));
+         break;
+
+      default:
+         unreachable("Unknown control flow");
+      }
+   }
+
+   return start_block;
 }
 
 static void
