@@ -656,9 +656,12 @@ meson-testing-asan:
   extends:
     - meson-testing
   variables:
+    C_ARGS: >
+      -Wno-error=stringop-truncation
     EXTRA_OPTION: >
       -D b_sanitize=address
       -D valgrind=false
+      -D werror=true
     MINIO_ARTIFACT_NAME: ""
     ARTIFACTS_DEBUG_SYMBOLS: 1
 
@@ -807,6 +810,8 @@ meson-android:
       -D egl=enabled
       -D platforms=x11
       -D osmesa=false
+    EXTRA_OPTION: >
+      -D werror=true
     GALLIUM_ST: >
       -D dri3=enabled
       -D gallium-vdpau=disabled
@@ -838,6 +843,7 @@ meson-armhf:
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=false
+      -D werror=true
     MINIO_ARTIFACT_NAME: mesa-armhf
   script:
     - .gitlab-ci/meson/build.sh
@@ -852,6 +858,7 @@ meson-arm64:
     EXTRA_OPTION: >
       -D llvm=disabled
       -D valgrind=false
+      -D werror=true
     MINIO_ARTIFACT_NAME: mesa-arm64
   script:
     - .gitlab-ci/meson/build.sh
@@ -861,10 +868,13 @@ meson-arm64-asan:
   extends:
     - meson-arm64
   variables:
+    C_ARGS: >
+      -Wno-error=stringop-truncation
     EXTRA_OPTION: >
       -D llvm=disabled
       -D b_sanitize=address
       -D valgrind=false
+      -D werror=true
     ARTIFACTS_DEBUG_SYMBOLS: 1
     MINIO_ARTIFACT_NAME: mesa-arm64-asan
     MESON_TEST_ARGS: "--no-suite mesa:compiler"
@@ -1064,12 +1074,17 @@ meson-mingw32-x86_64:
   stage: build-misc
   variables:
     UNWIND: "disabled"
+    C_ARGS: >
+      -Wno-error=format
+      -Wno-error=format-extra-args
+    CPP_ARGS: $C_ARGS
     DRI_DRIVERS: ""
     GALLIUM_DRIVERS: "swrast"
     EXTRA_OPTION: >
       -Dllvm=disabled
       -Dzlib=disabled
       -Dosmesa=true
+      -Dwerror=true
       --cross-file=.gitlab-ci/x86_64-w64-mingw32
 
 .test:
