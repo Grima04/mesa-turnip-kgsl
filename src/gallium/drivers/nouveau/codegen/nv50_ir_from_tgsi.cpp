@@ -1778,6 +1778,7 @@ Converter::makeSym(uint tgsiFile, int fileIdx, int idx, int c, uint32_t address)
          break;
       case TGSI_MEMORY_TYPE_SHARED:
          sym->setFile(FILE_MEMORY_SHARED);
+         address += info->prop.cp.inputOffset;
          break;
       case TGSI_MEMORY_TYPE_INPUT:
          assert(prog->getType() == Program::TYPE_COMPUTE);
