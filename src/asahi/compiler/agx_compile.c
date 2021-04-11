@@ -161,7 +161,34 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
 static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
-   unreachable("stub");
+   unsigned srcs = nir_op_infos[instr->op].num_inputs;
+   unsigned sz = nir_dest_bit_size(instr->dest.dest);
+   unsigned src_sz = srcs ? nir_src_bit_size(instr->src[0].src) : 0;
+   unsigned comps = nir_dest_num_components(instr->dest.dest);
+
+   assert(comps == 1 || nir_op_is_vec(instr->op));
+   assert(sz == 16 || sz == 32 || sz == 64);
+
+   agx_index dst = agx_dest_index(&instr->dest.dest);
+   agx_index s0 = srcs > 0 ? agx_alu_src_index(b, instr->src[0]) : agx_null();
+   agx_index s1 = srcs > 1 ? agx_alu_src_index(b, instr->src[1]) : agx_null();
+   agx_index s2 = srcs > 2 ? agx_alu_src_index(b, instr->src[2]) : agx_null();
+   agx_index s3 = srcs > 3 ? agx_alu_src_index(b, instr->src[3]) : agx_null();
+
+   switch (instr->op) {
+   case nir_op_vec2:
+   case nir_op_vec3:
+   case nir_op_vec4:
+      return agx_p_combine_to(b, dst, s0, s1, s2, s3);
+
+   case nir_op_vec8:
+   case nir_op_vec16:
+      unreachable("should've been lowered");
+
+   default:
+      fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[instr->op].name);
+      unreachable("Unhandled ALU instruction");
+   }
 }
 
 static void
