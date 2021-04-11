@@ -7,7 +7,6 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Ephemeral packages (installed for this script and removed again at the end)
 STABLE_EPHEMERAL=" \
-        libpciaccess-dev:$arch
         "
 
 dpkg --add-architecture $arch
@@ -19,6 +18,7 @@ apt-get install -y --no-remove \
         libelf-dev:$arch \
         libexpat1-dev:$arch \
         libffi-dev:$arch \
+        libpciaccess-dev:$arch \
         libstdc++6:$arch \
         libtinfo-dev:$arch \
         libvulkan-dev:$arch \
