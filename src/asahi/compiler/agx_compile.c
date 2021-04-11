@@ -51,7 +51,15 @@ int agx_debug = 0;
 static void
 agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
 {
-   unreachable("stub");
+   /* Ensure we've been scalarized and bit size lowered */
+   unsigned bit_size = instr->def.bit_size;
+   assert(instr->def.num_components == 1);
+   assert(bit_size == 16 || bit_size == 32);
+
+   /* Emit move, later passes can inline/push if useful */
+   agx_mov_imm_to(b,
+                  agx_get_index(instr->def.index, agx_size_for_bits(bit_size)),
+                  nir_const_value_as_uint(instr->value[0], bit_size));
 }
 
 static void
