@@ -245,7 +245,7 @@ struct vk_pipeline_cache_header {
 static inline gl_shader_stage
 vk_to_mesa_shader_stage(VkShaderStageFlagBits vk_stage)
 {
-   assert(__builtin_popcount((uint32_t) vk_stage) == 1);
+   assert(util_bitcount((uint32_t) vk_stage) == 1);
    return (gl_shader_stage) (ffs((uint32_t) vk_stage) - 1);
 }
 
