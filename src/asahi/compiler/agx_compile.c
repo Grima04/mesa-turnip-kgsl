@@ -137,6 +137,27 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   }
 }
 
+static agx_index
+agx_alu_src_index(agx_builder *b, nir_alu_src src)
+{
+   /* Check well-formedness of the input NIR */
+   ASSERTED unsigned bitsize = nir_src_bit_size(src.src);
+   unsigned comps = nir_src_num_components(src.src);
+   unsigned channel = src.swizzle[0];
+
+   assert(bitsize == 16 || bitsize == 32 || bitsize == 64);
+   assert(!(src.negate || src.abs));
+   assert(channel < comps);
+
+   agx_index idx = agx_src_index(&src.src);
+
+   /* We only deal with scalars, emit p_extract if needed */
+   if (comps > 1)
+      return agx_p_extract(b, idx, channel);
+   else
+      return idx;
+}
+
 static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
