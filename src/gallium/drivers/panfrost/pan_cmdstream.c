@@ -358,7 +358,7 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                                  */
                                 cfg.bifrost.internal.fixed_function.num_comps = 4;
                                 cfg.bifrost.internal.fixed_function.conversion.memory_format =
-                                        panfrost_format_to_bifrost_blend(dev, format_desc, true);
+                                        panfrost_format_to_bifrost_blend(dev, format, true);
                                 cfg.bifrost.internal.fixed_function.conversion.register_format =
                                         bifrost_blend_type_from_nir(fs->info.bifrost.blend[i].type);
                                 cfg.bifrost.internal.fixed_function.rt = i;

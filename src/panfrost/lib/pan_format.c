@@ -699,13 +699,13 @@ panfrost_invert_swizzle(const unsigned char *in, unsigned char *out)
 
 unsigned
 panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
-                                 const struct util_format_description *desc, bool dither)
+                                 enum pipe_format format, bool dither)
 {
-        struct pan_blendable_format fmt = panfrost_blendable_formats[desc->format];
+        struct pan_blendable_format fmt = panfrost_blendable_formats[format];
 
         /* Formats requiring blend shaders are stored raw in the tilebuffer */
         if (!fmt.internal)
-                return dev->formats[desc->format].hw;
+                return dev->formats[format].hw;
 
         unsigned extra = 0;
 
