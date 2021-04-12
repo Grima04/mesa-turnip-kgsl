@@ -1071,7 +1071,7 @@ struct anv_queue {
    struct anv_device *                       device;
 
    VkDeviceQueueCreateFlags                  flags;
-   struct anv_queue_family *                 family;
+   const struct anv_queue_family *           family;
 
    uint32_t                                  exec_flags;
 
@@ -1718,7 +1718,7 @@ struct anv_device_memory {
    struct list_head                             link;
 
    struct anv_bo *                              bo;
-   struct anv_memory_type *                     type;
+   const struct anv_memory_type *               type;
    VkDeviceSize                                 map_size;
    void *                                       map;
 
