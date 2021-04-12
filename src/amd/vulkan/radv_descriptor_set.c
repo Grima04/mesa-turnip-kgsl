@@ -242,6 +242,7 @@ radv_CreateDescriptorSetLayout(VkDevice _device, const VkDescriptorSetLayoutCrea
                                                      &mutable_size, &mutable_align);
          assert(mutable_size && mutable_align);
          set_layout->binding[b].size = mutable_size;
+         binding_buffer_count = 1;
          alignment = mutable_align;
          break;
       }
