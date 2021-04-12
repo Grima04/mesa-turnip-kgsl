@@ -234,8 +234,8 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
                          &(VkBufferViewCreateInfo){
                             .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
                             .buffer = radv_buffer_to_handle(&buffer),
-                            .offset = image->planes[0].surface.dcc_offset,
-                            .range = image->planes[0].surface.dcc_size,
+                            .offset = image->planes[0].surface.meta_offset,
+                            .range = image->planes[0].surface.meta_size,
                             .format = VK_FORMAT_R8_UINT,
                          });
    radv_buffer_view_init(views + 2, cmd_buffer->device,

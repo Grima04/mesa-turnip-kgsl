@@ -123,7 +123,7 @@ void generate_hash(struct ac_addrlib *ac_addrlib,
    _mesa_sha1_init(&ctx);
 
    _mesa_sha1_update(&ctx, &surf->total_size, sizeof(surf->total_size));
-   _mesa_sha1_update(&ctx, &surf->dcc_offset, sizeof(surf->dcc_offset));
+   _mesa_sha1_update(&ctx, &surf->meta_offset, sizeof(surf->meta_offset));
    _mesa_sha1_update(&ctx, &surf->display_dcc_offset, sizeof(surf->display_dcc_offset));
    _mesa_sha1_update(&ctx, &surf->u.gfx9.display_dcc_pitch_max,
                      sizeof(surf->u.gfx9.display_dcc_pitch_max));
@@ -142,7 +142,7 @@ void generate_hash(struct ac_addrlib *ac_addrlib,
    input.pitchInElement = surf->u.gfx9.surf_pitch;
 
    ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT dcc_input = {0};
-   if (surf->dcc_offset) {
+   if (surf->meta_offset) {
       dcc_input = get_addr_from_coord_base(addrlib, surf, entry->w,
                                            entry->h, entry->format,
                                            surf->u.gfx9.dcc.rb_aligned,
@@ -172,7 +172,7 @@ void generate_hash(struct ac_addrlib *ac_addrlib,
 
       _mesa_sha1_update(&ctx, &output.addr, sizeof(output.addr));
 
-      if (surf->dcc_offset) {
+      if (surf->meta_offset) {
          dcc_input.x = (x & INT_MAX) % entry->w;
          dcc_input.y = (y & INT_MAX) % entry->h;
 
@@ -255,7 +255,6 @@ static void test_modifier(const struct radeon_info *info,
       int r = ac_compute_surface(addrlib, info, &config, RADEON_SURF_MODE_2D, &surf);
       assert(!r);
 
-      assert(surf.htile_offset == 0);
       assert(surf.cmask_offset == 0);
       assert(surf.fmask_offset == 0);
 
@@ -316,17 +315,17 @@ static void test_modifier(const struct radeon_info *info,
          }
 
          expected_offset = align(expected_offset, dcc_align);
-         assert(surf.dcc_offset == expected_offset);
+         assert(surf.meta_offset == expected_offset);
 
          uint64_t dcc_size = block_count(dims[i][0], dims[i][1],
                      elem_bits, block_bits,
                      NULL, NULL) << (block_bits - 8);
          dcc_size = align64(dcc_size, dcc_align);
-         assert(surf.dcc_size == dcc_size);
+         assert(surf.meta_size == dcc_size);
 
          expected_offset += dcc_size;
       } else
-         assert(!surf.dcc_offset);
+         assert(!surf.meta_offset);
 
       assert(surf.total_size == expected_offset);
 

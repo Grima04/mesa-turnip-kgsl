@@ -602,7 +602,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    struct pipe_image_view img[3];
 
    assert(tex->dcc_retile_buffer);
-   assert(tex->surface.dcc_offset && tex->surface.dcc_offset <= UINT_MAX);
+   assert(tex->surface.meta_offset && tex->surface.meta_offset <= UINT_MAX);
    assert(tex->surface.display_dcc_offset && tex->surface.display_dcc_offset <= UINT_MAX);
 
    for (unsigned i = 0; i < 3; i++) {
@@ -616,8 +616,8 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    img[0].u.buf.size = ac_surface_get_retile_map_size(&tex->surface);
 
    img[1].format = PIPE_FORMAT_R8_UINT;
-   img[1].u.buf.offset = tex->surface.dcc_offset;
-   img[1].u.buf.size = tex->surface.dcc_size;
+   img[1].u.buf.offset = tex->surface.meta_offset;
+   img[1].u.buf.size = tex->surface.meta_size;
 
    img[2].format = PIPE_FORMAT_R8_UINT;
    img[2].u.buf.offset = tex->surface.display_dcc_offset;

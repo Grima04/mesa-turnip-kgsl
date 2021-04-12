@@ -1319,10 +1319,12 @@ void si_flush_implicit_resources(struct si_context *sctx)
 
 void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
 {
+   assert(!tex->is_depth);
+
    /* If graphics is disabled, we can't decompress DCC, but it shouldn't
     * be compressed either. The caller should simply discard it.
     */
-   if (!tex->surface.dcc_offset || !sctx->has_graphics)
+   if (!tex->surface.meta_offset || !sctx->has_graphics)
       return;
 
    if (sctx->chip_class == GFX8) {
@@ -1332,7 +1334,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
       struct pipe_resource *ptex = &tex->buffer.b.b;
 
       /* DCC decompression using a compute shader. */
-      for (unsigned level = 0; level < tex->surface.num_dcc_levels; level++) {
+      for (unsigned level = 0; level < tex->surface.num_meta_levels; level++) {
          struct pipe_box box;
 
          u_box_3d(0, 0, 0, u_minify(ptex->width0, level),
@@ -1341,7 +1343,7 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
          si_compute_copy_image(sctx, ptex, level, ptex, level, 0, 0, 0, &box, true,
                                /* Sync before the first copy and after the last copy */
                                (level == 0 ? SI_OP_SYNC_BEFORE : 0) |
-                               (level == tex->surface.num_dcc_levels - 1 ? SI_OP_SYNC_AFTER : 0));
+                               (level == tex->surface.num_meta_levels - 1 ? SI_OP_SYNC_AFTER : 0));
       }
 
       /* Now clear DCC metadata to uncompressed.
@@ -1352,8 +1354,8 @@ void si_decompress_dcc(struct si_context *sctx, struct si_texture *tex)
        *  dEQP-GLES31.functional.image_load_store.2d.format_reinterpret.rgba32f_rgba32i
        */
       uint32_t clear_value = DCC_UNCOMPRESSED;
-      si_clear_buffer(sctx, ptex, tex->surface.dcc_offset,
-                      tex->surface.dcc_size, &clear_value, 4, SI_OP_SYNC_AFTER,
+      si_clear_buffer(sctx, ptex, tex->surface.meta_offset,
+                      tex->surface.meta_size, &clear_value, 4, SI_OP_SYNC_AFTER,
                       SI_COHERENCY_CB_META, SI_COMPUTE_CLEAR_METHOD);
    }
 }

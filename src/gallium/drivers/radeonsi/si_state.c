@@ -2492,7 +2492,7 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
             s_info |= S_02803C_TILE_STENCIL_DISABLE(1);
          }
 
-         surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.htile_offset) >> 8;
+         surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
          surf->db_htile_surface =
             S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1);
          if (sctx->chip_class == GFX9) {
@@ -2563,7 +2563,7 @@ static void si_init_depth_surface(struct si_context *sctx, struct si_surface *su
                s_info |= S_028044_ALLOW_EXPCLEAR(1);
          }
 
-         surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.htile_offset) >> 8;
+         surf->db_htile_data_base = (tex->buffer.gpu_address + tex->surface.meta_offset) >> 8;
          surf->db_htile_surface = S_028ABC_FULL_CACHE(1);
       }
    }
@@ -3031,11 +3031,11 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             cb_color_info |= S_028C70_DCC_ENABLE(1);
 
          cb_dcc_base =
-            ((!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.dcc_offset) >>
+            ((!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.meta_offset) >>
             8;
 
          unsigned dcc_tile_swizzle = tex->surface.tile_swizzle;
-         dcc_tile_swizzle &= ((1 << tex->surface.dcc_alignment_log2) - 1) >> 8;
+         dcc_tile_swizzle &= ((1 << tex->surface.meta_alignment_log2) - 1) >> 8;
          cb_dcc_base |= dcc_tile_swizzle;
       }
 
@@ -3086,7 +3086,7 @@ static void si_emit_framebuffer_state(struct si_context *sctx)
             .pipe_aligned = 1,
          };
 
-         if (tex->surface.dcc_offset)
+         if (!tex->is_depth && tex->surface.meta_offset)
             meta = tex->surface.u.gfx9.dcc;
 
          /* Set mutable surface parameters. */

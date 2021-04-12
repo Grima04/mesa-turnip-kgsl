@@ -757,7 +757,7 @@ static void r600_texture_get_htile_size(struct r600_common_screen *rscreen,
 	unsigned slice_elements, slice_bytes, pipe_interleave_bytes, base_align;
 	unsigned num_pipes = rscreen->info.num_tile_pipes;
 
-	rtex->surface.htile_size = 0;
+	rtex->surface.meta_size = 0;
 
 	if (rscreen->chip_class <= EVERGREEN &&
 	    rscreen->info.drm_minor < 26)
@@ -804,8 +804,8 @@ static void r600_texture_get_htile_size(struct r600_common_screen *rscreen,
 	pipe_interleave_bytes = rscreen->info.pipe_interleave_bytes;
 	base_align = num_pipes * pipe_interleave_bytes;
 
-	rtex->surface.htile_alignment_log2 = util_logbase2(base_align);
-	rtex->surface.htile_size =
+	rtex->surface.meta_alignment_log2 = util_logbase2(base_align);
+	rtex->surface.meta_size =
 		util_num_layers(&rtex->resource.b.b, 0) *
 		align(slice_bytes, base_align);
 }
@@ -815,11 +815,11 @@ static void r600_texture_allocate_htile(struct r600_common_screen *rscreen,
 {
 	r600_texture_get_htile_size(rscreen, rtex);
 
-	if (!rtex->surface.htile_size)
+	if (!rtex->surface.meta_size)
 		return;
 
-	rtex->htile_offset = align(rtex->size, 1 << rtex->surface.htile_alignment_log2);
-	rtex->size = rtex->htile_offset + rtex->surface.htile_size;
+	rtex->htile_offset = align(rtex->size, 1 << rtex->surface.meta_alignment_log2);
+	rtex->size = rtex->htile_offset + rtex->surface.meta_size;
 }
 
 void r600_print_texture_info(struct r600_common_screen *rscreen,
@@ -861,8 +861,8 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 	if (rtex->htile_offset)
 		u_log_printf(log, "  HTile: offset=%"PRIu64", size=%u "
 			"alignment=%u\n",
-			     rtex->htile_offset, rtex->surface.htile_size,
-			     1 << rtex->surface.htile_alignment_log2);
+			     rtex->htile_offset, rtex->surface.meta_size,
+			     1 << rtex->surface.meta_alignment_log2);
 
 	for (i = 0; i <= rtex->resource.b.b.last_level; i++)
 		u_log_printf(log, "  Level[%i]: offset=%"PRIu64", slice_size=%"PRIu64", "
@@ -1000,7 +1000,7 @@ r600_texture_create_object(struct pipe_screen *screen,
 
 		r600_screen_clear_buffer(rscreen, &rtex->resource.b.b,
 					 rtex->htile_offset,
-					 rtex->surface.htile_size,
+					 rtex->surface.meta_size,
 					 clear_value);
 	}
 

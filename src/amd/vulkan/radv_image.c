@@ -700,15 +700,15 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       state[6] &= C_008F28_COMPRESSION_EN;
       state[7] = 0;
       if (!disable_compression && radv_dcc_enabled(image, first_level)) {
-         meta_va = gpu_address + plane->surface.dcc_offset;
+         meta_va = gpu_address + plane->surface.meta_offset;
          if (chip_class <= GFX8)
             meta_va += plane->surface.u.legacy.dcc_level[base_level].dcc_offset;
 
          unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
-         dcc_tile_swizzle &= (1 << plane->surface.dcc_alignment_log2) - 1;
+         dcc_tile_swizzle &= (1 << plane->surface.meta_alignment_log2) - 1;
          meta_va |= dcc_tile_swizzle;
       } else if (!disable_compression && radv_image_is_tc_compat_htile(image)) {
-         meta_va = gpu_address + plane->surface.htile_offset;
+         meta_va = gpu_address + plane->surface.meta_offset;
       }
 
       if (meta_va) {
@@ -735,7 +735,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
             .pipe_aligned = 1,
          };
 
-         if (plane->surface.dcc_offset)
+         if (!(plane->surface.flags & RADEON_SURF_Z_OR_SBUFFER))
             meta = plane->surface.u.gfx9.dcc;
 
          if (radv_dcc_enabled(image, first_level) && is_storage_image && enable_write_compression)
@@ -766,7 +766,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
             .pipe_aligned = 1,
          };
 
-         if (plane->surface.dcc_offset)
+         if (!(plane->surface.flags & RADEON_SURF_Z_OR_SBUFFER))
             meta = plane->surface.u.gfx9.dcc;
 
          state[5] |= S_008F24_META_DATA_ADDRESS(meta_va >> 40) |
@@ -1055,7 +1055,8 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
       state[4] |= S_008F20_DEPTH(depth - 1);
       state[5] |= S_008F24_LAST_ARRAY(last_layer);
    }
-   if (image->planes[0].surface.dcc_offset) {
+   if (!(image->planes[0].surface.flags & RADEON_SURF_Z_OR_SBUFFER) &&
+       image->planes[0].surface.meta_offset) {
       state[6] = S_008F28_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
    } else {
       /* The last dword is unused by hw. The shader uses it to clear
@@ -1213,7 +1214,7 @@ radv_init_metadata(struct radv_device *device, struct radv_image *image,
    if (device->physical_device->rad_info.chip_class >= GFX9) {
       uint64_t dcc_offset =
          image->offset +
-         (surface->display_dcc_offset ? surface->display_dcc_offset : surface->dcc_offset);
+         (surface->display_dcc_offset ? surface->display_dcc_offset : surface->meta_offset);
       metadata->u.gfx9.swizzle_mode = surface->u.gfx9.swizzle_mode;
       metadata->u.gfx9.dcc_offset_256b = dcc_offset >> 8;
       metadata->u.gfx9.dcc_pitch_max = surface->u.gfx9.display_dcc_pitch_max;
@@ -1338,7 +1339,7 @@ radv_image_init_retile_map(struct radv_device *device, struct radv_image *image)
 
    image->retile_map = NULL;
    if (!radv_image_has_dcc(image) || !image->planes[0].surface.display_dcc_offset ||
-       image->planes[0].surface.display_dcc_offset == image->planes[0].surface.dcc_offset)
+       image->planes[0].surface.display_dcc_offset == image->planes[0].surface.meta_offset)
       return VK_SUCCESS;
 
    uint32_t retile_map_size = ac_surface_get_retile_map_size(&image->planes[0].surface);

@@ -321,7 +321,8 @@ void si_texture_discard_cmask(struct si_screen *sscreen, struct si_texture *tex)
 static bool si_can_disable_dcc(struct si_texture *tex)
 {
    /* We can't disable DCC if it can be written by another process. */
-   return tex->surface.dcc_offset &&
+   return !tex->is_depth &&
+          tex->surface.meta_offset &&
           (!tex->buffer.b.is_shared ||
            !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_FRAMEBUFFER_WRITE)) &&
           !ac_modifier_has_dcc(tex->surface.modifier);
@@ -458,12 +459,11 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    else
       si_resource_reference(&tex->cmask_buffer, new_tex->cmask_buffer);
 
-   tex->surface.dcc_offset = new_tex->surface.dcc_offset;
+   tex->surface.meta_offset = new_tex->surface.meta_offset;
    tex->cb_color_info = new_tex->cb_color_info;
    memcpy(tex->color_clear_value, new_tex->color_clear_value, sizeof(tex->color_clear_value));
    tex->last_msaa_resolve_target_micro_mode = new_tex->last_msaa_resolve_target_micro_mode;
 
-   tex->surface.htile_offset = new_tex->surface.htile_offset;
    tex->depth_clear_value = new_tex->depth_clear_value;
    tex->dirty_level_mask = new_tex->dirty_level_mask;
    tex->stencil_dirty_level_mask = new_tex->stencil_dirty_level_mask;
@@ -485,10 +485,9 @@ static void si_reallocate_texture_inplace(struct si_context *sctx, struct si_tex
    si_resource_reference(&tex->dcc_retile_buffer, new_tex->dcc_retile_buffer);
 
    if (new_bind_flag == PIPE_BIND_LINEAR) {
-      assert(!tex->surface.htile_offset);
+      assert(!tex->surface.meta_offset);
       assert(!tex->cmask_buffer);
       assert(!tex->surface.fmask_size);
-      assert(!tex->surface.dcc_offset);
       assert(!tex->is_depth);
    }
 
@@ -536,7 +535,7 @@ static bool si_displayable_dcc_needs_explicit_flush(struct si_texture *tex)
    if (ac_surface_get_nplanes(&tex->surface) > 1)
       return false;
 
-   return tex->surface.is_displayable && tex->surface.dcc_offset;
+   return tex->surface.is_displayable && tex->surface.meta_offset;
 }
 
 static bool si_resource_get_param(struct pipe_screen *screen, struct pipe_context *context,
@@ -683,7 +682,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
        * disable it for external clients that want write
        * access.
        */
-      if ((usage & PIPE_HANDLE_USAGE_SHADER_WRITE && tex->surface.dcc_offset) ||
+      if ((usage & PIPE_HANDLE_USAGE_SHADER_WRITE && !tex->is_depth && tex->surface.meta_offset) ||
           /* Displayable DCC requires an explicit flush. */
           (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
            si_displayable_dcc_needs_explicit_flush(tex))) {
@@ -695,7 +694,7 @@ static bool si_texture_get_handle(struct pipe_screen *screen, struct pipe_contex
       }
 
       if (!(usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) &&
-          (tex->cmask_buffer || tex->surface.dcc_offset)) {
+          (tex->cmask_buffer || (!tex->is_depth && tex->surface.meta_offset))) {
          /* Eliminate fast clear (both CMASK and DCC) */
          bool flushed;
          si_eliminate_fast_color_clear(sctx, tex, &flushed);
@@ -814,7 +813,7 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                 tex->buffer.b.b.depth0, tex->buffer.b.b.array_size,
                 tex->buffer.b.b.last_level, tex->buffer.b.b.nr_samples);
 
-   if (tex->surface.htile_offset)
+   if (tex->is_depth && tex->surface.meta_offset)
       u_log_printf(log, ", tc_compatible_htile=%u", tex->tc_compatible_htile);
 
    u_log_printf(log, ", %s\n",
@@ -832,12 +831,12 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
       return;
    }
 
-   if (tex->surface.dcc_offset) {
+   if (!tex->is_depth && tex->surface.meta_offset) {
       for (i = 0; i <= tex->buffer.b.b.last_level; i++)
          u_log_printf(log,
                       "    DCCLevel[%i]: enabled=%u, offset=%u, "
                       "fast_clear_size=%u\n",
-                      i, i < tex->surface.num_dcc_levels, tex->surface.u.legacy.dcc_level[i].dcc_offset,
+                      i, i < tex->surface.num_meta_levels, tex->surface.u.legacy.dcc_level[i].dcc_offset,
                       tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size);
    }
 
@@ -1030,47 +1029,47 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
                            tex->surface.cmask_offset, tex->surface.cmask_size,
                            0xCCCCCCCC);
    }
-   if (tex->surface.htile_offset) {
+   if (tex->is_depth && tex->surface.meta_offset) {
       uint32_t clear_value = 0;
 
       if (sscreen->info.chip_class >= GFX9 || tex->tc_compatible_htile)
          clear_value = 0x0000030F;
 
       assert(num_clears < ARRAY_SIZE(clears));
-      si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.htile_offset,
-                           tex->surface.htile_size, clear_value);
+      si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset,
+                           tex->surface.meta_size, clear_value);
    }
 
    /* Initialize DCC only if the texture is not being imported. */
-   if (!(surface->flags & RADEON_SURF_IMPORTED) && tex->surface.dcc_offset) {
+   if (!(surface->flags & RADEON_SURF_IMPORTED) && !tex->is_depth && tex->surface.meta_offset) {
       /* Clear DCC to black for all tiles with DCC enabled.
        *
        * This fixes corruption in 3DMark Slingshot Extreme, which
        * uses uninitialized textures, causing corruption.
        */
-      if (tex->surface.num_dcc_levels == tex->buffer.b.b.last_level + 1 &&
+      if (tex->surface.num_meta_levels == tex->buffer.b.b.last_level + 1 &&
           tex->buffer.b.b.nr_samples <= 2) {
          /* Simple case - all tiles have DCC enabled. */
          assert(num_clears < ARRAY_SIZE(clears));
-         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset,
-                              tex->surface.dcc_size, DCC_CLEAR_COLOR_0000);
+         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset,
+                              tex->surface.meta_size, DCC_CLEAR_COLOR_0000);
       } else if (sscreen->info.chip_class >= GFX9) {
          /* Clear to uncompressed. Clearing this to black is complicated. */
          assert(num_clears < ARRAY_SIZE(clears));
-         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset,
-                              tex->surface.dcc_size, DCC_UNCOMPRESSED);
+         si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset,
+                              tex->surface.meta_size, DCC_UNCOMPRESSED);
       } else {
          /* GFX8: Initialize mipmap levels and multisamples separately. */
          if (tex->buffer.b.b.nr_samples >= 2) {
             /* Clearing this to black is complicated. */
             assert(num_clears < ARRAY_SIZE(clears));
-            si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset,
-                                 tex->surface.dcc_size, DCC_UNCOMPRESSED);
+            si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset,
+                                 tex->surface.meta_size, DCC_UNCOMPRESSED);
          } else {
             /* Clear the enabled mipmap levels to black. */
             unsigned size = 0;
 
-            for (unsigned i = 0; i < tex->surface.num_dcc_levels; i++) {
+            for (unsigned i = 0; i < tex->surface.num_meta_levels; i++) {
                if (!tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size)
                   break;
 
@@ -1081,14 +1080,14 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
             /* Mipmap levels with DCC. */
             if (size) {
                assert(num_clears < ARRAY_SIZE(clears));
-               si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset, size,
+               si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset, size,
                                     DCC_CLEAR_COLOR_0000);
             }
             /* Mipmap levels without DCC. */
-            if (size != tex->surface.dcc_size) {
+            if (size != tex->surface.meta_size) {
                assert(num_clears < ARRAY_SIZE(clears));
-               si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.dcc_offset + size,
-                                    tex->surface.dcc_size - size, DCC_UNCOMPRESSED);
+               si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.meta_offset + size,
+                                    tex->surface.meta_size - size, DCC_UNCOMPRESSED);
             }
          }
       }
@@ -2334,13 +2333,14 @@ void vi_separate_dcc_try_enable(struct si_context *sctx, struct si_texture *tex)
    if (!tex->buffer.b.is_shared ||
        !(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH) ||
        tex->buffer.b.b.target != PIPE_TEXTURE_2D || tex->buffer.b.b.last_level > 0 ||
-       !tex->surface.dcc_size || sctx->screen->debug_flags & DBG(NO_DCC) ||
+       !tex->surface.meta_size || sctx->screen->debug_flags & DBG(NO_DCC) ||
        sctx->screen->debug_flags & DBG(NO_DCC_FB))
       return;
 
    assert(sctx->chip_class >= GFX8);
+   assert(!tex->is_depth);
 
-   if (tex->surface.dcc_offset)
+   if (tex->surface.meta_offset)
       return; /* already enabled */
 
    /* Enable the DCC stat gathering. */
@@ -2352,7 +2352,7 @@ void vi_separate_dcc_try_enable(struct si_context *sctx, struct si_texture *tex)
    if (!vi_should_enable_separate_dcc(tex))
       return; /* stats show that DCC decompression is too expensive */
 
-   assert(tex->surface.num_dcc_levels);
+   assert(tex->surface.num_meta_levels);
    assert(!tex->dcc_separate_buffer);
 
    si_texture_discard_cmask(sctx->screen, tex);
@@ -2366,13 +2366,13 @@ void vi_separate_dcc_try_enable(struct si_context *sctx, struct si_texture *tex)
    } else {
       tex->dcc_separate_buffer =
          si_aligned_buffer_create(sctx->b.screen, SI_RESOURCE_FLAG_UNMAPPABLE, PIPE_USAGE_DEFAULT,
-                                  tex->surface.dcc_size, 1 << tex->surface.dcc_alignment_log2);
+                                  tex->surface.meta_size, 1 << tex->surface.meta_alignment_log2);
       if (!tex->dcc_separate_buffer)
          return;
    }
 
    /* dcc_offset is the absolute GPUVM address. */
-   tex->surface.dcc_offset = tex->dcc_separate_buffer->gpu_address;
+   tex->surface.meta_offset = tex->dcc_separate_buffer->gpu_address;
 
    /* no need to flag anything since this is called by fast clear that
     * flags framebuffer state
@@ -2427,7 +2427,7 @@ void vi_separate_dcc_process_and_reset_stats(struct pipe_context *ctx, struct si
       assert(!tex->last_dcc_separate_buffer);
       tex->last_dcc_separate_buffer = tex->dcc_separate_buffer;
       tex->dcc_separate_buffer = NULL;
-      tex->surface.dcc_offset = 0;
+      tex->surface.meta_offset = 0;
       /* no need to flag anything since this is called after
        * decompression that re-sets framebuffer state
        */

@@ -1275,19 +1275,19 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
    radv_update_dcc_metadata(cmd_buffer, image, range, true);
 
    for (uint32_t l = 0; l < level_count; l++) {
-      uint64_t offset = image->offset + image->planes[0].surface.dcc_offset;
+      uint64_t offset = image->offset + image->planes[0].surface.meta_offset;
       uint32_t level = range->baseMipLevel + l;
       uint64_t size;
 
       if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
          /* DCC for mipmaps+layers is currently disabled. */
-         offset += image->planes[0].surface.dcc_slice_size * range->baseArrayLayer +
+         offset += image->planes[0].surface.meta_slice_size * range->baseArrayLayer +
                    image->planes[0].surface.u.gfx9.meta_levels[level].offset;
          size = image->planes[0].surface.u.gfx9.meta_levels[level].size * layer_count;
       } else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
          /* Mipmap levels and layers aren't implemented. */
          assert(level == 0);
-         size = image->planes[0].surface.dcc_size;
+         size = image->planes[0].surface.meta_size;
       } else {
          const struct legacy_surf_dcc_level *dcc_level =
             &image->planes[0].surface.u.legacy.dcc_level[level];
@@ -1329,7 +1329,7 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
       /* Clear individuals levels separately. */
       for (uint32_t l = 0; l < level_count; l++) {
          uint32_t level = range->baseMipLevel + l;
-         uint64_t offset = image->offset + image->planes[0].surface.htile_offset +
+         uint64_t offset = image->offset + image->planes[0].surface.meta_offset +
                            image->planes[0].surface.u.gfx9.meta_levels[level].offset;
          uint32_t size = image->planes[0].surface.u.gfx9.meta_levels[level].size;
 
@@ -1348,9 +1348,9 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
       }
    } else {
       unsigned layer_count = radv_get_layerCount(image, range);
-      uint64_t size = image->planes[0].surface.htile_slice_size * layer_count;
-      uint64_t offset = image->offset + image->planes[0].surface.htile_offset +
-                        image->planes[0].surface.htile_slice_size * range->baseArrayLayer;
+      uint64_t size = image->planes[0].surface.meta_slice_size * layer_count;
+      uint64_t offset = image->offset + image->planes[0].surface.meta_offset +
+                        image->planes[0].surface.meta_slice_size * range->baseArrayLayer;
 
       if (htile_mask == UINT_MAX) {
          /* Clear the whole HTILE buffer. */

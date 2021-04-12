@@ -1885,7 +1885,8 @@ radv_image_has_fmask(const struct radv_image *image)
 static inline bool
 radv_image_has_dcc(const struct radv_image *image)
 {
-   return image->planes[0].surface.dcc_offset;
+   return !(image->planes[0].surface.flags & RADEON_SURF_Z_OR_SBUFFER) &&
+          image->planes[0].surface.meta_offset;
 }
 
 /**
@@ -1903,7 +1904,7 @@ radv_image_is_tc_compat_cmask(const struct radv_image *image)
 static inline bool
 radv_dcc_enabled(const struct radv_image *image, unsigned level)
 {
-   return radv_image_has_dcc(image) && level < image->planes[0].surface.num_dcc_levels;
+   return radv_image_has_dcc(image) && level < image->planes[0].surface.num_meta_levels;
 }
 
 /**
@@ -1921,7 +1922,8 @@ radv_image_has_CB_metadata(const struct radv_image *image)
 static inline bool
 radv_image_has_htile(const struct radv_image *image)
 {
-   return image->planes[0].surface.htile_size;
+   return image->planes[0].surface.flags & RADEON_SURF_Z_OR_SBUFFER &&
+          image->planes[0].surface.meta_size;
 }
 
 /**
@@ -1930,7 +1932,7 @@ radv_image_has_htile(const struct radv_image *image)
 static inline bool
 radv_htile_enabled(const struct radv_image *image, unsigned level)
 {
-   return radv_image_has_htile(image) && level < image->planes[0].surface.num_htile_levels;
+   return radv_image_has_htile(image) && level < image->planes[0].surface.num_meta_levels;
 }
 
 /**

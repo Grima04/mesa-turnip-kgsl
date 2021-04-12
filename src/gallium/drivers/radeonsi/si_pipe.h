@@ -1657,7 +1657,7 @@ si_shader_selector_reference(struct si_context *sctx, /* sctx can optionally be 
 
 static inline bool vi_dcc_enabled(struct si_texture *tex, unsigned level)
 {
-   return tex->surface.dcc_offset && level < tex->surface.num_dcc_levels;
+   return !tex->is_depth && tex->surface.meta_offset && level < tex->surface.num_meta_levels;
 }
 
 static inline unsigned si_tile_mode_index(struct si_texture *tex, unsigned level, bool stencil)
@@ -1844,13 +1844,13 @@ static inline bool si_htile_enabled(struct si_texture *tex, unsigned level, unsi
    if (zs_mask == PIPE_MASK_S && tex->htile_stencil_disabled)
       return false;
 
-   return tex->surface.htile_offset && level < tex->surface.num_htile_levels;
+   return tex->is_depth && tex->surface.meta_offset && level < tex->surface.num_meta_levels;
 }
 
 static inline bool vi_tc_compat_htile_enabled(struct si_texture *tex, unsigned level,
                                               unsigned zs_mask)
 {
-   assert(!tex->tc_compatible_htile || tex->surface.htile_offset);
+   assert(!tex->tc_compatible_htile || tex->surface.meta_offset);
    return tex->tc_compatible_htile && si_htile_enabled(tex, level, zs_mask);
 }
 

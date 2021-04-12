@@ -238,12 +238,11 @@ struct radeon_surf {
    uint8_t bpe : 5;
    /* Display, standard(thin), depth, render(rotated). AKA D,S,Z,R swizzle modes. */
    uint8_t micro_tile_mode : 3;
-   /* Number of mipmap levels where DCC is enabled starting from level 0.
+   /* Number of mipmap levels where DCC or HTILE is enabled starting from level 0.
     * Non-zero levels may be disabled due to alignment constraints, but not
     * the first level.
     */
-   uint8_t num_dcc_levels : 4;
-   uint8_t num_htile_levels : 4;
+   uint8_t num_meta_levels : 4;
    uint8_t is_linear : 1;
    uint8_t has_stencil : 1;
    /* This might be true even if micro_tile_mode isn't displayable or rotated. */
@@ -278,8 +277,7 @@ struct radeon_surf {
    /* Use (1 << log2) to compute the alignment. */
    uint8_t surf_alignment_log2;
    uint8_t fmask_alignment_log2;
-   uint8_t dcc_alignment_log2;
-   uint8_t htile_alignment_log2;
+   uint8_t meta_alignment_log2; /* DCC or HTILE */
    uint8_t cmask_alignment_log2;
    uint8_t alignment_log2;
 
@@ -293,21 +291,17 @@ struct radeon_surf {
    uint64_t fmask_size;
    uint32_t fmask_slice_size; /* max 2^31 (16K * 16K * 8) */
 
-   /* DCC and HTILE are very small. */
-   uint32_t dcc_size;
-   uint32_t dcc_slice_size;
-
-   uint32_t htile_size;
-   uint32_t htile_slice_size;
+   /* DCC and HTILE (they are very small) */
+   uint32_t meta_size;
+   uint32_t meta_slice_size;
 
    uint32_t cmask_size;
    uint32_t cmask_slice_size;
 
    /* All buffers combined. */
-   uint64_t htile_offset;
+   uint64_t meta_offset; /* DCC or HTILE */
    uint64_t fmask_offset;
    uint64_t cmask_offset;
-   uint64_t dcc_offset;
    uint64_t display_dcc_offset;
    uint64_t total_size;
 

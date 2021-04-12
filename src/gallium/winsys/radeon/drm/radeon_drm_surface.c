@@ -287,7 +287,7 @@ static void si_compute_htile(const struct radeon_info *info,
    unsigned slice_elements, slice_bytes, pipe_interleave_bytes, base_align;
    unsigned num_pipes = info->num_tile_pipes;
 
-   surf->htile_size = 0;
+   surf->meta_size = 0;
 
    if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) ||
        surf->flags & RADEON_SURF_NO_HTILE)
@@ -342,8 +342,8 @@ static void si_compute_htile(const struct radeon_info *info,
    pipe_interleave_bytes = info->pipe_interleave_bytes;
    base_align = num_pipes * pipe_interleave_bytes;
 
-   surf->htile_alignment_log2 = util_logbase2(base_align);
-   surf->htile_size = num_layers * align(slice_bytes, base_align);
+   surf->meta_alignment_log2 = util_logbase2(base_align);
+   surf->meta_size = num_layers * align(slice_bytes, base_align);
 }
 
 static int radeon_winsys_surface_init(struct radeon_winsys *rws,
@@ -438,9 +438,9 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
       /* Determine the memory layout of multiple allocations in one buffer. */
       surf_ws->total_size = surf_ws->surf_size;
 
-      if (surf_ws->htile_size) {
-         surf_ws->htile_offset = align64(surf_ws->total_size, 1 << surf_ws->htile_alignment_log2);
-         surf_ws->total_size = surf_ws->htile_offset + surf_ws->htile_size;
+      if (surf_ws->meta_size) {
+         surf_ws->meta_offset = align64(surf_ws->total_size, 1 << surf_ws->meta_alignment_log2);
+         surf_ws->total_size = surf_ws->meta_offset + surf_ws->meta_size;
       }
 
       if (surf_ws->fmask_size) {

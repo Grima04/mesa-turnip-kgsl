@@ -854,10 +854,10 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
       ret = AddrComputeDccInfo(addrlib, AddrDccIn, AddrDccOut);
 
       if (ret == ADDR_OK) {
-         dcc_level->dcc_offset = surf->dcc_size;
-         surf->num_dcc_levels = level + 1;
-         surf->dcc_size = dcc_level->dcc_offset + AddrDccOut->dccRamSize;
-         surf->dcc_alignment_log2 = MAX2(surf->dcc_alignment_log2, util_logbase2(AddrDccOut->dccRamBaseAlign));
+         dcc_level->dcc_offset = surf->meta_size;
+         surf->num_meta_levels = level + 1;
+         surf->meta_size = dcc_level->dcc_offset + AddrDccOut->dccRamSize;
+         surf->meta_alignment_log2 = MAX2(surf->meta_alignment_log2, util_logbase2(AddrDccOut->dccRamBaseAlign));
 
          /* If the DCC size of a subresource (1 mip level or 1 slice)
           * is not aligned, the DCC memory layout is not contiguous for
@@ -880,7 +880,7 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
           * provide this info. As DCC memory is linear (each
           * slice is the same size) it's easy to compute.
           */
-         surf->dcc_slice_size = AddrDccOut->dccRamSize / config->info.array_size;
+         surf->meta_slice_size = AddrDccOut->dccRamSize / config->info.array_size;
 
          /* For arrays, we have to compute the DCC info again
           * with one slice size to get a correct fast clear
@@ -906,9 +906,9 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
             }
 
             if (surf->flags & RADEON_SURF_CONTIGUOUS_DCC_LAYERS &&
-                surf->dcc_slice_size != dcc_level->dcc_slice_fast_clear_size) {
-               surf->dcc_size = 0;
-               surf->num_dcc_levels = 0;
+                surf->meta_slice_size != dcc_level->dcc_slice_fast_clear_size) {
+               surf->meta_size = 0;
+               surf->num_meta_levels = 0;
                AddrDccOut->subLvlCompressible = false;
             }
          } else {
@@ -933,10 +933,10 @@ static int gfx6_compute_level(ADDR_HANDLE addrlib, const struct ac_surf_config *
       ret = AddrComputeHtileInfo(addrlib, AddrHtileIn, AddrHtileOut);
 
       if (ret == ADDR_OK) {
-         surf->htile_size = AddrHtileOut->htileBytes;
-         surf->htile_slice_size = AddrHtileOut->sliceSize;
-         surf->htile_alignment_log2 = util_logbase2(AddrHtileOut->baseAlign);
-         surf->num_htile_levels = level + 1;
+         surf->meta_size = AddrHtileOut->htileBytes;
+         surf->meta_slice_size = AddrHtileOut->sliceSize;
+         surf->meta_alignment_log2 = util_logbase2(AddrHtileOut->baseAlign);
+         surf->num_meta_levels = level + 1;
       }
    }
 
@@ -1323,13 +1323,11 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
    }
 
    surf->has_stencil = !!(surf->flags & RADEON_SURF_SBUFFER);
-   surf->num_dcc_levels = 0;
+   surf->num_meta_levels = 0;
    surf->surf_size = 0;
-   surf->dcc_size = 0;
-   surf->dcc_alignment_log2 = 0;
-   surf->htile_size = 0;
-   surf->htile_slice_size = 0;
-   surf->htile_alignment_log2 = 0;
+   surf->meta_size = 0;
+   surf->meta_slice_size = 0;
+   surf->meta_alignment_log2 = 0;
 
    const bool only_stencil =
       (surf->flags & RADEON_SURF_SBUFFER) && !(surf->flags & RADEON_SURF_ZBUFFER);
@@ -1468,7 +1466,7 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
     * This is what addrlib does, but calling addrlib would be a lot more
     * complicated.
     */
-   if (surf->dcc_size && config->info.levels > 1) {
+   if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) && surf->meta_size && config->info.levels > 1) {
       /* The smallest miplevels that are never compressed by DCC
        * still read the DCC buffer via TC if the base level uses DCC,
        * and for some reason the DCC buffer needs to be larger if
@@ -1477,22 +1475,22 @@ static int gfx6_compute_surface(ADDR_HANDLE addrlib, const struct radeon_info *i
        *
        * "dcc_alignment * 4" was determined by trial and error.
        */
-      surf->dcc_size = align64(surf->surf_size >> 8, (1 << surf->dcc_alignment_log2) * 4);
+      surf->meta_size = align64(surf->surf_size >> 8, (1 << surf->meta_alignment_log2) * 4);
    }
 
    /* Make sure HTILE covers the whole miptree, because the shader reads
     * TC-compatible HTILE even for levels where it's disabled by DB.
     */
-   if (surf->htile_size && config->info.levels > 1 &&
-       surf->flags & RADEON_SURF_TC_COMPATIBLE_HTILE) {
+   if (surf->flags & (RADEON_SURF_Z_OR_SBUFFER | RADEON_SURF_TC_COMPATIBLE_HTILE) &&
+       surf->meta_size && config->info.levels > 1) {
       /* MSAA can't occur with levels > 1, so ignore the sample count. */
       const unsigned total_pixels = surf->surf_size / surf->bpe;
       const unsigned htile_block_size = 8 * 8;
       const unsigned htile_element_size = 4;
 
-      surf->htile_size = (total_pixels / htile_block_size) * htile_element_size;
-      surf->htile_size = align(surf->htile_size, 1 << surf->htile_alignment_log2);
-   } else if (!surf->htile_size) {
+      surf->meta_size = (total_pixels / htile_block_size) * htile_element_size;
+      surf->meta_size = align(surf->meta_size, 1 << surf->meta_alignment_log2);
+   } else if (surf->flags & RADEON_SURF_Z_OR_SBUFFER && !surf->meta_size) {
       /* Unset this if HTILE is not present. */
       surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
    }
@@ -1800,10 +1798,10 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
       if (ret != ADDR_OK)
          return ret;
 
-      surf->htile_size = hout.htileBytes;
-      surf->htile_slice_size = hout.sliceSize;
-      surf->htile_alignment_log2 = util_logbase2(hout.baseAlign);
-      surf->num_htile_levels = in->numMipLevels;
+      surf->meta_size = hout.htileBytes;
+      surf->meta_slice_size = hout.sliceSize;
+      surf->meta_alignment_log2 = util_logbase2(hout.baseAlign);
+      surf->num_meta_levels = in->numMipLevels;
 
       for (unsigned i = 0; i < in->numMipLevels; i++) {
          surf->u.gfx9.meta_levels[i].offset = meta_mip_info[i].offset;
@@ -1813,13 +1811,13 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
             /* GFX10 can only compress the first level
              * in the mip tail.
              */
-            surf->num_htile_levels = i + 1;
+            surf->num_meta_levels = i + 1;
             break;
          }
       }
 
-      if (!surf->num_htile_levels)
-         surf->htile_size = 0;
+      if (!surf->num_meta_levels)
+         surf->meta_size = 0;
 
       return 0;
    }
@@ -1891,10 +1889,10 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
          surf->u.gfx9.dcc_block_height = dout.compressBlkHeight;
          surf->u.gfx9.dcc_block_depth = dout.compressBlkDepth;
          surf->u.gfx9.dcc_pitch_max = dout.pitch - 1;
-         surf->dcc_size = dout.dccRamSize;
-         surf->dcc_slice_size = dout.dccRamSliceSize;
-         surf->dcc_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
-         surf->num_dcc_levels = in->numMipLevels;
+         surf->meta_size = dout.dccRamSize;
+         surf->meta_slice_size = dout.dccRamSliceSize;
+         surf->meta_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
+         surf->num_meta_levels = in->numMipLevels;
 
          /* Disable DCC for levels that are in the mip tail.
           *
@@ -1930,23 +1928,23 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
                 *       if there are no regressions.
                 */
                if (info->chip_class >= GFX10)
-                  surf->num_dcc_levels = i + 1;
+                  surf->num_meta_levels = i + 1;
                else
-                  surf->num_dcc_levels = i;
+                  surf->num_meta_levels = i;
                break;
             }
          }
 
-         if (!surf->num_dcc_levels)
-            surf->dcc_size = 0;
+         if (!surf->num_meta_levels)
+            surf->meta_size = 0;
 
-         surf->u.gfx9.display_dcc_size = surf->dcc_size;
-         surf->u.gfx9.display_dcc_alignment_log2 = surf->dcc_alignment_log2;
+         surf->u.gfx9.display_dcc_size = surf->meta_size;
+         surf->u.gfx9.display_dcc_alignment_log2 = surf->meta_alignment_log2;
          surf->u.gfx9.display_dcc_pitch_max = surf->u.gfx9.dcc_pitch_max;
 
          /* Compute displayable DCC. */
          if (((in->flags.display && info->use_display_dcc_with_retile_blit) ||
-              ac_modifier_has_dcc_retile(surf->modifier)) && surf->num_dcc_levels) {
+              ac_modifier_has_dcc_retile(surf->modifier)) && surf->num_meta_levels) {
             /* Compute displayable DCC info. */
             din.dccKeyFlags.pipeAligned = 0;
             din.dccKeyFlags.rbAligned = 0;
@@ -1964,10 +1962,10 @@ static int gfx9_compute_miptree(struct ac_addrlib *addrlib, const struct radeon_
             surf->u.gfx9.display_dcc_size = dout.dccRamSize;
             surf->u.gfx9.display_dcc_alignment_log2 = util_logbase2(dout.dccRamBaseAlign);
             surf->u.gfx9.display_dcc_pitch_max = dout.pitch - 1;
-            assert(surf->u.gfx9.display_dcc_size <= surf->dcc_size);
+            assert(surf->u.gfx9.display_dcc_size <= surf->meta_size);
 
             surf->u.gfx9.dcc_retile_use_uint16 =
-               surf->u.gfx9.display_dcc_size <= UINT16_MAX + 1 && surf->dcc_size <= UINT16_MAX + 1;
+               surf->u.gfx9.display_dcc_size <= UINT16_MAX + 1 && surf->meta_size <= UINT16_MAX + 1;
 
             /* Align the retile map size to get more hash table hits and
              * decrease the maximum memory footprint when all retile maps
@@ -2327,12 +2325,11 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    surf->u.gfx9.resource_type = AddrSurfInfoIn.resourceType;
    surf->has_stencil = !!(surf->flags & RADEON_SURF_SBUFFER);
 
-   surf->num_dcc_levels = 0;
+   surf->num_meta_levels = 0;
    surf->surf_size = 0;
    surf->fmask_size = 0;
-   surf->dcc_size = 0;
-   surf->htile_size = 0;
-   surf->htile_slice_size = 0;
+   surf->meta_size = 0;
+   surf->meta_slice_size = 0;
    surf->u.gfx9.surf_offset = 0;
    if (AddrSurfInfoIn.flags.stencil)
       surf->u.gfx9.stencil_offset = 0;
@@ -2382,7 +2379,8 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
          return r;
 
       /* Display needs unaligned DCC. */
-      if (surf->num_dcc_levels &&
+      if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+          surf->num_meta_levels &&
           (!is_dcc_supported_by_DCN(info, config, surf, surf->u.gfx9.dcc.rb_aligned,
                                     surf->u.gfx9.dcc.pipe_aligned) ||
            /* Don't set is_displayable if displayable DCC is missing. */
@@ -2395,7 +2393,7 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
    assert(!AddrSurfInfoIn.flags.display || surf->is_displayable);
 
    /* Validate that DCC is set up correctly. */
-   if (surf->num_dcc_levels) {
+   if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) && surf->num_meta_levels) {
       assert(is_dcc_supported_by_L2(info, surf));
       if (AddrSurfInfoIn.flags.color)
          assert(is_dcc_supported_by_CB(info, surf->u.gfx9.swizzle_mode));
@@ -2415,15 +2413,15 @@ static int gfx9_compute_surface(struct ac_addrlib *addrlib, const struct radeon_
       /* Validate that DCC is enabled if DCN can do it. */
       if ((info->use_display_dcc_unaligned || info->use_display_dcc_with_retile_blit) &&
           AddrSurfInfoIn.flags.display && surf->bpe == 4) {
-         assert(surf->num_dcc_levels);
+         assert(surf->num_meta_levels);
       }
 
       /* Validate that non-scanout DCC is always enabled. */
       if (!AddrSurfInfoIn.flags.display)
-         assert(surf->num_dcc_levels);
+         assert(surf->num_meta_levels);
    }
 
-   if (!surf->htile_size) {
+   if (!surf->meta_size) {
       /* Unset this if HTILE is not present. */
       surf->flags &= ~RADEON_SURF_TC_COMPATIBLE_HTILE;
    }
@@ -2506,15 +2504,7 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
    surf->alignment_log2 = surf->surf_alignment_log2;
 
    /* Ensure the offsets are always 0 if not available. */
-   surf->dcc_offset = surf->display_dcc_offset = 0;
-   surf->fmask_offset = surf->cmask_offset = 0;
-   surf->htile_offset = 0;
-
-   if (surf->htile_size) {
-      surf->htile_offset = align64(surf->total_size, 1 << surf->htile_alignment_log2);
-      surf->total_size = surf->htile_offset + surf->htile_size;
-      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->htile_alignment_log2);
-   }
+   surf->meta_offset = surf->display_dcc_offset = surf->fmask_offset = surf->cmask_offset = 0;
 
    if (surf->fmask_size) {
       assert(config->info.samples >= 2);
@@ -2533,21 +2523,22 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
    if (surf->is_displayable)
       surf->flags |= RADEON_SURF_SCANOUT;
 
-   if (surf->dcc_size &&
+   if (surf->meta_size &&
        /* dcc_size is computed on GFX9+ only if it's displayable. */
        (info->chip_class >= GFX9 || !get_display_flag(config, surf))) {
       /* It's better when displayable DCC is immediately after
        * the image due to hw-specific reasons.
        */
-      if (info->chip_class >= GFX9 && surf->u.gfx9.dcc_retile_num_elements) {
+      if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) &&
+          info->chip_class >= GFX9 && surf->u.gfx9.dcc_retile_num_elements) {
          /* Add space for the displayable DCC buffer. */
          surf->display_dcc_offset = align64(surf->total_size, 1 << surf->u.gfx9.display_dcc_alignment_log2);
          surf->total_size = surf->display_dcc_offset + surf->u.gfx9.display_dcc_size;
       }
 
-      surf->dcc_offset = align64(surf->total_size, 1 << surf->dcc_alignment_log2);
-      surf->total_size = surf->dcc_offset + surf->dcc_size;
-      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->dcc_alignment_log2);
+      surf->meta_offset = align64(surf->total_size, 1 << surf->meta_alignment_log2);
+      surf->total_size = surf->meta_offset + surf->meta_size;
+      surf->alignment_log2 = MAX2(surf->alignment_log2, surf->meta_alignment_log2);
    }
 
    return 0;
@@ -2556,9 +2547,12 @@ int ac_compute_surface(struct ac_addrlib *addrlib, const struct radeon_info *inf
 /* This is meant to be used for disabling DCC. */
 void ac_surface_zero_dcc_fields(struct radeon_surf *surf)
 {
-   surf->dcc_offset = 0;
+   if (surf->flags & RADEON_SURF_Z_OR_SBUFFER)
+      return;
+
+   surf->meta_offset = 0;
    surf->display_dcc_offset = 0;
-   if (!surf->htile_offset && !surf->fmask_offset && !surf->cmask_offset) {
+   if (!surf->fmask_offset && !surf->cmask_offset) {
       surf->total_size = surf->surf_size;
       surf->alignment_log2 = surf->surf_alignment_log2;
    }
@@ -2666,8 +2660,8 @@ void ac_surface_get_bo_metadata(const struct radeon_info *info, struct radeon_su
    if (info->chip_class >= GFX9) {
       uint64_t dcc_offset = 0;
 
-      if (surf->dcc_offset) {
-         dcc_offset = surf->display_dcc_offset ? surf->display_dcc_offset : surf->dcc_offset;
+      if (surf->meta_offset) {
+         dcc_offset = surf->display_dcc_offset ? surf->display_dcc_offset : surf->meta_offset;
          assert((dcc_offset >> 8) != 0 && (dcc_offset >> 8) < (1 << 24));
       }
 
@@ -2767,11 +2761,11 @@ bool ac_surface_set_umd_metadata(const struct radeon_info *info, struct radeon_s
       /* Read DCC information. */
       switch (info->chip_class) {
       case GFX8:
-         surf->dcc_offset = (uint64_t)desc[7] << 8;
+         surf->meta_offset = (uint64_t)desc[7] << 8;
          break;
 
       case GFX9:
-         surf->dcc_offset =
+         surf->meta_offset =
             ((uint64_t)desc[7] << 8) | ((uint64_t)G_008F24_META_DATA_ADDRESS(desc[5]) << 40);
          surf->u.gfx9.dcc.pipe_aligned = G_008F24_META_PIPE_ALIGNED(desc[5]);
          surf->u.gfx9.dcc.rb_aligned = G_008F24_META_RB_ALIGNED(desc[5]);
@@ -2783,7 +2777,7 @@ bool ac_surface_set_umd_metadata(const struct radeon_info *info, struct radeon_s
 
       case GFX10:
       case GFX10_3:
-         surf->dcc_offset =
+         surf->meta_offset =
             ((uint64_t)G_00A018_META_DATA_ADDRESS_LO(desc[6]) << 8) | ((uint64_t)desc[7] << 16);
          surf->u.gfx9.dcc.pipe_aligned = G_00A018_META_PIPE_ALIGNED(desc[6]);
          break;
@@ -2815,18 +2809,18 @@ void ac_surface_get_umd_metadata(const struct radeon_info *info, struct radeon_s
    case GFX7:
       break;
    case GFX8:
-      desc[7] = surf->dcc_offset >> 8;
+      desc[7] = surf->meta_offset >> 8;
       break;
    case GFX9:
-      desc[7] = surf->dcc_offset >> 8;
+      desc[7] = surf->meta_offset >> 8;
       desc[5] &= C_008F24_META_DATA_ADDRESS;
-      desc[5] |= S_008F24_META_DATA_ADDRESS(surf->dcc_offset >> 40);
+      desc[5] |= S_008F24_META_DATA_ADDRESS(surf->meta_offset >> 40);
       break;
    case GFX10:
    case GFX10_3:
       desc[6] &= C_00A018_META_DATA_ADDRESS_LO;
-      desc[6] |= S_00A018_META_DATA_ADDRESS_LO(surf->dcc_offset >> 8);
-      desc[7] = surf->dcc_offset >> 16;
+      desc[6] |= S_00A018_META_DATA_ADDRESS_LO(surf->meta_offset >> 8);
+      desc[7] = surf->meta_offset >> 16;
       break;
    default:
       assert(0);
@@ -2938,14 +2932,12 @@ bool ac_surface_override_offset_stride(const struct radeon_info *info, struct ra
        offset >= UINT64_MAX - surf->total_size)
       return false;
 
-   if (surf->htile_offset)
-      surf->htile_offset += offset;
+   if (surf->meta_offset)
+      surf->meta_offset += offset;
    if (surf->fmask_offset)
       surf->fmask_offset += offset;
    if (surf->cmask_offset)
       surf->cmask_offset += offset;
-   if (surf->dcc_offset)
-      surf->dcc_offset += offset;
    if (surf->display_dcc_offset)
       surf->display_dcc_offset += offset;
    return true;
@@ -2957,7 +2949,7 @@ unsigned ac_surface_get_nplanes(const struct radeon_surf *surf)
       return 1;
    else if (surf->display_dcc_offset)
       return 3;
-   else if (surf->dcc_offset)
+   else if (surf->meta_offset)
       return 2;
    else
       return 1;
@@ -2979,10 +2971,10 @@ uint64_t ac_surface_get_plane_offset(enum chip_class chip_class,
    case 1:
       assert(!layer);
       return surf->display_dcc_offset ?
-             surf->display_dcc_offset : surf->dcc_offset;
+             surf->display_dcc_offset : surf->meta_offset;
    case 2:
       assert(!layer);
-      return surf->dcc_offset;
+      return surf->meta_offset;
    default:
       unreachable("Invalid plane index");
    }
@@ -3017,9 +3009,9 @@ uint64_t ac_surface_get_plane_size(const struct radeon_surf *surf,
       return surf->surf_size;
    case 1:
       return surf->display_dcc_offset ?
-             surf->u.gfx9.display_dcc_size : surf->dcc_size;
+             surf->u.gfx9.display_dcc_size : surf->meta_size;
    case 2:
-      return surf->dcc_size;
+      return surf->meta_size;
    default:
       unreachable("Invalid plane index");
    }
@@ -3059,18 +3051,18 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  surf->cmask_offset, surf->cmask_size,
                  1 << surf->cmask_alignment_log2);
 
-      if (surf->htile_offset)
+      if (surf->flags & RADEON_SURF_Z_OR_SBUFFER && surf->meta_offset)
          fprintf(out,
                  "    HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
-                 surf->htile_offset, surf->htile_size,
-                 1 << surf->htile_alignment_log2);
+                 surf->meta_offset, surf->meta_size,
+                 1 << surf->meta_alignment_log2);
 
-      if (surf->dcc_offset)
+      if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) && surf->meta_offset)
          fprintf(out,
                  "    DCC: offset=%" PRIu64 ", size=%u, "
                  "alignment=%u, pitch_max=%u, num_dcc_levels=%u\n",
-                 surf->dcc_offset, surf->dcc_size, 1 << surf->dcc_alignment_log2,
-                 surf->u.gfx9.display_dcc_pitch_max, surf->num_dcc_levels);
+                 surf->meta_offset, surf->meta_size, 1 << surf->meta_alignment_log2,
+                 surf->u.gfx9.display_dcc_pitch_max, surf->num_meta_levels);
 
       if (surf->u.gfx9.stencil_offset)
          fprintf(out,
@@ -3112,14 +3104,14 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
                  surf->cmask_offset, surf->cmask_size,
                  1 << surf->cmask_alignment_log2, surf->u.legacy.cmask_slice_tile_max);
 
-      if (surf->htile_offset)
+      if (surf->flags & RADEON_SURF_Z_OR_SBUFFER && surf->meta_offset)
          fprintf(out, "    HTile: offset=%" PRIu64 ", size=%u, alignment=%u\n",
-                 surf->htile_offset, surf->htile_size,
-                 1 << surf->htile_alignment_log2);
+                 surf->meta_offset, surf->meta_size,
+                 1 << surf->meta_alignment_log2);
 
-      if (surf->dcc_offset)
+      if (!(surf->flags & RADEON_SURF_Z_OR_SBUFFER) && surf->meta_offset)
          fprintf(out, "    DCC: offset=%" PRIu64 ", size=%u, alignment=%u\n",
-                 surf->dcc_offset, surf->dcc_size, 1 << surf->dcc_alignment_log2);
+                 surf->meta_offset, surf->meta_size, 1 << surf->meta_alignment_log2);
 
       if (surf->has_stencil)
          fprintf(out, "    StencilLayout: tilesplit=%u\n",

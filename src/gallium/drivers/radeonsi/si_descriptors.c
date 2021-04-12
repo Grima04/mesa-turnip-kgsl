@@ -332,7 +332,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
 
       if (!(access & SI_IMAGE_ACCESS_DCC_OFF) && vi_dcc_enabled(tex, first_level)) {
          meta_va =
-            (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.dcc_offset;
+            (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.meta_offset;
 
          if (sscreen->info.chip_class == GFX8) {
             meta_va += tex->surface.u.legacy.dcc_level[base_level].dcc_offset;
@@ -340,11 +340,11 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
          }
 
          unsigned dcc_tile_swizzle = tex->surface.tile_swizzle << 8;
-         dcc_tile_swizzle &= (1 << tex->surface.dcc_alignment_log2) - 1;
+         dcc_tile_swizzle &= (1 << tex->surface.meta_alignment_log2) - 1;
          meta_va |= dcc_tile_swizzle;
       } else if (vi_tc_compat_htile_enabled(tex, first_level,
                                             is_stencil ? PIPE_MASK_S : PIPE_MASK_Z)) {
-         meta_va = tex->buffer.gpu_address + tex->surface.htile_offset;
+         meta_va = tex->buffer.gpu_address + tex->surface.meta_offset;
       }
 
       if (meta_va)
@@ -372,7 +372,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
             .pipe_aligned = 1,
          };
 
-         if (tex->surface.dcc_offset)
+         if (!tex->is_depth && tex->surface.meta_offset)
             meta = tex->surface.u.gfx9.dcc;
 
          state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
@@ -411,7 +411,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
             .pipe_aligned = 1,
          };
 
-         if (tex->surface.dcc_offset)
+         if (!tex->is_depth && tex->surface.meta_offset)
             meta = tex->surface.u.gfx9.dcc;
 
          state[5] |= S_008F24_META_DATA_ADDRESS(meta_va >> 40) |
@@ -491,8 +491,11 @@ static void si_set_sampler_view_desc(struct si_context *sctx, struct si_sampler_
 
 static bool color_needs_decompression(struct si_texture *tex)
 {
+   if (tex->is_depth)
+      return false;
+
    return tex->surface.fmask_size ||
-          (tex->dirty_level_mask && (tex->cmask_buffer || tex->surface.dcc_offset));
+          (tex->dirty_level_mask && (tex->cmask_buffer || tex->surface.meta_offset));
 }
 
 static bool depth_needs_decompression(struct si_texture *tex)

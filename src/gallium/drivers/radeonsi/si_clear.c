@@ -276,7 +276,7 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
       dcc_offset = 0;
    } else {
       dcc_buffer = &tex->buffer.b.b;
-      dcc_offset = tex->surface.dcc_offset;
+      dcc_offset = tex->surface.meta_offset;
    }
 
    if (sctx->chip_class >= GFX9) {
@@ -289,7 +289,7 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
       if (tex->buffer.b.b.nr_storage_samples >= 4)
          return false;
 
-      clear_size = tex->surface.dcc_size;
+      clear_size = tex->surface.meta_size;
    } else {
       unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
 
@@ -683,8 +683,8 @@ static void si_clear(struct pipe_context *ctx, unsigned buffers,
          uint32_t clear_value = (zstex->surface.has_stencil &&
                                  !zstex->htile_stencil_disabled) ||
                                 sctx->chip_class == GFX8 ? 0xfffff30f : 0xfffc000f;
-         si_clear_buffer(sctx, &zstex->buffer.b.b, zstex->surface.htile_offset,
-                         zstex->surface.htile_size, &clear_value, 4,
+         si_clear_buffer(sctx, &zstex->buffer.b.b, zstex->surface.meta_offset,
+                         zstex->surface.meta_size, &clear_value, 4,
                          SI_OP_SYNC_BEFORE_AFTER, SI_COHERENCY_DB_META, SI_AUTO_SELECT_CLEAR_METHOD);
       }
 

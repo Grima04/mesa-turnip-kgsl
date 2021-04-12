@@ -5905,7 +5905,7 @@ radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
        * expanded".
        */
       /* Compute the size of all fast clearable DCC levels. */
-      for (unsigned i = 0; i < image->planes[0].surface.num_dcc_levels; i++) {
+      for (unsigned i = 0; i < image->planes[0].surface.num_meta_levels; i++) {
          struct legacy_surf_dcc_level *dcc_level = &image->planes[0].surface.u.legacy.dcc_level[i];
          unsigned dcc_fast_clear_size =
             dcc_level->dcc_slice_fast_clear_size * image->info.array_size;
@@ -5917,10 +5917,10 @@ radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
       }
 
       /* Initialize the mipmap levels without DCC. */
-      if (size != image->planes[0].surface.dcc_size) {
+      if (size != image->planes[0].surface.meta_size) {
          flush_bits |= radv_fill_buffer(cmd_buffer, image, image->bo,
-                                        image->offset + image->planes[0].surface.dcc_offset + size,
-                                        image->planes[0].surface.dcc_size - size, 0xffffffff);
+                                        image->offset + image->planes[0].surface.meta_offset + size,
+                                        image->planes[0].surface.meta_size - size, 0xffffffff);
       }
    }
 
