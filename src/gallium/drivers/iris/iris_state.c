@@ -3502,6 +3502,9 @@ iris_set_vertex_buffers(struct pipe_context *ctx,
                ro_bo(NULL, res->bo->gtt_offset + (int) buffer->buffer_offset);
             vb.MOCS = iris_mocs(res->bo, &screen->isl_dev,
                                 ISL_SURF_USAGE_VERTEX_BUFFER_BIT);
+#if GEN_GEN >= 12
+            vb.L3BypassDisable       = true;
+#endif
          } else {
             vb.NullVertexBuffer = true;
          }
@@ -3748,6 +3751,13 @@ iris_set_stream_output_targets(struct pipe_context *ctx,
                iris_dirty_for_history(ice, res);
             }
          }
+#if GEN_GEN >= 12
+         /* SO draws require flushing of const cache to make SO data
+          * observable when VB/IB are cached in L3.
+          */
+         if (flush & PIPE_CONTROL_VF_CACHE_INVALIDATE)
+            flush |= PIPE_CONTROL_CONST_CACHE_INVALIDATE;
+#endif
          iris_emit_pipe_control_flush(&ice->batches[IRIS_BATCH_RENDER],
                                       "make streamout results visible", flush);
       }
@@ -6314,6 +6324,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                            (int) ice->draw.draw_params.offset);
             vb.MOCS = iris_mocs(res->bo, &batch->screen->isl_dev,
                                 ISL_SURF_USAGE_VERTEX_BUFFER_BIT);
+#if GEN_GEN >= 12
+            vb.L3BypassDisable       = true;
+#endif
          }
          dynamic_bound |= 1ull << count;
          count++;
@@ -6337,6 +6350,9 @@ iris_upload_dirty_render_state(struct iris_context *ice,
                            (int) ice->draw.derived_draw_params.offset);
             vb.MOCS = iris_mocs(res->bo, &batch->screen->isl_dev,
                                 ISL_SURF_USAGE_VERTEX_BUFFER_BIT);
+#if GEN_GEN >= 12
+            vb.L3BypassDisable       = true;
+#endif
          }
          dynamic_bound |= 1ull << count;
          count++;
@@ -6605,6 +6621,9 @@ iris_upload_render_state(struct iris_context *ice,
                              ISL_SURF_USAGE_INDEX_BUFFER_BIT);
          ib.BufferSize = bo->size - offset;
          ib.BufferStartingAddress = ro_bo(NULL, bo->gtt_offset + offset);
+#if GEN_GEN >= 12
+         ib.L3BypassDisable       = true;
+#endif
       }
 
       if (memcmp(genx->last_index_buffer, ib_packet, sizeof(ib_packet)) != 0) {
