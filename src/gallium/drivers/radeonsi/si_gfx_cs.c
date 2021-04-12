@@ -96,13 +96,15 @@ void si_flush_gfx_cs(struct si_context *ctx, unsigned flags, struct pipe_fence_h
        !(flags & RADEON_FLUSH_TOGGLE_SECURE_SUBMISSION))
       return;
 
-    /* Calling get_device_reset_status is useful to re-create the
-     * aux context if needed.
-     * This cs will be submitted even if a reset is detected; in this
-     * case it'll treated as a no-op. This ensures that all states
-     * are properly reset.
-     */
-   ctx->b.get_device_reset_status(&ctx->b);
+   /* Non-aux contexts must set up no-op API dispatch on GPU resets. This is
+    * similar to si_get_reset_status but here we can ignore soft-recoveries,
+    * while si_get_reset_status can't. */
+   if (!(ctx->context_flags & SI_CONTEXT_FLAG_AUX) &&
+       ctx->device_reset_callback.reset) {
+      enum pipe_reset_status status = ctx->ws->ctx_query_reset_status(ctx->ctx, true, NULL);
+      if (status != PIPE_NO_RESET)
+         ctx->device_reset_callback.reset(ctx->device_reset_callback.data, status);
+   }
 
    if (sscreen->debug_flags & DBG(CHECK_VM))
       flags &= ~PIPE_FLUSH_ASYNC;
