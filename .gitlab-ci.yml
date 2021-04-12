@@ -413,13 +413,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-08-libdrm"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-13-vkglcts-1.2.6.0"
 
 # Debian 10 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-04-08-libdrm"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-04-13-vkglcts-1.2.6.0"
 
 # Debian 10 based ARM build image
 arm_build:
@@ -448,7 +448,7 @@ kernel+rootfs_arm64-baremetal:
   variables:
     DEBIAN_ARCH: "arm64"
     KERNEL_URL: "https://github.com/anholt/linux/archive/mesa-ci-2021-04-01-5.11.tar.gz"
-    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-12-kernel"
+    MESA_ROOTFS_TAG: &arm-baremetal "2021-04-13-vkglcts-1.2.6.0"
     MINIO_SUFFIX: "baremetal"
 
 # Kernel & rootfs for armhf baremetal testing

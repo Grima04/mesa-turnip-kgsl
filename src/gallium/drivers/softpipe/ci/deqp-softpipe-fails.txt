@@ -777,7 +777,6 @@ dEQP-GLES31.functional.texture.multisample.samples_1.sample_mask_only,Fail
 KHR-GL33.CommonBugs.CommonBug_ParenthesisInLayoutQualifierIntegerValue,Fail
 KHR-GL33.clip_distance.functional,Fail
 KHR-GL33.cull_distance.functional,Fail
-KHR-GL33.pipeline_statistics_query_tests_ARB.functional_compute_shader_invocations,Fail
 KHR-GL33.pipeline_statistics_query_tests_ARB.functional_fragment_shader_invocations,Fail
 KHR-GL33.pipeline_statistics_query_tests_ARB.functional_primitives_vertices_submitted_and_clipping_input_output_primitives,Fail
 KHR-GL33.texture_size_promotion.functional,Fail
