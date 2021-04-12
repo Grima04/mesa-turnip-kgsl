@@ -188,6 +188,9 @@ struct gfx9_surf_layout {
    /* Offset within slice in bytes, only valid for prt images. */
    uint32_t prt_level_offset[RADEON_SURF_MAX_LEVELS];
 
+   /* DCC or HTILE level info */
+   struct gfx9_surf_level meta_levels[RADEON_SURF_MAX_LEVELS];
+
    union {
       /* Color */
       struct {
@@ -215,9 +218,6 @@ struct gfx9_surf_layout {
          uint32_t dcc_retile_num_elements;
          void *dcc_retile_map;
 
-         /* DCC level info */
-         struct gfx9_surf_level dcc_levels[RADEON_SURF_MAX_LEVELS];
-
          /* CMASK level info (only level 0) */
          struct gfx9_surf_level cmask_level0;
       };
@@ -227,9 +227,6 @@ struct gfx9_surf_layout {
          uint64_t stencil_offset; /* separate stencil */
          uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
          uint8_t stencil_swizzle_mode;
-
-         /* HTILE level info */
-         struct gfx9_surf_level htile_levels[RADEON_SURF_MAX_LEVELS];
       };
    };
 };

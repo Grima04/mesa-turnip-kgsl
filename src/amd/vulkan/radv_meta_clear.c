@@ -1282,8 +1282,8 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
       if (cmd_buffer->device->physical_device->rad_info.chip_class >= GFX10) {
          /* DCC for mipmaps+layers is currently disabled. */
          offset += image->planes[0].surface.dcc_slice_size * range->baseArrayLayer +
-                   image->planes[0].surface.u.gfx9.dcc_levels[level].offset;
-         size = image->planes[0].surface.u.gfx9.dcc_levels[level].size * layer_count;
+                   image->planes[0].surface.u.gfx9.meta_levels[level].offset;
+         size = image->planes[0].surface.u.gfx9.meta_levels[level].size * layer_count;
       } else if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
          /* Mipmap levels and layers aren't implemented. */
          assert(level == 0);
@@ -1330,8 +1330,8 @@ radv_clear_htile(struct radv_cmd_buffer *cmd_buffer, const struct radv_image *im
       for (uint32_t l = 0; l < level_count; l++) {
          uint32_t level = range->baseMipLevel + l;
          uint64_t offset = image->offset + image->planes[0].surface.htile_offset +
-                           image->planes[0].surface.u.gfx9.htile_levels[level].offset;
-         uint32_t size = image->planes[0].surface.u.gfx9.htile_levels[level].size;
+                           image->planes[0].surface.u.gfx9.meta_levels[level].offset;
+         uint32_t size = image->planes[0].surface.u.gfx9.meta_levels[level].size;
 
          /* Do not clear this level if it can be compressed. */
          if (!size)
