@@ -476,7 +476,10 @@ ntt_reladdr(struct ntt_compile *c, struct ureg_src addr)
       c->addr_declared[c->next_addr_reg] = true;
    }
 
-   ureg_UARL(c->ureg, c->addr_reg[c->next_addr_reg], addr);
+   if (c->native_integers)
+      ureg_UARL(c->ureg, c->addr_reg[c->next_addr_reg], addr);
+   else
+      ureg_ARL(c->ureg, c->addr_reg[c->next_addr_reg], addr);
    return ureg_scalar(ureg_src(c->addr_reg[c->next_addr_reg++]), 0);
 }
 
