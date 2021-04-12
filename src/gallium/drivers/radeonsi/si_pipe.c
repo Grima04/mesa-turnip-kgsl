@@ -351,7 +351,9 @@ static void si_destroy_context(struct pipe_context *context)
 static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
 {
    struct si_context *sctx = (struct si_context *)ctx;
-   struct si_screen *sscreen = sctx->screen;
+   if (sctx->context_flags & SI_CONTEXT_FLAG_AUX)
+      return PIPE_NO_RESET;
+
    bool needs_reset;
    enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, &needs_reset);
 
@@ -360,22 +362,6 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
       if (sctx->device_reset_callback.reset) {
          sctx->device_reset_callback.reset(sctx->device_reset_callback.data, status);
       }
-
-      /* Re-create the auxiliary context, because it won't submit
-       * any new IBs due to a GPU reset.
-       */
-      simple_mtx_lock(&sscreen->aux_context_lock);
-
-      struct u_log_context *aux_log = ((struct si_context *)sscreen->aux_context)->log;
-      sscreen->aux_context->set_log_context(sscreen->aux_context, NULL);
-      sscreen->aux_context->destroy(sscreen->aux_context);
-
-      sscreen->aux_context = si_create_context(
-         &sscreen->b, SI_CONTEXT_FLAG_AUX |
-                      (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
-                      (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
-      sscreen->aux_context->set_log_context(sscreen->aux_context, aux_log);
-      simple_mtx_unlock(&sscreen->aux_context_lock);
    }
    return status;
 }
@@ -753,8 +739,30 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
                       SI_CP_DMA_CLEAR_METHOD);
    }
 
-   if (!(flags & SI_CONTEXT_FLAG_AUX))
+   if (!(flags & SI_CONTEXT_FLAG_AUX)) {
       p_atomic_inc(&screen->num_contexts);
+
+      /* Check if the aux_context needs to be recreated */
+      struct si_context *saux = (struct si_context *)sscreen->aux_context;
+      bool needs_reset;
+
+      simple_mtx_lock(&sscreen->aux_context_lock);
+      enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(
+         saux->ctx, &needs_reset);
+      if (status != PIPE_NO_RESET && needs_reset) {
+         /* We lost the aux_context, create a new one */
+         struct u_log_context *aux_log = (saux)->log;
+         sscreen->aux_context->set_log_context(sscreen->aux_context, NULL);
+         sscreen->aux_context->destroy(sscreen->aux_context);
+
+         sscreen->aux_context = si_create_context(
+            &sscreen->b, SI_CONTEXT_FLAG_AUX |
+                         (sscreen->options.aux_debug ? PIPE_CONTEXT_DEBUG : 0) |
+                         (sscreen->info.has_graphics ? 0 : PIPE_CONTEXT_COMPUTE_ONLY));
+         sscreen->aux_context->set_log_context(sscreen->aux_context, aux_log);
+      }
+      simple_mtx_unlock(&sscreen->aux_context_lock);
+   }
 
    sctx->initial_gfx_cs_size = sctx->gfx_cs.current.cdw;
    return &sctx->b;
