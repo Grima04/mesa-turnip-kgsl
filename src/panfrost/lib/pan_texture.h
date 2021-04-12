@@ -201,6 +201,8 @@ panfrost_texture_offset(const struct pan_image_layout *layout,
 struct pan_blendable_format {
         enum mali_color_buffer_internal_format internal;
         enum mali_mfbd_color_format writeback;
+        mali_pixel_format bifrost_dither;
+        mali_pixel_format bifrost_no_dither;
 };
 
 struct pan_blendable_format

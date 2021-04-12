@@ -31,10 +31,25 @@
 
 /* Convenience */
 
+#define MALI_BLEND_AU_R8G8B8A8    (MALI_RGBA8_TB    << 12)
+#define MALI_BLEND_PU_R8G8B8A8    (MALI_RGBA8_TB    << 12)
+#define MALI_BLEND_AU_R10G10B10A2 (MALI_RGB10_A2_TB << 12)
+#define MALI_BLEND_PU_R10G10B10A2 (MALI_RGB10_A2_TB << 12)
+#define MALI_BLEND_AU_R8G8B8A2    (MALI_RGB8_A2_AU  << 12)
+#define MALI_BLEND_PU_R8G8B8A2    (MALI_RGB8_A2_PU  << 12)
+#define MALI_BLEND_AU_R4G4B4A4    (MALI_RGBA4_AU    << 12)
+#define MALI_BLEND_PU_R4G4B4A4    (MALI_RGBA4_PU    << 12)
+#define MALI_BLEND_AU_R5G6B5A0    (MALI_R5G6B5_AU   << 12)
+#define MALI_BLEND_PU_R5G6B5A0    (MALI_R5G6B5_PU   << 12)
+#define MALI_BLEND_AU_R5G5B5A1    (MALI_RGB5_A1_AU  << 12)
+#define MALI_BLEND_PU_R5G5B5A1    (MALI_RGB5_A1_PU  << 12)
+
 #define BFMT2(pipe, internal, writeback) \
         [PIPE_FORMAT_##pipe] = { \
                 MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
-                MALI_MFBD_COLOR_FORMAT_## writeback \
+                MALI_MFBD_COLOR_FORMAT_## writeback, \
+                MALI_BLEND_AU_ ## internal, \
+                MALI_BLEND_PU_ ## internal, \
         }
 
 #define BFMT(pipe, internal_and_writeback) \
@@ -698,29 +713,7 @@ panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
         if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
                 extra |= 1 << 20;
 
-        /* Else, pick the pixel format matching the tilebuffer format */
-        switch (fmt.internal) {
-#define TB_FORMAT(in, out) \
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_ ## in: \
-                return (MALI_ ## out << 12) | extra
-
-#define TB_FORMAT_DITHER(in, out) \
-        case MALI_COLOR_BUFFER_INTERNAL_FORMAT_ ## in: \
-                return ((dither ? MALI_ ## out ## _AU : MALI_ ## out ## _PU) << 12) | extra
-
-        TB_FORMAT(R8G8B8A8, RGBA8_TB);
-        TB_FORMAT(R10G10B10A2, RGB10_A2_TB);
-        TB_FORMAT_DITHER(R8G8B8A2, RGB8_A2);
-        TB_FORMAT_DITHER(R4G4B4A4, RGBA4);
-        TB_FORMAT_DITHER(R5G6B5A0, R5G6B5);
-        TB_FORMAT_DITHER(R5G5B5A1, RGB5_A1);
-
-#undef TB_FORMAT_DITHER
-#undef TB_FORMAT
-
-        default:
-                unreachable("invalid internal blendable");
-        }
+        return (dither ? fmt.bifrost_dither : fmt.bifrost_no_dither) | extra;
 }
 
 enum mali_z_internal_format
