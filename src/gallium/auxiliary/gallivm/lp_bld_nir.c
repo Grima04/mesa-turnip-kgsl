@@ -206,7 +206,9 @@ static LLVMValueRef int_to_bool32(struct lp_build_nir_context *bld_base,
    LLVMBuilderRef builder = bld_base->base.gallivm->builder;
    struct lp_build_context *int_bld = get_int_bld(bld_base, is_unsigned, src_bit_size);
    LLVMValueRef result = lp_build_compare(bld_base->base.gallivm, int_bld->type, PIPE_FUNC_NOTEQUAL, val, int_bld->zero);
-   if (src_bit_size == 64)
+   if (src_bit_size == 16)
+      result = LLVMBuildSExt(builder, result, bld_base->int_bld.vec_type, "");
+   else if (src_bit_size == 64)
       result = LLVMBuildTrunc(builder, result, bld_base->int_bld.vec_type, "");
    return result;
 }
