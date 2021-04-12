@@ -1732,6 +1732,9 @@ glXGetVisualFromFBConfig(Display * dpy, GLXFBConfig fbconfig)
    struct glx_config *config = (struct glx_config *) fbconfig;
    int count;
 
+   if (!config)
+      return NULL;
+
    /*
     ** Get a list of all visuals, return if list is empty
     */
