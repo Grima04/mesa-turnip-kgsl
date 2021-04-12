@@ -316,9 +316,15 @@ radv_use_htile_for_image(const struct radv_device *device, const struct radv_ima
    bool use_htile_for_mips =
       image->info.array_size == 1 && device->physical_device->rad_info.chip_class >= GFX10;
 
-   return (image->info.levels == 1 || use_htile_for_mips) && !image->shareable &&
-          ((image->info.width * image->info.height >= 8 * 8) ||
-           (device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS));
+   /* Do not enable HTILE for very small images because it seems less performant but make sure it's
+    * allowed with VRS attachments because we need HTILE.
+    */
+   if (image->info.width * image->info.height < 8 * 8 &&
+       !(device->instance->debug_flags & RADV_DEBUG_FORCE_COMPRESS) &&
+       !device->attachment_vrs_enabled)
+      return false;
+
+   return (image->info.levels == 1 || use_htile_for_mips) && !image->shareable;
 }
 
 static bool
