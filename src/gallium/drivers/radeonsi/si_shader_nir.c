@@ -712,15 +712,13 @@ static void si_lower_io(struct nir_shader *nir)
 {
    /* HW supports indirect indexing for: | Enabled in driver
     * -------------------------------------------------------
-    * VS inputs                          | No
     * TCS inputs                         | Yes
     * TES inputs                         | Yes
     * GS inputs                          | No
     * -------------------------------------------------------
     * VS outputs before TCS              | No
-    * VS outputs before GS               | No
     * TCS outputs                        | Yes
-    * TES outputs before GS              | No
+    * VS/TES outputs before GS           | No
     */
    bool has_indirect_inputs = nir->info.stage == MESA_SHADER_TESS_CTRL ||
                               nir->info.stage == MESA_SHADER_TESS_EVAL;
