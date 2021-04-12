@@ -345,10 +345,8 @@ lima_pack_reload_plbu_cmd(struct lima_job *job, struct pipe_surface *psurf)
 
    struct lima_context *ctx = job->ctx;
    struct lima_surface *surf = lima_surface(psurf);
-
-   struct pipe_surface *cbuf = job->key.cbuf;
-   int level = cbuf->u.tex.level;
-   unsigned first_layer = cbuf->u.tex.first_layer;
+   int level = psurf->u.tex.level;
+   unsigned first_layer = psurf->u.tex.first_layer;
 
    uint32_t va;
    void *cpu = lima_job_create_stream_bo(
