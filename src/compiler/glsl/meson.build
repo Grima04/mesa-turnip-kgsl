@@ -44,7 +44,7 @@ glsl_lexer_cpp = custom_target(
   'glsl_lexer_cpp',
   input : 'glsl_lexer.ll',
   output : 'glsl_lexer.cpp',
-  command : [prog_flex, '-o', '@OUTPUT@', '@INPUT@'],
+  command : [prog_flex_cpp, '-o', '@OUTPUT@', '@INPUT@'],
 )
 
 ir_expression_operation_constant_h = custom_target(
