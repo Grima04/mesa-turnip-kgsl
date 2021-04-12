@@ -1407,7 +1407,8 @@ radv_pipeline_needed_dynamic_state(const VkGraphicsPipelineCreateInfo *pCreateIn
       states &= ~RADV_DYNAMIC_LINE_STIPPLE;
 
    if (!vk_find_struct_const(pCreateInfo->pNext,
-                             PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR))
+                             PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR) &&
+       !radv_is_state_dynamic(pCreateInfo, VK_DYNAMIC_STATE_FRAGMENT_SHADING_RATE_KHR))
       states &= ~RADV_DYNAMIC_FRAGMENT_SHADING_RATE;
 
    /* TODO: blend constants & line width. */
@@ -1717,7 +1718,7 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
 
    const VkPipelineFragmentShadingRateStateCreateInfoKHR *shading_rate = vk_find_struct_const(
       pCreateInfo->pNext, PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR);
-   if (needed_states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
+   if (states & RADV_DYNAMIC_FRAGMENT_SHADING_RATE) {
       dynamic->fragment_shading_rate.size = shading_rate->fragmentSize;
       for (int i = 0; i < 2; i++)
          dynamic->fragment_shading_rate.combiner_ops[i] = shading_rate->combinerOps[i];
