@@ -18,6 +18,8 @@ struct vn_image {
 
    VkMemoryRequirements2 memory_requirements[4];
    VkMemoryDedicatedRequirements dedicated_requirements[4];
+   /* For VK_ANDROID_native_buffer, the WSI image owns the memory, */
+   VkDeviceMemory private_memory;
 };
 VK_DEFINE_NONDISP_HANDLE_CASTS(vn_image,
                                base.base,

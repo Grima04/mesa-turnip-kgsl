@@ -15,6 +15,7 @@
 #include "venus-protocol/vn_protocol_driver_sampler.h"
 #include "venus-protocol/vn_protocol_driver_sampler_ycbcr_conversion.h"
 
+#include "vn_android.h"
 #include "vn_device.h"
 #include "vn_device_memory.h"
 
@@ -153,6 +154,15 @@ vn_CreateImage(VkDevice device,
    }
 #endif
 
+#ifdef ANDROID
+   const VkNativeBufferANDROID *anb_info =
+      vk_find_struct_const(pCreateInfo->pNext, NATIVE_BUFFER_ANDROID);
+   if (anb_info) {
+      result = vn_image_from_anb(dev, pCreateInfo, anb_info, alloc, &img);
+      goto out;
+   }
+#endif
+
    result = vn_image_create(dev, pCreateInfo, alloc, &img);
 
 out:
@@ -175,6 +185,9 @@ vn_DestroyImage(VkDevice device,
 
    if (!img)
       return;
+
+   if (img->private_memory != VK_NULL_HANDLE)
+      vn_FreeMemory(device, img->private_memory, pAllocator);
 
    vn_async_vkDestroyImage(dev->instance, device, image, NULL);
 

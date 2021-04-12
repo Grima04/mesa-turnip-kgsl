@@ -20,6 +20,7 @@
 #include "venus-protocol/vn_protocol_driver_instance.h"
 #include "venus-protocol/vn_protocol_driver_transport.h"
 
+#include "vn_android.h"
 #include "vn_device_memory.h"
 #include "vn_icd.h"
 #include "vn_queue.h"
@@ -1414,6 +1415,9 @@ vn_physical_device_get_supported_extensions(
       .KHR_swapchain = true,
       .KHR_swapchain_mutable_format = true,
 #endif
+#ifdef ANDROID
+      .ANDROID_native_buffer = true,
+#endif
    };
 
    *recognized = (struct vk_device_extension_table){
@@ -1535,6 +1539,13 @@ vn_physical_device_init_extensions(struct vn_physical_device *physical_dev)
       if (supported.extensions[i]) {
          physical_dev->base.base.supported_extensions.extensions[i] = true;
          physical_dev->extension_spec_versions[i] = props->specVersion;
+#ifdef ANDROID
+         /* override VK_ANDROID_native_buffer spec version */
+         if (!strcmp(props->extensionName,
+                     VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME))
+            physical_dev->extension_spec_versions[i] =
+               VN_ANDROID_NATIVE_BUFFER_SPEC_VERSION;
+#endif
          continue;
       }
 
@@ -2380,12 +2391,13 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
 
       VkPhysicalDevicePCIBusInfoPropertiesEXT *pci_bus_info;
       VkPhysicalDeviceTransformFeedbackPropertiesEXT *transform_feedback;
+      VkPhysicalDevicePresentationPropertiesANDROID *presentation_properties;
    } u;
 
    u.pnext = (VkBaseOutStructure *)pProperties;
    while (u.pnext) {
       void *saved = u.pnext->pNext;
-      switch (u.pnext->sType) {
+      switch ((int32_t)u.pnext->sType) {
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2:
          memcpy(u.pnext, &physical_dev->properties,
                 sizeof(physical_dev->properties));
@@ -2575,6 +2587,9 @@ vn_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          memcpy(u.transform_feedback,
                 &physical_dev->transform_feedback_properties,
                 sizeof(physical_dev->transform_feedback_properties));
+         break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRESENTATION_PROPERTIES_ANDROID:
+         u.presentation_properties->sharedImage = VK_FALSE;
          break;
       default:
          break;
@@ -2908,52 +2923,65 @@ find_extension_names(const char *const *exts,
    return false;
 }
 
-static const char **
+static bool
 merge_extension_names(const char *const *exts,
                       uint32_t ext_count,
                       const char *const *extra_exts,
                       uint32_t extra_count,
+                      const char *const *block_exts,
+                      uint32_t block_count,
                       const VkAllocationCallbacks *alloc,
-                      uint32_t *merged_count)
+                      const char *const **out_exts,
+                      uint32_t *out_count)
 {
    const char **merged =
       vk_alloc(alloc, sizeof(*merged) * (ext_count + extra_count),
                VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!merged)
-      return NULL;
+      return false;
 
-   memcpy(merged, exts, sizeof(*exts) * ext_count);
-
-   uint32_t count = ext_count;
+   uint32_t count = 0;
+   for (uint32_t i = 0; i < ext_count; i++) {
+      if (!find_extension_names(block_exts, block_count, exts[i]))
+         merged[count++] = exts[i];
+   }
    for (uint32_t i = 0; i < extra_count; i++) {
       if (!find_extension_names(exts, ext_count, extra_exts[i]))
          merged[count++] = extra_exts[i];
    }
 
-   *merged_count = count;
-   return merged;
+   *out_exts = merged;
+   *out_count = count;
+   return true;
 }
 
 static const VkDeviceCreateInfo *
-vn_device_fix_create_info(const struct vn_physical_device *physical_dev,
+vn_device_fix_create_info(const struct vn_device *dev,
                           const VkDeviceCreateInfo *dev_info,
                           const VkAllocationCallbacks *alloc,
                           VkDeviceCreateInfo *local_info)
 {
+   /* extra_exts and block_exts must not overlap */
    const char *extra_exts[8];
+   const char *block_exts[8];
    uint32_t extra_count = 0;
+   uint32_t block_count = 0;
 
-   if (physical_dev->wsi_device.supports_modifiers)
+   if (dev->physical_device->wsi_device.supports_modifiers)
       extra_exts[extra_count++] = "VK_EXT_image_drm_format_modifier";
 
-   if (!extra_count)
+   if (dev->base.base.enabled_extensions.ANDROID_native_buffer)
+      block_exts[block_count++] = VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME;
+
+   if (!extra_count && (!block_count || !dev_info->enabledExtensionCount))
       return dev_info;
 
    *local_info = *dev_info;
-   local_info->ppEnabledExtensionNames = merge_extension_names(
-      dev_info->ppEnabledExtensionNames, dev_info->enabledExtensionCount,
-      extra_exts, extra_count, alloc, &local_info->enabledExtensionCount);
-   if (!local_info->ppEnabledExtensionNames)
+   if (!merge_extension_names(dev_info->ppEnabledExtensionNames,
+                              dev_info->enabledExtensionCount, extra_exts,
+                              extra_count, block_exts, block_count, alloc,
+                              &local_info->ppEnabledExtensionNames,
+                              &local_info->enabledExtensionCount))
       return NULL;
 
    return local_info;
@@ -2992,8 +3020,8 @@ vn_CreateDevice(VkPhysicalDevice physicalDevice,
    dev->physical_device = physical_dev;
 
    VkDeviceCreateInfo local_create_info;
-   pCreateInfo = vn_device_fix_create_info(physical_dev, pCreateInfo, alloc,
-                                           &local_create_info);
+   pCreateInfo =
+      vn_device_fix_create_info(dev, pCreateInfo, alloc, &local_create_info);
    if (!pCreateInfo) {
       result = VK_ERROR_OUT_OF_HOST_MEMORY;
       goto fail;
