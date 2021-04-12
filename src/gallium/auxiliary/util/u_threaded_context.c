@@ -2601,6 +2601,7 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
       }
    } else {
       int total_offset = 0;
+      bool take_index_buffer_ownership = info->take_index_buffer_ownership;
       while (num_draws) {
          struct tc_batch *next = &tc->batch_slots[tc->next];
 
@@ -2617,10 +2618,11 @@ tc_draw_vbo(struct pipe_context *_pipe, const struct pipe_draw_info *info,
          struct tc_draw_multi *p =
             tc_add_slot_based_call(tc, TC_CALL_draw_multi, tc_draw_multi,
                                    dr);
-         if (index_size && !info->take_index_buffer_ownership) {
+         if (index_size && !take_index_buffer_ownership) {
             tc_set_resource_reference(&p->info.index.resource,
                                       info->index.resource);
          }
+         take_index_buffer_ownership = false;
          memcpy(&p->info, info, DRAW_INFO_SIZE_WITHOUT_MIN_MAX_INDEX);
          p->num_draws = dr;
          memcpy(p->slot, &draws[total_offset], sizeof(draws[0]) * dr);
