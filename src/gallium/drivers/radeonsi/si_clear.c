@@ -294,7 +294,7 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
       unsigned num_layers = util_num_layers(&tex->buffer.b.b, level);
 
       /* If this is 0, fast clear isn't possible. (can occur with MSAA) */
-      if (!tex->surface.u.legacy.dcc_level[level].dcc_fast_clear_size)
+      if (!tex->surface.u.legacy.color.dcc_level[level].dcc_fast_clear_size)
          return false;
 
       /* Layered 4x and 8x MSAA DCC fast clears need to clear
@@ -304,8 +304,8 @@ bool vi_dcc_get_clear_info(struct si_context *sctx, struct si_texture *tex, unsi
       if (tex->buffer.b.b.nr_storage_samples >= 4 && num_layers > 1)
          return false;
 
-      dcc_offset += tex->surface.u.legacy.dcc_level[level].dcc_offset;
-      clear_size = tex->surface.u.legacy.dcc_level[level].dcc_fast_clear_size * num_layers;
+      dcc_offset += tex->surface.u.legacy.color.dcc_level[level].dcc_offset;
+      clear_size = tex->surface.u.legacy.color.dcc_level[level].dcc_fast_clear_size * num_layers;
    }
 
    si_init_buffer_clear(out, dcc_buffer, dcc_offset, clear_size, clear_value);

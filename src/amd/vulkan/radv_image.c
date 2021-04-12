@@ -561,7 +561,7 @@ static inline unsigned
 si_tile_mode_index(const struct radv_image_plane *plane, unsigned level, bool stencil)
 {
    if (stencil)
-      return plane->surface.u.legacy.stencil_tiling_index[level];
+      return plane->surface.u.legacy.zs.stencil_tiling_index[level];
    else
       return plane->surface.u.legacy.tiling_index[level];
 }
@@ -684,7 +684,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
    uint64_t meta_va = 0;
    if (chip_class >= GFX9) {
       if (is_stencil)
-         va += plane->surface.u.gfx9.stencil_offset;
+         va += plane->surface.u.gfx9.zs.stencil_offset;
       else
          va += plane->surface.u.gfx9.surf_offset;
    } else
@@ -702,7 +702,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       if (!disable_compression && radv_dcc_enabled(image, first_level)) {
          meta_va = gpu_address + plane->surface.meta_offset;
          if (chip_class <= GFX8)
-            meta_va += plane->surface.u.legacy.dcc_level[base_level].dcc_offset;
+            meta_va += plane->surface.u.legacy.color.dcc_level[base_level].dcc_offset;
 
          unsigned dcc_tile_swizzle = plane->surface.tile_swizzle << 8;
          dcc_tile_swizzle &= (1 << plane->surface.meta_alignment_log2) - 1;
@@ -722,7 +722,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       state[3] &= C_00A00C_SW_MODE;
 
       if (is_stencil) {
-         state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.stencil_swizzle_mode);
+         state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.zs.stencil_swizzle_mode);
       } else {
          state[3] |= S_00A00C_SW_MODE(plane->surface.u.gfx9.swizzle_mode);
       }
@@ -736,7 +736,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
          };
 
          if (!(plane->surface.flags & RADEON_SURF_Z_OR_SBUFFER))
-            meta = plane->surface.u.gfx9.dcc;
+            meta = plane->surface.u.gfx9.color.dcc;
 
          if (radv_dcc_enabled(image, first_level) && is_storage_image && enable_write_compression)
             state[6] |= S_00A018_WRITE_COMPRESS_ENABLE(1);
@@ -751,8 +751,8 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
       state[4] &= C_008F20_PITCH;
 
       if (is_stencil) {
-         state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.stencil_swizzle_mode);
-         state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.stencil_epitch);
+         state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.zs.stencil_swizzle_mode);
+         state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.zs.stencil_epitch);
       } else {
          state[3] |= S_008F1C_SW_MODE(plane->surface.u.gfx9.swizzle_mode);
          state[4] |= S_008F20_PITCH(plane->surface.u.gfx9.epitch);
@@ -767,7 +767,7 @@ si_set_mutable_tex_desc_fields(struct radv_device *device, struct radv_image *im
          };
 
          if (!(plane->surface.flags & RADEON_SURF_Z_OR_SBUFFER))
-            meta = plane->surface.u.gfx9.dcc;
+            meta = plane->surface.u.gfx9.color.dcc;
 
          state[5] |= S_008F24_META_DATA_ADDRESS(meta_va >> 40) |
                      S_008F24_META_PIPE_ALIGNED(meta.pipe_aligned) |
@@ -912,7 +912,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
    if (radv_dcc_enabled(image, first_level)) {
       state[6] |= S_00A018_MAX_UNCOMPRESSED_BLOCK_SIZE(V_028C78_MAX_BLOCK_SIZE_256B) |
                   S_00A018_MAX_COMPRESSED_BLOCK_SIZE(
-                     image->planes[0].surface.u.gfx9.dcc.max_compressed_block_size) |
+                     image->planes[0].surface.u.gfx9.color.dcc.max_compressed_block_size) |
                   S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
    }
 
@@ -949,7 +949,7 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
          fmask_state[3] =
             S_00A00C_DST_SEL_X(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_Y(V_008F1C_SQ_SEL_X) |
             S_00A00C_DST_SEL_Z(V_008F1C_SQ_SEL_X) | S_00A00C_DST_SEL_W(V_008F1C_SQ_SEL_X) |
-            S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.fmask_swizzle_mode) |
+            S_00A00C_SW_MODE(image->planes[0].surface.u.gfx9.color.fmask_swizzle_mode) |
             S_00A00C_TYPE(
                radv_tex_dim(image->type, view_type, image->info.array_size, 0, false, false));
          fmask_state[4] = S_00A010_DEPTH(last_layer) | S_00A010_BASE_ARRAY(first_layer);
@@ -1130,9 +1130,9 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
          fmask_state[7] = 0;
 
          if (device->physical_device->rad_info.chip_class == GFX9) {
-            fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.fmask_swizzle_mode);
+            fmask_state[3] |= S_008F1C_SW_MODE(image->planes[0].surface.u.gfx9.color.fmask_swizzle_mode);
             fmask_state[4] |= S_008F20_DEPTH(last_layer) |
-                              S_008F20_PITCH(image->planes[0].surface.u.gfx9.fmask_epitch);
+                              S_008F20_PITCH(image->planes[0].surface.u.gfx9.color.fmask_epitch);
             fmask_state[5] |= S_008F24_META_PIPE_ALIGNED(1) | S_008F24_META_RB_ALIGNED(1);
 
             if (radv_image_is_tc_compat_cmask(image)) {
@@ -1144,10 +1144,10 @@ si_make_texture_descriptor(struct radv_device *device, struct radv_image *image,
             }
          } else {
             fmask_state[3] |=
-               S_008F1C_TILING_INDEX(image->planes[0].surface.u.legacy.fmask.tiling_index);
+               S_008F1C_TILING_INDEX(image->planes[0].surface.u.legacy.color.fmask.tiling_index);
             fmask_state[4] |=
                S_008F20_DEPTH(depth - 1) |
-               S_008F20_PITCH(image->planes[0].surface.u.legacy.fmask.pitch_in_pixels - 1);
+               S_008F20_PITCH(image->planes[0].surface.u.legacy.color.fmask.pitch_in_pixels - 1);
             fmask_state[5] |= S_008F24_LAST_ARRAY(last_layer);
 
             if (radv_image_is_tc_compat_cmask(image)) {
@@ -1217,11 +1217,11 @@ radv_init_metadata(struct radv_device *device, struct radv_image *image,
          (surface->display_dcc_offset ? surface->display_dcc_offset : surface->meta_offset);
       metadata->u.gfx9.swizzle_mode = surface->u.gfx9.swizzle_mode;
       metadata->u.gfx9.dcc_offset_256b = dcc_offset >> 8;
-      metadata->u.gfx9.dcc_pitch_max = surface->u.gfx9.display_dcc_pitch_max;
-      metadata->u.gfx9.dcc_independent_64b_blocks = surface->u.gfx9.dcc.independent_64B_blocks;
-      metadata->u.gfx9.dcc_independent_128b_blocks = surface->u.gfx9.dcc.independent_128B_blocks;
+      metadata->u.gfx9.dcc_pitch_max = surface->u.gfx9.color.display_dcc_pitch_max;
+      metadata->u.gfx9.dcc_independent_64b_blocks = surface->u.gfx9.color.dcc.independent_64B_blocks;
+      metadata->u.gfx9.dcc_independent_128b_blocks = surface->u.gfx9.color.dcc.independent_128B_blocks;
       metadata->u.gfx9.dcc_max_compressed_block_size =
-         surface->u.gfx9.dcc.max_compressed_block_size;
+         surface->u.gfx9.color.dcc.max_compressed_block_size;
       metadata->u.gfx9.scanout = (surface->flags & RADEON_SURF_SCANOUT) != 0;
    } else {
       metadata->u.legacy.microtile = surface->u.legacy.level[0].mode >= RADEON_SURF_MODE_1D
@@ -1355,7 +1355,7 @@ radv_image_init_retile_map(struct radv_device *device, struct radv_image *image)
       return vk_error(device->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
    }
 
-   memcpy(data, image->planes[0].surface.u.gfx9.dcc_retile_map, retile_map_size);
+   memcpy(data, image->planes[0].surface.u.gfx9.color.dcc_retile_map, retile_map_size);
    return VK_SUCCESS;
 }
 
@@ -1719,7 +1719,7 @@ radv_image_view_make_descriptor(struct radv_image_view *iview, struct radv_devic
    const struct legacy_surf_level *base_level_info = NULL;
    if (device->physical_device->rad_info.chip_class <= GFX9) {
       if (is_stencil)
-         base_level_info = &plane->surface.u.legacy.stencil_level[iview->base_mip];
+         base_level_info = &plane->surface.u.legacy.zs.stencil_level[iview->base_mip];
       else
          base_level_info = &plane->surface.u.legacy.level[iview->base_mip];
    }

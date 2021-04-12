@@ -466,7 +466,7 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
    /* src and dst have the same number of samples. */
    si_make_CB_shader_coherent(sctx, src->nr_samples, true,
                               /* Only src can have DCC.*/
-                              ((struct si_texture *)src)->surface.u.gfx9.dcc.pipe_aligned);
+                              ((struct si_texture *)src)->surface.u.gfx9.color.dcc.pipe_aligned);
 
    struct si_images *images = &sctx->images[PIPE_SHADER_COMPUTE];
    struct pipe_image_view saved_image[2] = {0};
@@ -529,9 +529,9 @@ void si_compute_copy_image(struct si_context *sctx, struct pipe_resource *dst, u
          sctx->cs_dcc_decompress = si_create_dcc_decompress_cs(ctx);
       ctx->bind_compute_state(ctx, sctx->cs_dcc_decompress);
 
-      info.block[0] = tex->surface.u.gfx9.dcc_block_width;
-      info.block[1] = tex->surface.u.gfx9.dcc_block_height;
-      info.block[2] = tex->surface.u.gfx9.dcc_block_depth;
+      info.block[0] = tex->surface.u.gfx9.color.dcc_block_width;
+      info.block[1] = tex->surface.u.gfx9.color.dcc_block_height;
+      info.block[2] = tex->surface.u.gfx9.color.dcc_block_depth;
 
       /* Make sure the block size is at least the same as wave size. */
       while (info.block[0] * info.block[1] * info.block[2] <
@@ -597,8 +597,8 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
    }
 
    /* Set images. */
-   bool use_uint16 = tex->surface.u.gfx9.dcc_retile_use_uint16;
-   unsigned num_elements = tex->surface.u.gfx9.dcc_retile_num_elements;
+   bool use_uint16 = tex->surface.u.gfx9.color.dcc_retile_use_uint16;
+   unsigned num_elements = tex->surface.u.gfx9.color.dcc_retile_num_elements;
    struct pipe_image_view img[3];
 
    assert(tex->dcc_retile_buffer);
@@ -621,7 +621,7 @@ void si_retile_dcc(struct si_context *sctx, struct si_texture *tex)
 
    img[2].format = PIPE_FORMAT_R8_UINT;
    img[2].u.buf.offset = tex->surface.display_dcc_offset;
-   img[2].u.buf.size = tex->surface.u.gfx9.display_dcc_size;
+   img[2].u.buf.size = tex->surface.u.gfx9.color.display_dcc_size;
 
    ctx->set_shader_images(ctx, PIPE_SHADER_COMPUTE, 0, 3, 0, img);
 

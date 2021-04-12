@@ -500,7 +500,7 @@ static void si_blit_decompress_color(struct si_context *sctx, struct si_texture 
 
    sctx->decompression_enabled = false;
    si_make_CB_shader_coherent(sctx, tex->buffer.b.b.nr_samples, vi_dcc_enabled(tex, first_level),
-                              tex->surface.u.gfx9.dcc.pipe_aligned);
+                              tex->surface.u.gfx9.color.dcc.pipe_aligned);
 
 expand_fmask:
    if (need_fmask_expand && tex->surface.fmask_offset && !tex->fmask_is_identity) {

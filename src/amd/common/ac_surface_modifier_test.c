@@ -83,8 +83,8 @@ get_addr_from_coord_base(ADDR_HANDLE addrlib, const struct radeon_surf *surf,
    din.numSlices = 1;
    din.numMipLevels = 1;
    din.numFrags = 1;
-   din.dccKeyFlags.pipeAligned = surf->u.gfx9.dcc.pipe_aligned;
-   din.dccKeyFlags.rbAligned = surf->u.gfx9.dcc.rb_aligned;
+   din.dccKeyFlags.pipeAligned = surf->u.gfx9.color.dcc.pipe_aligned;
+   din.dccKeyFlags.rbAligned = surf->u.gfx9.color.dcc.rb_aligned;
    din.dataSurfaceSize = surf->surf_size;
 
    ADDR_E_RETURNCODE ret = Addr2ComputeDccInfo(addrlib, &din, &dout);
@@ -125,8 +125,8 @@ void generate_hash(struct ac_addrlib *ac_addrlib,
    _mesa_sha1_update(&ctx, &surf->total_size, sizeof(surf->total_size));
    _mesa_sha1_update(&ctx, &surf->meta_offset, sizeof(surf->meta_offset));
    _mesa_sha1_update(&ctx, &surf->display_dcc_offset, sizeof(surf->display_dcc_offset));
-   _mesa_sha1_update(&ctx, &surf->u.gfx9.display_dcc_pitch_max,
-                     sizeof(surf->u.gfx9.display_dcc_pitch_max));
+   _mesa_sha1_update(&ctx, &surf->u.gfx9.color.display_dcc_pitch_max,
+                     sizeof(surf->u.gfx9.color.display_dcc_pitch_max));
 
    ADDR2_COMPUTE_SURFACE_ADDRFROMCOORD_INPUT input = {0};
    input.size = sizeof(input);
@@ -145,8 +145,8 @@ void generate_hash(struct ac_addrlib *ac_addrlib,
    if (surf->meta_offset) {
       dcc_input = get_addr_from_coord_base(addrlib, surf, entry->w,
                                            entry->h, entry->format,
-                                           surf->u.gfx9.dcc.rb_aligned,
-                                           surf->u.gfx9.dcc.pipe_aligned);
+                                           surf->u.gfx9.color.dcc.rb_aligned,
+                                           surf->u.gfx9.color.dcc.pipe_aligned);
    }
 
    ADDR2_COMPUTE_DCC_ADDRFROMCOORD_INPUT display_dcc_input = {0};
@@ -283,8 +283,8 @@ static void test_modifier(const struct radeon_info *info,
                      elem_bits, 20, &dcc_pitch,
                      NULL) << 12;
 
-         assert(surf.u.gfx9.display_dcc_size == align(dcc_size, dcc_align));
-         assert(surf.u.gfx9.display_dcc_pitch_max + 1 == dcc_pitch);
+         assert(surf.u.gfx9.color.display_dcc_size == align(dcc_size, dcc_align));
+         assert(surf.u.gfx9.color.display_dcc_pitch_max + 1 == dcc_pitch);
          assert(surf.display_dcc_offset == expected_offset);
 
          expected_offset += align(dcc_size, dcc_align);

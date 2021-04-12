@@ -1663,7 +1663,7 @@ static inline bool vi_dcc_enabled(struct si_texture *tex, unsigned level)
 static inline unsigned si_tile_mode_index(struct si_texture *tex, unsigned level, bool stencil)
 {
    if (stencil)
-      return tex->surface.u.legacy.stencil_tiling_index[level];
+      return tex->surface.u.legacy.zs.stencil_tiling_index[level];
    else
       return tex->surface.u.legacy.tiling_index[level];
 }

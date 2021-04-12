@@ -886,15 +886,15 @@ void r600_print_texture_info(struct r600_common_screen *rscreen,
 				"slice_size=%"PRIu64", npix_x=%u, "
 				"npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
 				"mode=%u, tiling_index = %u\n",
-				i, (uint64_t)rtex->surface.u.legacy.stencil_level[i].offset_256B * 256,
-				(uint64_t)rtex->surface.u.legacy.stencil_level[i].slice_size_dw * 4,
+				i, (uint64_t)rtex->surface.u.legacy.zs.stencil_level[i].offset_256B * 256,
+				(uint64_t)rtex->surface.u.legacy.zs.stencil_level[i].slice_size_dw * 4,
 				u_minify(rtex->resource.b.b.width0, i),
 				u_minify(rtex->resource.b.b.height0, i),
 				u_minify(rtex->resource.b.b.depth0, i),
-				rtex->surface.u.legacy.stencil_level[i].nblk_x,
-				rtex->surface.u.legacy.stencil_level[i].nblk_y,
-				rtex->surface.u.legacy.stencil_level[i].mode,
-				rtex->surface.u.legacy.stencil_tiling_index[i]);
+				rtex->surface.u.legacy.zs.stencil_level[i].nblk_x,
+				rtex->surface.u.legacy.zs.stencil_level[i].nblk_y,
+				rtex->surface.u.legacy.zs.stencil_level[i].mode,
+				rtex->surface.u.legacy.zs.stencil_tiling_index[i]);
 		}
 	}
 }

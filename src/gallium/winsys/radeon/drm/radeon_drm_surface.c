@@ -165,9 +165,9 @@ static void surf_winsys_to_drm(struct radeon_surface *surf_drm,
 
       for (i = 0; i <= surf_drm->last_level; i++) {
          surf_level_winsys_to_drm(&surf_drm->stencil_level[i],
-                                  &surf_ws->u.legacy.stencil_level[i],
+                                  &surf_ws->u.legacy.zs.stencil_level[i],
                                   surf_drm->nsamples);
-         surf_drm->stencil_tiling_index[i] = surf_ws->u.legacy.stencil_tiling_index[i];
+         surf_drm->stencil_tiling_index[i] = surf_ws->u.legacy.zs.stencil_tiling_index[i];
       }
    }
 }
@@ -207,10 +207,10 @@ static void surf_drm_to_winsys(struct radeon_drm_winsys *ws,
       surf_ws->u.legacy.stencil_tile_split = surf_drm->stencil_tile_split;
 
       for (i = 0; i <= surf_drm->last_level; i++) {
-         surf_level_drm_to_winsys(&surf_ws->u.legacy.stencil_level[i],
+         surf_level_drm_to_winsys(&surf_ws->u.legacy.zs.stencil_level[i],
                                   &surf_drm->stencil_level[i],
                                   surf_drm->nsamples);
-         surf_ws->u.legacy.stencil_tiling_index[i] = surf_drm->stencil_tiling_index[i];
+         surf_ws->u.legacy.zs.stencil_tiling_index[i] = surf_drm->stencil_tiling_index[i];
       }
    }
 
@@ -264,9 +264,9 @@ static void si_compute_cmask(const struct radeon_info *info,
    /* Each element of CMASK is a nibble. */
    unsigned slice_bytes = slice_elements / 2;
 
-   surf->u.legacy.cmask_slice_tile_max = (width * height) / (128*128);
-   if (surf->u.legacy.cmask_slice_tile_max)
-      surf->u.legacy.cmask_slice_tile_max -= 1;
+   surf->u.legacy.color.cmask_slice_tile_max = (width * height) / (128*128);
+   if (surf->u.legacy.color.cmask_slice_tile_max)
+      surf->u.legacy.color.cmask_slice_tile_max -= 1;
 
    unsigned num_layers;
    if (config->is_3d)
@@ -407,14 +407,14 @@ static int radeon_winsys_surface_init(struct radeon_winsys *rws,
       surf_ws->fmask_alignment_log2 = util_logbase2(MAX2(256, 1 << fmask.surf_alignment_log2));
       surf_ws->fmask_tile_swizzle = fmask.tile_swizzle;
 
-      surf_ws->u.legacy.fmask.slice_tile_max =
+      surf_ws->u.legacy.color.fmask.slice_tile_max =
             (fmask.u.legacy.level[0].nblk_x * fmask.u.legacy.level[0].nblk_y) / 64;
-      if (surf_ws->u.legacy.fmask.slice_tile_max)
-         surf_ws->u.legacy.fmask.slice_tile_max -= 1;
+      if (surf_ws->u.legacy.color.fmask.slice_tile_max)
+         surf_ws->u.legacy.color.fmask.slice_tile_max -= 1;
 
-      surf_ws->u.legacy.fmask.tiling_index = fmask.u.legacy.tiling_index[0];
-      surf_ws->u.legacy.fmask.bankh = fmask.u.legacy.bankh;
-      surf_ws->u.legacy.fmask.pitch_in_pixels = fmask.u.legacy.level[0].nblk_x;
+      surf_ws->u.legacy.color.fmask.tiling_index = fmask.u.legacy.tiling_index[0];
+      surf_ws->u.legacy.color.fmask.bankh = fmask.u.legacy.bankh;
+      surf_ws->u.legacy.color.fmask.pitch_in_pixels = fmask.u.legacy.level[0].nblk_x;
    }
 
    if (ws->gen == DRV_SI &&

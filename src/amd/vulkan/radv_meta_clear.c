@@ -1290,7 +1290,7 @@ radv_clear_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
          size = image->planes[0].surface.meta_size;
       } else {
          const struct legacy_surf_dcc_level *dcc_level =
-            &image->planes[0].surface.u.legacy.dcc_level[level];
+            &image->planes[0].surface.u.legacy.color.dcc_level[level];
 
          /* If dcc_fast_clear_size is 0 (which might happens for
           * mipmaps) the fill buffer operation below is a no-op.
@@ -1515,7 +1515,7 @@ radv_can_fast_clear_color(struct radv_cmd_buffer *cmd_buffer, const struct radv_
          for (uint32_t l = 0; l < iview->level_count; l++) {
             uint32_t level = iview->base_mip + l;
             struct legacy_surf_dcc_level *dcc_level =
-               &iview->image->planes[0].surface.u.legacy.dcc_level[level];
+               &iview->image->planes[0].surface.u.legacy.color.dcc_level[level];
 
             /* Do not fast clears if one level can't be
              * fast cleared.

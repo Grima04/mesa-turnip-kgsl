@@ -132,13 +132,13 @@ struct legacy_surf_layout {
          struct legacy_surf_dcc_level dcc_level[RADEON_SURF_MAX_LEVELS];
          struct legacy_surf_fmask fmask;
          unsigned cmask_slice_tile_max;
-      };
+      } color;
 
       /* Z/S layout */
       struct {
          struct legacy_surf_level stencil_level[RADEON_SURF_MAX_LEVELS];
          uint8_t stencil_tiling_index[RADEON_SURF_MAX_LEVELS];
-      };
+      } zs;
    };
 };
 
@@ -220,14 +220,14 @@ struct gfx9_surf_layout {
 
          /* CMASK level info (only level 0) */
          struct gfx9_surf_level cmask_level0;
-      };
+      } color;
 
       /* Z/S */
       struct {
          uint64_t stencil_offset; /* separate stencil */
          uint16_t stencil_epitch;   /* gfx9 only, not on gfx10 */
          uint8_t stencil_swizzle_mode;
-      };
+      } zs;
    };
 };
 

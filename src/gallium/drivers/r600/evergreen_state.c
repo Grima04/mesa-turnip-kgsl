@@ -756,7 +756,7 @@ static int evergreen_fill_tex_resource_words(struct r600_context *rctx,
 		case PIPE_FORMAT_X32_S8X24_UINT:
 			params->pipe_format = PIPE_FORMAT_S8_UINT;
 			tile_split = tmp->surface.u.legacy.stencil_tile_split;
-			surflevel = tmp->surface.u.legacy.stencil_level;
+			surflevel = tmp->surface.u.legacy.zs.stencil_level;
 			break;
 		default:;
 		}
@@ -1411,7 +1411,7 @@ static void evergreen_init_depth_surface(struct r600_context *rctx,
 
 		stile_split = eg_tile_split(stile_split);
 
-		stencil_offset = (uint64_t)rtex->surface.u.legacy.stencil_level[level].offset_256B * 256;
+		stencil_offset = (uint64_t)rtex->surface.u.legacy.zs.stencil_level[level].offset_256B * 256;
 		stencil_offset += rtex->resource.gpu_address;
 
 		surf->db_stencil_base = stencil_offset >> 8;

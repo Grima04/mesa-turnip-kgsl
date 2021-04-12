@@ -227,7 +227,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
          .buffer = radv_buffer_to_handle(&retile_buffer),
          .offset = 0,
          .range = retile_map_size,
-         .format = image->planes[0].surface.u.gfx9.dcc_retile_use_uint16 ? VK_FORMAT_R16G16_UINT
+         .format = image->planes[0].surface.u.gfx9.color.dcc_retile_use_uint16 ? VK_FORMAT_R16G16_UINT
                                                                          : VK_FORMAT_R32G32_UINT,
       });
    radv_buffer_view_init(views + 1, cmd_buffer->device,
@@ -243,7 +243,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
                             .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
                             .buffer = radv_buffer_to_handle(&buffer),
                             .offset = image->planes[0].surface.display_dcc_offset,
-                            .range = image->planes[0].surface.u.gfx9.display_dcc_size,
+                            .range = image->planes[0].surface.u.gfx9.color.display_dcc_size,
                             .format = VK_FORMAT_R8_UINT,
                          });
    for (unsigned i = 0; i < 3; ++i)
@@ -281,7 +281,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 
    /* src+dst pairs count double, so the number of DCC bytes we move is
     * actually half of dcc_retile_num_elements. */
-   radv_unaligned_dispatch(cmd_buffer, image->planes[0].surface.u.gfx9.dcc_retile_num_elements / 2,
+   radv_unaligned_dispatch(cmd_buffer, image->planes[0].surface.u.gfx9.color.dcc_retile_num_elements / 2,
                            1, 1);
 
    radv_meta_restore(&saved_state, cmd_buffer);

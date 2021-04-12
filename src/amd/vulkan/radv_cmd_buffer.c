@@ -5906,7 +5906,7 @@ radv_init_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
        */
       /* Compute the size of all fast clearable DCC levels. */
       for (unsigned i = 0; i < image->planes[0].surface.num_meta_levels; i++) {
-         struct legacy_surf_dcc_level *dcc_level = &image->planes[0].surface.u.legacy.dcc_level[i];
+         struct legacy_surf_dcc_level *dcc_level = &image->planes[0].surface.u.legacy.color.dcc_level[i];
          unsigned dcc_fast_clear_size =
             dcc_level->dcc_slice_fast_clear_size * image->info.array_size;
 

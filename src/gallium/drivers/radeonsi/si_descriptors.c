@@ -310,7 +310,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
    if (sscreen->info.chip_class >= GFX9) {
       /* Only stencil_offset needs to be added here. */
       if (is_stencil)
-         va += tex->surface.u.gfx9.stencil_offset;
+         va += tex->surface.u.gfx9.zs.stencil_offset;
       else
          va += tex->surface.u.gfx9.surf_offset;
    } else {
@@ -335,7 +335,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
             (!tex->dcc_separate_buffer ? tex->buffer.gpu_address : 0) + tex->surface.meta_offset;
 
          if (sscreen->info.chip_class == GFX8) {
-            meta_va += tex->surface.u.legacy.dcc_level[base_level].dcc_offset;
+            meta_va += tex->surface.u.legacy.color.dcc_level[base_level].dcc_offset;
             assert(base_level_info->mode == RADEON_SURF_MODE_2D);
          }
 
@@ -358,7 +358,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[3] &= C_00A00C_SW_MODE;
 
       if (is_stencil) {
-         state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.stencil_swizzle_mode);
+         state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
       } else {
          state[3] |= S_00A00C_SW_MODE(tex->surface.u.gfx9.swizzle_mode);
       }
@@ -373,7 +373,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
          };
 
          if (!tex->is_depth && tex->surface.meta_offset)
-            meta = tex->surface.u.gfx9.dcc;
+            meta = tex->surface.u.gfx9.color.dcc;
 
          state[6] |= S_00A018_META_PIPE_ALIGNED(meta.pipe_aligned) |
                      S_00A018_META_DATA_ADDRESS_LO(meta_va >> 8) |
@@ -386,8 +386,8 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
       state[4] &= C_008F20_PITCH;
 
       if (is_stencil) {
-         state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.stencil_swizzle_mode);
-         state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.stencil_epitch);
+         state[3] |= S_008F1C_SW_MODE(tex->surface.u.gfx9.zs.stencil_swizzle_mode);
+         state[4] |= S_008F20_PITCH(tex->surface.u.gfx9.zs.stencil_epitch);
       } else {
          uint16_t epitch = tex->surface.u.gfx9.epitch;
          if (tex->buffer.b.b.format == PIPE_FORMAT_R8G8_R8B8_UNORM &&
@@ -412,7 +412,7 @@ void si_set_mutable_tex_desc_fields(struct si_screen *sscreen, struct si_texture
          };
 
          if (!tex->is_depth && tex->surface.meta_offset)
-            meta = tex->surface.u.gfx9.dcc;
+            meta = tex->surface.u.gfx9.color.dcc;
 
          state[5] |= S_008F24_META_DATA_ADDRESS(meta_va >> 40) |
                      S_008F24_META_PIPE_ALIGNED(meta.pipe_aligned) |

@@ -836,8 +836,8 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
          u_log_printf(log,
                       "    DCCLevel[%i]: enabled=%u, offset=%u, "
                       "fast_clear_size=%u\n",
-                      i, i < tex->surface.num_meta_levels, tex->surface.u.legacy.dcc_level[i].dcc_offset,
-                      tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size);
+                      i, i < tex->surface.num_meta_levels, tex->surface.u.legacy.color.dcc_level[i].dcc_offset,
+                      tex->surface.u.legacy.color.dcc_level[i].dcc_fast_clear_size);
    }
 
    for (i = 0; i <= tex->buffer.b.b.last_level; i++)
@@ -859,14 +859,14 @@ void si_print_texture_info(struct si_screen *sscreen, struct si_texture *tex,
                       "slice_size=%" PRIu64 ", npix_x=%u, "
                       "npix_y=%u, npix_z=%u, nblk_x=%u, nblk_y=%u, "
                       "mode=%u, tiling_index = %u\n",
-                      i, (uint64_t)tex->surface.u.legacy.stencil_level[i].offset_256B * 256,
-                      (uint64_t)tex->surface.u.legacy.stencil_level[i].slice_size_dw * 4,
+                      i, (uint64_t)tex->surface.u.legacy.zs.stencil_level[i].offset_256B * 256,
+                      (uint64_t)tex->surface.u.legacy.zs.stencil_level[i].slice_size_dw * 4,
                       u_minify(tex->buffer.b.b.width0, i), u_minify(tex->buffer.b.b.height0, i),
                       u_minify(tex->buffer.b.b.depth0, i),
-                      tex->surface.u.legacy.stencil_level[i].nblk_x,
-                      tex->surface.u.legacy.stencil_level[i].nblk_y,
-                      tex->surface.u.legacy.stencil_level[i].mode,
-                      tex->surface.u.legacy.stencil_tiling_index[i]);
+                      tex->surface.u.legacy.zs.stencil_level[i].nblk_x,
+                      tex->surface.u.legacy.zs.stencil_level[i].nblk_y,
+                      tex->surface.u.legacy.zs.stencil_level[i].mode,
+                      tex->surface.u.legacy.zs.stencil_tiling_index[i]);
       }
    }
 }
@@ -1070,11 +1070,11 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
             unsigned size = 0;
 
             for (unsigned i = 0; i < tex->surface.num_meta_levels; i++) {
-               if (!tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size)
+               if (!tex->surface.u.legacy.color.dcc_level[i].dcc_fast_clear_size)
                   break;
 
-               size = tex->surface.u.legacy.dcc_level[i].dcc_offset +
-                      tex->surface.u.legacy.dcc_level[i].dcc_fast_clear_size;
+               size = tex->surface.u.legacy.color.dcc_level[i].dcc_offset +
+                      tex->surface.u.legacy.color.dcc_level[i].dcc_fast_clear_size;
             }
 
             /* Mipmap levels with DCC. */
@@ -1100,7 +1100,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
           * Clear to white to indicate that. */
          assert(num_clears < ARRAY_SIZE(clears));
          si_init_buffer_clear(&clears[num_clears++], &tex->buffer.b.b, tex->surface.display_dcc_offset,
-                              tex->surface.u.gfx9.display_dcc_size, DCC_CLEAR_COLOR_1111);
+                              tex->surface.u.gfx9.color.display_dcc_size, DCC_CLEAR_COLOR_1111);
       }
 
       /* Upload the DCC retile map.
@@ -1120,7 +1120,7 @@ static struct si_texture *si_texture_create_object(struct pipe_screen *screen,
       void *map = sscreen->ws->buffer_map(sscreen->ws, buf->buf, NULL, PIPE_MAP_WRITE);
 
       /* Upload the retile map into the staging buffer. */
-      memcpy(map, tex->surface.u.gfx9.dcc_retile_map, dcc_retile_map_size);
+      memcpy(map, tex->surface.u.gfx9.color.dcc_retile_map, dcc_retile_map_size);
 
       /* Copy the staging buffer to the buffer backing the texture. */
       struct si_context *sctx = (struct si_context *)sscreen->aux_context;
