@@ -85,14 +85,14 @@ panfrost-t860-traces:arm64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-g52-gles2:arm64:
+panfrost-g52-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
   variables:
     ENV_VARS: "DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=G52"
 
-.panfrost-g52-gles3:arm64:
+panfrost-g52-gles3:arm64:
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
