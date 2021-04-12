@@ -252,7 +252,7 @@ panfrost_bifrost_swizzle(unsigned components)
 
 unsigned
 panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
-                                 enum pipe_format format, bool dither);
+                                 enum pipe_format format);
 
 struct pan_pool;
 struct pan_scoreboard;

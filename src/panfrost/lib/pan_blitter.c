@@ -257,7 +257,7 @@ pan_blitter_emit_bifrost_blend(const struct panfrost_device *dev,
                         cfg.bifrost.equation.color_mask = 0xf;
                         cfg.bifrost.internal.fixed_function.num_comps = 4;
                         cfg.bifrost.internal.fixed_function.conversion.memory_format =
-                                panfrost_format_to_bifrost_blend(dev, iview->format, true);
+                                panfrost_format_to_bifrost_blend(dev, iview->format);
                         cfg.bifrost.internal.fixed_function.conversion.register_format =
                                 blit_type_to_reg_fmt(type);
 
