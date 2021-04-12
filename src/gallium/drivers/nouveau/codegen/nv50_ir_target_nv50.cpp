@@ -402,11 +402,12 @@ TargetNV50::insnCanLoadOffset(const Instruction *i, int s, int offset) const
    if (!i->src(s).isIndirect(0))
       return true;
    offset += i->src(s).get()->reg.data.offset;
-   if (i->op == OP_LOAD || i->op == OP_STORE) {
+   if (i->op == OP_LOAD || i->op == OP_STORE || i->op == OP_ATOM) {
       // There are some restrictions in theory, but in practice they're never
-      // going to be hit. When we enable shared/global memory, this will
-      // become more important.
-      return true;
+      // going to be hit. However offsets on global/shared memory are just
+      // plain not supported.
+      return i->src(s).getFile() != FILE_MEMORY_GLOBAL &&
+         i->src(s).getFile() != FILE_MEMORY_SHARED;
    }
    return offset >= 0 && offset <= (int32_t)(127 * i->src(s).get()->reg.size);
 }
