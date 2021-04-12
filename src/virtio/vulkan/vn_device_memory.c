@@ -11,6 +11,7 @@
 #include "vn_device_memory.h"
 
 #include "venus-protocol/vn_protocol_driver_device_memory.h"
+#include "venus-protocol/vn_protocol_driver_transport.h"
 
 #include "vn_device.h"
 
@@ -209,6 +210,10 @@ vn_AllocateMemory(VkDevice device,
    VkDeviceMemory mem_handle = vn_device_memory_to_handle(mem);
    VkResult result;
    if (import_info) {
+      assert(import_info->handleType &
+             (VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+              VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT));
+
       struct vn_renderer_bo *bo;
       result = vn_renderer_bo_create_dmabuf(
          dev->instance->renderer, pAllocateInfo->allocationSize,
@@ -219,8 +224,19 @@ vn_AllocateMemory(VkDevice device,
          return vn_error(dev->instance, result);
       }
 
-      /* TODO create host-side memory from bo->res_id */
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      const VkImportMemoryResourceInfoMESA import_memory_resource_info = {
+         .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_RESOURCE_INFO_MESA,
+         .pNext = pAllocateInfo->pNext,
+         .resourceId = bo->res_id,
+      };
+      const VkMemoryAllocateInfo memory_allocate_info = {
+         .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+         .pNext = &import_memory_resource_info,
+         .allocationSize = pAllocateInfo->allocationSize,
+         .memoryTypeIndex = pAllocateInfo->memoryTypeIndex,
+      };
+      result = vn_call_vkAllocateMemory(
+         dev->instance, device, &memory_allocate_info, NULL, &mem_handle);
       if (result != VK_SUCCESS) {
          vn_renderer_bo_unref(bo);
          vk_free(alloc, mem);
@@ -389,6 +405,10 @@ vn_GetMemoryFdKHR(VkDevice device,
    struct vn_device_memory *mem =
       vn_device_memory_from_handle(pGetFdInfo->memory);
 
+   /* At the moment, we support only the below handle types. */
+   assert(pGetFdInfo->handleType &
+          (VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+           VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT));
    assert(!mem->base_memory && mem->base_bo);
    *pFd = vn_renderer_bo_export_dmabuf(mem->base_bo);
    if (*pFd < 0)
@@ -405,14 +425,27 @@ vn_GetMemoryFdPropertiesKHR(VkDevice device,
 {
    struct vn_device *dev = vn_device_from_handle(device);
 
+   if (handleType != VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT)
+      return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
+
    struct vn_renderer_bo *bo;
    VkResult result = vn_renderer_bo_create_dmabuf(dev->instance->renderer, 0,
                                                   fd, 0, handleType, &bo);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 
-   /* TODO call into the host with bo->res_id */
-   result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+   VkMemoryResourcePropertiesMESA memory_resource_properties = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_RESOURCE_PROPERTIES_MESA,
+      .pNext = NULL,
+      .memoryTypeBits = 0,
+   };
+   result = vn_call_vkGetMemoryResourcePropertiesMESA(
+      dev->instance, device, bo->res_id, &memory_resource_properties);
+   if (result != VK_SUCCESS)
+      return vn_error(dev->instance, result);
+
+   pMemoryFdProperties->memoryTypeBits =
+      memory_resource_properties.memoryTypeBits;
 
    vn_renderer_bo_unref(bo);
 
