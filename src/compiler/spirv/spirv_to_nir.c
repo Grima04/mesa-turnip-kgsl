@@ -2334,9 +2334,11 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
    /* Vulkan Environment for SPIR-V says "SubgroupMemory, CrossWorkgroupMemory,
     * and AtomicCounterMemory are ignored".
     */
-   semantics &= ~(SpvMemorySemanticsSubgroupMemoryMask |
-                  SpvMemorySemanticsCrossWorkgroupMemoryMask |
-                  SpvMemorySemanticsAtomicCounterMemoryMask);
+   if (b->options->environment == NIR_SPIRV_VULKAN) {
+      semantics &= ~(SpvMemorySemanticsSubgroupMemoryMask |
+                     SpvMemorySemanticsCrossWorkgroupMemoryMask |
+                     SpvMemorySemanticsAtomicCounterMemoryMask);
+   }
 
    /* TODO: Consider adding nir_var_mem_image mode to NIR so it can be used
     * for SpvMemorySemanticsImageMemoryMask.
@@ -2352,6 +2354,8 @@ vtn_mem_semantics_to_nir_var_modes(struct vtn_builder *b,
    }
    if (semantics & SpvMemorySemanticsWorkgroupMemoryMask)
       modes |= nir_var_mem_shared;
+   if (semantics & SpvMemorySemanticsCrossWorkgroupMemoryMask)
+      modes |= nir_var_mem_global;
    if (semantics & SpvMemorySemanticsOutputMemoryMask) {
       modes |= nir_var_shader_out;
    }
