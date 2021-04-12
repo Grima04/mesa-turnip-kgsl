@@ -494,6 +494,15 @@ agx_compile_shader_nir(nir_shader *nir,
       break; /* TODO: Multi-function shaders */
    }
 
+   /* Terminate the shader after the exit block */
+   agx_block *last_block = list_last_entry(&ctx->blocks, agx_block, link);
+   agx_builder _b = agx_init_builder(ctx, agx_after_block(last_block));
+   agx_stop(&_b);
+
+   /* Also add traps to match the blob, unsure what the function is */
+   for (unsigned i = 0; i < 8; ++i)
+      agx_trap(&_b);
+
    unsigned block_source_count = 0;
 
    /* Name blocks now that we're done emitting so the order is consistent */
