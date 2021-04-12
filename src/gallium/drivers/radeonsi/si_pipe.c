@@ -355,7 +355,7 @@ static enum pipe_reset_status si_get_reset_status(struct pipe_context *ctx)
       return PIPE_NO_RESET;
 
    bool needs_reset;
-   enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, &needs_reset);
+   enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(sctx->ctx, false, &needs_reset);
 
    if (status != PIPE_NO_RESET && needs_reset && !(sctx->context_flags & SI_CONTEXT_FLAG_AUX)) {
       /* Call the gallium frontend to set a no-op API dispatch. */
@@ -744,12 +744,11 @@ static struct pipe_context *si_create_context(struct pipe_screen *screen, unsign
 
       /* Check if the aux_context needs to be recreated */
       struct si_context *saux = (struct si_context *)sscreen->aux_context;
-      bool needs_reset;
 
       simple_mtx_lock(&sscreen->aux_context_lock);
       enum pipe_reset_status status = sctx->ws->ctx_query_reset_status(
-         saux->ctx, &needs_reset);
-      if (status != PIPE_NO_RESET && needs_reset) {
+         saux->ctx, true, NULL);
+      if (status != PIPE_NO_RESET) {
          /* We lost the aux_context, create a new one */
          struct u_log_context *aux_log = (saux)->log;
          sscreen->aux_context->set_log_context(sscreen->aux_context, NULL);

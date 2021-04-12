@@ -334,7 +334,8 @@ static void amdgpu_ctx_destroy(struct radeon_winsys_ctx *rwctx)
 }
 
 static enum pipe_reset_status
-amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool *needs_reset)
+amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool full_reset_only,
+                              bool *needs_reset)
 {
    struct amdgpu_ctx *ctx = (struct amdgpu_ctx*)rwctx;
    int r;
@@ -345,6 +346,14 @@ amdgpu_ctx_query_reset_status(struct radeon_winsys_ctx *rwctx, bool *needs_reset
    /* Return a failure due to a GPU hang. */
    if (ctx->ws->info.drm_minor >= 24) {
       uint64_t flags;
+
+      if (full_reset_only &&
+          ctx->initial_num_total_rejected_cs == ctx->ws->num_total_rejected_cs) {
+         /* If the caller is only interested in full reset (= wants to ignore soft
+          * recoveries), we can use the rejected cs count as a quick first check.
+          */
+         return PIPE_NO_RESET;
+      }
 
       r = amdgpu_cs_query_reset_state2(ctx->ctx, &flags);
       if (r) {
