@@ -371,7 +371,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
         };
 
         for (unsigned i = 0; i < rt_count; i++) {
-                if (!rts[i] || panfrost_blend_format(rts[i]->format).internal)
+                if (!rts[i] || panfrost_blendable_formats[rts[i]->format].internal)
                         continue;
 
                 struct pan_blit_blend_shader_key key = {

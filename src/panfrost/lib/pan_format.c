@@ -59,7 +59,7 @@
         BFMT2(pipe ##_UNORM, R8G8B8A8, writeback, 0), \
         BFMT2(pipe ##_SRGB, R8G8B8A8, writeback, 1)
 
-static const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_COUNT] = {
+const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_COUNT] = {
         BFMT_SRGB(L8, R8),
         BFMT_SRGB(L8A8, R8G8),
         BFMT_SRGB(R8, R8),
@@ -92,12 +92,6 @@ static const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_
         BFMT(R5G5B5A1_UNORM, R5G5B5A1),
         BFMT(B5G5R5X1_UNORM, R5G5B5A1),
 };
-
-struct pan_blendable_format
-panfrost_blend_format(enum pipe_format format)
-{
-        return panfrost_blendable_formats[format];
-}
 
 /* Convenience */
 

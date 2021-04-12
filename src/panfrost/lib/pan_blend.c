@@ -143,7 +143,7 @@ pan_blend_can_fixed_function(const struct panfrost_device *dev,
                 return false;
 
         /* Not all formats can be blended by fixed-function hardware */
-        if (!panfrost_blend_format(rt_state->format).internal)
+        if (!panfrost_blendable_formats[rt_state->format].internal)
                 return false;
 
         if (!rt_state->equation.blend_enable)

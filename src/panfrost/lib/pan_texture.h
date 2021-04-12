@@ -205,9 +205,7 @@ struct pan_blendable_format {
         mali_pixel_format bifrost_no_dither;
 };
 
-struct pan_blendable_format
-panfrost_blend_format(enum pipe_format format);
-
+extern const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_COUNT];
 extern const struct panfrost_format panfrost_pipe_format_v6[PIPE_FORMAT_COUNT];
 extern const struct panfrost_format panfrost_pipe_format_v7[PIPE_FORMAT_COUNT];
 
