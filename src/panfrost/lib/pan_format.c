@@ -44,36 +44,40 @@
 #define MALI_BLEND_AU_R5G5B5A1    (MALI_RGB5_A1_AU  << 12)
 #define MALI_BLEND_PU_R5G5B5A1    (MALI_RGB5_A1_PU  << 12)
 
-#define BFMT2(pipe, internal, writeback) \
+#define BFMT2(pipe, internal, writeback, srgb) \
         [PIPE_FORMAT_##pipe] = { \
                 MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
                 MALI_MFBD_COLOR_FORMAT_## writeback, \
-                MALI_BLEND_AU_ ## internal, \
-                MALI_BLEND_PU_ ## internal, \
+                MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0), \
+                MALI_BLEND_PU_ ## internal | (srgb ? (1 << 20) : 0), \
         }
 
 #define BFMT(pipe, internal_and_writeback) \
-        BFMT2(pipe, internal_and_writeback, internal_and_writeback)
+        BFMT2(pipe, internal_and_writeback, internal_and_writeback, 0)
+
+#define BFMT_SRGB(pipe, writeback) \
+        BFMT2(pipe ##_UNORM, R8G8B8A8, writeback, 0), \
+        BFMT2(pipe ##_SRGB, R8G8B8A8, writeback, 1)
 
 static const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_COUNT] = {
-        BFMT2(L8_UNORM, R8G8B8A8, R8),
-        BFMT2(L8A8_UNORM, R8G8B8A8, R8G8),
-        BFMT2(I8_UNORM, R8G8B8A8, R8),
-        BFMT2(A8_UNORM, R8G8B8A8, R8),
-        BFMT2(R8_UNORM, R8G8B8A8, R8),
-        BFMT2(R8G8_UNORM, R8G8B8A8, R8G8),
-        BFMT2(R8G8B8_UNORM, R8G8B8A8, R8G8B8),
+        BFMT_SRGB(L8, R8),
+        BFMT_SRGB(L8A8, R8G8),
+        BFMT_SRGB(R8, R8),
+        BFMT_SRGB(R8G8, R8G8),
+        BFMT_SRGB(R8G8B8, R8G8B8),
 
-        BFMT(B8G8R8A8_UNORM, R8G8B8A8),
-        BFMT(B8G8R8X8_UNORM, R8G8B8A8),
-        BFMT(A8R8G8B8_UNORM, R8G8B8A8),
-        BFMT(X8R8G8B8_UNORM, R8G8B8A8),
-        BFMT(A8B8G8R8_UNORM, R8G8B8A8),
-        BFMT(X8B8G8R8_UNORM, R8G8B8A8),
-        BFMT(R8G8B8X8_UNORM, R8G8B8A8),
-        BFMT(R8G8B8A8_UNORM, R8G8B8A8),
+        BFMT_SRGB(B8G8R8A8, R8G8B8A8),
+        BFMT_SRGB(B8G8R8X8, R8G8B8A8),
+        BFMT_SRGB(A8R8G8B8, R8G8B8A8),
+        BFMT_SRGB(X8R8G8B8, R8G8B8A8),
+        BFMT_SRGB(A8B8G8R8, R8G8B8A8),
+        BFMT_SRGB(X8B8G8R8, R8G8B8A8),
+        BFMT_SRGB(R8G8B8X8, R8G8B8A8),
+        BFMT_SRGB(R8G8B8A8, R8G8B8A8),
 
-        BFMT2(B5G6R5_UNORM, R5G6B5A0, R5G6B5),
+        BFMT2(A8_UNORM, R8G8B8A8, R8, 0),
+        BFMT2(I8_UNORM, R8G8B8A8, R8, 0),
+        BFMT2(B5G6R5_UNORM, R5G6B5A0, R5G6B5, 0),
 
         BFMT(A4B4G4R4_UNORM, R4G4B4A4),
         BFMT(B4G4R4A4_UNORM, R4G4B4A4),
@@ -89,12 +93,10 @@ static const struct pan_blendable_format panfrost_blendable_formats[PIPE_FORMAT_
         BFMT(B5G5R5X1_UNORM, R5G5B5A1),
 };
 
-/* Accessor that is generic over linear/sRGB */
-
 struct pan_blendable_format
 panfrost_blend_format(enum pipe_format format)
 {
-        return panfrost_blendable_formats[util_format_linear(format)];
+        return panfrost_blendable_formats[format];
 }
 
 /* Convenience */
@@ -699,7 +701,7 @@ unsigned
 panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
                                  const struct util_format_description *desc, bool dither)
 {
-        struct pan_blendable_format fmt = panfrost_blend_format(desc->format);
+        struct pan_blendable_format fmt = panfrost_blendable_formats[desc->format];
 
         /* Formats requiring blend shaders are stored raw in the tilebuffer */
         if (!fmt.internal)
@@ -709,9 +711,6 @@ panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
 
         if (dev->quirks & HAS_SWIZZLES)
                 extra |= panfrost_get_default_swizzle(4);
-
-        if (desc->colorspace == UTIL_FORMAT_COLORSPACE_SRGB)
-                extra |= 1 << 20;
 
         return (dither ? fmt.bifrost_dither : fmt.bifrost_no_dither) | extra;
 }
