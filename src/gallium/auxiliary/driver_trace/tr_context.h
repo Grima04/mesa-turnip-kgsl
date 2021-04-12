@@ -55,6 +55,8 @@ struct trace_context
 
    struct pipe_framebuffer_state unwrapped_state;
    bool seen_fb_state;
+
+   bool threaded;
 };
 
 
@@ -77,7 +79,8 @@ struct pipe_context *
 trace_context_create(struct trace_screen *tr_scr,
                      struct pipe_context *pipe);
 
-
+struct pipe_context *
+trace_context_create_threaded(struct pipe_screen *_screen, struct pipe_context *pipe);
 #ifdef __cplusplus
 }
 #endif

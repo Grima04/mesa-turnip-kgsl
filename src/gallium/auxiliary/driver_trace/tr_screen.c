@@ -27,7 +27,9 @@
 
 #include "util/format/u_format.h"
 #include "util/u_memory.h"
+#include "util/hash_table.h"
 #include "util/simple_list.h"
+#include "util/u_threaded_context.h"
 
 #include "tr_dump.h"
 #include "tr_dump_defines.h"
@@ -39,6 +41,7 @@
 
 
 static bool trace = false;
+static struct hash_table *trace_screens;
 
 static const char *
 trace_screen_get_name(struct pipe_screen *_screen)
@@ -263,6 +266,28 @@ trace_screen_is_format_supported(struct pipe_screen *_screen,
 }
 
 
+struct pipe_context *
+trace_context_create_threaded(struct pipe_screen *screen, struct pipe_context *pipe)
+{
+   if (!trace_screens)
+      return pipe;
+
+   struct hash_entry *he = _mesa_hash_table_search(trace_screens, screen);
+   if (!he)
+      return pipe;
+   struct trace_screen *tr_scr = trace_screen(he->data);
+
+   if (tr_scr->trace_tc)
+      return pipe;
+
+   struct pipe_context *ctx = trace_context_create(tr_scr, pipe);
+   if (ctx) {
+      struct trace_context *tr_ctx = trace_context(ctx);
+      tr_ctx->threaded = true;
+   }
+   return ctx;
+}
+
 static struct pipe_context *
 trace_screen_context_create(struct pipe_screen *_screen, void *priv,
                             unsigned flags)
@@ -271,19 +296,20 @@ trace_screen_context_create(struct pipe_screen *_screen, void *priv,
    struct pipe_screen *screen = tr_scr->screen;
    struct pipe_context *result;
 
+   result = screen->context_create(screen, priv, flags);
+
    trace_dump_call_begin("pipe_screen", "context_create");
 
    trace_dump_arg(ptr, screen);
    trace_dump_arg(ptr, priv);
    trace_dump_arg(uint, flags);
 
-   result = screen->context_create(screen, priv, flags);
-
    trace_dump_ret(ptr, result);
 
    trace_dump_call_end();
 
-   result = trace_context_create(tr_scr, result);
+   if (result && (tr_scr->trace_tc || result->draw_vbo != tc_draw_vbo))
+      result = trace_context_create(tr_scr, result);
 
    return result;
 }
@@ -707,14 +733,15 @@ trace_screen_fence_finish(struct pipe_screen *_screen,
    struct pipe_context *ctx = _ctx ? trace_context(_ctx)->pipe : NULL;
    int result;
 
+   result = screen->fence_finish(screen, ctx, fence, timeout);
+
+
    trace_dump_call_begin("pipe_screen", "fence_finish");
 
    trace_dump_arg(ptr, screen);
    trace_dump_arg(ptr, ctx);
    trace_dump_arg(ptr, fence);
    trace_dump_arg(uint, timeout);
-
-   result = screen->fence_finish(screen, ctx, fence, timeout);
 
    trace_dump_ret(bool, result);
 
@@ -803,6 +830,17 @@ trace_screen_destroy(struct pipe_screen *_screen)
    trace_dump_call_begin("pipe_screen", "destroy");
    trace_dump_arg(ptr, screen);
    trace_dump_call_end();
+
+   if (trace_screens) {
+      struct hash_entry *he = _mesa_hash_table_search(trace_screens, screen);
+      if (he) {
+         _mesa_hash_table_remove(trace_screens, he);
+         if (!_mesa_hash_table_num_entries(trace_screens)) {
+            _mesa_hash_table_destroy(trace_screens, NULL);
+            trace_screens = NULL;
+         }
+      }
+   }
 
    screen->destroy(screen);
 
@@ -903,6 +941,12 @@ trace_screen_create(struct pipe_screen *screen)
 
    trace_dump_ret(ptr, screen);
    trace_dump_call_end();
+
+   if (!trace_screens)
+      trace_screens = _mesa_hash_table_create(NULL, _mesa_hash_pointer, _mesa_key_pointer_equal);
+   _mesa_hash_table_insert(trace_screens, screen, tr_scr);
+
+   tr_scr->trace_tc = debug_get_bool_option("GALLIUM_TRACE_TC", false);
 
    return &tr_scr->base;
 

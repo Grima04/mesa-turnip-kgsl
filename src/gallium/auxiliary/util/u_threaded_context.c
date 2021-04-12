@@ -30,6 +30,7 @@
 #include "util/u_inlines.h"
 #include "util/u_memory.h"
 #include "util/u_upload_mgr.h"
+#include "driver_trace/tr_context.h"
 #include "util/log.h"
 #include "compiler/shader_info.h"
 
@@ -3090,6 +3091,8 @@ threaded_context_create(struct pipe_context *pipe,
       return NULL;
    }
    memset(tc, 0, sizeof(*tc));
+
+   pipe = trace_context_create_threaded(pipe->screen, pipe);
 
    assert((uintptr_t)tc % 16 == 0);
    /* These should be static asserts, but they don't work with MSVC */

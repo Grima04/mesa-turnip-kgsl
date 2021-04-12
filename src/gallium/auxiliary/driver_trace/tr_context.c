@@ -1028,8 +1028,6 @@ trace_context_sampler_view_destroy(struct pipe_context *_pipe,
    struct pipe_context *pipe = tr_ctx->pipe;
    struct pipe_sampler_view *view = tr_view->sampler_view;
 
-   assert(_view->context == _pipe);
-
    trace_dump_call_begin("pipe_context", "sampler_view_destroy");
 
    trace_dump_arg(ptr, pipe);
