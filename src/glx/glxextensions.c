@@ -55,22 +55,6 @@ struct extension_info
    unsigned char bit;
 
    /**
-    * The client (i.e., libGL) supports this extension.
-    *
-    * Except during bring up, all extensions should have this set to Y.  There
-    * are a few cases of extensions that have partial (or speculative)
-    * support, but these are rare.  There also shouldn't be any new ones
-    * added.
-    *
-    * Generally, extensions require server support and ::client_support to be
-    * enabled.  If the display is capable of direct rendering,
-    * ::direct_support is also required.
-    *
-    * \sa ::client_only
-    */
-   unsigned char client_support;
-
-   /**
     * The direct-renderer (e.g., i965_dri.so) supports this extension.
     *
     * For cases where all of the infrastructure to support the extension is a
@@ -91,13 +75,11 @@ struct extension_info
     * entirely in the client library.  There is no dependency on the server or
     * the direct-renderer.
     *
-    * These extensions will be enabled if ::client_support is set.
-    *
     * \note
     * An extension \b cannot be both client-only and direct-only because being
     * direct-only implies a dependency on the direct renderer.
     *
-    * \sa ::client_support, ::direct_only
+    * \sa ::direct_only
     */
    unsigned char client_only;
 
@@ -109,211 +91,206 @@ struct extension_info
     * the client library and the direct renderer.  A few of the swap-related
     * extensions are intended to behave this way.
     *
-    * These extensions will be enabled if both ::client_support and
-    * ::direct_support are set.
-    *
     * \note
     * An extension \b cannot be both client-only and direct-only because being
     * client-only implies that all functionality is outside the
     * direct-renderer.
     *
-    * \sa ::direct_support, ::client_only
+    * \sa ::client_only
     */
    unsigned char direct_only;
 };
 
 /* *INDENT-OFF* */
 static const struct extension_info known_glx_extensions[] = {
-   { GLX(ARB_context_flush_control),      Y, N, N, N },
-   { GLX(ARB_create_context),             Y, N, N, N },
-   { GLX(ARB_create_context_no_error),    Y, N, N, N },
-   { GLX(ARB_create_context_profile),     Y, N, N, N },
-   { GLX(ARB_create_context_robustness),  Y, N, N, N },
-   { GLX(ARB_fbconfig_float),             Y, Y, N, N },
-   { GLX(ARB_framebuffer_sRGB),           Y, Y, N, N },
-   { GLX(ARB_get_proc_address),           Y, N, Y, N },
-   { GLX(ARB_multisample),                Y, Y, N, N },
-   { GLX(EXT_buffer_age),                 Y, N, N, Y },
-   { GLX(EXT_create_context_es2_profile), Y, N, N, N },
-   { GLX(EXT_create_context_es_profile),  Y, N, N, N },
-   { GLX(EXT_fbconfig_packed_float),      Y, Y, N, N },
-   { GLX(EXT_framebuffer_sRGB),           Y, Y, N, N },
-   { GLX(EXT_import_context),             Y, Y, N, N },
-   { GLX(EXT_swap_control),               Y, N, N, Y },
-   { GLX(EXT_swap_control_tear),          Y, N, N, Y },
-   { GLX(EXT_texture_from_pixmap),        Y, N, N, N },
-   { GLX(EXT_visual_info),                Y, Y, N, N },
-   { GLX(EXT_visual_rating),              Y, Y, N, N },
-   { GLX(ATI_pixel_format_float),         Y, N, N, N },
-   { GLX(INTEL_swap_event),               Y, N, N, N },
-   { GLX(MESA_copy_sub_buffer),           Y, N, N, N },
-   { GLX(MESA_multithread_makecurrent),   Y, N, N, Y },
-   { GLX(MESA_query_renderer),            Y, N, N, Y },
-   { GLX(MESA_swap_control),              Y, N, N, Y },
-   { GLX(NV_float_buffer),                Y, N, N, N },
-   { GLX(OML_swap_method),                Y, Y, N, N },
-   { GLX(OML_sync_control),               Y, N, N, Y },
-   { GLX(SGIS_multisample),               Y, Y, N, N },
-   { GLX(SGIX_fbconfig),                  Y, Y, N, N },
-   { GLX(SGIX_pbuffer),                   Y, Y, N, N },
-   { GLX(SGIX_visual_select_group),       Y, Y, N, N },
-   { GLX(SGI_make_current_read),          Y, N, N, N },
-   { GLX(SGI_swap_control),               Y, N, N, N },
-   { GLX(SGI_video_sync),                 Y, N, N, Y },
+   { GLX(ARB_context_flush_control),      N, N, N },
+   { GLX(ARB_create_context),             N, N, N },
+   { GLX(ARB_create_context_no_error),    N, N, N },
+   { GLX(ARB_create_context_profile),     N, N, N },
+   { GLX(ARB_create_context_robustness),  N, N, N },
+   { GLX(ARB_fbconfig_float),             Y, N, N },
+   { GLX(ARB_framebuffer_sRGB),           Y, N, N },
+   { GLX(ARB_get_proc_address),           N, Y, N },
+   { GLX(ARB_multisample),                Y, N, N },
+   { GLX(EXT_buffer_age),                 N, N, Y },
+   { GLX(EXT_create_context_es2_profile), N, N, N },
+   { GLX(EXT_create_context_es_profile),  N, N, N },
+   { GLX(EXT_fbconfig_packed_float),      Y, N, N },
+   { GLX(EXT_framebuffer_sRGB),           Y, N, N },
+   { GLX(EXT_import_context),             Y, N, N },
+   { GLX(EXT_swap_control),               N, N, Y },
+   { GLX(EXT_swap_control_tear),          N, N, Y },
+   { GLX(EXT_texture_from_pixmap),        N, N, N },
+   { GLX(EXT_visual_info),                Y, N, N },
+   { GLX(EXT_visual_rating),              Y, N, N },
+   { GLX(ATI_pixel_format_float),         N, N, N },
+   { GLX(INTEL_swap_event),               N, N, N },
+   { GLX(MESA_copy_sub_buffer),           N, N, N },
+   { GLX(MESA_multithread_makecurrent),   N, N, Y },
+   { GLX(MESA_query_renderer),            N, N, Y },
+   { GLX(MESA_swap_control),              N, N, Y },
+   { GLX(NV_float_buffer),                N, N, N },
+   { GLX(OML_swap_method),                Y, N, N },
+   { GLX(OML_sync_control),               N, N, Y },
+   { GLX(SGIS_multisample),               Y, N, N },
+   { GLX(SGIX_fbconfig),                  Y, N, N },
+   { GLX(SGIX_pbuffer),                   Y, N, N },
+   { GLX(SGIX_visual_select_group),       Y, N, N },
+   { GLX(SGI_make_current_read),          N, N, N },
+   { GLX(SGI_swap_control),               N, N, N },
+   { GLX(SGI_video_sync),                 N, N, Y },
    { NULL }
 };
 
 static const struct extension_info known_gl_extensions[] = {
-   { GL(ARB_depth_texture),               Y, N, N, N },
-   { GL(ARB_draw_buffers),                Y, N, N, N },
-   { GL(ARB_fragment_program),            Y, N, N, N },
-   { GL(ARB_fragment_program_shadow),     Y, N, N, N },
-   { GL(ARB_framebuffer_object),          Y, N, N, N },
-   { GL(ARB_imaging),                     Y, N, N, N },
-   { GL(ARB_multisample),                 Y, N, N, N },
-   { GL(ARB_multitexture),                Y, N, N, N },
-   { GL(ARB_occlusion_query),             Y, N, N, N },
-   { GL(ARB_point_parameters),            Y, N, N, N },
-   { GL(ARB_point_sprite),                Y, N, N, N },
-   { GL(ARB_shadow),                      Y, N, N, N },
-   { GL(ARB_shadow_ambient),              Y, N, N, N },
-   { GL(ARB_texture_border_clamp),        Y, N, N, N },
-   { GL(ARB_texture_compression),         Y, N, N, N },
-   { GL(ARB_texture_cube_map),            Y, N, N, N },
-   { GL(ARB_texture_env_add),             Y, N, N, N },
-   { GL(ARB_texture_env_combine),         Y, N, N, N },
-   { GL(ARB_texture_env_crossbar),        Y, N, N, N },
-   { GL(ARB_texture_env_dot3),            Y, N, N, N },
-   { GL(ARB_texture_filter_anisotropic),  Y, N, N, N },
-   { GL(ARB_texture_mirrored_repeat),     Y, N, N, N },
-   { GL(ARB_texture_non_power_of_two),    Y, N, N, N },
-   { GL(ARB_texture_rectangle),           Y, N, N, N },
-   { GL(ARB_texture_rg),                  Y, N, N, N },
-   { GL(ARB_transpose_matrix),            Y, N, Y, N },
-   { GL(ARB_vertex_program),              Y, N, N, N },
-   { GL(ARB_window_pos),                  Y, N, N, N },
-   { GL(EXT_abgr),                        Y, N, N, N },
-   { GL(EXT_bgra),                        Y, N, N, N },
-   { GL(EXT_blend_color),                 Y, N, N, N },
-   { GL(EXT_blend_equation_separate),     Y, N, N, N },
-   { GL(EXT_blend_func_separate),         Y, N, N, N },
-   { GL(EXT_blend_logic_op),              Y, N, N, N },
-   { GL(EXT_blend_minmax),                Y, N, N, N },
-   { GL(EXT_blend_subtract),              Y, N, N, N },
-   { GL(EXT_clip_volume_hint),            Y, N, N, N },
-   { GL(EXT_copy_texture),                Y, N, N, N },
-   { GL(EXT_draw_range_elements),         Y, N, Y, N },
-   { GL(EXT_fog_coord),                   Y, N, N, N },
-   { GL(EXT_framebuffer_blit),            Y, N, N, N },
-   { GL(EXT_framebuffer_multisample),     Y, N, N, N },
-   { GL(EXT_framebuffer_object),          Y, N, N, N },
-   { GL(EXT_framebuffer_sRGB),            Y, N, N, N },
-   { GL(EXT_multi_draw_arrays),           Y, N, Y, N },
-   { GL(EXT_packed_depth_stencil),        Y, N, N, N },
-   { GL(EXT_packed_pixels),               Y, N, N, N },
-   { GL(EXT_paletted_texture),            Y, N, N, N },
-   { GL(EXT_point_parameters),            Y, N, N, N },
-   { GL(EXT_polygon_offset),              Y, N, N, N },
-   { GL(EXT_rescale_normal),              Y, N, N, N },
-   { GL(EXT_secondary_color),             Y, N, N, N },
-   { GL(EXT_separate_specular_color),     Y, N, N, N },
-   { GL(EXT_shadow_funcs),                Y, N, N, N },
-   { GL(EXT_shared_texture_palette),      Y, N, N, N },
-   { GL(EXT_stencil_two_side),            Y, N, N, N },
-   { GL(EXT_stencil_wrap),                Y, N, N, N },
-   { GL(EXT_subtexture),                  Y, N, N, N },
-   { GL(EXT_texture),                     Y, N, N, N },
-   { GL(EXT_texture3D),                   Y, N, N, N },
-   { GL(EXT_texture_compression_dxt1),    Y, N, N, N },
-   { GL(EXT_texture_compression_s3tc),    Y, N, N, N },
-   { GL(EXT_texture_edge_clamp),          Y, N, N, N },
-   { GL(EXT_texture_env_add),             Y, N, N, N },
-   { GL(EXT_texture_env_combine),         Y, N, N, N },
-   { GL(EXT_texture_env_dot3),            Y, N, N, N },
-   { GL(EXT_texture_filter_anisotropic),  Y, N, N, N },
-   { GL(EXT_texture_integer),             Y, N, N, N },
-   { GL(EXT_texture_lod),                 Y, N, N, N },
-   { GL(EXT_texture_lod_bias),            Y, N, N, N },
-   { GL(EXT_texture_mirror_clamp),        Y, N, N, N },
-   { GL(EXT_texture_object),              Y, N, N, N },
-   { GL(EXT_texture_rectangle),           Y, N, N, N },
-   { GL(EXT_vertex_array),                Y, N, N, N },
-   { GL(3DFX_texture_compression_FXT1),   Y, N, N, N },
-   { GL(APPLE_packed_pixels),             Y, N, N, N },
-   { GL(APPLE_ycbcr_422),                 Y, N, N, N },
-   { GL(ATI_draw_buffers),                Y, N, N, N },
-   { GL(ATI_text_fragment_shader),        Y, N, N, N },
-   { GL(ATI_texture_env_combine3),        Y, N, N, N },
-   { GL(ATI_texture_float),               Y, N, N, N },
-   { GL(ATI_texture_mirror_once),         Y, N, N, N },
-   { GL(ATIX_texture_env_combine3),       Y, N, N, N },
-   { GL(HP_convolution_border_modes),     Y, N, N, N },
-   { GL(HP_occlusion_test),               Y, N, N, N },
-   { GL(IBM_cull_vertex),                 Y, N, N, N },
-   { GL(IBM_pixel_filter_hint),           Y, N, N, N },
-   { GL(IBM_rasterpos_clip),              Y, N, N, N },
-   { GL(IBM_texture_clamp_nodraw),        Y, N, N, N },
-   { GL(IBM_texture_mirrored_repeat),     Y, N, N, N },
-   { GL(INGR_blend_func_separate),        Y, N, N, N },
-   { GL(INGR_interlace_read),             Y, N, N, N },
-   { GL(MESA_pack_invert),                Y, N, N, N },
-   { GL(MESA_ycbcr_texture),              Y, N, N, N },
-   { GL(NV_blend_square),                 Y, N, N, N },
-   { GL(NV_copy_depth_to_color),          Y, N, N, N },
-   { GL(NV_depth_clamp),                  Y, N, N, N },
-   { GL(NV_fog_distance),                 Y, N, N, N },
-   { GL(NV_fragment_program),             Y, N, N, N },
-   { GL(NV_fragment_program_option),      Y, N, N, N },
-   { GL(NV_fragment_program2),            Y, N, N, N },
-   { GL(NV_light_max_exponent),           Y, N, N, N },
-   { GL(NV_multisample_filter_hint),      Y, N, N, N },
-   { GL(NV_packed_depth_stencil),         Y, N, N, N },
-   { GL(NV_point_sprite),                 Y, N, N, N },
-   { GL(NV_texgen_reflection),            Y, N, N, N },
-   { GL(NV_texture_compression_vtc),      Y, N, N, N },
-   { GL(NV_texture_env_combine4),         Y, N, N, N },
-   { GL(NV_texture_rectangle),            Y, N, N, N },
-   { GL(NV_vertex_program),               Y, N, N, N },
-   { GL(NV_vertex_program1_1),            Y, N, N, N },
-   { GL(NV_vertex_program2),              Y, N, N, N },
-   { GL(NV_vertex_program2_option),       Y, N, N, N },
-   { GL(NV_vertex_program3),              Y, N, N, N },
-   { GL(OES_read_format),                 Y, N, N, N },
-   { GL(OES_compressed_paletted_texture), Y, N, N, N },
-   { GL(SGI_color_matrix),                Y, N, N, N },
-   { GL(SGI_color_table),                 Y, N, N, N },
-   { GL(SGI_texture_color_table),         Y, N, N, N },
-   { GL(SGIS_generate_mipmap),            Y, N, N, N },
-   { GL(SGIS_multisample),                Y, N, N, N },
-   { GL(SGIS_texture_border_clamp),       Y, N, N, N },
-   { GL(SGIS_texture_edge_clamp),         Y, N, N, N },
-   { GL(SGIS_texture_lod),                Y, N, N, N },
-   { GL(SGIX_blend_alpha_minmax),         Y, N, N, N },
-   { GL(SGIX_clipmap),                    Y, N, N, N },
-   { GL(SGIX_depth_texture),              Y, N, N, N },
-   { GL(SGIX_fog_offset),                 Y, N, N, N },
-   { GL(SGIX_shadow),                     Y, N, N, N },
-   { GL(SGIX_shadow_ambient),             Y, N, N, N },
-   { GL(SGIX_texture_coordinate_clamp),   Y, N, N, N },
-   { GL(SGIX_texture_lod_bias),           Y, N, N, N },
-   { GL(SGIX_texture_range),              Y, N, N, N },
-   { GL(SGIX_texture_scale_bias),         Y, N, N, N },
-   { GL(SGIX_vertex_preclip),             Y, N, N, N },
-   { GL(SGIX_vertex_preclip_hint),        Y, N, N, N },
-   { GL(SGIX_ycrcb),                      Y, N, N, N },
-   { GL(SUN_convolution_border_modes),    Y, N, N, N },
-   { GL(SUN_multi_draw_arrays),           Y, N, Y, N },
-   { GL(SUN_slice_accum),                 Y, N, N, N },
+   { GL(ARB_depth_texture),               N, N, N },
+   { GL(ARB_draw_buffers),                N, N, N },
+   { GL(ARB_fragment_program),            N, N, N },
+   { GL(ARB_fragment_program_shadow),     N, N, N },
+   { GL(ARB_framebuffer_object),          N, N, N },
+   { GL(ARB_imaging),                     N, N, N },
+   { GL(ARB_multisample),                 N, N, N },
+   { GL(ARB_multitexture),                N, N, N },
+   { GL(ARB_occlusion_query),             N, N, N },
+   { GL(ARB_point_parameters),            N, N, N },
+   { GL(ARB_point_sprite),                N, N, N },
+   { GL(ARB_shadow),                      N, N, N },
+   { GL(ARB_shadow_ambient),              N, N, N },
+   { GL(ARB_texture_border_clamp),        N, N, N },
+   { GL(ARB_texture_compression),         N, N, N },
+   { GL(ARB_texture_cube_map),            N, N, N },
+   { GL(ARB_texture_env_add),             N, N, N },
+   { GL(ARB_texture_env_combine),         N, N, N },
+   { GL(ARB_texture_env_crossbar),        N, N, N },
+   { GL(ARB_texture_env_dot3),            N, N, N },
+   { GL(ARB_texture_filter_anisotropic),  N, N, N },
+   { GL(ARB_texture_mirrored_repeat),     N, N, N },
+   { GL(ARB_texture_non_power_of_two),    N, N, N },
+   { GL(ARB_texture_rectangle),           N, N, N },
+   { GL(ARB_texture_rg),                  N, N, N },
+   { GL(ARB_transpose_matrix),            N, Y, N },
+   { GL(ARB_vertex_program),              N, N, N },
+   { GL(ARB_window_pos),                  N, N, N },
+   { GL(EXT_abgr),                        N, N, N },
+   { GL(EXT_bgra),                        N, N, N },
+   { GL(EXT_blend_color),                 N, N, N },
+   { GL(EXT_blend_equation_separate),     N, N, N },
+   { GL(EXT_blend_func_separate),         N, N, N },
+   { GL(EXT_blend_logic_op),              N, N, N },
+   { GL(EXT_blend_minmax),                N, N, N },
+   { GL(EXT_blend_subtract),              N, N, N },
+   { GL(EXT_clip_volume_hint),            N, N, N },
+   { GL(EXT_copy_texture),                N, N, N },
+   { GL(EXT_draw_range_elements),         N, Y, N },
+   { GL(EXT_fog_coord),                   N, N, N },
+   { GL(EXT_framebuffer_blit),            N, N, N },
+   { GL(EXT_framebuffer_multisample),     N, N, N },
+   { GL(EXT_framebuffer_object),          N, N, N },
+   { GL(EXT_framebuffer_sRGB),            N, N, N },
+   { GL(EXT_multi_draw_arrays),           N, Y, N },
+   { GL(EXT_packed_depth_stencil),        N, N, N },
+   { GL(EXT_packed_pixels),               N, N, N },
+   { GL(EXT_paletted_texture),            N, N, N },
+   { GL(EXT_point_parameters),            N, N, N },
+   { GL(EXT_polygon_offset),              N, N, N },
+   { GL(EXT_rescale_normal),              N, N, N },
+   { GL(EXT_secondary_color),             N, N, N },
+   { GL(EXT_separate_specular_color),     N, N, N },
+   { GL(EXT_shadow_funcs),                N, N, N },
+   { GL(EXT_shared_texture_palette),      N, N, N },
+   { GL(EXT_stencil_two_side),            N, N, N },
+   { GL(EXT_stencil_wrap),                N, N, N },
+   { GL(EXT_subtexture),                  N, N, N },
+   { GL(EXT_texture),                     N, N, N },
+   { GL(EXT_texture3D),                   N, N, N },
+   { GL(EXT_texture_compression_dxt1),    N, N, N },
+   { GL(EXT_texture_compression_s3tc),    N, N, N },
+   { GL(EXT_texture_edge_clamp),          N, N, N },
+   { GL(EXT_texture_env_add),             N, N, N },
+   { GL(EXT_texture_env_combine),         N, N, N },
+   { GL(EXT_texture_env_dot3),            N, N, N },
+   { GL(EXT_texture_filter_anisotropic),  N, N, N },
+   { GL(EXT_texture_integer),             N, N, N },
+   { GL(EXT_texture_lod),                 N, N, N },
+   { GL(EXT_texture_lod_bias),            N, N, N },
+   { GL(EXT_texture_mirror_clamp),        N, N, N },
+   { GL(EXT_texture_object),              N, N, N },
+   { GL(EXT_texture_rectangle),           N, N, N },
+   { GL(EXT_vertex_array),                N, N, N },
+   { GL(3DFX_texture_compression_FXT1),   N, N, N },
+   { GL(APPLE_packed_pixels),             N, N, N },
+   { GL(APPLE_ycbcr_422),                 N, N, N },
+   { GL(ATI_draw_buffers),                N, N, N },
+   { GL(ATI_text_fragment_shader),        N, N, N },
+   { GL(ATI_texture_env_combine3),        N, N, N },
+   { GL(ATI_texture_float),               N, N, N },
+   { GL(ATI_texture_mirror_once),         N, N, N },
+   { GL(ATIX_texture_env_combine3),       N, N, N },
+   { GL(HP_convolution_border_modes),     N, N, N },
+   { GL(HP_occlusion_test),               N, N, N },
+   { GL(IBM_cull_vertex),                 N, N, N },
+   { GL(IBM_pixel_filter_hint),           N, N, N },
+   { GL(IBM_rasterpos_clip),              N, N, N },
+   { GL(IBM_texture_clamp_nodraw),        N, N, N },
+   { GL(IBM_texture_mirrored_repeat),     N, N, N },
+   { GL(INGR_blend_func_separate),        N, N, N },
+   { GL(INGR_interlace_read),             N, N, N },
+   { GL(MESA_pack_invert),                N, N, N },
+   { GL(MESA_ycbcr_texture),              N, N, N },
+   { GL(NV_blend_square),                 N, N, N },
+   { GL(NV_copy_depth_to_color),          N, N, N },
+   { GL(NV_depth_clamp),                  N, N, N },
+   { GL(NV_fog_distance),                 N, N, N },
+   { GL(NV_fragment_program),             N, N, N },
+   { GL(NV_fragment_program_option),      N, N, N },
+   { GL(NV_fragment_program2),            N, N, N },
+   { GL(NV_light_max_exponent),           N, N, N },
+   { GL(NV_multisample_filter_hint),      N, N, N },
+   { GL(NV_packed_depth_stencil),         N, N, N },
+   { GL(NV_point_sprite),                 N, N, N },
+   { GL(NV_texgen_reflection),            N, N, N },
+   { GL(NV_texture_compression_vtc),      N, N, N },
+   { GL(NV_texture_env_combine4),         N, N, N },
+   { GL(NV_texture_rectangle),            N, N, N },
+   { GL(NV_vertex_program),               N, N, N },
+   { GL(NV_vertex_program1_1),            N, N, N },
+   { GL(NV_vertex_program2),              N, N, N },
+   { GL(NV_vertex_program2_option),       N, N, N },
+   { GL(NV_vertex_program3),              N, N, N },
+   { GL(OES_read_format),                 N, N, N },
+   { GL(OES_compressed_paletted_texture), N, N, N },
+   { GL(SGI_color_matrix),                N, N, N },
+   { GL(SGI_color_table),                 N, N, N },
+   { GL(SGI_texture_color_table),         N, N, N },
+   { GL(SGIS_generate_mipmap),            N, N, N },
+   { GL(SGIS_multisample),                N, N, N },
+   { GL(SGIS_texture_border_clamp),       N, N, N },
+   { GL(SGIS_texture_edge_clamp),         N, N, N },
+   { GL(SGIS_texture_lod),                N, N, N },
+   { GL(SGIX_blend_alpha_minmax),         N, N, N },
+   { GL(SGIX_clipmap),                    N, N, N },
+   { GL(SGIX_depth_texture),              N, N, N },
+   { GL(SGIX_fog_offset),                 N, N, N },
+   { GL(SGIX_shadow),                     N, N, N },
+   { GL(SGIX_shadow_ambient),             N, N, N },
+   { GL(SGIX_texture_coordinate_clamp),   N, N, N },
+   { GL(SGIX_texture_lod_bias),           N, N, N },
+   { GL(SGIX_texture_range),              N, N, N },
+   { GL(SGIX_texture_scale_bias),         N, N, N },
+   { GL(SGIX_vertex_preclip),             N, N, N },
+   { GL(SGIX_vertex_preclip_hint),        N, N, N },
+   { GL(SGIX_ycrcb),                      N, N, N },
+   { GL(SUN_convolution_border_modes),    N, N, N },
+   { GL(SUN_multi_draw_arrays),           N, Y, N },
+   { GL(SUN_slice_accum),                 N, N, N },
    { NULL }
 };
 /* *INDENT-ON* */
 
 
 /* global bit-fields of available extensions and their characteristics */
-static unsigned char client_glx_support[__GLX_EXT_BYTES];
 static unsigned char client_glx_only[__GLX_EXT_BYTES];
 static unsigned char direct_glx_only[__GLX_EXT_BYTES];
-static unsigned char client_gl_support[__GL_EXT_BYTES];
 static unsigned char client_gl_only[__GL_EXT_BYTES];
 
 /**
@@ -538,20 +515,14 @@ __glXExtensionsCtr(void)
    if (ext_list_first_time) {
       ext_list_first_time = GL_FALSE;
 
-      (void) memset(client_glx_support, 0, sizeof(client_glx_support));
       (void) memset(direct_glx_support, 0, sizeof(direct_glx_support));
       (void) memset(client_glx_only, 0, sizeof(client_glx_only));
       (void) memset(direct_glx_only, 0, sizeof(direct_glx_only));
 
-      (void) memset(client_gl_support, 0, sizeof(client_gl_support));
       (void) memset(client_gl_only, 0, sizeof(client_gl_only));
 
       for (i = 0; known_glx_extensions[i].name != NULL; i++) {
          const unsigned bit = known_glx_extensions[i].bit;
-
-         if (known_glx_extensions[i].client_support) {
-            SET_BIT(client_glx_support, bit);
-         }
 
          if (known_glx_extensions[i].direct_support) {
             SET_BIT(direct_glx_support, bit);
@@ -568,10 +539,6 @@ __glXExtensionsCtr(void)
 
       for (i = 0; known_gl_extensions[i].name != NULL; i++) {
          const unsigned bit = known_gl_extensions[i].bit;
-
-         if (known_gl_extensions[i].client_support) {
-            SET_BIT(client_gl_support, bit);
-         }
 
          if (known_gl_extensions[i].client_only) {
             SET_BIT(client_gl_only, bit);
@@ -703,7 +670,7 @@ __glXGetClientExtensions(void)
    if (__glXGLXClientExtensions == NULL) {
       __glXExtensionsCtr();
       __glXGLXClientExtensions = __glXGetStringFromTable(known_glx_extensions,
-                                                         client_glx_support);
+                                                         NULL);
    }
 
    return __glXGLXClientExtensions;
@@ -775,14 +742,12 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
          /* Enable extensions that the client supports that only have a client-side
           * component.
           */
-         unsigned char u = client_glx_support[i] & client_glx_only[i];
+         unsigned char u = client_glx_only[i];
 
-         /* Enable extensions that the client supports, are supported for direct
-          * rendering, and either are supported by the server or only have a
-          * direct-rendering component.
+         /* Enable extensions that are supported for direct rendering, and either
+          * are supported by the server or only have a direct-rendering component.
           */
-         u |= client_glx_support[i] & psc->direct_support[i] &
-                 (server_support[i] | direct_glx_only[i]);
+         u |= psc->direct_support[i] & (server_support[i] | direct_glx_only[i]);
 
          /* Finally, apply driconf options to force some extension bits either
           * enabled or disabled.
@@ -798,10 +763,10 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
          /* Enable extensions that the client supports that only have a
           * client-side component.
           */
-         unsigned char u = client_glx_support[i] & client_glx_only[i];
+         unsigned char u = client_glx_only[i];
 
          /* Enable extensions that the client and server both support */
-         u |= client_glx_support[i] & server_support[i];
+         u |= server_support[i];
 
          /* Finally, apply driconf options to force some extension bits either
           * enabled or disabled.
@@ -842,15 +807,16 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
    __glXProcessServerString(known_gl_extensions, server_string,
                             server_support);
 
-   /* An extension is supported if the client-side (i.e., libGL) supports
-    * it and the server supports it or the client-side library supports it
-    * and it only needs client-side support.
-    */
 
    for (i = 0; i < __GL_EXT_BYTES; i++) {
-      usable[i] = ((client_gl_support[i] & client_gl_only[i])
-         | (client_gl_support[i] & server_support[i])
-         | psc->gl_force_enabled[i]) & ~psc->gl_force_disabled[i];
+      /* An extension is supported if the server supports it, or if the
+       * client-side library supports it and it only needs client-side support,
+       * or if it's been forced on.
+       */
+      usable[i] = client_gl_only[i] | server_support[i] | psc->gl_force_enabled[i];
+
+      /* But not if it's been forced off */
+      usable[i] &= ~psc->gl_force_disabled[i];
    }
 
    gc->extensions = (unsigned char *)
@@ -868,5 +834,5 @@ char *
 __glXGetClientGLExtensionString(void)
 {
    __glXExtensionsCtr();
-   return __glXGetStringFromTable(known_gl_extensions, client_gl_support);
+   return __glXGetStringFromTable(known_gl_extensions, NULL);
 }
