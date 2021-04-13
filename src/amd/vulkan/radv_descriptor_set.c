@@ -1062,9 +1062,9 @@ write_image_descriptor(struct radv_device *device, struct radv_cmd_buffer *cmd_b
    memcpy(dst, descriptor, size);
 
    if (cmd_buffer)
-      radv_cs_add_buffer(device->ws, cmd_buffer->cs, iview->bo);
+      radv_cs_add_buffer(device->ws, cmd_buffer->cs, iview->image->bo);
    else
-      *buffer_list = iview->bo;
+      *buffer_list = iview->image->bo;
 }
 
 static void

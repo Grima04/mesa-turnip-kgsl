@@ -6363,7 +6363,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    /* Intensity is implemented as Red, so treat it that way. */
    cb->cb_color_attrib = S_028C74_FORCE_DST_ALPHA_1(desc->swizzle[3] == PIPE_SWIZZLE_1);
 
-   va = radv_buffer_get_va(iview->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
 
    cb->cb_color_base = va >> 8;
 
@@ -6425,11 +6425,11 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    }
 
    /* CMASK variables */
-   va = radv_buffer_get_va(iview->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
    va += surf->cmask_offset;
    cb->cb_color_cmask = va >> 8;
 
-   va = radv_buffer_get_va(iview->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
    va += surf->meta_offset;
 
    if (radv_dcc_enabled(iview->image, iview->base_mip) &&
@@ -6455,7 +6455,7 @@ radv_initialise_color_surface(struct radv_device *device, struct radv_color_buff
    }
 
    if (radv_image_has_fmask(iview->image)) {
-      va = radv_buffer_get_va(iview->bo) + iview->image->offset + surf->fmask_offset;
+      va = radv_buffer_get_va(iview->image->bo) + iview->image->offset + surf->fmask_offset;
       cb->cb_color_fmask = va >> 8;
       cb->cb_color_fmask |= surf->fmask_tile_swizzle;
    } else {
@@ -6648,7 +6648,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
    ds->db_htile_data_base = 0;
    ds->db_htile_surface = 0;
 
-   va = radv_buffer_get_va(iview->bo) + iview->image->offset;
+   va = radv_buffer_get_va(iview->image->bo) + iview->image->offset;
    s_offs = z_offs = va;
 
    if (device->physical_device->rad_info.chip_class >= GFX9) {
@@ -6692,7 +6692,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
             ds->db_stencil_info |= S_02803C_TILE_STENCIL_DISABLE(1);
          }
 
-         va = radv_buffer_get_va(iview->bo) + iview->image->offset + surf->meta_offset;
+         va = radv_buffer_get_va(iview->image->bo) + iview->image->offset + surf->meta_offset;
          ds->db_htile_data_base = va >> 8;
          ds->db_htile_surface = S_028ABC_FULL_CACHE(1) | S_028ABC_PIPE_ALIGNED(1);
 
@@ -6761,7 +6761,7 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
             ds->db_stencil_info |= S_028044_TILE_STENCIL_DISABLE(1);
          }
 
-         va = radv_buffer_get_va(iview->bo) + iview->image->offset + surf->meta_offset;
+         va = radv_buffer_get_va(iview->image->bo) + iview->image->offset + surf->meta_offset;
          ds->db_htile_data_base = va >> 8;
          ds->db_htile_surface = S_028ABC_FULL_CACHE(1);
 

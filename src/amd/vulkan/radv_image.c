@@ -1796,7 +1796,6 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
       unreachable("bad VkImageType");
    }
    iview->image = image;
-   iview->bo = image->bo;
    iview->type = pCreateInfo->viewType;
    iview->plane_id = radv_plane_from_aspect(pCreateInfo->subresourceRange.aspectMask);
    iview->aspect_mask = pCreateInfo->subresourceRange.aspectMask;

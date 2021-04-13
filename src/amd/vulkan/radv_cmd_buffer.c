@@ -2322,7 +2322,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       VkImageLayout layout = subpass->color_attachments[i].layout;
       bool in_render_loop = subpass->color_attachments[i].in_render_loop;
 
-      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->bo);
+      radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs, iview->image->bo);
 
       assert(iview->aspect_mask & (VK_IMAGE_ASPECT_COLOR_BIT | VK_IMAGE_ASPECT_PLANE_0_BIT |
                                    VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT));
@@ -2338,7 +2338,7 @@ radv_emit_framebuffer_state(struct radv_cmd_buffer *cmd_buffer)
       bool in_render_loop = subpass->depth_stencil_attachment->in_render_loop;
       struct radv_image_view *iview = cmd_buffer->state.attachments[idx].iview;
       radv_cs_add_buffer(cmd_buffer->device->ws, cmd_buffer->cs,
-                         cmd_buffer->state.attachments[idx].iview->bo);
+                         cmd_buffer->state.attachments[idx].iview->image->bo);
 
       radv_emit_fb_ds_state(cmd_buffer, &cmd_buffer->state.attachments[idx].ds, iview, layout,
                             in_render_loop);
