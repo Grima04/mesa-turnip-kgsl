@@ -269,7 +269,6 @@ static const struct extension_info known_gl_extensions[] = {
 /* global bit-fields of available extensions and their characteristics */
 static unsigned char client_glx_only[__GLX_EXT_BYTES];
 static unsigned char direct_glx_only[__GLX_EXT_BYTES];
-static unsigned char client_gl_only[__GL_EXT_BYTES];
 
 /**
  * Bits representing the set of extensions that are enabled by default in all
@@ -497,8 +496,6 @@ __glXExtensionsCtr(void)
       (void) memset(client_glx_only, 0, sizeof(client_glx_only));
       (void) memset(direct_glx_only, 0, sizeof(direct_glx_only));
 
-      (void) memset(client_gl_only, 0, sizeof(client_gl_only));
-
       SET_BIT(client_glx_only, ARB_get_proc_address_bit);
       for (i = 0; known_glx_extensions[i].name != NULL; i++) {
          const unsigned bit = known_glx_extensions[i].bit;
@@ -511,16 +508,6 @@ __glXExtensionsCtr(void)
             SET_BIT(direct_glx_only, bit);
          }
       }
-
-      SET_BIT(client_gl_only, GL_ARB_transpose_matrix_bit);
-      SET_BIT(client_gl_only, GL_EXT_draw_range_elements_bit);
-      SET_BIT(client_gl_only, GL_EXT_multi_draw_arrays_bit);
-      SET_BIT(client_gl_only, GL_SUN_multi_draw_arrays_bit);
-
-#if 0
-      fprintf(stderr, "[%s:%u] Maximum client library version: %u.%u\n",
-              __func__, __LINE__, gl_major, gl_minor);
-#endif
    }
 }
 
@@ -754,7 +741,6 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
                                                    usable);
 }
 
-
 /**
  * Calculate the list of application usable extensions.  The resulting
  * string is stored in \c gc->extensions.
@@ -772,20 +758,20 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
    unsigned char usable[__GL_EXT_BYTES];
    unsigned i;
 
-
-   __glXExtensionsCtr();
-
    (void) memset(server_support, 0, sizeof(server_support));
    __glXProcessServerString(known_gl_extensions, server_string,
                             server_support);
 
+   /* These extensions are wholly inside the client-side indirect code */
+   (void) memset(usable, 0, sizeof(usable));
+   SET_BIT(usable, GL_ARB_transpose_matrix_bit);
+   SET_BIT(usable, GL_EXT_draw_range_elements_bit);
+   SET_BIT(usable, GL_EXT_multi_draw_arrays_bit);
+   SET_BIT(usable, GL_SUN_multi_draw_arrays_bit);
 
    for (i = 0; i < __GL_EXT_BYTES; i++) {
-      /* An extension is supported if the server supports it, or if the
-       * client-side library supports it and it only needs client-side support,
-       * or if it's been forced on.
-       */
-      usable[i] = client_gl_only[i] | server_support[i] | psc->gl_force_enabled[i];
+      /* Usable if the server supports it, or if it's been forced on */
+      usable[i] = server_support[i] | psc->gl_force_enabled[i];
 
       /* But not if it's been forced off */
       usable[i] &= ~psc->gl_force_disabled[i];
@@ -796,7 +782,6 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
    (void) memcpy(gc->gl_extension_bits, usable, sizeof(usable));
 }
 
-
 /**
  * Get a string representing the set of extensions supported by the client
  * library.  This is currently only used to send the list of extensions
@@ -805,6 +790,5 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
 char *
 __glXGetClientGLExtensionString(void)
 {
-   __glXExtensionsCtr();
    return __glXGetStringFromTable(known_gl_extensions, NULL);
 }
