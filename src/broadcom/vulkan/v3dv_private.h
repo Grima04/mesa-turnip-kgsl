@@ -1553,18 +1553,30 @@ struct v3dv_pipeline_layout {
    uint32_t push_constant_size;
 };
 
+/*
+ * We are using descriptor maps for ubo/ssbo and texture/samplers, so we need
+ * it to be big enough to include the max value for all of them.
+ *
+ * FIXME: one alternative would be to allocate the map as big as you need for
+ * each descriptor type. That would means more individual allocations.
+ */
+#define DESCRIPTOR_MAP_SIZE MAX3(V3D_MAX_TEXTURE_SAMPLERS, \
+                                 MAX_UNIFORM_BUFFERS,      \
+                                 MAX_STORAGE_BUFFERS)
+
+
 struct v3dv_descriptor_map {
    /* TODO: avoid fixed size array/justify the size */
    unsigned num_desc; /* Number of descriptors  */
-   int set[64];
-   int binding[64];
-   int array_index[64];
-   int array_size[64];
+   int set[DESCRIPTOR_MAP_SIZE];
+   int binding[DESCRIPTOR_MAP_SIZE];
+   int array_index[DESCRIPTOR_MAP_SIZE];
+   int array_size[DESCRIPTOR_MAP_SIZE];
 
    /* NOTE: the following is only for sampler, but this is the easier place to
     * put it.
     */
-   uint8_t return_size[64];
+   uint8_t return_size[DESCRIPTOR_MAP_SIZE];
 };
 
 struct v3dv_sampler {
