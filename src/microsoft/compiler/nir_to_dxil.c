@@ -387,6 +387,7 @@ struct dxil_def {
 struct ntd_context {
    void *ralloc_ctx;
    const struct nir_to_dxil_options *opts;
+   struct nir_shader *shader;
 
    struct dxil_module mod;
 
@@ -825,9 +826,9 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned 
 }
 
 static bool
-emit_globals(struct ntd_context *ctx, nir_shader *s, unsigned size)
+emit_globals(struct ntd_context *ctx, unsigned size)
 {
-   nir_foreach_variable_with_modes(var, s, nir_var_mem_ssbo)
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo)
       size++;
 
    if (!size)
@@ -999,9 +1000,9 @@ var_fill_const_array(struct ntd_context *ctx, const struct nir_constant *c,
 }
 
 static bool
-emit_global_consts(struct ntd_context *ctx, nir_shader *s)
+emit_global_consts(struct ntd_context *ctx)
 {
-   nir_foreach_variable_with_modes(var, s, nir_var_shader_temp) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_temp) {
       bool err;
 
       assert(var->constant_initializer);
@@ -1126,9 +1127,10 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsig
 }
 
 static const struct dxil_mdnode *
-emit_gs_state(struct ntd_context *ctx, nir_shader *s)
+emit_gs_state(struct ntd_context *ctx)
 {
    const struct dxil_mdnode *gs_state_nodes[5];
+   const nir_shader *s = ctx->shader;
 
    gs_state_nodes[0] = dxil_get_metadata_int32(&ctx->mod, dxil_get_input_primitive(s->info.gs.input_primitive));
    gs_state_nodes[1] = dxil_get_metadata_int32(&ctx->mod, s->info.gs.vertices_out);
@@ -1145,8 +1147,9 @@ emit_gs_state(struct ntd_context *ctx, nir_shader *s)
 }
 
 static const struct dxil_mdnode *
-emit_threads(struct ntd_context *ctx, nir_shader *s)
+emit_threads(struct ntd_context *ctx)
 {
+   const nir_shader *s = ctx->shader;
    const struct dxil_mdnode *threads_x = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.local_size[0], 1));
    const struct dxil_mdnode *threads_y = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.local_size[1], 1));
    const struct dxil_mdnode *threads_z = dxil_get_metadata_int32(&ctx->mod, MAX2(s->info.cs.local_size[2], 1));
@@ -1264,7 +1267,7 @@ emit_tag(struct ntd_context *ctx, enum dxil_shader_tag tag,
 }
 
 static bool
-emit_metadata(struct ntd_context *ctx, nir_shader *s)
+emit_metadata(struct ntd_context *ctx)
 {
    unsigned dxilMinor = ctx->mod.minor_version;
    if (!emit_llvm_ident(&ctx->mod) ||
@@ -1301,10 +1304,10 @@ emit_metadata(struct ntd_context *ctx, nir_shader *s)
                                                                            ARRAY_SIZE(main_type_annotation_nodes));
 
    if (ctx->mod.shader_kind == DXIL_GEOMETRY_SHADER) {
-      if (!emit_tag(ctx, DXIL_SHADER_TAG_GS_STATE, emit_gs_state(ctx, s)))
+      if (!emit_tag(ctx, DXIL_SHADER_TAG_GS_STATE, emit_gs_state(ctx)))
          return false;
    } else if (ctx->mod.shader_kind == DXIL_COMPUTE_SHADER) {
-      if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx, s)))
+      if (!emit_tag(ctx, DXIL_SHADER_TAG_NUM_THREADS, emit_threads(ctx)))
          return false;
    }
 
@@ -1321,7 +1324,7 @@ emit_metadata(struct ntd_context *ctx, nir_shader *s)
          return false;
    }
 
-   const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, s);
+   const struct dxil_mdnode *signatures = get_signatures(&ctx->mod, ctx->shader);
 
    const struct dxil_mdnode *dx_entry_point = emit_entrypoint(ctx, main_func,
        "main", signatures, resources_node, shader_properties);
@@ -4053,7 +4056,7 @@ sort_uniforms_by_binding_and_remove_structs(nir_shader *s)
 }
 
 static void
-prepare_phi_values(struct ntd_context *ctx, nir_shader *shader)
+prepare_phi_values(struct ntd_context *ctx)
 {
    /* PHI nodes are difficult to get right when tracking the types:
     * Since the incoming sources are linked to blocks, we can't bitcast
@@ -4062,7 +4065,7 @@ prepare_phi_values(struct ntd_context *ctx, nir_shader *shader)
     * value has a different type then the one expected by the phi node.
     * We choose int as default, because it supports more bit sizes.
     */
-   nir_foreach_function(function, shader) {
+   nir_foreach_function(function, ctx->shader) {
       if (function->impl) {
          nir_foreach_block(block, function->impl) {
             nir_foreach_instr(instr, block) {
@@ -4082,15 +4085,15 @@ prepare_phi_values(struct ntd_context *ctx, nir_shader *shader)
 }
 
 static bool
-emit_cbvs(struct ntd_context *ctx, nir_shader *s)
+emit_cbvs(struct ntd_context *ctx)
 {
-   if (s->info.stage == MESA_SHADER_KERNEL || ctx->opts->vulkan_environment) {
-      nir_foreach_variable_with_modes(var, s, nir_var_mem_ubo) {
+   if (ctx->shader->info.stage == MESA_SHADER_KERNEL || ctx->opts->vulkan_environment) {
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ubo) {
          if (!emit_ubo_var(ctx, var))
             return false;
       }
    } else {
-      for (int i = ctx->opts->ubo_binding_offset; i < s->info.num_ubos; ++i) {
+      for (int i = ctx->opts->ubo_binding_offset; i < ctx->shader->info.num_ubos; ++i) {
          char name[64];
          snprintf(name, sizeof(name), "__ubo%d", i);
          if (!emit_cbv(ctx, i, 16384 /*4096 vec4's*/, 1, name))
@@ -4102,16 +4105,16 @@ emit_cbvs(struct ntd_context *ctx, nir_shader *s)
 }
 
 static bool
-emit_scratch(struct ntd_context *ctx, nir_shader *s)
+emit_scratch(struct ntd_context *ctx)
 {
-   if (s->scratch_size) {
+   if (ctx->shader->scratch_size) {
       /*
        * We always allocate an u32 array, no matter the actual variable types.
        * According to the DXIL spec, the minimum load/store granularity is
        * 32-bit, anything smaller requires using a read-extract/read-write-modify
        * approach.
        */
-      unsigned size = ALIGN_POT(s->scratch_size, sizeof(uint32_t));
+      unsigned size = ALIGN_POT(ctx->shader->scratch_size, sizeof(uint32_t));
       const struct dxil_type *int32 = dxil_module_get_int_type(&ctx->mod, 32);
       const struct dxil_value *array_length = dxil_module_get_int32_const(&ctx->mod, size / sizeof(uint32_t));
       if (!int32 || !array_length)
@@ -4131,9 +4134,9 @@ emit_scratch(struct ntd_context *ctx, nir_shader *s)
 }
 
 static bool
-emit_ssbos(struct ntd_context *ctx, nir_shader *s)
+emit_ssbos(struct ntd_context *ctx)
 {
-   nir_foreach_variable_with_modes(var, s, nir_var_mem_ssbo) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
       unsigned count = 1;
       if (glsl_type_is_array(var->type))
          count = glsl_get_length(var->type);
@@ -4179,22 +4182,22 @@ shader_has_shared_ops(struct nir_shader *s)
 }
 
 static bool
-emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_options *opts)
+emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
 {
    unsigned binding;
 
    /* The validator forces us to emit resources in a specific order:
     * CBVs, Samplers, SRVs, UAVs. While we are at it also remove
     * stale struct uniforms, they are lowered but might not have been removed */
-   sort_uniforms_by_binding_and_remove_structs(s);
+   sort_uniforms_by_binding_and_remove_structs(ctx->shader);
 
    /* CBVs */
-   if (!emit_cbvs(ctx, s))
+   if (!emit_cbvs(ctx))
       return false;
 
    /* Samplers */
    binding = 0;
-   nir_foreach_variable_with_modes(var, s, nir_var_uniform) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
       if (var->data.mode == nir_var_uniform && count &&
           glsl_get_sampler_result_type(glsl_without_array(var->type)) == GLSL_TYPE_VOID) {
@@ -4206,7 +4209,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
 
    /* SRVs */
    binding = 0;
-   nir_foreach_variable_with_modes(var, s, nir_var_uniform) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
       if (var->data.mode == nir_var_uniform && count &&
           glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID) {
@@ -4216,7 +4219,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
       }
    }
 
-   if (s->info.shared_size && shader_has_shared_ops(s)) {
+   if (ctx->shader->info.shared_size && shader_has_shared_ops(ctx->shader)) {
       const struct dxil_type *type;
       unsigned size;
 
@@ -4230,7 +4233,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
       * pointer is in the groupshared address space, making the 32-bit -> 64-bit
       * pointer cast impossible.
       */
-      size = ALIGN_POT(s->info.shared_size, sizeof(uint32_t));
+      size = ALIGN_POT(ctx->shader->info.shared_size, sizeof(uint32_t));
       type = dxil_module_get_array_type(&ctx->mod,
                                         dxil_module_get_int_type(&ctx->mod, 32),
                                         size / sizeof(uint32_t));
@@ -4240,25 +4243,25 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
                                                 NULL);
    }
 
-   if (!emit_scratch(ctx, s))
+   if (!emit_scratch(ctx))
       return false;
 
    /* UAVs */
-   if (s->info.stage == MESA_SHADER_KERNEL) {
-      if (!emit_globals(ctx, s, opts->num_kernel_globals))
+   if (ctx->shader->info.stage == MESA_SHADER_KERNEL) {
+      if (!emit_globals(ctx, opts->num_kernel_globals))
          return false;
 
       ctx->consts = _mesa_pointer_hash_table_create(ctx->ralloc_ctx);
       if (!ctx->consts)
          return false;
-      if (!emit_global_consts(ctx, s))
+      if (!emit_global_consts(ctx))
          return false;
    } else {
-      if (!emit_ssbos(ctx, s))
+      if (!emit_ssbos(ctx))
          return false;
    }
 
-   nir_foreach_variable_with_modes(var, s, nir_var_uniform) {
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_image_count(var->type);
       if (var->data.mode == nir_var_uniform && count) {
          if (!emit_uav_var(ctx, var, count))
@@ -4266,7 +4269,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
       }
    }
 
-   nir_function_impl *entry = nir_shader_get_entrypoint(s);
+   nir_function_impl *entry = nir_shader_get_entrypoint(ctx->shader);
    nir_metadata_require(entry, nir_metadata_block_index);
 
    assert(entry->num_blocks > 0);
@@ -4289,7 +4292,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    if (!ctx->phis)
       return false;
 
-   prepare_phi_values(ctx, s);
+   prepare_phi_values(ctx);
 
    if (!emit_cf_list(ctx, &entry->body))
       return false;
@@ -4302,8 +4305,8 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    if (!dxil_emit_ret_void(&ctx->mod))
       return false;
 
-   if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      nir_foreach_variable_with_modes(var, s, nir_var_shader_out) {
+   if (ctx->shader->info.stage == MESA_SHADER_FRAGMENT) {
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_out) {
          if (var->data.location == FRAG_RESULT_STENCIL) {
             ctx->mod.feats.stencil_ref = true;
          }
@@ -4313,7 +4316,7 @@ emit_module(struct ntd_context *ctx, nir_shader *s, const struct nir_to_dxil_opt
    if (ctx->mod.feats.native_low_precision)
       ctx->mod.minor_version = MAX2(ctx->mod.minor_version, 2);
 
-   return emit_metadata(ctx, s) &&
+   return emit_metadata(ctx) &&
           dxil_emit_module(&ctx->mod);
 }
 
@@ -4404,7 +4407,6 @@ optimize_nir(struct nir_shader *s, const struct nir_to_dxil_options *opts)
 
 static
 void dxil_fill_validation_state(struct ntd_context *ctx,
-                                nir_shader *s,
                                 struct dxil_validation_state *state)
 {
    state->num_resources = ctx->num_resources;
@@ -4428,10 +4430,10 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
    case DXIL_COMPUTE_SHADER:
       break;
    case DXIL_GEOMETRY_SHADER:
-      state->state.max_vertex_count = s->info.gs.vertices_out;
-      state->state.psv0.gs.input_primitive = dxil_get_input_primitive(s->info.gs.input_primitive);
-      state->state.psv0.gs.output_toplology = dxil_get_primitive_topology(s->info.gs.output_primitive);
-      state->state.psv0.gs.output_stream_mask = s->info.gs.active_stream_mask;
+      state->state.max_vertex_count = ctx->shader->info.gs.vertices_out;
+      state->state.psv0.gs.input_primitive = dxil_get_input_primitive(ctx->shader->info.gs.input_primitive);
+      state->state.psv0.gs.output_toplology = dxil_get_primitive_topology(ctx->shader->info.gs.output_primitive);
+      state->state.psv0.gs.output_stream_mask = ctx->shader->info.gs.active_stream_mask;
       state->state.psv0.gs.output_position_present = ctx->mod.info.has_out_position;
       break;
    default:
@@ -4440,12 +4442,12 @@ void dxil_fill_validation_state(struct ntd_context *ctx,
 }
 
 static nir_variable *
-add_sysvalue(struct ntd_context *ctx, nir_shader *s,
+add_sysvalue(struct ntd_context *ctx,
               uint8_t value, char *name,
               int driver_location)
 {
 
-   nir_variable *var = rzalloc(s, nir_variable);
+   nir_variable *var = rzalloc(ctx->shader, nir_variable);
    if (!var)
       return NULL;
    var->data.driver_location = driver_location;
@@ -4458,14 +4460,14 @@ add_sysvalue(struct ntd_context *ctx, nir_shader *s,
 }
 
 static bool
-append_input_or_sysvalue(struct ntd_context *ctx, nir_shader *s,
+append_input_or_sysvalue(struct ntd_context *ctx,
                          int input_loc,  int sv_slot,
                          char *name, int driver_location)
 {
    if (input_loc >= 0) {
       /* Check inputs whether a variable is available the corresponds
        * to the sysvalue */
-      nir_foreach_variable_with_modes(var, s, nir_var_shader_in) {
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in) {
          if (var->data.location == input_loc) {
             ctx->system_value[sv_slot] = var;
             return true;
@@ -4473,11 +4475,11 @@ append_input_or_sysvalue(struct ntd_context *ctx, nir_shader *s,
       }
    }
 
-   ctx->system_value[sv_slot] = add_sysvalue(ctx, s, sv_slot, name, driver_location);
+   ctx->system_value[sv_slot] = add_sysvalue(ctx, sv_slot, name, driver_location);
    if (!ctx->system_value[sv_slot])
       return false;
 
-   nir_shader_add_variable(s, ctx->system_value[sv_slot]);
+   nir_shader_add_variable(ctx->shader, ctx->system_value[sv_slot]);
    return true;
 }
 
@@ -4493,18 +4495,18 @@ struct sysvalue_name {
 };
 
 static bool
-allocate_sysvalues(struct ntd_context *ctx, nir_shader *s)
+allocate_sysvalues(struct ntd_context *ctx)
 {
    unsigned driver_location = 0;
-   nir_foreach_variable_with_modes(var, s, nir_var_shader_in)
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_shader_in)
       driver_location++;
-   nir_foreach_variable_with_modes(var, s, nir_var_system_value)
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_system_value)
       driver_location++;
 
    for (unsigned i = 0; i < ARRAY_SIZE(possible_sysvalues); ++i) {
       struct sysvalue_name *info = &possible_sysvalues[i];
-      if (BITSET_TEST(s->info.system_values_read, info->value)) {
-         if (!append_input_or_sysvalue(ctx, s, info->slot,
+      if (BITSET_TEST(ctx->shader->info.system_values_read, info->value)) {
+         if (!append_input_or_sysvalue(ctx, info->slot,
                                        info->value, info->name,
                                        driver_location++))
             return false;
@@ -4527,6 +4529,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
       return false;
 
    ctx->opts = opts;
+   ctx->shader = s;
 
    ctx->ralloc_ctx = ralloc_context(NULL);
    if (!ctx->ralloc_ctx) {
@@ -4548,13 +4551,13 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
    NIR_PASS_V(s, nir_remove_dead_variables,
               nir_var_function_temp | nir_var_shader_temp, NULL);
 
-   if (!allocate_sysvalues(ctx, s))
+   if (!allocate_sysvalues(ctx))
       return false;
 
    if (debug_dxil & DXIL_DEBUG_VERBOSE)
       nir_print_shader(s, stderr);
 
-   if (!emit_module(ctx, s, opts)) {
+   if (!emit_module(ctx, opts)) {
       debug_printf("D3D12: dxil_container_add_module failed\n");
       retval = false;
       goto out;
@@ -4597,7 +4600,7 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
 
    struct dxil_validation_state validation_state;
    memset(&validation_state, 0, sizeof(validation_state));
-   dxil_fill_validation_state(ctx, s, &validation_state);
+   dxil_fill_validation_state(ctx, &validation_state);
 
    if (!dxil_container_add_state_validation(&container,&ctx->mod,
                                             &validation_state)) {
