@@ -337,12 +337,6 @@ static unsigned char client_gl_only[__GL_EXT_BYTES];
  */
 static unsigned char direct_glx_support[__GLX_EXT_BYTES];
 
-/**
- * Highest core GL version that can be supported for indirect rendering.
- */
-static const unsigned gl_major = 1;
-static const unsigned gl_minor = 4;
-
 /* client extensions string */
 static const char *__glXGLXClientExtensions = NULL;
 
@@ -896,19 +890,6 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
    gc->extensions = (unsigned char *)
       __glXGetStringFromTable(known_gl_extensions, usable);
    (void) memcpy(gc->gl_extension_bits, usable, sizeof(usable));
-}
-
-
-/**
- * Calculates the maximum core GL version that can be supported for indirect
- * rendering.
- */
-void
-__glXGetGLVersion(int *major_version, int *minor_version)
-{
-   __glXExtensionsCtr();
-   *major_version = gl_major;
-   *minor_version = gl_minor;
 }
 
 

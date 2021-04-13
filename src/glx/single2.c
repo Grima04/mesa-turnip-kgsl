@@ -699,12 +699,11 @@ __indirect_glGetString(GLenum name)
          break;
 
       case GL_VERSION:{
-            int client_major;
-            int client_minor;
+            const int client_major = 1;
+            const int client_minor = 4;
 
             version_from_string((char *) s,
                                 &gc->server_major, &gc->server_minor);
-            __glXGetGLVersion(&client_major, &client_minor);
 
             if ((gc->server_major < client_major)
                 || ((gc->server_major == client_major)
