@@ -831,7 +831,8 @@ dest(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
 }
 
 static int
-dest_3src(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
+dest_3src(FILE *file, const struct intel_device_info *devinfo,
+          const brw_inst *inst)
 {
    bool is_align1 = brw_inst_3src_access_mode(devinfo, inst) == BRW_ALIGN_1;
    int err = 0;
@@ -1102,7 +1103,8 @@ implied_width(enum brw_vertical_stride _vert_stride,
 }
 
 static int
-src0_3src(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
+src0_3src(FILE *file, const struct intel_device_info *devinfo,
+          const brw_inst *inst)
 {
    int err = 0;
    unsigned reg_nr, subreg_nr;
@@ -1188,7 +1190,8 @@ src0_3src(FILE *file, const struct intel_device_info *devinfo, const brw_inst *i
 }
 
 static int
-src1_3src(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
+src1_3src(FILE *file, const struct intel_device_info *devinfo,
+          const brw_inst *inst)
 {
    int err = 0;
    unsigned reg_nr, subreg_nr;
@@ -1261,7 +1264,8 @@ src1_3src(FILE *file, const struct intel_device_info *devinfo, const brw_inst *i
 }
 
 static int
-src2_3src(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
+src2_3src(FILE *file, const struct intel_device_info *devinfo,
+          const brw_inst *inst)
 {
    int err = 0;
    unsigned reg_nr, subreg_nr;
@@ -1606,7 +1610,8 @@ src1(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
 }
 
 static int
-qtr_ctrl(FILE *file, const struct intel_device_info *devinfo, const brw_inst *inst)
+qtr_ctrl(FILE *file, const struct intel_device_info *devinfo,
+         const brw_inst *inst)
 {
    int qtr_ctl = brw_inst_qtr_control(devinfo, inst);
    int exec_size = 1 << brw_inst_exec_size(devinfo, inst);

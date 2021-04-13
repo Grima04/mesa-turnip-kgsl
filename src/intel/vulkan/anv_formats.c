@@ -468,7 +468,8 @@ anv_format_has_npot_plane(const struct anv_format *anv_format) {
  * _cannot_ check for compatibility).
  */
 struct anv_format_plane
-anv_get_format_plane(const struct intel_device_info *devinfo, VkFormat vk_format,
+anv_get_format_plane(const struct intel_device_info *devinfo,
+                     VkFormat vk_format,
                      VkImageAspectFlagBits aspect, VkImageTiling tiling)
 {
    const struct anv_format *format = anv_get_format(vk_format);

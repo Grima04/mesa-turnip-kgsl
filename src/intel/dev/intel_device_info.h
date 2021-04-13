@@ -297,7 +297,7 @@ struct intel_device_info
 
 static inline bool
 intel_device_info_subslice_available(const struct intel_device_info *devinfo,
-                                   int slice, int subslice)
+                                     int slice, int subslice)
 {
    return (devinfo->subslice_masks[slice * devinfo->subslice_slice_stride +
                                    subslice / 8] & (1U << (subslice % 8))) != 0;
@@ -305,7 +305,7 @@ intel_device_info_subslice_available(const struct intel_device_info *devinfo,
 
 static inline bool
 intel_device_info_eu_available(const struct intel_device_info *devinfo,
-                             int slice, int subslice, int eu)
+                               int slice, int subslice, int eu)
 {
    unsigned subslice_offset = slice * devinfo->eu_slice_stride +
       subslice * devinfo->eu_subslice_stride;
@@ -336,7 +336,8 @@ intel_device_info_eu_total(const struct intel_device_info *devinfo)
 }
 
 static inline unsigned
-intel_device_info_num_dual_subslices(UNUSED const struct intel_device_info *devinfo)
+intel_device_info_num_dual_subslices(UNUSED
+                                     const struct intel_device_info *devinfo)
 {
    unreachable("TODO");
 }
@@ -346,7 +347,7 @@ const char *gen_get_device_name(int devid);
 
 static inline uint64_t
 intel_device_info_timebase_scale(const struct intel_device_info *devinfo,
-                               uint64_t gpu_timestamp)
+                                 uint64_t gpu_timestamp)
 {
    return (1000000000ull * gpu_timestamp) / devinfo->timestamp_frequency;
 }

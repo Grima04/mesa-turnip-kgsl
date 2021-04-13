@@ -2263,8 +2263,8 @@ uncompact_instruction(const struct compaction_state *c, brw_inst *dst,
 }
 
 void
-brw_uncompact_instruction(const struct intel_device_info *devinfo, brw_inst *dst,
-                          brw_compact_inst *src)
+brw_uncompact_instruction(const struct intel_device_info *devinfo,
+                          brw_inst *dst, brw_compact_inst *src)
 {
    struct compaction_state c;
    compaction_state_init(&c, devinfo);

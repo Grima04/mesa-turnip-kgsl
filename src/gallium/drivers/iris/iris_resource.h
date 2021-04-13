@@ -459,9 +459,10 @@ iris_resource_access_raw(struct iris_context *ice,
    }
 }
 
-enum isl_dim_layout iris_get_isl_dim_layout(const struct intel_device_info *devinfo,
-                                            enum isl_tiling tiling,
-                                            enum pipe_texture_target target);
+enum isl_dim_layout
+iris_get_isl_dim_layout(const struct intel_device_info *devinfo,
+                        enum isl_tiling tiling,
+                        enum pipe_texture_target target);
 static inline enum isl_surf_dim
 target_to_isl_surf_dim(enum pipe_texture_target target)
 {

@@ -104,7 +104,8 @@ inst_is_send(const struct intel_device_info *devinfo, const brw_inst *inst)
 }
 
 static bool
-inst_is_split_send(const struct intel_device_info *devinfo, const brw_inst *inst)
+inst_is_split_send(const struct intel_device_info *devinfo,
+                   const brw_inst *inst)
 {
    if (devinfo->ver >= 12) {
       return inst_is_send(devinfo, inst);
@@ -198,7 +199,8 @@ src1_is_acc(const struct intel_device_info *devinfo, const brw_inst *inst)
 }
 
 static bool
-src0_has_scalar_region(const struct intel_device_info *devinfo, const brw_inst *inst)
+src0_has_scalar_region(const struct intel_device_info *devinfo,
+                       const brw_inst *inst)
 {
    return brw_inst_src0_vstride(devinfo, inst) == BRW_VERTICAL_STRIDE_0 &&
           brw_inst_src0_width(devinfo, inst) == BRW_WIDTH_1 &&
@@ -206,7 +208,8 @@ src0_has_scalar_region(const struct intel_device_info *devinfo, const brw_inst *
 }
 
 static bool
-src1_has_scalar_region(const struct intel_device_info *devinfo, const brw_inst *inst)
+src1_has_scalar_region(const struct intel_device_info *devinfo,
+                       const brw_inst *inst)
 {
    return brw_inst_src1_vstride(devinfo, inst) == BRW_VERTICAL_STRIDE_0 &&
           brw_inst_src1_width(devinfo, inst) == BRW_WIDTH_1 &&

@@ -52,8 +52,9 @@ static inline uint32_t intel_make_gen(uint32_t major, uint32_t minor)
 
 struct intel_group *intel_spec_find_struct(struct intel_spec *spec, const char *name);
 struct intel_spec *intel_spec_load(const struct intel_device_info *devinfo);
-struct intel_spec *intel_spec_load_from_path(const struct intel_device_info *devinfo,
-                                             const char *path);
+struct intel_spec *
+intel_spec_load_from_path(const struct intel_device_info *devinfo,
+                          const char *path);
 struct intel_spec *intel_spec_load_filename(const char *filename);
 void intel_spec_destroy(struct intel_spec *spec);
 uint32_t intel_spec_get_gen(struct intel_spec *spec);

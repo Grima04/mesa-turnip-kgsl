@@ -180,9 +180,10 @@ void brw_create_label(struct brw_label **labels, int offset, void *mem_ctx);
 int brw_disassemble_inst(FILE *file, const struct intel_device_info *devinfo,
                          const struct brw_inst *inst, bool is_compacted,
                          int offset, const struct brw_label *root_label);
-const struct brw_label *brw_label_assembly(const struct intel_device_info *devinfo,
-                                           const void *assembly, int start, int end,
-                                           void *mem_ctx);
+const struct
+brw_label *brw_label_assembly(const struct intel_device_info *devinfo,
+                              const void *assembly, int start, int end,
+                              void *mem_ctx);
 void brw_disassemble_with_labels(const struct intel_device_info *devinfo,
                                  const void *assembly, int start, int end, FILE *out);
 void brw_disassemble(const struct intel_device_info *devinfo,
@@ -317,7 +318,8 @@ brw_message_desc_rlen(const struct intel_device_info *devinfo, uint32_t desc)
 }
 
 static inline bool
-brw_message_desc_header_present(ASSERTED const struct intel_device_info *devinfo,
+brw_message_desc_header_present(ASSERTED
+                                const struct intel_device_info *devinfo,
                                 uint32_t desc)
 {
    assert(devinfo->ver >= 5);
@@ -396,14 +398,16 @@ brw_sampler_desc(const struct intel_device_info *devinfo,
 }
 
 static inline unsigned
-brw_sampler_desc_binding_table_index(UNUSED const struct intel_device_info *devinfo,
+brw_sampler_desc_binding_table_index(UNUSED
+                                     const struct intel_device_info *devinfo,
                                      uint32_t desc)
 {
    return GET_BITS(desc, 7, 0);
 }
 
 static inline unsigned
-brw_sampler_desc_sampler(UNUSED const struct intel_device_info *devinfo, uint32_t desc)
+brw_sampler_desc_sampler(UNUSED const struct intel_device_info *devinfo,
+                         uint32_t desc)
 {
    return GET_BITS(desc, 11, 8);
 }
@@ -420,7 +424,8 @@ brw_sampler_desc_msg_type(const struct intel_device_info *devinfo, uint32_t desc
 }
 
 static inline unsigned
-brw_sampler_desc_simd_mode(const struct intel_device_info *devinfo, uint32_t desc)
+brw_sampler_desc_simd_mode(const struct intel_device_info *devinfo,
+                           uint32_t desc)
 {
    assert(devinfo->ver >= 5);
    if (devinfo->ver >= 7)
@@ -518,7 +523,8 @@ brw_dp_read_desc(const struct intel_device_info *devinfo,
 }
 
 static inline unsigned
-brw_dp_read_desc_msg_type(const struct intel_device_info *devinfo, uint32_t desc)
+brw_dp_read_desc_msg_type(const struct intel_device_info *devinfo,
+                          uint32_t desc)
 {
    if (devinfo->ver >= 6)
       return brw_dp_desc_msg_type(devinfo, desc);

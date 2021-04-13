@@ -597,7 +597,8 @@ namespace {
     * found experimentally.
     */
    bool
-   is_conflict_optimized_out(const intel_device_info *devinfo, const fs_inst *inst)
+   is_conflict_optimized_out(const intel_device_info *devinfo,
+                             const fs_inst *inst)
    {
       return devinfo->ver >= 9 &&
          ((is_grf(inst->src[0]) && (reg_of(inst->src[0]) == reg_of(inst->src[1]) ||

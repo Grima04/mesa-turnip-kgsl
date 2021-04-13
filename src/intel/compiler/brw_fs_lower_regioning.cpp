@@ -218,8 +218,8 @@ namespace {
     * specified for the i-th source region.
     */
    bool
-   has_invalid_src_modifiers(const intel_device_info *devinfo, const fs_inst *inst,
-                             unsigned i)
+   has_invalid_src_modifiers(const intel_device_info *devinfo,
+                             const fs_inst *inst, unsigned i)
    {
       return (!inst->can_do_source_mods(devinfo) &&
               (inst->src[i].negate || inst->src[i].abs)) ||

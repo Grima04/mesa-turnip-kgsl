@@ -3584,7 +3584,8 @@ anv_get_format_planes(VkFormat vk_format)
 }
 
 struct anv_format_plane
-anv_get_format_plane(const struct intel_device_info *devinfo, VkFormat vk_format,
+anv_get_format_plane(const struct intel_device_info *devinfo,
+                     VkFormat vk_format,
                      VkImageAspectFlagBits aspect, VkImageTiling tiling);
 
 static inline enum isl_format

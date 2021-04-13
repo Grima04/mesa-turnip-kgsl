@@ -372,8 +372,8 @@ brw_delete_perf_query(struct gl_context *ctx,
 }
 
 /******************************************************************************/
-/* intel_device_info will have incorrect default topology values for unsupported kernels.
- * verify kernel support to ensure OA metrics are accurate.
+/* intel_device_info will have incorrect default topology values for unsupported
+ * kernels. Verify kernel support to ensure OA metrics are accurate.
  */
 static bool
 oa_metrics_kernel_support(int fd, const struct intel_device_info *devinfo)

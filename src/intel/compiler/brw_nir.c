@@ -1468,7 +1468,8 @@ brw_aop_for_nir_intrinsic(const nir_intrinsic_instr *atomic)
 }
 
 enum brw_reg_type
-brw_type_for_nir_type(const struct intel_device_info *devinfo, nir_alu_type type)
+brw_type_for_nir_type(const struct intel_device_info *devinfo,
+                      nir_alu_type type)
 {
    switch (type) {
    case nir_type_uint:
