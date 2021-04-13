@@ -1608,6 +1608,21 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_v2f32_to_v2f16_to(b, dst, s0, s1, BI_ROUND_NONE);
                 return;
 
+        /* Vectorized downcasts */
+        case nir_op_u2u16:
+        case nir_op_i2i16: {
+                if (!(src_sz == 32 && comps == 2))
+                        break;
+
+                bi_index idx = bi_src_index(&instr->src[0].src);
+                bi_index s0 = bi_word(idx, instr->src[0].swizzle[0]);
+                bi_index s1 = bi_word(idx, instr->src[0].swizzle[1]);
+
+                bi_mkvec_v2i16_to(b, dst,
+                                bi_half(s0, false), bi_half(s1, false));
+                return;
+        }
+
         default:
                 break;
         }
