@@ -1891,10 +1891,19 @@ hud_create(struct cso_context *cso, struct st_context_iface *st,
    }
 
    hud->refcount = 1;
-   hud->has_srgb = screen->is_format_supported(screen,
-                                               PIPE_FORMAT_B8G8R8A8_SRGB,
-                                               PIPE_TEXTURE_2D, 0, 0,
-                                               PIPE_BIND_RENDER_TARGET) != 0;
+
+   static const enum pipe_format srgb_formats[] = {
+      PIPE_FORMAT_B8G8R8A8_SRGB,
+      PIPE_FORMAT_B8G8R8X8_SRGB
+   };
+   for (i = 0; i < ARRAY_SIZE(srgb_formats); i++) {
+      if (!screen->is_format_supported(screen, srgb_formats[i],
+                                       PIPE_TEXTURE_2D, 0, 0,
+                                       PIPE_BIND_RENDER_TARGET))
+         break;
+   }
+
+   hud->has_srgb = (i == ARRAY_SIZE(srgb_formats));
 
    /* blend state */
    hud->no_blend.rt[0].colormask = PIPE_MASK_RGBA;
