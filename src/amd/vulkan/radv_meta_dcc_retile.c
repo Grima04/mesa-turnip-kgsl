@@ -21,51 +21,69 @@
  * IN THE SOFTWARE.
  */
 
+#define AC_SURFACE_INCLUDE_NIR
+#include "ac_surface.h"
+
 #include "radv_meta.h"
 #include "radv_private.h"
 
+static nir_ssa_def *
+get_global_ids(nir_builder *b, unsigned num_components)
+{
+   unsigned mask = BITFIELD_MASK(num_components);
+
+   nir_ssa_def *local_ids = nir_channels(b, nir_load_local_invocation_id(b), mask);
+   nir_ssa_def *block_ids = nir_channels(b, nir_load_work_group_id(b, 32), mask);
+   nir_ssa_def *block_size = nir_channels(
+      b,
+      nir_imm_ivec4(b, b->shader->info.cs.local_size[0], b->shader->info.cs.local_size[1],
+                    b->shader->info.cs.local_size[2], 0),
+      mask);
+
+   return nir_iadd(b, nir_imul(b, block_ids, block_size), local_ids);
+}
+
 static nir_shader *
-build_dcc_retile_compute_shader(struct radv_device *dev)
+build_dcc_retile_compute_shader(struct radv_device *dev, struct radeon_surf *surf)
 {
    const struct glsl_type *buf_type = glsl_image_type(GLSL_SAMPLER_DIM_BUF, false, GLSL_TYPE_UINT);
    nir_builder b = nir_builder_init_simple_shader(MESA_SHADER_COMPUTE, NULL, "dcc_retile_compute");
 
-   b.shader->info.cs.local_size[0] = 256;
-   b.shader->info.cs.local_size[1] = 1;
+   b.shader->info.cs.local_size[0] = 8;
+   b.shader->info.cs.local_size[1] = 8;
    b.shader->info.cs.local_size[2] = 1;
 
-   nir_variable *indices = nir_variable_create(b.shader, nir_var_uniform, buf_type, "indices_in");
-   indices->data.descriptor_set = 0;
-   indices->data.binding = 0;
+   nir_ssa_def *src_dcc_size = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 0), .range = 8);
+   nir_ssa_def *src_dcc_pitch = nir_channels(&b, src_dcc_size, 1);
+   nir_ssa_def *src_dcc_height = nir_channels(&b, src_dcc_size, 2);
+
+   nir_ssa_def *dst_dcc_size = nir_load_push_constant(&b, 2, 32, nir_imm_int(&b, 8), .range = 8);
+   nir_ssa_def *dst_dcc_pitch = nir_channels(&b, dst_dcc_size, 1);
+   nir_ssa_def *dst_dcc_height = nir_channels(&b, dst_dcc_size, 2);
    nir_variable *input_dcc = nir_variable_create(b.shader, nir_var_uniform, buf_type, "dcc_in");
    input_dcc->data.descriptor_set = 0;
-   input_dcc->data.binding = 1;
+   input_dcc->data.binding = 0;
    nir_variable *output_dcc = nir_variable_create(b.shader, nir_var_uniform, buf_type, "dcc_out");
    output_dcc->data.descriptor_set = 0;
-   output_dcc->data.binding = 2;
+   output_dcc->data.binding = 1;
 
-   nir_ssa_def *indices_ref = &nir_build_deref_var(&b, indices)->dest.ssa;
    nir_ssa_def *input_dcc_ref = &nir_build_deref_var(&b, input_dcc)->dest.ssa;
    nir_ssa_def *output_dcc_ref = &nir_build_deref_var(&b, output_dcc)->dest.ssa;
 
-   nir_ssa_def *invoc_id = nir_load_local_invocation_id(&b);
-   nir_ssa_def *wg_id = nir_load_work_group_id(&b, 32);
-   nir_ssa_def *block_size = nir_imm_ivec4(&b, b.shader->info.cs.local_size[0], 0, 0, 0);
+   nir_ssa_def *coord = get_global_ids(&b, 2);
+   nir_ssa_def *zero = nir_imm_int(&b, 0);
+   coord = nir_imul(
+      &b, coord,
+      nir_imm_ivec2(&b, surf->u.gfx9.color.dcc_block_width, surf->u.gfx9.color.dcc_block_height));
 
-   nir_ssa_def *global_id = nir_iadd(&b, nir_imul(&b, wg_id, block_size), invoc_id);
-
-   nir_intrinsic_instr *index_vals =
-      nir_intrinsic_instr_create(b.shader, nir_intrinsic_image_deref_load);
-   index_vals->num_components = 2;
-   index_vals->src[0] = nir_src_for_ssa(indices_ref);
-   index_vals->src[1] = nir_src_for_ssa(global_id);
-   index_vals->src[2] = nir_src_for_ssa(nir_ssa_undef(&b, 1, 32));
-   index_vals->src[3] = nir_src_for_ssa(nir_imm_int(&b, 0));
-   nir_ssa_dest_init(&index_vals->instr, &index_vals->dest, 2, 32, "indices");
-   nir_builder_instr_insert(&b, &index_vals->instr);
-
-   nir_ssa_def *src = nir_channels(&b, &index_vals->dest.ssa, 1);
-   nir_ssa_def *dst = nir_channels(&b, &index_vals->dest.ssa, 2);
+   nir_ssa_def *src = ac_nir_dcc_addr_from_coord(&b, &dev->physical_device->rad_info, surf->bpe,
+                                                 &surf->u.gfx9.color.dcc_equation, src_dcc_pitch,
+                                                 src_dcc_height, zero, nir_channel(&b, coord, 0),
+                                                 nir_channel(&b, coord, 1), zero, zero, zero);
+   nir_ssa_def *dst = ac_nir_dcc_addr_from_coord(
+      &b, &dev->physical_device->rad_info, surf->bpe, &surf->u.gfx9.color.display_dcc_equation,
+      dst_dcc_pitch, dst_dcc_height, zero, nir_channel(&b, coord, 0), nir_channel(&b, coord, 1),
+      zero, zero, zero);
 
    nir_intrinsic_instr *dcc_val =
       nir_intrinsic_instr_create(b.shader, nir_intrinsic_image_deref_load);
@@ -105,16 +123,26 @@ radv_device_finish_meta_dcc_retile_state(struct radv_device *device)
    memset(&state->dcc_retile, 0, sizeof(state->dcc_retile));
 }
 
-VkResult
-radv_device_init_meta_dcc_retile_state(struct radv_device *device)
+/*
+ * This take a surface, but the only things used are:
+ * - BPE
+ * - DCC equations
+ * - DCC block size
+ *
+ * BPE is always 4 at the moment and the rest is derived from the tilemode,
+ * and ac_surface limits displayable DCC to at most 1 tiling mode. So in effect
+ * this shader is indepedent of the surface.
+ */
+static VkResult
+radv_device_init_meta_dcc_retile_state(struct radv_device *device, struct radeon_surf *surf)
 {
    VkResult result = VK_SUCCESS;
-   nir_shader *cs = build_dcc_retile_compute_shader(device);
+   nir_shader *cs = build_dcc_retile_compute_shader(device, surf);
 
    VkDescriptorSetLayoutCreateInfo ds_create_info = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .flags = VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR,
-      .bindingCount = 3,
+      .bindingCount = 2,
       .pBindings = (VkDescriptorSetLayoutBinding[]){
          {.binding = 0,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
@@ -122,11 +150,6 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device)
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
           .pImmutableSamplers = NULL},
          {.binding = 1,
-          .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-          .descriptorCount = 1,
-          .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-          .pImmutableSamplers = NULL},
-         {.binding = 2,
           .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
           .descriptorCount = 1,
           .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -143,7 +166,8 @@ radv_device_init_meta_dcc_retile_state(struct radv_device *device)
       .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .setLayoutCount = 1,
       .pSetLayouts = &device->meta_state.dcc_retile.ds_layout,
-      .pushConstantRangeCount = 0,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges = &(VkPushConstantRange){VK_SHADER_STAGE_COMPUTE_BIT, 0, 16},
    };
 
    result =
@@ -198,24 +222,26 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
 
    /* Compile pipelines if not already done so. */
    if (!cmd_buffer->device->meta_state.dcc_retile.pipeline) {
-      VkResult ret = radv_device_init_meta_dcc_retile_state(cmd_buffer->device);
+      VkResult ret =
+         radv_device_init_meta_dcc_retile_state(cmd_buffer->device, &image->planes[0].surface);
       if (ret != VK_SUCCESS) {
          cmd_buffer->record_result = ret;
          return;
       }
    }
 
-   radv_meta_save(&saved_state, cmd_buffer,
-                  RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_COMPUTE_PIPELINE);
+   radv_meta_save(
+      &saved_state, cmd_buffer,
+      RADV_META_SAVE_DESCRIPTORS | RADV_META_SAVE_COMPUTE_PIPELINE | RADV_META_SAVE_CONSTANTS);
 
    radv_CmdBindPipeline(radv_cmd_buffer_to_handle(cmd_buffer), VK_PIPELINE_BIND_POINT_COMPUTE,
                         device->meta_state.dcc_retile.pipeline);
 
    struct radv_buffer buffer = {.size = image->size, .bo = image->bo, .offset = image->offset};
 
-   struct radv_buffer_view views[3];
-   VkBufferView view_handles[3];
-   radv_buffer_view_init(views + 1, cmd_buffer->device,
+   struct radv_buffer_view views[2];
+   VkBufferView view_handles[2];
+   radv_buffer_view_init(views, cmd_buffer->device,
                          &(VkBufferViewCreateInfo){
                             .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
                             .buffer = radv_buffer_to_handle(&buffer),
@@ -223,7 +249,7 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
                             .range = image->planes[0].surface.meta_size,
                             .format = VK_FORMAT_R8_UINT,
                          });
-   radv_buffer_view_init(views + 2, cmd_buffer->device,
+   radv_buffer_view_init(views + 1, cmd_buffer->device,
                          &(VkBufferViewCreateInfo){
                             .sType = VK_STRUCTURE_TYPE_BUFFER_VIEW_CREATE_INFO,
                             .buffer = radv_buffer_to_handle(&buffer),
@@ -231,12 +257,12 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
                             .range = image->planes[0].surface.u.gfx9.color.display_dcc_size,
                             .format = VK_FORMAT_R8_UINT,
                          });
-   for (unsigned i = 0; i < 3; ++i)
+   for (unsigned i = 0; i < 2; ++i)
       view_handles[i] = radv_buffer_view_to_handle(&views[i]);
 
    radv_meta_push_descriptor_set(cmd_buffer, VK_PIPELINE_BIND_POINT_COMPUTE,
                                  device->meta_state.dcc_retile.p_layout, 0, /* set */
-                                 3, /* descriptorWriteCount */
+                                 2, /* descriptorWriteCount */
                                  (VkWriteDescriptorSet[]){
                                     {
                                        .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -254,20 +280,26 @@ radv_retile_dcc(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image)
                                        .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
                                        .pTexelBufferView = &view_handles[1],
                                     },
-                                    {
-                                       .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                       .dstBinding = 2,
-                                       .dstArrayElement = 0,
-                                       .descriptorCount = 1,
-                                       .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER,
-                                       .pTexelBufferView = &view_handles[2],
-                                    },
                                  });
 
-   /* src+dst pairs count double, so the number of DCC bytes we move is
-    * actually half of dcc_retile_num_elements. */
-   /*radv_unaligned_dispatch(cmd_buffer, image->planes[0].surface.u.gfx9.color.dcc_retile_num_elements / 2,
-                           1, 1);*/
+   unsigned width = DIV_ROUND_UP(image->info.width, vk_format_get_blockwidth(image->vk_format));
+   unsigned height = DIV_ROUND_UP(image->info.height, vk_format_get_blockheight(image->vk_format));
+
+   unsigned dcc_width = DIV_ROUND_UP(width, image->planes[0].surface.u.gfx9.color.dcc_block_width);
+   unsigned dcc_height =
+      DIV_ROUND_UP(height, image->planes[0].surface.u.gfx9.color.dcc_block_height);
+
+   uint32_t constants[] = {
+      image->planes[0].surface.u.gfx9.color.dcc_pitch_max + 1,
+      image->planes[0].surface.u.gfx9.color.dcc_height,
+      image->planes[0].surface.u.gfx9.color.display_dcc_pitch_max + 1,
+      image->planes[0].surface.u.gfx9.color.display_dcc_height,
+   };
+   radv_CmdPushConstants(radv_cmd_buffer_to_handle(cmd_buffer),
+                         device->meta_state.dcc_retile.p_layout, VK_SHADER_STAGE_COMPUTE_BIT, 0, 16,
+                         constants);
+
+   radv_unaligned_dispatch(cmd_buffer, dcc_width, dcc_height, 1);
 
    radv_meta_restore(&saved_state, cmd_buffer);
 

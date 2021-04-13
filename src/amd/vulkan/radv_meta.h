@@ -125,7 +125,6 @@ void radv_device_finish_meta_resolve_fragment_state(struct radv_device *device);
 VkResult radv_device_init_meta_fmask_expand_state(struct radv_device *device);
 void radv_device_finish_meta_fmask_expand_state(struct radv_device *device);
 
-VkResult radv_device_init_meta_dcc_retile_state(struct radv_device *device);
 void radv_device_finish_meta_dcc_retile_state(struct radv_device *device);
 
 void radv_meta_save(struct radv_meta_saved_state *saved_state, struct radv_cmd_buffer *cmd_buffer,

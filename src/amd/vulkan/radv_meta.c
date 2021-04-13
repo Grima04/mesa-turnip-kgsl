@@ -460,16 +460,8 @@ radv_device_init_meta(struct radv_device *device)
    if (result != VK_SUCCESS)
       goto fail_fmask_expand;
 
-   if (!on_demand) {
-      result = radv_device_init_meta_dcc_retile_state(device);
-      if (result != VK_SUCCESS)
-         goto fail_dcc_retile;
-   }
-
    return VK_SUCCESS;
 
-fail_dcc_retile:
-   radv_device_finish_meta_fmask_expand_state(device);
 fail_fmask_expand:
    radv_device_finish_meta_resolve_fragment_state(device);
 fail_resolve_fragment:

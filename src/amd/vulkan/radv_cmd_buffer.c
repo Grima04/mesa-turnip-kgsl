@@ -5983,6 +5983,14 @@ radv_retile_transition(struct radv_cmd_buffer *cmd_buffer, struct radv_image *im
         (dst_queue_mask & (1u << RADV_QUEUE_FOREIGN))))
       radv_retile_dcc(cmd_buffer, image);
 }
+
+static bool
+radv_image_need_retile(const struct radv_image *image)
+{
+   return image->planes[0].surface.display_dcc_offset &&
+          image->planes[0].surface.display_dcc_offset != image->planes[0].surface.meta_offset;
+}
+
 /**
  * Handle color image transitions for DCC/FMASK/CMASK.
  */
@@ -6003,7 +6011,7 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
       radv_init_color_image_metadata(cmd_buffer, image, src_layout, src_render_loop, dst_layout,
                                      dst_render_loop, src_queue_mask, dst_queue_mask, range);
 
-      if (0)
+      if (radv_image_need_retile(image))
          radv_retile_transition(cmd_buffer, image, src_layout, dst_layout, dst_queue_mask);
       return;
    }
@@ -6025,8 +6033,8 @@ radv_handle_color_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
          fast_clear_flushed = true;
       }
 
-      /*if (image->retile_map)
-         radv_retile_transition(cmd_buffer, image, src_layout, dst_layout, dst_queue_mask);*/
+      if (radv_image_need_retile(image))
+         radv_retile_transition(cmd_buffer, image, src_layout, dst_layout, dst_queue_mask);
    } else if (radv_image_has_cmask(image) || radv_image_has_fmask(image)) {
       if (radv_layout_can_fast_clear(cmd_buffer->device, image, src_layout, src_render_loop,
                                      src_queue_mask) &&
