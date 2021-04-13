@@ -527,6 +527,7 @@ tu_CreateDescriptorPool(VkDevice _device,
       case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
       case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
          dynamic_count += pCreateInfo->pPoolSizes[i].descriptorCount;
+         break;
       default:
          break;
       }

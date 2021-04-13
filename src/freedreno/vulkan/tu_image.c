@@ -145,6 +145,7 @@ tu6_texswiz(const VkComponentMapping *comps,
             swiz[1] = A6XX_TEX_ZERO;
          }
       }
+      break;
    default:
       break;
    }

@@ -585,6 +585,7 @@ bool validate_subdword_operand(chip_class chip, const aco_ptr<Instruction>& inst
    case aco_opcode::global_store_short_d16_hi:
       if (byte == 2 && index == 2)
          return true;
+      break;
    default:
       break;
    }
@@ -663,6 +664,7 @@ unsigned get_subdword_bytes_written(Program *program, const aco_ptr<Instruction>
    case aco_opcode::v_interp_p2_f16:
       if (chip >= GFX9)
          return 2;
+      break;
    default:
       break;
    }

@@ -1085,6 +1085,7 @@ store_dest(struct ntv_context *ctx, nir_dest *dest, SpvId result, nir_alu_type t
       switch (nir_alu_type_get_base_type(type)) {
       case nir_type_bool:
          assert("bool should have bit-size 1");
+         break;
 
       case nir_type_uint:
          break; /* nothing to do! */

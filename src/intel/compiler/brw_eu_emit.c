@@ -2914,6 +2914,7 @@ brw_find_next_block_end(struct brw_codegen *p, int start_offset)
       case BRW_OPCODE_HALT:
          if (depth == 0)
             return offset;
+         break;
       default:
          break;
       }

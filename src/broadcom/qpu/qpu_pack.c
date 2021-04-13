@@ -1452,6 +1452,7 @@ v3d_qpu_instr_pack_branch(const struct v3d_device_info *devinfo,
 
                 *packed_instr |= QPU_SET_FIELD(instr->branch.offset >> 24,
                                                VC5_QPU_BRANCH_ADDR_HIGH);
+                break;
         default:
                 break;
         }
