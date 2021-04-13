@@ -426,7 +426,9 @@ fd_msaa_samples(unsigned samples)
    switch (samples) {
    default:
       debug_assert(0);
+#if defined(NDEBUG) || defined(DEBUG)
       FALLTHROUGH;
+#endif
    case 0:
    case 1:
       return MSAA_ONE;
