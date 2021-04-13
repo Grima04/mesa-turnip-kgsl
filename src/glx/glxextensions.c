@@ -658,7 +658,7 @@ __glExtensionBitIsEnabled(struct glx_context *gc, unsigned bit)
  */
 static char *
 __glXGetStringFromTable(const struct extension_info *ext,
-                        const unsigned char *supported)
+                        const unsigned char *filter)
 {
    unsigned i;
    unsigned ext_str_len;
@@ -668,7 +668,7 @@ __glXGetStringFromTable(const struct extension_info *ext,
 
    ext_str_len = 0;
    for (i = 0; ext[i].name != NULL; i++) {
-      if (EXT_ENABLED(ext[i].bit, supported)) {
+      if (!filter || EXT_ENABLED(ext[i].bit, filter)) {
          ext_str_len += ext[i].name_len + 1;
       }
    }
@@ -678,7 +678,7 @@ __glXGetStringFromTable(const struct extension_info *ext,
       point = ext_str;
 
       for (i = 0; ext[i].name != NULL; i++) {
-         if (EXT_ENABLED(ext[i].bit, supported)) {
+         if (!filter || EXT_ENABLED(ext[i].bit, filter)) {
             (void) memcpy(point, ext[i].name, ext[i].name_len);
             point += ext[i].name_len;
 
