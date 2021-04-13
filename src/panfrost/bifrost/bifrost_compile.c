@@ -3078,8 +3078,12 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 block->base.name = block_source_count++;
         }
 
+        /* Runs before constant folding */
+        bi_lower_swizzle(ctx);
+
         /* Runs before copy prop */
         bi_opt_push_ubo(ctx);
+        bi_opt_constant_fold(ctx);
         bi_opt_copy_prop(ctx);
         bi_opt_dead_code_eliminate(ctx, false);
 
@@ -3087,8 +3091,6 @@ bifrost_compile_shader_nir(nir_shader *nir,
                 bi_block *block = (bi_block *) _block;
                 bi_lower_branch(block);
         }
-
-        bi_lower_swizzle(ctx);
 
         if (bifrost_debug & BIFROST_DBG_SHADERS && !skip_internal)
                 bi_print_shader(ctx, stdout);
