@@ -78,6 +78,7 @@ traces:
     expectations:
       - device: gl-intel-apl
         checksum: 79c4f44ce0433e2949c81ae4d69565c6
+      - device: gl-intel-glk
         checksum: 79c4f44ce0433e2949c81ae4d69565c6
   - path: glmark2/bump-bump-render=height.rdc
     expectations:
