@@ -400,19 +400,15 @@ struct ntd_context {
 
    struct util_dynarray srv_metadata_nodes;
    const struct dxil_value *srv_handles[MAX_SRVS];
-   uint64_t srvs_used[2];
 
    struct util_dynarray uav_metadata_nodes;
    const struct dxil_value *uav_handles[MAX_UAVS];
-   unsigned num_uavs;
 
    struct util_dynarray cbv_metadata_nodes;
    const struct dxil_value *cbv_handles[MAX_CBVS];
-   unsigned num_cbvs;
 
    struct util_dynarray sampler_metadata_nodes;
    const struct dxil_value *sampler_handles[MAX_SAMPLERS];
-   uint64_t samplers_used : MAX_SAMPLERS;
 
    struct util_dynarray resources;
 
@@ -832,11 +828,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned 
          return false;
 
       int idx = var->data.binding + i;
-      uint64_t bit = 1ull << (idx % 64);
-      assert(!(ctx->srvs_used[idx / 64] & bit));
       ctx->srv_handles[idx] = handle;
-      ctx->srvs_used[idx / 64] |= bit;
-
    }
 
    return true;
@@ -874,7 +866,6 @@ emit_globals(struct ntd_context *ctx, unsigned size)
    if (util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
    /* Handles to UAVs used for kernel globals are created on-demand */
-   ctx->num_uavs += size;
    add_resource(ctx, DXIL_RES_UAV_RAW, &layout);
    ctx->mod.raw_and_structured_buffers = true;
    return true;
@@ -907,7 +898,6 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned count,
          return false;
 
       ctx->uav_handles[binding + i] = handle;
-      ctx->num_uavs++;
    }
 
    return true;
@@ -1088,7 +1078,6 @@ emit_cbv(struct ntd_context *ctx, unsigned binding,
 
       assert(!ctx->cbv_handles[binding + i]);
       ctx->cbv_handles[binding + i] = handle;
-      ctx->num_cbvs++;
    }
 
    return true;
@@ -1126,10 +1115,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsig
          return false;
 
       unsigned idx = var->data.binding + i;
-      uint64_t bit = 1ull << idx;
-      assert(!(ctx->samplers_used & bit));
       ctx->sampler_handles[idx] = handle;
-      ctx->samplers_used |= bit;
    }
 
    return true;
@@ -1239,22 +1225,22 @@ emit_resources(struct ntd_context *ctx)
 
 #define ARRAY_AND_SIZE(arr) arr.data, util_dynarray_num_elements(&arr, const struct dxil_mdnode *)
 
-   if (ctx->srvs_used[0] || ctx->srvs_used[1]) {
+   if (ctx->srv_metadata_nodes.size) {
       resources_nodes[0] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->srv_metadata_nodes));
       emit_resources = true;
    }
 
-   if (ctx->num_uavs) {
+   if (ctx->uav_metadata_nodes.size) {
       resources_nodes[1] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->uav_metadata_nodes));
       emit_resources = true;
    }
 
-   if (ctx->num_cbvs) {
+   if (ctx->cbv_metadata_nodes.size) {
       resources_nodes[2] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->cbv_metadata_nodes));
       emit_resources = true;
    }
 
-   if (ctx->samplers_used) {
+   if (ctx->sampler_metadata_nodes.size) {
       resources_nodes[3] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->sampler_metadata_nodes));
       emit_resources = true;
    }
@@ -3733,16 +3719,16 @@ emit_texture_lod(struct ntd_context *ctx, struct texop_parameters *params)
 static bool
 emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 {
-   assert(ctx->srvs_used[instr->texture_index / 64] & (1ull << (instr->texture_index % 64)));
-   assert(instr->op == nir_texop_txf ||
-          instr->op == nir_texop_txf_ms ||
-          nir_tex_instr_is_query(instr) ||
-          ctx->samplers_used & (1ull << instr->sampler_index));
-
    struct texop_parameters params;
    memset(&params, 0, sizeof(struct texop_parameters));
    params.tex = ctx->srv_handles[instr->texture_index];
    params.sampler = ctx->sampler_handles[instr->sampler_index];
+
+   assert(params.tex != NULL);
+   assert(instr->op == nir_texop_txf ||
+          instr->op == nir_texop_txf_ms ||
+          nir_tex_instr_is_query(instr) ||
+          params.sampler != NULL);
 
    const struct dxil_type *int_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *float_type = dxil_module_get_float_type(&ctx->mod, 32);
