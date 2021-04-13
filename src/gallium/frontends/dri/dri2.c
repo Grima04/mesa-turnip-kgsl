@@ -1167,12 +1167,8 @@ dri2_query_image_by_resource_handle(__DRIimage *image, int attrib, int *value)
    if (image->use & __DRI_IMAGE_USE_BACKBUFFER)
       usage |= PIPE_HANDLE_USAGE_EXPLICIT_FLUSH;
 
-   for (i = 0, tex = image->texture; tex; i++, tex = tex->next)
-      if (i == image->plane)
-          break;
-   assert(tex);
-
-   if (!pscreen->resource_get_handle(pscreen, NULL, tex, &whandle, usage))
+   if (!pscreen->resource_get_handle(pscreen, NULL, image->texture,
+                                     &whandle, usage))
       return false;
 
    switch (attrib) {
