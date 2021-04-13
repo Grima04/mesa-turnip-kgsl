@@ -2680,7 +2680,7 @@ static struct v3dv_job *
 cmd_buffer_subpass_split_for_barrier(struct v3dv_cmd_buffer *cmd_buffer,
                                      bool is_bcl_barrier)
 {
-   assert(cmd_buffer->state.subpass_idx >= 0);
+   assert(cmd_buffer->state.subpass_idx != -1);
    v3dv_cmd_buffer_finish_job(cmd_buffer);
    struct v3dv_job *job =
       v3dv_cmd_buffer_subpass_resume(cmd_buffer,
