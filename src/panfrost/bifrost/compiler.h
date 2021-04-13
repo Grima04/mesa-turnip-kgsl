@@ -204,6 +204,13 @@ bi_neg(bi_index idx)
         return idx;
 }
 
+/* Additive identity in IEEE 754 arithmetic */
+static inline bi_index
+bi_negzero()
+{
+        return bi_neg(bi_zero());
+}
+
 /* Replaces an index, preserving any modifiers */
 
 static inline bi_index

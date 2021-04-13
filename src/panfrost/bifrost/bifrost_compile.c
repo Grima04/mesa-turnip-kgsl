@@ -1499,13 +1499,13 @@ bi_lower_fsincos_32(bi_builder *b, bi_index dst, bi_index s0, bool cos)
         bi_index cosx = bi_fcos_table_u6(b, x_u6, false);
 
         /* e^2 / 2 */
-        bi_index e2_over_2 = bi_fma_rscale_f32(b, e, e, bi_neg(bi_zero()),
+        bi_index e2_over_2 = bi_fma_rscale_f32(b, e, e, bi_negzero(),
                         bi_imm_u32(-1), BI_ROUND_NONE, BI_SPECIAL_NONE);
 
         /* (-e^2)/2 f''(x) */
         bi_index quadratic = bi_fma_f32(b, bi_neg(e2_over_2),
                         cos ? cosx : sinx,
-                        bi_neg(bi_zero()),  BI_ROUND_NONE);
+                        bi_negzero(),  BI_ROUND_NONE);
 
         /* e f'(x) - (e^2/2) f''(x) */
         bi_instr *I = bi_fma_f32_to(b, bi_temp(b->shader), e,
@@ -1637,7 +1637,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_fmul:
-                bi_fma_to(b, sz, dst, s0, s1, bi_zero(), BI_ROUND_NONE);
+                bi_fma_to(b, sz, dst, s0, s1, bi_negzero(), BI_ROUND_NONE);
                 break;
 
         case nir_op_fsub:
@@ -1648,17 +1648,17 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 break;
 
         case nir_op_fsat: {
-                bi_instr *I = bi_fadd_to(b, sz, dst, s0, bi_zero(), BI_ROUND_NONE);
+                bi_instr *I = bi_fadd_to(b, sz, dst, s0, bi_negzero(), BI_ROUND_NONE);
                 I->clamp = BI_CLAMP_CLAMP_0_1;
                 break;
         }
 
         case nir_op_fneg:
-                bi_fadd_to(b, sz, dst, bi_neg(s0), bi_zero(), BI_ROUND_NONE);
+                bi_fadd_to(b, sz, dst, bi_neg(s0), bi_negzero(), BI_ROUND_NONE);
                 break;
 
         case nir_op_fabs:
-                bi_fadd_to(b, sz, dst, bi_abs(s0), bi_zero(), BI_ROUND_NONE);
+                bi_fadd_to(b, sz, dst, bi_abs(s0), bi_negzero(), BI_ROUND_NONE);
                 break;
 
         case nir_op_fsin:
@@ -1679,7 +1679,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
                 /* multiply by 1.0 * 2*24 */
                 bi_index scale = bi_fma_rscale_f32(b, s0, bi_imm_f32(1.0f),
-                                bi_zero(), bi_imm_u32(24), BI_ROUND_NONE,
+                                bi_negzero(), bi_imm_u32(24), BI_ROUND_NONE,
                                 BI_SPECIAL_NONE);
 
                 bi_fexp_f32_to(b, dst, bi_f32_to_s32(b, scale, BI_ROUND_NONE), s0);
@@ -2104,12 +2104,12 @@ bi_emit_texc_lod_88(bi_builder *b, bi_index lod, bool fp16)
 
         bi_instr *fsat = bi_fma_f32_to(b, bi_temp(b->shader),
                         fp16 ? bi_half(lod, false) : lod,
-                        bi_imm_f32(1.0f / max_lod), bi_zero(), BI_ROUND_NONE);
+                        bi_imm_f32(1.0f / max_lod), bi_negzero(), BI_ROUND_NONE);
 
         fsat->clamp = BI_CLAMP_CLAMP_M1_1;
 
         bi_index fmul = bi_fma_f32(b, fsat->dest[0], bi_imm_f32(max_lod * 256.0f),
-                        bi_zero(), BI_ROUND_NONE);
+                        bi_negzero(), BI_ROUND_NONE);
 
         return bi_mkvec_v2i16(b,
                         bi_half(bi_f32_to_s32(b, fmul, BI_ROUND_RTZ), false),
@@ -2197,7 +2197,7 @@ bi_emit_cube_coord(bi_builder *b, bi_index coord,
         bi_index rcp = bi_frcp_f32(b, cubeface->dest[0]);
 
         /* Calculate 0.5 * (1.0 / max{x, y, z}) */
-        bi_index fma1 = bi_fma_f32(b, rcp, bi_imm_f32(0.5f), bi_zero(),
+        bi_index fma1 = bi_fma_f32(b, rcp, bi_imm_f32(0.5f), bi_negzero(),
                         BI_ROUND_NONE);
 
         /* Transform the coordinates */
