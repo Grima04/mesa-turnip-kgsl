@@ -31,7 +31,6 @@
 #include "pan_pool.h"
 #include "pan_minmax_cache.h"
 #include "pan_texture.h"
-#include "pan_partial_update.h"
 #include "drm-uapi/drm.h"
 #include "util/u_range.h"
 
@@ -41,8 +40,6 @@ struct panfrost_resource {
         struct pipe_resource base;
         struct {
                 struct pipe_scissor_state extent;
-                struct pan_rect *inverted_rects;
-                unsigned inverted_len;
         } damage;
 
         struct renderonly_scanout *scanout;

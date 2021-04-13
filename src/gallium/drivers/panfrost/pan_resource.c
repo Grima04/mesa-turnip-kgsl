@@ -535,15 +535,7 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
         struct pipe_scissor_state *damage_extent = &pres->damage.extent;
         unsigned int i;
 
-        if (pres->damage.inverted_rects)
-                ralloc_free(pres->damage.inverted_rects);
-
         memset(&pres->damage, 0, sizeof(pres->damage));
-
-        pres->damage.inverted_rects =
-                pan_subtract_damage(pres,
-                        res->width0, res->height0,
-                        nrects, rects, &pres->damage.inverted_len);
 
         /* Track the damage extent: the quad including all damage regions. Will
          * be used restrict the rendering area */

@@ -778,9 +778,6 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
         if (!rsrc->state.slices[level].data_valid)
                 return;
 
-        if (!rsrc->damage.inverted_len)
-                return;
-
         /* Clamp the rendering area to the damage extent. The
          * KHR_partial_update() spec states that trying to render outside of
          * the damage region is "undefined behavior", so we should be safe.
@@ -875,42 +872,33 @@ panfrost_load_surface(struct panfrost_batch *batch, struct pipe_surface *surf, u
                 pthread_mutex_unlock(&dev->blend_shaders.lock);
         }
 
-        struct panfrost_ptr transfer = panfrost_pool_alloc_aligned(&batch->pool,
-                        4 * 4 * 6 * rsrc->damage.inverted_len, 64);
+        float rect[] = {
+                0.0, rsrc->base.height0, 0.0, 1.0,
+                rsrc->base.width0, rsrc->base.height0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
 
-        for (unsigned i = 0; i < rsrc->damage.inverted_len; ++i) {
-                float *o = (float *) (transfer.cpu + (4 * 4 * 6 * i));
-                struct pan_rect r = rsrc->damage.inverted_rects[i];
+                rsrc->base.width0, rsrc->base.height0, 0.0, 1.0,
+                0.0, 0.0, 0.0, 1.0,
+                rsrc->base.width0, 0.0, 0.0, 1.0,
+        };
 
-                float rect[] = {
-                        r.minx, rsrc->base.height0 - r.miny, 0.0, 1.0,
-                        r.maxx, rsrc->base.height0 - r.miny, 0.0, 1.0,
-                        r.minx, rsrc->base.height0 - r.maxy, 0.0, 1.0,
+        mali_ptr vertices =
+                panfrost_pool_upload_aligned(&batch->pool, rect, sizeof(rect), 64);
 
-                        r.maxx, rsrc->base.height0 - r.miny, 0.0, 1.0,
-                        r.minx, rsrc->base.height0 - r.maxy, 0.0, 1.0,
-                        r.maxx, rsrc->base.height0 - r.maxy, 0.0, 1.0,
-                };
-
-                assert(sizeof(rect) == 4 * 4 * 6);
-                memcpy(o, rect, sizeof(rect));
-        }
-
-        unsigned vertex_count = rsrc->damage.inverted_len * 6;
         if (pan_is_bifrost(batch->pool.dev)) {
                 mali_ptr tiler =
-                        panfrost_batch_get_bifrost_tiler(batch, vertex_count);
+                        panfrost_batch_get_bifrost_tiler(batch, 6);
                 panfrost_load_bifrost(&batch->pool, &batch->scoreboard,
                                       blend_shader,
                                       batch->framebuffer.gpu,
                                       tiler,
-                                      transfer.gpu, vertex_count,
+                                      vertices, 6,
                                       &iview, loc);
         } else {
                 panfrost_load_midg(&batch->pool, &batch->scoreboard,
                                    blend_shader,
                                    batch->framebuffer.gpu,
-                                   transfer.gpu, vertex_count,
+                                   vertices, 6,
                                    &iview, loc);
         }
 
