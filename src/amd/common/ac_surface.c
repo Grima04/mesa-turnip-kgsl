@@ -1495,14 +1495,14 @@ static bool is_dcc_supported_by_DCN(const struct radeon_info *info,
 
 static void ac_copy_dcc_equation(const struct radeon_info *info,
                                  ADDR2_COMPUTE_DCCINFO_OUTPUT *dcc,
-                                 struct gfx9_dcc_equation *equation)
+                                 struct gfx9_meta_equation *equation)
 {
    equation->meta_block_width = dcc->metaBlkWidth;
    equation->meta_block_height = dcc->metaBlkHeight;
    equation->meta_block_depth = dcc->metaBlkDepth;
 
    if (info->chip_class >= GFX10) {
-      /* gfx9_dcc_equation doesn't store the first 4 and the last 8 elements. They must be 0. */
+      /* gfx9_meta_equation doesn't store the first 4 and the last 8 elements. They must be 0. */
       for (unsigned i = 0; i < 4; i++)
          assert(dcc->equation.gfx10_bits[i] == 0);
 
@@ -2893,7 +2893,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
 }
 
 nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info *info,
-                                        unsigned bpe, struct gfx9_dcc_equation *equation,
+                                        unsigned bpe, struct gfx9_meta_equation *equation,
                                         nir_ssa_def *dcc_pitch, nir_ssa_def *dcc_height,
                                         nir_ssa_def *dcc_slice_size,
                                         nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,

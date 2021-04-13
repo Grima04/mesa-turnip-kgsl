@@ -171,6 +171,10 @@ struct gfx9_surf_level {
 };
 
 /**
+ * Meta address equation.
+ *
+ * For DCC:
+ *
  * DCC address equation for doing DCC address computations in shaders.
  *
  * ac_surface_dcc_address_test.c contains the reference implementation.
@@ -180,7 +184,7 @@ struct gfx9_surf_level {
  * The gfx10 equation doesn't support mipmapping and MSAA.
  * (those are also limitations of Addr2ComputeDccAddrFromCoord)
  */
-struct gfx9_dcc_equation {
+struct gfx9_meta_equation {
    uint16_t meta_block_width;
    uint16_t meta_block_height;
    uint16_t meta_block_depth;
@@ -272,8 +276,8 @@ struct gfx9_surf_layout {
          struct gfx9_surf_level cmask_level0;
 
          /* For DCC retiling. */
-         struct gfx9_dcc_equation dcc_equation; /* 2D only */
-         struct gfx9_dcc_equation display_dcc_equation;
+         struct gfx9_meta_equation dcc_equation; /* 2D only */
+         struct gfx9_meta_equation display_dcc_equation;
       } color;
 
       /* Z/S */
@@ -449,7 +453,7 @@ void ac_surface_print_info(FILE *out, const struct radeon_info *info,
 
 #ifdef AC_SURFACE_INCLUDE_NIR
 nir_ssa_def *ac_nir_dcc_addr_from_coord(nir_builder *b, const struct radeon_info *info,
-                                        unsigned bpe, struct gfx9_dcc_equation *equation,
+                                        unsigned bpe, struct gfx9_meta_equation *equation,
                                         nir_ssa_def *dcc_pitch, nir_ssa_def *dcc_height,
                                         nir_ssa_def *dcc_slice_size,
                                         nir_ssa_def *x, nir_ssa_def *y, nir_ssa_def *z,
