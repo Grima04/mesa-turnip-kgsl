@@ -138,9 +138,9 @@ VkResult genX(CreateQueryPool)(
       perf_query_info = vk_find_struct_const(pCreateInfo->pNext,
                                              QUERY_POOL_PERFORMANCE_CREATE_INFO_KHR);
       n_passes = intel_perf_get_n_passes(pdevice->perf,
-                                       perf_query_info->pCounterIndices,
-                                       perf_query_info->counterIndexCount,
-                                       NULL);
+                                         perf_query_info->pCounterIndices,
+                                         perf_query_info->counterIndexCount,
+                                         NULL);
       vk_multialloc_add(&ma, &counter_pass, struct intel_perf_counter_pass,
                              perf_query_info->counterIndexCount);
       vk_multialloc_add(&ma, &pass_query, struct intel_perf_query_info *,
@@ -182,15 +182,15 @@ VkResult genX(CreateQueryPool)(
       pool->n_counters = perf_query_info->counterIndexCount;
       pool->counter_pass = counter_pass;
       intel_perf_get_counters_passes(pdevice->perf,
-                                   perf_query_info->pCounterIndices,
-                                   perf_query_info->counterIndexCount,
-                                   pool->counter_pass);
+                                     perf_query_info->pCounterIndices,
+                                     perf_query_info->counterIndexCount,
+                                     pool->counter_pass);
       pool->n_passes = n_passes;
       pool->pass_query = pass_query;
       intel_perf_get_n_passes(pdevice->perf,
-                            perf_query_info->pCounterIndices,
-                            perf_query_info->counterIndexCount,
-                            pool->pass_query);
+                              perf_query_info->pCounterIndices,
+                              perf_query_info->counterIndexCount,
+                              pool->pass_query);
    }
 #endif
 
@@ -565,9 +565,9 @@ VkResult genX(GetQueryPoolResults)(
             struct intel_perf_query_result result;
             intel_perf_query_result_clear(&result);
             intel_perf_query_result_accumulate_fields(&result, query, &device->info,
-                                                    pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, false),
-                                                    pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, true),
-                                                    false /* no_oa_accumulate */);
+                                                      pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, false),
+                                                      pool->bo->map + khr_perf_query_data_offset(pool, firstQuery + i, p, true),
+                                                      false /* no_oa_accumulate */);
             anv_perf_write_pass_results(pdevice->perf, pool, p, &result, pData);
          }
          break;
@@ -582,12 +582,12 @@ VkResult genX(GetQueryPoolResults)(
          struct intel_perf_query_result result;
          intel_perf_query_result_clear(&result);
          intel_perf_query_result_accumulate_fields(&result, query, &device->info,
-                                                 query_data + intel_perf_query_data_offset(pool, false),
-                                                 query_data + intel_perf_query_data_offset(pool, true),
-                                                 false /* no_oa_accumulate */);
+                                                   query_data + intel_perf_query_data_offset(pool, false),
+                                                   query_data + intel_perf_query_data_offset(pool, true),
+                                                   false /* no_oa_accumulate */);
          intel_perf_query_result_write_mdapi(pData, stride,
-                                           &device->info,
-                                           query, &result);
+                                             &device->info,
+                                             query, &result);
          const uint64_t *marker = query_data + intel_perf_marker_offset();
          intel_perf_query_mdapi_write_marker(pData, stride, &device->info, *marker);
          break;

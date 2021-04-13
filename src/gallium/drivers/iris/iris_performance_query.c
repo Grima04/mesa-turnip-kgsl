@@ -84,7 +84,8 @@ iris_new_perf_query_obj(struct pipe_context *pipe, unsigned query_index)
 {
    struct iris_context *ice = (void *) pipe;
    struct intel_perf_context *perf_ctx = ice->perf_ctx;
-   struct intel_perf_query_object * obj = intel_perf_new_query(perf_ctx, query_index);
+   struct intel_perf_query_object * obj =
+      intel_perf_new_query(perf_ctx, query_index);
    if (unlikely(!obj))
       return NULL;
 
@@ -167,7 +168,8 @@ iris_get_perf_counter_info(struct pipe_context *pipe,
    struct intel_perf_context *perf_ctx = ice->perf_ctx;
    struct intel_perf_config *perf_cfg = intel_perf_config(perf_ctx);
    const struct intel_perf_query_info *info = &perf_cfg->queries[query_index];
-   const struct intel_perf_query_counter *counter = &info->counters[counter_index];
+   const struct intel_perf_query_counter *counter =
+      &info->counters[counter_index];
 
    *name = counter->name;
    *desc = counter->desc;
@@ -200,7 +202,8 @@ iris_is_perf_query_ready(struct pipe_context *pipe, struct pipe_query *q)
    if (perf_query->base.Ready)
       return true;
 
-   return intel_perf_is_query_ready(perf_ctx, obj, &ice->batches[IRIS_BATCH_RENDER]);
+   return intel_perf_is_query_ready(perf_ctx, obj,
+                                    &ice->batches[IRIS_BATCH_RENDER]);
 }
 
 static void

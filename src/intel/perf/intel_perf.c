@@ -306,8 +306,8 @@ i915_query_perf_config_data(struct intel_perf_config *perf,
 
 bool
 intel_perf_load_metric_id(struct intel_perf_config *perf_cfg,
-                        const char *guid,
-                        uint64_t *metric_id)
+                          const char *guid,
+                          uint64_t *metric_id)
 {
    char config_path[280];
 
@@ -512,76 +512,76 @@ load_pipeline_statistic_metrics(struct intel_perf_config *perf_cfg,
    query->name = "Pipeline Statistics Registers";
 
    intel_perf_query_add_basic_stat_reg(query, IA_VERTICES_COUNT,
-                                     "N vertices submitted");
+                                       "N vertices submitted");
    intel_perf_query_add_basic_stat_reg(query, IA_PRIMITIVES_COUNT,
-                                     "N primitives submitted");
+                                       "N primitives submitted");
    intel_perf_query_add_basic_stat_reg(query, VS_INVOCATION_COUNT,
-                                     "N vertex shader invocations");
+                                       "N vertex shader invocations");
 
    if (devinfo->ver == 6) {
       intel_perf_query_add_stat_reg(query, GFX6_SO_PRIM_STORAGE_NEEDED, 1, 1,
-                                  "SO_PRIM_STORAGE_NEEDED",
-                                  "N geometry shader stream-out primitives (total)");
+                                    "SO_PRIM_STORAGE_NEEDED",
+                                    "N geometry shader stream-out primitives (total)");
       intel_perf_query_add_stat_reg(query, GFX6_SO_NUM_PRIMS_WRITTEN, 1, 1,
-                                  "SO_NUM_PRIMS_WRITTEN",
-                                  "N geometry shader stream-out primitives (written)");
+                                    "SO_NUM_PRIMS_WRITTEN",
+                                    "N geometry shader stream-out primitives (written)");
    } else {
       intel_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(0), 1, 1,
-                                  "SO_PRIM_STORAGE_NEEDED (Stream 0)",
-                                  "N stream-out (stream 0) primitives (total)");
+                                    "SO_PRIM_STORAGE_NEEDED (Stream 0)",
+                                    "N stream-out (stream 0) primitives (total)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(1), 1, 1,
-                                  "SO_PRIM_STORAGE_NEEDED (Stream 1)",
-                                  "N stream-out (stream 1) primitives (total)");
+                                    "SO_PRIM_STORAGE_NEEDED (Stream 1)",
+                                    "N stream-out (stream 1) primitives (total)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(2), 1, 1,
-                                  "SO_PRIM_STORAGE_NEEDED (Stream 2)",
-                                  "N stream-out (stream 2) primitives (total)");
+                                    "SO_PRIM_STORAGE_NEEDED (Stream 2)",
+                                    "N stream-out (stream 2) primitives (total)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_PRIM_STORAGE_NEEDED(3), 1, 1,
-                                  "SO_PRIM_STORAGE_NEEDED (Stream 3)",
-                                  "N stream-out (stream 3) primitives (total)");
+                                    "SO_PRIM_STORAGE_NEEDED (Stream 3)",
+                                    "N stream-out (stream 3) primitives (total)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(0), 1, 1,
-                                  "SO_NUM_PRIMS_WRITTEN (Stream 0)",
-                                  "N stream-out (stream 0) primitives (written)");
+                                    "SO_NUM_PRIMS_WRITTEN (Stream 0)",
+                                    "N stream-out (stream 0) primitives (written)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(1), 1, 1,
-                                  "SO_NUM_PRIMS_WRITTEN (Stream 1)",
-                                  "N stream-out (stream 1) primitives (written)");
+                                    "SO_NUM_PRIMS_WRITTEN (Stream 1)",
+                                    "N stream-out (stream 1) primitives (written)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(2), 1, 1,
-                                  "SO_NUM_PRIMS_WRITTEN (Stream 2)",
-                                  "N stream-out (stream 2) primitives (written)");
+                                    "SO_NUM_PRIMS_WRITTEN (Stream 2)",
+                                    "N stream-out (stream 2) primitives (written)");
       intel_perf_query_add_stat_reg(query, GFX7_SO_NUM_PRIMS_WRITTEN(3), 1, 1,
-                                  "SO_NUM_PRIMS_WRITTEN (Stream 3)",
-                                  "N stream-out (stream 3) primitives (written)");
+                                    "SO_NUM_PRIMS_WRITTEN (Stream 3)",
+                                    "N stream-out (stream 3) primitives (written)");
    }
 
    intel_perf_query_add_basic_stat_reg(query, HS_INVOCATION_COUNT,
-                                     "N TCS shader invocations");
+                                       "N TCS shader invocations");
    intel_perf_query_add_basic_stat_reg(query, DS_INVOCATION_COUNT,
-                                     "N TES shader invocations");
+                                       "N TES shader invocations");
 
    intel_perf_query_add_basic_stat_reg(query, GS_INVOCATION_COUNT,
-                                     "N geometry shader invocations");
+                                       "N geometry shader invocations");
    intel_perf_query_add_basic_stat_reg(query, GS_PRIMITIVES_COUNT,
-                                     "N geometry shader primitives emitted");
+                                       "N geometry shader primitives emitted");
 
    intel_perf_query_add_basic_stat_reg(query, CL_INVOCATION_COUNT,
-                                     "N primitives entering clipping");
+                                       "N primitives entering clipping");
    intel_perf_query_add_basic_stat_reg(query, CL_PRIMITIVES_COUNT,
-                                     "N primitives leaving clipping");
+                                       "N primitives leaving clipping");
 
    if (devinfo->is_haswell || devinfo->ver == 8) {
       intel_perf_query_add_stat_reg(query, PS_INVOCATION_COUNT, 1, 4,
-                                  "N fragment shader invocations",
-                                  "N fragment shader invocations");
+                                    "N fragment shader invocations",
+                                    "N fragment shader invocations");
    } else {
       intel_perf_query_add_basic_stat_reg(query, PS_INVOCATION_COUNT,
-                                        "N fragment shader invocations");
+                                          "N fragment shader invocations");
    }
 
    intel_perf_query_add_basic_stat_reg(query, PS_DEPTH_COUNT,
-                                     "N z-pass fragments");
+                                       "N z-pass fragments");
 
    if (devinfo->ver >= 7) {
       intel_perf_query_add_basic_stat_reg(query, CS_INVOCATION_COUNT,
-                                        "N compute shader invocations");
+                                          "N compute shader invocations");
    }
 
    query->data_size = sizeof(uint64_t) * query->n_counters;
@@ -829,8 +829,8 @@ intel_perf_load_configuration(struct intel_perf_config *perf_cfg, int fd, const 
 
 uint64_t
 intel_perf_store_configuration(struct intel_perf_config *perf_cfg, int fd,
-                             const struct intel_perf_registers *config,
-                             const char *guid)
+                               const struct intel_perf_registers *config,
+                               const char *guid)
 {
    if (guid)
       return i915_add_config(perf_cfg, fd, config, guid);
@@ -910,9 +910,9 @@ get_passes_mask(struct intel_perf_config *perf,
 
 uint32_t
 intel_perf_get_n_passes(struct intel_perf_config *perf,
-                      const uint32_t *counter_indices,
-                      uint32_t counter_indices_count,
-                      struct intel_perf_query_info **pass_queries)
+                        const uint32_t *counter_indices,
+                        uint32_t counter_indices_count,
+                        struct intel_perf_query_info **pass_queries)
 {
    uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
 
@@ -929,9 +929,9 @@ intel_perf_get_n_passes(struct intel_perf_config *perf,
 
 void
 intel_perf_get_counters_passes(struct intel_perf_config *perf,
-                             const uint32_t *counter_indices,
-                             uint32_t counter_indices_count,
-                             struct intel_perf_counter_pass *counter_pass)
+                               const uint32_t *counter_indices,
+                               uint32_t counter_indices_count,
+                               struct intel_perf_counter_pass *counter_pass)
 {
    uint64_t queries_mask = get_passes_mask(perf, counter_indices, counter_indices_count);
    ASSERTED uint32_t n_passes = __builtin_popcount(queries_mask);
@@ -1014,9 +1014,9 @@ gfx8_read_report_clock_ratios(const uint32_t *report,
 
 void
 intel_perf_query_result_read_frequencies(struct intel_perf_query_result *result,
-                                       const struct intel_device_info *devinfo,
-                                       const uint32_t *start,
-                                       const uint32_t *end)
+                                         const struct intel_device_info *devinfo,
+                                         const uint32_t *start,
+                                         const uint32_t *end)
 {
    /* Slice/Unslice frequency is only available in the OA reports when the
     * "Disable OA reports due to clock ratio change" field in
@@ -1045,10 +1045,10 @@ can_use_mi_rpc_bc_counters(const struct intel_device_info *devinfo)
 
 void
 intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
-                                 const struct intel_perf_query_info *query,
-                                 const struct intel_device_info *devinfo,
-                                 const uint32_t *start,
-                                 const uint32_t *end)
+                                   const struct intel_perf_query_info *query,
+                                   const struct intel_device_info *devinfo,
+                                   const uint32_t *start,
+                                   const uint32_t *end)
 {
    int i;
 
@@ -1112,9 +1112,9 @@ intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
 
 void
 intel_perf_query_result_read_gt_frequency(struct intel_perf_query_result *result,
-                                        const struct intel_device_info *devinfo,
-                                        const uint32_t start,
-                                        const uint32_t end)
+                                          const struct intel_device_info *devinfo,
+                                          const uint32_t start,
+                                          const uint32_t end)
 {
    switch (devinfo->ver) {
    case 7:
@@ -1139,9 +1139,9 @@ intel_perf_query_result_read_gt_frequency(struct intel_perf_query_result *result
 
 void
 intel_perf_query_result_read_perfcnts(struct intel_perf_query_result *result,
-                                    const struct intel_perf_query_info *query,
-                                    const uint64_t *start,
-                                    const uint64_t *end)
+                                      const struct intel_perf_query_info *query,
+                                      const uint64_t *start,
+                                      const uint64_t *end)
 {
    for (uint32_t i = 0; i < 2; i++) {
       uint64_t v0 = start[i] & PERF_CNT_VALUE_MASK;
@@ -1173,11 +1173,11 @@ query_accumulator_offset(const struct intel_perf_query_info *query,
 
 void
 intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result,
-                                        const struct intel_perf_query_info *query,
-                                        const struct intel_device_info *devinfo,
-                                        const void *start,
-                                        const void *end,
-                                        bool no_oa_accumulate)
+                                          const struct intel_perf_query_info *query,
+                                          const struct intel_device_info *devinfo,
+                                          const void *start,
+                                          const void *end,
+                                          bool no_oa_accumulate)
 {
    struct intel_perf_query_field_layout *layout = &query->perf->query_layout;
 
@@ -1194,8 +1194,8 @@ intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result
           */
          if (!no_oa_accumulate) {
             intel_perf_query_result_accumulate(result, query, devinfo,
-                                             start + field->location,
-                                             end + field->location);
+                                               start + field->location,
+                                               end + field->location);
          }
       } else {
          uint64_t v0, v1;
@@ -1234,8 +1234,8 @@ intel_perf_query_result_clear(struct intel_perf_query_result *result)
 
 void
 intel_perf_query_result_print_fields(const struct intel_perf_query_info *query,
-                                   const struct intel_device_info *devinfo,
-                                   const void *data)
+                                     const struct intel_device_info *devinfo,
+                                     const void *data)
 {
    const struct intel_perf_query_field_layout *layout = &query->perf->query_layout;
 
@@ -1299,7 +1299,7 @@ add_query_register(struct intel_perf_query_field_layout *layout,
 
 static void
 intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
-                           const struct intel_device_info *devinfo)
+                             const struct intel_device_info *devinfo)
 {
    struct intel_perf_query_field_layout *layout = &perf_cfg->query_layout;
 
@@ -1368,9 +1368,9 @@ intel_perf_init_query_fields(struct intel_perf_config *perf_cfg,
 
 void
 intel_perf_init_metrics(struct intel_perf_config *perf_cfg,
-                      const struct intel_device_info *devinfo,
-                      int drm_fd,
-                      bool include_pipeline_statistics)
+                        const struct intel_device_info *devinfo,
+                        int drm_fd,
+                        bool include_pipeline_statistics)
 {
    intel_perf_init_query_fields(perf_cfg, devinfo);
 

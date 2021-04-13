@@ -33,9 +33,9 @@
 
 int
 intel_perf_query_result_write_mdapi(void *data, uint32_t data_size,
-                                  const struct intel_device_info *devinfo,
-                                  const struct intel_perf_query_info *query,
-                                  const struct intel_perf_query_result *result)
+                                    const struct intel_device_info *devinfo,
+                                    const struct intel_perf_query_info *query,
+                                    const struct intel_perf_query_result *result)
 {
    switch (devinfo->ver) {
    case 7: {
@@ -138,7 +138,7 @@ intel_perf_query_result_write_mdapi(void *data, uint32_t data_size,
 
 void
 intel_perf_register_mdapi_statistic_query(struct intel_perf_config *perf_cfg,
-                                        const struct intel_device_info *devinfo)
+                                          const struct intel_device_info *devinfo)
 {
    if (!(devinfo->ver >= 7 && devinfo->ver <= 12))
       return;
@@ -230,7 +230,7 @@ fill_mdapi_perf_query_counter(struct intel_perf_query_info *query,
 
 void
 intel_perf_register_mdapi_oa_query(struct intel_perf_config *perf,
-                                 const struct intel_device_info *devinfo)
+                                   const struct intel_device_info *devinfo)
 {
    struct intel_perf_query_info *query = NULL;
 

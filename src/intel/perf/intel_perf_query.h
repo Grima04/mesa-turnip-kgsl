@@ -35,13 +35,13 @@ struct intel_perf_query_object;
 struct intel_perf_context *intel_perf_new_context(void *parent);
 
 void intel_perf_init_context(struct intel_perf_context *perf_ctx,
-                           struct intel_perf_config *perf_cfg,
-                           void * mem_ctx, /* ralloc context */
-                           void * ctx,  /* driver context (eg, brw_context) */
-                           void * bufmgr,  /* eg brw_bufmgr */
-                           const struct intel_device_info *devinfo,
-                           uint32_t hw_ctx,
-                           int drm_fd);
+                             struct intel_perf_config *perf_cfg,
+                             void * mem_ctx, /* ralloc context */
+                             void * ctx,  /* driver context (eg, brw_context) */
+                             void * bufmgr,  /* eg brw_bufmgr */
+                             const struct intel_device_info *devinfo,
+                             uint32_t hw_ctx,
+                             int drm_fd);
 
 const struct intel_perf_query_info* intel_perf_query_info(const struct intel_perf_query_object *);
 
@@ -55,27 +55,27 @@ intel_perf_new_query(struct intel_perf_context *, unsigned query_index);
 
 
 bool intel_perf_begin_query(struct intel_perf_context *perf_ctx,
-                          struct intel_perf_query_object *query);
+                            struct intel_perf_query_object *query);
 void intel_perf_end_query(struct intel_perf_context *perf_ctx,
-                        struct intel_perf_query_object *query);
+                          struct intel_perf_query_object *query);
 void intel_perf_wait_query(struct intel_perf_context *perf_ctx,
-                         struct intel_perf_query_object *query,
-                         void *current_batch);
+                           struct intel_perf_query_object *query,
+                           void *current_batch);
 bool intel_perf_is_query_ready(struct intel_perf_context *perf_ctx,
-                             struct intel_perf_query_object *query,
-                             void *current_batch);
+                               struct intel_perf_query_object *query,
+                               void *current_batch);
 void intel_perf_delete_query(struct intel_perf_context *perf_ctx,
-                           struct intel_perf_query_object *query);
+                             struct intel_perf_query_object *query);
 void intel_perf_get_query_data(struct intel_perf_context *perf_ctx,
-                             struct intel_perf_query_object *query,
-                             void *current_batch,
-                             int data_size,
-                             unsigned *data,
-                             unsigned *bytes_written);
+                               struct intel_perf_query_object *query,
+                               void *current_batch,
+                               int data_size,
+                               unsigned *data,
+                               unsigned *bytes_written);
 
 void intel_perf_dump_query_count(struct intel_perf_context *perf_ctx);
 void intel_perf_dump_query(struct intel_perf_context *perf_ctx,
-                         struct intel_perf_query_object *obj,
-                         void *current_batch);
+                           struct intel_perf_query_object *obj,
+                           void *current_batch);
 
 #endif /* INTEL_PERF_QUERY_H */

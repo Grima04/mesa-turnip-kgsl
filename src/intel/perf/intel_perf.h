@@ -383,20 +383,20 @@ struct intel_perf_counter_pass {
 };
 
 void intel_perf_init_metrics(struct intel_perf_config *perf_cfg,
-                           const struct intel_device_info *devinfo,
-                           int drm_fd,
-                           bool include_pipeline_statistics);
+                             const struct intel_device_info *devinfo,
+                             int drm_fd,
+                             bool include_pipeline_statistics);
 
 /** Query i915 for a metric id using guid.
  */
 bool intel_perf_load_metric_id(struct intel_perf_config *perf_cfg,
-                             const char *guid,
-                             uint64_t *metric_id);
+                               const char *guid,
+                               uint64_t *metric_id);
 
 /** Load a configuation's content from i915 using a guid.
  */
 struct intel_perf_registers *intel_perf_load_configuration(struct intel_perf_config *perf_cfg,
-                                                      int fd, const char *guid);
+                                                           int fd, const char *guid);
 
 /** Store a configuration into i915 using guid and return a new metric id.
  *
@@ -404,56 +404,56 @@ struct intel_perf_registers *intel_perf_load_configuration(struct intel_perf_con
  * content of the configuration.
  */
 uint64_t intel_perf_store_configuration(struct intel_perf_config *perf_cfg, int fd,
-                                      const struct intel_perf_registers *config,
-                                      const char *guid);
+                                        const struct intel_perf_registers *config,
+                                        const char *guid);
 
 /** Read the slice/unslice frequency from 2 OA reports and store then into
  *  result.
  */
 void intel_perf_query_result_read_frequencies(struct intel_perf_query_result *result,
-                                            const struct intel_device_info *devinfo,
-                                            const uint32_t *start,
-                                            const uint32_t *end);
+                                              const struct intel_device_info *devinfo,
+                                              const uint32_t *start,
+                                              const uint32_t *end);
 
 /** Store the GT frequency as reported by the RPSTAT register.
  */
 void intel_perf_query_result_read_gt_frequency(struct intel_perf_query_result *result,
-                                             const struct intel_device_info *devinfo,
-                                             const uint32_t start,
-                                             const uint32_t end);
+                                               const struct intel_device_info *devinfo,
+                                               const uint32_t start,
+                                               const uint32_t end);
 
 /** Store PERFCNT registers values.
  */
 void intel_perf_query_result_read_perfcnts(struct intel_perf_query_result *result,
-                                         const struct intel_perf_query_info *query,
-                                         const uint64_t *start,
-                                         const uint64_t *end);
+                                           const struct intel_perf_query_info *query,
+                                           const uint64_t *start,
+                                           const uint64_t *end);
 
 /** Accumulate the delta between 2 OA reports into result for a given query.
  */
 void intel_perf_query_result_accumulate(struct intel_perf_query_result *result,
-                                      const struct intel_perf_query_info *query,
-                                      const struct intel_device_info *devinfo,
-                                      const uint32_t *start,
-                                      const uint32_t *end);
+                                        const struct intel_perf_query_info *query,
+                                        const struct intel_device_info *devinfo,
+                                        const uint32_t *start,
+                                        const uint32_t *end);
 
 /** Accumulate the delta between 2 snapshots of OA perf registers (layout
  * should match description specified through intel_perf_query_register_layout).
  */
 void intel_perf_query_result_accumulate_fields(struct intel_perf_query_result *result,
-                                             const struct intel_perf_query_info *query,
-                                             const struct intel_device_info *devinfo,
-                                             const void *start,
-                                             const void *end,
-                                             bool no_oa_accumulate);
+                                               const struct intel_perf_query_info *query,
+                                               const struct intel_device_info *devinfo,
+                                               const void *start,
+                                               const void *end,
+                                               bool no_oa_accumulate);
 
 void intel_perf_query_result_clear(struct intel_perf_query_result *result);
 
 /** Debug helper printing out query data.
  */
 void intel_perf_query_result_print_fields(const struct intel_perf_query_info *query,
-                                        const struct intel_device_info *devinfo,
-                                        const void *data);
+                                          const struct intel_device_info *devinfo,
+                                          const void *data);
 
 static inline size_t
 intel_perf_query_counter_get_size(const struct intel_perf_query_counter *counter)
@@ -502,12 +502,12 @@ intel_perf_has_global_sseu(const struct intel_perf_config *perf)
 }
 
 uint32_t intel_perf_get_n_passes(struct intel_perf_config *perf,
-                               const uint32_t *counter_indices,
-                               uint32_t counter_indices_count,
-                               struct intel_perf_query_info **pass_queries);
+                                 const uint32_t *counter_indices,
+                                 uint32_t counter_indices_count,
+                                 struct intel_perf_query_info **pass_queries);
 void intel_perf_get_counters_passes(struct intel_perf_config *perf,
-                                  const uint32_t *counter_indices,
-                                  uint32_t counter_indices_count,
-                                  struct intel_perf_counter_pass *counter_pass);
+                                    const uint32_t *counter_indices,
+                                    uint32_t counter_indices_count,
+                                    struct intel_perf_counter_pass *counter_pass);
 
 #endif /* INTEL_PERF_H */

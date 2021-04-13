@@ -347,7 +347,7 @@ dec_n_users(struct intel_perf_context *perf_ctx)
 
 static void
 intel_perf_close(struct intel_perf_context *perfquery,
-               const struct intel_perf_query_info *query)
+                 const struct intel_perf_query_info *query)
 {
    if (perfquery->oa_stream_fd != -1) {
       close(perfquery->oa_stream_fd);
@@ -362,11 +362,11 @@ intel_perf_close(struct intel_perf_context *perfquery,
 
 static bool
 intel_perf_open(struct intel_perf_context *perf_ctx,
-              int metrics_set_id,
-              int report_format,
-              int period_exponent,
-              int drm_fd,
-              uint32_t ctx_id)
+                int metrics_set_id,
+                int report_format,
+                int period_exponent,
+                int drm_fd,
+                uint32_t ctx_id)
 {
    uint64_t properties[DRM_I915_PERF_PROP_MAX * 2];
    uint32_t p = 0;
@@ -526,7 +526,7 @@ intel_perf_new_query(struct intel_perf_context *perf_ctx, unsigned query_index)
 
 int
 intel_perf_active_queries(struct intel_perf_context *perf_ctx,
-                        const struct intel_perf_query_info *query)
+                          const struct intel_perf_query_info *query)
 {
    assert(perf_ctx->n_active_oa_queries == 0 || perf_ctx->n_active_pipeline_stats_queries == 0);
 
@@ -569,13 +569,13 @@ intel_perf_config(struct intel_perf_context *ctx)
 
 void
 intel_perf_init_context(struct intel_perf_context *perf_ctx,
-                      struct intel_perf_config *perf_cfg,
-                      void * mem_ctx, /* ralloc context */
-                      void * ctx,  /* driver context (eg, brw_context) */
-                      void * bufmgr,  /* eg brw_bufmgr */
-                      const struct intel_device_info *devinfo,
-                      uint32_t hw_ctx,
-                      int drm_fd)
+                        struct intel_perf_config *perf_cfg,
+                        void * mem_ctx, /* ralloc context */
+                        void * ctx,  /* driver context (eg, brw_context) */
+                        void * bufmgr,  /* eg brw_bufmgr */
+                        const struct intel_device_info *devinfo,
+                        uint32_t hw_ctx,
+                        int drm_fd)
 {
    perf_ctx->perf = perf_cfg;
    perf_ctx->mem_ctx = mem_ctx;
@@ -689,7 +689,7 @@ snapshot_query_layout(struct intel_perf_context *perf_ctx,
 
 bool
 intel_perf_begin_query(struct intel_perf_context *perf_ctx,
-                     struct intel_perf_query_object *query)
+                       struct intel_perf_query_object *query)
 {
    struct intel_perf_config *perf_cfg = perf_ctx->perf;
    const struct intel_perf_query_info *queryinfo = query->queryinfo;
@@ -900,7 +900,7 @@ intel_perf_begin_query(struct intel_perf_context *perf_ctx,
 
 void
 intel_perf_end_query(struct intel_perf_context *perf_ctx,
-                   struct intel_perf_query_object *query)
+                     struct intel_perf_query_object *query)
 {
    struct intel_perf_config *perf_cfg = perf_ctx->perf;
 
@@ -1069,8 +1069,8 @@ read_oa_samples_for_query(struct intel_perf_context *perf_ctx,
 
 void
 intel_perf_wait_query(struct intel_perf_context *perf_ctx,
-                    struct intel_perf_query_object *query,
-                    void *current_batch)
+                      struct intel_perf_query_object *query,
+                      void *current_batch)
 {
    struct intel_perf_config *perf_cfg = perf_ctx->perf;
    struct brw_bo *bo = NULL;
@@ -1104,8 +1104,8 @@ intel_perf_wait_query(struct intel_perf_context *perf_ctx,
 
 bool
 intel_perf_is_query_ready(struct intel_perf_context *perf_ctx,
-                        struct intel_perf_query_object *query,
-                        void *current_batch)
+                          struct intel_perf_query_object *query,
+                          void *current_batch)
 {
    struct intel_perf_config *perf_cfg = perf_ctx->perf;
 
@@ -1383,7 +1383,7 @@ error:
 
 void
 intel_perf_delete_query(struct intel_perf_context *perf_ctx,
-                      struct intel_perf_query_object *query)
+                        struct intel_perf_query_object *query)
 {
    struct intel_perf_config *perf_cfg = perf_ctx->perf;
 
@@ -1511,11 +1511,11 @@ get_pipeline_stats_data(struct intel_perf_context *perf_ctx,
 
 void
 intel_perf_get_query_data(struct intel_perf_context *perf_ctx,
-                        struct intel_perf_query_object *query,
-                        void *current_batch,
-                        int data_size,
-                        unsigned *data,
-                        unsigned *bytes_written)
+                          struct intel_perf_query_object *query,
+                          void *current_batch,
+                          int data_size,
+                          unsigned *data,
+                          unsigned *bytes_written)
 {
    struct intel_perf_config *perf_cfg = perf_ctx->perf;
    int written = 0;
@@ -1582,8 +1582,8 @@ intel_perf_dump_query_count(struct intel_perf_context *perf_ctx)
 
 void
 intel_perf_dump_query(struct intel_perf_context *ctx,
-                    struct intel_perf_query_object *obj,
-                    void *current_batch)
+                      struct intel_perf_query_object *obj,
+                      void *current_batch)
 {
    switch (obj->queryinfo->kind) {
    case GEN_PERF_QUERY_TYPE_OA:

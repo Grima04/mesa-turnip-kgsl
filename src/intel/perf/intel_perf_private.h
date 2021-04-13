@@ -38,8 +38,8 @@ static inline uint64_t to_const_user_pointer(const void *ptr)
 
 static inline void
 intel_perf_query_add_stat_reg(struct intel_perf_query_info *query, uint32_t reg,
-                            uint32_t numerator, uint32_t denominator,
-                            const char *name, const char *description)
+                              uint32_t numerator, uint32_t denominator,
+                              const char *name, const char *description)
 {
    struct intel_perf_query_counter *counter;
 
@@ -60,7 +60,7 @@ intel_perf_query_add_stat_reg(struct intel_perf_query_info *query, uint32_t reg,
 
 static inline void
 intel_perf_query_add_basic_stat_reg(struct intel_perf_query_info *query,
-                                  uint32_t reg, const char *name)
+                                    uint32_t reg, const char *name)
 {
    intel_perf_query_add_stat_reg(query, reg, 1, 1, name, name);
 }
@@ -88,9 +88,9 @@ intel_perf_append_query_info(struct intel_perf_config *perf, int max_counters)
 }
 
 void intel_perf_register_mdapi_statistic_query(struct intel_perf_config *perf_cfg,
-                                             const struct intel_device_info *devinfo);
+                                               const struct intel_device_info *devinfo);
 void intel_perf_register_mdapi_oa_query(struct intel_perf_config *perf,
-                                      const struct intel_device_info *devinfo);
+                                        const struct intel_device_info *devinfo);
 
 
 #endif /* INTEL_PERF_PRIVATE_H */
