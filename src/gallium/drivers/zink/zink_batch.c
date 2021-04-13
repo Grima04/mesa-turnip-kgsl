@@ -254,14 +254,11 @@ void
 zink_reset_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   bool fresh = !batch->state;
 
-   if (ctx->have_timelines) {
-      if (fresh || (screen->last_finished > ctx->curr_batch && ctx->curr_batch == 1)) {
-         if (!zink_screen_init_semaphore(screen)) {
-            debug_printf("timeline init failed, things are about to go dramatically wrong.");
-            ctx->have_timelines = false;
-         }
+   if (ctx->have_timelines && screen->last_finished > ctx->curr_batch && ctx->curr_batch == 1) {
+      if (!zink_screen_init_semaphore(screen)) {
+         debug_printf("timeline init failed, things are about to go dramatically wrong.");
+         ctx->have_timelines = false;
       }
    }
 

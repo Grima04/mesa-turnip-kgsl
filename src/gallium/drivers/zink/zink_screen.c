@@ -1552,6 +1552,8 @@ zink_internal_create_screen(const struct pipe_screen_config *config)
    screen->total_video_mem = get_video_mem(screen);
    if (!os_get_total_physical_memory(&screen->total_mem))
       goto fail;
+   if (screen->info.have_KHR_timeline_semaphore)
+      zink_screen_init_semaphore(screen);
 
    simple_mtx_init(&screen->surface_mtx, mtx_plain);
    simple_mtx_init(&screen->bufferview_mtx, mtx_plain);
