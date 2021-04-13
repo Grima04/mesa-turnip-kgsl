@@ -1051,14 +1051,13 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxPerStageDescriptorInputAttachments    = max_input_attachments,
       .maxPerStageResources                     = 128,
 
-      /* We multiply some limits by 6 to account for all shader stages */
-      .maxDescriptorSetSamplers                 = 6 * max_samplers,
-      .maxDescriptorSetUniformBuffers           = 6 * max_uniform_buffers,
+      .maxDescriptorSetSamplers                 = max_samplers,
+      .maxDescriptorSetUniformBuffers           = max_uniform_buffers,
       .maxDescriptorSetUniformBuffersDynamic    = 8,
-      .maxDescriptorSetStorageBuffers           = 6 * max_storage_buffers,
-      .maxDescriptorSetStorageBuffersDynamic    = 6 * max_dynamic_storage_buffers,
-      .maxDescriptorSetSampledImages            = 6 * max_sampled_images,
-      .maxDescriptorSetStorageImages            = 6 * max_storage_images,
+      .maxDescriptorSetStorageBuffers           = max_storage_buffers,
+      .maxDescriptorSetStorageBuffersDynamic    = max_dynamic_storage_buffers,
+      .maxDescriptorSetSampledImages            = max_sampled_images,
+      .maxDescriptorSetStorageImages            = max_storage_images,
       .maxDescriptorSetInputAttachments         = 4,
 
       /* Vertex limits */
