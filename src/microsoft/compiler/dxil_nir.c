@@ -267,6 +267,7 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
 
    nir_ssa_def *buffer = intr->src[0].ssa;
    nir_ssa_def *offset = nir_iand(b, intr->src[1].ssa, nir_imm_int(b, ~3));
+   enum gl_access_qualifier access = nir_intrinsic_access(intr);
    unsigned bit_size = nir_dest_bit_size(intr->dest);
    unsigned num_components = nir_dest_num_components(intr->dest);
    unsigned num_bits = num_components * bit_size;
@@ -289,7 +290,8 @@ lower_load_ssbo(nir_builder *b, nir_intrinsic_instr *intr)
          nir_load_ssbo(b, DIV_ROUND_UP(subload_num_bits, 32), 32,
                        buffer, nir_iadd(b, offset, nir_imm_int(b, i / 8)),
                        .align_mul = 4,
-                       .align_offset = 0);
+                       .align_offset = 0,
+                       .access = access);
 
       /* If we have 2 bytes or less to load we need to adjust the u32 value so
        * we can always extract the LSB.
