@@ -72,6 +72,7 @@ meson _build --native-file=native.file \
       ${GALLIUM_ST} \
       -D gallium-drivers=${GALLIUM_DRIVERS:-[]} \
       -D vulkan-drivers=${VULKAN_DRIVERS:-[]} \
+      -D werror=true \
       ${EXTRA_OPTION}
 cd _build
 meson configure
