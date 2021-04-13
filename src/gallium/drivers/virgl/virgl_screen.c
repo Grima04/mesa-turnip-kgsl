@@ -824,6 +824,9 @@ virgl_destroy_screen(struct pipe_screen *screen)
 
    if (vws)
       vws->destroy(vws);
+
+   disk_cache_destroy(vscreen->disk_cache);
+
    FREE(vscreen);
 }
 
@@ -881,6 +884,28 @@ static void virgl_query_memory_info(struct pipe_screen *screen, struct pipe_memo
    ctx->destroy(ctx);
 }
 
+static struct disk_cache *virgl_get_disk_shader_cache (struct pipe_screen *pscreen)
+{
+   struct virgl_screen *screen = virgl_screen(pscreen);
+
+   return screen->disk_cache;
+}
+
+static void virgl_disk_cache_create(struct virgl_screen *screen)
+{
+   const struct build_id_note *note =
+      build_id_find_nhdr_for_addr(virgl_disk_cache_create);
+   assert(note && build_id_length(note) == 20); /* sha1 */
+
+   const uint8_t *id_sha1 = build_id_data(note);
+   assert(id_sha1);
+
+   char timestamp[41];
+   _mesa_sha1_format(timestamp, id_sha1);
+
+   screen->disk_cache = disk_cache_create("virgl", timestamp, 0);
+}
+
 struct pipe_screen *
 virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *config)
 {
@@ -923,6 +948,7 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
    screen->base.fence_finish = virgl_fence_finish;
    screen->base.fence_get_fd = virgl_fence_get_fd;
    screen->base.query_memory_info = virgl_query_memory_info;
+   screen->base.get_disk_shader_cache = virgl_get_disk_shader_cache;
 
    virgl_init_screen_resource_functions(&screen->base);
 
@@ -937,5 +963,6 @@ virgl_create_screen(struct virgl_winsys *vws, const struct pipe_screen_config *c
 
    slab_create_parent(&screen->transfer_pool, sizeof(struct virgl_transfer), 16);
 
+   virgl_disk_cache_create(screen);
    return &screen->base;
 }
