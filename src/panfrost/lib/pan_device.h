@@ -92,6 +92,20 @@ struct pan_blit_shaders {
         struct pan_blit_shader loads[PAN_BLIT_NUM_TARGETS][PAN_BLIT_NUM_TYPES][2];
 };
 
+struct pan_blitter {
+        struct {
+                struct pan_pool pool;
+                struct hash_table *blit;
+                struct hash_table *blend;
+                pthread_mutex_t lock;
+        } shaders;
+        struct {
+                struct pan_pool pool;
+                struct hash_table *rsds;
+                pthread_mutex_t lock;
+        } rsds;
+};
+
 struct pan_blend_shaders {
         struct hash_table *shaders;
         pthread_mutex_t lock;
@@ -200,6 +214,7 @@ struct panfrost_device {
         } bo_cache;
 
         struct pan_blit_shaders blit_shaders;
+        struct pan_blitter blitter;
         struct pan_blend_shaders blend_shaders;
         struct pan_indirect_draw_shaders indirect_draw_shaders;
 

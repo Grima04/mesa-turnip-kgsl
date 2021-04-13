@@ -27,6 +27,7 @@ libpanfrost_lib_files = files(
   'pan_bo.c',
   'pan_blend.c',
   'pan_blit.c',
+  'pan_blitter.c',
   'pan_cs.c',
   'pan_format.c',
   'pan_indirect_draw.c',
