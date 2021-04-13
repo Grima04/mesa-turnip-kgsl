@@ -258,29 +258,6 @@ panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
 struct pan_pool;
 struct pan_scoreboard;
 
-void
-panfrost_init_blit_shaders(struct panfrost_device *dev);
-
-void
-panfrost_load_midg(
-                struct pan_pool *pool,
-                struct pan_scoreboard *scoreboard,
-                mali_ptr blend_shader,
-                mali_ptr fbd,
-                mali_ptr coordinates, unsigned vertex_count,
-                struct pan_image_view *iview,
-                unsigned loc);
-
-void
-panfrost_load_bifrost(struct pan_pool *pool,
-                      struct pan_scoreboard *scoreboard,
-                      mali_ptr blend_shader,
-                      mali_ptr thread_storage,
-                      mali_ptr tiler,
-                      mali_ptr coordinates, unsigned vertex_count,
-                      struct pan_image_view *iview,
-                      unsigned loc);
-
 /* DRM modifier helper */
 
 #define drm_is_afbc(mod) \

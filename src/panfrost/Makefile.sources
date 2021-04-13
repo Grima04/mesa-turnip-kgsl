@@ -35,7 +35,6 @@ lib_FILES := \
         lib/pan_bo.h \
         lib/pan_blend.c \
         lib/pan_blend.h \
-        lib/pan_blit.c \
         lib/pan_blitter.c \
         lib/pan_blitter.h \
         lib/pan_device.h \
