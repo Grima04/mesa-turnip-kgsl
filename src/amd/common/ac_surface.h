@@ -214,7 +214,7 @@ struct gfx9_meta_equation {
        * - bpp
        * - pipe_aligned
        */
-      uint16_t gfx10_bits[56];
+      uint16_t gfx10_bits[60];
    } u;
 };
 
