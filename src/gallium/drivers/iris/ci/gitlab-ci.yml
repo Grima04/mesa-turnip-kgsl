@@ -32,3 +32,17 @@ iris-glk-traces:amd64:
     KERNEL_IMAGE_TYPE: ""
   tags:
     - mesa-ci-aarch64-lava-collabora
+
+iris-amly-traces:amd64:
+  extends:
+    - .iris-traces:amd64
+    - .test-manual
+  variables:
+    DEVICE_TYPE: asus-C433TA-AJ0005-rammus
+    DTB: ""
+    GPU_VERSION: intel-amly
+    DRIVER_NAME: iris
+    BOOT_METHOD: depthcharge
+    KERNEL_IMAGE_TYPE: ""
+  tags:
+    - mesa-ci-aarch64-lava-collabora
