@@ -366,7 +366,7 @@ trace_context_delete_blend_state(struct pipe_context *_pipe,
    if (state) {
       struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->blend_states, state);
       if (he) {
-         free(he->data);
+         ralloc_free(he->data);
          _mesa_hash_table_remove(&tr_ctx->blend_states, he);
       }
    }
@@ -516,7 +516,7 @@ trace_context_delete_rasterizer_state(struct pipe_context *_pipe,
    if (state) {
       struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->rasterizer_states, state);
       if (he) {
-         free(he->data);
+         ralloc_free(he->data);
          _mesa_hash_table_remove(&tr_ctx->rasterizer_states, he);
       }
    }
@@ -596,7 +596,7 @@ trace_context_delete_depth_stencil_alpha_state(struct pipe_context *_pipe,
    if (state) {
       struct hash_entry *he = _mesa_hash_table_search(&tr_ctx->depth_stencil_alpha_states, state);
       if (he) {
-         free(he->data);
+         ralloc_free(he->data);
          _mesa_hash_table_remove(&tr_ctx->depth_stencil_alpha_states, he);
       }
    }
