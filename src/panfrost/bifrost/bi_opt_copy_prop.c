@@ -30,7 +30,8 @@ static bool
 bi_is_copy(bi_instr *ins)
 {
         return (ins->op == BI_OPCODE_MOV_I32) && bi_is_ssa(ins->dest[0])
-                && (bi_is_ssa(ins->src[0]) || ins->src[0].type == BI_INDEX_FAU);
+                && (bi_is_ssa(ins->src[0]) || ins->src[0].type == BI_INDEX_FAU
+                                || ins->src[0].type == BI_INDEX_CONSTANT);
 }
 
 static inline unsigned
@@ -38,6 +39,17 @@ bi_word_node(bi_index idx)
 {
         assert(idx.type == BI_INDEX_NORMAL && !idx.reg);
         return (idx.value << 2) | idx.offset;
+}
+
+static bool
+bi_reads_fau(bi_instr *ins)
+{
+        bi_foreach_src(ins, s) {
+                if (ins->src[s].type == BI_INDEX_FAU)
+                        return true;
+        }
+
+        return false;
 }
 
 void
@@ -65,9 +77,12 @@ bi_opt_copy_prop(bi_context *ctx)
                         bi_index use = ins->src[s];
 
                         if (use.type != BI_INDEX_NORMAL || use.reg) continue;
-                        if (bi_count_read_registers(ins, s) != 1) continue;
+                        if (s == 0 && bi_opcode_props[ins->op].sr_read) continue;
 
                         bi_index repl = replacement[bi_word_node(use)];
+
+                        if (repl.type == BI_INDEX_CONSTANT && bi_reads_fau(ins))
+                                continue;
 
                         if (!bi_is_null(repl))
                                 ins->src[s] = bi_replace_index(ins->src[s], repl);
