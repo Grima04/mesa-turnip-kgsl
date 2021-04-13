@@ -7,7 +7,7 @@ export DEBIAN_FRONTEND=noninteractive
 
 check_minio()
 {
-    MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${MINIO_SUFFIX}/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
+    MINIO_PATH="${MINIO_HOST}/mesa-lava/$1/${DISTRIBUTION_TAG}/${DEBIAN_ARCH}"
     if wget -q --method=HEAD "https://${MINIO_PATH}/done"; then
         exit
     fi
@@ -136,7 +136,7 @@ EXTRA_MESON_ARGS+=" -D prefix=/libdrm"
 
 ############### Cross-build kernel
 mkdir -p kernel
-wget -qO- ${KERNEL_URL} | tar -xz --strip-components=1 -C kernel
+wget -qO- ${KERNEL_URL} | tar -xj --strip-components=1 -C kernel
 pushd kernel
 
 # The kernel doesn't like the gold linker (or the old lld in our debians).
@@ -154,6 +154,7 @@ if [ -n "$INSTALL_KERNEL_MODULES" ]; then
     sed -i 's/=m/=n/g' ${DEFCONFIG}
 fi
 
+export LOCALVERSION="`basename $KERNEL_URL`"
 ./scripts/kconfig/merge_config.sh ${DEFCONFIG} ../.gitlab-ci/container/${KERNEL_ARCH}.config
 make ${KERNEL_IMAGE_NAME}
 for image in ${KERNEL_IMAGE_NAME}; do
@@ -170,7 +171,7 @@ if [ -n "$INSTALL_KERNEL_MODULES" ]; then
     INSTALL_MOD_PATH=/lava-files/rootfs-${DEBIAN_ARCH}/ make modules_install
 fi
 
-if [[ ${DEBIAN_ARCH} = "arm64" ]] && [[ ${MINIO_SUFFIX} = "baremetal" ]]; then
+if [[ ${DEBIAN_ARCH} = "arm64" ]]; then
     make Image.lzma
     mkimage \
         -f auto \
@@ -217,7 +218,7 @@ find /libdrm/ -name lib\*\.so\* | xargs cp -t /lava-files/rootfs-${DEBIAN_ARCH}/
 rm -rf /libdrm
 
 
-if [ ${DEBIAN_ARCH} = arm64 ] && [ ${MINIO_SUFFIX} = baremetal ]; then
+if [ ${DEBIAN_ARCH} = arm64 ]; then
     # Make a gzipped copy of the Image for db410c.
     gzip -k /lava-files/Image
     KERNEL_IMAGE_NAME+=" Image.gz"
