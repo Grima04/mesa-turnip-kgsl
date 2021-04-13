@@ -1299,7 +1299,7 @@ bi_alu_src_index(nir_alu_src src, unsigned comps)
                 unsigned new_offset = (src.swizzle[i] >> subword_shift);
 
                 if (i > 0)
-                        assert(offset == new_offset);
+                        assert(offset == new_offset && "wrong vectorization");
 
                 offset = new_offset;
         }
