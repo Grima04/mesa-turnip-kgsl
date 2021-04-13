@@ -1781,6 +1781,7 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
 {
    RADV_FROM_HANDLE(radv_image, image, pCreateInfo->image);
    const VkImageSubresourceRange *range = &pCreateInfo->subresourceRange;
+   uint32_t plane_count = 1;
 
    switch (image->type) {
    case VK_IMAGE_TYPE_1D:
@@ -1799,9 +1800,6 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
    iview->type = pCreateInfo->viewType;
    iview->plane_id = radv_plane_from_aspect(pCreateInfo->subresourceRange.aspectMask);
    iview->aspect_mask = pCreateInfo->subresourceRange.aspectMask;
-   iview->multiple_planes = vk_format_get_plane_count(image->vk_format) > 1 &&
-                            iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT;
-
    iview->base_layer = range->baseArrayLayer;
    iview->layer_count = radv_get_layerCount(image, range);
    iview->base_mip = range->baseMipLevel;
@@ -1897,10 +1895,14 @@ radv_image_view_init(struct radv_image_view *iview, struct radv_device *device,
 
    iview->support_fast_clear = radv_image_view_can_fast_clear(device, iview);
 
+   if (vk_format_get_plane_count(image->vk_format) > 1 &&
+       iview->aspect_mask == VK_IMAGE_ASPECT_COLOR_BIT) {
+      plane_count = vk_format_get_plane_count(iview->vk_format);
+   }
+
    bool disable_compression = extra_create_info ? extra_create_info->disable_compression : false;
    bool enable_compression = extra_create_info ? extra_create_info->enable_compression : false;
-   for (unsigned i = 0;
-        i < (iview->multiple_planes ? vk_format_get_plane_count(image->vk_format) : 1); ++i) {
+   for (unsigned i = 0; i < plane_count; ++i) {
       VkFormat format = vk_format_get_plane_format(iview->vk_format, i);
       radv_image_view_make_descriptor(iview, device, format, &pCreateInfo->components, false,
                                       disable_compression, enable_compression, iview->plane_id + i,
