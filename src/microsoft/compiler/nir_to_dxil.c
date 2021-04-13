@@ -749,6 +749,43 @@ add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
    ctx->num_resources++;
 }
 
+static unsigned
+get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
+                unsigned space, unsigned binding)
+{
+   unsigned offset = 0;
+   unsigned count = 0;
+   switch (class) {
+   case DXIL_RESOURCE_CLASS_UAV:
+      offset = ctx->num_srv_arrays + ctx->num_sampler_arrays + ctx->num_cbv_arrays;
+      count = ctx->num_uav_arrays;
+      break;
+   case DXIL_RESOURCE_CLASS_SRV:
+      offset = ctx->num_sampler_arrays + ctx->num_cbv_arrays;
+      count = ctx->num_srv_arrays;
+      break;
+   case DXIL_RESOURCE_CLASS_SAMPLER:
+      offset = ctx->num_cbv_arrays;
+      count = ctx->num_sampler_arrays;
+      break;
+   case DXIL_RESOURCE_CLASS_CBV:
+      offset = 0;
+      count = ctx->num_cbv_arrays;
+      break;
+   }
+   assert(offset + count <= ctx->num_resources);
+   for (unsigned i = offset; i < offset + count; ++i) {
+      if (ctx->resources[i].space == space &&
+          ctx->resources[i].lower_bound <= binding &&
+          ctx->resources[i].upper_bound >= binding) {
+         return i - offset;
+      }
+   }
+
+   unreachable("Resource access for undeclared range");
+   return 0;
+}
+
 static bool
 emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned count)
 {
@@ -2282,25 +2319,56 @@ emit_gep_for_index(struct ntd_context *ctx, const nir_variable *var,
    return dxil_emit_gep_inbounds(&ctx->mod, ops, ARRAY_SIZE(ops));
 }
 
+static const struct dxil_value *
+get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_class class, unsigned base_binding)
+{
+   assume(class == DXIL_RESOURCE_CLASS_CBV || class == DXIL_RESOURCE_CLASS_UAV);
+
+   /* This source might be one of:
+    * 1. Constant resource index - just look it up in precomputed handle arrays
+    *    If it's null in that array, create a handle, and store the result
+    * 2. A handle from load_vulkan_descriptor - just get the stored SSA value
+    * 3. Dynamic resource index - create a handle for it here
+    */
+   assert(src->ssa->num_components == 1 && src->ssa->bit_size == 32);
+   nir_const_value *const_block_index = nir_src_as_const_value(*src);
+   const struct dxil_value **handle_entry = NULL;
+   if (const_block_index) {
+      if (class == DXIL_RESOURCE_CLASS_CBV)
+         handle_entry = &ctx->cbv_handles[const_block_index->u32];
+      else
+         handle_entry = &ctx->uav_handles[const_block_index->u32];
+   }
+
+   if (handle_entry && *handle_entry)
+      return *handle_entry;
+
+   const struct dxil_value *value = get_src_ssa(ctx, src->ssa, 0);
+   if (ctx->opts->vulkan_environment) {
+      return value;
+   }
+
+   const struct dxil_value *handle = emit_createhandle_call(ctx, class, 
+      get_resource_id(ctx, class, 0, base_binding), value, !const_block_index);
+   if (handle_entry)
+      *handle_entry = handle;
+
+   return handle;
+}
+
 static bool
 emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
-   const struct dxil_value *buffer =
-      get_src(ctx, &intr->src[0], 0, nir_type_uint);
+
+   const struct dxil_value *handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, 0);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
-   if (!int32_undef || !buffer || !offset)
+   if (!int32_undef || !handle || !offset)
       return false;
 
    assert(nir_src_bit_size(intr->src[0]) == 32);
    assert(nir_intrinsic_dest_components(intr) <= 4);
-
-   const struct dxil_value *handle =
-      emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_UAV, 0, buffer,
-                             nir_src_is_const(intr->src[0]));
-   if (!handle)
-      return false;
 
    const struct dxil_value *coord[2] = {
       offset,
@@ -2324,17 +2392,10 @@ emit_load_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_store_ssbo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *buffer =
-      get_src(ctx, &intr->src[1], 0, nir_type_uint);
+   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[1], DXIL_RESOURCE_CLASS_UAV, 0);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[2], 0, nir_type_uint);
-   if (!buffer || !offset)
-      return false;
-
-   const struct dxil_value *handle =
-      emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_UAV, 0, buffer,
-                             nir_src_is_const(intr->src[1]));
-   if (!handle)
+   if (!handle || !offset)
       return false;
 
    assert(nir_src_bit_size(intr->src[0]) == 32);
@@ -2374,17 +2435,10 @@ emit_store_ssbo_masked(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       get_src(ctx, &intr->src[0], 0, nir_type_uint);
    const struct dxil_value *mask =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
-   const struct dxil_value *buffer =
-      get_src(ctx, &intr->src[2], 0, nir_type_uint);
+   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[2], DXIL_RESOURCE_CLASS_UAV, 0);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[3], 0, nir_type_uint);
-   if (!value || !mask || !buffer || !offset)
-      return false;
-
-   const struct dxil_value *handle =
-      emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_UAV, 0, buffer,
-                             nir_src_is_const(intr->src[2]));
-   if (!handle)
+   if (!value || !mask || !handle || !offset)
       return false;
 
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
@@ -2482,16 +2536,10 @@ emit_store_scratch(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_load_ubo(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value* handle = NULL;
-   nir_const_value* const_block_index = nir_src_as_const_value(intr->src[0]);
-   if (const_block_index) {
-      handle = ctx->cbv_handles[const_block_index->u32];
-   } else {
-      assert(nir_src_num_components(intr->src[0]) == 1);
-      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
-   }
+   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, 0);
+   if (!handle)
+      return false;
 
-   assert(handle);
    const struct dxil_value *offset;
    nir_const_value *const_offset = nir_src_as_const_value(intr->src[1]);
    if (const_offset) {
@@ -2521,17 +2569,7 @@ emit_load_ubo_dxil(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    assert(nir_dest_num_components(intr->dest) <= 4);
    assert(nir_dest_bit_size(intr->dest) == 32);
 
-   nir_const_value *index = nir_src_as_const_value(intr->src[0]);
-
-   const struct dxil_value* handle = NULL;
-   if (index) {
-      assert(index && index->u32 < ARRAY_SIZE(ctx->cbv_handles));
-      handle = ctx->cbv_handles[index->u32];
-   } else {
-      assert(nir_src_num_components(intr->src[0]) == 1);
-      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
-   }
-
+   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_CBV, 0);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
 
@@ -3065,20 +3103,13 @@ static bool
 emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
                    enum dxil_atomic_op op, nir_alu_type type)
 {
-   const struct dxil_value *buffer =
-      get_src(ctx, &intr->src[0], 0, nir_type_uint);
+   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, 0);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
    const struct dxil_value *value =
       get_src(ctx, &intr->src[2], 0, type);
 
-   if (!value || !buffer || !offset)
-      return false;
-
-   const struct dxil_value *handle =
-      emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_UAV, 0, buffer,
-                             nir_src_is_const(intr->src[0]));
-   if (!handle)
+   if (!value || !handle || !offset)
       return false;
 
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
@@ -3102,8 +3133,7 @@ emit_ssbo_atomic(struct ntd_context *ctx, nir_intrinsic_instr *intr,
 static bool
 emit_ssbo_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   const struct dxil_value *buffer =
-      get_src(ctx, &intr->src[0], 0, nir_type_uint);
+   const struct dxil_value* handle = get_ubo_ssbo_handle(ctx, &intr->src[0], DXIL_RESOURCE_CLASS_UAV, 0);
    const struct dxil_value *offset =
       get_src(ctx, &intr->src[1], 0, nir_type_uint);
    const struct dxil_value *cmpval =
@@ -3111,13 +3141,7 @@ emit_ssbo_atomic_comp_swap(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    const struct dxil_value *newval =
       get_src(ctx, &intr->src[3], 0, nir_type_int);
 
-   if (!cmpval || !newval || !buffer || !offset)
-      return false;
-
-   const struct dxil_value *handle =
-      emit_createhandle_call(ctx, DXIL_RESOURCE_CLASS_UAV, 0, buffer,
-                             nir_src_is_const(intr->src[0]));
-   if (!handle)
+   if (!cmpval || !newval || !handle || !offset)
       return false;
 
    const struct dxil_value *int32_undef = get_int32_undef(&ctx->mod);
@@ -3269,7 +3293,7 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    handle = *handle_entry;
    if (!handle || !const_index) {
       handle = emit_createhandle_call(ctx, resource_class,
-         0,
+         get_resource_id(ctx, resource_class, 0, binding),
          get_src(ctx, &intr->src[0], 0, nir_type_uint32), false);
       if (const_index)
          *handle_entry = handle;
