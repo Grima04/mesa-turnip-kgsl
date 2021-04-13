@@ -2080,6 +2080,11 @@ copy_non_dynamic_state(struct anv_graphics_pipeline *pipeline,
    }
 
    pipeline->dynamic_state_mask = states;
+
+   /* For now that only state that can be either dynamic or baked in the
+    * pipeline is the sample location.
+    */
+   pipeline->static_state_mask = states & ANV_CMD_DIRTY_DYNAMIC_SAMPLE_LOCATIONS;
 }
 
 static void

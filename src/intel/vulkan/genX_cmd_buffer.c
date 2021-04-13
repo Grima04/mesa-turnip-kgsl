@@ -3565,6 +3565,11 @@ genX(cmd_buffer_flush_state)(struct anv_cmd_buffer *cmd_buffer)
    if (cmd_buffer->state.gfx.dirty & ANV_CMD_DIRTY_PIPELINE) {
       anv_batch_emit_batch(&cmd_buffer->batch, &pipeline->base.batch);
 
+      /* Remove from dynamic state emission all of stuff that is baked into
+       * the pipeline.
+       */
+      cmd_buffer->state.gfx.dirty &= ~pipeline->static_state_mask;
+
       /* If the pipeline changed, we may need to re-allocate push constant
        * space in the URB.
        */
