@@ -383,6 +383,12 @@ bi_singleton(void *memctx, bi_instr *ins,
 ASSERTED static bool
 bi_can_fma(bi_instr *ins)
 {
+        /* Errata: *V2F32_TO_V2F16 with distinct sources raises
+         * INSTR_INVALID_ENC under certain conditions */
+        if (ins->op == BI_OPCODE_V2F32_TO_V2F16 &&
+                        !bi_is_word_equiv(ins->src[0], ins->src[1]))
+                return false;
+
         /* TODO: some additional fp16 constraints */
         return bi_opcode_props[ins->op].fma;
 }
