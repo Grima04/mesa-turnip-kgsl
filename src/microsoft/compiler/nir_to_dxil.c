@@ -303,16 +303,20 @@ emit_srv_metadata(struct dxil_module *m, const struct dxil_type *elem_type,
 {
    const struct dxil_mdnode *fields[9];
 
-   const struct dxil_mdnode *buffer_element_type_tag = dxil_get_metadata_int32(m, DXIL_TYPED_BUFFER_ELEMENT_TYPE_TAG);
-   const struct dxil_mdnode *element_type = dxil_get_metadata_int32(m, comp_type);
-   const struct dxil_mdnode *metadata_tag_nodes[] = {
-      buffer_element_type_tag, element_type
-   };
+   const struct dxil_mdnode *metadata_tag_nodes[2];
 
    fill_resource_metadata(m, fields, elem_type, name, layout);
    fields[6] = dxil_get_metadata_int32(m, res_kind); // resource shape
    fields[7] = dxil_get_metadata_int1(m, 0); // sample count
-   fields[8] = dxil_get_metadata_node(m, metadata_tag_nodes, ARRAY_SIZE(metadata_tag_nodes)); // metadata
+   if (res_kind != DXIL_RESOURCE_KIND_RAW_BUFFER &&
+       res_kind != DXIL_RESOURCE_KIND_STRUCTURED_BUFFER) {
+      metadata_tag_nodes[0] = dxil_get_metadata_int32(m, DXIL_TYPED_BUFFER_ELEMENT_TYPE_TAG);
+      metadata_tag_nodes[1] = dxil_get_metadata_int32(m, comp_type);
+      fields[8] = dxil_get_metadata_node(m, metadata_tag_nodes, ARRAY_SIZE(metadata_tag_nodes)); // metadata
+   } else if (res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
+      fields[8] = NULL;
+   else
+      unreachable("Structured buffers not supported yet");
 
    return dxil_get_metadata_node(m, fields, ARRAY_SIZE(fields));
 }
@@ -337,8 +341,10 @@ emit_uav_metadata(struct dxil_module *m, const struct dxil_type *struct_type,
       metadata_tag_nodes[0] = dxil_get_metadata_int32(m, DXIL_TYPED_BUFFER_ELEMENT_TYPE_TAG);
       metadata_tag_nodes[1] = dxil_get_metadata_int32(m, comp_type);
       fields[10] = dxil_get_metadata_node(m, metadata_tag_nodes, ARRAY_SIZE(metadata_tag_nodes)); // metadata
-   } else
+   } else if (res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER)
       fields[10] = NULL;
+   else
+      unreachable("Structured buffers not supported yet");
 
    return dxil_get_metadata_node(m, fields, ARRAY_SIZE(fields));
 }
@@ -795,17 +801,27 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned 
    unsigned id = ctx->num_srv_arrays;
    resource_array_layout layout = {id, binding, count};
 
-   enum dxil_component_type comp_type = dxil_get_comp_type(var->type);
-   enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
-   const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, false /* readwrite */);
-   const struct dxil_mdnode *srv_meta = emit_srv_metadata(&ctx->mod, res_type, var->name,
+   enum dxil_component_type comp_type;
+   enum dxil_resource_kind res_kind;
+   enum dxil_resource_type res_type;
+   if (var->data.mode == nir_var_mem_ssbo) {
+      comp_type = DXIL_COMP_TYPE_INVALID;
+      res_kind = DXIL_RESOURCE_KIND_RAW_BUFFER;
+      res_type = DXIL_RES_SRV_RAW;
+   } else {
+      comp_type = dxil_get_comp_type(var->type);
+      res_kind = dxil_get_resource_kind(var->type);
+      res_type = DXIL_RES_SRV_TYPED;
+   }
+   const struct dxil_type *res_type_as_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, false /* readwrite */);
+   const struct dxil_mdnode *srv_meta = emit_srv_metadata(&ctx->mod, res_type_as_type, var->name,
                                                           &layout, comp_type, res_kind);
 
    if (!srv_meta)
       return false;
 
    ctx->srv_metadata_nodes[ctx->num_srv_arrays++] = srv_meta;
-   add_resource(ctx, DXIL_RES_SRV_TYPED, &layout);
+   add_resource(ctx, res_type, &layout);
 
    for (unsigned i = 0; i < count; ++i) {
       const struct dxil_value *handle =
