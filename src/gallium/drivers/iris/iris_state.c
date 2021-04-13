@@ -4649,9 +4649,8 @@ iris_store_derived_program_state(const struct gen_device_info *devinfo,
       break;
    case IRIS_CACHE_CS:
       iris_store_cs_state(devinfo, shader);
-   case IRIS_CACHE_BLORP:
       break;
-   default:
+   case IRIS_CACHE_BLORP:
       break;
    }
 }
