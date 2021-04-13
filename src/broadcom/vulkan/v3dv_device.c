@@ -997,22 +997,13 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 {
    V3DV_FROM_HANDLE(v3dv_physical_device, pdevice, physicalDevice);
 
+   STATIC_ASSERT(MAX_SAMPLED_IMAGES + MAX_STORAGE_IMAGES + MAX_INPUT_ATTACHMENTS
+                 <= V3D_MAX_TEXTURE_SAMPLERS);
+
    const uint32_t page_size = 4096;
    const uint32_t mem_size = compute_heap_size();
 
-   /* Per-stage limits */
-   const uint32_t max_samplers = 16;
-   const uint32_t max_uniform_buffers = 12;
-   const uint32_t max_storage_buffers = 12;
-   const uint32_t max_dynamic_storage_buffers = 6;
-   const uint32_t max_sampled_images = 16;
-   const uint32_t max_storage_images = 4;
-   const uint32_t max_input_attachments = 4;
-   assert(max_sampled_images + max_storage_images + max_input_attachments
-          <= V3D_MAX_TEXTURE_SAMPLERS);
-
    const uint32_t max_varying_components = 16 * 4;
-   const uint32_t max_render_targets = 4;
 
    const uint32_t v3d_coord_shift = 6;
 
@@ -1043,22 +1034,22 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .bufferImageGranularity                   = 256, /* A cache line */
       .sparseAddressSpaceSize                   = 0,
       .maxBoundDescriptorSets                   = MAX_SETS,
-      .maxPerStageDescriptorSamplers            = max_samplers,
-      .maxPerStageDescriptorUniformBuffers      = max_uniform_buffers,
-      .maxPerStageDescriptorStorageBuffers      = max_storage_buffers,
-      .maxPerStageDescriptorSampledImages       = max_sampled_images,
-      .maxPerStageDescriptorStorageImages       = max_storage_images,
-      .maxPerStageDescriptorInputAttachments    = max_input_attachments,
+      .maxPerStageDescriptorSamplers            = V3D_MAX_TEXTURE_SAMPLERS,
+      .maxPerStageDescriptorUniformBuffers      = MAX_UNIFORM_BUFFERS,
+      .maxPerStageDescriptorStorageBuffers      = MAX_STORAGE_BUFFERS,
+      .maxPerStageDescriptorSampledImages       = MAX_SAMPLED_IMAGES,
+      .maxPerStageDescriptorStorageImages       = MAX_STORAGE_IMAGES,
+      .maxPerStageDescriptorInputAttachments    = MAX_INPUT_ATTACHMENTS,
       .maxPerStageResources                     = 128,
 
-      .maxDescriptorSetSamplers                 = max_samplers,
-      .maxDescriptorSetUniformBuffers           = max_uniform_buffers,
-      .maxDescriptorSetUniformBuffersDynamic    = 8,
-      .maxDescriptorSetStorageBuffers           = max_storage_buffers,
-      .maxDescriptorSetStorageBuffersDynamic    = max_dynamic_storage_buffers,
-      .maxDescriptorSetSampledImages            = max_sampled_images,
-      .maxDescriptorSetStorageImages            = max_storage_images,
-      .maxDescriptorSetInputAttachments         = 4,
+      .maxDescriptorSetSamplers                 = V3D_MAX_TEXTURE_SAMPLERS,
+      .maxDescriptorSetUniformBuffers           = MAX_UNIFORM_BUFFERS,
+      .maxDescriptorSetUniformBuffersDynamic    = MAX_DYNAMIC_UNIFORM_BUFFERS,
+      .maxDescriptorSetStorageBuffers           = MAX_STORAGE_BUFFERS,
+      .maxDescriptorSetStorageBuffersDynamic    = MAX_DYNAMIC_STORAGE_BUFFERS,
+      .maxDescriptorSetSampledImages            = MAX_SAMPLED_IMAGES,
+      .maxDescriptorSetStorageImages            = MAX_STORAGE_IMAGES,
+      .maxDescriptorSetInputAttachments         = MAX_INPUT_ATTACHMENTS,
 
       /* Vertex limits */
       .maxVertexInputAttributes                 = MAX_VERTEX_ATTRIBS,
@@ -1088,9 +1079,9 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxFragmentInputComponents               = max_varying_components,
       .maxFragmentOutputAttachments             = 4,
       .maxFragmentDualSrcAttachments            = 0,
-      .maxFragmentCombinedOutputResources       = max_render_targets +
-                                                  max_storage_buffers +
-                                                  max_storage_images,
+      .maxFragmentCombinedOutputResources       = MAX_RENDER_TARGETS +
+                                                  MAX_STORAGE_BUFFERS +
+                                                  MAX_STORAGE_IMAGES,
 
       /* Compute limits */
       .maxComputeSharedMemorySize               = 16384,
@@ -1128,7 +1119,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .framebufferDepthSampleCounts             = supported_sample_counts,
       .framebufferStencilSampleCounts           = supported_sample_counts,
       .framebufferNoAttachmentsSampleCounts     = supported_sample_counts,
-      .maxColorAttachments                      = max_render_targets,
+      .maxColorAttachments                      = MAX_RENDER_TARGETS,
       .sampledImageColorSampleCounts            = supported_sample_counts,
       .sampledImageIntegerSampleCounts          = supported_sample_counts,
       .sampledImageDepthSampleCounts            = supported_sample_counts,
