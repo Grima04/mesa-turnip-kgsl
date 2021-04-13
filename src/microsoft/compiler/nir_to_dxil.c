@@ -33,6 +33,7 @@
 
 #include "util/u_debug.h"
 #include "util/u_math.h"
+#include "util/u_dynarray.h"
 #include "nir/nir_builder.h"
 
 #include "git_sha1.h"
@@ -397,28 +398,23 @@ struct ntd_context {
 
    struct dxil_module mod;
 
-   const struct dxil_mdnode *srv_metadata_nodes[MAX_SRVS];
+   struct util_dynarray srv_metadata_nodes;
    const struct dxil_value *srv_handles[MAX_SRVS];
    uint64_t srvs_used[2];
-   unsigned num_srv_arrays;
 
-   const struct dxil_mdnode *uav_metadata_nodes[MAX_UAVS];
+   struct util_dynarray uav_metadata_nodes;
    const struct dxil_value *uav_handles[MAX_UAVS];
    unsigned num_uavs;
-   unsigned num_uav_arrays;
 
-   const struct dxil_mdnode *cbv_metadata_nodes[MAX_CBVS];
+   struct util_dynarray cbv_metadata_nodes;
    const struct dxil_value *cbv_handles[MAX_CBVS];
    unsigned num_cbvs;
-   unsigned num_cbv_arrays;
 
-   const struct dxil_mdnode *sampler_metadata_nodes[MAX_SAMPLERS];
+   struct util_dynarray sampler_metadata_nodes;
    const struct dxil_value *sampler_handles[MAX_SAMPLERS];
    uint64_t samplers_used : MAX_SAMPLERS;
-   unsigned num_sampler_arrays;
 
-   struct dxil_resource resources[MAX_SRVS + MAX_UAVS + MAX_CBVS];
-   unsigned num_resources;
+   struct util_dynarray resources;
 
    const struct dxil_mdnode *shader_property_nodes[6];
    size_t num_shader_property_nodes;
@@ -748,12 +744,11 @@ static void
 add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
              const resource_array_layout *layout)
 {
-   assert(ctx->num_resources < ARRAY_SIZE(ctx->resources));
-   ctx->resources[ctx->num_resources].resource_type = type;
-   ctx->resources[ctx->num_resources].space = 0;
-   ctx->resources[ctx->num_resources].lower_bound = layout->binding;
-   ctx->resources[ctx->num_resources].upper_bound = layout->binding + layout->size - 1;
-   ctx->num_resources++;
+   struct dxil_resource *resource = util_dynarray_grow(&ctx->resources, struct dxil_resource, 1);
+   resource->resource_type = type;
+   resource->space = 0;
+   resource->lower_bound = layout->binding;
+   resource->upper_bound = layout->binding + layout->size - 1;
 }
 
 static unsigned
@@ -762,29 +757,37 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
 {
    unsigned offset = 0;
    unsigned count = 0;
+
+   unsigned num_srvs = util_dynarray_num_elements(&ctx->srv_metadata_nodes, const struct dxil_mdnode *);
+   unsigned num_uavs = util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *);
+   unsigned num_cbvs = util_dynarray_num_elements(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *);
+   unsigned num_samplers = util_dynarray_num_elements(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *);
+
    switch (class) {
    case DXIL_RESOURCE_CLASS_UAV:
-      offset = ctx->num_srv_arrays + ctx->num_sampler_arrays + ctx->num_cbv_arrays;
-      count = ctx->num_uav_arrays;
+      offset = num_srvs + num_samplers + num_cbvs;
+      count = num_uavs;
       break;
    case DXIL_RESOURCE_CLASS_SRV:
-      offset = ctx->num_sampler_arrays + ctx->num_cbv_arrays;
-      count = ctx->num_srv_arrays;
+      offset = num_samplers + num_cbvs;
+      count = num_srvs;
       break;
    case DXIL_RESOURCE_CLASS_SAMPLER:
-      offset = ctx->num_cbv_arrays;
-      count = ctx->num_sampler_arrays;
+      offset = num_cbvs;
+      count = num_samplers;
       break;
    case DXIL_RESOURCE_CLASS_CBV:
       offset = 0;
-      count = ctx->num_cbv_arrays;
+      count = num_cbvs;
       break;
    }
-   assert(offset + count <= ctx->num_resources);
+
+   assert(offset + count <= util_dynarray_num_elements(&ctx->resources, struct dxil_resource));
    for (unsigned i = offset; i < offset + count; ++i) {
-      if (ctx->resources[i].space == space &&
-          ctx->resources[i].lower_bound <= binding &&
-          ctx->resources[i].upper_bound >= binding) {
+      const struct dxil_resource *resource = util_dynarray_element(&ctx->resources, struct dxil_resource, i);
+      if (resource->space == space &&
+          resource->lower_bound <= binding &&
+          resource->upper_bound >= binding) {
          return i - offset;
       }
    }
@@ -796,9 +799,7 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
 static bool
 emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned count)
 {
-   assert(ctx->num_srv_arrays < ARRAY_SIZE(ctx->srv_metadata_nodes));
-
-   unsigned id = ctx->num_srv_arrays;
+   unsigned id = util_dynarray_num_elements(&ctx->srv_metadata_nodes, const struct dxil_mdnode *);
    resource_array_layout layout = {id, binding, count};
 
    enum dxil_component_type comp_type;
@@ -820,7 +821,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned 
    if (!srv_meta)
       return false;
 
-   ctx->srv_metadata_nodes[ctx->num_srv_arrays++] = srv_meta;
+   util_dynarray_append(&ctx->srv_metadata_nodes, const struct dxil_mdnode *, srv_meta);
    add_resource(ctx, res_type, &layout);
 
    for (unsigned i = 0; i < count; ++i) {
@@ -869,8 +870,8 @@ emit_globals(struct ntd_context *ctx, unsigned size)
    if (!uav_meta)
       return false;
 
-   ctx->uav_metadata_nodes[ctx->num_uav_arrays++] = uav_meta;
-   if (ctx->num_uav_arrays > 8)
+   util_dynarray_append(&ctx->uav_metadata_nodes, const struct dxil_mdnode *, uav_meta);
+   if (util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
    /* Handles to UAVs used for kernel globals are created on-demand */
    ctx->num_uavs += size;
@@ -883,10 +884,7 @@ static bool
 emit_uav(struct ntd_context *ctx, unsigned binding, unsigned count,
          enum dxil_component_type comp_type, enum dxil_resource_kind res_kind, const char *name)
 {
-   assert(ctx->num_uav_arrays < ARRAY_SIZE(ctx->uav_metadata_nodes));
-   assert(ctx->num_uavs < ARRAY_SIZE(ctx->uav_handles));
-
-   unsigned id = ctx->num_uav_arrays;
+   unsigned id = util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *);
    resource_array_layout layout = { id, binding, count };
 
    const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, true /* readwrite */);
@@ -896,8 +894,8 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned count,
    if (!uav_meta)
       return false;
 
-   ctx->uav_metadata_nodes[ctx->num_uav_arrays++] = uav_meta;
-   if (ctx->num_uav_arrays > 8)
+   util_dynarray_append(&ctx->uav_metadata_nodes, const struct dxil_mdnode *, uav_meta);
+   if (util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *) > 8)
       ctx->mod.feats.use_64uavs = 1;
 
    add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, &layout);
@@ -1065,9 +1063,7 @@ static bool
 emit_cbv(struct ntd_context *ctx, unsigned binding,
          unsigned size, unsigned count, char *name)
 {
-   unsigned idx = ctx->num_cbv_arrays;
-
-   assert(idx < ARRAY_SIZE(ctx->cbv_metadata_nodes));
+   unsigned idx = util_dynarray_num_elements(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *);
 
    const struct dxil_type *float32 = dxil_module_get_float_type(&ctx->mod, 32);
    const struct dxil_type *array_type = dxil_module_get_array_type(&ctx->mod, float32, size);
@@ -1081,7 +1077,7 @@ emit_cbv(struct ntd_context *ctx, unsigned binding,
    if (!cbv_meta)
       return false;
 
-   ctx->cbv_metadata_nodes[ctx->num_cbv_arrays++] = cbv_meta;
+   util_dynarray_append(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *, cbv_meta);
    add_resource(ctx, DXIL_RES_CBV, &layout);
 
    for (unsigned i = 0; i < count; ++i) {
@@ -1110,9 +1106,7 @@ emit_ubo_var(struct ntd_context *ctx, nir_variable *var)
 static bool
 emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned count)
 {
-   assert(ctx->num_sampler_arrays < ARRAY_SIZE(ctx->sampler_metadata_nodes));
-
-   unsigned id = ctx->num_sampler_arrays;
+   unsigned id = util_dynarray_num_elements(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *);
    resource_array_layout layout = {id, binding, count};
    const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *sampler_type = dxil_module_get_struct_type(&ctx->mod, "struct.SamplerState", &int32_type, 1);
@@ -1121,7 +1115,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsig
    if (!sampler_meta)
       return false;
 
-   ctx->sampler_metadata_nodes[id] = sampler_meta;
+   util_dynarray_append(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *, sampler_meta);
    add_resource(ctx, DXIL_RES_SAMPLER, &layout);
 
    for (unsigned i = 0; i < count; ++i) {
@@ -1137,7 +1131,6 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsig
       ctx->sampler_handles[idx] = handle;
       ctx->samplers_used |= bit;
    }
-   ctx->num_sampler_arrays++;
 
    return true;
 }
@@ -1244,25 +1237,29 @@ emit_resources(struct ntd_context *ctx)
       NULL, NULL, NULL, NULL
    };
 
+#define ARRAY_AND_SIZE(arr) arr.data, util_dynarray_num_elements(&arr, const struct dxil_mdnode *)
+
    if (ctx->srvs_used[0] || ctx->srvs_used[1]) {
-      resources_nodes[0] = dxil_get_metadata_node(&ctx->mod, ctx->srv_metadata_nodes, ctx->num_srv_arrays);
+      resources_nodes[0] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->srv_metadata_nodes));
       emit_resources = true;
    }
 
    if (ctx->num_uavs) {
-      resources_nodes[1] = dxil_get_metadata_node(&ctx->mod, ctx->uav_metadata_nodes, ctx->num_uav_arrays);
+      resources_nodes[1] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->uav_metadata_nodes));
       emit_resources = true;
    }
 
    if (ctx->num_cbvs) {
-      resources_nodes[2] = dxil_get_metadata_node(&ctx->mod, ctx->cbv_metadata_nodes, ctx->num_cbv_arrays);
+      resources_nodes[2] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->cbv_metadata_nodes));
       emit_resources = true;
    }
 
    if (ctx->samplers_used) {
-      resources_nodes[3] = dxil_get_metadata_node(&ctx->mod, ctx->sampler_metadata_nodes, ctx->num_sampler_arrays);
+      resources_nodes[3] = dxil_get_metadata_node(&ctx->mod, ARRAY_AND_SIZE(ctx->sampler_metadata_nodes));
       emit_resources = true;
    }
+
+#undef ARRAY_AND_SIZE
 
    return emit_resources ?
       dxil_get_metadata_node(&ctx->mod, resources_nodes, ARRAY_SIZE(resources_nodes)): NULL;
@@ -4425,8 +4422,8 @@ static
 void dxil_fill_validation_state(struct ntd_context *ctx,
                                 struct dxil_validation_state *state)
 {
-   state->num_resources = ctx->num_resources;
-   state->resources = ctx->resources;
+   state->num_resources = util_dynarray_num_elements(&ctx->resources, struct dxil_resource);
+   state->resources = (struct dxil_resource*)ctx->resources.data;
    state->state.psv0.max_expected_wave_lane_count = UINT_MAX;
    state->state.shader_stage = (uint8_t)ctx->mod.shader_kind;
    state->state.sig_input_elements = (uint8_t)ctx->mod.num_sig_inputs;
@@ -4553,6 +4550,11 @@ nir_to_dxil(struct nir_shader *s, const struct nir_to_dxil_options *opts,
       goto out;
    }
 
+   util_dynarray_init(&ctx->srv_metadata_nodes, ctx->ralloc_ctx);
+   util_dynarray_init(&ctx->uav_metadata_nodes, ctx->ralloc_ctx);
+   util_dynarray_init(&ctx->cbv_metadata_nodes, ctx->ralloc_ctx);
+   util_dynarray_init(&ctx->sampler_metadata_nodes, ctx->ralloc_ctx);
+   util_dynarray_init(&ctx->resources, ctx->ralloc_ctx);
    dxil_module_init(&ctx->mod, ctx->ralloc_ctx);
    ctx->mod.shader_kind = get_dxil_shader_kind(s);
    ctx->mod.major_version = 6;
