@@ -531,17 +531,36 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                     unsigned int nrects,
                                     const struct pipe_box *rects)
 {
+        struct panfrost_device *dev = pan_device(screen);
         struct panfrost_resource *pres = pan_resource(res);
         struct pipe_scissor_state *damage_extent = &pres->damage.extent;
         unsigned int i;
 
-        memset(&pres->damage, 0, sizeof(pres->damage));
+        if (!pan_is_bifrost(dev) && !(dev->quirks & NO_TILE_ENABLE_MAP) &&
+            nrects > 1) {
+                if (!pres->damage.tile_map.data) {
+                        pres->damage.tile_map.stride =
+                                ALIGN_POT(DIV_ROUND_UP(res->width0, 32 * 8), 64);
+                        pres->damage.tile_map.size =
+                                pres->damage.tile_map.stride *
+                                DIV_ROUND_UP(res->height0, 32);
+                        pres->damage.tile_map.data =
+                                ralloc_size(pres, pres->damage.tile_map.size);
+                }
+
+                memset(pres->damage.tile_map.data, 0, pres->damage.tile_map.size);
+                pres->damage.tile_map.enable = true;
+        } else {
+                pres->damage.tile_map.enable = false;
+        }
 
         /* Track the damage extent: the quad including all damage regions. Will
          * be used restrict the rendering area */
 
         damage_extent->minx = 0xffff;
         damage_extent->miny = 0xffff;
+
+        unsigned enable_count = 0;
 
         for (i = 0; i < nrects; i++) {
                 int x = rects[i].x, w = rects[i].width, h = rects[i].height;
@@ -553,6 +572,26 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                                            MIN2(x + w, res->width0));
                 damage_extent->maxy = MAX2(damage_extent->maxy,
                                            MIN2(y + h, res->height0));
+
+                if (!pres->damage.tile_map.enable)
+                        continue;
+
+                unsigned t_x_start = x / 32;
+                unsigned t_x_end = (x + w - 1) / 32;
+                unsigned t_y_start = y / 32;
+                unsigned t_y_end = (y + h - 1) / 32;
+
+                for (unsigned t_y = t_y_start; t_y <= t_y_end; t_y++) {
+                        for (unsigned t_x = t_x_start; t_x <= t_x_end; t_x++) {
+                                unsigned b = (t_y * pres->damage.tile_map.stride * 8) + t_x;
+
+                                if (BITSET_TEST(pres->damage.tile_map.data, b))
+                                        continue;
+
+                                BITSET_SET(pres->damage.tile_map.data, b);
+                                enable_count++;
+                        }
+                }
         }
 
         if (nrects == 0) {
@@ -560,6 +599,21 @@ panfrost_resource_set_damage_region(struct pipe_screen *screen,
                 damage_extent->miny = 0;
                 damage_extent->maxx = res->width0;
                 damage_extent->maxy = res->height0;
+        }
+
+        if (pres->damage.tile_map.enable) {
+                unsigned t_x_start = damage_extent->minx / 32;
+                unsigned t_x_end = damage_extent->maxx / 32;
+                unsigned t_y_start = damage_extent->miny / 32;
+                unsigned t_y_end = damage_extent->maxy / 32;
+                unsigned tile_count = (t_x_end - t_x_start + 1) *
+                                      (t_y_end - t_y_start + 1);
+
+                /* Don't bother passing a tile-enable-map if the amount of
+                 * tiles to reload is to close to the total number of tiles.
+                 */
+                if (tile_count - enable_count < 10)
+                        pres->damage.tile_map.enable = false;
         }
 
 }

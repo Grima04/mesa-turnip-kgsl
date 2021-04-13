@@ -103,6 +103,10 @@ void
 panfrost_emit_fbd(struct panfrost_batch *batch,
                   const struct pan_fb_info *fb);
 
+void
+panfrost_emit_tile_map(struct panfrost_batch *batch,
+                       struct pan_fb_info *fb);
+
 static inline unsigned
 panfrost_translate_compare_func(enum pipe_compare_func in)
 {

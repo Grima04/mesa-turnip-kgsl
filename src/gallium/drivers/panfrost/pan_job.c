@@ -1137,6 +1137,8 @@ panfrost_batch_submit(struct panfrost_batch *batch,
 
         panfrost_emit_tls(batch);
 
+        panfrost_emit_tile_map(batch, &fb);
+
         if (batch->framebuffer.gpu)
                 panfrost_emit_fbd(batch, &fb);
 

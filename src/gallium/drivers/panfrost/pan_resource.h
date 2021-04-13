@@ -40,6 +40,12 @@ struct panfrost_resource {
         struct pipe_resource base;
         struct {
                 struct pipe_scissor_state extent;
+                struct {
+                        bool enable;
+                        unsigned stride;
+                        unsigned size;
+                        BITSET_WORD *data;
+                } tile_map;
         } damage;
 
         struct renderonly_scanout *scanout;
