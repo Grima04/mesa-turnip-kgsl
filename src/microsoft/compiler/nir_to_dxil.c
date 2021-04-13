@@ -820,15 +820,17 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned 
    util_dynarray_append(&ctx->srv_metadata_nodes, const struct dxil_mdnode *, srv_meta);
    add_resource(ctx, res_type, &layout);
 
-   for (unsigned i = 0; i < count; ++i) {
-      const struct dxil_value *handle =
-         emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SRV,
-                                            id, binding + i, false);
-      if (!handle)
-         return false;
+   if (!ctx->opts->vulkan_environment) {
+      for (unsigned i = 0; i < count; ++i) {
+         const struct dxil_value *handle =
+            emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SRV,
+                                               id, binding + i, false);
+         if (!handle)
+            return false;
 
-      int idx = var->data.binding + i;
-      ctx->srv_handles[idx] = handle;
+         int idx = var->data.binding + i;
+         ctx->srv_handles[idx] = handle;
+      }
    }
 
    return true;
@@ -891,13 +893,15 @@ emit_uav(struct ntd_context *ctx, unsigned binding, unsigned count,
 
    add_resource(ctx, res_kind == DXIL_RESOURCE_KIND_RAW_BUFFER ? DXIL_RES_UAV_RAW : DXIL_RES_UAV_TYPED, &layout);
 
-   for (unsigned i = 0; i < count; ++i) {
-      const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_UAV,
-                                                                           id, binding + i, false);
-      if (!handle)
-         return false;
+   if (!ctx->opts->vulkan_environment) {
+      for (unsigned i = 0; i < count; ++i) {
+         const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_UAV,
+                                                                              id, binding + i, false);
+         if (!handle)
+            return false;
 
-      ctx->uav_handles[binding + i] = handle;
+         ctx->uav_handles[binding + i] = handle;
+      }
    }
 
    return true;
@@ -1070,14 +1074,16 @@ emit_cbv(struct ntd_context *ctx, unsigned binding,
    util_dynarray_append(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *, cbv_meta);
    add_resource(ctx, DXIL_RES_CBV, &layout);
 
-   for (unsigned i = 0; i < count; ++i) {
-      const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_CBV,
-                                                                           idx, binding + i, false);
-      if (!handle)
-         return false;
+   if (!ctx->opts->vulkan_environment) {
+      for (unsigned i = 0; i < count; ++i) {
+         const struct dxil_value *handle = emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_CBV,
+                                                                              idx, binding + i, false);
+         if (!handle)
+            return false;
 
-      assert(!ctx->cbv_handles[binding + i]);
-      ctx->cbv_handles[binding + i] = handle;
+         assert(!ctx->cbv_handles[binding + i]);
+         ctx->cbv_handles[binding + i] = handle;
+      }
    }
 
    return true;
@@ -1107,15 +1113,17 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsig
    util_dynarray_append(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *, sampler_meta);
    add_resource(ctx, DXIL_RES_SAMPLER, &layout);
 
-   for (unsigned i = 0; i < count; ++i) {
-      const struct dxil_value *handle =
-         emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
-                                            id, binding + i, false);
-      if (!handle)
-         return false;
+   if (!ctx->opts->vulkan_environment) {
+      for (unsigned i = 0; i < count; ++i) {
+         const struct dxil_value *handle =
+            emit_createhandle_call_const_index(ctx, DXIL_RESOURCE_CLASS_SAMPLER,
+                                               id, binding + i, false);
+         if (!handle)
+            return false;
 
-      unsigned idx = var->data.binding + i;
-      ctx->sampler_handles[idx] = handle;
+         unsigned idx = var->data.binding + i;
+         ctx->sampler_handles[idx] = handle;
+      }
    }
 
    return true;
@@ -2336,6 +2344,7 @@ get_ubo_ssbo_handle(struct ntd_context *ctx, nir_src *src, enum dxil_resource_cl
    nir_const_value *const_block_index = nir_src_as_const_value(*src);
    const struct dxil_value **handle_entry = NULL;
    if (const_block_index) {
+      assert(!ctx->opts->vulkan_environment);
       if (class == DXIL_RESOURCE_CLASS_CBV)
          handle_entry = &ctx->cbv_handles[const_block_index->u32];
       else
@@ -2999,9 +3008,15 @@ emit_end_primitive(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 static bool
 emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   int binding = nir_src_as_int(intr->src[0]);
-
-   const struct dxil_value *handle = ctx->uav_handles[binding];
+   const struct dxil_value *handle;
+   if (ctx->opts->vulkan_environment) {
+      assert(intr->intrinsic == nir_intrinsic_image_deref_store);
+      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
+   } else {
+      assert(intr->intrinsic == nir_intrinsic_image_store);
+      int binding = nir_src_as_int(intr->src[0]);
+      handle = ctx->uav_handles[binding];
+   }
    if (!handle)
       return false;
 
@@ -3010,7 +3025,9 @@ emit_image_store(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
 
    const struct dxil_value *coord[3] = { int32_undef, int32_undef, int32_undef };
-   enum glsl_sampler_dim image_dim = nir_intrinsic_image_dim(intr);
+   enum glsl_sampler_dim image_dim = intr->intrinsic == nir_intrinsic_image_store ?
+      nir_intrinsic_image_dim(intr) :
+      glsl_get_sampler_dim(nir_src_as_deref(intr->src[0])->type);
    unsigned num_coords = glsl_get_sampler_dim_coordinate_components(image_dim);
    assert(num_coords <= nir_src_num_components(intr->src[1]));
    for (unsigned i = 0; i < num_coords; ++i) {
@@ -3075,9 +3092,16 @@ emit_texture_size(struct ntd_context *ctx, struct texop_parameters *params)
 static bool
 emit_image_size(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
-   int binding = nir_src_as_int(intr->src[0]);
-
-   const struct dxil_value *handle = ctx->uav_handles[binding];
+   const struct dxil_value *handle;
+   if (ctx->opts->vulkan_environment) {
+      assert(intr->intrinsic == nir_intrinsic_image_deref_size);
+      handle = get_src_ssa(ctx, intr->src[0].ssa, 0);
+   }
+   else {
+      assert(intr->intrinsic == nir_intrinsic_image_size);
+      int binding = nir_src_as_int(intr->src[0]);
+      handle = ctx->uav_handles[binding];
+   }
    if (!handle)
       return false;
 
@@ -3269,22 +3293,15 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    assert(index && index->intrinsic == nir_intrinsic_vulkan_resource_index);
 
    unsigned binding = nir_intrinsic_binding(index);
-   bool const_index = nir_src_is_const(index->src[0]);
-   if (const_index) {
-      binding += nir_src_as_const_value(index->src[0])->u32;
-   }
 
    const struct dxil_value *handle = NULL;
-   const struct dxil_value **handle_entry = NULL;
    enum dxil_resource_class resource_class;
 
    switch (nir_intrinsic_desc_type(intr)) {
    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-      handle_entry = &ctx->cbv_handles[binding];
       resource_class = DXIL_RESOURCE_CLASS_CBV;
       break;
    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-      handle_entry = &ctx->uav_handles[binding];
       resource_class = DXIL_RESOURCE_CLASS_UAV;
       break;
    default:
@@ -3292,14 +3309,9 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
       return false;
    }
 
-   handle = *handle_entry;
-   if (!handle || !const_index) {
-      handle = emit_createhandle_call(ctx, resource_class,
-         get_resource_id(ctx, resource_class, 0, binding),
-         get_src(ctx, &intr->src[0], 0, nir_type_uint32), false);
-      if (const_index)
-         *handle_entry = handle;
-   }
+   handle = emit_createhandle_call(ctx, resource_class,
+      get_resource_id(ctx, resource_class, 0, binding),
+      get_src(ctx, &intr->src[0], 0, nir_type_uint32), false);
 
    store_dest_value(ctx, &intr->dest, 0, handle);
    store_dest(ctx, &intr->dest, 1, get_src(ctx, &intr->src[0], 1, nir_type_uint32), nir_type_uint32);
@@ -3406,7 +3418,9 @@ emit_intrinsic(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    case nir_intrinsic_shared_atomic_comp_swap_dxil:
       return emit_shared_atomic_comp_swap(ctx, intr);
    case nir_intrinsic_image_store:
+   case nir_intrinsic_image_deref_store:
       return emit_image_store(ctx, intr);
+   case nir_intrinsic_image_deref_size:
    case nir_intrinsic_image_size:
       return emit_image_size(ctx, intr);
 
@@ -3464,6 +3478,62 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
 {
    assert(instr->deref_type == nir_deref_type_var ||
           instr->deref_type == nir_deref_type_array);
+
+   /* In the non-Vulkan environment, there's nothing to emit. Any references to
+    * derefs will emit the necessary logic to handle scratch/shared GEP addressing
+    */
+   if (!ctx->opts->vulkan_environment)
+      return true;
+
+   /* In the Vulkan environment, we don't have cached handles for textures or
+    * samplers, so let's use the opportunity of walking through the derefs to
+    * emit those.
+    */
+   nir_variable *var = nir_deref_instr_get_variable(instr);
+   assert(var);
+
+   if (glsl_type_get_sampler_count(var->type) == 0 &&
+       glsl_type_get_image_count(var->type) == 0)
+   return true;
+
+   const struct glsl_type *type = instr->type;
+   const struct dxil_value *binding;
+
+   if (instr->deref_type == nir_deref_type_var) {
+      binding = dxil_module_get_int32_const(&ctx->mod, var->data.binding);
+   } else {
+      const struct dxil_value *base = get_src(ctx, &instr->parent, 0, nir_type_uint32);
+      const struct dxil_value *offset = get_src(ctx, &instr->arr.index, 0, nir_type_uint32);
+      if (!base || !offset)
+         return false;
+
+      binding = dxil_emit_binop(&ctx->mod, DXIL_BINOP_ADD, base, offset, 0);
+   }
+
+   if (!binding)
+      return false;
+
+   /* Haven't finished chasing the deref chain yet, just store the value */
+   if (glsl_type_is_array(type)) {
+      store_dest(ctx, &instr->dest, 0, binding, nir_type_uint32);
+      return true;
+   }
+
+   assert(glsl_type_is_sampler(type) || glsl_type_is_image(type));
+   enum dxil_resource_class res_class;
+   if (glsl_type_is_image(type))
+      res_class = DXIL_RESOURCE_CLASS_UAV;
+   else if (glsl_get_sampler_result_type(type) == GLSL_TYPE_VOID)
+      res_class = DXIL_RESOURCE_CLASS_SAMPLER;
+   else
+      res_class = DXIL_RESOURCE_CLASS_SRV;
+   
+   const struct dxil_value *handle = emit_createhandle_call(ctx, res_class,
+      get_resource_id(ctx, res_class, 0, var->data.binding), binding, false);
+   if (!handle)
+      return false;
+
+   store_dest_value(ctx, &instr->dest, 0, handle);
    return true;
 }
 
@@ -3721,14 +3791,10 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
 {
    struct texop_parameters params;
    memset(&params, 0, sizeof(struct texop_parameters));
-   params.tex = ctx->srv_handles[instr->texture_index];
-   params.sampler = ctx->sampler_handles[instr->sampler_index];
-
-   assert(params.tex != NULL);
-   assert(instr->op == nir_texop_txf ||
-          instr->op == nir_texop_txf_ms ||
-          nir_tex_instr_is_query(instr) ||
-          params.sampler != NULL);
+   if (!ctx->opts->vulkan_environment) {
+      params.tex = ctx->srv_handles[instr->texture_index];
+      params.sampler = ctx->sampler_handles[instr->sampler_index];
+   }
 
    const struct dxil_type *int_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *float_type = dxil_module_get_float_type(&ctx->mod, 32);
@@ -3798,6 +3864,16 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          assert(params.lod_or_sample != NULL);
          break;
 
+      case nir_tex_src_texture_deref:
+         assert(ctx->opts->vulkan_environment);
+         params.tex = get_src_ssa(ctx, instr->src[i].src.ssa, 0);
+         break;
+
+      case nir_tex_src_sampler_deref:
+         assert(ctx->opts->vulkan_environment);
+         params.sampler = get_src_ssa(ctx, instr->src[i].src.ssa, 0);
+         break;
+
       case nir_tex_src_projector:
          unreachable("Texture projector should have been lowered");
 
@@ -3806,6 +3882,12 @@ emit_tex(struct ntd_context *ctx, nir_tex_instr *instr)
          unreachable("unknown texture source");
       }
    }
+
+   assert(params.tex != NULL);
+   assert(instr->op == nir_texop_txf ||
+          instr->op == nir_texop_txf_ms ||
+          nir_tex_instr_is_query(instr) ||
+          params.sampler != NULL);
 
    PAD_SRC(ctx, params.coord, coord_components, float_undef);
    PAD_SRC(ctx, params.offset, offset_components, int_undef);
