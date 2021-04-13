@@ -377,11 +377,8 @@ llvmpipe_get_shader_param(struct pipe_screen *screen,
          else
             return PIPE_SHADER_IR_NIR;
       }
-      switch (param) {
-      default:
-         return gallivm_get_shader_param(param);
-      }
-      FALLTHROUGH;
+
+      return gallivm_get_shader_param(param);
    case PIPE_SHADER_TESS_CTRL:
    case PIPE_SHADER_TESS_EVAL:
       /* Tessellation shader needs llvm coroutines support */
