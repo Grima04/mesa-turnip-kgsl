@@ -72,6 +72,14 @@ v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    job->bo_count++;
 }
 
+void
+v3dv_job_add_bo_unchecked(struct v3dv_job *job, struct v3dv_bo *bo)
+{
+   assert(bo);
+   _mesa_set_add(job->bos, bo);
+   job->bo_count++;
+}
+
 static void
 cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer);
 
@@ -561,7 +569,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
       return;
    }
 
-   v3dv_job_add_bo(job, job->tile_alloc);
+   v3dv_job_add_bo_unchecked(job, job->tile_alloc);
 
    const uint32_t tsda_per_tile_size = 256;
    const uint32_t tile_state_size = tiling->layers *
@@ -574,7 +582,7 @@ v3dv_job_start_frame(struct v3dv_job *job,
       return;
    }
 
-   v3dv_job_add_bo(job, job->tile_state);
+   v3dv_job_add_bo_unchecked(job, job->tile_state);
 
    /* This must go before the binning mode configuration. It is
     * required for layered framebuffers to work.
@@ -5302,7 +5310,7 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
       }
    }
 
-   v3dv_job_add_bo(job, cs_assembly_bo);
+   v3dv_job_add_bo_unchecked(job, cs_assembly_bo);
    struct v3dv_cl_reloc uniforms =
       v3dv_write_uniforms_wg_offsets(cmd_buffer, pipeline,
                                      cs_variant,

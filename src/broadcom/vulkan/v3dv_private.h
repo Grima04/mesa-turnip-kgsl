@@ -998,7 +998,10 @@ void v3dv_job_init(struct v3dv_job *job,
                    struct v3dv_cmd_buffer *cmd_buffer,
                    int32_t subpass_idx);
 void v3dv_job_destroy(struct v3dv_job *job);
+
 void v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo);
+void v3dv_job_add_bo_unchecked(struct v3dv_job *job, struct v3dv_bo *bo);
+
 void v3dv_job_emit_binning_flush(struct v3dv_job *job);
 void v3dv_job_start_frame(struct v3dv_job *job,
                           uint32_t width,
