@@ -839,14 +839,11 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
  *
  * \param gc             Pointer to GLX context.
  * \param server_string  Extension string from the server.
- * \param major_version  GL major version from the server.
- * \param minor_version  GL minor version from the server.
  */
 
 void
 __glXCalculateUsableGLExtensions(struct glx_context * gc,
-                                 const char *server_string,
-                                 int major_version, int minor_version)
+                                 const char *server_string)
 {
    struct glx_screen *psc = gc->psc;
    unsigned char server_support[__GL_EXT_BYTES];
@@ -859,22 +856,6 @@ __glXCalculateUsableGLExtensions(struct glx_context * gc,
    (void) memset(server_support, 0, sizeof(server_support));
    __glXProcessServerString(known_gl_extensions, server_string,
                             server_support);
-
-
-   /* Handle lazy servers that don't export all the extensions strings that
-    * are part of the GL core version that they support.
-    */
-
-   for (i = 0; i < __GL_EXT_BYTES; i++) {
-      if ((known_gl_extensions[i].version_major != 0)
-          && ((major_version > known_gl_extensions[i].version_major)
-              || ((major_version == known_gl_extensions[i].version_major)
-                  && (minor_version >=
-                      known_gl_extensions[i].version_minor)))) {
-         SET_BIT(server_support, known_gl_extensions[i].bit);
-      }
-   }
-
 
    /* An extension is supported if the client-side (i.e., libGL) supports
     * it and the server supports it or the client-side library supports it
