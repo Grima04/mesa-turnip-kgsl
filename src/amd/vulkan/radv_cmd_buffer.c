@@ -461,15 +461,6 @@ radv_reset_cmd_buffer(struct radv_cmd_buffer *cmd_buffer)
    return cmd_buffer->record_result;
 }
 
-enum radeon_bo_domain
-radv_cmdbuffer_domain(const struct radeon_info *info, uint32_t perftest)
-{
-   bool use_sam =
-      (info->all_vram_visible && info->has_dedicated_vram && !(perftest & RADV_PERFTEST_NO_SAM)) ||
-      (perftest & RADV_PERFTEST_SAM);
-   return use_sam ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
-}
-
 static bool
 radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t min_needed)
 {
@@ -481,12 +472,10 @@ radv_cmd_buffer_resize_upload_buf(struct radv_cmd_buffer *cmd_buffer, uint64_t m
    new_size = MAX2(min_needed, 16 * 1024);
    new_size = MAX2(new_size, 2 * cmd_buffer->upload.size);
 
-   bo = device->ws->buffer_create(
-      device->ws, new_size, 4096,
-      radv_cmdbuffer_domain(&device->physical_device->rad_info, device->instance->perftest_flags),
-      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_32BIT |
-         RADEON_FLAG_GTT_WC,
-      RADV_BO_PRIORITY_UPLOAD_BUFFER);
+   bo = device->ws->buffer_create(device->ws, new_size, 4096, device->ws->cs_domain(device->ws),
+                                  RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                                     RADEON_FLAG_32BIT | RADEON_FLAG_GTT_WC,
+                                  RADV_BO_PRIORITY_UPLOAD_BUFFER);
 
    if (!bo) {
       cmd_buffer->record_result = VK_ERROR_OUT_OF_DEVICE_MEMORY;

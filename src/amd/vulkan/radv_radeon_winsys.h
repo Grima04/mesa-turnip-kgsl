@@ -260,6 +260,8 @@ struct radeon_winsys {
 
    bool (*ctx_wait_idle)(struct radeon_winsys_ctx *ctx, enum ring_type ring_type, int ring_index);
 
+   enum radeon_bo_domain (*cs_domain)(const struct radeon_winsys *ws);
+
    struct radeon_cmdbuf *(*cs_create)(struct radeon_winsys *ws, enum ring_type ring_type);
 
    void (*cs_destroy)(struct radeon_cmdbuf *cs);
@@ -337,7 +339,5 @@ radv_cs_add_buffer(struct radeon_winsys *ws, struct radeon_cmdbuf *cs, struct ra
 
    ws->cs_add_buffer(cs, bo);
 }
-
-enum radeon_bo_domain radv_cmdbuffer_domain(const struct radeon_info *info, uint32_t perftest);
 
 #endif /* RADV_RADEON_WINSYS_H */

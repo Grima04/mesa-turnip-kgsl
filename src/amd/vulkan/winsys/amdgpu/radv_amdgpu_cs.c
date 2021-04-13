@@ -33,6 +33,8 @@
 #include "ac_debug.h"
 #include "radv_amdgpu_bo.h"
 #include "radv_amdgpu_cs.h"
+#include "radv_amdgpu_winsys.h"
+#include "radv_debug.h"
 #include "radv_radeon_winsys.h"
 #include "sid.h"
 
@@ -175,6 +177,17 @@ radv_amdgpu_init_cs(struct radv_amdgpu_cs *cs, enum ring_type ring_type)
    cs->hw_ip = ring_to_hw_ip(ring_type);
 }
 
+static enum radeon_bo_domain
+radv_amdgpu_cs_domain(const struct radeon_winsys *_ws)
+{
+   const struct radv_amdgpu_winsys *ws = (const struct radv_amdgpu_winsys *)_ws;
+
+   bool use_sam = (ws->info.all_vram_visible && ws->info.has_dedicated_vram &&
+                   !(ws->perftest & RADV_PERFTEST_NO_SAM)) ||
+                  (ws->perftest & RADV_PERFTEST_SAM);
+   return use_sam ? RADEON_DOMAIN_VRAM : RADEON_DOMAIN_GTT;
+}
+
 static struct radeon_cmdbuf *
 radv_amdgpu_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
 {
@@ -189,7 +202,7 @@ radv_amdgpu_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
 
    if (cs->ws->use_ib_bos) {
       cs->ib_buffer =
-         ws->buffer_create(ws, ib_size, 0, cs->ws->cs_bo_domain,
+         ws->buffer_create(ws, ib_size, 0, radv_amdgpu_cs_domain(ws),
                            RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                               RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
                            RADV_BO_PRIORITY_CS);
@@ -309,7 +322,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    cs->old_ib_buffers[cs->num_old_ib_buffers++] = cs->ib_buffer;
 
    cs->ib_buffer =
-      cs->ws->base.buffer_create(&cs->ws->base, ib_size, 0, cs->ws->cs_bo_domain,
+      cs->ws->base.buffer_create(&cs->ws->base, ib_size, 0, radv_amdgpu_cs_domain(&cs->ws->base),
                                  RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
                                     RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
                                  RADV_BO_PRIORITY_CS);
@@ -934,7 +947,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
             }
 
             bos[j] = ws->buffer_create(
-               ws, 4 * size, 4096, aws->cs_bo_domain,
+               ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
                RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
                RADV_BO_PRIORITY_CS);
             ptr = ws->buffer_map(bos[j]);
@@ -976,7 +989,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
          assert(cnt);
 
          bos[0] = ws->buffer_create(
-            ws, 4 * size, 4096, aws->cs_bo_domain,
+            ws, 4 * size, 4096, radv_amdgpu_cs_domain(ws),
             RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY,
             RADV_BO_PRIORITY_CS);
          ptr = ws->buffer_map(bos[0]);
@@ -1650,6 +1663,7 @@ radv_amdgpu_cs_init_functions(struct radv_amdgpu_winsys *ws)
    ws->base.ctx_create = radv_amdgpu_ctx_create;
    ws->base.ctx_destroy = radv_amdgpu_ctx_destroy;
    ws->base.ctx_wait_idle = radv_amdgpu_ctx_wait_idle;
+   ws->base.cs_domain = radv_amdgpu_cs_domain;
    ws->base.cs_create = radv_amdgpu_cs_create;
    ws->base.cs_destroy = radv_amdgpu_cs_destroy;
    ws->base.cs_grow = radv_amdgpu_cs_grow;

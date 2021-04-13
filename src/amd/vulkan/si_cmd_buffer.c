@@ -620,12 +620,11 @@ cik_create_gfx_config(struct radv_device *device)
          radeon_emit(cs, PKT3_NOP_PAD);
    }
 
-   device->gfx_init = device->ws->buffer_create(
-      device->ws, cs->cdw * 4, 4096,
-      radv_cmdbuffer_domain(&device->physical_device->rad_info, device->instance->perftest_flags),
-      RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING | RADEON_FLAG_READ_ONLY |
-         RADEON_FLAG_GTT_WC,
-      RADV_BO_PRIORITY_CS);
+   device->gfx_init =
+      device->ws->buffer_create(device->ws, cs->cdw * 4, 4096, device->ws->cs_domain(device->ws),
+                                RADEON_FLAG_CPU_ACCESS | RADEON_FLAG_NO_INTERPROCESS_SHARING |
+                                   RADEON_FLAG_READ_ONLY | RADEON_FLAG_GTT_WC,
+                                RADV_BO_PRIORITY_CS);
    if (!device->gfx_init)
       goto fail;
 

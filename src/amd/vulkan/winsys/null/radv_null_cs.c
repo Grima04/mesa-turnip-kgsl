@@ -59,6 +59,12 @@ radv_null_ctx_destroy(struct radeon_winsys_ctx *rwctx)
    FREE(ctx);
 }
 
+static enum radeon_bo_domain
+radv_null_cs_domain(const struct radeon_winsys *_ws)
+{
+   return RADEON_DOMAIN_GTT;
+}
+
 static struct radeon_cmdbuf *
 radv_null_cs_create(struct radeon_winsys *ws, enum ring_type ring_type)
 {
@@ -97,6 +103,7 @@ radv_null_cs_init_functions(struct radv_null_winsys *ws)
 {
    ws->base.ctx_create = radv_null_ctx_create;
    ws->base.ctx_destroy = radv_null_ctx_destroy;
+   ws->base.cs_domain = radv_null_cs_domain;
    ws->base.cs_create = radv_null_cs_create;
    ws->base.cs_finalize = radv_null_cs_finalize;
    ws->base.cs_destroy = radv_null_cs_destroy;
