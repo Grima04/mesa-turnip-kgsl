@@ -1730,8 +1730,6 @@ static void visit_store_ssbo(struct ac_nir_context *ctx, nir_intrinsic_instr *in
 
       u_bit_scan_consecutive_range(&writemask, &start, &count);
 
-      /* Due to an LLVM limitation with LLVM < 9, split 3-element
-       * writes into a 2-element and a 1-element write. */
       if (count == 3 && (elem_size_bytes != 4 || !ac_has_vec3_support(ctx->ac.chip_class, false))) {
          writemask |= 1 << (start + 2);
          count = 2;
@@ -2674,9 +2672,6 @@ static LLVMValueRef visit_image_atomic(struct ac_nir_context *ctx, const nir_int
       if (cmpswap && instr->dest.ssa.bit_size == 64) {
          result = emit_ssbo_comp_swap_64(ctx, params[2], params[3], params[1], params[0], true);
       } else {
-         /* XXX: The new raw/struct atomic intrinsics are buggy
-          * with LLVM 8, see r358579.
-          */
          params[param_count++] = ctx->ac.i32_0; /* soffset */
          params[param_count++] = ctx->ac.i32_0; /* slc */
 
@@ -5136,9 +5131,7 @@ bool ac_lower_indirect_derefs(struct nir_shader *nir, enum chip_class chip_class
    NIR_PASS(progress, nir, nir_lower_vars_to_scratch, nir_var_function_temp, 256,
             glsl_get_natural_size_align_bytes);
 
-   /* While it would be nice not to have this flag, we are constrained
-    * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
-    */
+   /* LLVM doesn't support VGPR indexing on GFX9. */
    bool llvm_has_working_vgpr_indexing = chip_class != GFX9;
 
    /* TODO: Indirect indexing of GS inputs is unimplemented.

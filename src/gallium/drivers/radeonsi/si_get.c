@@ -709,7 +709,7 @@ static unsigned get_max_threads_per_block(struct si_screen *screen, enum pipe_sh
    if (ir_type == PIPE_SHADER_IR_NATIVE)
       return 256;
 
-   /* LLVM 10 only supports 1024 threads per block. */
+   /* LLVM only supports 1024 threads per block. */
    return 1024;
 }
 

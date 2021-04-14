@@ -117,9 +117,6 @@ static void load_input_vs(struct si_shader_context *ctx, unsigned input_index, L
    /* Use the open-coded implementation for all loads of doubles and
     * of dword-sized data that needs fixups. We need to insert conversion
     * code anyway, and the amd/common code does it for us.
-    *
-    * Note: On LLVM <= 8, we can only open-code formats with
-    * channel size >= 4 bytes.
     */
    bool opencode = ctx->shader->key.mono.vs_fetch_opencode & (1 << input_index);
    fix_fetch.bits = ctx->shader->key.mono.vs_fix_fetch[input_index].bits;

@@ -793,9 +793,6 @@ static bool si_shader_binary_open(struct si_screen *screen, struct si_shader *sh
 
    if (sel && screen->info.chip_class >= GFX9 && !shader->is_gs_copy_shader &&
        (sel->info.stage == MESA_SHADER_GEOMETRY || shader->key.as_ngg)) {
-      /* We add this symbol even on LLVM <= 8 to ensure that
-       * shader->config.lds_size is set correctly below.
-       */
       struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
       sym->name = "esgs_ring";
       sym->size = shader->gs_info.esgs_ring_size * 4;
@@ -1465,9 +1462,7 @@ bool si_compile_shader(struct si_screen *sscreen, struct ac_llvm_compiler *compi
    if (!si_llvm_compile_shader(sscreen, compiler, shader, debug, nir, free_nir))
       return false;
 
-   /* Validate SGPR and VGPR usage for compute to detect compiler bugs.
-    * LLVM 3.9svn has this bug.
-    */
+   /* Validate SGPR and VGPR usage for compute to detect compiler bugs. */
    if (sel->info.stage == MESA_SHADER_COMPUTE) {
       unsigned wave_size = sscreen->compute_wave_size;
       unsigned max_vgprs =

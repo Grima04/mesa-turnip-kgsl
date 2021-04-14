@@ -1266,9 +1266,7 @@ static struct pipe_screen *radeonsi_screen_create_impl(struct radeon_winsys *ws,
              sscreen->pbb_persistent_states_per_bin <= 32);
    }
 
-   /* While it would be nice not to have this flag, we are constrained
-    * by the reality that LLVM 9.0 has buggy VGPR indexing on GFX9.
-    */
+   /* LLVM doesn't support VGPR indexing on GFX9. */
    sscreen->llvm_has_working_vgpr_indexing = sscreen->info.chip_class != GFX9;
 
    (void)simple_mtx_init(&sscreen->shader_parts_mutex, mtx_plain);
