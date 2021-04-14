@@ -2200,6 +2200,11 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
                for (unsigned i = 0; i < preds.size(); i++)
                   new_phi->operands[i] = Operand(pc.first);
                instructions.emplace_back(std::move(new_phi));
+
+               /* Remove from live_out_per_block (now used for live-in), because handle_loop_phis()
+                * would re-create this phi later if this is a loop header.
+                */
+               live_out_per_block[block.index].erase(orig.id());
             }
 
             register_file.fill(definition);
