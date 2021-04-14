@@ -924,6 +924,7 @@ struct v3dv_job {
     */
    struct set *bos;
    uint32_t bo_count;
+   uint64_t bo_handle_mask;
 
    struct v3dv_bo *tile_alloc;
    struct v3dv_bo *tile_state;

@@ -65,11 +65,14 @@ v3dv_job_add_bo(struct v3dv_job *job, struct v3dv_bo *bo)
    if (!bo)
       return;
 
-   if (_mesa_set_search(job->bos, bo))
-      return;
+   if (job->bo_handle_mask & bo->handle_bit) {
+      if (_mesa_set_search(job->bos, bo))
+         return;
+   }
 
    _mesa_set_add(job->bos, bo);
    job->bo_count++;
+   job->bo_handle_mask |= bo->handle_bit;
 }
 
 void
@@ -78,6 +81,7 @@ v3dv_job_add_bo_unchecked(struct v3dv_job *job, struct v3dv_bo *bo)
    assert(bo);
    _mesa_set_add(job->bos, bo);
    job->bo_count++;
+   job->bo_handle_mask |= bo->handle_bit;
 }
 
 static void
