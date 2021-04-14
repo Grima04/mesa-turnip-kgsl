@@ -214,7 +214,49 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    agx_index s2 = srcs > 2 ? agx_alu_src_index(b, instr->src[2]) : agx_null();
    agx_index s3 = srcs > 3 ? agx_alu_src_index(b, instr->src[3]) : agx_null();
 
+#define UNOP(nop, aop) \
+   case nir_op_ ## nop: return agx_ ## aop ## _to(b, dst, s0);
+#define BINOP(nop, aop) \
+   case nir_op_ ## nop: return agx_ ## aop ## _to(b, dst, s0, s1);
+#define TRIOP(nop, aop) \
+   case nir_op_ ## nop: return agx_ ## aop ## _to(b, dst, s0, s1, s2);
+
    switch (instr->op) {
+   BINOP(fadd, fadd);
+   BINOP(fmul, fmul);
+   TRIOP(ffma, fma);
+
+   UNOP(f2f16, fmov);
+   UNOP(f2f32, fmov);
+   UNOP(fround_even, roundeven);
+   UNOP(ftrunc, trunc);
+   UNOP(ffloor, floor);
+   UNOP(fceil, ceil);
+   UNOP(frcp, rcp);
+   UNOP(frsq, rsqrt);
+   UNOP(flog2, log2);
+   UNOP(fexp2, exp2);
+
+   UNOP(fddx, dfdx);
+   UNOP(fddx_coarse, dfdx);
+   UNOP(fddx_fine, dfdx);
+
+   UNOP(fddy, dfdy);
+   UNOP(fddy_coarse, dfdy);
+   UNOP(fddy_fine, dfdy);
+
+   case nir_op_fsqrt: return agx_fmul_to(b, dst, s0, agx_srsqrt(b, s0));
+   case nir_op_fsub: return agx_fadd_to(b, dst, s0, agx_neg(s1));
+   case nir_op_fabs: return agx_fmov_to(b, dst, agx_abs(s0));
+   case nir_op_fneg: return agx_fmov_to(b, dst, agx_neg(s0));
+
+   case nir_op_fsat:
+   {
+      agx_instr *I = agx_fadd_to(b, dst, s0, agx_negzero());
+      I->saturate = true;
+      return I;
+   }
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
