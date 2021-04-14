@@ -326,6 +326,17 @@ broadcom_shader_stage_to_gl(broadcom_shader_stage stage)
    }
 }
 
+static inline const char *
+broadcom_shader_stage_name(broadcom_shader_stage stage)
+{
+   switch(stage) {
+   case BROADCOM_SHADER_VERTEX_BIN:
+      return "MESA_SHADER_VERTEX_BIN";
+   default:
+      return gl_shader_stage_name(broadcom_shader_stage_to_gl(stage));
+   }
+}
+
 struct v3dv_pipeline_cache {
    struct vk_object_base base;
 
