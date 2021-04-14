@@ -37,6 +37,11 @@ struct state_bo_list {
    struct v3dv_bo *states[2 * V3D_MAX_TEXTURE_SAMPLERS];
 };
 
+struct buffer_bo_list {
+   struct v3dv_bo *ubo[MAX_UNIFORM_BUFFERS];
+   struct v3dv_bo *ssbo[MAX_STORAGE_BUFFERS];
+};
+
 static bool
 state_bo_in_list(struct state_bo_list *list, struct v3dv_bo *bo)
 {
@@ -200,9 +205,9 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                         struct v3dv_pipeline *pipeline,
                         struct v3dv_cl_out **uniforms,
                         enum quniform_contents content,
-                        uint32_t data)
+                        uint32_t data,
+                        struct buffer_bo_list *buffer_bos)
 {
-   struct v3dv_job *job = cmd_buffer->state.job;
    struct v3dv_descriptor_state *descriptor_state =
       v3dv_cmd_buffer_get_descriptor_state(cmd_buffer, pipeline);
 
@@ -231,10 +236,10 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
          &cmd_buffer->push_constants_resource;
       assert(resource->bo);
 
-      cl_aligned_reloc(&job->indirect, uniforms,
-                       resource->bo,
-                       resource->offset + offset + dynamic_offset);
-
+      cl_aligned_u32(uniforms, resource->bo->offset +
+                               resource->offset +
+                               offset + dynamic_offset);
+      buffer_bos->ubo[0] = resource->bo;
    } else {
       uint32_t index =
          content == QUNIFORM_UBO_ADDR ?
@@ -254,10 +259,18 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
           content == QUNIFORM_GET_UBO_SIZE) {
          cl_aligned_u32(uniforms, descriptor->range);
       } else {
-         cl_aligned_reloc(&job->indirect, uniforms,
-                          descriptor->buffer->mem->bo,
-                          descriptor->buffer->mem_offset +
-                          descriptor->offset + offset + dynamic_offset);
+         cl_aligned_u32(uniforms, descriptor->buffer->mem->bo->offset +
+                                  descriptor->buffer->mem_offset +
+                                  descriptor->offset +
+                                  offset + dynamic_offset);
+
+         if (content == QUNIFORM_UBO_ADDR) {
+            assert(index < MAX_UNIFORM_BUFFERS);
+            buffer_bos->ubo[index + 1] = descriptor->buffer->mem->bo;
+         } else {
+            assert(index < MAX_STORAGE_BUFFERS);
+            buffer_bos->ssbo[index] = descriptor->buffer->mem->bo;
+         }
       }
    }
 }
@@ -363,6 +376,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
 
    struct texture_bo_list tex_bos = { 0 };
    struct state_bo_list state_bos = { 0 };
+   struct buffer_bo_list buffer_bos = { 0 };
 
    /* The hardware always pre-fetches the next uniform (also when there
     * aren't any), so we always allocate space for an extra slot. This
@@ -411,7 +425,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
       case QUNIFORM_GET_SSBO_SIZE:
       case QUNIFORM_GET_UBO_SIZE:
          write_ubo_ssbo_uniforms(cmd_buffer, pipeline, &uniforms,
-                                 uinfo->contents[i], data);
+                                 uinfo->contents[i], data, &buffer_bos);
         break;
 
       case QUNIFORM_IMAGE_TMU_CONFIG_P0:
@@ -478,6 +492,16 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
 
    for (int i = 0; i < state_bos.count; i++)
       v3dv_job_add_bo(job, state_bos.states[i]);
+
+   for (int i = 0; i < MAX_UNIFORM_BUFFERS; i++) {
+      if (buffer_bos.ubo[i])
+         v3dv_job_add_bo(job, buffer_bos.ubo[i]);
+   }
+
+   for (int i = 0; i < MAX_STORAGE_BUFFERS; i++) {
+      if (buffer_bos.ssbo[i])
+         v3dv_job_add_bo(job, buffer_bos.ssbo[i]);
+   }
 
    return uniform_stream;
 }
