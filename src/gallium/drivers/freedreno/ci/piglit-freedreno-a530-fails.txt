@@ -225,15 +225,12 @@ spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_nv12,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p016,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xyuv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Crash
 spec@ext_packed_depth_stencil@fbo-clear-formats,Fail
 spec@ext_packed_depth_stencil@fbo-clear-formats stencil,Fail
 spec@ext_packed_depth_stencil@fbo-depth-gl_depth24_stencil8-blit,Fail

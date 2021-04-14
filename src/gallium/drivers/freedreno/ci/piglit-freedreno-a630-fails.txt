@@ -273,14 +273,7 @@ spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Crash
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Crash
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p016,Crash
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_uyvy,Crash
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xyuv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuv420,Crash
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Crash
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Crash
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail

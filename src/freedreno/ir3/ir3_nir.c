@@ -337,7 +337,17 @@ ir3_finalize_nir(struct ir3_compiler *compiler, nir_shader *s)
 		debug_printf("----------------------\n");
 	}
 
+	/* st_program.c's parameter list optimization requires that future nir
+	 * variants don't reallocate the uniform storage, so we have to remove
+	 * uniforms that occupy storage.  But we don't want to remove samplers,
+	 * because they're needed for YUV variant lowering.
+	 */
 	nir_foreach_uniform_variable_safe(var, s) {
+      if (var->data.mode == nir_var_uniform &&
+          (glsl_type_get_image_count(var->type) ||
+           glsl_type_get_sampler_count(var->type)))
+         continue;
+
 		exec_node_remove(&var->node);
 	}
 	nir_validate_shader(s, "after uniform var removal");
