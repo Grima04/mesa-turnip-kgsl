@@ -3375,9 +3375,10 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
 
             if (device->physical_device->rad_info.chip_class >= GFX8)
                nir_opt_remove_phis(nir[i]); /* cleanup LCSSA phis */
-            if (device->physical_device->rad_info.chip_class >= GFX9)
-               NIR_PASS_V(nir[i], nir_opt_vectorize, opt_vectorize_callback, NULL);
          }
+         if (((nir[i]->info.bit_sizes_int | nir[i]->info.bit_sizes_float) & 16) &&
+             device->physical_device->rad_info.chip_class >= GFX9)
+            NIR_PASS_V(nir[i], nir_opt_vectorize, opt_vectorize_callback, NULL);
 
          /* cleanup passes */
          nir_lower_load_const_to_scalar(nir[i]);
