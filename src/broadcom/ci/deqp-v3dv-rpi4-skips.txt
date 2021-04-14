@@ -1,3 +1,7 @@
+# Broadcom waivers
+dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero
+dEQP-VK.rasterization.depth_bias.d32_sfloat
+
 # Timeout tests (> 1 minute to run)
 dEQP-VK.graphicsfuzz.spv-stable-maze-flatten-copy-composite
 dEQP-VK.graphicsfuzz.stable-binarysearch-tree-nested-if-and-conditional

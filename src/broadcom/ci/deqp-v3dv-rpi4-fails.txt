@@ -34,7 +34,6 @@ dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.3d.a8b8g8r8_uint_pac
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.3d.a8b8g8r8_uint_pack32.a8b8g8r8_uint_pack32.optimal_optimal_linear_stripes_x,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.3d.a8b8g8r8_uint_pack32.a8b8g8r8_uint_pack32.optimal_optimal_linear_stripes_y,Fail
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.3d.a8b8g8r8_uint_pack32.a8b8g8r8_uint_pack32.optimal_optimal_linear_stripes_z,Fail
-dEQP-VK.draw.inverted_depth_ranges.nodepthclamp_deltazero,Fail
 dEQP-VK.pipeline.logic_op.r16_uint.and,Crash
 dEQP-VK.pipeline.logic_op.r16_uint.and_inverted,Crash
 dEQP-VK.pipeline.logic_op.r16_uint.and_reverse,Crash
@@ -139,7 +138,6 @@ dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.nand,Fail
 dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.nor,Fail
 dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.or_inverted,Fail
 dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.or_reverse,Fail
-dEQP-VK.rasterization.depth_bias.d32_sfloat,Fail
 dEQP-VK.spirv_assembly.instruction.compute.vector_shuffle.vector_shuffle,Fail
 dEQP-VK.synchronization.basic.binary_semaphore.chain,Fail
 dEQP-VK.ycbcr.query.levels.geometry.r8g8b8a8_unorm,Crash
