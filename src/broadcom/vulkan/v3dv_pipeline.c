@@ -473,7 +473,8 @@ shader_module_compile_to_nir(struct v3dv_device *device,
    assert(nir->info.stage == broadcom_shader_stage_to_gl(stage->stage));
 
    if (V3D_DEBUG & (V3D_DEBUG_NIR |
-                    v3d_debug_flag_for_shader_stage(stage->stage))) {
+                    v3d_debug_flag_for_shader_stage(
+                       broadcom_shader_stage_to_gl(stage->stage)))) {
       fprintf(stderr, "Initial form: %s prog %d NIR:\n",
               broadcom_shader_stage_name(stage->stage),
               stage->program_id);
@@ -1454,7 +1455,8 @@ pipeline_compile_shader_variant(struct v3dv_pipeline_stage *p_stage,
    const struct v3d_compiler *compiler = physical_device->compiler;
 
    if (V3D_DEBUG & (V3D_DEBUG_NIR |
-                    v3d_debug_flag_for_shader_stage(p_stage->stage))) {
+                    v3d_debug_flag_for_shader_stage
+                    (broadcom_shader_stage_to_gl(p_stage->stage)))) {
       fprintf(stderr, "Just before v3d_compile: %s prog %d NIR:\n",
               broadcom_shader_stage_name(p_stage->stage),
               p_stage->program_id);
