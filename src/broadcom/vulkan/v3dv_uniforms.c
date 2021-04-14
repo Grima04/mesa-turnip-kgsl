@@ -465,12 +465,12 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
       case QUNIFORM_SHARED_OFFSET:
          assert(job->type == V3DV_JOB_TYPE_GPU_CSD);
          assert(job->csd.shared_memory);
-         cl_aligned_reloc(&job->indirect, &uniforms, job->csd.shared_memory, 0);
+         cl_aligned_u32(&uniforms, job->csd.shared_memory->offset);
          break;
 
       case QUNIFORM_SPILL_OFFSET:
          assert(pipeline->spill.bo);
-         cl_aligned_reloc(&job->indirect, &uniforms, pipeline->spill.bo, 0);
+         cl_aligned_u32(&uniforms, pipeline->spill.bo->offset);
          break;
 
       case QUNIFORM_SPILL_SIZE_PER_THREAD:
@@ -502,6 +502,12 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
       if (buffer_bos.ssbo[i])
          v3dv_job_add_bo(job, buffer_bos.ssbo[i]);
    }
+
+   if (job->csd.shared_memory)
+      v3dv_job_add_bo(job, job->csd.shared_memory);
+
+   if (pipeline->spill.bo)
+      v3dv_job_add_bo(job, pipeline->spill.bo);
 
    return uniform_stream;
 }
