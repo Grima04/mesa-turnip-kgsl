@@ -187,6 +187,14 @@ get_memory_type_index(struct zink_screen *screen,
    if (idx >= 0)
       return idx;
 
+   if (props & VK_MEMORY_PROPERTY_HOST_CACHED_BIT) {
+      /* if no suitable cached memory can be found, fall back
+       * to non-cached memory instead.
+       */
+      return get_memory_type_index(screen, reqs,
+         props & ~VK_MEMORY_PROPERTY_HOST_CACHED_BIT);
+   }
+
    unreachable("Unsupported memory-type");
    return 0;
 }
