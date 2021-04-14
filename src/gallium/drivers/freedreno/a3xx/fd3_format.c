@@ -32,42 +32,36 @@
  */
 
 struct fd3_format {
-	enum a3xx_vtx_fmt vtx;
-	enum a3xx_tex_fmt tex;
-	enum a3xx_color_fmt rb;
-	enum a3xx_color_swap swap;
-	boolean present;
+   enum a3xx_vtx_fmt vtx;
+   enum a3xx_tex_fmt tex;
+   enum a3xx_color_fmt rb;
+   enum a3xx_color_swap swap;
+   boolean present;
 };
 
 /* vertex + texture */
-#define VT(pipe, fmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = VFMT_ ## fmt, \
-		.tex = TFMT_ ## fmt, \
-		.rb = RB_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define VT(pipe, fmt, rbfmt, swapfmt)                                          \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = VFMT_##fmt,                                  \
+                           .tex = TFMT_##fmt,                                  \
+                           .rb = RB_##rbfmt,                                   \
+                           .swap = swapfmt}
 
 /* texture-only */
-#define _T(pipe, fmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = VFMT_NONE, \
-		.tex = TFMT_ ## fmt, \
-		.rb = RB_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define _T(pipe, fmt, rbfmt, swapfmt)                                          \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = VFMT_NONE,                                   \
+                           .tex = TFMT_##fmt,                                  \
+                           .rb = RB_##rbfmt,                                   \
+                           .swap = swapfmt}
 
 /* vertex-only */
-#define V_(pipe, fmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = VFMT_ ## fmt, \
-		.tex = TFMT_NONE, \
-		.rb = RB_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define V_(pipe, fmt, rbfmt, swapfmt)                                          \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = VFMT_##fmt,                                  \
+                           .tex = TFMT_NONE,                                   \
+                           .rb = RB_##rbfmt,                                   \
+                           .swap = swapfmt}
 
 /* clang-format off */
 static struct fd3_format formats[PIPE_FORMAT_COUNT] = {
@@ -294,80 +288,90 @@ static struct fd3_format formats[PIPE_FORMAT_COUNT] = {
 enum a3xx_vtx_fmt
 fd3_pipe2vtx(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return VFMT_NONE;
-	return formats[format].vtx;
+   if (!formats[format].present)
+      return VFMT_NONE;
+   return formats[format].vtx;
 }
 
 enum a3xx_tex_fmt
 fd3_pipe2tex(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return TFMT_NONE;
-	return formats[format].tex;
+   if (!formats[format].present)
+      return TFMT_NONE;
+   return formats[format].tex;
 }
 
 enum a3xx_color_fmt
 fd3_pipe2color(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return RB_NONE;
-	return formats[format].rb;
+   if (!formats[format].present)
+      return RB_NONE;
+   return formats[format].rb;
 }
 
 enum a3xx_color_swap
 fd3_pipe2swap(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return WZYX;
-	return formats[format].swap;
+   if (!formats[format].present)
+      return WZYX;
+   return formats[format].swap;
 }
 
 enum a3xx_color_fmt
 fd3_fs_output_format(enum pipe_format format)
 {
-	if (util_format_is_srgb(format))
-		return RB_R16G16B16A16_FLOAT;
-	switch (format) {
-	case PIPE_FORMAT_R16_FLOAT:
-	case PIPE_FORMAT_R16G16_FLOAT:
-	case PIPE_FORMAT_R11G11B10_FLOAT:
-		return RB_R16G16B16A16_FLOAT;
-	case PIPE_FORMAT_L8_UNORM:
-		return RB_R8G8B8A8_UNORM;
-	default:
-		return fd3_pipe2color(format);
-	}
+   if (util_format_is_srgb(format))
+      return RB_R16G16B16A16_FLOAT;
+   switch (format) {
+   case PIPE_FORMAT_R16_FLOAT:
+   case PIPE_FORMAT_R16G16_FLOAT:
+   case PIPE_FORMAT_R11G11B10_FLOAT:
+      return RB_R16G16B16A16_FLOAT;
+   case PIPE_FORMAT_L8_UNORM:
+      return RB_R8G8B8A8_UNORM;
+   default:
+      return fd3_pipe2color(format);
+   }
 }
 
 static inline enum a3xx_tex_swiz
 tex_swiz(unsigned swiz)
 {
-	switch (swiz) {
-	default:
-	case PIPE_SWIZZLE_X: return A3XX_TEX_X;
-	case PIPE_SWIZZLE_Y: return A3XX_TEX_Y;
-	case PIPE_SWIZZLE_Z: return A3XX_TEX_Z;
-	case PIPE_SWIZZLE_W: return A3XX_TEX_W;
-	case PIPE_SWIZZLE_0: return A3XX_TEX_ZERO;
-	case PIPE_SWIZZLE_1: return A3XX_TEX_ONE;
-	}
+   switch (swiz) {
+   default:
+   case PIPE_SWIZZLE_X:
+      return A3XX_TEX_X;
+   case PIPE_SWIZZLE_Y:
+      return A3XX_TEX_Y;
+   case PIPE_SWIZZLE_Z:
+      return A3XX_TEX_Z;
+   case PIPE_SWIZZLE_W:
+      return A3XX_TEX_W;
+   case PIPE_SWIZZLE_0:
+      return A3XX_TEX_ZERO;
+   case PIPE_SWIZZLE_1:
+      return A3XX_TEX_ONE;
+   }
 }
 
 uint32_t
 fd3_tex_swiz(enum pipe_format format, unsigned swizzle_r, unsigned swizzle_g,
-		unsigned swizzle_b, unsigned swizzle_a)
+             unsigned swizzle_b, unsigned swizzle_a)
 {
-	const struct util_format_description *desc =
-			util_format_description(format);
-	unsigned char swiz[4] = {
-			swizzle_r, swizzle_g, swizzle_b, swizzle_a,
-	}, rswiz[4];
+   const struct util_format_description *desc = util_format_description(format);
+   unsigned char swiz[4] =
+      {
+         swizzle_r,
+         swizzle_g,
+         swizzle_b,
+         swizzle_a,
+      },
+                 rswiz[4];
 
-	util_format_compose_swizzles(desc->swizzle, swiz, rswiz);
+   util_format_compose_swizzles(desc->swizzle, swiz, rswiz);
 
-	return A3XX_TEX_CONST_0_SWIZ_X(tex_swiz(rswiz[0])) |
-			A3XX_TEX_CONST_0_SWIZ_Y(tex_swiz(rswiz[1])) |
-			A3XX_TEX_CONST_0_SWIZ_Z(tex_swiz(rswiz[2])) |
-			A3XX_TEX_CONST_0_SWIZ_W(tex_swiz(rswiz[3]));
+   return A3XX_TEX_CONST_0_SWIZ_X(tex_swiz(rswiz[0])) |
+          A3XX_TEX_CONST_0_SWIZ_Y(tex_swiz(rswiz[1])) |
+          A3XX_TEX_CONST_0_SWIZ_Z(tex_swiz(rswiz[2])) |
+          A3XX_TEX_CONST_0_SWIZ_W(tex_swiz(rswiz[3]));
 }

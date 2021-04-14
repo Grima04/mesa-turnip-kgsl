@@ -29,48 +29,41 @@
 
 #include "fd5_format.h"
 
-
 /* Specifies the table of all the formats and their features. Also supplies
  * the helpers that look up various data in those tables.
  */
 
 struct fd5_format {
-	enum a5xx_vtx_fmt vtx;
-	enum a5xx_tex_fmt tex;
-	enum a5xx_color_fmt rb;
-	enum a3xx_color_swap swap;
-	boolean present;
+   enum a5xx_vtx_fmt vtx;
+   enum a5xx_tex_fmt tex;
+   enum a5xx_color_fmt rb;
+   enum a3xx_color_swap swap;
+   boolean present;
 };
 
 /* vertex + texture */
-#define VT(pipe, fmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = VFMT5_ ## fmt, \
-		.tex = TFMT5_ ## fmt, \
-		.rb = RB5_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define VT(pipe, fmt, rbfmt, swapfmt)                                          \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = VFMT5_##fmt,                                 \
+                           .tex = TFMT5_##fmt,                                 \
+                           .rb = RB5_##rbfmt,                                  \
+                           .swap = swapfmt}
 
 /* texture-only */
-#define _T(pipe, fmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = VFMT5_NONE, \
-		.tex = TFMT5_ ## fmt, \
-		.rb = RB5_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define _T(pipe, fmt, rbfmt, swapfmt)                                          \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = VFMT5_NONE,                                  \
+                           .tex = TFMT5_##fmt,                                 \
+                           .rb = RB5_##rbfmt,                                  \
+                           .swap = swapfmt}
 
 /* vertex-only */
-#define V_(pipe, fmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = VFMT5_ ## fmt, \
-		.tex = TFMT5_NONE, \
-		.rb = RB5_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define V_(pipe, fmt, rbfmt, swapfmt)                                          \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = VFMT5_##fmt,                                 \
+                           .tex = TFMT5_NONE,                                  \
+                           .rb = RB5_##rbfmt,                                  \
+                           .swap = swapfmt}
 
 /* clang-format off */
 static struct fd5_format formats[PIPE_FORMAT_COUNT] = {
@@ -343,84 +336,94 @@ static struct fd5_format formats[PIPE_FORMAT_COUNT] = {
 enum a5xx_vtx_fmt
 fd5_pipe2vtx(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return VFMT5_NONE;
-	return formats[format].vtx;
+   if (!formats[format].present)
+      return VFMT5_NONE;
+   return formats[format].vtx;
 }
 
 /* convert pipe format to texture sampler format: */
 enum a5xx_tex_fmt
 fd5_pipe2tex(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return TFMT5_NONE;
-	return formats[format].tex;
+   if (!formats[format].present)
+      return TFMT5_NONE;
+   return formats[format].tex;
 }
 
 /* convert pipe format to MRT / copydest format used for render-target: */
 enum a5xx_color_fmt
 fd5_pipe2color(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return RB5_NONE;
-	return formats[format].rb;
+   if (!formats[format].present)
+      return RB5_NONE;
+   return formats[format].rb;
 }
 
 enum a3xx_color_swap
 fd5_pipe2swap(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return WZYX;
-	return formats[format].swap;
+   if (!formats[format].present)
+      return WZYX;
+   return formats[format].swap;
 }
 
 enum a5xx_depth_format
 fd5_pipe2depth(enum pipe_format format)
 {
-	switch (format) {
-	case PIPE_FORMAT_Z16_UNORM:
-		return DEPTH5_16;
-	case PIPE_FORMAT_Z24X8_UNORM:
-	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-	case PIPE_FORMAT_X8Z24_UNORM:
-	case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-		return DEPTH5_24_8;
-	case PIPE_FORMAT_Z32_FLOAT:
-	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-		return DEPTH5_32;
-	default:
-		return ~0;
-	}
+   switch (format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      return DEPTH5_16;
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_X8Z24_UNORM:
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      return DEPTH5_24_8;
+   case PIPE_FORMAT_Z32_FLOAT:
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      return DEPTH5_32;
+   default:
+      return ~0;
+   }
 }
 
 static inline enum a5xx_tex_swiz
 tex_swiz(unsigned swiz)
 {
-	switch (swiz) {
-	default:
-	case PIPE_SWIZZLE_X: return A5XX_TEX_X;
-	case PIPE_SWIZZLE_Y: return A5XX_TEX_Y;
-	case PIPE_SWIZZLE_Z: return A5XX_TEX_Z;
-	case PIPE_SWIZZLE_W: return A5XX_TEX_W;
-	case PIPE_SWIZZLE_0: return A5XX_TEX_ZERO;
-	case PIPE_SWIZZLE_1: return A5XX_TEX_ONE;
-	}
+   switch (swiz) {
+   default:
+   case PIPE_SWIZZLE_X:
+      return A5XX_TEX_X;
+   case PIPE_SWIZZLE_Y:
+      return A5XX_TEX_Y;
+   case PIPE_SWIZZLE_Z:
+      return A5XX_TEX_Z;
+   case PIPE_SWIZZLE_W:
+      return A5XX_TEX_W;
+   case PIPE_SWIZZLE_0:
+      return A5XX_TEX_ZERO;
+   case PIPE_SWIZZLE_1:
+      return A5XX_TEX_ONE;
+   }
 }
 
 uint32_t
 fd5_tex_swiz(enum pipe_format format, unsigned swizzle_r, unsigned swizzle_g,
-		unsigned swizzle_b, unsigned swizzle_a)
+             unsigned swizzle_b, unsigned swizzle_a)
 {
-	const struct util_format_description *desc =
-			util_format_description(format);
-	unsigned char swiz[4] = {
-			swizzle_r, swizzle_g, swizzle_b, swizzle_a,
-	}, rswiz[4];
+   const struct util_format_description *desc = util_format_description(format);
+   unsigned char swiz[4] =
+      {
+         swizzle_r,
+         swizzle_g,
+         swizzle_b,
+         swizzle_a,
+      },
+                 rswiz[4];
 
-	util_format_compose_swizzles(desc->swizzle, swiz, rswiz);
+   util_format_compose_swizzles(desc->swizzle, swiz, rswiz);
 
-	return A5XX_TEX_CONST_0_SWIZ_X(tex_swiz(rswiz[0])) |
-			A5XX_TEX_CONST_0_SWIZ_Y(tex_swiz(rswiz[1])) |
-			A5XX_TEX_CONST_0_SWIZ_Z(tex_swiz(rswiz[2])) |
-			A5XX_TEX_CONST_0_SWIZ_W(tex_swiz(rswiz[3]));
+   return A5XX_TEX_CONST_0_SWIZ_X(tex_swiz(rswiz[0])) |
+          A5XX_TEX_CONST_0_SWIZ_Y(tex_swiz(rswiz[1])) |
+          A5XX_TEX_CONST_0_SWIZ_Z(tex_swiz(rswiz[2])) |
+          A5XX_TEX_CONST_0_SWIZ_W(tex_swiz(rswiz[3]));
 }

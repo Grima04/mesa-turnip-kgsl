@@ -31,27 +31,24 @@
 #include "fd6_format.h"
 #include "freedreno_resource.h"
 
-
 /* Specifies the table of all the formats and their features. Also supplies
  * the helpers that look up various data in those tables.
  */
 
 struct fd6_format {
-	enum a6xx_format vtx;
-	enum a6xx_format tex;
-	enum a6xx_format rb;
-	enum a3xx_color_swap swap;
-	boolean present;
+   enum a6xx_format vtx;
+   enum a6xx_format tex;
+   enum a6xx_format rb;
+   enum a3xx_color_swap swap;
+   boolean present;
 };
 
-#define FMT(pipe, vtxfmt, texfmt, rbfmt, swapfmt) \
-	[PIPE_FORMAT_ ## pipe] = { \
-		.present = 1, \
-		.vtx = FMT6_ ## vtxfmt, \
-		.tex = FMT6_ ## texfmt, \
-		.rb = FMT6_ ## rbfmt, \
-		.swap = swapfmt \
-	}
+#define FMT(pipe, vtxfmt, texfmt, rbfmt, swapfmt)                              \
+   [PIPE_FORMAT_##pipe] = {.present = 1,                                       \
+                           .vtx = FMT6_##vtxfmt,                               \
+                           .tex = FMT6_##texfmt,                               \
+                           .rb = FMT6_##rbfmt,                                 \
+                           .swap = swapfmt}
 
 /* vertex + texture + color */
 #define VTC(pipe, fmt, swapfmt) FMT(pipe, fmt, fmt, fmt, swapfmt)
@@ -342,125 +339,122 @@ static struct fd6_format formats[PIPE_FORMAT_COUNT] = {
 enum a6xx_format
 fd6_pipe2vtx(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return FMT6_NONE;
-	return formats[format].vtx;
+   if (!formats[format].present)
+      return FMT6_NONE;
+   return formats[format].vtx;
 }
 
 /* convert pipe format to texture sampler format: */
 enum a6xx_format
 fd6_pipe2tex(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return FMT6_NONE;
-	return formats[format].tex;
+   if (!formats[format].present)
+      return FMT6_NONE;
+   return formats[format].tex;
 }
 
 /* convert pipe format to MRT / copydest format used for render-target: */
 enum a6xx_format
 fd6_pipe2color(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return FMT6_NONE;
-	return formats[format].rb;
+   if (!formats[format].present)
+      return FMT6_NONE;
+   return formats[format].rb;
 }
 
 enum a3xx_color_swap
 fd6_pipe2swap(enum pipe_format format)
 {
-	if (!formats[format].present)
-		return WZYX;
-	return formats[format].swap;
+   if (!formats[format].present)
+      return WZYX;
+   return formats[format].swap;
 }
 
 enum a6xx_depth_format
 fd6_pipe2depth(enum pipe_format format)
 {
-	switch (format) {
-	case PIPE_FORMAT_Z16_UNORM:
-		return DEPTH6_16;
-	case PIPE_FORMAT_Z24X8_UNORM:
-	case PIPE_FORMAT_Z24_UNORM_S8_UINT:
-	case PIPE_FORMAT_X8Z24_UNORM:
-	case PIPE_FORMAT_S8_UINT_Z24_UNORM:
-		return DEPTH6_24_8;
-	case PIPE_FORMAT_Z32_FLOAT:
-	case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
-		return DEPTH6_32;
-	default:
-		return ~0;
-	}
+   switch (format) {
+   case PIPE_FORMAT_Z16_UNORM:
+      return DEPTH6_16;
+   case PIPE_FORMAT_Z24X8_UNORM:
+   case PIPE_FORMAT_Z24_UNORM_S8_UINT:
+   case PIPE_FORMAT_X8Z24_UNORM:
+   case PIPE_FORMAT_S8_UINT_Z24_UNORM:
+      return DEPTH6_24_8;
+   case PIPE_FORMAT_Z32_FLOAT:
+   case PIPE_FORMAT_Z32_FLOAT_S8X24_UINT:
+      return DEPTH6_32;
+   default:
+      return ~0;
+   }
 }
 
 enum a6xx_tex_swiz
 fd6_pipe2swiz(unsigned swiz)
 {
-	switch (swiz) {
-	default:
-	case PIPE_SWIZZLE_X: return A6XX_TEX_X;
-	case PIPE_SWIZZLE_Y: return A6XX_TEX_Y;
-	case PIPE_SWIZZLE_Z: return A6XX_TEX_Z;
-	case PIPE_SWIZZLE_W: return A6XX_TEX_W;
-	case PIPE_SWIZZLE_0: return A6XX_TEX_ZERO;
-	case PIPE_SWIZZLE_1: return A6XX_TEX_ONE;
-	}
+   switch (swiz) {
+   default:
+   case PIPE_SWIZZLE_X:
+      return A6XX_TEX_X;
+   case PIPE_SWIZZLE_Y:
+      return A6XX_TEX_Y;
+   case PIPE_SWIZZLE_Z:
+      return A6XX_TEX_Z;
+   case PIPE_SWIZZLE_W:
+      return A6XX_TEX_W;
+   case PIPE_SWIZZLE_0:
+      return A6XX_TEX_ZERO;
+   case PIPE_SWIZZLE_1:
+      return A6XX_TEX_ONE;
+   }
 }
 
 void
-fd6_tex_swiz(enum pipe_format format, unsigned char *swiz,
-			 unsigned swizzle_r, unsigned swizzle_g,
-			 unsigned swizzle_b, unsigned swizzle_a)
+fd6_tex_swiz(enum pipe_format format, unsigned char *swiz, unsigned swizzle_r,
+             unsigned swizzle_g, unsigned swizzle_b, unsigned swizzle_a)
 {
-	const struct util_format_description *desc =
-			util_format_description(format);
-	const unsigned char uswiz[4] = {
-		swizzle_r, swizzle_g, swizzle_b, swizzle_a
-	};
+   const struct util_format_description *desc = util_format_description(format);
+   const unsigned char uswiz[4] = {swizzle_r, swizzle_g, swizzle_b, swizzle_a};
 
-	/* Gallium expects stencil sampler to return (s,s,s,s), so massage
-	 * the swizzle to do so.
-	 */
-	if (format == PIPE_FORMAT_X24S8_UINT) {
-		const unsigned char stencil_swiz[4] = {
-			PIPE_SWIZZLE_W, PIPE_SWIZZLE_W, PIPE_SWIZZLE_W, PIPE_SWIZZLE_W
-		};
-		util_format_compose_swizzles(stencil_swiz, uswiz, swiz);
-	} else if (fd6_pipe2swap(format) != WZYX) {
-		/* Formats with a non-pass-through swap are permutations of RGBA
-		 * formats. We program the permutation using the swap and don't
-		 * need to compose the format swizzle with the user swizzle.
-		 */
-		memcpy(swiz, uswiz, sizeof(uswiz));
-	} else {
-		/* Otherwise, it's an unswapped RGBA format or a format like L8 where
-		 * we need the XXX1 swizzle from the gallium format description.
-		 */
-		util_format_compose_swizzles(desc->swizzle, uswiz, swiz);
-	}
+   /* Gallium expects stencil sampler to return (s,s,s,s), so massage
+    * the swizzle to do so.
+    */
+   if (format == PIPE_FORMAT_X24S8_UINT) {
+      const unsigned char stencil_swiz[4] = {PIPE_SWIZZLE_W, PIPE_SWIZZLE_W,
+                                             PIPE_SWIZZLE_W, PIPE_SWIZZLE_W};
+      util_format_compose_swizzles(stencil_swiz, uswiz, swiz);
+   } else if (fd6_pipe2swap(format) != WZYX) {
+      /* Formats with a non-pass-through swap are permutations of RGBA
+       * formats. We program the permutation using the swap and don't
+       * need to compose the format swizzle with the user swizzle.
+       */
+      memcpy(swiz, uswiz, sizeof(uswiz));
+   } else {
+      /* Otherwise, it's an unswapped RGBA format or a format like L8 where
+       * we need the XXX1 swizzle from the gallium format description.
+       */
+      util_format_compose_swizzles(desc->swizzle, uswiz, swiz);
+   }
 }
 
 /* Compute the TEX_CONST_0 value for texture state, including SWIZ/SWAP/etc: */
 uint32_t
-fd6_tex_const_0(struct pipe_resource *prsc,
-			 unsigned level, enum pipe_format format,
-			 unsigned swizzle_r, unsigned swizzle_g,
-			 unsigned swizzle_b, unsigned swizzle_a)
+fd6_tex_const_0(struct pipe_resource *prsc, unsigned level,
+                enum pipe_format format, unsigned swizzle_r, unsigned swizzle_g,
+                unsigned swizzle_b, unsigned swizzle_a)
 {
-	struct fd_resource *rsc = fd_resource(prsc);
-	unsigned char swiz[4];
+   struct fd_resource *rsc = fd_resource(prsc);
+   unsigned char swiz[4];
 
-	fd6_tex_swiz(format, swiz,
-			swizzle_r, swizzle_g,
-			swizzle_b, swizzle_a);
+   fd6_tex_swiz(format, swiz, swizzle_r, swizzle_g, swizzle_b, swizzle_a);
 
-	return
-		A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
-		A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
-		A6XX_TEX_CONST_0_SWAP(fd6_resource_swap(rsc, format)) |
-		A6XX_TEX_CONST_0_TILE_MODE(fd_resource_tile_mode(prsc, level)) |
-		COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
-		A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |
-		A6XX_TEX_CONST_0_SWIZ_Y(fd6_pipe2swiz(swiz[1])) |
-		A6XX_TEX_CONST_0_SWIZ_Z(fd6_pipe2swiz(swiz[2])) |
-		A6XX_TEX_CONST_0_SWIZ_W(fd6_pipe2swiz(swiz[3]));
+   return A6XX_TEX_CONST_0_FMT(fd6_pipe2tex(format)) |
+          A6XX_TEX_CONST_0_SAMPLES(fd_msaa_samples(prsc->nr_samples)) |
+          A6XX_TEX_CONST_0_SWAP(fd6_resource_swap(rsc, format)) |
+          A6XX_TEX_CONST_0_TILE_MODE(fd_resource_tile_mode(prsc, level)) |
+          COND(util_format_is_srgb(format), A6XX_TEX_CONST_0_SRGB) |
+          A6XX_TEX_CONST_0_SWIZ_X(fd6_pipe2swiz(swiz[0])) |
+          A6XX_TEX_CONST_0_SWIZ_Y(fd6_pipe2swiz(swiz[1])) |
+          A6XX_TEX_CONST_0_SWIZ_Z(fd6_pipe2swiz(swiz[2])) |
+          A6XX_TEX_CONST_0_SWIZ_W(fd6_pipe2swiz(swiz[3]));
 }
