@@ -91,6 +91,14 @@ blit_resolve(struct zink_context *ctx, const struct pipe_blit_info *info)
    return true;
 }
 
+static VkFormatFeatureFlags
+get_resource_features(struct zink_screen *screen, struct zink_resource *res)
+{
+   VkFormatProperties props = screen->format_props[res->base.b.format];
+   return res->optimal_tiling ? props.optimalTilingFeatures :
+                                props.linearTilingFeatures;
+}
+
 static bool
 blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
 {
@@ -118,6 +126,10 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
    struct zink_screen *screen = zink_screen(ctx->base.screen);
    if (src->format != zink_get_format(screen, info->src.format) ||
        dst->format != zink_get_format(screen, info->dst.format))
+      return false;
+
+   if (!(get_resource_features(screen, src) & VK_FORMAT_FEATURE_BLIT_SRC_BIT) ||
+       !(get_resource_features(screen, dst) & VK_FORMAT_FEATURE_BLIT_DST_BIT))
       return false;
 
    zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), false);
