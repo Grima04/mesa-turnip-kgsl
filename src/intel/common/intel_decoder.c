@@ -507,16 +507,6 @@ character_data(void *data, const XML_Char *s, int len)
 {
 }
 
-static int
-devinfo_to_gen(const struct intel_device_info *devinfo, bool x10)
-{
-   if (devinfo->is_baytrail || devinfo->is_haswell) {
-      return devinfo->ver * 10 + 5;
-   }
-
-   return x10 ? devinfo->ver * 10 : devinfo->ver;
-}
-
 static uint32_t zlib_inflate(const void *compressed_data,
                              uint32_t compressed_len,
                              void **out_ptr)
@@ -602,7 +592,7 @@ intel_spec_load(const struct intel_device_info *devinfo)
    uint8_t *text_data = NULL;
    uint32_t text_offset = 0, text_length = 0;
    ASSERTED uint32_t total_length;
-   uint32_t gen_10 = devinfo_to_gen(devinfo, true);
+   uint32_t gen_10 = devinfo->verx10;
 
    for (int i = 0; i < ARRAY_SIZE(genxml_files_table); i++) {
       if (genxml_files_table[i].gen_10 == gen_10) {
@@ -742,7 +732,7 @@ intel_spec_load_from_path(const struct intel_device_info *devinfo,
    char *filename = malloc(filename_len);
 
    ASSERTED size_t len = snprintf(filename, filename_len, "%s/gen%i.xml",
-                  path, devinfo_to_gen(devinfo, false));
+                  path, devinfo->ver);
    assert(len < filename_len);
 
    struct intel_spec *spec = intel_spec_load_filename(filename);
