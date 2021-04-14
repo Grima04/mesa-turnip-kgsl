@@ -248,25 +248,14 @@ a630_vk_sysmem:
     GPU_VERSION: freedreno-a630-bypass
     TU_DEBUG: sysmem
 
-.a630_piglit:
+a630_piglit:
   extends:
     - .piglit-test
     - .a630-test
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_START_XORG: 1
-
-a630_piglit_gl:
-  extends:
-    - .a630_piglit
-  variables:
-    PIGLIT_PROFILES: quick_gl
-
-a630_piglit_shader:
-  extends:
-    - .a630_piglit
-  variables:
-    PIGLIT_PROFILES: quick_shader
+    PIGLIT_PROFILES: gpu
 
 a630-traces:
   extends:
