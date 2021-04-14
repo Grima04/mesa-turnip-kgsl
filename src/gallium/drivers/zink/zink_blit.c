@@ -132,6 +132,11 @@ blit_native(struct zink_context *ctx, const struct pipe_blit_info *info)
        !(get_resource_features(screen, dst) & VK_FORMAT_FEATURE_BLIT_DST_BIT))
       return false;
 
+   if (info->filter == PIPE_TEX_FILTER_LINEAR &&
+       !(get_resource_features(screen, src) &
+          VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT))
+      return false;
+
    zink_fb_clears_apply_or_discard(ctx, info->dst.resource, zink_rect_from_box(&info->dst.box), false);
    zink_fb_clears_apply_region(ctx, info->src.resource, zink_rect_from_box(&info->src.box));
    struct zink_batch *batch = zink_batch_no_rp(ctx);
