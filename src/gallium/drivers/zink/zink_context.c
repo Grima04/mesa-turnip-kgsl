@@ -1836,12 +1836,10 @@ zink_flush(struct pipe_context *pctx,
    struct zink_fence *fence = NULL;
    struct zink_screen *screen = zink_screen(ctx->base.screen);
 
-   if (!deferred && ctx->clears_enabled) {
-      /* start rp to do all the clears */
-      zink_begin_render_pass(ctx, batch);
-   }
-
-   if (flags & PIPE_FLUSH_END_OF_FRAME) {
+   if (!deferred) {
+      if (ctx->clears_enabled)
+         /* start rp to do all the clears */
+         zink_begin_render_pass(ctx, batch);
       zink_end_render_pass(ctx, batch);
       if (ctx->flush_res) {
          copy_scanout(ctx, ctx->flush_res);
