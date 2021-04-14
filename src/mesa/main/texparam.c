@@ -47,6 +47,10 @@
 #include "program/prog_instruction.h"
 #include "util/u_math.h"
 
+/**
+ * Use macro to resolve undefined clamping behaviour when using lroundf
+ */
+#define LCLAMPF(a, lmin, lmax) ((a) > (lmin) ? ( (a) >= (lmax) ? (lmax) : (lroundf(a)) ) : (lmin))
 
 /**
  * Check if a coordinate wrap mode is supported for the texture target.
@@ -2481,7 +2485,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = CLAMP(lroundf(obj->Sampler.Attrib.MinLod), INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.MinLod, INT_MIN, INT_MAX);
          break;
       case GL_TEXTURE_MAX_LOD:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2496,7 +2500,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = CLAMP(lroundf(obj->Sampler.Attrib.MaxLod), INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.MaxLod, INT_MIN, INT_MAX);
          break;
       case GL_TEXTURE_BASE_LEVEL:
          if (!_mesa_is_desktop_gl(ctx) && !_mesa_is_gles3(ctx))
@@ -2520,7 +2524,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = CLAMP(lroundf(obj->Sampler.Attrib.MaxAnisotropy), INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.MaxAnisotropy, INT_MIN, INT_MAX);
          break;
       case GL_GENERATE_MIPMAP_SGIS:
          if (ctx->API != API_OPENGL_COMPAT && ctx->API != API_OPENGLES)
@@ -2565,7 +2569,7 @@ get_tex_parameteriv(struct gl_context *ctx,
           *   it cannot be represented by the returned data type, then the
           *   nearest value representable using that type is returned.
           */
-         *params = CLAMP(lroundf(obj->Sampler.Attrib.LodBias), INT_MIN, INT_MAX);
+         *params = LCLAMPF(obj->Sampler.Attrib.LodBias, INT_MIN, INT_MAX);
          break;
       case GL_TEXTURE_CROP_RECT_OES:
          if (ctx->API != API_OPENGLES || !ctx->Extensions.OES_draw_texture)
