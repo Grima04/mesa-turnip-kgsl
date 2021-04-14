@@ -592,10 +592,10 @@ intel_spec_load(const struct intel_device_info *devinfo)
    uint8_t *text_data = NULL;
    uint32_t text_offset = 0, text_length = 0;
    ASSERTED uint32_t total_length;
-   uint32_t gen_10 = devinfo->verx10;
+   uint32_t ver_10 = devinfo->verx10;
 
    for (int i = 0; i < ARRAY_SIZE(genxml_files_table); i++) {
-      if (genxml_files_table[i].gen_10 == gen_10) {
+      if (genxml_files_table[i].ver_10 == ver_10) {
          text_offset = genxml_files_table[i].offset;
          text_length = genxml_files_table[i].length;
          break;
@@ -603,7 +603,7 @@ intel_spec_load(const struct intel_device_info *devinfo)
    }
 
    if (text_length == 0) {
-      fprintf(stderr, "unable to find gen (%u) data\n", gen_10);
+      fprintf(stderr, "unable to find gen (%u) data\n", ver_10);
       return NULL;
    }
 
