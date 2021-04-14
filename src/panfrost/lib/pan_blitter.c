@@ -431,7 +431,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
                             const struct pan_blit_shader_key *key)
 {
         pthread_mutex_lock(&dev->blitter.shaders.lock);
-        struct hash_entry *he = _mesa_hash_table_search(dev->blitter.shaders.blit, &key);
+        struct hash_entry *he = _mesa_hash_table_search(dev->blitter.shaders.blit, key);
         struct pan_blit_shader_data *shader = he ? he->data : NULL;
 
         if (shader)
