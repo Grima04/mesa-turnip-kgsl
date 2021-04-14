@@ -83,6 +83,9 @@ typedef struct {
         bool abs : 1;
         bool neg : 1;
 
+        /* For a source, the swizzle. For a destination, acts a bit like a
+         * write mask. Identity for the full 32-bit, H00 for only caring about
+         * the lower half, other values unused. */
         enum bi_swizzle swizzle : 4;
         uint32_t offset : 2;
         bool reg : 1;

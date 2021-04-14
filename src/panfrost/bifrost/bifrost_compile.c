@@ -1532,6 +1532,10 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         unsigned comps = nir_dest_num_components(instr->dest.dest);
         unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
 
+        /* Indicate scalarness */
+        if ((sz == 1 || sz == 16) && comps == 1)
+                dst.swizzle = BI_SWIZZLE_H00;
+
         if (!instr->dest.dest.is_ssa) {
                 for (unsigned i = 0; i < comps; ++i)
                         assert(instr->dest.write_mask);
