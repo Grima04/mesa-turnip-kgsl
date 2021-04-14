@@ -132,8 +132,7 @@ ir2_optimize_nir(nir_shader *s, bool lower)
 
    /* TODO we dont want to get shaders writing to depth for depth textures */
    if (s->info.stage == MESA_SHADER_FRAGMENT) {
-      nir_foreach_shader_out_variable(var, s)
-      {
+      nir_foreach_shader_out_variable (var, s) {
          if (var->data.location == FRAG_RESULT_DEPTH)
             return -1;
       }
@@ -542,8 +541,7 @@ output_slot(struct ir2_context *ctx, nir_intrinsic_instr *intr)
 {
    int slot = -1;
    unsigned idx = nir_intrinsic_base(intr);
-   nir_foreach_shader_out_variable(var, ctx->nir)
-   {
+   nir_foreach_shader_out_variable (var, ctx->nir) {
       if (var->data.driver_location == idx) {
          slot = var->data.location;
          break;

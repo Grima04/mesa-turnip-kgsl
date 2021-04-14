@@ -230,8 +230,7 @@ batch_flush_dependencies(struct fd_batch *batch) assert_dt
    struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
    struct fd_batch *dep;
 
-   foreach_batch(dep, cache, batch->dependents_mask)
-   {
+   foreach_batch (dep, cache, batch->dependents_mask) {
       fd_batch_flush(dep);
       fd_batch_reference(&dep, NULL);
    }
@@ -245,8 +244,7 @@ batch_reset_dependencies(struct fd_batch *batch)
    struct fd_batch_cache *cache = &batch->ctx->screen->batch_cache;
    struct fd_batch *dep;
 
-   foreach_batch(dep, cache, batch->dependents_mask)
-   {
+   foreach_batch (dep, cache, batch->dependents_mask) {
       fd_batch_reference(&dep, NULL);
    }
 
@@ -407,8 +405,8 @@ recursive_dependents_mask(struct fd_batch *batch)
    struct fd_batch *dep;
    uint32_t dependents_mask = batch->dependents_mask;
 
-   foreach_batch(dep, cache, batch->dependents_mask) dependents_mask |=
-      recursive_dependents_mask(dep);
+   foreach_batch (dep, cache, batch->dependents_mask)
+      dependents_mask |= recursive_dependents_mask(dep);
 
    return dependents_mask;
 }
@@ -489,8 +487,7 @@ fd_batch_resource_write(struct fd_batch *batch, struct fd_resource *rsc)
       if (rsc->track->write_batch)
          flush_write_batch(rsc);
 
-      foreach_batch(dep, cache, rsc->track->batch_mask)
-      {
+      foreach_batch (dep, cache, rsc->track->batch_mask) {
          struct fd_batch *b = NULL;
          if (dep == batch)
             continue;

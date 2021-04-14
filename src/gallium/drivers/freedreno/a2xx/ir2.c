@@ -224,16 +224,14 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
    int block_idx = -1;
 
    /* XXX merge this loop with the other one somehow? */
-   ir2_foreach_instr(instr, ctx)
-   {
+   ir2_foreach_instr (instr, ctx) {
       if (!instr->need_emit)
          continue;
       if (is_export(instr))
          export = MIN2(export, export_buf(instr->alu.export));
    }
 
-   ir2_foreach_instr(instr, ctx)
-   {
+   ir2_foreach_instr (instr, ctx) {
       if (!instr->need_emit)
          continue;
 
@@ -254,8 +252,7 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
 
       /* check if dependencies are satisfied */
       bool is_ok = true;
-      ir2_foreach_src(src, instr)
-      {
+      ir2_foreach_src (src, instr) {
          if (src->type == IR2_SRC_REG) {
             /* need to check if all previous instructions in the block
              * which write the reg have been emitted
@@ -263,8 +260,7 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
              * XXX: check components instead of whole register
              */
             struct ir2_reg *reg = get_reg_src(ctx, src);
-            ir2_foreach_instr(p, ctx)
-            {
+            ir2_foreach_instr (p, ctx) {
                if (!p->is_ssa && p->reg == reg && p->idx < instr->idx)
                   is_ok &= !p->need_emit;
             }
@@ -275,13 +271,11 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
       }
       /* don't reorder non-ssa write before read */
       if (!instr->is_ssa) {
-         ir2_foreach_instr(p, ctx)
-         {
+         ir2_foreach_instr (p, ctx) {
             if (!p->need_emit || p->idx >= instr->idx)
                continue;
 
-            ir2_foreach_src(src, p)
-            {
+            ir2_foreach_src (src, p) {
                if (get_reg_src(ctx, src) == instr->reg)
                   is_ok = false;
             }
@@ -303,8 +297,7 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
    }
 
    /* priority to FETCH instructions */
-   ir2_foreach_avail(instr)
-   {
+   ir2_foreach_avail (instr) {
       if (instr->type == IR2_ALU)
          continue;
 
@@ -320,8 +313,7 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
    /* TODO precompute priorities */
 
    unsigned prio_v = ~0u, prio_s = ~0u, prio;
-   ir2_foreach_avail(instr)
-   {
+   ir2_foreach_avail (instr) {
       prio = alu_vector_prio(instr);
       if (prio < prio_v) {
          instr_v = instr;
@@ -331,8 +323,7 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
 
    /* TODO can still insert scalar if src_count=3, if smart about it */
    if (!instr_v || instr_v->src_count < 3) {
-      ir2_foreach_avail(instr)
-      {
+      ir2_foreach_avail (instr) {
          bool compat = is_alu_compatible(instr_v, instr);
 
          prio = alu_scalar_prio(instr);
@@ -354,8 +345,7 @@ sched_next(struct ir2_context *ctx, struct ir2_sched_instr *sched)
     * TODO: if we are smart we can still insert if instr_v->src_count==3
     */
    if (!instr_s && instr_v->src_count < 3) {
-      ir2_foreach_avail(instr)
-      {
+      ir2_foreach_avail (instr) {
          if (!is_alu_compatible(instr_v, instr) || !scalar_possible(instr))
             continue;
 
@@ -439,7 +429,8 @@ schedule_instrs(struct ir2_context *ctx)
       }
 
       bool free_block = true;
-      ir2_foreach_instr(instr, ctx) free_block &= instr->block_idx != block_idx;
+      ir2_foreach_instr (instr, ctx)
+         free_block &= instr->block_idx != block_idx;
       if (free_block)
          ra_block_free(ctx, block_idx);
    };

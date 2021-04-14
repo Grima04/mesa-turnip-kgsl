@@ -82,8 +82,7 @@ sort_varyings(nir_shader *nir, nir_variable_mode mode)
 {
    struct exec_list new_list;
    exec_list_make_empty(&new_list);
-   nir_foreach_variable_with_modes_safe(var, nir, mode)
-   {
+   nir_foreach_variable_with_modes_safe (var, nir, mode) {
       exec_node_remove(&var->node);
       insert_sorted(&new_list, var);
    }
@@ -93,8 +92,7 @@ sort_varyings(nir_shader *nir, nir_variable_mode mode)
 static void
 fixup_varying_slots(nir_shader *nir, nir_variable_mode mode)
 {
-   nir_foreach_variable_with_modes(var, nir, mode)
-   {
+   nir_foreach_variable_with_modes (var, nir, mode) {
       if (var->data.location >= VARYING_SLOT_VAR0) {
          var->data.location += 9;
       } else if ((var->data.location >= VARYING_SLOT_TEX0) &&

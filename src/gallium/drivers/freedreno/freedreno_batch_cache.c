@@ -155,8 +155,7 @@ bc_flush(struct fd_batch_cache *cache, struct fd_context *ctx,
 
    fd_screen_lock(ctx->screen);
 
-   foreach_batch(batch, cache, cache->batch_mask)
-   {
+   foreach_batch (batch, cache, cache->batch_mask) {
       if (batch->ctx == ctx) {
          fd_batch_reference_locked(&batches[n++], batch);
       }
@@ -210,7 +209,9 @@ batch_in_cache(struct fd_batch_cache *cache, struct fd_batch *batch)
 {
    struct fd_batch *b;
 
-   foreach_batch(b, cache, cache->batch_mask) if (b == batch) return true;
+   foreach_batch (b, cache, cache->batch_mask)
+      if (b == batch)
+         return true;
 
    return false;
 }
@@ -250,8 +251,7 @@ fd_bc_invalidate_context(struct fd_context *ctx)
 
    fd_screen_lock(ctx->screen);
 
-   foreach_batch(batch, cache, cache->batch_mask)
-   {
+   foreach_batch (batch, cache, cache->batch_mask) {
       if (batch->ctx == ctx)
          fd_bc_invalidate_batch(batch, true);
    }
@@ -311,8 +311,7 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
    fd_screen_lock(screen);
 
    if (destroy) {
-      foreach_batch(batch, &screen->batch_cache, rsc->track->batch_mask)
-      {
+      foreach_batch (batch, &screen->batch_cache, rsc->track->batch_mask) {
          struct set_entry *entry = _mesa_set_search(batch->resources, rsc);
          _mesa_set_remove(batch->resources, entry);
       }
@@ -321,7 +320,7 @@ fd_bc_invalidate_resource(struct fd_resource *rsc, bool destroy)
       fd_batch_reference_locked(&rsc->track->write_batch, NULL);
    }
 
-   foreach_batch(batch, &screen->batch_cache, rsc->track->bc_batch_mask)
+   foreach_batch (batch, &screen->batch_cache, rsc->track->bc_batch_mask)
       fd_bc_invalidate_batch(batch, false);
 
    rsc->track->bc_batch_mask = 0;
@@ -343,7 +342,7 @@ alloc_batch_locked(struct fd_batch_cache *cache, struct fd_context *ctx,
       for (unsigned i = 0; i < ARRAY_SIZE(cache->batches); i++) {
          batch = cache->batches[i];
          debug_printf("%d: needs_flush=%d, depends:", batch->idx, batch->needs_flush);
-         set_foreach(batch->dependencies, entry) {
+         set_foreach (batch->dependencies, entry) {
             struct fd_batch *dep = (struct fd_batch *)entry->key;
             debug_printf(" %d", dep->idx);
          }

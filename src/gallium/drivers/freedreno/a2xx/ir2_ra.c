@@ -64,8 +64,7 @@ set_need_emit(struct ir2_context *ctx, struct ir2_instr *instr)
 
    instr->need_emit = true;
 
-   ir2_foreach_src(src, instr)
-   {
+   ir2_foreach_src (src, instr) {
       switch (src->type) {
       case IR2_SRC_SSA:
          set_need_emit(ctx, &ctx->instr[src->num]);
@@ -73,8 +72,7 @@ set_need_emit(struct ir2_context *ctx, struct ir2_instr *instr)
       case IR2_SRC_REG:
          /* slow ..  */
          reg = get_reg_src(ctx, src);
-         ir2_foreach_instr(instr, ctx)
-         {
+         ir2_foreach_instr (instr, ctx) {
             if (!instr->is_ssa && instr->reg == reg)
                set_need_emit(ctx, instr);
          }
@@ -114,23 +112,20 @@ ra_count_refs(struct ir2_context *ctx)
    /* mark instructions as needed
     * need to do this because "substitutions" pass makes many movs not needed
     */
-   ir2_foreach_instr(instr, ctx)
-   {
+   ir2_foreach_instr (instr, ctx) {
       if (has_side_effects(instr))
          set_need_emit(ctx, instr);
    }
 
    /* compute ref_counts */
-   ir2_foreach_instr(instr, ctx)
-   {
+   ir2_foreach_instr (instr, ctx) {
       /* kill non-needed so they can be skipped */
       if (!instr->need_emit) {
          instr->type = IR2_NONE;
          continue;
       }
 
-      ir2_foreach_src(src, instr)
-      {
+      ir2_foreach_src (src, instr) {
          if (src->type == IR2_SRC_CONST)
             continue;
 
@@ -204,8 +199,7 @@ ra_src_free(struct ir2_context *ctx, struct ir2_instr *instr)
    struct ir2_reg *reg;
    struct ir2_reg_component *comp;
 
-   ir2_foreach_src(src, instr)
-   {
+   ir2_foreach_src (src, instr) {
       if (src->type == IR2_SRC_CONST)
          continue;
 
@@ -226,8 +220,7 @@ ra_src_free(struct ir2_context *ctx, struct ir2_instr *instr)
 void
 ra_block_free(struct ir2_context *ctx, unsigned block)
 {
-   ir2_foreach_live_reg(reg, ctx)
-   {
+   ir2_foreach_live_reg (reg, ctx) {
       if (reg->block_idx_free != block)
          continue;
 

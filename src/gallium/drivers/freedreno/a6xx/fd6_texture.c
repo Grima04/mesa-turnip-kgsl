@@ -139,8 +139,7 @@ fd6_sampler_state_delete(struct pipe_context *pctx, void *hwcso)
 
    fd_screen_lock(ctx->screen);
 
-   hash_table_foreach(fd6_ctx->tex_cache, entry)
-   {
+   hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
       for (unsigned i = 0; i < ARRAY_SIZE(state->key.samp); i++) {
@@ -348,8 +347,7 @@ fd6_sampler_view_destroy(struct pipe_context *pctx,
 
    fd_screen_lock(ctx->screen);
 
-   hash_table_foreach(fd6_ctx->tex_cache, entry)
-   {
+   hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
       for (unsigned i = 0; i < ARRAY_SIZE(state->key.view); i++) {
@@ -478,8 +476,7 @@ fd6_rebind_resource(struct fd_context *ctx, struct fd_resource *rsc) assert_dt
 
    struct fd6_context *fd6_ctx = fd6_context(ctx);
 
-   hash_table_foreach(fd6_ctx->tex_cache, entry)
-   {
+   hash_table_foreach (fd6_ctx->tex_cache, entry) {
       struct fd6_texture_state *state = entry->data;
 
       for (unsigned i = 0; i < ARRAY_SIZE(state->key.view); i++) {
@@ -518,8 +515,7 @@ fd6_texture_fini(struct pipe_context *pctx)
 
    fd_screen_lock(ctx->screen);
 
-   hash_table_foreach(fd6_ctx->tex_cache, entry)
-   {
+   hash_table_foreach (fd6_ctx->tex_cache, entry) {
       remove_tex_entry(fd6_ctx, entry);
    }
 

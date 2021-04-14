@@ -56,10 +56,8 @@ cp_src(struct ir2_context *ctx)
 {
    struct ir2_instr *p;
 
-   ir2_foreach_instr(instr, ctx)
-   {
-      ir2_foreach_src(src, instr)
-      {
+   ir2_foreach_instr (instr, ctx) {
+      ir2_foreach_src (src, instr) {
          /* loop to replace recursively */
          do {
             if (src->type != IR2_SRC_SSA)
@@ -107,8 +105,7 @@ cp_export(struct ir2_context *ctx)
    struct ir2_reg *reg;
    unsigned ncomp;
 
-   ir2_foreach_instr(instr, ctx)
-   {
+   ir2_foreach_instr (instr, ctx) {
       if (!is_export(instr)) /* TODO */
          continue;
 
@@ -145,8 +142,7 @@ cp_export(struct ir2_context *ctx)
          bool ok = true;
          unsigned write_mask = 0;
 
-         ir2_foreach_instr(instr, ctx)
-         {
+         ir2_foreach_instr (instr, ctx) {
             if (instr->is_ssa || instr->reg != reg)
                continue;
 
@@ -192,11 +188,11 @@ cp_export(struct ir2_context *ctx)
          redirect &= (c[i]->block_idx == instr->block_idx);
 
       /* no other instr using the value */
-      ir2_foreach_instr(p, ctx)
-      {
+      ir2_foreach_instr (p, ctx) {
          if (p == instr)
             continue;
-         ir2_foreach_src(src, p) redirect &= reg != get_reg_src(ctx, src);
+         ir2_foreach_src (src, p)
+            redirect &= reg != get_reg_src(ctx, src);
       }
 
       if (!redirect)
@@ -223,7 +219,8 @@ cp_export(struct ir2_context *ctx)
          default:
             break;
          }
-         ir2_foreach_src(s, p) swiz_merge_p(&s->swizzle, reswiz[i]);
+         ir2_foreach_src (s, p)
+            swiz_merge_p(&s->swizzle, reswiz[i]);
       }
 
       for (int i = 0; i < ncomp; i++) {

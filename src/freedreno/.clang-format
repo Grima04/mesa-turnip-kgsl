@@ -54,6 +54,13 @@ ForEachMacros:
   - nir_foreach_shader_out_variable_safe
   - nir_foreach_variable_in_list
   - nir_foreach_src
+  - nir_foreach_variable_with_modes_safe
+  - nir_foreach_variable_with_modes
+  - nir_foreach_shader_out_variable
+  - ir2_foreach_instr
+  - ir2_foreach_live_reg
+  - ir2_foreach_avail
+  - ir2_foreach_src
   - foreach_two_lists
   - foreach_bit
   - foreach_sched_node
@@ -80,6 +87,8 @@ ForEachMacros:
   - foreach_name
   - foreach_def
   - foreach_use
+  - foreach_batch
+  - hash_table_foreach
   - set_foreach
 
 IncludeBlocks: Preserve

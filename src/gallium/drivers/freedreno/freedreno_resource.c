@@ -389,8 +389,7 @@ fd_try_shadow_resource(struct fd_context *ctx, struct fd_resource *rsc,
     */
    debug_assert(shadow->track->batch_mask == 0);
    struct fd_batch *batch;
-   foreach_batch(batch, &ctx->screen->batch_cache, rsc->track->batch_mask)
-   {
+   foreach_batch (batch, &ctx->screen->batch_cache, rsc->track->batch_mask) {
       struct set_entry *entry = _mesa_set_search(batch->resources, rsc);
       _mesa_set_remove(batch->resources, entry);
       _mesa_set_add(batch->resources, shadow);
@@ -615,15 +614,14 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
        */
       fd_screen_lock(ctx->screen);
       batch_mask = rsc->track->batch_mask;
-      foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
+      foreach_batch (batch, &ctx->screen->batch_cache, batch_mask)
          fd_batch_reference_locked(&batches[batch->idx], batch);
       fd_screen_unlock(ctx->screen);
 
-      foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
+      foreach_batch (batch, &ctx->screen->batch_cache, batch_mask)
          fd_batch_flush(batch);
 
-      foreach_batch(batch, &ctx->screen->batch_cache, batch_mask)
-      {
+      foreach_batch (batch, &ctx->screen->batch_cache, batch_mask) {
          fd_batch_reference(&batches[batch->idx], NULL);
       }
       assert(rsc->track->batch_mask == 0);
