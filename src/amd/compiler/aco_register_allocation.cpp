@@ -1869,7 +1869,13 @@ void handle_loop_phis(ra_ctx& ctx, const IDSet& live_in,
          if (!op.isTemp())
             continue;
 
-         op.setTemp(read_variable(ctx, op.getTemp(), preds[j]));
+         /* Find the original name, since this operand might not use the original name if the phi
+          * was created after init_reg_file().
+          */
+         std::unordered_map<unsigned, Temp>::iterator it = ctx.orig_names.find(op.tempId());
+         Temp orig = it != ctx.orig_names.end() ? it->second : op.getTemp();
+
+         op.setTemp(read_variable(ctx, orig, preds[j]));
          op.setFixed(ctx.assignments[op.tempId()].reg);
       }
    }
