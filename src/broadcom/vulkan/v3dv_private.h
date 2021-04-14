@@ -1141,10 +1141,13 @@ struct v3dv_cmd_buffer_state {
          struct v3dv_end_query_cpu_job_info *states;
       } end;
 
-      /* This is not NULL if we have an active query, that is, we have called
-       * vkCmdBeginQuery but not vkCmdEndQuery.
+      /* This BO is not NULL if we have an active query, that is, we have
+       * called vkCmdBeginQuery but not vkCmdEndQuery.
        */
-      struct v3dv_bo *active_query;
+      struct {
+         struct v3dv_bo *bo;
+         uint32_t offset;
+      } active_query;
    } query;
 };
 
@@ -1205,13 +1208,20 @@ struct v3dv_combined_image_sampler_descriptor {
 struct v3dv_query {
    bool maybe_available;
    union {
-      struct v3dv_bo *bo; /* Used by GPU queries (occlusion) */
-      uint64_t value; /* Used by CPU queries (timestamp) */
+      /* Used by GPU queries (occlusion) */
+      struct {
+         struct v3dv_bo *bo;
+         uint32_t offset;
+      };
+      /* Used by CPU queries (timestamp) */
+      uint64_t value;
    };
 };
 
 struct v3dv_query_pool {
    struct vk_object_base base;
+
+   struct v3dv_bo *bo; /* Only used with GPU queries (occlusion) */
 
    VkQueryType query_type;
    uint32_t query_count;

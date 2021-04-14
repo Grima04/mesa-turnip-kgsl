@@ -3982,9 +3982,10 @@ emit_occlusion_query(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit(&job->bcl, OCCLUSION_QUERY_COUNTER, counter) {
-      if (cmd_buffer->state.query.active_query) {
+      if (cmd_buffer->state.query.active_query.bo) {
          counter.address =
-            v3dv_cl_address(cmd_buffer->state.query.active_query, 0);
+            v3dv_cl_address(cmd_buffer->state.query.active_query.bo,
+                            cmd_buffer->state.query.active_query.offset);
       }
    }
 
@@ -4927,10 +4928,11 @@ v3dv_cmd_buffer_begin_query(struct v3dv_cmd_buffer *cmd_buffer,
                             VkQueryControlFlags flags)
 {
    /* FIXME: we only support one active query for now */
-   assert(cmd_buffer->state.query.active_query == NULL);
+   assert(cmd_buffer->state.query.active_query.bo == NULL);
    assert(query < pool->query_count);
 
-   cmd_buffer->state.query.active_query = pool->queries[query].bo;
+   cmd_buffer->state.query.active_query.bo = pool->queries[query].bo;
+   cmd_buffer->state.query.active_query.offset = pool->queries[query].offset;
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
 }
 
@@ -4940,7 +4942,7 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
                           uint32_t query)
 {
    assert(query < pool->query_count);
-   assert(cmd_buffer->state.query.active_query != NULL);
+   assert(cmd_buffer->state.query.active_query.bo != NULL);
 
    if  (cmd_buffer->state.pass) {
       /* Queue the EndQuery in the command buffer state, we will create a CPU
@@ -4973,7 +4975,7 @@ v3dv_cmd_buffer_end_query(struct v3dv_cmd_buffer *cmd_buffer,
       list_addtail(&job->list_link, &cmd_buffer->jobs);
    }
 
-   cmd_buffer->state.query.active_query = NULL;
+   cmd_buffer->state.query.active_query.bo = NULL;
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_OCCLUSION_QUERY;
 }
 

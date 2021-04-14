@@ -163,19 +163,22 @@ handle_reset_query_cpu_job(struct v3dv_job *job)
     * FIXME: we could avoid blocking the main thread for this if we use
     *        submission thread.
     */
+   if (info->pool->query_type == VK_QUERY_TYPE_OCCLUSION)
+         v3dv_bo_wait(job->device, info->pool->bo, PIPE_TIMEOUT_INFINITE);
+
    for (uint32_t i = info->first; i < info->first + info->count; i++) {
       assert(i < info->pool->query_count);
-      struct v3dv_query *query = &info->pool->queries[i];
-      query->maybe_available = false;
+      struct v3dv_query *q = &info->pool->queries[i];
+      q->maybe_available = false;
       switch (info->pool->query_type) {
       case VK_QUERY_TYPE_OCCLUSION: {
-         v3dv_bo_wait(job->device, query->bo, PIPE_TIMEOUT_INFINITE);
-         uint32_t *counter = (uint32_t *) query->bo->map;
+         const uint8_t *q_addr = ((uint8_t *) q->bo->map) + q->offset;
+         uint32_t *counter = (uint32_t *) q_addr;
          *counter = 0;
          break;
       }
       case VK_QUERY_TYPE_TIMESTAMP:
-         query->value = 0;
+         q->value = 0;
          break;
       default:
          unreachable("Unsupported query type");
