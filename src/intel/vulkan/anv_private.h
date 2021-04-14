@@ -1834,16 +1834,16 @@ struct anv_descriptor_set_binding_layout {
    /* Number of array elements in this binding (or size in bytes for inline
     * uniform data)
     */
-   uint16_t array_size;
+   uint32_t array_size;
 
    /* Index into the flattend descriptor set */
-   uint16_t descriptor_index;
+   uint32_t descriptor_index;
 
    /* Index into the dynamic state array for a dynamic buffer */
    int16_t dynamic_offset_index;
 
    /* Index into the descriptor set buffer views */
-   int16_t buffer_view_index;
+   int32_t buffer_view_index;
 
    /* Offset into the descriptor buffer where this descriptor lives */
    uint32_t descriptor_offset;
@@ -1872,16 +1872,16 @@ struct anv_descriptor_set_layout {
    uint32_t ref_cnt;
 
    /* Number of bindings in this descriptor set */
-   uint16_t binding_count;
+   uint32_t binding_count;
 
    /* Total number of descriptors */
-   uint16_t descriptor_count;
+   uint32_t descriptor_count;
 
    /* Shader stages affected by this descriptor set */
    uint16_t shader_stages;
 
    /* Number of buffer views in this descriptor set */
-   uint16_t buffer_view_count;
+   uint32_t buffer_view_count;
 
    /* Number of dynamic offsets used by this descriptor set */
    uint16_t dynamic_offset_count;
