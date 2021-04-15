@@ -824,6 +824,7 @@ panfrost_ptr_map(struct pipe_context *pctx,
         /* We don't have s/w routines for AFBC, so use a staging texture */
         if (drm_is_afbc(rsrc->image.layout.modifier)) {
                 struct panfrost_resource *staging = pan_alloc_staging(ctx, rsrc, level, box);
+                assert(staging);
 
                 /* Staging resources have one LOD: level 0. Query the strides
                  * on this LOD.
