@@ -163,7 +163,13 @@ pan_blitter_prepare_bifrost_rsd(const struct panfrost_device *dev,
                 rsd->properties.bifrost.pixel_kill_operation =
                         MALI_PIXEL_KILL_FORCE_EARLY;
         }
-        rsd->properties.bifrost.allow_forward_pixel_to_kill = true;
+
+        /* We can only allow blit shader fragments to kill if they write all
+         * colour outputs. This is true for our colour (non-Z/S) blit shaders,
+         * but obviously not true for Z/S shaders. */
+
+        rsd->properties.bifrost.allow_forward_pixel_to_kill = !(z || s);
+
         rsd->preload.fragment.coverage = true;
         rsd->preload.fragment.sample_mask_id = ms;
 }
