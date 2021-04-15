@@ -914,6 +914,11 @@ pan_preload_emit_dcd(struct pan_pool *pool,
 
                 if (pan_is_bifrost(pool->dev)) {
                         pan_preload_emit_bifrost_sampler(pool, &cfg);
+
+                        /* Tiles updated by blit shaders are still considered
+                         * clean (separate for colour and Z/S), allowing us to
+                         * suppress unnecessary writeback */
+                        cfg.clean_fragment_write = true;
                 } else {
                         pan_preload_emit_midgard_sampler(pool, &cfg);
                         cfg.texture_descriptor_is_64b = true;
