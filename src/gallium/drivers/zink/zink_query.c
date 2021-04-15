@@ -780,7 +780,7 @@ zink_suspend_queries(struct zink_context *ctx, struct zink_batch *batch)
       }
       if (query->needs_update)
          update_qbo(ctx, query);
-      if (query->curr_query > NUM_QUERIES / 2)
+      if (query->last_start && query->curr_query > NUM_QUERIES / 2)
          reset_pool(ctx, batch, query);
    }
 }
