@@ -999,6 +999,8 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
 
    STATIC_ASSERT(MAX_SAMPLED_IMAGES + MAX_STORAGE_IMAGES + MAX_INPUT_ATTACHMENTS
                  <= V3D_MAX_TEXTURE_SAMPLERS);
+   STATIC_ASSERT(MAX_UNIFORM_BUFFERS >= MAX_DYNAMIC_UNIFORM_BUFFERS);
+   STATIC_ASSERT(MAX_STORAGE_BUFFERS >= MAX_DYNAMIC_STORAGE_BUFFERS);
 
    const uint32_t page_size = 4096;
    const uint32_t mem_size = compute_heap_size();
@@ -1042,13 +1044,17 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
       .maxPerStageDescriptorInputAttachments    = MAX_INPUT_ATTACHMENTS,
       .maxPerStageResources                     = 128,
 
-      .maxDescriptorSetSamplers                 = V3D_MAX_TEXTURE_SAMPLERS,
-      .maxDescriptorSetUniformBuffers           = MAX_UNIFORM_BUFFERS,
+      /* Some of these limits are multiplied by 6 because they need to
+       * include all possible shader stages (even if not supported). See
+       * 'Required Limits' table in the Vulkan spec.
+       */
+      .maxDescriptorSetSamplers                 = 6 * V3D_MAX_TEXTURE_SAMPLERS,
+      .maxDescriptorSetUniformBuffers           = 6 * MAX_UNIFORM_BUFFERS,
       .maxDescriptorSetUniformBuffersDynamic    = MAX_DYNAMIC_UNIFORM_BUFFERS,
-      .maxDescriptorSetStorageBuffers           = MAX_STORAGE_BUFFERS,
+      .maxDescriptorSetStorageBuffers           = 6 * MAX_STORAGE_BUFFERS,
       .maxDescriptorSetStorageBuffersDynamic    = MAX_DYNAMIC_STORAGE_BUFFERS,
-      .maxDescriptorSetSampledImages            = MAX_SAMPLED_IMAGES,
-      .maxDescriptorSetStorageImages            = MAX_STORAGE_IMAGES,
+      .maxDescriptorSetSampledImages            = 6 * MAX_SAMPLED_IMAGES,
+      .maxDescriptorSetStorageImages            = 6 * MAX_STORAGE_IMAGES,
       .maxDescriptorSetInputAttachments         = MAX_INPUT_ATTACHMENTS,
 
       /* Vertex limits */
