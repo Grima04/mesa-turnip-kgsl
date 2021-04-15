@@ -1661,6 +1661,13 @@ v3dv_pipeline_combined_index_key_unpack(uint32_t combined_index_key,
       *sampler_index = sampler;
 }
 
+struct v3dv_descriptor_maps {
+   struct v3dv_descriptor_map ubo_map;
+   struct v3dv_descriptor_map ssbo_map;
+   struct v3dv_descriptor_map sampler_map;
+   struct v3dv_descriptor_map texture_map;
+};
+
 /* The structure represents data shared between different objects, like the
  * pipeline and the pipeline cache, so we ref count it to know when it should
  * be freed.
@@ -1670,11 +1677,7 @@ struct v3dv_pipeline_shared_data {
 
    unsigned char sha1_key[20];
 
-   struct v3dv_descriptor_map ubo_map;
-   struct v3dv_descriptor_map ssbo_map;
-   struct v3dv_descriptor_map sampler_map;
-   struct v3dv_descriptor_map texture_map;
-
+   struct v3dv_descriptor_maps *maps[BROADCOM_SHADER_STAGES];
    struct v3dv_shader_variant *variants[BROADCOM_SHADER_STAGES];
 
    struct v3dv_bo *assembly_bo;

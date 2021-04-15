@@ -324,6 +324,14 @@ v3dv_pipeline_shared_data_destroy(struct v3dv_device *device,
    for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
       if (shared_data->variants[stage] != NULL)
          v3dv_shader_variant_destroy(device, shared_data->variants[stage]);
+
+      /* We don't free the vertex_bin descriptor maps as we are sharing them
+       * with the vertex shader.
+       */
+      if (shared_data->maps[stage] != NULL &&
+          stage != BROADCOM_SHADER_VERTEX_BIN) {
+         vk_free(&device->vk.alloc, shared_data->maps[stage]);
+      }
    }
 
    if (shared_data->assembly_bo)
@@ -335,11 +343,8 @@ v3dv_pipeline_shared_data_destroy(struct v3dv_device *device,
 static struct v3dv_pipeline_shared_data *
 v3dv_pipeline_shared_data_new(struct v3dv_pipeline_cache *cache,
                               const unsigned char sha1_key[20],
+                              struct v3dv_descriptor_maps **maps,
                               struct v3dv_shader_variant **variants,
-                              const struct v3dv_descriptor_map *ubo_map,
-                              const struct v3dv_descriptor_map *ssbo_map,
-                              const struct v3dv_descriptor_map *sampler_map,
-                              const struct v3dv_descriptor_map *texture_map,
                               const uint64_t *total_assembly,
                               const uint32_t total_assembly_size)
 {
@@ -359,13 +364,10 @@ v3dv_pipeline_shared_data_new(struct v3dv_pipeline_cache *cache,
    new_entry->ref_cnt = 1;
    memcpy(new_entry->sha1_key, sha1_key, 20);
 
-   memcpy(&new_entry->ubo_map, ubo_map, sizeof(struct v3dv_descriptor_map));
-   memcpy(&new_entry->ssbo_map, ssbo_map, sizeof(struct v3dv_descriptor_map));
-   memcpy(&new_entry->sampler_map, sampler_map, sizeof(struct v3dv_descriptor_map));
-   memcpy(&new_entry->texture_map, texture_map, sizeof(struct v3dv_descriptor_map));
-
-   for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++)
+   for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
+      new_entry->maps[stage] = maps[stage];
       new_entry->variants[stage] = variants[stage];
+   }
 
    struct v3dv_bo *bo = v3dv_bo_alloc(cache->device, total_assembly_size,
                                       "pipeline shader assembly", true);
@@ -541,17 +543,29 @@ v3dv_pipeline_shared_data_create_from_blob(struct v3dv_pipeline_cache *cache,
 {
    const unsigned char *sha1_key = blob_read_bytes(blob, 20);
 
-   const struct v3dv_descriptor_map *ubo_map =
-      blob_read_bytes(blob, sizeof(struct v3dv_descriptor_map));
-   const struct v3dv_descriptor_map *ssbo_map =
-      blob_read_bytes(blob, sizeof(struct v3dv_descriptor_map));
-   const struct v3dv_descriptor_map *sampler_map =
-      blob_read_bytes(blob, sizeof(struct v3dv_descriptor_map));
-   const struct v3dv_descriptor_map *texture_map =
-      blob_read_bytes(blob, sizeof(struct v3dv_descriptor_map));
+   struct v3dv_descriptor_maps *maps[BROADCOM_SHADER_STAGES] = { 0 };
 
-   if (blob->overrun)
-      return NULL;
+   uint8_t descriptor_maps_count = blob_read_uint8(blob);
+   for (uint8_t count = 0; count < descriptor_maps_count; count++) {
+      uint8_t stage = blob_read_uint8(blob);
+
+      const struct v3dv_descriptor_maps *current_maps =
+         blob_read_bytes(blob, sizeof(struct v3dv_descriptor_maps));
+
+      if (blob->overrun)
+         return NULL;
+
+      maps[stage] = vk_zalloc2(&cache->device->vk.alloc, NULL,
+                               sizeof(struct v3dv_descriptor_maps), 8,
+                               VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+
+      if (maps[stage] == NULL)
+         return NULL;
+
+      memcpy(maps[stage], current_maps, sizeof(struct v3dv_descriptor_maps));
+      if (stage == BROADCOM_SHADER_VERTEX)
+         maps[BROADCOM_SHADER_VERTEX_BIN] = maps[stage];
+   }
 
    uint8_t variant_count = blob_read_uint8(blob);
 
@@ -571,8 +585,7 @@ v3dv_pipeline_shared_data_create_from_blob(struct v3dv_pipeline_cache *cache,
    if (blob->overrun)
       return NULL;
 
-   return v3dv_pipeline_shared_data_new(cache, sha1_key, variants,
-                                        ubo_map, ssbo_map, sampler_map, texture_map,
+   return v3dv_pipeline_shared_data_new(cache, sha1_key, maps, variants,
                                         total_assembly, total_assembly_size);
 }
 
@@ -820,14 +833,33 @@ v3dv_pipeline_shared_data_write_to_blob(const struct v3dv_pipeline_shared_data *
 {
    blob_write_bytes(blob, cache_entry->sha1_key, 20);
 
-   blob_write_bytes(blob, &cache_entry->ubo_map,
-                    sizeof(struct v3dv_descriptor_map));
-   blob_write_bytes(blob, &cache_entry->ssbo_map,
-                    sizeof(struct v3dv_descriptor_map));
-   blob_write_bytes(blob, &cache_entry->sampler_map,
-                    sizeof(struct v3dv_descriptor_map));
-   blob_write_bytes(blob, &cache_entry->texture_map,
-                    sizeof(struct v3dv_descriptor_map));
+   uint8_t descriptor_maps_count = 0;
+   for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
+      if (stage == BROADCOM_SHADER_VERTEX_BIN)
+         continue;
+      if (cache_entry->maps[stage] == NULL)
+         continue;
+      descriptor_maps_count++;
+   }
+
+   /* Right now we only support compute pipeline, or graphics pipeline with
+    * vertex, vertex bin, and fragment shader, but vertex and vertex bin
+    * descriptor maps are shared.
+    */
+   assert(descriptor_maps_count == 2 ||
+          (descriptor_maps_count == 1 && cache_entry->variants[BROADCOM_SHADER_COMPUTE]));
+   blob_write_uint8(blob, descriptor_maps_count);
+
+   for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
+      if (cache_entry->maps[stage] == NULL)
+         continue;
+      if (stage == BROADCOM_SHADER_VERTEX_BIN)
+         continue;
+
+      blob_write_uint8(blob, stage);
+      blob_write_bytes(blob, cache_entry->maps[stage],
+                       sizeof(struct v3dv_descriptor_maps));
+   }
 
    uint8_t variant_count = 0;
    for (uint8_t stage = 0; stage < BROADCOM_SHADER_STAGES; stage++) {
