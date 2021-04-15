@@ -4,6 +4,7 @@ spec@egl_ext_device_base@conformance,Crash
 spec@egl_khr_wait_sync@conformance,Crash
 glx@glx-copy-sub-buffer samples=2,Crash
 glx@glx-copy-sub-buffer samples=4,Crash
+glx@glx-make-current,Crash
 glx@glx-multithread-buffer,Fail
 glx@glx-multithread-texture,Timeout
 glx@glx-swap-pixmap-bad,Fail

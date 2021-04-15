@@ -1,6 +1,9 @@
 glx@glx_arb_sync_control@timing -fullscreen -msc-delta 1,Fail
 glx@glx_arb_sync_control@timing -waitformsc -msc-delta 2,Fail
 glx@glx-copy-sub-buffer samples=2,Fail
+glx@glx-make-current,Crash
+glx@glx-multi-window-single-context,Fail
+glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-stencil -pixmap,Crash
