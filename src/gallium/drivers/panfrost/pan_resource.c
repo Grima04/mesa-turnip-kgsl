@@ -732,6 +732,7 @@ pan_alloc_staging(struct panfrost_context *ctx, struct panfrost_resource *rsc,
         }
         tmpl.last_level = 0;
         tmpl.bind |= PIPE_BIND_LINEAR;
+        tmpl.bind &= ~(PIPE_BIND_DISPLAY_TARGET | PIPE_BIND_SCANOUT | PIPE_BIND_SHARED);
 
         struct pipe_resource *pstaging =
                 pctx->screen->resource_create(pctx->screen, &tmpl);
