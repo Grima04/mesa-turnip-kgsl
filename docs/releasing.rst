@@ -112,7 +112,7 @@ good contact point.
    then they should be squashed together. The commit messages and the
    "``cherry picked from``"-tags must be preserved.
 
-   ::
+   .. code-block:: console
 
       git show b10859ec41d09c57663a258f43fe57c12332698e
 
@@ -180,7 +180,7 @@ Check if the version number is going to remain as, alternatively
 
 To setup the branchpoint:
 
-::
+.. code-block:: console
 
    git checkout master # make sure we're in master first
    git tag -s X.Y-branchpoint -m "Mesa X.Y branchpoint"
@@ -223,7 +223,7 @@ Most of the testing should already be done during the
 
 Here is one solution:
 
-::
+.. code-block:: console
 
    __glxgears_cmd='glxgears 2>&1 | grep -v "configuration file"'
    __es2info_cmd='es2_info 2>&1 | egrep "GL_VERSION|GL_RENDERER|.*dri\.so"'
@@ -275,7 +275,7 @@ Use the release.sh script from xorg `util-modular <https://cgit.freedesktop.org/
 
 Start the release process.
 
-::
+.. code-block:: console
 
    ../relative/path/to/release.sh . # append --dist if you've already done distcheck above
 
@@ -299,14 +299,14 @@ Back on mesa master, add the new release notes into the tree
 
 Something like the following steps will do the trick:
 
-::
+.. code-block:: console
 
    git cherry-pick -x X.Y~1
    git cherry-pick -x X.Y
 
 Then run the
 
-::
+.. code-block:: console
 
    ./bin/post_version.py X.Y.Z
 
@@ -315,7 +315,7 @@ docs/relnotes.rst and docs/release-calendar.csv. It will then generate
 a Git commit automatically. Check that everything looks correct and
 push:
 
-::
+.. code-block:: console
 
       git push origin master X.Y
 

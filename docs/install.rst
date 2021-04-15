@@ -44,7 +44,7 @@ Third party/extra tools.
    respectively, (or later) should work. On Windows with MinGW, install
    Flex and Bison with:
 
-   ::
+   .. code-block:: console
 
       mingw-get install msys-flex msys-bison
 
@@ -66,7 +66,7 @@ configure error message.
 Here are some common ways to retrieve most/all of the dependencies based
 on the packaging tool used by your distro.
 
-::
+.. code-block:: console
 
      zypper source-install --build-deps-only Mesa # openSUSE/SLED/SLES
      yum-builddep mesa # yum Fedora, OpenSuse(?)
@@ -84,7 +84,7 @@ for \*nix systems like Linux and BSD, macOS, Haiku, and Windows.
 
 The general approach is:
 
-::
+.. code-block:: console
 
      meson builddir/
      ninja -C builddir/
@@ -92,7 +92,7 @@ The general approach is:
 
 On Windows you can also use the Visual Studio backend
 
-::
+.. code-block:: console
 
      meson builddir --backend=vs
      cd builddir
@@ -121,7 +121,7 @@ When compilation has finished, look in the top-level ``lib/`` (or
 ``lib64/``) directory. You'll see a set of library files similar to
 this:
 
-::
+.. code-block:: console
 
    lrwxrwxrwx    1 brian    users          10 Mar 26 07:53 libGL.so -> libGL.so.1*
    lrwxrwxrwx    1 brian    users          19 Mar 26 07:53 libGL.so.1 -> libGL.so.1.5.060100*
@@ -135,7 +135,7 @@ the OSMesa (Off-Screen) interface library.
 
 If you built the DRI hardware drivers, you'll also see the DRI drivers:
 
-::
+.. code-block:: console
 
    -rwxr-xr-x   1 brian users 16895413 Jul 21 12:11 i915_dri.so
    -rwxr-xr-x   1 brian users 16895413 Jul 21 12:11 i965_dri.so
@@ -156,6 +156,6 @@ determine the proper compiler and linker flags.
 
 For example, compiling and linking a GLUT application can be done with:
 
-::
+.. code-block:: console
 
       gcc `pkg-config --cflags --libs glut` mydemo.c -o mydemo

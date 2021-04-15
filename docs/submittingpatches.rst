@@ -165,7 +165,7 @@ to test this is to make use of the \`git rebase\` command, to run your
 tests on each commit. Assuming your branch is based off
 ``origin/master``, you can run:
 
-::
+.. code-block:: console
 
    $ git rebase --interactive --exec "meson test -C build/" origin/master
 

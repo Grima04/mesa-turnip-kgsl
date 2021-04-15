@@ -94,10 +94,10 @@ gamma value and G is one gamma value to use for all three channels. Each
 value is a positive real number typically in the range 1.0 to 2.5. The
 defaults are all 1.0, effectively disabling gamma correction. Examples:
 
-::
+.. code-block:: console
 
-   % export MESA_GAMMA="2.3 2.2 2.4"  // separate R,G,B values
-   % export MESA_GAMMA="2.0"       // same gamma for R,G,B
+   % export MESA_GAMMA="2.3 2.2 2.4"  # separate R,G,B values
+   % export MESA_GAMMA="2.0"          # same gamma for R,G,B
 
 The ``demos/gamma.c`` program in mesa/demos repository may help you to
 determine reasonable gamma value for your display. With correct gamma
@@ -124,7 +124,7 @@ Hardware overlay planes are supported by the Xlib driver. To determine
 if your X server has overlay support you can test for the
 SERVER_OVERLAY_VISUALS property:
 
-::
+.. code-block:: console
 
    xprop -root | grep SERVER_OVERLAY_VISUALS
 
