@@ -115,13 +115,13 @@ Programming Hints
 -  Use the built-in library functions whenever possible. For example,
    instead of writing this:
 
-   ::
+   .. code-block:: glsl
 
       float x = 1.0 / sqrt(y);
 
    Write this:
 
-   ::
+   .. code-block:: glsl
 
       float x = inversesqrt(y);
 
