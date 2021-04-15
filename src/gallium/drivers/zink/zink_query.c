@@ -177,6 +177,23 @@ is_bool_query(struct zink_query *query)
           query->type == PIPE_QUERY_GPU_FINISHED;
 }
 
+static void
+qbo_sync_from_prev(struct zink_context *ctx, struct zink_query *query, unsigned id_offset, unsigned last_start)
+{
+   assert(id_offset);
+
+   struct zink_query_buffer *prev = list_last_entry(&query->buffers, struct zink_query_buffer, list);
+   unsigned result_size = get_num_results(query->type) * sizeof(uint64_t);
+   bool is_timestamp = query->type == PIPE_QUERY_TIMESTAMP || query->type == PIPE_QUERY_TIMESTAMP_DISJOINT;
+   /* this is get_buffer_offset() but without the zink_query object */
+   unsigned qbo_offset = is_timestamp ? 0 : zink_resource(prev->buffer)->obj->offset + last_start * get_num_results(query->type) * sizeof(uint64_t);
+   query->curr_query = id_offset;
+   query->curr_qbo->num_results = id_offset;
+   zink_copy_buffer(ctx, NULL, zink_resource(query->curr_qbo->buffer), zink_resource(prev->buffer), 0,
+                    qbo_offset,
+                    id_offset * result_size);
+}
+
 static bool
 qbo_append(struct pipe_screen *screen, struct zink_query *query)
 {
@@ -542,6 +559,8 @@ copy_results_to_buffer(struct zink_context *ctx, struct zink_query *query, struc
 static void
 reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query *q)
 {
+   unsigned last_start = q->last_start;
+   unsigned id_offset = q->curr_query - q->last_start;
    /* This command must only be called outside of a render pass instance
     *
     * - vkCmdResetQueryPool spec
@@ -568,6 +587,8 @@ reset_pool(struct zink_context *ctx, struct zink_batch *batch, struct zink_query
       else
          debug_printf("zink: qbo alloc failed on reset!");
    }
+   if (id_offset)
+      qbo_sync_from_prev(ctx, q, id_offset, last_start);
 }
 
 static inline unsigned
