@@ -313,9 +313,8 @@ osmesa_choose_format(GLenum format, GLenum type)
          return PIPE_FORMAT_NONE;
       return PIPE_FORMAT_B5G6R5_UNORM;
    default:
-      FALLTHROUGH;
+      return PIPE_FORMAT_NONE;
    }
-   return PIPE_FORMAT_NONE;
 }
 
 
