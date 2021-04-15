@@ -4657,6 +4657,7 @@ get_color_blit_fs(struct v3dv_device *device,
          if (dst_bit_size >= src_bit_size)
             continue;
 
+         assert(dst_bit_size > 0);
          if (util_format_is_pure_uint(dst_pformat)) {
             nir_ssa_def *max = nir_imm_int(&b, (1 << dst_bit_size) - 1);
             c[i] = nir_umin(&b, c[i], max);
