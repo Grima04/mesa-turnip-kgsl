@@ -490,13 +490,14 @@ zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
    vkResetFences(zink_screen(ctx->base.screen)->dev, 1, &batch->state->fence.fence);
 
    struct zink_screen *screen = zink_screen(ctx->base.screen);
-   util_dynarray_foreach(&batch->state->persistent_resources, struct zink_resource*, res) {
-       assert(!(*res)->obj->offset);
+   while (util_dynarray_contains(&batch->state->persistent_resources, struct zink_resource_object*)) {
+      struct zink_resource_object *obj = util_dynarray_pop(&batch->state->persistent_resources, struct zink_resource_object*);
+       assert(!obj->offset);
        VkMappedMemoryRange range = {
           VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
           NULL,
-          (*res)->obj->mem,
-          (*res)->obj->offset,
+          obj->mem,
+          obj->offset,
           VK_WHOLE_SIZE,
        };
        vkFlushMappedMemoryRanges(screen->dev, 1, &range);
@@ -568,7 +569,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
    }
    /* multiple array entries are fine */
    if (res->obj->persistent_maps)
-      util_dynarray_append(&batch->state->persistent_resources, struct zink_resource*, res);
+      util_dynarray_append(&batch->state->persistent_resources, struct zink_resource_object*, res->obj);
 
    batch->has_work = true;
 }
