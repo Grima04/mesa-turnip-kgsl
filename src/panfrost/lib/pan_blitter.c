@@ -987,10 +987,36 @@ pan_preload_emit_bifrost_pre_frame_dcd(struct pan_pool *desc_pool,
                     (dcd_idx * (MALI_DRAW_LENGTH + MALI_DRAW_PADDING_LENGTH));
 
         pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, rsd, dcd);
-        fb->bifrost.pre_post.modes[dcd_idx] =
-                zs ?
-                MALI_PRE_POST_FRAME_SHADER_MODE_EARLY_ZS_ALWAYS :
-                MALI_PRE_POST_FRAME_SHADER_MODE_INTERSECT;
+        if (zs) {
+                enum pipe_format fmt = fb->zs.view.zs->image->layout.format;
+                bool always = false;
+
+                /* If we're dealing with a combined ZS resource and only one
+                 * component is cleared, we need to reload the whole surface
+                 * because the zs_clean_pixel_write_enable flag is set in that
+                 * case.
+                 */
+                if (util_format_is_depth_and_stencil(fmt) &&
+                    fb->zs.clear.z != fb->zs.clear.s)
+                        always = true;
+
+                /* We could use INTERSECT on Bifrost v7 too, but
+                 * EARLY_ZS_ALWAYS has the advantage of reloading the ZS tile
+                 * buffer one or more tiles ahead, making ZS data immediately
+                 * available for any ZS tests taking place in other shaders.
+                 * Thing's haven't been benchmarked to determine what's
+                 * preferable (saving bandwidth vs having ZS preloaded
+                 * earlier), so let's leave it like that for now.
+                 */
+                fb->bifrost.pre_post.modes[dcd_idx] =
+                        desc_pool->dev->arch > 6 ?
+                        MALI_PRE_POST_FRAME_SHADER_MODE_EARLY_ZS_ALWAYS :
+                        always ? MALI_PRE_POST_FRAME_SHADER_MODE_ALWAYS :
+                        MALI_PRE_POST_FRAME_SHADER_MODE_INTERSECT;
+        } else {
+                fb->bifrost.pre_post.modes[dcd_idx] =
+                        MALI_PRE_POST_FRAME_SHADER_MODE_INTERSECT;
+        }
 }
 
 static void
