@@ -37,6 +37,15 @@ idep_agx_opcodes_h = declare_dependency(
   include_directories : include_directories('.'),
 )
 
+agx_opcodes_c = custom_target(
+  'agx_opcodes.c',
+  input : ['agx_opcodes.c.py'],
+  output : 'agx_opcodes.c',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+  depend_files : files('agx_opcodes.py'),
+)
+
 libasahi_compiler = static_library(
   'asahi_compiler',
   [libasahi_agx_files],
