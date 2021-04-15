@@ -1108,24 +1108,36 @@ virtgpu_bo_init_dmabuf(struct vn_renderer_bo *_bo,
 {
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
    struct virtgpu *gpu = bo->gpu;
-
-   const uint32_t gem_handle = virtgpu_ioctl_prime_fd_to_handle(gpu, fd);
-   if (!gem_handle)
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-
    struct drm_virtgpu_resource_info info;
-   if (virtgpu_ioctl_resource_info(gpu, gem_handle, &info) ||
-       info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D || info.size < size) {
-      virtgpu_ioctl_gem_close(gpu, gem_handle);
-      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
-   }
+   uint32_t gem_handle = 0;
 
-   bo->blob_flags = virtgpu_bo_blob_flags(flags, external_handles);
+   gem_handle = virtgpu_ioctl_prime_fd_to_handle(gpu, fd);
+   if (!gem_handle)
+      goto fail;
+
+   if (virtgpu_ioctl_resource_info(gpu, gem_handle, &info))
+      goto fail;
+
+   /* must be VIRTGPU_BLOB_MEM_HOST3D or classic */
+   if (info.blob_mem && info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D)
+      goto fail;
+
+   if (size && info.size < size)
+      goto fail;
+
+   /* set blob_flags to 0 for classic resources to fail virtgpu_bo_map */
+   bo->blob_flags =
+      info.blob_mem ? virtgpu_bo_blob_flags(flags, external_handles) : 0;
    bo->size = size ? size : info.size;
    bo->gem_handle = gem_handle;
    bo->base.res_id = info.res_handle;
 
    return VK_SUCCESS;
+
+fail:
+   if (gem_handle)
+      virtgpu_ioctl_gem_close(gpu, gem_handle);
+   return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 }
 
 static VkResult
