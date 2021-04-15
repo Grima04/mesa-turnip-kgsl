@@ -140,7 +140,7 @@ GLX_MESA_pixmap_colormap
 
 This extension adds the GLX function:
 
-::
+.. code-block:: c
 
    GLXPixmap glXCreateGLXPixmapMESA( Display *dpy, XVisualInfo *visual,
                                      Pixmap pixmap, Colormap cmap )
@@ -173,7 +173,7 @@ The GLX_MESA_release_buffers extension allows a client to explicitly
 deallocate the ancillary buffers by calling glxReleaseBuffersMESA() just
 before an X window is destroyed. For example:
 
-::
+.. code-block:: c
 
    #ifdef GLX_MESA_release_buffers
       glXReleaseBuffersMESA( dpy, window );

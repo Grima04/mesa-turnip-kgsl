@@ -121,7 +121,7 @@ Maya-03 test 2
 
 This test makes some unusual calls to glRotate. For example:
 
-::
+.. code-block:: c
 
    glRotate(50, 50, 50, 1);
    glRotate(100, 100, 100, 1);
