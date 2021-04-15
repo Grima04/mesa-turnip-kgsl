@@ -112,29 +112,29 @@ good contact point.
    then they should be squashed together. The commit messages and the
    "``cherry picked from``"-tags must be preserved.
 
-::
+   ::
 
-   git show b10859ec41d09c57663a258f43fe57c12332698e
+      git show b10859ec41d09c57663a258f43fe57c12332698e
 
-   commit b10859ec41d09c57663a258f43fe57c12332698e
-   Author: Jonas Pfeil <pfeiljonas@gmx.de>
-   Date:   Wed Mar 1 18:11:10 2017 +0100
+      commit b10859ec41d09c57663a258f43fe57c12332698e
+      Author: Jonas Pfeil <pfeiljonas@gmx.de>
+      Date:   Wed Mar 1 18:11:10 2017 +0100
 
-       ralloc: Make sure ralloc() allocations match malloc()'s alignment.
+         ralloc: Make sure ralloc() allocations match malloc()'s alignment.
 
-       The header of ralloc needs to be aligned, because the compiler assumes
-       ...
+         The header of ralloc needs to be aligned, because the compiler assumes
+         ...
 
-       (cherry picked from commit cd2b55e536dc806f9358f71db438dd9c246cdb14)
+         (cherry picked from commit cd2b55e536dc806f9358f71db438dd9c246cdb14)
 
-       Squashed with commit:
+         Squashed with commit:
 
-       ralloc: don't leave out the alignment factor
+         ralloc: don't leave out the alignment factor
 
-       Experimentation shows that without alignment factor GCC and Clang choose
-       ...
+         Experimentation shows that without alignment factor GCC and Clang choose
+         ...
 
-       (cherry picked from commit ff494fe999510ea40e3ed5827e7818550b6de126)
+         (cherry picked from commit ff494fe999510ea40e3ed5827e7818550b6de126)
 
 Regression/functionality testing
 --------------------------------
