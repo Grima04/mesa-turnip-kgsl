@@ -550,7 +550,10 @@ assign_io_locations(nir_shader *nir, unsigned char *shader_slot_map,
             if (shader_slot_map[var->data.location] == 0xff) {
                assert(reserved < MAX_VARYING);
                shader_slot_map[var->data.location] = reserved;
-               reserved += glsl_count_vec4_slots(var->type, false, false);
+               if (nir->info.stage == MESA_SHADER_TESS_CTRL && var->data.location >= VARYING_SLOT_VAR0)
+                  reserved += (glsl_count_vec4_slots(var->type, false, false) / 32 /*MAX_PATCH_VERTICES*/);
+               else
+                  reserved += glsl_count_vec4_slots(var->type, false, false);
             }
             slot = shader_slot_map[var->data.location];
             assert(slot < MAX_VARYING);
