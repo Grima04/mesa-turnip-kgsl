@@ -2200,6 +2200,8 @@ static void si_draw_vbo(struct pipe_context *ctx,
          sctx->num_prim_restart_calls++;
    }
 
+   /* TODO: Set displayable_dcc_dirty if image stores are used. */
+
    DRAW_CLEANUP;
 }
 

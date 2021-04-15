@@ -718,6 +718,7 @@ struct si_images {
    struct pipe_image_view views[SI_NUM_IMAGES];
    uint32_t needs_color_decompress_mask;
    unsigned enabled_mask;
+   unsigned display_dcc_store_mask;
 };
 
 struct si_framebuffer {

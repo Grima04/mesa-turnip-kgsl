@@ -1004,6 +1004,18 @@ static void si_launch_grid(struct pipe_context *ctx, const struct pipe_grid_info
       si_log_compute_state(sctx, sctx->log);
    }
 
+   /* Mark displayable DCC as dirty for bound images. */
+   unsigned display_dcc_store_mask = sctx->images[PIPE_SHADER_COMPUTE].display_dcc_store_mask &
+                               BITFIELD_MASK(program->sel.info.base.num_images);
+   while (display_dcc_store_mask) {
+      struct si_texture *tex = (struct si_texture *)
+         sctx->images[PIPE_SHADER_COMPUTE].views[u_bit_scan(&display_dcc_store_mask)].resource;
+
+      si_mark_display_dcc_dirty(sctx, tex);
+   }
+
+   /* TODO: Bindless images don't set displayable_dcc_dirty after image stores. */
+
    sctx->compute_is_busy = true;
    sctx->num_compute_calls++;
 

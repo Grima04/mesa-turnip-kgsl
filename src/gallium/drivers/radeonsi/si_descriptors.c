@@ -686,6 +686,7 @@ static void si_disable_shader_image(struct si_context *ctx, unsigned shader, uns
 
       memcpy(descs->list + desc_slot * 8, null_image_descriptor, 8 * 4);
       images->enabled_mask &= ~(1u << slot);
+      images->display_dcc_store_mask &= ~(1u << slot);
       ctx->descriptors_dirty |= 1u << si_sampler_and_image_descriptors_idx(shader);
    }
 }
@@ -791,6 +792,7 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
 
    if (res->b.b.target == PIPE_BUFFER || view->shader_access & SI_IMAGE_ACCESS_AS_BUFFER) {
       images->needs_color_decompress_mask &= ~(1 << slot);
+      images->display_dcc_store_mask &= ~(1u << slot);
       res->bind_history |= PIPE_BIND_SHADER_IMAGE;
    } else {
       struct si_texture *tex = (struct si_texture *)res;
@@ -801,6 +803,11 @@ static void si_set_shader_image(struct si_context *ctx, unsigned shader, unsigne
       } else {
          images->needs_color_decompress_mask &= ~(1 << slot);
       }
+
+      if (tex->surface.display_dcc_offset && view->access & PIPE_IMAGE_ACCESS_WRITE)
+         images->display_dcc_store_mask |= 1u << slot;
+      else
+         images->display_dcc_store_mask &= ~(1u << slot);
 
       if (vi_dcc_enabled(tex, level) && p_atomic_read(&tex->framebuffers_bound))
          ctx->need_check_render_feedback = true;
