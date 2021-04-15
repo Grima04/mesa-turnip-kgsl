@@ -45,6 +45,7 @@
 #include "pipe/p_screen.h"
 #include "pipe/p_context.h"
 #include "pipe/p_config.h"
+#include "util/macros.h"
 #include "util/u_math.h"
 #include "util/u_inlines.h"
 #include "util/u_hash_table.h"
@@ -95,7 +96,7 @@ static void nine_setup_fpu(void)
     WARN_ONCE("FPU setup not supported on non-x86 platforms\n");
 }
 
-static void nine_setup_set_fpu(uint16_t)
+static void nine_setup_set_fpu(UNUSED uint16_t val)
 {
     WARN_ONCE("FPU setup not supported on non-x86 platforms\n");
 }
