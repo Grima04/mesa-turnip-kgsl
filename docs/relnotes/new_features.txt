@@ -1,0 +1,1 @@
+zink supports GL_ARB_texture_filter_minmax

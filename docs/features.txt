@@ -317,7 +317,7 @@ Khronos, ARB, and OES extensions that are not part of any OpenGL or OpenGL ES ve
   GL_ARB_sparse_texture                                 not started
   GL_ARB_sparse_texture2                                not started
   GL_ARB_sparse_texture_clamp                           not started
-  GL_ARB_texture_filter_minmax                          DONE (nvc0/gm200+)
+  GL_ARB_texture_filter_minmax                          DONE (nvc0/gm200+, zink)
   GL_EXT_color_buffer_half_float                        DONE (gallium drivers supporting required formats)
   GL_EXT_depth_bounds_test                              DONE (i965/gen12+, nv50, nvc0, radeonsi, softpipe, swr, zink)
   GL_EXT_memory_object                                  DONE (radeonsi)
