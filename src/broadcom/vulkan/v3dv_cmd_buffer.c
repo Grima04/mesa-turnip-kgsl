@@ -3140,25 +3140,6 @@ bind_graphics_pipeline(struct v3dv_cmd_buffer *cmd_buffer,
    if (cmd_buffer->state.gfx.pipeline == pipeline)
       return;
 
-   /* Enable always flush if we are blending to sRGB render targets. This
-    * fixes test failures in:
-    * dEQP-VK.pipeline.blend.format.r8g8b8a8_srgb.*
-    *
-    * FIXME: not sure why we need this. The tile buffer is always linear, with
-    * conversion from/to sRGB happening on tile load/store operations. This
-    * means that when we enable flushing the only difference is that we convert
-    * to sRGB on the store after each draw call and we convert from sRGB on the
-    * load before each draw call, but the blend happens in linear format in the
-    * tile buffer anyway, which is the same scenario as if we didn't flush.
-    */
-   assert(pipeline->subpass);
-   if (pipeline->subpass->has_srgb_rt && pipeline->blend.enables) {
-      assert(cmd_buffer->state.job);
-      cmd_buffer->state.job->always_flush = true;
-      perf_debug("flushing draw calls for subpass %d because bound pipeline "
-                 "uses sRGB blending\n", cmd_buffer->state.subpass_idx);
-   }
-
    cmd_buffer->state.gfx.pipeline = pipeline;
 
    cmd_buffer_bind_pipeline_static_state(cmd_buffer, &pipeline->dynamic_state);
@@ -4347,8 +4328,9 @@ emit_index_buffer(struct v3dv_cmd_buffer *cmd_buffer)
 static void
 cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 {
-   assert(cmd_buffer->state.gfx.pipeline);
-   assert(!(cmd_buffer->state.gfx.pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
+   struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
+   assert(pipeline);
+   assert(!(pipeline->active_stages & VK_SHADER_STAGE_COMPUTE_BIT));
 
    /* If we emitted a pipeline barrier right before this draw we won't have
     * an active job. In that case, create a new job continuing the current
@@ -4361,6 +4343,25 @@ cmd_buffer_emit_pre_draw(struct v3dv_cmd_buffer *cmd_buffer)
 
    /* Restart single sample job for MSAA pipeline if needed */
    cmd_buffer_restart_job_for_msaa_if_needed(cmd_buffer);
+
+   /* Enable always flush if we are blending to sRGB render targets. This
+    * fixes test failures in:
+    * dEQP-VK.pipeline.blend.format.r8g8b8a8_srgb.*
+    *
+    * FIXME: not sure why we need this. The tile buffer is always linear, with
+    * conversion from/to sRGB happening on tile load/store operations. This
+    * means that when we enable flushing the only difference is that we convert
+    * to sRGB on the store after each draw call and we convert from sRGB on the
+    * load before each draw call, but the blend happens in linear format in the
+    * tile buffer anyway, which is the same scenario as if we didn't flush.
+    */
+   assert(pipeline->subpass);
+   assert(cmd_buffer->state.job);
+   if (pipeline->subpass->has_srgb_rt && pipeline->blend.enables) {
+      cmd_buffer->state.job->always_flush = true;
+      perf_debug("flushing draw calls for subpass %d because bound pipeline "
+                 "uses sRGB blending\n", cmd_buffer->state.subpass_idx);
+   }
 
    /* If the job is configured to flush on every draw call we need to create
     * a new job now.
