@@ -3532,7 +3532,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
       spirv_builder_emit_mem_model(&ctx.builder, SpvAddressingModelLogical,
                                    SpvMemoryModelGLSL450);
 
-   if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
+   if (s->info.stage == MESA_SHADER_FRAGMENT &&
+       s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL)) {
       spirv_builder_emit_extension(&ctx.builder, "SPV_EXT_shader_stencil_export");
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityStencilExportEXT);
    }
