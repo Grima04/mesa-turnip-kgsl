@@ -448,11 +448,16 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                                        fs->bo ? fs->bo->ptr.gpu : 0,
                                        state);
 
+                /* Track if any colour buffer is reused across draws, either
+                 * from reading it directly, or from failing to write it */
                 bool blend_reads_dest = false;
+                unsigned rt_mask = 0;
 
                 for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
-                        blend_reads_dest |= (blend[i].load_dest &&
-                                        ctx->pipe_framebuffer.cbufs[i]);
+                        if (ctx->pipe_framebuffer.cbufs[i]) {
+                                rt_mask |= (1 << i);
+                                blend_reads_dest |= blend[i].load_dest;
+                        }
                 }
 
                 state->properties.bifrost.allow_forward_pixel_to_kill =
@@ -461,6 +466,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                         !fs->info.fs.writes_coverage &&
                         !fs->info.fs.can_discard &&
                         !fs->info.fs.outputs_read &&
+                        !(rt_mask & ~fs->info.outputs_written) &&
                         !alpha_to_coverage &&
                         !blend_reads_dest;
         }
