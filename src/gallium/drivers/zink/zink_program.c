@@ -519,7 +519,10 @@ init_slot_map(struct zink_context *ctx, struct zink_gfx_program *prog)
                      nir_variable *var = nir_find_variable_with_location(ctx->gfx_stages[i]->nir,
                                                                          nir_var_shader_out, slot);
                      assert(var);
-                     user_outputs_count += glsl_count_vec4_slots(var->type, false, false);
+                     if (i == PIPE_SHADER_TESS_CTRL && var->data.location >= VARYING_SLOT_VAR0)
+                        user_outputs_count += (glsl_count_vec4_slots(var->type, false, false) / 32 /*MAX_PATCH_VERTICES*/);
+                     else
+                        user_outputs_count += glsl_count_vec4_slots(var->type, false, false);
                   }
                }
                max_outputs = MAX2(max_outputs, user_outputs_count);
