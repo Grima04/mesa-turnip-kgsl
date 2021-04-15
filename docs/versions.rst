@@ -67,23 +67,23 @@ extensions incorporated as standard features:
 Also note that several OpenGL tokens were renamed in OpenGL 1.5 for the
 sake of consistency. The old tokens are still available.
 
-::
-
-   New Token                   Old Token
-   ------------------------------------------------------------
-   GL_FOG_COORD_SRC            GL_FOG_COORDINATE_SOURCE
-   GL_FOG_COORD                GL_FOG_COORDINATE
-   GL_CURRENT_FOG_COORD        GL_CURRENT_FOG_COORDINATE
-   GL_FOG_COORD_ARRAY_TYPE     GL_FOG_COORDINATE_ARRAY_TYPE
-   GL_FOG_COORD_ARRAY_STRIDE   GL_FOG_COORDINATE_ARRAY_STRIDE
-   GL_FOG_COORD_ARRAY_POINTER  GL_FOG_COORDINATE_ARRAY_POINTER
-   GL_FOG_COORD_ARRAY          GL_FOG_COORDINATE_ARRAY
-   GL_SRC0_RGB                 GL_SOURCE0_RGB
-   GL_SRC1_RGB                 GL_SOURCE1_RGB
-   GL_SRC2_RGB                 GL_SOURCE2_RGB
-   GL_SRC0_ALPHA               GL_SOURCE0_ALPHA
-   GL_SRC1_ALPHA               GL_SOURCE1_ALPHA
-   GL_SRC2_ALPHA               GL_SOURCE2_ALPHA
+==========================  ===============================
+New Token                   Old Token
+==========================  ===============================
+GL_FOG_COORD_SRC            GL_FOG_COORDINATE_SOURCE
+GL_FOG_COORD                GL_FOG_COORDINATE
+GL_CURRENT_FOG_COORD        GL_CURRENT_FOG_COORDINATE
+GL_FOG_COORD_ARRAY_TYPE     GL_FOG_COORDINATE_ARRAY_TYPE
+GL_FOG_COORD_ARRAY_STRIDE   GL_FOG_COORDINATE_ARRAY_STRIDE
+GL_FOG_COORD_ARRAY_POINTER  GL_FOG_COORDINATE_ARRAY_POINTER
+GL_FOG_COORD_ARRAY          GL_FOG_COORDINATE_ARRAY
+GL_SRC0_RGB                 GL_SOURCE0_RGB
+GL_SRC1_RGB                 GL_SOURCE1_RGB
+GL_SRC2_RGB                 GL_SOURCE2_RGB
+GL_SRC0_ALPHA               GL_SOURCE0_ALPHA
+GL_SRC1_ALPHA               GL_SOURCE1_ALPHA
+GL_SRC2_ALPHA               GL_SOURCE2_ALPHA
+==========================  ===============================
 
 See the `OpenGL
 specification <https://www.opengl.org/documentation/spec.html>`__ for

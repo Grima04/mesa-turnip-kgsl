@@ -200,8 +200,15 @@ This extension was added in Mesa 2.6
 Summary of X-related environment variables
 ------------------------------------------
 
-::
-
-   MESA_RGB_VISUAL - specifies the X visual and depth for RGB mode (X only)
-   MESA_BACK_BUFFER - specifies how to implement the back color buffer (X only)
-   MESA_GAMMA - gamma correction coefficients (X only)
++-----------------------------+--------------------------------------+
+| Environment variable        | Description                          |
++=============================+======================================+
+| :envvar:`MESA_RGB_VISUAL`   | specifies the X visual and depth for |
+|                             | RGB mode (X only)                    |
++-----------------------------+--------------------------------------+
+| :envvar:`MESA_BACK_BUFFER`  | specifies how to implement the back  |
+|                             | color buffer (X only)                |
++-----------------------------+--------------------------------------+
+| :envvar:`MESA_GAMMA`        | gamma correction coefficients        |
+|                             | (X only)                             |
++-----------------------------+--------------------------------------+
