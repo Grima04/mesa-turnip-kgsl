@@ -1250,6 +1250,11 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
          props->apiVersion = VK_HEADER_VERSION_COMPLETE;
       if (props->apiVersion > vn_info_vk_xml_version())
          props->apiVersion = vn_info_vk_xml_version();
+#ifdef ANDROID
+      if (props->apiVersion >= VK_API_VERSION_1_2)
+         props->apiVersion =
+            VK_MAKE_VERSION(1, 1, VK_VERSION_PATCH(props->apiVersion));
+#endif
    }
 
    props->driverVersion = vk_get_driver_version();
