@@ -28,18 +28,32 @@
 #include "v3dv_private.h"
 #include "vk_format_info.h"
 
+/* Our Vulkan resource indices represent indices in descriptor maps which
+ * include all shader stages, so we need to size the arrays below
+ * accordingly. For now we only support a maximum of 2 stages for VS and
+ * FS.
+ */
+#define MAX_STAGES 2
+
+#define MAX_TOTAL_TEXTURE_SAMPLERS (V3D_MAX_TEXTURE_SAMPLERS * MAX_STAGES)
 struct texture_bo_list {
-   struct v3dv_bo *tex[V3D_MAX_TEXTURE_SAMPLERS];
+   struct v3dv_bo *tex[MAX_TOTAL_TEXTURE_SAMPLERS];
 };
 
+/* This tracks state BOs forboth textures and samplers, so we
+ * multiply by 2.
+ */
+#define MAX_TOTAL_STATES (2 * V3D_MAX_TEXTURE_SAMPLERS * MAX_STAGES)
 struct state_bo_list {
    uint32_t count;
-   struct v3dv_bo *states[2 * V3D_MAX_TEXTURE_SAMPLERS];
+   struct v3dv_bo *states[MAX_TOTAL_STATES];
 };
 
+#define MAX_TOTAL_UNIFORM_BUFFERS (1 + MAX_UNIFORM_BUFFERS * MAX_STAGES)
+#define MAX_TOTAL_STORAGE_BUFFERS (MAX_STORAGE_BUFFERS * MAX_STAGES)
 struct buffer_bo_list {
-   struct v3dv_bo *ubo[MAX_UNIFORM_BUFFERS];
-   struct v3dv_bo *ssbo[MAX_STORAGE_BUFFERS];
+   struct v3dv_bo *ubo[MAX_TOTAL_UNIFORM_BUFFERS];
+   struct v3dv_bo *ssbo[MAX_TOTAL_STORAGE_BUFFERS];
 };
 
 static bool
@@ -265,10 +279,10 @@ write_ubo_ssbo_uniforms(struct v3dv_cmd_buffer *cmd_buffer,
                                   offset + dynamic_offset);
 
          if (content == QUNIFORM_UBO_ADDR) {
-            assert(index < MAX_UNIFORM_BUFFERS);
+            assert(index + 1 < MAX_TOTAL_UNIFORM_BUFFERS);
             buffer_bos->ubo[index + 1] = descriptor->buffer->mem->bo;
          } else {
-            assert(index < MAX_STORAGE_BUFFERS);
+            assert(index < MAX_TOTAL_STORAGE_BUFFERS);
             buffer_bos->ssbo[index] = descriptor->buffer->mem->bo;
          }
       }
@@ -485,7 +499,7 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
 
    cl_end(&job->indirect, uniforms);
 
-   for (int i = 0; i < V3D_MAX_TEXTURE_SAMPLERS; i++) {
+   for (int i = 0; i < MAX_TOTAL_TEXTURE_SAMPLERS; i++) {
       if (tex_bos.tex[i])
          v3dv_job_add_bo(job, tex_bos.tex[i]);
    }
@@ -493,12 +507,12 @@ v3dv_write_uniforms_wg_offsets(struct v3dv_cmd_buffer *cmd_buffer,
    for (int i = 0; i < state_bos.count; i++)
       v3dv_job_add_bo(job, state_bos.states[i]);
 
-   for (int i = 0; i < MAX_UNIFORM_BUFFERS; i++) {
+   for (int i = 0; i < MAX_TOTAL_UNIFORM_BUFFERS; i++) {
       if (buffer_bos.ubo[i])
          v3dv_job_add_bo(job, buffer_bos.ubo[i]);
    }
 
-   for (int i = 0; i < MAX_STORAGE_BUFFERS; i++) {
+   for (int i = 0; i < MAX_TOTAL_STORAGE_BUFFERS; i++) {
       if (buffer_bos.ssbo[i])
          v3dv_job_add_bo(job, buffer_bos.ssbo[i]);
    }
