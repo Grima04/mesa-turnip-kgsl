@@ -2600,32 +2600,29 @@ static void si_dec_framebuffer_counters(const struct pipe_framebuffer_state *sta
    }
 }
 
+void si_mark_display_dcc_dirty(struct si_context *sctx, struct si_texture *tex)
+{
+   if (!tex->surface.display_dcc_offset || tex->displayable_dcc_dirty)
+      return;
+
+   if (!(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH)) {
+      struct hash_entry *entry = _mesa_hash_table_search(sctx->dirty_implicit_resources, tex);
+      if (!entry) {
+         struct pipe_resource *dummy = NULL;
+         pipe_resource_reference(&dummy, &tex->buffer.b.b);
+         _mesa_hash_table_insert(sctx->dirty_implicit_resources, tex, tex);
+      }
+   }
+   tex->displayable_dcc_dirty = true;
+}
+
 static void si_update_display_dcc_dirty(struct si_context *sctx)
 {
    const struct pipe_framebuffer_state *state = &sctx->framebuffer.state;
-   struct si_surface *surf;
-   struct si_texture *tex;
-   int i;
 
-   for (i = 0; i < state->nr_cbufs; i++) {
-      if (!state->cbufs[i])
-         continue;
-
-      surf = (struct si_surface *)state->cbufs[i];
-      tex = (struct si_texture *)surf->base.texture;
-
-      if (!tex->surface.display_dcc_offset || tex->displayable_dcc_dirty)
-         continue;
-
-      if (!(tex->buffer.external_usage & PIPE_HANDLE_USAGE_EXPLICIT_FLUSH)) {
-         struct hash_entry *entry = _mesa_hash_table_search(sctx->dirty_implicit_resources, tex);
-         if (!entry) {
-            struct pipe_resource *dummy = NULL;
-            pipe_resource_reference(&dummy, &tex->buffer.b.b);
-            _mesa_hash_table_insert(sctx->dirty_implicit_resources, tex, tex);
-         }
-      }
-      tex->displayable_dcc_dirty = true;
+   for (unsigned i = 0; i < state->nr_cbufs; i++) {
+      if (state->cbufs[i])
+         si_mark_display_dcc_dirty(sctx, (struct si_texture *)state->cbufs[i]->texture);
    }
 }
 

@@ -667,7 +667,7 @@ static void si_fast_clear(struct si_context *sctx, unsigned *buffers,
          clear_types |= SI_CLEAR_TYPE_DCC;
 
          tex->separate_dcc_dirty = true;
-         tex->displayable_dcc_dirty = true;
+         si_mark_display_dcc_dirty(sctx, tex);
 
          /* DCC fast clear with MSAA should clear CMASK to 0xC. */
          if (tex->buffer.b.b.nr_samples >= 2 && tex->cmask_buffer) {
