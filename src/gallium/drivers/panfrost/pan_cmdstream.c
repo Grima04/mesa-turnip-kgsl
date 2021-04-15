@@ -448,11 +448,11 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                                        fs->bo ? fs->bo->ptr.gpu : 0,
                                        state);
 
-                bool no_blend = true;
+                bool blend_reads_dest = false;
 
                 for (unsigned i = 0; i < ctx->pipe_framebuffer.nr_cbufs; ++i) {
-                        no_blend &= (!blend[i].load_dest || blend[i].no_colour)
-                                || (!ctx->pipe_framebuffer.cbufs[i]);
+                        blend_reads_dest |= (blend[i].load_dest &&
+                                        ctx->pipe_framebuffer.cbufs[i]);
                 }
 
                 state->properties.bifrost.allow_forward_pixel_to_kill =
@@ -462,7 +462,7 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                         !fs->info.fs.can_discard &&
                         !fs->info.fs.outputs_read &&
                         !alpha_to_coverage &&
-                        no_blend;
+                        !blend_reads_dest;
         }
 }
 
