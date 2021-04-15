@@ -569,12 +569,10 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
 {
    VkShaderModule mod = VK_NULL_HANDLE;
    void *streamout = NULL;
-   nir_shader *nir = zs->nir;
+   nir_shader *nir = nir_shader_clone(NULL, zs->nir);
 
    if (key) {
       if (key->inline_uniforms) {
-         if (nir == zs->nir)
-            nir = nir_shader_clone(NULL, nir);
          NIR_PASS_V(nir, nir_inline_uniforms,
                     nir->info.num_inlinable_uniforms,
                     key->base.inlined_uniform_values,
@@ -595,19 +593,15 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
             streamout = &zs->streamout;
 
          if (!zink_vs_key(key)->clip_halfz) {
-            nir = nir_shader_clone(NULL, zs->nir);
             NIR_PASS_V(nir, nir_lower_clip_halfz);
          }
          if (zink_vs_key(key)->push_drawid) {
-            if (nir == zs->nir)
-               nir = nir_shader_clone(NULL, zs->nir);
             NIR_PASS_V(nir, lower_drawid);
          }
       }
    } else if (zs->nir->info.stage == MESA_SHADER_FRAGMENT) {
       if (!zink_fs_key(key)->samples &&
           nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK)) {
-         nir = nir_shader_clone(NULL, zs->nir);
          /* VK will always use gl_SampleMask[] values even if sample count is 0,
           * so we need to skip this write here to mimic GL's behavior of ignoring it
           */
@@ -620,13 +614,9 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
          optimize_nir(nir);
       }
       if (zink_fs_key(key)->force_dual_color_blend && nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DATA1)) {
-         if (nir == zs->nir)
-            nir = nir_shader_clone(NULL, zs->nir);
          NIR_PASS_V(nir, lower_dual_blend);
       }
       if (zink_fs_key(key)->coord_replace_bits) {
-         if (nir == zs->nir)
-            nir = nir_shader_clone(NULL, zs->nir);
          NIR_PASS_V(nir, nir_lower_texcoord_replace, zink_fs_key(key)->coord_replace_bits,
                     false, zink_fs_key(key)->coord_replace_yinvert);
       }
@@ -660,8 +650,7 @@ zink_shader_compile(struct zink_screen *screen, struct zink_shader *zs, struct z
       mod = VK_NULL_HANDLE;
 
 done:
-   if (nir != zs->nir)
-      ralloc_free(nir);
+   ralloc_free(nir);
 
    /* TODO: determine if there's any reason to cache spirv output? */
    ralloc_free(spirv);
