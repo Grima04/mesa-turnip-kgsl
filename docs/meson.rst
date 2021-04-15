@@ -249,7 +249,7 @@ to find llvm-config:
 
 custom-llvm.ini
 
-::
+.. code-block:: ini
 
    [binaries]
    llvm-config = '/usr/local/bin/llvm/llvm-config'
@@ -275,7 +275,7 @@ should be used. It uses the same format as the native file above:
 
 cross-llvm.ini
 
-::
+.. code-block:: ini
 
    [binaries]
    ...
@@ -427,7 +427,7 @@ of those, as they'll have the right values for your system:
 
 32-bit build on x86 linux:
 
-::
+.. code-block:: ini
 
    [binaries]
    c = '/usr/bin/gcc'
@@ -451,7 +451,7 @@ of those, as they'll have the right values for your system:
 
 64-bit build on ARM linux:
 
-::
+.. code-block:: ini
 
    [binaries]
    c = '/usr/bin/aarch64-linux-gnu-gcc'
@@ -469,7 +469,7 @@ of those, as they'll have the right values for your system:
 
 64-bit build on x86 Windows:
 
-::
+.. code-block:: ini
 
    [binaries]
    c = '/usr/bin/x86_64-w64-mingw32-gcc'
