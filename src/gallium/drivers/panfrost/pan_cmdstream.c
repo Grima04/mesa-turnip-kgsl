@@ -469,6 +469,9 @@ panfrost_prepare_bifrost_fs_state(struct panfrost_context *ctx,
                         !(rt_mask & ~fs->info.outputs_written) &&
                         !alpha_to_coverage &&
                         !blend_reads_dest;
+
+                state->properties.bifrost.allow_forward_pixel_to_be_killed =
+                        !fs->info.fs.sidefx;
         }
 }
 
