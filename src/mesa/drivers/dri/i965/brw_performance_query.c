@@ -300,7 +300,7 @@ brw_is_perf_query_ready(struct gl_context *ctx,
 /**
  * Driver hook for glGetPerfQueryDataINTEL().
  */
-static void
+static bool
 brw_get_perf_query_data(struct gl_context *ctx,
                         struct gl_perf_query_object *o,
                         GLsizei data_size,
@@ -325,6 +325,8 @@ brw_get_perf_query_data(struct gl_context *ctx,
 
    intel_perf_get_query_data(brw->perf_ctx, obj, &brw->batch,
                            data_size, data, bytes_written);
+
+   return true;
 }
 
 static struct gl_perf_query_object *

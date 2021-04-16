@@ -78,3 +78,6 @@ CALL(delete_tcs_state)
 CALL(delete_tes_state)
 CALL(delete_vertex_elements_state)
 CALL(delete_sampler_state)
+
+CALL(begin_intel_perf_query)
+CALL(end_intel_perf_query)

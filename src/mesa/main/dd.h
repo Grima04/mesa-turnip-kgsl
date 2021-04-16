@@ -951,7 +951,7 @@ struct dd_function_table {
                          struct gl_perf_query_object *obj);
    bool (*IsPerfQueryReady)(struct gl_context *ctx,
                             struct gl_perf_query_object *obj);
-   void (*GetPerfQueryData)(struct gl_context *ctx,
+   bool (*GetPerfQueryData)(struct gl_context *ctx,
                             struct gl_perf_query_object *obj,
                             GLsizei dataSize,
                             GLuint *data,

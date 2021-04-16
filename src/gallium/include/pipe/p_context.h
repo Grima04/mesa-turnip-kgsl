@@ -271,7 +271,7 @@ struct pipe_context {
 
    bool (*is_intel_perf_query_ready)(struct pipe_context *pipe, struct pipe_query *q);
 
-   void (*get_intel_perf_query_data)(struct pipe_context *pipe,
+   bool (*get_intel_perf_query_data)(struct pipe_context *pipe,
                                      struct pipe_query *q,
                                      size_t data_size,
                                      uint32_t *data,

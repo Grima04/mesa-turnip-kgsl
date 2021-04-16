@@ -2997,6 +2997,7 @@ tc_get_intel_perf_query_info(struct pipe_context *_pipe,
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
+   tc_sync(tc); /* n_active vs begin/end_intel_perf_query */
    pipe->get_intel_perf_query_info(pipe, query_index, name, data_size,
          n_counters, n_active);
 }
@@ -3029,24 +3030,35 @@ tc_new_intel_perf_query_obj(struct pipe_context *_pipe, unsigned query_index)
    return pipe->new_intel_perf_query_obj(pipe, query_index);
 }
 
+static void
+tc_call_begin_intel_perf_query(struct pipe_context *pipe, union tc_payload *payload)
+{
+   (void)pipe->begin_intel_perf_query(pipe, payload->query);
+}
+
 static bool
 tc_begin_intel_perf_query(struct pipe_context *_pipe, struct pipe_query *q)
 {
    struct threaded_context *tc = threaded_context(_pipe);
-   struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
-   return pipe->begin_intel_perf_query(pipe, q);
+   tc_add_small_call(tc, TC_CALL_begin_intel_perf_query)->query = q;
+
+   /* assume success, begin failure can be signaled from get_intel_perf_query_data */
+   return true;
+}
+
+static void
+tc_call_end_intel_perf_query(struct pipe_context *pipe, union tc_payload *payload)
+{
+   pipe->end_intel_perf_query(pipe, payload->query);
 }
 
 static void
 tc_end_intel_perf_query(struct pipe_context *_pipe, struct pipe_query *q)
 {
    struct threaded_context *tc = threaded_context(_pipe);
-   struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
-   pipe->end_intel_perf_query(pipe, q);
+   tc_add_small_call(tc, TC_CALL_end_intel_perf_query)->query = q;
 }
 
 static void
@@ -3055,7 +3067,7 @@ tc_delete_intel_perf_query(struct pipe_context *_pipe, struct pipe_query *q)
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
+   tc_sync(tc); /* flush potentially pending begin/end_intel_perf_queries */
    pipe->delete_intel_perf_query(pipe, q);
 }
 
@@ -3065,7 +3077,7 @@ tc_wait_intel_perf_query(struct pipe_context *_pipe, struct pipe_query *q)
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
+   tc_sync(tc); /* flush potentially pending begin/end_intel_perf_queries */
    pipe->wait_intel_perf_query(pipe, q);
 }
 
@@ -3075,11 +3087,11 @@ tc_is_intel_perf_query_ready(struct pipe_context *_pipe, struct pipe_query *q)
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
+   tc_sync(tc); /* flush potentially pending begin/end_intel_perf_queries */
    return pipe->is_intel_perf_query_ready(pipe, q);
 }
 
-static void
+static bool
 tc_get_intel_perf_query_data(struct pipe_context *_pipe,
                              struct pipe_query *q,
                              size_t data_size,
@@ -3089,8 +3101,8 @@ tc_get_intel_perf_query_data(struct pipe_context *_pipe,
    struct threaded_context *tc = threaded_context(_pipe);
    struct pipe_context *pipe = tc->pipe;
 
-   tc_sync(tc);
-   pipe->get_intel_perf_query_data(pipe, q, data_size, data, bytes_written);
+   tc_sync(tc); /* flush potentially pending begin/end_intel_perf_queries */
+   return pipe->get_intel_perf_query_data(pipe, q, data_size, data, bytes_written);
 }
 
 /********************************************************************
