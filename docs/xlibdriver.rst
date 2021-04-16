@@ -128,13 +128,6 @@ SERVER_OVERLAY_VISUALS property:
 
    xprop -root | grep SERVER_OVERLAY_VISUALS
 
-HPCR Dithering
---------------
-
-If you set the **MESA_HPCR_CLEAR** environment variable then dithering
-will be used when clearing the color buffer. This is only applicable to
-HP systems with the HPCR (Color Recovery) feature. This incurs a small
-performance penalty.
 
 Extensions
 ----------
