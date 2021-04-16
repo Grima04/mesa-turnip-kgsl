@@ -264,6 +264,22 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_fmul_to(b, dst, sinc, fixup);
    }
 
+   case nir_op_f2i16:
+      return agx_convert_to(b, dst,
+            agx_immediate(AGX_CONVERT_F_TO_S16), s0, AGX_ROUND_RTZ);
+
+   case nir_op_f2i32:
+      return agx_convert_to(b, dst,
+            agx_immediate(AGX_CONVERT_F_TO_S32), s0, AGX_ROUND_RTZ);
+
+   case nir_op_f2u16:
+      return agx_convert_to(b, dst,
+            agx_immediate(AGX_CONVERT_F_TO_U16), s0, AGX_ROUND_RTZ);
+
+   case nir_op_f2u32:
+      return agx_convert_to(b, dst,
+            agx_immediate(AGX_CONVERT_F_TO_U32), s0, AGX_ROUND_RTZ);
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
