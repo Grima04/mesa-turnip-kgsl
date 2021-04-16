@@ -591,53 +591,6 @@ _mesa_pack_uint_z_row(mesa_format format, uint32_t n,
 }
 
 
-void
-_mesa_pack_ubyte_stencil_row(mesa_format format, uint32_t n,
-                             const uint8_t *src, void *dst)
-{
-   switch (format) {
-   case MESA_FORMAT_S8_UINT_Z24_UNORM:
-      {
-         /* don't disturb the Z values */
-         uint32_t *d = ((uint32_t *) dst);
-         uint32_t i;
-         for (i = 0; i < n; i++) {
-            uint32_t s = src[i];
-            uint32_t z = d[i] & 0xffffff00;
-            d[i] = z | s;
-         }
-      }
-      break;
-   case MESA_FORMAT_Z24_UNORM_S8_UINT:
-      {
-         /* don't disturb the Z values */
-         uint32_t *d = ((uint32_t *) dst);
-         uint32_t i;
-         for (i = 0; i < n; i++) {
-            uint32_t s = src[i] << 24;
-            uint32_t z = d[i] & 0xffffff;
-            d[i] = s | z;
-         }
-      }
-      break;
-   case MESA_FORMAT_S_UINT8:
-      memcpy(dst, src, n * sizeof(uint8_t));
-      break;
-   case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
-      {
-         struct z32f_x24s8 *d = (struct z32f_x24s8 *) dst;
-         uint32_t i;
-         for (i = 0; i < n; i++) {
-            d[i].x24s8 = src[i];
-         }
-      }
-      break;
-   default:
-      unreachable("unexpected format in _mesa_pack_ubyte_stencil_row()");
-   }
-}
-
-
 /**
  * Incoming Z/stencil values are always in uint_24_8 format.
  */

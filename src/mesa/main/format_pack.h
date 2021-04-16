@@ -90,9 +90,12 @@ extern void
 _mesa_pack_uint_z_row(mesa_format format, uint32_t n,
                       const uint32_t *src, void *dst);
 
-extern void
+static inline void
 _mesa_pack_ubyte_stencil_row(mesa_format format, uint32_t n,
-                             const uint8_t *src, void *dst);
+                             const uint8_t *src, void *dst)
+{
+   util_format_pack_s_8uint(format, dst, src, n);
+}
 
 extern void
 _mesa_pack_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n,
