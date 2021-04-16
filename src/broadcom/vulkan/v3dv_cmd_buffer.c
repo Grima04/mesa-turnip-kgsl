@@ -833,6 +833,7 @@ v3dv_job_init(struct v3dv_job *job,
        * bits.
        */
       cmd_buffer->state.dirty = ~0;
+      cmd_buffer->state.dirty_descriptor_stages = ~0;
 
       /* Honor inheritance of occlussion queries in secondaries if requested */
       if (cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY &&
@@ -3745,7 +3746,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
 
    const bool needs_fs_update =
       !dirty_descriptors_only ||
-      (pipeline->layout->shader_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
+      (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
 
    if (needs_fs_update) {
       struct v3dv_shader_variant *fs_variant =
@@ -3757,7 +3758,7 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
 
    const bool needs_vs_update =
       !dirty_descriptors_only ||
-      (pipeline->layout->shader_stages & VK_SHADER_STAGE_VERTEX_BIT);
+      (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_VERTEX_BIT);
 
    if (needs_vs_update) {
       struct v3dv_shader_variant *vs_variant =
@@ -3950,6 +3951,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_VERTEX_BUFFER |
                                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                                 V3DV_CMD_DIRTY_PUSH_CONSTANTS);
+   cmd_buffer->state.dirty_descriptor_stages &= ~VK_SHADER_STAGE_ALL_GRAPHICS;
 }
 
 static void
@@ -4798,18 +4800,16 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
       &cmd_buffer->state.compute.descriptor_state :
       &cmd_buffer->state.gfx.descriptor_state;
 
+   VkShaderStageFlags dirty_stages = 0;
    bool descriptor_state_changed = false;
    for (uint32_t i = 0; i < descriptorSetCount; i++) {
       V3DV_FROM_HANDLE(v3dv_descriptor_set, set, pDescriptorSets[i]);
       uint32_t index = firstSet + i;
 
+      descriptor_state->valid |= (1u << index);
       if (descriptor_state->descriptor_sets[index] != set) {
          descriptor_state->descriptor_sets[index] = set;
-         descriptor_state_changed = true;
-      }
-
-      if (!(descriptor_state->valid & (1u << index))) {
-         descriptor_state->valid |= (1u << index);
+         dirty_stages |= set->layout->shader_stages;
          descriptor_state_changed = true;
       }
 
@@ -4818,16 +4818,20 @@ v3dv_CmdBindDescriptorSets(VkCommandBuffer commandBuffer,
 
          if (descriptor_state->dynamic_offsets[idx] != pDynamicOffsets[dyn_index]) {
             descriptor_state->dynamic_offsets[idx] = pDynamicOffsets[dyn_index];
+            dirty_stages |= set->layout->shader_stages;
             descriptor_state_changed = true;
          }
       }
    }
 
    if (descriptor_state_changed) {
-      if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+      if (pipelineBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS) {
          cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
-      else
+         cmd_buffer->state.dirty_descriptor_stages |= dirty_stages & VK_SHADER_STAGE_ALL_GRAPHICS;
+      } else {
          cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS;
+         cmd_buffer->state.dirty_descriptor_stages |= VK_SHADER_STAGE_COMPUTE_BIT;
+      }
    }
 }
 
@@ -5178,9 +5182,9 @@ cmd_buffer_emit_pre_dispatch(struct v3dv_cmd_buffer *cmd_buffer)
    assert(cmd_buffer->state.compute.pipeline->active_stages ==
           VK_SHADER_STAGE_COMPUTE_BIT);
 
-   uint32_t *dirty = &cmd_buffer->state.dirty;
-   *dirty &= ~(V3DV_CMD_DIRTY_COMPUTE_PIPELINE |
-               V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS);
+   cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_COMPUTE_PIPELINE |
+                                V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS);
+   cmd_buffer->state.dirty_descriptor_stages &= ~VK_SHADER_STAGE_COMPUTE_BIT;
 }
 
 #define V3D_CSD_CFG012_WG_COUNT_SHIFT 16
