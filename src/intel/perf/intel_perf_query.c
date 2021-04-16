@@ -314,6 +314,8 @@ struct intel_perf_context {
     * there are no active queries)
     */
    int n_query_instances;
+
+   int period_exponent;
 };
 
 static bool
@@ -512,6 +514,17 @@ intel_perf_new_query(struct intel_perf_context *perf_ctx, unsigned query_index)
 {
    const struct intel_perf_query_info *query =
       &perf_ctx->perf->queries[query_index];
+
+   switch (query->kind) {
+   case INTEL_PERF_QUERY_TYPE_OA:
+   case INTEL_PERF_QUERY_TYPE_RAW:
+      if (perf_ctx->period_exponent == 0)
+         return NULL;
+      break;
+   case INTEL_PERF_QUERY_TYPE_PIPELINE:
+      break;
+   }
+
    struct intel_perf_query_object *obj =
       calloc(1, sizeof(struct intel_perf_query_object));
 
@@ -603,6 +616,59 @@ intel_perf_init_context(struct intel_perf_context *perf_ctx,
 
    perf_ctx->oa_stream_fd = -1;
    perf_ctx->next_query_start_report_id = 1000;
+
+   /* The period_exponent gives a sampling period as follows:
+    *   sample_period = timestamp_period * 2^(period_exponent + 1)
+    *
+    * The timestamps increments every 80ns (HSW), ~52ns (GFX9LP) or
+    * ~83ns (GFX8/9).
+    *
+    * The counter overflow period is derived from the EuActive counter
+    * which reads a counter that increments by the number of clock
+    * cycles multiplied by the number of EUs. It can be calculated as:
+    *
+    * 2^(number of bits in A counter) / (n_eus * max_intel_freq * 2)
+    *
+    * (E.g. 40 EUs @ 1GHz = ~53ms)
+    *
+    * We select a sampling period inferior to that overflow period to
+    * ensure we cannot see more than 1 counter overflow, otherwise we
+    * could loose information.
+    */
+
+   int a_counter_in_bits = 32;
+   if (devinfo->ver >= 8)
+      a_counter_in_bits = 40;
+
+   uint64_t overflow_period = pow(2, a_counter_in_bits) / (perf_cfg->sys_vars.n_eus *
+       /* drop 1GHz freq to have units in nanoseconds */
+       2);
+
+   DBG("A counter overflow period: %"PRIu64"ns, %"PRIu64"ms (n_eus=%"PRIu64")\n",
+       overflow_period, overflow_period / 1000000ul, perf_cfg->sys_vars.n_eus);
+
+   int period_exponent = 0;
+   uint64_t prev_sample_period, next_sample_period;
+   for (int e = 0; e < 30; e++) {
+      prev_sample_period = 1000000000ull * pow(2, e + 1) / devinfo->timestamp_frequency;
+      next_sample_period = 1000000000ull * pow(2, e + 2) / devinfo->timestamp_frequency;
+
+      /* Take the previous sampling period, lower than the overflow
+       * period.
+       */
+      if (prev_sample_period < overflow_period &&
+          next_sample_period > overflow_period)
+         period_exponent = e + 1;
+   }
+
+   perf_ctx->period_exponent = period_exponent;
+
+   if (period_exponent == 0) {
+      DBG("WARNING: enable to find a sampling exponent\n");
+   } else {
+      DBG("OA sampling exponent: %i ~= %"PRIu64"ms\n", period_exponent,
+            prev_sample_period / 1000000ul);
+   }
 }
 
 /**
@@ -759,62 +825,10 @@ intel_perf_begin_query(struct intel_perf_context *perf_ctx,
 
       /* If the OA counters aren't already on, enable them. */
       if (perf_ctx->oa_stream_fd == -1) {
-         const struct intel_device_info *devinfo = perf_ctx->devinfo;
-
-         /* The period_exponent gives a sampling period as follows:
-          *   sample_period = timestamp_period * 2^(period_exponent + 1)
-          *
-          * The timestamps increments every 80ns (HSW), ~52ns (GFX9LP) or
-          * ~83ns (GFX8/9).
-          *
-          * The counter overflow period is derived from the EuActive counter
-          * which reads a counter that increments by the number of clock
-          * cycles multiplied by the number of EUs. It can be calculated as:
-          *
-          * 2^(number of bits in A counter) / (n_eus * max_intel_freq * 2)
-          *
-          * (E.g. 40 EUs @ 1GHz = ~53ms)
-          *
-          * We select a sampling period inferior to that overflow period to
-          * ensure we cannot see more than 1 counter overflow, otherwise we
-          * could loose information.
-          */
-
-         int a_counter_in_bits = 32;
-         if (devinfo->ver >= 8)
-            a_counter_in_bits = 40;
-
-         uint64_t overflow_period = pow(2, a_counter_in_bits) / (perf_cfg->sys_vars.n_eus *
-             /* drop 1GHz freq to have units in nanoseconds */
-             2);
-
-         DBG("A counter overflow period: %"PRIu64"ns, %"PRIu64"ms (n_eus=%"PRIu64")\n",
-             overflow_period, overflow_period / 1000000ul, perf_cfg->sys_vars.n_eus);
-
-         int period_exponent = 0;
-         uint64_t prev_sample_period, next_sample_period;
-         for (int e = 0; e < 30; e++) {
-            prev_sample_period = 1000000000ull * pow(2, e + 1) / devinfo->timestamp_frequency;
-            next_sample_period = 1000000000ull * pow(2, e + 2) / devinfo->timestamp_frequency;
-
-            /* Take the previous sampling period, lower than the overflow
-             * period.
-             */
-            if (prev_sample_period < overflow_period &&
-                next_sample_period > overflow_period)
-               period_exponent = e + 1;
-         }
-
-         if (period_exponent == 0) {
-            DBG("WARNING: enable to find a sampling exponent\n");
-            return false;
-         }
-
-         DBG("OA sampling exponent: %i ~= %"PRIu64"ms\n", period_exponent,
-             prev_sample_period / 1000000ul);
+         assert(perf_ctx->period_exponent != 0);
 
          if (!intel_perf_open(perf_ctx, metric_id, queryinfo->oa_format,
-                            period_exponent, perf_ctx->drm_fd,
+                            perf_ctx->period_exponent, perf_ctx->drm_fd,
                             perf_ctx->hw_ctx))
             return false;
       } else {
