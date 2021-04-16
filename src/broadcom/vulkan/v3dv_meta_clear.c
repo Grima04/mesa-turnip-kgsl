@@ -1516,6 +1516,9 @@ emit_tlb_clear(struct v3dv_cmd_buffer *cmd_buffer,
       v3dv_cmd_buffer_start_job(cmd_buffer, cmd_buffer->state.subpass_idx,
                                 V3DV_JOB_TYPE_GPU_CL);
 
+   if (!job)
+      return;
+
    /* vkCmdClearAttachments runs inside a render pass */
    job->is_subpass_continue = true;
 
