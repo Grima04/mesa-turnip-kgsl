@@ -125,6 +125,7 @@ static int parse_w(const char *str)
 "(ul)"                            return TOKEN(T_UL);
 "(even)"                          return TOKEN(T_EVEN);
 "(pos_infinity)"                  return TOKEN(T_POS_INFINITY);
+"(neg_infinity)"                  return TOKEN(T_NEG_INFINITY);
 "(ei)"                            return TOKEN(T_EI);
 "(jp)"                            return TOKEN(T_JP);
 "(sat)"                           return TOKEN(T_SAT);

@@ -355,6 +355,13 @@ static inline int type_sint(type_t type)
 	return (type == TYPE_S32) || (type == TYPE_S16) || (type == TYPE_S8);
 }
 
+typedef enum {
+	ROUND_ZERO = 0,
+	ROUND_EVEN = 1,
+	ROUND_POS_INF = 2,
+	ROUND_NEG_INF = 3,
+} round_t;
+
 typedef union PACKED {
 	/* normal gpr or const src register: */
 	struct PACKED {

@@ -60,16 +60,23 @@ SOFTWARE.
 	</encode>
 </bitset>
 
+<enum name="#round">
+	<value val="0" display=""/>
+	<value val="1" display="(even)"/>
+	<value val="2" display="(pos_infinity)"/>
+	<value val="3" display="(neg_infinity)"/>
+</enum>
+
 <bitset name="#instruction-cat1" extends="#instruction">
 	<field name="DST" low="32" high="39" type="#cat1-dst">
 		<param name="DST_REL"/>
 	</field>
-	<field name="REPEAT" low="40" high="42" type="#rptN"/>
+	<field name="REPEAT" low="40" high="41" type="#rptN"/>
+	<pattern pos="42">0</pattern>
 	<field name="SS" pos="44" type="bool" display="(ss)"/>
 	<field name="UL" pos="45" type="bool" display="(ul)"/>
 	<field name="DST_REL" pos="49" type="bool"/>
-	<field name="EVEN" pos="55" type="bool" display="(even)"/>
-	<field name="POS_INF" pos="56" type="bool" display="(pos_infinity)"/>
+	<field name="ROUND" low="55" high="56" type="#round"/>
 	<field name="JP" pos="59" type="bool" display="(jp)"/>
 	<field name="SY" pos="60" type="bool" display="(sy)"/>
 	<pattern low="61" high="63">001</pattern>  <!-- cat1 -->
@@ -80,8 +87,7 @@ SOFTWARE.
 		<map name="DST_TYPE">src->cat1.dst_type</map>
 		<map name="DST_REL">!!(src->regs[0]->flags &amp; IR3_REG_RELATIV)</map>
 		<map name="SRC_TYPE">src->cat1.src_type</map>
-		<map name="EVEN">!!(src->regs[0]->flags &amp; IR3_REG_EVEN)</map>
-		<map name="POS_INF">!!(src->regs[0]->flags &amp; IR3_REG_POS_INF)</map>
+		<map name="ROUND">src->cat1.round</map>
 	</encode>
 </bitset>
 
@@ -91,7 +97,7 @@ SOFTWARE.
 			({DST} == 0xf4 /* a0.x */) &amp;&amp; ({SRC_TYPE} == 4 /* s16 */) &amp;&amp; ({DST_TYPE} == 4)
 		</expr>
 		<display>
-			{SY}{SS}{JP}{REPEAT}{UL}mova {EVEN}{POS_INF}a0.x, {SRC}
+			{SY}{SS}{JP}{REPEAT}{UL}mova {ROUND}a0.x, {SRC}
 		</display>
 		<assert low="32" high="39">11110100</assert>  <!-- DST==a0.x -->
 		<assert low="46" high="48">100</assert>       <!-- DST_TYPE==s16 -->
@@ -102,7 +108,7 @@ SOFTWARE.
 			({DST} == 0xf5 /* a0.y */) &amp;&amp; ({SRC_TYPE} == 2 /* u16 */) &amp;&amp; ({DST_TYPE} == 2)
 		</expr>
 		<display>
-			{SY}{SS}{JP}{REPEAT}{UL}mova1 {EVEN}{POS_INF}a1.x, {SRC}
+			{SY}{SS}{JP}{REPEAT}{UL}mova1 {ROUND}a1.x, {SRC}
 		</display>
 		<assert low="32" high="39">11110101</assert>  <!-- DST==a0.y -->
 		<assert low="46" high="48">010</assert>       <!-- DST_TYPE==u16 -->
@@ -113,11 +119,11 @@ SOFTWARE.
 			{SRC_TYPE} != {DST_TYPE}
 		</expr>
 		<display>
-			{SY}{SS}{JP}{REPEAT}{UL}cov.{SRC_TYPE}{DST_TYPE} {EVEN}{POS_INF}{DST_HALF}{DST}, {SRC}
+			{SY}{SS}{JP}{REPEAT}{UL}cov.{SRC_TYPE}{DST_TYPE} {ROUND}{DST_HALF}{DST}, {SRC}
 		</display>
 	</override>
 	<display>
-		{SY}{SS}{JP}{REPEAT}{UL}mov.{SRC_TYPE}{DST_TYPE} {EVEN}{POS_INF}{DST_HALF}{DST}, {SRC}
+		{SY}{SS}{JP}{REPEAT}{UL}mov.{SRC_TYPE}{DST_TYPE} {ROUND}{DST_HALF}{DST}, {SRC}
 	</display>
 	<pattern low="57" high="58">00</pattern>  <!-- OPC -->
 	<derived name="HALF" type="bool" display="h">

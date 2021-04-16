@@ -672,10 +672,12 @@ is_self_mov(struct ir3_instruction *instr)
 	if (instr->regs[0]->flags & IR3_REG_RELATIV)
 		return false;
 
+	if (instr->cat1.round != ROUND_ZERO)
+		return false;
+
 	if (instr->regs[1]->flags & (IR3_REG_CONST | IR3_REG_IMMED |
 			IR3_REG_RELATIV | IR3_REG_FNEG | IR3_REG_FABS |
-			IR3_REG_SNEG | IR3_REG_SABS | IR3_REG_BNOT |
-			IR3_REG_EVEN | IR3_REG_POS_INF))
+			IR3_REG_SNEG | IR3_REG_SABS | IR3_REG_BNOT))
 		return false;
 
 	return true;

@@ -334,6 +334,7 @@ static void print_token(FILE *file, int type, YYSTYPE value)
 /* dst register flags */
 %token <tok> T_EVEN
 %token <tok> T_POS_INFINITY
+%token <tok> T_NEG_INFINITY
 %token <tok> T_EI
 %token <num> T_WRMASK
 
@@ -1113,8 +1114,9 @@ reg:               T_REGISTER     { $$ = new_reg($1, 0); }
 
 const:             T_CONSTANT     { $$ = new_reg($1, IR3_REG_CONST); }
 
-dst_reg_flag:      T_EVEN         { rflags.flags |= IR3_REG_EVEN; }
-|                  T_POS_INFINITY { rflags.flags |= IR3_REG_POS_INF; }
+dst_reg_flag:      T_EVEN         { instr->cat1.round = ROUND_EVEN; }
+|                  T_POS_INFINITY { instr->cat1.round = ROUND_POS_INF; }
+|                  T_NEG_INFINITY { instr->cat1.round = ROUND_NEG_INF; }
 |                  T_EI           { rflags.flags |= IR3_REG_EI; }
 |                  T_WRMASK       { rflags.wrmask = $1; }
 
