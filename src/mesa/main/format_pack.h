@@ -82,9 +82,12 @@ _mesa_pack_ubyte_rgba_rect(mesa_format format, uint32_t width, uint32_t height,
                            const uint8_t *src, int32_t srcRowStride,
                            void *dst, int32_t dstRowStride);
 
-extern void
+static inline void
 _mesa_pack_float_z_row(mesa_format format, uint32_t n,
-                       const float *src, void *dst);
+                       const float *src, void *dst)
+{
+   util_format_pack_z_float(format, dst, src, n);
+}
 
 extern void
 _mesa_pack_uint_z_row(mesa_format format, uint32_t n,
