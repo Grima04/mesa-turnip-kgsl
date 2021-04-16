@@ -965,7 +965,8 @@ radv_fast_clear_depth(struct radv_cmd_buffer *cmd_buffer, const struct radv_imag
       enum radv_cmd_flush_bits bits =
          radv_src_access_flush(cmd_buffer, VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
                                iview->image) |
-         radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT, iview->image);
+         radv_dst_access_flush(cmd_buffer, VK_ACCESS_SHADER_WRITE_BIT |
+                                           VK_ACCESS_SHADER_READ_BIT, iview->image);
       cmd_buffer->state.flush_bits |= bits & ~*pre_flush;
       *pre_flush |= cmd_buffer->state.flush_bits;
    }
