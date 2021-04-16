@@ -102,6 +102,7 @@ actions:
           - export PIGLIT_REPLAY_EXTRA_ARGS="--keep-image"
           - export PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL="/mesa-tracie-results/${CI_PROJECT_PATH}"
           - export PIGLIT_REPLAY_ARTIFACTS_BASE_URL="/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}"
+          - export MINIO_ARTIFACTS_PATH="minio://${MINIO_HOST}/${PIGLIT_REPLAY_ARTIFACTS_BASE_URL}/"
           - export PIGLIT_REPLAY_DESCRIPTION_FILE="/install/traces-${DRIVER_NAME}.yml"
           - export PIGLIT_REPLAY_DEVICE_NAME=gl-{{ gpu_version }}
           - export PIGLIT_RESULTS={{ gpu_version }}-${PIGLIT_PROFILES}
@@ -109,10 +110,18 @@ actions:
           - export LIBGL_DRIVERS_PATH=`pwd`/install/lib/dri
 
           - "if sh $LAVA_TEST_SCRIPT; then
-                  echo 'mesa: pass';
+                  export RESULT=pass;
              else
-                  echo 'mesa: fail';
+                  export RESULT=fail;
              fi"
+
+          - "if [ -d results ]; then
+                tar -czf results.tar.gz results/;
+                ci-fairy minio login $CI_JOB_JWT;
+                ci-fairy minio cp results.tar.gz $MINIO_ARTIFACTS_PATH/results.tar.gz;
+             fi"
+
+          - "echo mesa: $RESULT"
         parse:
           pattern: '(?P<test_case_id>\S*):\s+(?P<result>(pass|fail))'
       from: inline

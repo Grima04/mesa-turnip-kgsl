@@ -64,6 +64,8 @@ kernel+rootfs_armhf:
       else
         ARTIFACTS_URL="${ARTIFACTS_PREFIX}/${CI_PROJECT_PATH}/lava/${DISTRIBUTION_TAG}/${ARCH}"
       fi
+    - rm -rf results
+    - mkdir -p results
     - >
       artifacts/generate_lava.py \
         --template artifacts/lava.yml.jinja2 \
@@ -83,9 +85,8 @@ kernel+rootfs_armhf:
         --ci-node-total "${CI_NODE_TOTAL}"
     - lava_job_id=`lavacli jobs submit lava.yml` || lavacli jobs submit lava.yml
     - echo $lava_job_id
-    - rm -rf artifacts/*
-    - cp lava.yml artifacts/.
-    - lavacli jobs logs $lava_job_id | tee artifacts/lava-$lava_job_id.log
+    - cp lava.yml results/.
+    - lavacli jobs logs $lava_job_id | tee results/lava-$lava_job_id.log
     - lavacli jobs show $lava_job_id
     - result=`lavacli results $lava_job_id 0_mesa mesa | head -1`
     - echo $result
@@ -94,7 +95,11 @@ kernel+rootfs_armhf:
     name: "mesa_${CI_JOB_NAME}"
     when: always
     paths:
-      - artifacts/
+      - results/
+    exclude:
+      - results/*.shader_cache
+  after_script:
+    - wget -q "https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}/results.tar.gz" -O- | tar -xz
 
 .lava-test:armhf:
   variables:
@@ -147,12 +152,9 @@ kernel+rootfs_armhf:
     - meson-testing
 
 .lava-traces-base:
-  after_script:
-    - mkdir -p artifacts
-    - wget -O "artifacts/junit.xml" "https://minio-packet.freedesktop.org/artifacts/${CI_PROJECT_PATH}/${CI_PIPELINE_ID}/${CI_JOB_ID}/traces/junit.xml"
   artifacts:
     reports:
-      junit: artifacts/junit.xml
+      junit: results/junit.xml
 
 .lava-piglit:
   variables:
