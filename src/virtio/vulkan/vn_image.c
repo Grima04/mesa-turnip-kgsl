@@ -18,6 +18,87 @@
 #include "vn_device.h"
 #include "vn_device_memory.h"
 
+static void
+vn_image_init_memory_requirements(struct vn_image *img,
+                                  struct vn_device *dev,
+                                  const VkImageCreateInfo *create_info)
+{
+   uint32_t plane_count = 1;
+   if (create_info->flags & VK_IMAGE_CREATE_DISJOINT_BIT) {
+      /* TODO VkDrmFormatModifierPropertiesEXT::drmFormatModifierPlaneCount */
+      assert(create_info->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
+
+      switch (create_info->format) {
+      case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+      case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
+      case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
+      case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
+      case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
+      case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
+      case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
+      case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+         plane_count = 2;
+         break;
+      case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+      case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+      case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
+      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
+      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
+      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
+      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
+      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
+      case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+      case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+      case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+         plane_count = 3;
+         break;
+      default:
+         plane_count = 1;
+         break;
+      }
+   }
+   assert(plane_count <= ARRAY_SIZE(img->memory_requirements));
+
+   /* TODO add a per-device cache for the requirements */
+   for (uint32_t i = 0; i < plane_count; i++) {
+      img->memory_requirements[i].sType =
+         VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+      img->memory_requirements[i].pNext = &img->dedicated_requirements[i];
+      img->dedicated_requirements[i].sType =
+         VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
+      img->dedicated_requirements[i].pNext = NULL;
+   }
+
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkImage img_handle = vn_image_to_handle(img);
+   if (plane_count == 1) {
+      vn_call_vkGetImageMemoryRequirements2(
+         dev->instance, dev_handle,
+         &(VkImageMemoryRequirementsInfo2){
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+            .image = img_handle,
+         },
+         &img->memory_requirements[0]);
+   } else {
+      for (uint32_t i = 0; i < plane_count; i++) {
+         vn_call_vkGetImageMemoryRequirements2(
+            dev->instance, dev_handle,
+            &(VkImageMemoryRequirementsInfo2){
+               .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
+               .pNext =
+                  &(VkImagePlaneMemoryRequirementsInfo){
+                     .sType =
+                        VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO,
+                     .planeAspect = VK_IMAGE_ASPECT_PLANE_0_BIT << i,
+                  },
+               .image = img_handle,
+            },
+            &img->memory_requirements[i]);
+      }
+   }
+}
+
 /* image commands */
 
 VkResult
@@ -61,78 +142,7 @@ vn_CreateImage(VkDevice device,
       return vn_error(dev->instance, result);
    }
 
-   uint32_t plane_count = 1;
-   if (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) {
-      /* TODO VkDrmFormatModifierPropertiesEXT::drmFormatModifierPlaneCount */
-      assert(pCreateInfo->tiling != VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT);
-
-      switch (pCreateInfo->format) {
-      case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
-      case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
-      case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
-      case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
-         plane_count = 2;
-         break;
-      case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
-      case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
-      case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
-      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
-      case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
-      case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
-      case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
-      case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
-         plane_count = 3;
-         break;
-      default:
-         plane_count = 1;
-         break;
-      }
-   }
-   assert(plane_count <= ARRAY_SIZE(img->memory_requirements));
-
-   /* TODO add a per-device cache for the requirements */
-   for (uint32_t i = 0; i < plane_count; i++) {
-      img->memory_requirements[i].sType =
-         VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-      img->memory_requirements[i].pNext = &img->dedicated_requirements[i];
-      img->dedicated_requirements[i].sType =
-         VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS;
-      img->dedicated_requirements[i].pNext = NULL;
-   }
-
-   if (plane_count == 1) {
-      vn_call_vkGetImageMemoryRequirements2(
-         dev->instance, device,
-         &(VkImageMemoryRequirementsInfo2){
-            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-            .image = img_handle,
-         },
-         &img->memory_requirements[0]);
-   } else {
-      for (uint32_t i = 0; i < plane_count; i++) {
-         vn_call_vkGetImageMemoryRequirements2(
-            dev->instance, device,
-            &(VkImageMemoryRequirementsInfo2){
-               .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_REQUIREMENTS_INFO_2,
-               .pNext =
-                  &(VkImagePlaneMemoryRequirementsInfo){
-                     .sType =
-                        VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO,
-                     .planeAspect = VK_IMAGE_ASPECT_PLANE_0_BIT << i,
-                  },
-               .image = img_handle,
-            },
-            &img->memory_requirements[i]);
-      }
-   }
+   vn_image_init_memory_requirements(img, dev, pCreateInfo);
 
    *pImage = img_handle;
 
