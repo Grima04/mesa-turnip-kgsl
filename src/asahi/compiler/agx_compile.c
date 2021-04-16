@@ -280,6 +280,34 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
       return agx_convert_to(b, dst,
             agx_immediate(AGX_CONVERT_F_TO_U32), s0, AGX_ROUND_RTZ);
 
+   case nir_op_u2f16:
+   case nir_op_u2f32:
+   {
+      if (src_sz == 64)
+         unreachable("64-bit conversions unimplemented");
+
+      enum agx_convert mode =
+         (src_sz == 32) ? AGX_CONVERT_U32_TO_F :
+         (src_sz == 16) ? AGX_CONVERT_U16_TO_F :
+                          AGX_CONVERT_U8_TO_F;
+
+      return agx_convert_to(b, dst, agx_immediate(mode), s0, AGX_ROUND_RTE);
+   }
+
+   case nir_op_i2f16:
+   case nir_op_i2f32:
+   {
+      if (src_sz == 64)
+         unreachable("64-bit conversions unimplemented");
+
+      enum agx_convert mode =
+         (src_sz == 32) ? AGX_CONVERT_S32_TO_F :
+         (src_sz == 16) ? AGX_CONVERT_S16_TO_F :
+                          AGX_CONVERT_S8_TO_F;
+
+      return agx_convert_to(b, dst, agx_immediate(mode), s0, AGX_ROUND_RTE);
+   }
+
    case nir_op_vec2:
    case nir_op_vec3:
    case nir_op_vec4:
