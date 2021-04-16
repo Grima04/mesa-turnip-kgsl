@@ -89,47 +89,49 @@ struct vn_queue_submission {
 };
 
 static void
-vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
+vn_queue_submission_count_batch_semaphores(struct vn_queue_submission *submit,
+                                           uint32_t batch_index)
 {
-   submit->wait_semaphore_count = 0;
-   submit->wait_wsi_count = 0;
+   union {
+      const VkSubmitInfo *submit_batch;
+      const VkBindSparseInfo *bind_sparse_batch;
+   } u;
+   const VkSemaphore *wait_sems;
+   uint32_t wait_count;
    switch (submit->batch_type) {
    case VK_STRUCTURE_TYPE_SUBMIT_INFO:
-      for (uint32_t i = 0; i < submit->batch_count; i++) {
-         const VkSubmitInfo *batch = &submit->submit_batches[i];
-
-         submit->wait_semaphore_count += batch->waitSemaphoreCount;
-
-         for (uint32_t j = 0; j < batch->waitSemaphoreCount; j++) {
-            struct vn_semaphore *sem =
-               vn_semaphore_from_handle(batch->pWaitSemaphores[j]);
-            const struct vn_sync_payload *payload = sem->payload;
-
-            if (payload->type == VN_SYNC_TYPE_WSI_SIGNALED)
-               submit->wait_wsi_count++;
-         }
-      }
+      u.submit_batch = &submit->submit_batches[batch_index];
+      wait_sems = u.submit_batch->pWaitSemaphores;
+      wait_count = u.submit_batch->waitSemaphoreCount;
       break;
    case VK_STRUCTURE_TYPE_BIND_SPARSE_INFO:
-      for (uint32_t i = 0; i < submit->batch_count; i++) {
-         const VkBindSparseInfo *batch = &submit->bind_sparse_batches[i];
-
-         submit->wait_semaphore_count += batch->waitSemaphoreCount;
-
-         for (uint32_t j = 0; j < batch->waitSemaphoreCount; j++) {
-            struct vn_semaphore *sem =
-               vn_semaphore_from_handle(batch->pWaitSemaphores[j]);
-            const struct vn_sync_payload *payload = sem->payload;
-
-            if (payload->type == VN_SYNC_TYPE_WSI_SIGNALED)
-               submit->wait_wsi_count++;
-         }
-      }
+      u.bind_sparse_batch = &submit->bind_sparse_batches[batch_index];
+      wait_sems = u.bind_sparse_batch->pWaitSemaphores;
+      wait_count = u.bind_sparse_batch->waitSemaphoreCount;
       break;
    default:
       unreachable("unexpected batch type");
       break;
    }
+
+   submit->wait_semaphore_count += wait_count;
+   for (uint32_t i = 0; i < wait_count; i++) {
+      struct vn_semaphore *sem = vn_semaphore_from_handle(wait_sems[i]);
+      const struct vn_sync_payload *payload = sem->payload;
+
+      if (payload->type == VN_SYNC_TYPE_WSI_SIGNALED)
+         submit->wait_wsi_count++;
+   }
+}
+
+static void
+vn_queue_submission_count_semaphores(struct vn_queue_submission *submit)
+{
+   submit->wait_semaphore_count = 0;
+   submit->wait_wsi_count = 0;
+
+   for (uint32_t i = 0; i < submit->batch_count; i++)
+      vn_queue_submission_count_batch_semaphores(submit, i);
 }
 
 static VkResult
