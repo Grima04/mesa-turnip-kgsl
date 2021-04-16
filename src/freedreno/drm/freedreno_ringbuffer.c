@@ -27,42 +27,42 @@
 #include <assert.h>
 
 #include "freedreno_drmif.h"
-#include "freedreno_ringbuffer.h"
 #include "freedreno_priv.h"
+#include "freedreno_ringbuffer.h"
 
 struct fd_submit *
 fd_submit_new(struct fd_pipe *pipe)
 {
-	return pipe->funcs->submit_new(pipe);
+   return pipe->funcs->submit_new(pipe);
 }
 
 void
 fd_submit_del(struct fd_submit *submit)
 {
-	return submit->funcs->destroy(submit);
+   return submit->funcs->destroy(submit);
 }
 
 int
 fd_submit_flush(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
-		uint32_t *out_fence)
+                uint32_t *out_fence)
 {
-	return submit->funcs->flush(submit, in_fence_fd, out_fence_fd, out_fence);
+   return submit->funcs->flush(submit, in_fence_fd, out_fence_fd, out_fence);
 }
 
 struct fd_ringbuffer *
 fd_submit_new_ringbuffer(struct fd_submit *submit, uint32_t size,
-		enum fd_ringbuffer_flags flags)
+                         enum fd_ringbuffer_flags flags)
 {
-	debug_assert(!(flags & _FD_RINGBUFFER_OBJECT));
-	if (flags & FD_RINGBUFFER_STREAMING) {
-		debug_assert(!(flags & FD_RINGBUFFER_GROWABLE));
-		debug_assert(!(flags & FD_RINGBUFFER_PRIMARY));
-	}
-	return submit->funcs->new_ringbuffer(submit, size, flags);
+   debug_assert(!(flags & _FD_RINGBUFFER_OBJECT));
+   if (flags & FD_RINGBUFFER_STREAMING) {
+      debug_assert(!(flags & FD_RINGBUFFER_GROWABLE));
+      debug_assert(!(flags & FD_RINGBUFFER_PRIMARY));
+   }
+   return submit->funcs->new_ringbuffer(submit, size, flags);
 }
 
 struct fd_ringbuffer *
 fd_ringbuffer_new_object(struct fd_pipe *pipe, uint32_t size)
 {
-	return pipe->funcs->ringbuffer_new_object(pipe, size);
+   return pipe->funcs->ringbuffer_new_object(pipe, size);
 }

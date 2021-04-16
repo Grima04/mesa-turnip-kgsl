@@ -24,38 +24,40 @@
  *    Rob Clark <robclark@freedesktop.org>
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 #include "msm_priv.h"
 
-static void msm_device_destroy(struct fd_device *dev)
+static void
+msm_device_destroy(struct fd_device *dev)
 {
-	struct msm_device *msm_dev = to_msm_device(dev);
-	free(msm_dev);
+   struct msm_device *msm_dev = to_msm_device(dev);
+   free(msm_dev);
 }
 
 static const struct fd_device_funcs funcs = {
-		.bo_new_handle = msm_bo_new_handle,
-		.bo_from_handle = msm_bo_from_handle,
-		.pipe_new = msm_pipe_new,
-		.destroy = msm_device_destroy,
+   .bo_new_handle = msm_bo_new_handle,
+   .bo_from_handle = msm_bo_from_handle,
+   .pipe_new = msm_pipe_new,
+   .destroy = msm_device_destroy,
 };
 
-struct fd_device * msm_device_new(int fd)
+struct fd_device *
+msm_device_new(int fd)
 {
-	struct msm_device *msm_dev;
-	struct fd_device *dev;
+   struct msm_device *msm_dev;
+   struct fd_device *dev;
 
-	msm_dev = calloc(1, sizeof(*msm_dev));
-	if (!msm_dev)
-		return NULL;
+   msm_dev = calloc(1, sizeof(*msm_dev));
+   if (!msm_dev)
+      return NULL;
 
-	dev = &msm_dev->base;
-	dev->funcs = &funcs;
+   dev = &msm_dev->base;
+   dev->funcs = &funcs;
 
-	dev->bo_size = sizeof(struct msm_bo);
+   dev->bo_size = sizeof(struct msm_bo);
 
-	return dev;
+   return dev;
 }
