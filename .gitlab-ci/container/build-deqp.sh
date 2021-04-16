@@ -53,6 +53,9 @@ cp \
     /deqp/external/openglcts/modules/gl_cts/data/mustpass/egl/aosp_mustpass/3.2.6.x/egl-master.txt \
     /deqp/mustpass/.
 cp \
+    /deqp/external/openglcts/modules/gl_cts/data/mustpass/gles/khronos_mustpass/3.2.6.x/*-master.txt \
+    /deqp/mustpass/.
+cp \
     /deqp/external/openglcts/modules/gl_cts/data/mustpass/gl/khronos_mustpass/4.6.1.x/*-master.txt \
     /deqp/mustpass/.
 

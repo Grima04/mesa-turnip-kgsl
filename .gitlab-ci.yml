@@ -413,13 +413,13 @@ x86_test-base:
 x86_test-gl:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-gl "2021-04-14-deqp-egl"
+    MESA_IMAGE_TAG: &x86_test-gl "2021-04-20-gles-khr"
 
 # Debian 11 based x86 test image for VK
 x86_test-vk:
   extends: .use-x86_test-base
   variables:
-    MESA_IMAGE_TAG: &x86_test-vk "2021-04-14-deqp-egl"
+    MESA_IMAGE_TAG: &x86_test-vk "2021-04-20-gles-khr"
 
 # Debian 11 based ARM build image
 arm_build:
@@ -447,7 +447,7 @@ arm_build:
   variables:
     GIT_STRATEGY: fetch
     KERNEL_URL: "https://gitlab.freedesktop.org/tomeu/linux/-/archive/v5.11-for-mesa-ci-adcee9973be5/linux-v5.11-for-mesa-ci-adcee9973be5.tar.bz2"
-    MESA_ROOTFS_TAG: &kernel-rootfs "2021-04-20-kernel-modules"
+    MESA_ROOTFS_TAG: &kernel-rootfs "2021-04-20-gles-khr"
     DISTRIBUTION_TAG: &distribution-tag-arm "${MESA_ROOTFS_TAG}--${MESA_IMAGE_TAG}--${MESA_TEMPLATES_COMMIT}"
   script:
     - .gitlab-ci/container/lava_build.sh

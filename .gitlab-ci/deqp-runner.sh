@@ -13,7 +13,7 @@ DEQP_OPTIONS="$DEQP_OPTIONS --deqp-gl-config-name=$DEQP_CONFIG"
 DEQP_OPTIONS="$DEQP_OPTIONS --deqp-visibility=hidden"
 
 if [ -z "$DEQP_VER" ]; then
-   echo 'DEQP_VER must be set to something like "gles2", "gles31" or "vk" for the test run'
+   echo 'DEQP_VER must be set to something like "gles2", "gles31-khr" or "vk" for the test run'
    exit 1
 fi
 
@@ -50,6 +50,10 @@ if [ "$DEQP_VER" = "vk" ]; then
 elif [ "$DEQP_VER" = "gles2" -o "$DEQP_VER" = "gles3" -o "$DEQP_VER" = "gles31" -o "$DEQP_VER" = "egl" ]; then
    cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
    DEQP=/deqp/modules/$DEQP_VER/deqp-$DEQP_VER
+   SUITE=dEQP
+elif [ "$DEQP_VER" = "gles2-khr" -o "$DEQP_VER" = "gles3-khr" -o "$DEQP_VER" = "gles31-khr" -o "$DEQP_VER" = "gles32-khr" ]; then
+   cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
+   DEQP=/deqp/external/openglcts/modules/glcts
    SUITE=dEQP
 else
    cp /deqp/mustpass/$DEQP_VER-$DEQP_VARIANT.txt /tmp/case-list.txt
@@ -188,7 +192,7 @@ check_renderer() {
     # If you're having trouble loading your driver, uncommenting this may help
     # debug.
     # export EGL_LOG_LEVEL=debug
-    VERSION=`echo $DEQP_VER | tr '[a-z]' '[A-Z]'`
+    VERSION=`echo $DEQP_VER | cut -d '-' -f1 | tr '[a-z]' '[A-Z]'`
     export LD_PRELOAD=$TEST_LD_PRELOAD
     $DEQP $DEQP_OPTIONS --deqp-case=$SUITE-$VERSION.info.\* --deqp-log-filename=$RESULTS/deqp-info.qpa
     export LD_PRELOAD=
