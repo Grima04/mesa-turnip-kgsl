@@ -48,4 +48,10 @@ VK_DEFINE_NONDISP_HANDLE_CASTS(vn_sampler_ycbcr_conversion,
                                VkSamplerYcbcrConversion,
                                VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION)
 
+VkResult
+vn_image_create(struct vn_device *dev,
+                const VkImageCreateInfo *create_info,
+                const VkAllocationCallbacks *alloc,
+                struct vn_image **out_img);
+
 #endif /* VN_IMAGE_H */

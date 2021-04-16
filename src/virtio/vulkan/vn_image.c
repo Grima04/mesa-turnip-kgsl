@@ -99,6 +99,36 @@ vn_image_init_memory_requirements(struct vn_image *img,
    }
 }
 
+VkResult
+vn_image_create(struct vn_device *dev,
+                const VkImageCreateInfo *create_info,
+                const VkAllocationCallbacks *alloc,
+                struct vn_image **out_img)
+{
+   struct vn_image *img = vk_zalloc(alloc, sizeof(*img), VN_DEFAULT_ALIGN,
+                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!img)
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+
+   vn_object_base_init(&img->base, VK_OBJECT_TYPE_IMAGE, &dev->base);
+
+   VkDevice dev_handle = vn_device_to_handle(dev);
+   VkImage img_handle = vn_image_to_handle(img);
+   /* TODO async */
+   VkResult result = vn_call_vkCreateImage(dev->instance, dev_handle,
+                                           create_info, NULL, &img_handle);
+   if (result != VK_SUCCESS) {
+      vk_free(alloc, img);
+      return result;
+   }
+
+   vn_image_init_memory_requirements(img, dev, create_info);
+
+   *out_img = img;
+
+   return VK_SUCCESS;
+}
+
 /* image commands */
 
 VkResult
@@ -126,26 +156,12 @@ vn_CreateImage(VkDevice device,
       pCreateInfo = &local_create_info;
    }
 
-   struct vn_image *img = vk_zalloc(alloc, sizeof(*img), VN_DEFAULT_ALIGN,
-                                    VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
-   if (!img)
-      return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
-
-   vn_object_base_init(&img->base, VK_OBJECT_TYPE_IMAGE, &dev->base);
-
-   VkImage img_handle = vn_image_to_handle(img);
-   /* TODO async */
-   VkResult result = vn_call_vkCreateImage(dev->instance, device, pCreateInfo,
-                                           NULL, &img_handle);
-   if (result != VK_SUCCESS) {
-      vk_free(alloc, img);
+   struct vn_image *img;
+   VkResult result = vn_image_create(dev, pCreateInfo, alloc, &img);
+   if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
-   }
 
-   vn_image_init_memory_requirements(img, dev, pCreateInfo);
-
-   *pImage = img_handle;
-
+   *pImage = vn_image_to_handle(img);
    return VK_SUCCESS;
 }
 
