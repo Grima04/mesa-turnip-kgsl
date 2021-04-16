@@ -1239,6 +1239,13 @@ unop_horiz("cube_r600", 4, tfloat32, 3, tfloat32, """
 unop("fsin_r600", tfloat32, "sinf(6.2831853 * src0)")
 unop("fcos_r600", tfloat32, "cosf(6.2831853 * src0)")
 
+# AGX specific sin with input expressed in quadrants. Used in the lowering for
+# fsin/fcos. This corresponds to a sequence of 3 ALU ops in the backend (where
+# the angle is further decomposed by quadrant, sinc is computed, and the angle
+# is multiplied back for sin). Lowering fsin/fcos to fsin_agx requires some
+# additional ALU that NIR may be able to optimize.
+unop("fsin_agx", tfloat, "sinf(src0 * (6.2831853/4.0))")
+
 # 24b multiply into 32b result (with sign extension)
 binop("imul24", tint32, _2src_commutative + associative,
       "(((int32_t)src0 << 8) >> 8) * (((int32_t)src1 << 8) >> 8)")
