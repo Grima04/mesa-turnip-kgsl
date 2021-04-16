@@ -65,6 +65,8 @@ iris_init_perf_query_info(struct pipe_context *pipe)
 
    iris_perf_init_vtbl(perf_cfg);
 
+   intel_perf_init_metrics(perf_cfg, &screen->devinfo, screen->fd, true /* pipeline_statistics */);
+
    intel_perf_init_context(ice->perf_ctx,
                          perf_cfg,
                          ice,
@@ -73,8 +75,6 @@ iris_init_perf_query_info(struct pipe_context *pipe)
                          &screen->devinfo,
                          ice->batches[IRIS_BATCH_RENDER].hw_ctx_id,
                          screen->fd);
-
-   intel_perf_init_metrics(perf_cfg, &screen->devinfo, screen->fd, true /* pipeline_statistics */);
 
    return perf_cfg->n_queries;
 }
