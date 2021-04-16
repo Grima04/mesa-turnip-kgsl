@@ -3,7 +3,7 @@
     - .lava-piglit-traces:amd64
     - .iris-rules
   variables:
-    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_HTML_SUMMARY=0 PIGLIT_JUNIT_RESULTS=1"
+    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1"
 
 iris-apl-traces:amd64:
   extends:

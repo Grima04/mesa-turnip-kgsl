@@ -43,6 +43,6 @@ radeonsi-stoney-traces:amd64:
     DRIVER_NAME: radeonsi
     BOOT_METHOD: depthcharge
     KERNEL_IMAGE_TYPE: ""
-    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_HTML_SUMMARY=0 PIGLIT_JUNIT_RESULTS=1"
+    ENV_VARS: "EGL_PLATFORM=surfaceless PIGLIT_PROFILES=replay PIGLIT_JUNIT_RESULTS=1"
   tags:
     - mesa-ci-aarch64-lava-collabora

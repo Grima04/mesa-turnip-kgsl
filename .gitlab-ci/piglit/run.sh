@@ -253,19 +253,17 @@ if diff -q ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE; then
     exit 0
 fi
 
-if [ ${PIGLIT_HTML_SUMMARY:-1} -eq 1 ]; then
-    ./piglit summary html --exclude-details=pass \
-        "$RESULTS"/summary "$RESULTS"/results.json.bz2
+./piglit summary html --exclude-details=pass \
+"$RESULTS"/summary "$RESULTS"/results.json.bz2
 
-    if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
-        find "$RESULTS"/summary -type f -name "*.html" -print0 \
-            | xargs -0 sed -i 's%<img src="file://'"${RESULTS}"'.*-\([0-9a-f]*\)\.png%<img src="https://'"${MINIO_HOST}${PIGLIT_REPLAY_ARTIFACTS_BASE_URL}"'/traces/\1.png%g'
-        find "$RESULTS"/summary -type f -name "*.html" -print0 \
-            | xargs -0 sed -i 's%<img src="file://%<img src="https://'"${MINIO_HOST}${PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL}"'/%g'
-    fi
-
-    FAILURE_MESSAGE=$(printf "${FAILURE_MESSAGE}\n%s" "Check the HTML summary for problems at: ${ARTIFACTS_BASE_URL}/results/summary/problems.html")
+if [ "x$PIGLIT_PROFILES" = "xreplay" ]; then
+find "$RESULTS"/summary -type f -name "*.html" -print0 \
+        | xargs -0 sed -i 's%<img src="file://'"${RESULTS}"'.*-\([0-9a-f]*\)\.png%<img src="https://'"${MINIO_HOST}${PIGLIT_REPLAY_ARTIFACTS_BASE_URL}"'/traces/\1.png%g'
+find "$RESULTS"/summary -type f -name "*.html" -print0 \
+        | xargs -0 sed -i 's%<img src="file://%<img src="https://'"${MINIO_HOST}${PIGLIT_REPLAY_REFERENCE_IMAGES_BASE_URL}"'/%g'
 fi
+
+FAILURE_MESSAGE=$(printf "${FAILURE_MESSAGE}\n%s" "Check the HTML summary for problems at: ${ARTIFACTS_BASE_URL}/results/summary/problems.html")
 
 quiet print_red printf "%s\n" "$FAILURE_MESSAGE"
 quiet diff --color=always -u ".gitlab-ci/piglit/$PIGLIT_RESULTS.txt.baseline" $RESULTSFILE
