@@ -30,6 +30,7 @@
 #include "compiler/nir_types.h"
 #include "util/u_dynarray.h"
 #include "agx_compile.h"
+#include "agx_minifloat.h"
 
 static int
 st_packed_uniforms_type_size(const struct glsl_type *type, bool bindless)
@@ -206,6 +207,17 @@ disassemble(const char *filename, bool verbose)
    free(code);
 }
 
+static void
+tests()
+{
+#ifndef NDEBUG
+   agx_minifloat_tests();
+   printf("Pass.\n");
+#else
+   fprintf(stderr, "tests not compiled in NDEBUG mode");
+#endif
+}
+
 int
 main(int argc, char **argv)
 {
@@ -220,6 +232,8 @@ main(int argc, char **argv)
       disassemble(argv[2], false);
    else if (strcmp(argv[1], "disasm-verbose") == 0)
       disassemble(argv[2], true);
+   else if (strcmp(argv[1], "test") == 0)
+      tests();
    else
       unreachable("Unknown command. Valid: compile/disasm/disasm-verbose");
 
