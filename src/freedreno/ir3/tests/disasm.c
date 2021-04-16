@@ -84,6 +84,11 @@ static const struct test {
 	/* dEQP-VK.subgroups.ballot.compute.compute */
 	INSTR_6XX(260cc3c0_00000000, "movmsk.w128 r48.x"), /* movmsk.w128 sr48.x */
 
+	INSTR_6XX(240cc004_00030201, "swz.u32u32 r1.x, r0.w, r0.y, r0.z"),
+	INSTR_6XX(2400c105_04030201, "gat.f16u32 r1.y, hr0.y, hr0.z, hr0.w, hr1.x"),
+	INSTR_6XX(240c0205_04030201, "sct.u32f16 hr1.y, hr0.z, hr0.w, hr1.x, r0.y"),
+	INSTR_6XX(2400c205_04030201, "sct.f16u32 r1.y, r0.z, r0.w, r1.x, hr0.y"),
+
 	INSTR_6XX(20510005_0000ffff, "mov.s16s16 hr1.y, -1"),
 	INSTR_6XX(20400005_00003900, "mov.f16f16 hr1.y, h(0.625000)"),
 	INSTR_6XX(20400006_00003800, "mov.f16f16 hr1.z, h(0.500000)"),

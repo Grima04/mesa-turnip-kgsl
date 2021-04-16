@@ -180,6 +180,9 @@ static int parse_w(const char *str)
 "mova"                            return TOKEN(T_OP_MOVA);
 "mov"                             return TOKEN(T_OP_MOV);
 "cov"                             return TOKEN(T_OP_COV);
+"swz"                             return TOKEN(T_OP_SWZ);
+"gat"                             return TOKEN(T_OP_GAT);
+"sct"                             return TOKEN(T_OP_SCT);
 
 ("f16"|"f32"|"u16"|"u32"|"s16"|"s32"|"u8"|"s8"){2} ir3_yylval.str = yytext; return T_CAT1_TYPE_TYPE;
 

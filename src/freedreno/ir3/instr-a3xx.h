@@ -92,7 +92,16 @@ typedef enum {
 
 	/* category 1: */
 	OPC_MOV             = _OPC(1, 0),
+	OPC_MOVP            = _OPC(1, 1),
+	/* swz, gat, sct */
 	OPC_MOVMSK          = _OPC(1, 3),
+
+	/* Virtual opcodes for instructions differentiated via a "sub-opcode" that
+	 * replaces the repeat field:
+	 */
+	OPC_SWZ            = _OPC(1, 4),
+	OPC_GAT            = _OPC(1, 5),
+	OPC_SCT            = _OPC(1, 6),
 
 	/* Logical opcodes for different variants of mov: */
 	OPC_MOV_IMMED       = _OPC(1, 40),
