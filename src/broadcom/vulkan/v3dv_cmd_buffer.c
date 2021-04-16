@@ -3740,13 +3740,22 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
    struct v3dv_pipeline *pipeline = cmd_buffer->state.gfx.pipeline;
    assert(pipeline);
 
-   const bool dirty_descriptors_only =
-      (cmd_buffer->state.dirty & dirty_uniform_state) ==
-      V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
+   const bool has_new_pipeline = dirty_uniform_state & V3DV_CMD_DIRTY_PIPELINE;
+   const bool has_new_viewport = dirty_uniform_state & V3DV_CMD_DIRTY_VIEWPORT;
+   const bool has_new_push_constants = dirty_uniform_state & V3DV_CMD_DIRTY_PUSH_CONSTANTS;
+   const bool has_new_descriptors = dirty_uniform_state & V3DV_CMD_DIRTY_DESCRIPTOR_SETS;
 
-   const bool needs_fs_update =
-      !dirty_descriptors_only ||
+   const bool has_new_descriptors_fs =
+      has_new_descriptors &&
       (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
+
+   const bool has_new_descriptors_vs =
+      has_new_descriptors &&
+      (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_VERTEX_BIT);
+
+   const bool needs_fs_update = has_new_pipeline ||
+                                has_new_push_constants ||
+                                has_new_descriptors_fs;
 
    if (needs_fs_update) {
       struct v3dv_shader_variant *fs_variant =
@@ -3756,9 +3765,10 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_write_uniforms(cmd_buffer, pipeline, fs_variant);
    }
 
-   const bool needs_vs_update =
-      !dirty_descriptors_only ||
-      (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_VERTEX_BIT);
+   const bool needs_vs_update = has_new_viewport ||
+                                has_new_pipeline ||
+                                has_new_push_constants ||
+                                has_new_descriptors_vs;
 
    if (needs_vs_update) {
       struct v3dv_shader_variant *vs_variant =
