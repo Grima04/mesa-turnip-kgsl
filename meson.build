@@ -1872,7 +1872,7 @@ dep_openmp = null_dep
 
 # Even if we find OpenMP, Gitlab CI fails to link with gcc/i386 and clang/anyarch.
 if host_machine.cpu_family() == 'x86_64' and cc.get_id() == 'gcc'
-  dep_openmp = dependency('openmp')
+  dep_openmp = dependency('openmp', required : false)
   if dep_openmp.found()
     pre_args += ['-DHAVE_OPENMP']
   endif
