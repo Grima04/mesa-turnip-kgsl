@@ -140,24 +140,22 @@ vn_CreateImage(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    const VkAllocationCallbacks *alloc =
       pAllocator ? pAllocator : &dev->base.base.alloc;
+   struct vn_image *img;
+   VkResult result;
 
-   /* TODO wsi_create_native_image uses modifiers or set wsi_info->scanout to
-    * true.  Instead of forcing VK_IMAGE_TILING_LINEAR, we should ask wsi to
-    * use wsi_create_prime_image instead.
-    */
+#ifdef VN_USE_WSI_PLATFORM
    const struct wsi_image_create_info *wsi_info =
       vk_find_struct_const(pCreateInfo->pNext, WSI_IMAGE_CREATE_INFO_MESA);
-   VkImageCreateInfo local_create_info;
-   if (wsi_info && wsi_info->scanout) {
-      if (VN_DEBUG(WSI))
-         vn_log(dev->instance, "forcing scanout image linear");
-      local_create_info = *pCreateInfo;
-      local_create_info.tiling = VK_IMAGE_TILING_LINEAR;
-      pCreateInfo = &local_create_info;
+   if (wsi_info) {
+      assert(wsi_info->scanout);
+      result = vn_wsi_create_scanout_image(dev, pCreateInfo, alloc, &img);
+      goto out;
    }
+#endif
 
-   struct vn_image *img;
-   VkResult result = vn_image_create(dev, pCreateInfo, alloc, &img);
+   result = vn_image_create(dev, pCreateInfo, alloc, &img);
+
+out:
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
 

@@ -16,12 +16,21 @@
 #include "wsi_common.h"
 
 #ifdef VN_USE_WSI_PLATFORM
+
 VkResult
 vn_wsi_init(struct vn_physical_device *physical_dev);
 
 void
 vn_wsi_fini(struct vn_physical_device *physical_dev);
+
+VkResult
+vn_wsi_create_scanout_image(struct vn_device *dev,
+                            const VkImageCreateInfo *create_info,
+                            const VkAllocationCallbacks *alloc,
+                            struct vn_image **out_img);
+
 #else
+
 static inline VkResult
 vn_wsi_init(UNUSED struct vn_physical_device *physical_dev)
 {
@@ -32,6 +41,7 @@ static inline void
 vn_wsi_fini(UNUSED struct vn_physical_device *physical_dev)
 {
 }
+
 #endif
 
 #endif /* VN_WSI_H */
