@@ -212,8 +212,6 @@ the :doc:`Xlib software driver page <xlibdriver>` for details.
 
 ``MESA_RGB_VISUAL``
    specifies the X visual and depth for RGB mode
-``MESA_CI_VISUAL``
-   specifies the X visual and depth for CI mode
 ``MESA_BACK_BUFFER``
    specifies how to implement the back color buffer, either ``pixmap``
    or ``ximage``
