@@ -175,16 +175,17 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    }
 
    // Non-ubo variables
+   shader->begin_srv_binding = (UINT_MAX);
    nir_foreach_variable_with_modes(var, nir, nir_var_uniform) {
       auto type = glsl_without_array(var->type);
       if (glsl_type_is_sampler(type) && glsl_get_sampler_result_type(type) != GLSL_TYPE_VOID) {
          unsigned count = glsl_type_is_array(var->type) ? glsl_get_aoa_size(var->type) : 1;
          for (unsigned i = 0; i < count; ++i) {
-            shader->srv_bindings[shader->num_srv_bindings].index = var->data.binding + i;
-            shader->srv_bindings[shader->num_srv_bindings].binding = var->data.binding;
-            shader->srv_bindings[shader->num_srv_bindings].dimension = resource_dimension(glsl_get_sampler_dim(type));
-            shader->num_srv_bindings++;
+            shader->srv_bindings[var->data.binding + i].binding = var->data.binding;
+            shader->srv_bindings[var->data.binding + i].dimension = resource_dimension(glsl_get_sampler_dim(type));
          }
+         shader->begin_srv_binding = MIN2(var->data.binding, shader->begin_srv_binding);
+         shader->end_srv_binding = MAX2(var->data.binding + count, shader->end_srv_binding);
       }
    }
 

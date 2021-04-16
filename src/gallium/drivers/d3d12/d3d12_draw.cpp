@@ -90,19 +90,19 @@ fill_srv_descriptors(struct d3d12_context *ctx,
 
    d2d12_descriptor_heap_get_next_handle(batch->view_heap, &table_start);
 
-   for (unsigned i = 0; i < shader->num_srv_bindings; i++)
+   for (unsigned i = shader->begin_srv_binding; i < shader->end_srv_binding; i++)
    {
       struct d3d12_sampler_view *view;
 
-      if ((unsigned)shader->srv_bindings[i].binding == shader->pstipple_binding) {
+      if (i == shader->pstipple_binding) {
          view = (struct d3d12_sampler_view*)ctx->pstipple.sampler_view;
       } else {
-         int index = shader->srv_bindings[i].index;
-         view = (struct d3d12_sampler_view*)ctx->sampler_views[stage][index];
+         view = (struct d3d12_sampler_view*)ctx->sampler_views[stage][i];
       }
 
+      unsigned desc_idx = i - shader->begin_srv_binding;
       if (view != NULL) {
-         descs[i] = view->handle.cpu_handle ;
+         descs[desc_idx] = view->handle.cpu_handle;
          d3d12_batch_reference_sampler_view(batch, view);
 
          D3D12_RESOURCE_STATES state = (stage == PIPE_SHADER_FRAGMENT) ?
@@ -120,11 +120,11 @@ fill_srv_descriptors(struct d3d12_context *ctx,
                                                 state);
          }
       } else {
-         descs[i] = screen->null_srvs[shader->srv_bindings[i].dimension].cpu_handle;
+         descs[desc_idx] = screen->null_srvs[shader->srv_bindings[i].dimension].cpu_handle;
       }
    }
 
-   d3d12_descriptor_heap_append_handles(batch->view_heap, descs, shader->num_srv_bindings);
+   d3d12_descriptor_heap_append_handles(batch->view_heap, descs, shader->end_srv_binding - shader->begin_srv_binding);
 
    return table_start.gpu_handle;
 }
@@ -141,27 +141,27 @@ fill_sampler_descriptors(struct d3d12_context *ctx,
 
    d2d12_descriptor_heap_get_next_handle(batch->sampler_heap, &table_start);
 
-   for (unsigned i = 0; i < shader->num_srv_bindings; i++)
+   for (unsigned i = shader->begin_srv_binding; i < shader->end_srv_binding; i++)
    {
       struct d3d12_sampler_state *sampler;
 
-      if ((unsigned)shader->srv_bindings[i].binding == shader->pstipple_binding) {
+      if (i == shader->pstipple_binding) {
          sampler = ctx->pstipple.sampler_cso;
       } else {
-         int index = shader->srv_bindings[i].index;
-         sampler = ctx->samplers[stage][index];
+         sampler = ctx->samplers[stage][i];
       }
 
+      unsigned desc_idx = i - shader->begin_srv_binding;
       if (sampler != NULL) {
          if (sampler->is_shadow_sampler && shader_sel->compare_with_lod_bias_grad)
-            descs[i] = sampler->handle_without_shadow.cpu_handle;
+            descs[desc_idx] = sampler->handle_without_shadow.cpu_handle;
          else
-            descs[i] = sampler->handle.cpu_handle;
+            descs[desc_idx] = sampler->handle.cpu_handle;
       } else
-         descs[i] = ctx->null_sampler.cpu_handle;
+         descs[desc_idx] = ctx->null_sampler.cpu_handle;
    }
 
-   d3d12_descriptor_heap_append_handles(batch->sampler_heap, descs, shader->num_srv_bindings);
+   d3d12_descriptor_heap_append_handles(batch->sampler_heap, descs, shader->end_srv_binding - shader->begin_srv_binding);
    return table_start.gpu_handle;
 }
 
@@ -219,7 +219,7 @@ check_descriptors_left(struct d3d12_context *ctx)
          continue;
 
       needed_descs += shader->current->num_cb_bindings;
-      needed_descs += shader->current->num_srv_bindings;
+      needed_descs += shader->current->end_srv_binding - shader->current->begin_srv_binding;
    }
 
    if (d3d12_descriptor_heap_get_remaining_handles(batch->view_heap) < needed_descs)
@@ -232,7 +232,7 @@ check_descriptors_left(struct d3d12_context *ctx)
       if (!shader)
          continue;
 
-      needed_descs += shader->current->num_srv_bindings;
+      needed_descs += shader->current->end_srv_binding - shader->current->begin_srv_binding;
    }
 
    if (d3d12_descriptor_heap_get_remaining_handles(batch->sampler_heap) < needed_descs)
@@ -262,7 +262,7 @@ set_graphics_root_parameters(struct d3d12_context *ctx,
             ctx->cmdlist->SetGraphicsRootDescriptorTable(num_params, fill_cbv_descriptors(ctx, shader, i));
          num_params++;
       }
-      if (shader->num_srv_bindings > 0) {
+      if (shader->end_srv_binding > 0) {
          if (dirty & D3D12_SHADER_DIRTY_SAMPLER_VIEWS)
             ctx->cmdlist->SetGraphicsRootDescriptorTable(num_params, fill_srv_descriptors(ctx, shader, i));
          num_params++;

@@ -793,9 +793,10 @@ get_resource_id(struct ntd_context *ctx, enum dxil_resource_class class,
 }
 
 static bool
-emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned count)
+emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
    unsigned id = util_dynarray_num_elements(&ctx->srv_metadata_nodes, const struct dxil_mdnode *);
+   unsigned binding = var->data.binding;
    resource_array_layout layout = {id, binding, count};
 
    enum dxil_component_type comp_type;
@@ -1099,9 +1100,10 @@ emit_ubo_var(struct ntd_context *ctx, nir_variable *var)
 }
 
 static bool
-emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned binding, unsigned count)
+emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
    unsigned id = util_dynarray_num_elements(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *);
+   unsigned binding = var->data.binding;
    resource_array_layout layout = {id, binding, count};
    const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *sampler_type = dxil_module_get_struct_type(&ctx->mod, "struct.SamplerState", &int32_type, 1);
@@ -4287,8 +4289,6 @@ shader_has_shared_ops(struct nir_shader *s)
 static bool
 emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
 {
-   unsigned binding;
-
    /* The validator forces us to emit resources in a specific order:
     * CBVs, Samplers, SRVs, UAVs. While we are at it also remove
     * stale struct uniforms, they are lowered but might not have been removed */
@@ -4299,26 +4299,22 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       return false;
 
    /* Samplers */
-   binding = 0;
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
       if (var->data.mode == nir_var_uniform && count &&
           glsl_get_sampler_result_type(glsl_without_array(var->type)) == GLSL_TYPE_VOID) {
-         if (!emit_sampler(ctx, var, binding, count))
+         if (!emit_sampler(ctx, var, count))
             return false;
-         binding += count;
       }
    }
 
    /* SRVs */
-   binding = 0;
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
       if (var->data.mode == nir_var_uniform && count &&
           glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID) {
-         if (!emit_srv(ctx, var, binding, count))
+         if (!emit_srv(ctx, var, count))
             return false;
-         binding += count;
       }
    }
 
