@@ -273,6 +273,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    unsigned int i;
    unsigned int num_attributes;
    GLboolean use_glx_1_3;
+   int found = 0;
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
    __GLXDRIdrawable *pdraw;
@@ -394,6 +395,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
           */
          for (i = 0; i < num_attributes; i++) {
             if (data[i * 2] == attribute) {
+               found = 1;
                *value = data[(i * 2) + 1];
                break;
             }
@@ -417,7 +419,7 @@ __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
    UnlockDisplay(dpy);
    SyncHandle();
 
-   return 1;
+   return found;
 }
 
 static void

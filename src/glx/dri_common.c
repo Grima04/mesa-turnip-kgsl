@@ -41,6 +41,8 @@
 #include "glxclient.h"
 #include "dri_common.h"
 #include "loader.h"
+#include <X11/Xlib-xcb.h>
+#include <xcb/xproto.h>
 
 #ifndef RTLD_NOW
 #define RTLD_NOW 0
@@ -344,9 +346,30 @@ static struct glx_config *
 driInferDrawableConfig(struct glx_screen *psc, GLXDrawable draw)
 {
    unsigned int fbconfig = 0;
+   xcb_get_window_attributes_cookie_t cookie = { 0 };
+   xcb_get_window_attributes_reply_t *attr = NULL;
+   xcb_connection_t *conn = XGetXCBConnection(psc->dpy);
 
+   /* In practice here, either the XID is a bare Window or it was created
+    * by some other client. First let's see if the X server can tell us
+    * the answer. Xorg first added GLX_EXT_no_config_context in 1.20, where
+    * this usually works except for bare Windows that haven't been made
+    * current yet.
+    */
    if (__glXGetDrawableAttribute(psc->dpy, draw, GLX_FBCONFIG_ID, &fbconfig)) {
       return glx_config_find_fbconfig(psc->configs, fbconfig);
+   }
+
+   /* Well this had better be a Window then. Figure out its visual and
+    * then find the corresponding GLX visual.
+    */
+   cookie = xcb_get_window_attributes(conn, draw);
+   attr = xcb_get_window_attributes_reply(conn, cookie, NULL);
+
+   if (attr) {
+      uint32_t vid = attr->visual;
+      free(attr);
+      return glx_config_find_visual(psc->visuals, vid);
    }
 
    return NULL;
@@ -375,6 +398,7 @@ driFetchDrawable(struct glx_context *gc, GLXDrawable glxDrawable)
       return pdraw;
    }
 
+   /* if this is a no-config context, infer the fbconfig from the drawable */
    if (config == NULL)
       config = driInferDrawableConfig(gc->psc, glxDrawable);
    if (config == NULL)
