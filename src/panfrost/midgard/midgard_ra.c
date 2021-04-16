@@ -988,11 +988,13 @@ mir_demote_uniforms(compiler_context *ctx, unsigned new_cutoff)
                                         .swizzle = SWIZZLE_IDENTITY_4,
                                         .op = midgard_op_ld_ubo_128,
                                         .load_store = {
-                                                .arg_1 = ctx->info->push.words[idx].ubo,
-                                                .arg_2 = 0x1E,
+                                                .index_reg = REGISTER_LDST_ZERO,
                                         },
                                         .constants.u32[0] = ctx->info->push.words[idx].offset
                                 };
+
+                                midgard_pack_ubo_index_imm(&ld.load_store,
+                                                           ctx->info->push.words[idx].ubo);
 
                                 mir_insert_instruction_before_scheduled(ctx, block, before, ld);
 

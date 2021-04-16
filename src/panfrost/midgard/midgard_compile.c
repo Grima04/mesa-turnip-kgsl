@@ -112,7 +112,7 @@ schedule_barrier(compiler_context *ctx)
                         .swizzle = SWIZZLE_IDENTITY_4, \
                         .op = midgard_op_##name, \
 			.load_store = { \
-				.address = address \
+				.signed_offset = address \
 			} \
 		}; \
                 \
@@ -1164,20 +1164,20 @@ emit_ubo_read(
         if (indirect_offset) {
                 ins.src[2] = nir_src_index(ctx, indirect_offset);
                 ins.src_types[2] = nir_type_uint32;
-                ins.load_store.arg_2 = (indirect_shift << 5);
+                ins.load_store.index_shift = indirect_shift;
 
                 /* X component for the whole swizzle to prevent register
                  * pressure from ballooning from the extra components */
                 for (unsigned i = 0; i < ARRAY_SIZE(ins.swizzle[2]); ++i)
                         ins.swizzle[2][i] = 0;
         } else {
-                ins.load_store.arg_2 = 0x1E;
+                ins.load_store.index_reg = REGISTER_LDST_ZERO;
         }
 
         if (indirect_offset && indirect_offset->is_ssa && !indirect_shift)
                 mir_set_ubo_offset(&ins, indirect_offset, offset);
 
-        ins.load_store.arg_1 = index;
+        midgard_pack_ubo_index_imm(&ins.load_store, index);
 
         return emit_mir_instruction(ctx, ins);
 }
@@ -1274,12 +1274,6 @@ emit_atomic(
         nir_src *src_offset = nir_get_io_offset_src(instr);
 
         if (op == midgard_op_atomic_cmpxchg) {
-                for(unsigned i = 0; i < 2; ++i)
-                        ins.swizzle[1][i] = i;
-
-                ins.src[1] = is_image ? image_direct_address : nir_src_index(ctx, src_offset);
-                ins.src_types[1] = nir_type_uint64;
-
                 unsigned xchg_val_src = is_image ? 4 : 2;
                 unsigned xchg_val = nir_src_index(ctx, &instr->src[xchg_val_src]);
                 emit_explicit_constant(ctx, xchg_val, xchg_val);
@@ -1288,8 +1282,18 @@ emit_atomic(
                 ins.src_types[2] = type | bitsize;
                 ins.src[3] = xchg_val;
 
-                if (is_shared)
-                        ins.load_store.arg_1 |= 0x6E;
+                if (is_shared) {
+                        ins.load_store.arg_reg = REGISTER_LDST_LOCAL_STORAGE_PTR;
+                        ins.load_store.arg_comp = COMPONENT_Z;
+                        ins.load_store.bitsize_toggle = true;
+                } else {
+                        for(unsigned i = 0; i < 2; ++i)
+                                ins.swizzle[1][i] = i;
+
+                        ins.src[1] = is_image ? image_direct_address :
+                                                nir_src_index(ctx, src_offset);
+                        ins.src_types[1] = nir_type_uint64;
+                }
         } else if (is_image) {
                 for(unsigned i = 0; i < 2; ++i)
                         ins.swizzle[2][i] = i;
@@ -1297,7 +1301,9 @@ emit_atomic(
                 ins.src[2] = image_direct_address;
                 ins.src_types[2] = nir_type_uint64;
 
-                ins.load_store.arg_1 |= 0x7E;
+                ins.load_store.arg_reg = REGISTER_LDST_ZERO;
+                ins.load_store.bitsize_toggle = true;
+                ins.load_store.index_format = midgard_index_address_u64;
         } else
                 mir_set_offset(ctx, &ins, src_offset, is_shared ? LDST_SHARED : LDST_GLOBAL);
 
@@ -1316,7 +1322,7 @@ emit_varying_read(
         /* XXX: Half-floats? */
         /* TODO: swizzle, mask */
 
-        midgard_instruction ins = m_ld_vary_32(dest, offset);
+        midgard_instruction ins = m_ld_vary_32(dest, PACK_LDST_ATTRIB_OFS(offset));
         ins.mask = mask_of(nr_comp);
         ins.dest_type = type;
 
@@ -1328,23 +1334,22 @@ emit_varying_read(
         for (unsigned i = 0; i < ARRAY_SIZE(ins.swizzle[0]); ++i)
                 ins.swizzle[0][i] = MIN2(i + component, COMPONENT_W);
 
-        midgard_varying_parameter p = {
-                .is_varying = 1,
-                .interpolation = midgard_interp_default,
-                .flat = flat,
-        };
 
-        unsigned u;
-        memcpy(&u, &p, sizeof(p));
-        ins.load_store.varying_parameters = u;
+        midgard_varying_params p = {
+                .flat_shading = flat,
+                .perspective_correction = 1,
+                .interpolate_sample = true,
+        };
+        midgard_pack_varying_params(&ins.load_store, p);
 
         if (indirect_offset) {
                 ins.src[2] = nir_src_index(ctx, indirect_offset);
                 ins.src_types[2] = nir_type_uint32;
         } else
-                ins.load_store.arg_2 = 0x1E;
+                ins.load_store.index_reg = REGISTER_LDST_ZERO;
 
-        ins.load_store.arg_1 = 0x9E;
+        ins.load_store.arg_reg = REGISTER_LDST_ZERO;
+        ins.load_store.index_format = midgard_index_address_u32;
 
         /* Use the type appropriate load */
         switch (type) {
@@ -1402,16 +1407,16 @@ emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr, bool is_atomic)
                 emit_explicit_constant(ctx, val, val);
 
                 nir_alu_type type = nir_intrinsic_src_type(instr);
-                ins = st_image(type, val, address);
+                ins = st_image(type, val, PACK_LDST_ATTRIB_OFS(address));
                 nir_alu_type base_type = nir_alu_type_get_base_type(type);
                 ins.src_types[0] = base_type | nir_src_bit_size(instr->src[3]);
         } else if (is_atomic) { /* emit lea_image */
                 unsigned dest = make_compiler_temp_reg(ctx);
-                ins = m_lea_image(dest, address);
+                ins = m_lea_image(dest, PACK_LDST_ATTRIB_OFS(address));
                 ins.mask = mask_of(2); /* 64-bit memory address */
         } else { /* emit ld_image_* */
                 nir_alu_type type = nir_intrinsic_dest_type(instr);
-                ins = ld_image(type, nir_dest_index(&instr->dest), address);
+                ins = ld_image(type, nir_dest_index(&instr->dest), PACK_LDST_ATTRIB_OFS(address));
                 ins.mask = mask_of(nir_intrinsic_dest_components(instr));
                 ins.dest_type = type;
         }
@@ -1420,7 +1425,7 @@ emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr, bool is_atomic)
         ins.src[1] = coord_reg;
         ins.src_types[1] = nir_type_uint16;
         if (nr_dim == 3 || is_array) {
-                ins.load_store.arg_1 |= 0x20;
+                ins.load_store.bitsize_toggle = true;
         }
 
         /* Image index reg */
@@ -1428,7 +1433,7 @@ emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr, bool is_atomic)
                 ins.src[2] = nir_src_index(ctx, index);
                 ins.src_types[2] = nir_type_uint32;
         } else
-                ins.load_store.arg_2 = 0x1E;
+                ins.load_store.index_reg = REGISTER_LDST_ZERO;
 
         emit_mir_instruction(ctx, ins);
 
@@ -1441,9 +1446,9 @@ emit_attr_read(
         unsigned dest, unsigned offset,
         unsigned nr_comp, nir_alu_type t)
 {
-        midgard_instruction ins = m_ld_attr_32(dest, offset);
-        ins.load_store.arg_1 = 0x1E;
-        ins.load_store.arg_2 = 0x1E;
+        midgard_instruction ins = m_ld_attr_32(dest, PACK_LDST_ATTRIB_OFS(offset));
+        ins.load_store.arg_reg = REGISTER_LDST_ZERO;
+        ins.load_store.index_reg = REGISTER_LDST_ZERO;
         ins.mask = mask_of(nr_comp);
 
         /* Use the type appropriate load */
@@ -1493,12 +1498,12 @@ compute_builtin_arg(nir_op op)
 {
         switch (op) {
         case nir_intrinsic_load_work_group_id:
-                return 0x14;
+                return REGISTER_LDST_GROUP_ID;
         case nir_intrinsic_load_local_invocation_id:
-                return 0x10;
+                return REGISTER_LDST_LOCAL_THREAD_ID;
         case nir_intrinsic_load_global_invocation_id:
         case nir_intrinsic_load_global_invocation_id_zero_base:
-                return 0x18;
+                return REGISTER_LDST_GLOBAL_THREAD_ID;
         default:
                 unreachable("Invalid compute paramater loaded");
         }
@@ -1567,7 +1572,7 @@ emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
         midgard_instruction ins = m_ldst_mov(reg, 0);
         ins.mask = mask_of(3);
         ins.swizzle[0][3] = COMPONENT_X; /* xyzx */
-        ins.load_store.arg_1 = compute_builtin_arg(instr->intrinsic);
+        ins.load_store.arg_reg = compute_builtin_arg(instr->intrinsic);
         emit_mir_instruction(ctx, ins);
 }
 
@@ -1598,8 +1603,8 @@ emit_special(compiler_context *ctx, nir_intrinsic_instr *instr, unsigned idx)
 
         midgard_instruction ld = m_ld_tilebuffer_raw(reg, 0);
         ld.op = midgard_op_ld_special_32u;
-        ld.load_store.address = idx;
-        ld.load_store.arg_2 = 0x1E;
+        ld.load_store.signed_offset = PACK_LDST_SELECTOR_OFS(idx);
+        ld.load_store.index_reg = REGISTER_LDST_ZERO;
 
         for (int i = 0; i < 4; ++i)
                 ld.swizzle[0][i] = COMPONENT_X;
@@ -1790,20 +1795,25 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 midgard_instruction ld = m_ld_tilebuffer_raw(reg, 0);
 
-                ld.load_store.arg_2 = output_load_rt_addr(ctx, instr);
+                unsigned target = output_load_rt_addr(ctx, instr);
+                ld.load_store.index_comp = target & 0x3;
+                ld.load_store.index_reg = target >> 2;
 
                 if (nir_src_is_const(instr->src[0])) {
-                        ld.load_store.arg_1 = nir_src_as_uint(instr->src[0]);
+                        unsigned sample = nir_src_as_uint(instr->src[0]);
+                        ld.load_store.arg_comp = sample & 0x3;
+                        ld.load_store.arg_reg = sample >> 2;
                 } else {
-                        ld.load_store.varying_parameters = 2;
+                        /* Enable sample index via register. */
+                        ld.load_store.signed_offset |= 1;
                         ld.src[1] = nir_src_index(ctx, &instr->src[0]);
                         ld.src_types[1] = nir_type_int32;
                 }
 
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
                         ld.op = midgard_op_ld_special_32u;
-                        ld.load_store.address = 16;
-                        ld.load_store.arg_2 = 0x1E;
+                        ld.load_store.signed_offset = PACK_LDST_SELECTOR_OFS(16);
+                        ld.load_store.index_reg = REGISTER_LDST_ZERO;
                 }
 
                 emit_mir_instruction(ctx, ld);
@@ -1821,7 +1831,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 else
                         ld = m_ld_tilebuffer_32f(reg, 0);
 
-                ld.load_store.arg_2 = output_load_rt_addr(ctx, instr);
+                unsigned index = output_load_rt_addr(ctx, instr);
+                ld.load_store.index_comp = index & 0x3;
+                ld.load_store.index_reg = index >> 2;
 
                 for (unsigned c = 4; c < 16; ++c)
                         ld.swizzle[0][c] = 0;
@@ -1831,8 +1843,8 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                                 ld.op = midgard_op_ld_special_16f;
                         else
                                 ld.op = midgard_op_ld_special_32f;
-                        ld.load_store.address = 1;
-                        ld.load_store.arg_2 = 0x1E;
+                        ld.load_store.signed_offset = PACK_LDST_SELECTOR_OFS(1);
+                        ld.load_store.index_reg = REGISTER_LDST_ZERO;
                 }
 
                 emit_mir_instruction(ctx, ld);
@@ -1924,9 +1936,10 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         unsigned dst_component = nir_intrinsic_component(instr);
                         unsigned nr_comp = nir_src_num_components(instr->src[0]);
 
-                        midgard_instruction st = m_st_vary_32(reg, offset);
-                        st.load_store.arg_1 = 0x9E;
-                        st.load_store.arg_2 = 0x1E;
+                        midgard_instruction st = m_st_vary_32(reg, PACK_LDST_ATTRIB_OFS(offset));
+                        st.load_store.arg_reg = REGISTER_LDST_ZERO;
+                        st.load_store.index_format = midgard_index_address_u32;
+                        st.load_store.index_reg = REGISTER_LDST_ZERO;
 
                         switch (nir_alu_type_get_base_type(nir_intrinsic_src_type(instr))) {
                         case nir_type_uint:
@@ -2211,7 +2224,7 @@ set_tex_coord(compiler_context *ctx, nir_tex_instr *instr,
                 ld.src[1] = coords;
                 ld.src_types[1] = ins->src_types[1];
                 ld.mask = 0x3; /* xy */
-                ld.load_store.arg_1 = 0x20;
+                ld.load_store.bitsize_toggle = true;
                 ld.swizzle[1][3] = COMPONENT_X;
                 emit_mir_instruction(ctx, ld);
 

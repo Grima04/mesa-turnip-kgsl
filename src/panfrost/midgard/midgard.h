@@ -664,31 +664,37 @@ typedef enum {
 typedef enum {
         midgard_varying_mod_none = 0,
 
-        /* Other values unknown */
-
-        /* Take the would-be result and divide all components by its z/w
+        /* Take the would-be result and divide all components by its y/z/w
          * (perspective division baked in with the load)  */
+        midgard_varying_mod_perspective_y = 1,
         midgard_varying_mod_perspective_z = 2,
         midgard_varying_mod_perspective_w = 3,
+
+        /* The result is a 64-bit cubemap descriptor to use with
+         * midgard_tex_op_normal or midgard_tex_op_gradient */
+        midgard_varying_mod_cubemap = 4,
 } midgard_varying_modifier;
 
 typedef struct
 __attribute__((__packed__))
 {
-        unsigned zero0 : 1; /* Always zero */
+        midgard_varying_modifier modifier : 3;
 
-        midgard_varying_modifier modifier : 2;
+        bool flat_shading : 1;
 
-        unsigned zero1: 1; /* Always zero */
+        /* These are ignored if flat_shading is enabled. */
+        bool perspective_correction : 1;
+        bool centroid_mapping : 1;
 
-        /* Varying qualifiers, zero if not a varying */
-        unsigned flat    : 1;
-        unsigned is_varying : 1; /* Always one for varying, but maybe something else? */
-        midgard_interpolation interpolation : 2;
+        /* This is ignored if the shader only runs once per pixel. */
+        bool interpolate_sample : 1;
 
-        unsigned zero2 : 2; /* Always zero */
+        bool zero0 : 1; /* Always zero */
+
+        unsigned direct_sample_pos_x : 4;
+        unsigned direct_sample_pos_y : 4;
 }
-midgard_varying_parameter;
+midgard_varying_params;
 
 /* 8-bit register/etc selector for load/store ops */
 typedef struct
@@ -711,26 +717,56 @@ __attribute__((__packed__))
 }
 midgard_ldst_register_select;
 
+typedef enum {
+        /* 0 is reserved */
+        midgard_index_address_u64 = 1,
+        midgard_index_address_u32 = 2,
+        midgard_index_address_s32 = 3,
+} midgard_index_address_format;
+
 typedef struct
 __attribute__((__packed__))
 {
         midgard_load_store_op op : 8;
-        unsigned reg     : 5;
-        unsigned mask    : 4;
+
+        /* Source/dest reg */
+        unsigned reg  : 5;
+
+        /* Generally is a writemask.
+         * For ST_ATTR and ST_TEX, unused.
+         * For other stores, each bit masks 1/4th of the output. */
+        unsigned mask : 4;
+
+        /* Swizzle for stores, but for atomics it encodes also the source
+         * register. This fits because atomics dont need a swizzle since they
+         * are not vectorized instructions. */
         unsigned swizzle : 8;
 
-        /* Load/store ops can take two additional registers as arguments, but
-         * these are limited to load/store registers with only a few supported
-         * mask/swizzle combinations. The tradeoff is these are much more
-         * compact, requiring 8-bits each rather than 17-bits for a full
-         * reg/mask/swizzle. Usually (?) encoded as
-         * midgard_ldst_register_select. */
-        unsigned arg_1   : 8;
-        unsigned arg_2   : 8;
+        /* Arg reg, meaning changes according to each opcode */
+        unsigned arg_comp : 2;
+        unsigned arg_reg  : 3;
 
-        unsigned varying_parameters : 10;
+        /* 64-bit address enable
+         * 32-bit data type enable for CUBEMAP and perspective div.
+         * Explicit indexing enable for LD_ATTR.
+         * 64-bit coordinate enable for LD_IMAGE. */
+        bool bitsize_toggle : 1;
 
-        unsigned address : 9;
+        /* These are mainly used for opcodes that have addresses.
+         * For cmpxchg, index_reg is used for the comparison value.
+         * For ops that access the attrib table, bit 1 encodes which table.
+         * For LD_VAR and LD/ST_ATTR, bit 0 enables dest/src type inferral. */
+        midgard_index_address_format index_format : 2;
+        unsigned index_comp  : 2;
+        unsigned index_reg   : 3;
+        unsigned index_shift : 4;
+
+        /* Generaly is a signed offset, but has different bitsize and starts at
+         * different bits depending on the opcode, LDST_*_DISPLACEMENT helpers
+         * are recommended when packing/unpacking this attribute.
+         * For LD_UBO, bit 0 enables ubo index immediate.
+         * For LD_TILEBUFFER_RAW, bit 0 disables sample index immediate. */
+        int signed_offset : 18;
 }
 midgard_load_store_word;
 

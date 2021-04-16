@@ -355,9 +355,9 @@ mir_is_simple_swizzle(unsigned *swizzle, unsigned mask)
 /* Packs a load/store argument */
 
 static inline uint8_t
-midgard_ldst_reg(unsigned reg, unsigned component, unsigned size)
+midgard_ldst_comp(unsigned reg, unsigned component, unsigned size)
 {
-        assert((reg == REGISTER_LDST_BASE) || (reg == REGISTER_LDST_BASE + 1));
+        assert((reg & ~1) == 0);
         assert(size == 16 || size == 32 || size == 64);
 
         /* Shift so everything is in terms of 32-bit units */
@@ -369,16 +369,37 @@ midgard_ldst_reg(unsigned reg, unsigned component, unsigned size)
                 component >>= 1;
         }
 
-        midgard_ldst_register_select sel = {
-                .component = component,
-                .select = reg - 26
-        };
-
-        uint8_t packed;
-        memcpy(&packed, &sel, sizeof(packed));
-
-        return packed;
+        return component;
 }
+
+/* Packs/unpacks a ubo index immediate */
+
+void midgard_pack_ubo_index_imm(midgard_load_store_word *word, unsigned index);
+unsigned midgard_unpack_ubo_index_imm(midgard_load_store_word word);
+
+/* Packs/unpacks varying parameters.
+ * FIXME: IMPORTANT: We currently handle varying mode weirdly, by passing all
+ * parameters via an offset and using REGISTER_LDST_ZERO as base. This works
+ * for most parameters, but does not allow us to encode/decode direct sample
+ * position. */
+void midgard_pack_varying_params(midgard_load_store_word *word, midgard_varying_params p);
+midgard_varying_params midgard_unpack_varying_params(midgard_load_store_word word);
+
+/* Load/store ops' displacement helpers.
+ * This is useful because different types of load/store ops have different
+ * displacement bitsize. */
+
+#define UNPACK_LDST_ATTRIB_OFS(a) ((a) >> 9)
+#define UNPACK_LDST_VERTEX_OFS(a) util_sign_extend((a) & 0x1FF, 9)
+#define UNPACK_LDST_SELECTOR_OFS(a) ((a) >> 9)
+#define UNPACK_LDST_UBO_OFS(a) ((a) >> 2)
+#define UNPACK_LDST_MEM_OFS(a) ((a))
+
+#define PACK_LDST_ATTRIB_OFS(a) ((a) << 9)
+#define PACK_LDST_VERTEX_OFS(a) ((a) & 0x1FF)
+#define PACK_LDST_SELECTOR_OFS(a) ((a) << 9)
+#define PACK_LDST_UBO_OFS(a) ((a) << 2)
+#define PACK_LDST_MEM_OFS(a) ((a))
 
 static inline bool
 midgard_is_branch_unit(unsigned unit)

@@ -36,17 +36,11 @@
  * This allows for fast indexing into arrays. This file tries to pattern match the offset in NIR with this form to reduce pressure on the ALU pipe.
  */
 
-enum index_type {
-        ITYPE_U64 = 1 << 6,
-        ITYPE_U32 = 2 << 6, // zero-extend
-        ITYPE_I32 = 3 << 6, // sign-extend
-};
-
 struct mir_address {
         nir_ssa_scalar A;
         nir_ssa_scalar B;
 
-        enum index_type type;
+        midgard_index_address_format type;
         unsigned shift;
         unsigned bias;
 };
@@ -136,7 +130,7 @@ mir_match_u2u64(struct mir_address *address)
         nir_ssa_scalar arg = nir_ssa_scalar_chase_alu_src(address->B, 0);
 
         address->B = arg;
-        address->type = ITYPE_U32;
+        address->type = midgard_index_address_u32;
 }
 
 /* Matches i2i64 and sets type */
@@ -155,7 +149,7 @@ mir_match_i2i64(struct mir_address *address)
         nir_ssa_scalar arg = nir_ssa_scalar_chase_alu_src(address->B, 0);
 
         address->B = arg;
-        address->type = ITYPE_I32;
+        address->type = midgard_index_address_s32;
 }
 
 /* Matches ishl to shift */
@@ -210,7 +204,7 @@ mir_match_offset(nir_ssa_def *offset, bool first_free, bool extend)
 {
         struct mir_address address = {
                 .B = { .def = offset },
-                .type = extend ? ITYPE_U64 : ITYPE_U32,
+                .type = extend ? midgard_index_address_u64 : midgard_index_address_u32,
         };
 
         mir_match_mov(&address);
@@ -243,14 +237,16 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
         bool force_sext = (nir_src_bit_size(*offset) < 64);
 
         if (!offset->is_ssa) {
-                ins->load_store.arg_1 |= seg;
+                ins->load_store.bitsize_toggle = true;
+                ins->load_store.arg_comp = seg & 0x3;
+                ins->load_store.arg_reg = (seg >> 2) & 0x7;
                 ins->src[2] = nir_src_index(ctx, offset);
                 ins->src_types[2] = nir_type_uint | nir_src_bit_size(*offset);
 
                 if (force_sext)
-                        ins->load_store.arg_1 |= ITYPE_I32;
+                        ins->load_store.index_format = midgard_index_address_s32;
                 else
-                        ins->load_store.arg_1 |= ITYPE_U64;
+                        ins->load_store.index_format = midgard_index_address_u64;
 
                 return;
         }
@@ -263,23 +259,26 @@ mir_set_offset(compiler_context *ctx, midgard_instruction *ins, nir_src *offset,
                 ins->src[1] = nir_ssa_index(match.A.def);
                 ins->swizzle[1][0] = match.A.comp;
                 ins->src_types[1] = nir_type_uint | match.A.def->bit_size;
-        } else
-                ins->load_store.arg_1 |= seg;
+        } else {
+                ins->load_store.bitsize_toggle = true;
+                ins->load_store.arg_comp = seg & 0x3;
+                ins->load_store.arg_reg = (seg >> 2) & 0x7;
+        }
 
         if (match.B.def) {
                 ins->src[2] = nir_ssa_index(match.B.def);
                 ins->swizzle[2][0] = match.B.comp;
                 ins->src_types[2] = nir_type_uint | match.B.def->bit_size;
         } else
-                ins->load_store.arg_2 = 0x1E;
+                ins->load_store.index_reg = REGISTER_LDST_ZERO;
 
         if (force_sext)
-                match.type = ITYPE_I32;
+                match.type = midgard_index_address_s32;
 
-        ins->load_store.arg_1 |= match.type;
+        ins->load_store.index_format = match.type;
 
         assert(match.shift <= 7);
-        ins->load_store.arg_2 |= (match.shift) << 5;
+        ins->load_store.index_shift = match.shift;
 
         ins->constants.u32[0] = match.bias;
 }
@@ -298,6 +297,6 @@ mir_set_ubo_offset(midgard_instruction *ins, nir_src *src, unsigned bias)
                         ins->swizzle[2][i] = match.B.comp;
         }
 
-        ins->load_store.arg_2 |= (match.shift) << 5;
+        ins->load_store.index_shift = match.shift;
         ins->constants.u32[0] = match.bias + bias;
 }
