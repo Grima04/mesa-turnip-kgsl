@@ -122,8 +122,8 @@ midgard_opt_combine_projection(compiler_context *ctx, midgard_block *block)
                         .src_types = { nir_type_float32 },
                         .swizzle = SWIZZLE_IDENTITY_4,
                         .op = frcp_component == COMPONENT_W ?
-                                midgard_op_ldst_perspective_division_w :
-                                midgard_op_ldst_perspective_division_z,
+                                midgard_op_ldst_perspective_div_w :
+                                midgard_op_ldst_perspective_div_z,
                         .load_store = {
                                 .arg_1 = 0x20
                         }
@@ -175,7 +175,7 @@ midgard_opt_varying_projection(compiler_context *ctx, midgard_block *block)
                                 break;
 
                         bool projects_w =
-                                ins->op == midgard_op_ldst_perspective_division_w;
+                                ins->op == midgard_op_ldst_perspective_div_w;
 
                         p.modifier = projects_w ?
                                 midgard_varying_mod_perspective_w :

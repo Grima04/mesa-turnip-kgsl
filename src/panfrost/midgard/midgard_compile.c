@@ -132,19 +132,19 @@ schedule_barrier(compiler_context *ctx)
 
 M_LOAD(ld_attr_32, nir_type_uint32);
 M_LOAD(ld_vary_32, nir_type_uint32);
-M_LOAD(ld_ubo_u128, nir_type_uint32);
-M_LOAD(ld_u32, nir_type_uint32);
-M_LOAD(ld_u64, nir_type_uint32);
-M_LOAD(ld_u128, nir_type_uint32);
-M_STORE(st_u32, nir_type_uint32);
-M_STORE(st_u64, nir_type_uint32);
-M_STORE(st_u128, nir_type_uint32);
-M_LOAD(ld_color_buffer_32u, nir_type_uint32);
-M_LOAD(ld_color_buffer_as_fp16, nir_type_float16);
-M_LOAD(ld_color_buffer_as_fp32, nir_type_float32);
+M_LOAD(ld_ubo_128, nir_type_uint32);
+M_LOAD(ld_32, nir_type_uint32);
+M_LOAD(ld_64, nir_type_uint32);
+M_LOAD(ld_128, nir_type_uint32);
+M_STORE(st_32, nir_type_uint32);
+M_STORE(st_64, nir_type_uint32);
+M_STORE(st_128, nir_type_uint32);
+M_LOAD(ld_tilebuffer_raw, nir_type_uint32);
+M_LOAD(ld_tilebuffer_16f, nir_type_float16);
+M_LOAD(ld_tilebuffer_32f, nir_type_float32);
 M_STORE(st_vary_32, nir_type_uint32);
 M_LOAD(ld_cubemap_coords, nir_type_uint32);
-M_LOAD(ld_compute_id, nir_type_uint32);
+M_LOAD(ldst_mov, nir_type_uint32);
 M_LOAD(ld_image_32f, nir_type_float32);
 M_LOAD(ld_image_16f, nir_type_float16);
 M_LOAD(ld_image_32u, nir_type_uint32);
@@ -153,7 +153,7 @@ M_STORE(st_image_32f, nir_type_float32);
 M_STORE(st_image_16f, nir_type_float16);
 M_STORE(st_image_32u, nir_type_uint32);
 M_STORE(st_image_32i, nir_type_int32);
-M_LOAD(lea_tex, nir_type_uint64);
+M_LOAD(lea_image, nir_type_uint64);
 
 #define M_IMAGE(op) \
 static midgard_instruction \
@@ -1155,7 +1155,7 @@ emit_ubo_read(
 {
         /* TODO: half-floats */
 
-        midgard_instruction ins = m_ld_ubo_u128(dest, 0);
+        midgard_instruction ins = m_ld_ubo_128(dest, 0);
         ins.constants.u32[0] = offset;
 
         if (instr->type == nir_instr_type_intrinsic)
@@ -1202,11 +1202,11 @@ emit_global(
                         nir_dest_num_components(intr->dest);
 
                 if (bitsize <= 32)
-                        ins = m_ld_u32(srcdest, 0);
+                        ins = m_ld_32(srcdest, 0);
                 else if (bitsize <= 64)
-                        ins = m_ld_u64(srcdest, 0);
+                        ins = m_ld_64(srcdest, 0);
                 else if (bitsize <= 128)
-                        ins = m_ld_u128(srcdest, 0);
+                        ins = m_ld_128(srcdest, 0);
                 else
                         unreachable("Invalid global read size");
         } else {
@@ -1214,11 +1214,11 @@ emit_global(
                         nir_src_num_components(intr->src[0]);
 
                 if (bitsize <= 32)
-                        ins = m_st_u32(srcdest, 0);
+                        ins = m_st_32(srcdest, 0);
                 else if (bitsize <= 64)
-                        ins = m_st_u64(srcdest, 0);
+                        ins = m_st_64(srcdest, 0);
                 else if (bitsize <= 128)
-                        ins = m_st_u128(srcdest, 0);
+                        ins = m_st_128(srcdest, 0);
                 else
                         unreachable("Invalid global store size");
         }
@@ -1241,7 +1241,7 @@ emit_global(
 /* If is_shared is off, the only other possible value are globals, since
  * SSBO's are being lowered to globals through a NIR pass.
  * `image_direct_address` should be ~0 when instr is not an image_atomic
- * and the destination register of a lea_tex op when it is an image_atomic. */
+ * and the destination register of a lea_image op when it is an image_atomic. */
 static void
 emit_atomic(
         compiler_context *ctx,
@@ -1370,7 +1370,7 @@ emit_varying_read(
 }
 
 
-/* If `is_atomic` is true, we emit a `lea_tex` since midgard doesn't not have special
+/* If `is_atomic` is true, we emit a `lea_image` since midgard doesn't not have special
  * image_atomic opcodes. The caller can then use that address to emit a normal atomic opcode. */
 static midgard_instruction
 emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr, bool is_atomic)
@@ -1405,9 +1405,9 @@ emit_image_op(compiler_context *ctx, nir_intrinsic_instr *instr, bool is_atomic)
                 ins = st_image(type, val, address);
                 nir_alu_type base_type = nir_alu_type_get_base_type(type);
                 ins.src_types[0] = base_type | nir_src_bit_size(instr->src[3]);
-        } else if (is_atomic) { /* emit lea_tex */
+        } else if (is_atomic) { /* emit lea_image */
                 unsigned dest = make_compiler_temp_reg(ctx);
-                ins = m_lea_tex(dest, address);
+                ins = m_lea_image(dest, address);
                 ins.mask = mask_of(2); /* 64-bit memory address */
         } else { /* emit ld_image_* */
                 nir_alu_type type = nir_intrinsic_dest_type(instr);
@@ -1564,7 +1564,7 @@ static void
 emit_compute_builtin(compiler_context *ctx, nir_intrinsic_instr *instr)
 {
         unsigned reg = nir_dest_index(&instr->dest);
-        midgard_instruction ins = m_ld_compute_id(reg, 0);
+        midgard_instruction ins = m_ldst_mov(reg, 0);
         ins.mask = mask_of(3);
         ins.swizzle[0][3] = COMPONENT_X; /* xyzx */
         ins.load_store.arg_1 = compute_builtin_arg(instr->intrinsic);
@@ -1596,8 +1596,8 @@ emit_special(compiler_context *ctx, nir_intrinsic_instr *instr, unsigned idx)
 {
         unsigned reg = nir_dest_index(&instr->dest);
 
-        midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
-        ld.op = midgard_op_ld_color_buffer_32u_old;
+        midgard_instruction ld = m_ld_tilebuffer_raw(reg, 0);
+        ld.op = midgard_op_ld_special_32u;
         ld.load_store.address = idx;
         ld.load_store.arg_2 = 0x1E;
 
@@ -1788,7 +1788,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 /* T720 and below use different blend opcodes with slightly
                  * different semantics than T760 and up */
 
-                midgard_instruction ld = m_ld_color_buffer_32u(reg, 0);
+                midgard_instruction ld = m_ld_tilebuffer_raw(reg, 0);
 
                 ld.load_store.arg_2 = output_load_rt_addr(ctx, instr);
 
@@ -1801,7 +1801,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 }
 
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
-                        ld.op = midgard_op_ld_color_buffer_32u_old;
+                        ld.op = midgard_op_ld_special_32u;
                         ld.load_store.address = 16;
                         ld.load_store.arg_2 = 0x1E;
                 }
@@ -1817,9 +1817,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 midgard_instruction ld;
                 if (bits == 16)
-                        ld = m_ld_color_buffer_as_fp16(reg, 0);
+                        ld = m_ld_tilebuffer_16f(reg, 0);
                 else
-                        ld = m_ld_color_buffer_as_fp32(reg, 0);
+                        ld = m_ld_tilebuffer_32f(reg, 0);
 
                 ld.load_store.arg_2 = output_load_rt_addr(ctx, instr);
 
@@ -1828,9 +1828,9 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
 
                 if (ctx->quirks & MIDGARD_OLD_BLEND) {
                         if (bits == 16)
-                                ld.op = midgard_op_ld_color_buffer_as_fp16_old;
+                                ld.op = midgard_op_ld_special_16f;
                         else
-                                ld.op = midgard_op_ld_color_buffer_as_fp32_old;
+                                ld.op = midgard_op_ld_special_32f;
                         ld.load_store.address = 1;
                         ld.load_store.arg_2 = 0x1E;
                 }

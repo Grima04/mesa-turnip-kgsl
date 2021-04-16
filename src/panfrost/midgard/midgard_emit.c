@@ -436,13 +436,13 @@ midgard_pack_common_store_mask(midgard_instruction *ins) {
                                 }
                         }
                         break;
-                case midgard_op_st_u32:
-                case midgard_op_st_u64:
-                case midgard_op_st_u128: {
+                case midgard_op_st_32:
+                case midgard_op_st_64:
+                case midgard_op_st_128: {
                         unsigned total_sz = 32;
-                        if (ins->op == midgard_op_st_u128)
+                        if (ins->op == midgard_op_st_128)
                                 total_sz = 128;
-                        else if (ins->op == midgard_op_st_u64)
+                        else if (ins->op == midgard_op_st_64)
                                 total_sz = 64;
 
                         nr_comp = total_sz / comp_sz;

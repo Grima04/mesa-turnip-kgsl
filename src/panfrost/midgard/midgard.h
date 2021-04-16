@@ -458,17 +458,23 @@ midgard_writeout;
 typedef enum {
         midgard_op_ld_st_noop   = 0x03,
 
-        /* Unpack a colour from a native format to fp16 */
-        midgard_op_unpack_colour = 0x05,
+        /* Unpacks a colour from a native format to <format> */
+        midgard_op_unpack_colour_f32 = 0x04,
+        midgard_op_unpack_colour_f16 = 0x05,
+        midgard_op_unpack_colour_u32 = 0x06,
+        midgard_op_unpack_colour_s32 = 0x07,
 
-        /* Packs a colour from fp16 to a native format */
-        midgard_op_pack_colour   = 0x09,
+        /* Packs a colour from <format> to a native format */
+        midgard_op_pack_colour_f32 = 0x08,
+        midgard_op_pack_colour_f16 = 0x09,
+        midgard_op_pack_colour_u32 = 0x0A,
+        midgard_op_pack_colour_s32 = 0x0B,
 
-        /* Likewise packs from fp32 */
-        midgard_op_pack_colour_32 = 0x0A,
+        /* Computes the effective address of a mem address expression */
+        midgard_op_lea = 0x0C,
 
-        /* Converts image/tex coordinates into mem address */
-        midgard_op_lea_tex = 0x0D,
+        /* Converts image coordinates into mem address */
+        midgard_op_lea_image = 0x0D,
 
         /* Unclear why this is on the L/S unit, but moves fp32 cube map
          * coordinates in r27 to its cube map texture coordinate destination
@@ -476,52 +482,83 @@ typedef enum {
 
         midgard_op_ld_cubemap_coords = 0x0E,
 
-        /* Loads a global/local/group ID, depending on arguments */
-        midgard_op_ld_compute_id = 0x10,
+        /* A mov between registers that the ldst pipeline can access */
+        midgard_op_ldst_mov = 0x10,
 
         /* The L/S unit can do perspective division a clock faster than the ALU
          * if you're lucky. Put the vec4 in r27, and call with 0x24 as the
          * unknown state; the output will be <x/w, y/w, z/w, 1>. Replace w with
          * z for the z version */
-        midgard_op_ldst_perspective_division_z = 0x12,
-        midgard_op_ldst_perspective_division_w = 0x13,
+        midgard_op_ldst_perspective_div_y = 0x11,
+        midgard_op_ldst_perspective_div_z = 0x12,
+        midgard_op_ldst_perspective_div_w = 0x13,
 
         /* val in r27.y, address embedded, outputs result to argument. Invert val for sub. Let val = +-1 for inc/dec. */
         midgard_op_atomic_add = 0x40,
         midgard_op_atomic_add64 = 0x41,
+        midgard_op_atomic_add_be = 0x42,
+        midgard_op_atomic_add64_be = 0x43,
 
         midgard_op_atomic_and = 0x44,
         midgard_op_atomic_and64 = 0x45,
+        midgard_op_atomic_and_be = 0x46,
+        midgard_op_atomic_and64_be = 0x47,
         midgard_op_atomic_or = 0x48,
         midgard_op_atomic_or64 = 0x49,
+        midgard_op_atomic_or_be = 0x4A,
+        midgard_op_atomic_or64_be = 0x4B,
         midgard_op_atomic_xor = 0x4C,
         midgard_op_atomic_xor64 = 0x4D,
+        midgard_op_atomic_xor_be = 0x4E,
+        midgard_op_atomic_xor64_be = 0x4F,
 
         midgard_op_atomic_imin = 0x50,
         midgard_op_atomic_imin64 = 0x51,
+        midgard_op_atomic_imin_be = 0x52,
+        midgard_op_atomic_imin64_be = 0x53,
         midgard_op_atomic_umin = 0x54,
         midgard_op_atomic_umin64 = 0x55,
+        midgard_op_atomic_umin_be = 0x56,
+        midgard_op_atomic_umin64_be = 0x57,
         midgard_op_atomic_imax = 0x58,
         midgard_op_atomic_imax64 = 0x59,
+        midgard_op_atomic_imax_be = 0x5A,
+        midgard_op_atomic_imax64_be = 0x5B,
         midgard_op_atomic_umax = 0x5C,
         midgard_op_atomic_umax64 = 0x5D,
+        midgard_op_atomic_umax_be = 0x5E,
+        midgard_op_atomic_umax64_be = 0x5F,
 
         midgard_op_atomic_xchg = 0x60,
         midgard_op_atomic_xchg64 = 0x61,
+        midgard_op_atomic_xchg_be = 0x62,
+        midgard_op_atomic_xchg64_be = 0x63,
 
         midgard_op_atomic_cmpxchg = 0x64,
         midgard_op_atomic_cmpxchg64 = 0x65,
+        midgard_op_atomic_cmpxchg_be = 0x66,
+        midgard_op_atomic_cmpxchg64_be = 0x67,
 
-        /* Used for compute shader's __global arguments, __local variables (or
-         * for register spilling) */
+        /* Used for compute shader's __global arguments, __local
+         * variables (or for register spilling) */
 
-        midgard_op_ld_u8 = 0x80, /* zero extends */
-        midgard_op_ld_i8 = 0x81, /* sign extends */
-        midgard_op_ld_u16 = 0x84, /* zero extends */
-        midgard_op_ld_i16 = 0x85, /* sign extends */
-        midgard_op_ld_u32 = 0x88,
-        midgard_op_ld_u64 = 0x8C,
-        midgard_op_ld_u128 = 0x90,
+        midgard_op_ld_u8         = 0x80, /* zero extends */
+        midgard_op_ld_i8         = 0x81, /* sign extends */
+        midgard_op_ld_u16        = 0x84, /* zero extends */
+        midgard_op_ld_i16        = 0x85, /* sign extends */
+        midgard_op_ld_u16_be     = 0x86, /* zero extends, big endian */
+        midgard_op_ld_i16_be     = 0x87, /* sign extends, big endian */
+        midgard_op_ld_32         = 0x88, /* short2, int, float */
+        midgard_op_ld_32_bswap2  = 0x89, /* 16-bit big endian vector */
+        midgard_op_ld_32_bswap4  = 0x8A, /* 32-bit big endian scalar */
+        midgard_op_ld_64         = 0x8C, /* int2, float2, long */
+        midgard_op_ld_64_bswap2  = 0x8D, /* 16-bit big endian vector */
+        midgard_op_ld_64_bswap4  = 0x8E, /* 32-bit big endian vector */
+        midgard_op_ld_64_bswap8  = 0x8F, /* 64-bit big endian scalar */
+        midgard_op_ld_128        = 0x90, /* float4, long2 */
+        midgard_op_ld_128_bswap2 = 0x91, /* 16-bit big endian vector */
+        midgard_op_ld_128_bswap4 = 0x92, /* 32-bit big endian vector */
+        midgard_op_ld_128_bswap8 = 0x93, /* 64-bit big endian vector */
 
         midgard_op_ld_attr_32 = 0x94,
         midgard_op_ld_attr_16 = 0x95,
@@ -532,40 +569,67 @@ typedef enum {
         midgard_op_ld_vary_32u = 0x9A,
         midgard_op_ld_vary_32i = 0x9B,
 
-        /* Old version of midgard_op_ld_color_buffer_as_fp16, for T720 */
-        midgard_op_ld_color_buffer_as_fp32_old = 0x9C,
-        midgard_op_ld_color_buffer_as_fp16_old = 0x9D,
-        midgard_op_ld_color_buffer_32u_old = 0x9E,
+        /* This instruction behaves differently depending if the gpu is a v4
+         * or a newer gpu. The main difference hinges on which values of the
+         * second argument are valid for each gpu.
+         * TODO: properly document and decode each possible value for the
+         * second argument. */
+        midgard_op_ld_special_32f = 0x9C,
+        midgard_op_ld_special_16f = 0x9D,
+        midgard_op_ld_special_32u = 0x9E,
+        midgard_op_ld_special_32i = 0x9F,
 
-        /* The distinction between these ops is the alignment requirement /
-         * accompanying shift. Thus, the offset to ld_ubo_int4 is in 16-byte
-         * units and can load 128-bit. The offset to ld_ubo_short4 is in 8-byte
-         * units; ld_ubo_char4 in 4-byte units. ld_ubo_char/ld_ubo_char2 are
-         * purely theoretical (never seen in the wild) since int8/int16/fp16
-         * UBOs don't really exist. The ops are still listed to maintain
-         * symmetry with generic I/O ops. */
-
-        midgard_op_ld_ubo_u8   = 0xA0, /* theoretical */
-        midgard_op_ld_ubo_u16  = 0xA4, /* theoretical */
-        midgard_op_ld_ubo_u32  = 0xA8,
-        midgard_op_ld_ubo_u64  = 0xAC,
-        midgard_op_ld_ubo_u128 = 0xB0,
+        /* The distinction between these ops is the alignment
+         * requirement / accompanying shift. Thus, the offset to
+         * ld_ubo_128 is in 16-byte units and can load 128-bit. The
+         * offset to ld_ubo_64 is in 8-byte units; ld_ubo_32 in 4-byte
+         * units. */
+        midgard_op_ld_ubo_u8         = 0xA0, /* theoretical */
+        midgard_op_ld_ubo_i8         = 0xA1, /* theoretical */
+        midgard_op_ld_ubo_u16        = 0xA4, /* theoretical */
+        midgard_op_ld_ubo_i16        = 0xA5, /* theoretical */
+        midgard_op_ld_ubo_u16_be     = 0xA6, /* theoretical */
+        midgard_op_ld_ubo_i16_be     = 0xA7, /* theoretical */
+        midgard_op_ld_ubo_32         = 0xA8,
+        midgard_op_ld_ubo_32_bswap2  = 0xA9,
+        midgard_op_ld_ubo_32_bswap4  = 0xAA,
+        midgard_op_ld_ubo_64         = 0xAC,
+        midgard_op_ld_ubo_64_bswap2  = 0xAD,
+        midgard_op_ld_ubo_64_bswap4  = 0xAE,
+        midgard_op_ld_ubo_64_bswap8  = 0xAF,
+        midgard_op_ld_ubo_128        = 0xB0,
+        midgard_op_ld_ubo_128_bswap2 = 0xB1,
+        midgard_op_ld_ubo_128_bswap4 = 0xB2,
+        midgard_op_ld_ubo_128_bswap8 = 0xB3,
 
         midgard_op_ld_image_32f = 0xB4,
         midgard_op_ld_image_16f = 0xB5,
         midgard_op_ld_image_32u = 0xB6,
         midgard_op_ld_image_32i = 0xB7,
 
-        /* New-style blending ops. Works on T760/T860 */
-        midgard_op_ld_color_buffer_as_fp32 = 0xB8,
-        midgard_op_ld_color_buffer_as_fp16 = 0xB9,
-        midgard_op_ld_color_buffer_32u = 0xBA,
+        /* Only works on v5 or newer.
+         * Older cards must use ld_special with tilebuffer selectors. */
+        midgard_op_ld_tilebuffer_32f = 0xB8,
+        midgard_op_ld_tilebuffer_16f = 0xB9,
+        midgard_op_ld_tilebuffer_raw = 0xBA,
 
-        midgard_op_st_u8 = 0xC0,
-        midgard_op_st_u16 = 0xC4,
-        midgard_op_st_u32 = 0xC8,
-        midgard_op_st_u64 = 0xCC,
-        midgard_op_st_u128 = 0xD0,
+        midgard_op_st_u8         = 0xC0, /* zero extends */
+        midgard_op_st_i8         = 0xC1, /* sign extends */
+        midgard_op_st_u16        = 0xC4, /* zero extends */
+        midgard_op_st_i16        = 0xC5, /* sign extends */
+        midgard_op_st_u16_be     = 0xC6, /* zero extends, big endian */
+        midgard_op_st_i16_be     = 0xC7, /* sign extends, big endian */
+        midgard_op_st_32         = 0xC8, /* short2, int, float */
+        midgard_op_st_32_bswap2  = 0xC9, /* 16-bit big endian vector */
+        midgard_op_st_32_bswap4  = 0xCA, /* 32-bit big endian scalar */
+        midgard_op_st_64         = 0xCC, /* int2, float2, long */
+        midgard_op_st_64_bswap2  = 0xCD, /* 16-bit big endian vector */
+        midgard_op_st_64_bswap4  = 0xCE, /* 32-bit big endian vector */
+        midgard_op_st_64_bswap8  = 0xCF, /* 64-bit big endian scalar */
+        midgard_op_st_128        = 0xD0, /* float4, long2 */
+        midgard_op_st_128_bswap2 = 0xD1, /* 16-bit big endian vector */
+        midgard_op_st_128_bswap4 = 0xD2, /* 32-bit big endian vector */
+        midgard_op_st_128_bswap8 = 0xD3, /* 64-bit big endian vector */
 
         midgard_op_st_vary_32 = 0xD4,
         midgard_op_st_vary_16 = 0xD5,
@@ -577,6 +641,18 @@ typedef enum {
         midgard_op_st_image_16f = 0xD9,
         midgard_op_st_image_32u = 0xDA,
         midgard_op_st_image_32i = 0xDB,
+
+        midgard_op_st_special_32f = 0xDC,
+        midgard_op_st_special_16f = 0xDD,
+        midgard_op_st_special_32u = 0xDE,
+        midgard_op_st_special_32i = 0xDF,
+
+        /* Only works on v5 or newer.
+         * Older cards must use ld_special with tilebuffer selectors. */
+        midgard_op_st_tilebuffer_32f = 0xE8,
+        midgard_op_st_tilebuffer_16f = 0xE9,
+        midgard_op_st_tilebuffer_raw = 0xEA,
+        midgard_op_trap = 0xFC,
 } midgard_load_store_op;
 
 typedef enum {

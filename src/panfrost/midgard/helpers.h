@@ -33,8 +33,9 @@
         )
 
 #define OP_IS_PROJECTION(op) ( \
-                op == midgard_op_ldst_perspective_division_z || \
-                op == midgard_op_ldst_perspective_division_w \
+                op == midgard_op_ldst_perspective_div_y || \
+                op == midgard_op_ldst_perspective_div_z || \
+                op == midgard_op_ldst_perspective_div_w \
         )
 
 #define OP_IS_VEC4_ONLY(op) ( \
@@ -43,16 +44,13 @@
         )
 
 #define OP_IS_MOVE(op) ( \
-                op == midgard_alu_op_fmov || \
+                (op >= midgard_alu_op_fmov && op <= midgard_alu_op_fmov_rtp) || \
                 op == midgard_alu_op_imov \
         )
 
 #define OP_IS_UBO_READ(op) ( \
-                op == midgard_op_ld_ubo_u8   || \
-                op == midgard_op_ld_ubo_u16  || \
-                op == midgard_op_ld_ubo_u32  || \
-                op == midgard_op_ld_ubo_u64  || \
-                op == midgard_op_ld_ubo_u128 \
+                op >= midgard_op_ld_ubo_u8 && \
+                op <= midgard_op_ld_ubo_128_bswap8 \
         )
 
 #define OP_IS_CSEL_V(op) ( \
@@ -81,7 +79,32 @@
 
 #define OP_IS_COMMON_STORE(op) ( \
                 op >= midgard_op_st_u8 && \
-                op <= midgard_op_st_u128 \
+                op <= midgard_op_st_128_bswap8 \
+        )
+
+#define OP_IS_IMAGE(op) ( \
+                (op >= midgard_op_ld_image_32f && op <= midgard_op_ld_image_32i) || \
+                (op >= midgard_op_st_image_32f && op <= midgard_op_st_image_32i) || \
+                op == midgard_op_lea_image \
+        )
+
+#define OP_IS_SPECIAL(op) ( \
+                (op >= midgard_op_ld_special_32f && op <= midgard_op_ld_special_32i) || \
+                (op >= midgard_op_st_special_32f && op <= midgard_op_st_special_32i) \
+        )
+
+#define OP_IS_PACK_COLOUR(op) ( \
+                (op >= midgard_op_pack_colour_f32 && op <= midgard_op_pack_colour_s32) \
+        )
+
+#define OP_IS_UNPACK_COLOUR(op) ( \
+                (op >= midgard_op_unpack_colour_f32 && op <= midgard_op_unpack_colour_s32) \
+        )
+
+/* Instructions that are on the load/store unit but don't access memory */
+#define OP_IS_REG2REG_LDST(op) ( \
+                op >= midgard_op_unpack_colour_f32 && \
+                op <= midgard_op_ldst_perspective_div_w \
         )
 
 /* ALU control words are single bit fields with a lot of space */
