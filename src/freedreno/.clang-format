@@ -90,6 +90,7 @@ ForEachMacros:
   - foreach_batch
   - hash_table_foreach
   - set_foreach
+  - foreach_line_in_section
 
 IncludeBlocks: Preserve
 IncludeCategories:
