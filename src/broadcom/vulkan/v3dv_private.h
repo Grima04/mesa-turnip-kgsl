@@ -1061,6 +1061,7 @@ struct v3dv_cmd_buffer_state {
 
    uint32_t dirty;
    VkShaderStageFlagBits dirty_descriptor_stages;
+   VkShaderStageFlagBits dirty_push_constants_stages;
 
    /* Current clip window. We use this to check whether we have an active
     * scissor, since in that case we can't use TLB clears and need to fallback

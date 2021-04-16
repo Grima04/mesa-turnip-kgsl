@@ -3749,12 +3749,12 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
       has_new_descriptors &&
       (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
 
-   const bool has_new_descriptors_vs =
-      has_new_descriptors &&
-      (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_VERTEX_BIT);
+   const bool has_new_push_constants_fs =
+      has_new_push_constants &&
+      (cmd_buffer->state.dirty_push_constants_stages & VK_SHADER_STAGE_FRAGMENT_BIT);
 
    const bool needs_fs_update = has_new_pipeline ||
-                                has_new_push_constants ||
+                                has_new_push_constants_fs ||
                                 has_new_descriptors_fs;
 
    if (needs_fs_update) {
@@ -3765,9 +3765,17 @@ update_gfx_uniform_state(struct v3dv_cmd_buffer *cmd_buffer,
          v3dv_write_uniforms(cmd_buffer, pipeline, fs_variant);
    }
 
+   const bool has_new_descriptors_vs =
+      has_new_descriptors &&
+      (cmd_buffer->state.dirty_descriptor_stages & VK_SHADER_STAGE_VERTEX_BIT);
+
+   const bool has_new_push_constants_vs =
+      has_new_push_constants &&
+      (cmd_buffer->state.dirty_push_constants_stages & VK_SHADER_STAGE_VERTEX_BIT);
+
    const bool needs_vs_update = has_new_viewport ||
                                 has_new_pipeline ||
-                                has_new_push_constants ||
+                                has_new_push_constants_vs ||
                                 has_new_descriptors_vs;
 
    if (needs_vs_update) {
@@ -3962,6 +3970,7 @@ emit_gl_shader_state(struct v3dv_cmd_buffer *cmd_buffer)
                                 V3DV_CMD_DIRTY_DESCRIPTOR_SETS |
                                 V3DV_CMD_DIRTY_PUSH_CONSTANTS);
    cmd_buffer->state.dirty_descriptor_stages &= ~VK_SHADER_STAGE_ALL_GRAPHICS;
+   cmd_buffer->state.dirty_push_constants_stages &= ~VK_SHADER_STAGE_ALL_GRAPHICS;
 }
 
 static void
@@ -4861,6 +4870,7 @@ v3dv_CmdPushConstants(VkCommandBuffer commandBuffer,
    memcpy((uint8_t *) cmd_buffer->push_constants_data + offset, pValues, size);
 
    cmd_buffer->state.dirty |= V3DV_CMD_DIRTY_PUSH_CONSTANTS;
+   cmd_buffer->state.dirty_push_constants_stages |= stageFlags;
 }
 
 void
@@ -5195,6 +5205,7 @@ cmd_buffer_emit_pre_dispatch(struct v3dv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.dirty &= ~(V3DV_CMD_DIRTY_COMPUTE_PIPELINE |
                                 V3DV_CMD_DIRTY_COMPUTE_DESCRIPTOR_SETS);
    cmd_buffer->state.dirty_descriptor_stages &= ~VK_SHADER_STAGE_COMPUTE_BIT;
+   cmd_buffer->state.dirty_push_constants_stages &= ~VK_SHADER_STAGE_COMPUTE_BIT;
 }
 
 #define V3D_CSD_CFG012_WG_COUNT_SHIFT 16
