@@ -76,8 +76,6 @@ window. Otherwise, a new, private colormap will be allocated.
 When sharing the root colormap, Mesa may be unable to allocate the
 colors it needs, resulting in poor color quality. This can happen when a
 large number of colorcells in the root colormap are already allocated.
-To prevent colormap sharing in GLUT, set the **MESA_PRIVATE_CMAP**
-environment variable. The value isn't significant.
 
 Gamma Correction
 ----------------
@@ -213,5 +211,4 @@ Summary of X-related environment variables
 
    MESA_RGB_VISUAL - specifies the X visual and depth for RGB mode (X only)
    MESA_BACK_BUFFER - specifies how to implement the back color buffer (X only)
-   MESA_PRIVATE_CMAP - force aux/tk libraries to use private colormaps (X only)
    MESA_GAMMA - gamma correction coefficients (X only)
