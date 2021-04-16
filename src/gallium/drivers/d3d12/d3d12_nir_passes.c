@@ -542,39 +542,6 @@ d3d12_lower_state_vars(nir_shader *nir, struct d3d12_shader *shader)
    return progress;
 }
 
-static const struct glsl_type *
-get_bare_samplers_for_type(const struct glsl_type *type)
-{
-   if (glsl_type_is_sampler(type)) {
-      if (glsl_sampler_type_is_shadow(type))
-         return glsl_bare_shadow_sampler_type();
-      else
-         return glsl_bare_sampler_type();
-   } else if (glsl_type_is_array(type)) {
-      return glsl_array_type(
-         get_bare_samplers_for_type(glsl_get_array_element(type)),
-         glsl_get_length(type),
-         0 /*explicit size*/);
-   }
-   assert(!"Unexpected type");
-   return NULL;
-}
-
-void
-d3d12_create_bare_samplers(nir_shader *nir)
-{
-   nir_foreach_variable_with_modes_safe(var, nir, nir_var_uniform) {
-      const struct glsl_type *type = glsl_without_array(var->type);
-      if (glsl_type_is_sampler(type) && glsl_get_sampler_result_type(type) != GLSL_TYPE_VOID) {
-         /* Since samplers are already lowered to be accessed by index, all we need to do
-          * here is create a bare sampler with the same binding */
-         nir_variable *clone = nir_variable_clone(var, nir);
-         clone->type = get_bare_samplers_for_type(var->type);
-         nir_shader_add_variable(nir, clone);
-      }
-   }
-}
-
 static bool
 lower_bool_input_filter(const nir_instr *instr,
                         UNUSED const void *_options)

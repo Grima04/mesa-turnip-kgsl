@@ -135,7 +135,7 @@ compile_nir(struct d3d12_context *ctx, struct d3d12_shader_selector *sel,
    sel->current = shader;
 
    NIR_PASS_V(nir, nir_lower_samplers);
-   NIR_PASS_V(nir, d3d12_create_bare_samplers);
+   NIR_PASS_V(nir, dxil_nir_create_bare_samplers);
 
    if (key->samples_int_textures)
       NIR_PASS_V(nir, dxil_lower_sample_to_txf_for_integer_tex,
