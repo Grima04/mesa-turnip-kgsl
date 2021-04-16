@@ -89,9 +89,12 @@ _mesa_pack_float_z_row(mesa_format format, uint32_t n,
    util_format_pack_z_float(format, dst, src, n);
 }
 
-extern void
+static inline void
 _mesa_pack_uint_z_row(mesa_format format, uint32_t n,
-                      const uint32_t *src, void *dst);
+                      const uint32_t *src, void *dst)
+{
+   util_format_pack_z_32unorm(format, dst, src, n);
+}
 
 static inline void
 _mesa_pack_ubyte_stencil_row(mesa_format format, uint32_t n,
