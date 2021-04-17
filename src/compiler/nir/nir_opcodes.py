@@ -835,7 +835,7 @@ binop("seq", tfloat32, _2src_commutative, "(src0 == src1) ? 1.0f : 0.0f") # Set 
 binop("sne", tfloat32, _2src_commutative, "(src0 != src1) ? 1.0f : 0.0f") # Set on Not Equal
 
 # SPIRV shifts are undefined for shift-operands >= bitsize,
-# but SM5 shifts are defined to use the least significant bits, only
+# but SM5 shifts are defined to use only the least significant bits.
 # The NIR definition is according to the SM5 specification.
 opcode("ishl", 0, tint, [0, 0], [tint, tuint32], False, "",
        "(uint64_t)src0 << (src1 & (sizeof(src0) * 8 - 1))")
