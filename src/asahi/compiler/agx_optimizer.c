@@ -104,6 +104,18 @@ agx_optimizer_fmov(agx_instr **defs, agx_instr *ins, unsigned srcs)
    }
 }
 
+static bool
+agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
+{
+   if (!agx_is_fmov(use)) return false;
+   if (use->src[0].neg || use->src[0].abs) return false;
+
+   /* saturate(saturate(x)) = saturate(x) */
+   I->saturate |= use->saturate;
+   I->dest[0] = use->dest[0];
+   return true;
+}
+
 static void
 agx_optimizer_forward(agx_context *ctx)
 {
@@ -125,8 +137,49 @@ agx_optimizer_forward(agx_context *ctx)
    free(defs);
 }
 
+static void
+agx_optimizer_backward(agx_context *ctx)
+{
+   agx_instr **uses = calloc(ctx->alloc, sizeof(*uses));
+   BITSET_WORD *multiple = calloc(BITSET_WORDS(ctx->alloc), sizeof(*multiple));
+
+   agx_foreach_instr_global_rev(ctx, I) {
+      struct agx_opcode_info info = agx_opcodes_info[I->op];
+
+      for (unsigned s = 0; s < info.nr_srcs; ++s) {
+         if (I->src[s].type == AGX_INDEX_NORMAL) {
+            unsigned v = I->src[s].value;
+
+            if (uses[v])
+               BITSET_SET(multiple, v);
+            else
+               uses[v] = I;
+         }
+      }
+
+      if (info.nr_dests != 1)
+         continue;
+
+      assert(I->dest[0].type == AGX_INDEX_NORMAL);
+      agx_instr *use = uses[I->dest[0].value];
+
+      if (!use || BITSET_TEST(multiple, I->dest[0].value))
+         continue;
+
+      /* Destination has a single use, try to propagate */
+      if (info.is_float && agx_optimizer_fmov_rev(I, use)) {
+         agx_remove_instruction(use);
+         continue;
+      }
+   }
+
+   free(uses);
+   free(multiple);
+}
+
 void
 agx_optimizer(agx_context *ctx)
 {
+   agx_optimizer_backward(ctx);
    agx_optimizer_forward(ctx);
 }
