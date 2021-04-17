@@ -67,6 +67,7 @@ struct fd_ringbuffer *msm_ringbuffer_sp_new_object(struct fd_pipe *pipe,
 
 struct fd_submit *msm_submit_new(struct fd_pipe *pipe);
 struct fd_submit *msm_submit_sp_new(struct fd_pipe *pipe);
+void msm_pipe_sp_flush(struct fd_pipe *pipe, uint32_t fence);
 
 void msm_pipe_sp_ringpool_init(struct msm_pipe *msm_pipe);
 void msm_pipe_sp_ringpool_fini(struct msm_pipe *msm_pipe);
