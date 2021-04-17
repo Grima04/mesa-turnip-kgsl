@@ -713,6 +713,11 @@ agx_compile_shader_nir(nir_shader *nir,
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
       agx_print_shader(ctx, stdout);
 
+   agx_optimizer(ctx);
+
+   if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
+      agx_print_shader(ctx, stdout);
+
    agx_ra(ctx);
 
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
