@@ -22,6 +22,7 @@
  */
 
 #include "agx_compiler.h"
+#include "agx_minifloat.h"
 
 /* AGX peephole optimizer responsible for instruction combining. It operates in
  * a forward direction and a backward direction, in each case traversing in
@@ -104,6 +105,40 @@ agx_optimizer_fmov(agx_instr **defs, agx_instr *ins, unsigned srcs)
    }
 }
 
+static void
+agx_optimizer_inline_imm(agx_instr **defs, agx_instr *I,
+      unsigned srcs, bool is_float)
+{
+   for (unsigned s = 0; s < srcs; ++s) {
+      agx_index src = I->src[s];
+      if (src.type != AGX_INDEX_NORMAL) continue;
+
+      agx_instr *def = defs[src.value];
+      if (def->op != AGX_OPCODE_MOV_IMM) continue;
+
+      uint8_t value = def->imm;
+      bool float_src = is_float;
+
+      /* cmpselsrc takes integer immediates only */
+      if (s >= 2 && I->op == AGX_OPCODE_FCMPSEL) float_src = false;
+
+      if (float_src) {
+         bool fp16 = (def->dest[0].size == AGX_SIZE_16);
+         assert(fp16 || (def->dest[0].size == AGX_SIZE_32));
+
+         float f = fp16 ? _mesa_half_to_float(def->imm) : uif(def->imm);
+         if (!agx_minifloat_exact(f)) continue;
+
+         value = agx_minifloat_encode(f);
+      } else if (value != def->imm) {
+         continue;
+      }
+
+      I->src[s].type = AGX_INDEX_IMMEDIATE;
+      I->src[s].value = value;
+   }
+}
+
 static bool
 agx_optimizer_fmov_rev(agx_instr *I, agx_instr *use)
 {
@@ -132,6 +167,10 @@ agx_optimizer_forward(agx_context *ctx)
       /* Propagate fmov down */
       if (info.is_float)
          agx_optimizer_fmov(defs, I, info.nr_srcs);
+
+      /* Inline immediates if we can. TODO: systematic */
+      if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_BLEND && I->op != AGX_OPCODE_P_EXTRACT && I->op != AGX_OPCODE_P_COMBINE)
+         agx_optimizer_inline_imm(defs, I, info.nr_srcs, info.is_float);
    }
 
    free(defs);
