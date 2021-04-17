@@ -88,6 +88,8 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
        * be waiting for
        */
       flags &= ~PIPE_FLUSH_DEFERRED;
+   } else if (!batch->fence) {
+      batch->fence = fd_fence_create(batch);
    }
 
    /* In some sequence of events, we can end up with a last_fence that is

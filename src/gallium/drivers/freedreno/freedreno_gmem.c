@@ -662,9 +662,10 @@ flush_ring(struct fd_batch *batch)
 
    fd_submit_flush(batch->submit, batch->in_fence_fd,
                    batch->needs_out_fence_fd ? &out_fence_fd : NULL,
-                   &timestamp);
+                   batch->fence ? &timestamp : NULL);
 
-   fd_fence_populate(batch->fence, timestamp, out_fence_fd);
+   if (batch->fence)
+      fd_fence_populate(batch->fence, timestamp, out_fence_fd);
 }
 
 void

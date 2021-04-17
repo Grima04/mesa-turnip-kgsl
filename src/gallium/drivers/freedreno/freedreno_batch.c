@@ -77,7 +77,14 @@ batch_init(struct fd_batch *batch)
    }
 
    batch->in_fence_fd = -1;
-   batch->fence = fd_fence_create(batch);
+   batch->fence = NULL;
+
+   /* Work around problems on earlier gens with submit merging, etc,
+    * by always creating a fence to request that the submit is flushed
+    * immediately:
+    */
+   if (ctx->screen->gpu_id < 600)
+      batch->fence = fd_fence_create(batch);
 
    batch->cleared = 0;
    batch->fast_cleared = 0;
@@ -197,7 +204,8 @@ batch_fini(struct fd_batch *batch)
       close(batch->in_fence_fd);
 
    /* in case batch wasn't flushed but fence was created: */
-   fd_fence_populate(batch->fence, 0, -1);
+   if (batch->fence)
+      fd_fence_populate(batch->fence, 0, -1);
 
    fd_fence_ref(&batch->fence, NULL);
 
@@ -362,7 +370,8 @@ batch_flush(struct fd_batch *batch) assert_dt
    if (batch == batch->ctx->batch)
       fd_batch_reference(&batch->ctx->batch, NULL);
 
-   fd_fence_ref(&batch->ctx->last_fence, batch->fence);
+   if (batch->fence)
+      fd_fence_ref(&batch->ctx->last_fence, batch->fence);
 
    fd_gmem_render_tiles(batch);
    batch_reset_resources(batch);
