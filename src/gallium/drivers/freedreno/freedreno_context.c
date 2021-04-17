@@ -377,6 +377,7 @@ fd_context_destroy(struct pipe_context *pctx)
    }
 
    fd_device_del(ctx->dev);
+   fd_pipe_purge(ctx->pipe);
    fd_pipe_del(ctx->pipe);
 
    simple_mtx_destroy(&ctx->gmem_lock);

@@ -93,6 +93,8 @@ ForEachMacros:
   - foreach_line_in_section
   - perf_time
   - perf_time_ctx
+  - foreach_submit
+  - foreach_submit_safe
 
 IncludeBlocks: Preserve
 IncludeCategories:

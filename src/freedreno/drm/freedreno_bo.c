@@ -358,6 +358,15 @@ bo_del(struct fd_bo *bo)
    bo->funcs->destroy(bo);
 }
 
+static void
+bo_flush(struct fd_bo *bo)
+{
+   for (int i = 0; i < bo->nr_fences; i++) {
+      struct fd_bo_fence *f = &bo->fences[i];
+      fd_pipe_flush(f->pipe, f->fence);
+   }
+}
+
 int
 fd_bo_get_name(struct fd_bo *bo, uint32_t *name)
 {
@@ -377,6 +386,7 @@ fd_bo_get_name(struct fd_bo *bo, uint32_t *name)
       simple_mtx_unlock(&table_lock);
       bo->bo_reuse = NO_CACHE;
       bo->shared = true;
+      bo_flush(bo);
    }
 
    *name = bo->name;
@@ -389,6 +399,7 @@ fd_bo_handle(struct fd_bo *bo)
 {
    bo->bo_reuse = NO_CACHE;
    bo->shared = true;
+   bo_flush(bo);
    return bo->handle;
 }
 
@@ -405,6 +416,7 @@ fd_bo_dmabuf(struct fd_bo *bo)
 
    bo->bo_reuse = NO_CACHE;
    bo->shared = true;
+   bo_flush(bo);
 
    return prime_fd;
 }
@@ -450,11 +462,19 @@ fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
       case FD_BO_STATE_IDLE:
          return 0;
       case FD_BO_STATE_BUSY:
+         if (op & FD_BO_PREP_FLUSH)
+            bo_flush(bo);
          return -EBUSY;
       case FD_BO_STATE_UNKNOWN:
          break;
       }
    }
+
+   /* In case the bo is referenced by a deferred submit, flush up to the
+    * required fence now:
+    */
+   bo_flush(bo);
+
    return bo->funcs->cpu_prep(bo, pipe, op);
 }
 

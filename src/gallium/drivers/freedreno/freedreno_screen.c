@@ -147,8 +147,10 @@ fd_screen_destroy(struct pipe_screen *pscreen)
    if (screen->pipe)
       fd_pipe_del(screen->pipe);
 
-   if (screen->dev)
+   if (screen->dev) {
+      fd_device_purge(screen->dev);
       fd_device_del(screen->dev);
+   }
 
    if (screen->ro)
       screen->ro->destroy(screen->ro);

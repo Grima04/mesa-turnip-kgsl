@@ -113,6 +113,7 @@ struct fd_fence {
 struct fd_device *fd_device_new(int fd);
 struct fd_device *fd_device_new_dup(int fd);
 struct fd_device *fd_device_ref(struct fd_device *dev);
+void fd_device_purge(struct fd_device *dev);
 void fd_device_del(struct fd_device *dev);
 int fd_device_fd(struct fd_device *dev);
 
@@ -140,6 +141,7 @@ struct fd_pipe *fd_pipe_new2(struct fd_device *dev, enum fd_pipe_id id,
 struct fd_pipe *fd_pipe_ref(struct fd_pipe *pipe);
 struct fd_pipe *fd_pipe_ref_locked(struct fd_pipe *pipe);
 void fd_pipe_del(struct fd_pipe *pipe);
+void fd_pipe_purge(struct fd_pipe *pipe);
 int fd_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
                       uint64_t *value);
 int fd_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence);

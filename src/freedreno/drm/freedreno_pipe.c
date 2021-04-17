@@ -117,6 +117,37 @@ fd_pipe_del_locked(struct fd_pipe *pipe)
    pipe->funcs->destroy(pipe);
 }
 
+/**
+ * Discard any unflushed deferred submits.  This is called at context-
+ * destroy to make sure we don't leak unflushed submits.
+ */
+void
+fd_pipe_purge(struct fd_pipe *pipe)
+{
+   struct fd_device *dev = pipe->dev;
+   struct list_head deferred_submits;
+
+   list_inithead(&deferred_submits);
+
+   simple_mtx_lock(&dev->submit_lock);
+
+   foreach_submit_safe (deferred_submit, &dev->deferred_submits) {
+      if (deferred_submit->pipe != pipe)
+         continue;
+
+      list_del(&deferred_submit->node);
+      list_addtail(&deferred_submit->node, &deferred_submits);
+      dev->deferred_cmds -= fd_ringbuffer_cmd_count(deferred_submit->primary);
+   }
+
+   simple_mtx_unlock(&dev->submit_lock);
+
+   foreach_submit_safe (deferred_submit, &deferred_submits) {
+      list_del(&deferred_submit->node);
+      fd_submit_del(deferred_submit);
+   }
+}
+
 int
 fd_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param, uint64_t *value)
 {
@@ -135,6 +166,8 @@ fd_pipe_wait_timeout(struct fd_pipe *pipe, const struct fd_fence *fence,
 {
    if (!fd_fence_after(fence->ufence, pipe->control->fence))
       return 0;
+
+   fd_pipe_flush(pipe, fence->ufence);
 
    return pipe->funcs->wait(pipe, fence, timeout);
 }
