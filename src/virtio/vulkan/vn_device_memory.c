@@ -243,6 +243,8 @@ vn_AllocateMemory(VkDevice device,
          return vn_error(dev->instance, result);
       }
 
+      /* need to close import fd on success to avoid fd leak */
+      close(import_info->fd);
       mem->base_bo = bo;
    } else if (suballocate) {
       result = vn_device_memory_pool_alloc(
