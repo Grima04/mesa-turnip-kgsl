@@ -745,7 +745,10 @@ add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
    resource->resource_type = type;
    resource->space = layout->space;
    resource->lower_bound = layout->binding;
-   resource->upper_bound = layout->binding + layout->size - 1;
+   if (layout->size == 0 || (uint64_t)layout->size + layout->binding >= UINT_MAX)
+      resource->upper_bound = UINT_MAX;
+   else
+      resource->upper_bound = layout->binding + layout->size - 1;
 }
 
 static unsigned
@@ -1066,7 +1069,7 @@ emit_cbv(struct ntd_context *ctx, unsigned binding, unsigned space,
    const struct dxil_type *array_type = dxil_module_get_array_type(&ctx->mod, float32, size);
    const struct dxil_type *buffer_type = dxil_module_get_struct_type(&ctx->mod, name,
                                                                      &array_type, 1);
-   const struct dxil_type *final_type = count > 1 ? dxil_module_get_array_type(&ctx->mod, buffer_type, count) : buffer_type;
+   const struct dxil_type *final_type = count != 1 ? dxil_module_get_array_type(&ctx->mod, buffer_type, count) : buffer_type;
    resource_array_layout layout = {idx, binding, count, space};
    const struct dxil_mdnode *cbv_meta = emit_cbv_metadata(&ctx->mod, final_type,
                                                           name, &layout, 4 * size);
@@ -3515,8 +3518,8 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
    nir_variable *var = nir_deref_instr_get_variable(instr);
    assert(var);
 
-   if (glsl_type_get_sampler_count(var->type) == 0 &&
-       glsl_type_get_image_count(var->type) == 0)
+   if (!glsl_type_is_sampler(glsl_without_array(var->type)) &&
+       !glsl_type_is_image(glsl_without_array(var->type)))
    return true;
 
    const struct glsl_type *type = instr->type;
@@ -4305,8 +4308,9 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    /* Samplers */
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
-      if (var->data.mode == nir_var_uniform && count &&
-          glsl_get_sampler_result_type(glsl_without_array(var->type)) == GLSL_TYPE_VOID) {
+      const struct glsl_type *without_array = glsl_without_array(var->type);
+      if (var->data.mode == nir_var_uniform && glsl_type_is_sampler(without_array) &&
+          glsl_get_sampler_result_type(without_array) == GLSL_TYPE_VOID) {
          if (!emit_sampler(ctx, var, count))
             return false;
       }
@@ -4315,8 +4319,9 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    /* SRVs */
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
       unsigned count = glsl_type_get_sampler_count(var->type);
-      if (var->data.mode == nir_var_uniform && count &&
-          glsl_get_sampler_result_type(glsl_without_array(var->type)) != GLSL_TYPE_VOID) {
+      const struct glsl_type *without_array = glsl_without_array(var->type);
+      if (var->data.mode == nir_var_uniform && glsl_type_is_sampler(without_array) &&
+          glsl_get_sampler_result_type(without_array) != GLSL_TYPE_VOID) {
          if (!emit_srv(ctx, var, count))
             return false;
       }
@@ -4365,9 +4370,8 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
    }
 
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
-      unsigned count = glsl_type_get_image_count(var->type);
-      if (var->data.mode == nir_var_uniform && count) {
-         if (!emit_uav_var(ctx, var, count))
+      if (var->data.mode == nir_var_uniform && glsl_type_is_image(glsl_without_array(var->type))) {
+         if (!emit_uav_var(ctx, var, glsl_type_get_image_count(var->type)))
             return false;
       }
    }
