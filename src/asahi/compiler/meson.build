@@ -21,6 +21,7 @@
 
 libasahi_agx_files = files(
   'agx_compile.c',
+  'agx_dce.c',
   'agx_pack.c',
   'agx_print.c',
   'agx_optimizer.c',

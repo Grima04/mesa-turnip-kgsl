@@ -548,6 +548,7 @@ void agx_print_instr(agx_instr *I, FILE *fp);
 void agx_print_block(agx_block *block, FILE *fp);
 void agx_print_shader(agx_context *ctx, FILE *fp);
 void agx_optimizer(agx_context *ctx);
+void agx_dce(agx_context *ctx);
 void agx_ra(agx_context *ctx);
 void agx_pack(agx_context *ctx, struct util_dynarray *emission);
 
