@@ -85,6 +85,8 @@ struct fd_submit *fd_submit_new(struct fd_pipe *pipe);
  */
 void fd_submit_del(struct fd_submit *submit);
 
+struct fd_submit * fd_submit_ref(struct fd_submit *submit);
+
 /* Allocate a new rb from the submit. */
 struct fd_ringbuffer *fd_submit_new_ringbuffer(struct fd_submit *submit,
                                                uint32_t size,

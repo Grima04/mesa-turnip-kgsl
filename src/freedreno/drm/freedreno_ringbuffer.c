@@ -33,15 +33,28 @@
 struct fd_submit *
 fd_submit_new(struct fd_pipe *pipe)
 {
-   return pipe->funcs->submit_new(pipe);
+   struct fd_submit *submit = pipe->funcs->submit_new(pipe);
+   submit->refcnt = 1;
+   return submit;
 }
 
 void
 fd_submit_del(struct fd_submit *submit)
 {
+   if (!p_atomic_dec_zero(&submit->refcnt))
+      return;
+
    if (submit->primary)
       fd_ringbuffer_del(submit->primary);
-   return submit->funcs->destroy(submit);
+
+   submit->funcs->destroy(submit);
+}
+
+struct fd_submit *
+fd_submit_ref(struct fd_submit *submit)
+{
+   p_atomic_inc(&submit->refcnt);
+   return submit;
 }
 
 int
