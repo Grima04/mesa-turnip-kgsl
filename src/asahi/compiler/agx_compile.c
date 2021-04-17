@@ -557,6 +557,17 @@ emit_cf_list(agx_context *ctx, struct exec_list *list)
 }
 
 static void
+agx_set_st_vary_final(agx_context *ctx)
+{
+   agx_foreach_instr_global_rev(ctx, I) {
+      if (I->op == AGX_OPCODE_ST_VARY) {
+         I->last = true;
+         return;
+      }
+   }
+}
+
+static void
 agx_print_stats(agx_context *ctx, unsigned size, FILE *fp)
 {
    unsigned nr_ins = 0, nr_bytes = 0, nr_threads = 1;
@@ -796,6 +807,9 @@ agx_compile_shader_nir(nir_shader *nir,
       agx_print_shader(ctx, stdout);
 
    agx_ra(ctx);
+
+   if (ctx->stage == MESA_SHADER_VERTEX)
+      agx_set_st_vary_final(ctx);
 
    if (agx_debug & AGX_DBG_SHADERS && !skip_internal)
       agx_print_shader(ctx, stdout);
