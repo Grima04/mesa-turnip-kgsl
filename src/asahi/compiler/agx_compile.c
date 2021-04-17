@@ -62,10 +62,53 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
                   nir_const_value_as_uint(instr->value[0], bit_size));
 }
 
+/* AGX appears to lack support for vertex attributes. Lower to global loads. */
 static void
 agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
 {
-   unreachable("stub");
+   nir_src *offset_src = nir_get_io_offset_src(instr);
+   assert(nir_src_is_const(*offset_src) && "no attribute indirects");
+   unsigned index = nir_intrinsic_base(instr) +
+                    nir_src_as_uint(*offset_src);
+
+   struct agx_shader_key *key = b->shader->key;
+   struct agx_attribute attrib = key->vs.attributes[index];
+
+   /* address = base + (stride * vertex_id) + src_offset */
+   unsigned buf = attrib.buf;
+   agx_index stride = agx_mov_imm(b, 32, key->vs.vbuf_strides[buf]);
+   agx_index src_offset = agx_mov_imm(b, 32, attrib.src_offset);
+   agx_index vertex_id = agx_register(10, AGX_SIZE_32); // TODO: RA
+   agx_index offset = agx_imad(b, vertex_id, stride, src_offset, 0);
+
+   /* Each VBO has a 64-bit = 4 x 16-bit address, lookup the base address as a sysval */
+   unsigned num_vbos = key->vs.num_vbufs;
+   unsigned base_length = (num_vbos * 4);
+   agx_index base = agx_indexed_sysval(b->shader,
+                                       AGX_PUSH_VBO_BASES, AGX_SIZE_64, buf * 4, base_length);
+
+   /* Load the data */
+   assert(instr->num_components <= 4);
+
+   bool pad = ((attrib.nr_comps_minus_1 + 1) < instr->num_components);
+   agx_index real_dest = agx_dest_index(&instr->dest);
+   agx_index dest = pad ? agx_temp(b->shader, AGX_SIZE_32) : real_dest;
+
+   agx_device_load_to(b, dest, base, offset, attrib.format,
+                      BITFIELD_MASK(attrib.nr_comps_minus_1 + 1), 0);
+
+   agx_wait(b, 0);
+
+   if (pad) {
+      agx_index one = agx_mov_imm(b, 32, fui(1.0));
+      agx_index zero = agx_mov_imm(b, 32, 0);
+      agx_index channels[4] = { zero, zero, zero, one };
+      for (unsigned i = 0; i < (attrib.nr_comps_minus_1 + 1); ++i)
+         channels[i] = agx_p_extract(b, dest, i);
+      for (unsigned i = instr->num_components; i < 4; ++i)
+         channels[i] = agx_null();
+      agx_p_combine_to(b, real_dest, channels[0], channels[1], channels[2], channels[3]);
+   }
 }
 
 static void
