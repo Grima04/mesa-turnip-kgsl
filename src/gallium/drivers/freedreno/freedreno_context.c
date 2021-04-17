@@ -477,6 +477,11 @@ fd_trace_read_ts(struct u_trace_context *utctx,
 
    /* Only need to stall on results for the first entry: */
    if (idx == 0) {
+      /* Avoid triggering deferred submits from flushing, since that
+       * changes the behavior of what we are trying to measure:
+       */
+      while (fd_bo_cpu_prep(ts_bo, ctx->pipe, FD_BO_PREP_NOSYNC))
+         usleep(10000);
       int ret = fd_bo_cpu_prep(ts_bo, ctx->pipe, FD_BO_PREP_READ);
       if (ret)
          return U_TRACE_NO_TIMESTAMP;
