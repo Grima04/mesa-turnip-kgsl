@@ -23,6 +23,56 @@
 
 #include "agx_compiler.h"
 
+/* Load/stores have their own operands */
+
+static unsigned
+agx_pack_memory_reg(agx_index index, bool *flag)
+{
+   assert(index.size == AGX_SIZE_16 || index.size == AGX_SIZE_32);
+   assert(index.size == AGX_SIZE_16 || (index.value & 1) == 0);
+   assert(index.value < 0x100);
+
+   *flag = (index.size == AGX_SIZE_32);
+   return index.value;
+}
+
+static unsigned
+agx_pack_memory_base(agx_index index, bool *flag)
+{
+   assert(index.size == AGX_SIZE_64);
+   assert((index.value & 1) == 0);
+
+   if (index.type == AGX_INDEX_UNIFORM) {
+      assert(index.value < 0x200);
+      *flag = 1;
+      return index.value;
+   } else {
+      assert(index.value < 0x100);
+      *flag = 0;
+      return index.value;
+   }
+}
+
+static unsigned
+agx_pack_memory_index(agx_index index, bool *flag)
+{
+   if (index.type == AGX_INDEX_IMMEDIATE) {
+      assert(index.value < 0x10000);
+      *flag = 1;
+
+      return index.value;
+   } else {
+      assert(index.type == AGX_INDEX_REGISTER);
+      assert((index.value & 1) == 0);
+      assert(index.value < 0x100);
+
+      *flag = 0;
+      return index.value;
+   }
+}
+
+/* ALU goes through a common path */
+
 static unsigned
 agx_pack_alu_dst(agx_index dest)
 {
@@ -262,6 +312,50 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
             (1ull << 52); /* XXX */
 
       unsigned size = 8;
+      memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
+   case AGX_OPCODE_DEVICE_LOAD:
+   {
+      assert(I->mask != 0);
+      assert(I->format <= 0x10);
+
+      bool Rt, At, Ot;
+      unsigned R = agx_pack_memory_reg(I->dest[0], &Rt);
+      unsigned A = agx_pack_memory_base(I->src[0], &At);
+      unsigned O = agx_pack_memory_index(I->src[1], &Ot);
+      unsigned u1 = 1; // XXX
+      unsigned u3 = 0;
+      unsigned u4 = 4; // XXX
+      unsigned u5 = 0;
+      bool L = true; /* TODO: when would you want short? */
+
+      uint64_t raw =
+            0x05 |
+            ((I->format & BITFIELD_MASK(3)) << 7) |
+            ((R & BITFIELD_MASK(6)) << 10) |
+            ((A & BITFIELD_MASK(4)) << 16) |
+            ((O & BITFIELD_MASK(4)) << 20) |
+            (Ot ? (1 << 24) : 0) |
+            (I->src[1].abs ? (1 << 25) : 0) |
+            (u1 << 26) |
+            (At << 27) |
+            (u3 << 28) |
+            (I->scoreboard << 30) |
+            (((uint64_t) ((O >> 4) & BITFIELD_MASK(4))) << 32) |
+            (((uint64_t) ((A >> 4) & BITFIELD_MASK(4))) << 36) |
+            (((uint64_t) ((R >> 6) & BITFIELD_MASK(2))) << 40) |
+            (((uint64_t) I->shift) << 42) |
+            (((uint64_t) u4) << 44) |
+            (L ? (1ull << 47) : 0) |
+            (((uint64_t) (I->format >> 3)) << 48) |
+            (((uint64_t) Rt) << 49) |
+            (((uint64_t) u5) << 50) |
+            (((uint64_t) I->mask) << 52) |
+            (((uint64_t) (O >> 8)) << 56);
+
+      unsigned size = L ? 8 : 6;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
       break;
    }
