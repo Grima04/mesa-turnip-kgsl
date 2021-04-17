@@ -278,6 +278,7 @@ typedef struct {
    unsigned id;
    unsigned binding;
    unsigned size;
+   unsigned space;
 } resource_array_layout;
 
 static void
@@ -291,7 +292,7 @@ fill_resource_metadata(struct dxil_module *m, const struct dxil_mdnode **fields,
    fields[0] = dxil_get_metadata_int32(m, layout->id); // resource ID
    fields[1] = dxil_get_metadata_value(m, pointer_type, pointer_undef); // global constant symbol
    fields[2] = dxil_get_metadata_string(m, name ? name : ""); // name
-   fields[3] = dxil_get_metadata_int32(m, 0); // space ID
+   fields[3] = dxil_get_metadata_int32(m, layout->space); // space ID
    fields[4] = dxil_get_metadata_int32(m, layout->binding); // lower bound
    fields[5] = dxil_get_metadata_int32(m, layout->size); // range size
 }
@@ -742,7 +743,7 @@ add_resource(struct ntd_context *ctx, enum dxil_resource_type type,
 {
    struct dxil_resource *resource = util_dynarray_grow(&ctx->resources, struct dxil_resource, 1);
    resource->resource_type = type;
-   resource->space = 0;
+   resource->space = layout->space;
    resource->lower_bound = layout->binding;
    resource->upper_bound = layout->binding + layout->size - 1;
 }
@@ -797,7 +798,7 @@ emit_srv(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
    unsigned id = util_dynarray_num_elements(&ctx->srv_metadata_nodes, const struct dxil_mdnode *);
    unsigned binding = var->data.binding;
-   resource_array_layout layout = {id, binding, count};
+   resource_array_layout layout = {id, binding, count, var->data.descriptor_set};
 
    enum dxil_component_type comp_type;
    enum dxil_resource_kind res_kind;
@@ -856,7 +857,7 @@ emit_globals(struct ntd_context *ctx, unsigned size)
    if (!array_type)
       return false;
 
-   resource_array_layout layout = {0, 0, size};
+   resource_array_layout layout = {0, 0, size, 0};
    const struct dxil_mdnode *uav_meta =
       emit_uav_metadata(&ctx->mod, array_type,
                                    "globals", &layout,
@@ -875,11 +876,11 @@ emit_globals(struct ntd_context *ctx, unsigned size)
 }
 
 static bool
-emit_uav(struct ntd_context *ctx, unsigned binding, unsigned count,
+emit_uav(struct ntd_context *ctx, unsigned binding, unsigned space, unsigned count,
          enum dxil_component_type comp_type, enum dxil_resource_kind res_kind, const char *name)
 {
    unsigned id = util_dynarray_num_elements(&ctx->uav_metadata_nodes, const struct dxil_mdnode *);
-   resource_array_layout layout = { id, binding, count };
+   resource_array_layout layout = { id, binding, count, space };
 
    const struct dxil_type *res_type = dxil_module_get_res_type(&ctx->mod, res_kind, comp_type, true /* readwrite */);
    const struct dxil_mdnode *uav_meta = emit_uav_metadata(&ctx->mod, res_type, name,
@@ -912,11 +913,12 @@ static bool
 emit_uav_var(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
    unsigned binding = var->data.binding;
+   unsigned space = var->data.descriptor_set;
    enum dxil_component_type comp_type = dxil_get_comp_type(var->type);
    enum dxil_resource_kind res_kind = dxil_get_resource_kind(var->type);
    const char *name = var->name;
 
-   return emit_uav(ctx, binding, count, comp_type, res_kind, name);
+   return emit_uav(ctx, binding, space, count, comp_type, res_kind, name);
 }
 
 static unsigned get_dword_size(const struct glsl_type *type)
@@ -1055,7 +1057,7 @@ emit_global_consts(struct ntd_context *ctx)
 }
 
 static bool
-emit_cbv(struct ntd_context *ctx, unsigned binding,
+emit_cbv(struct ntd_context *ctx, unsigned binding, unsigned space,
          unsigned size, unsigned count, char *name)
 {
    unsigned idx = util_dynarray_num_elements(&ctx->cbv_metadata_nodes, const struct dxil_mdnode *);
@@ -1065,7 +1067,7 @@ emit_cbv(struct ntd_context *ctx, unsigned binding,
    const struct dxil_type *buffer_type = dxil_module_get_struct_type(&ctx->mod, name,
                                                                      &array_type, 1);
    const struct dxil_type *final_type = count > 1 ? dxil_module_get_array_type(&ctx->mod, buffer_type, count) : buffer_type;
-   resource_array_layout layout = {idx, binding, count};
+   resource_array_layout layout = {idx, binding, count, space};
    const struct dxil_mdnode *cbv_meta = emit_cbv_metadata(&ctx->mod, final_type,
                                                           name, &layout, 4 * size);
 
@@ -1096,7 +1098,7 @@ emit_ubo_var(struct ntd_context *ctx, nir_variable *var)
    unsigned count = 1;
    if (glsl_type_is_array(var->type))
       count = glsl_get_length(var->type);
-   return emit_cbv(ctx, var->data.binding, get_dword_size(var->type), count, var->name);
+   return emit_cbv(ctx, var->data.binding, var->data.descriptor_set, get_dword_size(var->type), count, var->name);
 }
 
 static bool
@@ -1104,7 +1106,7 @@ emit_sampler(struct ntd_context *ctx, nir_variable *var, unsigned count)
 {
    unsigned id = util_dynarray_num_elements(&ctx->sampler_metadata_nodes, const struct dxil_mdnode *);
    unsigned binding = var->data.binding;
-   resource_array_layout layout = {id, binding, count};
+   resource_array_layout layout = {id, binding, count, var->data.descriptor_set};
    const struct dxil_type *int32_type = dxil_module_get_int_type(&ctx->mod, 32);
    const struct dxil_type *sampler_type = dxil_module_get_struct_type(&ctx->mod, "struct.SamplerState", &int32_type, 1);
    const struct dxil_mdnode *sampler_meta = emit_sampler_metadata(&ctx->mod, sampler_type, var, &layout);
@@ -3276,8 +3278,6 @@ static bool
 emit_vulkan_resource_index(struct ntd_context *ctx, nir_intrinsic_instr *intr)
 {
    unsigned int binding = nir_intrinsic_binding(intr);
-   /* We currently do not support non-zero sets */
-   assert(nir_intrinsic_desc_set(intr) == 0);
 
    bool const_index = nir_src_is_const(intr->src[0]);
    if (const_index) {
@@ -3307,6 +3307,10 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    assert(index && index->intrinsic == nir_intrinsic_vulkan_resource_index);
 
    unsigned binding = nir_intrinsic_binding(index);
+   unsigned space = nir_intrinsic_desc_set(index);
+
+   /* The descriptor_set field for variables is only 5 bits. We shouldn't have intrinsics trying to go beyond that. */
+   assert(space < 32);
 
    nir_variable *var = nir_get_binding_variable(ctx->shader, nir_chase_binding(intr->src[0]));
 
@@ -3329,7 +3333,7 @@ emit_load_vulkan_descriptor(struct ntd_context *ctx, nir_intrinsic_instr *intr)
    }
 
    handle = emit_createhandle_call(ctx, resource_class,
-      get_resource_id(ctx, resource_class, 0, binding),
+      get_resource_id(ctx, resource_class, space, binding),
       get_src(ctx, &intr->src[0], 0, nir_type_uint32), false);
 
    store_dest_value(ctx, &intr->dest, 0, handle);
@@ -3548,7 +3552,7 @@ emit_deref(struct ntd_context* ctx, nir_deref_instr* instr)
       res_class = DXIL_RESOURCE_CLASS_SRV;
    
    const struct dxil_value *handle = emit_createhandle_call(ctx, res_class,
-      get_resource_id(ctx, res_class, 0, var->data.binding), binding, false);
+      get_resource_id(ctx, res_class, var->data.descriptor_set, var->data.binding), binding, false);
    if (!handle)
       return false;
 
@@ -4196,7 +4200,7 @@ emit_cbvs(struct ntd_context *ctx)
       for (int i = ctx->opts->ubo_binding_offset; i < ctx->shader->info.num_ubos; ++i) {
          char name[64];
          snprintf(name, sizeof(name), "__ubo%d", i);
-         if (!emit_cbv(ctx, i, 16384 /*4096 vec4's*/, 1, name))
+         if (!emit_cbv(ctx, i, 0, 16384 /*4096 vec4's*/, 1, name))
             return false;
       }
    }
@@ -4242,8 +4246,8 @@ emit_ssbos(struct ntd_context *ctx)
          count = glsl_get_length(var->type);
 
       bool success = (var->data.access & ACCESS_NON_WRITEABLE) ?
-         emit_srv(ctx, var, var->data.binding, count) :
-         emit_uav(ctx, var->data.binding, count, DXIL_COMP_TYPE_INVALID, DXIL_RESOURCE_KIND_RAW_BUFFER, var->name);
+         emit_srv(ctx, var, count) :
+         emit_uav(ctx, var->data.binding, var->data.descriptor_set, count, DXIL_COMP_TYPE_INVALID, DXIL_RESOURCE_KIND_RAW_BUFFER, var->name);
 
       if (!success)
          return false;
