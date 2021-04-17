@@ -204,9 +204,37 @@ msm_submit_sp_new_ringbuffer(struct fd_submit *submit, uint32_t size,
    return &msm_ring->base;
 }
 
+/**
+ * Prepare submit for flush, always done synchronously.
+ *
+ * 1) Finalize primary ringbuffer, at this point no more cmdstream may
+ *    be written into it, since from the PoV of the upper level driver
+ *    the submit is flushed, even if deferred
+ * 2) Add cmdstream bos to bos table
+ * 3) Update bo fences
+ */
+static void
+msm_submit_sp_flush_prep(struct fd_submit *submit)
+{
+   struct msm_submit_sp *msm_submit = to_msm_submit_sp(submit);
+
+   finalize_current_cmd(submit->primary);
+
+   struct msm_ringbuffer_sp *primary =
+      to_msm_ringbuffer_sp(submit->primary);
+
+   for (unsigned i = 0; i < primary->u.nr_cmds; i++)
+      msm_submit_append_bo(msm_submit, primary->u.cmds[i].ring_bo);
+
+   simple_mtx_lock(&table_lock);
+   for (unsigned i = 0; i < msm_submit->nr_bos; i++)
+      fd_bo_add_fence(msm_submit->bos[i], submit->pipe, submit->fence);
+   simple_mtx_unlock(&table_lock);
+}
+
 static int
-msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
-                    struct fd_submit_fence *out_fence)
+msm_submit_sp_flush_finish(struct fd_submit *submit, int in_fence_fd,
+                           struct fd_submit_fence *out_fence)
 {
    struct msm_submit_sp *msm_submit = to_msm_submit_sp(submit);
    struct msm_pipe *msm_pipe = to_msm_pipe(submit->pipe);
@@ -215,8 +243,6 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
       .queueid = msm_pipe->queue_id,
    };
    int ret;
-
-   finalize_current_cmd(submit->primary);
 
    struct msm_ringbuffer_sp *primary =
       to_msm_ringbuffer_sp(submit->primary);
@@ -257,14 +283,11 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
       submit_bos = malloc(msm_submit->nr_bos * sizeof(submit_bos[0]));
    }
 
-   simple_mtx_lock(&table_lock);
    for (unsigned i = 0; i < msm_submit->nr_bos; i++) {
       submit_bos[i].flags = msm_submit->bos[i]->flags;
       submit_bos[i].handle = msm_submit->bos[i]->handle;
       submit_bos[i].presumed = 0;
-      fd_bo_add_fence(msm_submit->bos[i], submit->pipe, submit->fence);
    }
-   simple_mtx_unlock(&table_lock);
 
    req.bos = VOID2U64(submit_bos), req.nr_bos = msm_submit->nr_bos;
    req.cmds = VOID2U64(cmds), req.nr_cmds = primary->u.nr_cmds;
@@ -286,6 +309,15 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
       free(submit_bos);
 
    return ret;
+}
+
+static int
+msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
+                    struct fd_submit_fence *out_fence)
+{
+   msm_submit_sp_flush_prep(submit);
+
+   return msm_submit_sp_flush_finish(submit, in_fence_fd, out_fence);
 }
 
 static void
