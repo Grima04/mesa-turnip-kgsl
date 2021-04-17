@@ -267,6 +267,22 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_ushr: return agx_bfeil_to(b, dst, agx_zero(), s0, s1, 0);
    case nir_op_ishr: return agx_asr_to(b, dst, s0, s1);
 
+   case nir_op_i2i32:
+   {
+      if (s0.size != AGX_SIZE_16)
+         unreachable("todo: more conversions");
+
+      return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+   }
+
+   case nir_op_i2i16:
+   {
+      if (s0.size != AGX_SIZE_32)
+         unreachable("todo: more conversions");
+
+      return agx_iadd_to(b, dst, s0, agx_zero(), 0);
+   }
+
    case nir_op_iadd_sat:
    {
       agx_instr *I = agx_iadd_to(b, dst, s0, s1, 0);
