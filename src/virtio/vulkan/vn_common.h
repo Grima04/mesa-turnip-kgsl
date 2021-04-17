@@ -41,7 +41,7 @@
 
 #define VN_DEFAULT_ALIGN 8
 
-#define VN_DEBUG(category) unlikely(vn_debug & VN_DEBUG_##category)
+#define VN_DEBUG(category) (unlikely(vn_debug & VN_DEBUG_##category))
 
 #define vn_error(instance, error)                                            \
    (VN_DEBUG(RESULT) ? vn_log_result((instance), (error), __func__) : (error))

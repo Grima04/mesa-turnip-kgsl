@@ -43,7 +43,6 @@ static const struct vk_instance_extension_table
       .KHR_external_semaphore_capabilities = true,
       .KHR_get_physical_device_properties2 = true,
 
-      /* WSI */
 #ifdef VN_USE_WSI_PLATFORM
       .KHR_get_surface_capabilities2 = true,
       .KHR_surface = true,
@@ -1410,7 +1409,6 @@ vn_physical_device_get_supported_extensions(
    struct vk_device_extension_table *recognized)
 {
    *supported = (struct vk_device_extension_table){
-      /* WSI */
 #ifdef VN_USE_WSI_PLATFORM
       .KHR_incremental_present = true,
       .KHR_swapchain = true,
