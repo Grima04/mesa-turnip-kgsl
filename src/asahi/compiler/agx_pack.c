@@ -316,6 +316,29 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
       break;
    }
 
+   case AGX_OPCODE_ST_VARY:
+   {
+      agx_index index_src = I->src[0];
+      agx_index value = I->src[1];
+
+      assert(index_src.type == AGX_INDEX_IMMEDIATE);
+      assert(value.type == AGX_INDEX_REGISTER);
+      assert(value.size == AGX_SIZE_32);
+
+      uint64_t raw =
+            0x11 |
+            (I->last ? (1 << 7) : 0) |
+            ((value.value & 0x3F) << 9) |
+            (((uint64_t) index_src.value) << 16) |
+            (0x80 << 16) | /* XXX */
+            ((value.value >> 6) << 24) |
+            (0x8 << 28); /* XXX */
+
+      unsigned size = 4;
+      memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
    case AGX_OPCODE_DEVICE_LOAD:
    {
       assert(I->mask != 0);
