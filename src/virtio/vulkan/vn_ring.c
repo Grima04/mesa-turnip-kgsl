@@ -76,8 +76,8 @@ vn_ring_ge_seqno(const struct vn_ring *ring, uint32_t a, uint32_t b)
 static void
 vn_ring_retire_submits(struct vn_ring *ring, uint32_t seqno)
 {
-   list_for_each_entry_safe (struct vn_ring_submit, submit, &ring->submits,
-                             head) {
+   list_for_each_entry_safe(struct vn_ring_submit, submit, &ring->submits,
+                            head) {
       if (!vn_ring_ge_seqno(ring, seqno, submit->seqno))
          break;
 
@@ -171,8 +171,8 @@ vn_ring_fini(struct vn_ring *ring)
    vn_ring_retire_submits(ring, ring->cur);
    assert(list_is_empty(&ring->submits));
 
-   list_for_each_entry_safe (struct vn_ring_submit, submit,
-                             &ring->free_submits, head)
+   list_for_each_entry_safe(struct vn_ring_submit, submit,
+                            &ring->free_submits, head)
       free(submit);
 }
 

@@ -1957,7 +1957,7 @@ vn_EnumeratePhysicalDevices(VkInstance _instance,
 
    VK_OUTARRAY_MAKE(out, pPhysicalDevices, pPhysicalDeviceCount);
    for (uint32_t i = 0; i < instance->physical_device_count; i++) {
-      vk_outarray_append (&out, physical_dev) {
+      vk_outarray_append(&out, physical_dev) {
          *physical_dev =
             vn_physical_device_to_handle(&instance->physical_devices[i]);
       }
@@ -2067,7 +2067,7 @@ vn_GetPhysicalDeviceQueueFamilyProperties(
 
    VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
    for (uint32_t i = 0; i < physical_dev->queue_family_count; i++) {
-      vk_outarray_append (&out, props) {
+      vk_outarray_append(&out, props) {
          *props =
             physical_dev->queue_family_properties[i].queueFamilyProperties;
       }
@@ -2596,7 +2596,7 @@ vn_GetPhysicalDeviceQueueFamilyProperties2(
 
    VK_OUTARRAY_MAKE(out, pQueueFamilyProperties, pQueueFamilyPropertyCount);
    for (uint32_t i = 0; i < physical_dev->queue_family_count; i++) {
-      vk_outarray_append (&out, props) {
+      vk_outarray_append(&out, props) {
          *props = physical_dev->queue_family_properties[i];
       }
    }
@@ -2787,7 +2787,7 @@ vn_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
    VK_OUTARRAY_MAKE(out, pProperties, pPropertyCount);
    for (uint32_t i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
       if (physical_dev->base.base.supported_extensions.extensions[i]) {
-         vk_outarray_append (&out, prop) {
+         vk_outarray_append(&out, prop) {
             *prop = vk_device_extensions[i];
             prop->specVersion = physical_dev->extension_spec_versions[i];
          }

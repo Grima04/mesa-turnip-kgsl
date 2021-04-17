@@ -63,8 +63,8 @@ vn_DestroyCommandPool(VkDevice device,
 
    vn_async_vkDestroyCommandPool(dev->instance, device, commandPool, NULL);
 
-   list_for_each_entry_safe (struct vn_command_buffer, cmd,
-                             &pool->command_buffers, head) {
+   list_for_each_entry_safe(struct vn_command_buffer, cmd,
+                            &pool->command_buffers, head) {
       vn_cs_encoder_fini(&cmd->cs);
       vn_object_base_fini(&cmd->base);
       vk_free(alloc, cmd);
@@ -82,8 +82,8 @@ vn_ResetCommandPool(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_command_pool *pool = vn_command_pool_from_handle(commandPool);
 
-   list_for_each_entry_safe (struct vn_command_buffer, cmd,
-                             &pool->command_buffers, head) {
+   list_for_each_entry_safe(struct vn_command_buffer, cmd,
+                            &pool->command_buffers, head) {
       vn_cs_encoder_reset(&cmd->cs);
       cmd->state = VN_COMMAND_BUFFER_STATE_INITIAL;
    }
