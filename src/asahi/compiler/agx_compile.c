@@ -263,6 +263,34 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_ineg: return agx_iadd_to(b, dst, agx_zero(), agx_neg(s0), 0);
    case nir_op_imul: return agx_imad_to(b, dst, s0, s1, agx_zero(), 0);
 
+   case nir_op_iadd_sat:
+   {
+      agx_instr *I = agx_iadd_to(b, dst, s0, s1, 0);
+      I->saturate = true;
+      return I;
+   }
+
+   case nir_op_isub_sat:
+   {
+      agx_instr *I = agx_iadd_to(b, dst, s0, agx_neg(s1), 0);
+      I->saturate = true;
+      return I;
+   }
+
+   case nir_op_uadd_sat:
+   {
+      agx_instr *I = agx_iadd_to(b, dst, agx_abs(s0), agx_abs(s1), 0);
+      I->saturate = true;
+      return I;
+   }
+
+   case nir_op_usub_sat:
+   {
+      agx_instr *I = agx_iadd_to(b, dst, agx_abs(s0), agx_neg(agx_abs(s1)), 0);
+      I->saturate = true;
+      return I;
+   }
+
    case nir_op_fsat:
    {
       agx_instr *I = agx_fadd_to(b, dst, s0, agx_negzero());
