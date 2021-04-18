@@ -37,19 +37,6 @@
 #include "common/intel_sample_positions.h"
 
 /**
- * For debugging purposes, this returns a time in seconds.
- */
-double
-get_time(void)
-{
-   struct timespec tp;
-
-   clock_gettime(CLOCK_MONOTONIC, &tp);
-
-   return tp.tv_sec + tp.tv_nsec / 1000000000.0;
-}
-
-/**
  * The pipe->set_debug_callback() driver hook.
  */
 static void

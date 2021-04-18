@@ -101,6 +101,19 @@
 
 #define FILE_DEBUG_FLAG DEBUG_BUFMGR
 
+/**
+ * For debugging purposes, this returns a time in seconds.
+ */
+static double
+get_time(void)
+{
+   struct timespec tp;
+
+   clock_gettime(CLOCK_MONOTONIC, &tp);
+
+   return tp.tv_sec + tp.tv_nsec / 1000000000.0;
+}
+
 static inline int
 atomic_add_unless(int *v, int add, int unless)
 {
