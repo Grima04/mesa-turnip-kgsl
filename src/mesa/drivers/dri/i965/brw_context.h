@@ -504,6 +504,7 @@ struct brw_batch {
    bool needs_sol_reset;
    bool state_base_address_emitted;
    bool no_wrap;
+   bool contains_fence_signal;
 
    struct brw_reloc_list batch_relocs;
    struct brw_reloc_list state_relocs;

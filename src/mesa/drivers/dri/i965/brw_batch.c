@@ -155,6 +155,7 @@ brw_batch_init(struct brw_context *brw)
       malloc(batch->exec_array_size * sizeof(batch->exec_bos[0]));
    batch->validation_list =
       malloc(batch->exec_array_size * sizeof(batch->validation_list[0]));
+   batch->contains_fence_signal = false;
 
    if (INTEL_DEBUG & DEBUG_BATCH) {
       batch->state_batch_sizes =
@@ -292,6 +293,9 @@ brw_batch_reset(struct brw_context *brw)
    struct brw_bo *identifier_bo = brw->workaround_bo;
    if (identifier_bo)
       add_exec_bo(batch, identifier_bo);
+
+   if (batch->contains_fence_signal)
+      batch->contains_fence_signal = false;
 }
 
 static void
@@ -878,7 +882,7 @@ _brw_batch_flush_fence(struct brw_context *brw,
 {
    int ret;
 
-   if (USED_BATCH(brw->batch) == 0)
+   if (USED_BATCH(brw->batch) == 0 && !brw->batch.contains_fence_signal)
       return 0;
 
    /* Check that we didn't just wrap our batchbuffer at a bad time. */

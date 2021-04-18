@@ -136,6 +136,7 @@ intel_semaphoreobj_signal(struct gl_context *ctx,
       util_dynarray_grow(&brw->batch.exec_fences, struct drm_i915_gem_exec_fence *, 1);
    fence->flags = I915_EXEC_FENCE_SIGNAL;
    fence->handle = iSemObj->syncobj->handle;
+   brw->batch.contains_fence_signal = true;
 }
 
 static void
