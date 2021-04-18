@@ -365,6 +365,13 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_fabs: return agx_fmov_to(b, dst, agx_abs(s0));
    case nir_op_fneg: return agx_fmov_to(b, dst, agx_neg(s0));
 
+   case nir_op_fmin: return agx_fcmpsel_to(b, dst, s0, s1, s0, s1, AGX_FCOND_LTN);
+   case nir_op_fmax: return agx_fcmpsel_to(b, dst, s0, s1, s0, s1, AGX_FCOND_GTN);
+   case nir_op_imin: return agx_icmpsel_to(b, dst, s0, s1, s0, s1, AGX_ICOND_SLT);
+   case nir_op_imax: return agx_icmpsel_to(b, dst, s0, s1, s0, s1, AGX_ICOND_SGT);
+   case nir_op_umin: return agx_icmpsel_to(b, dst, s0, s1, s0, s1, AGX_ICOND_ULT);
+   case nir_op_umax: return agx_icmpsel_to(b, dst, s0, s1, s0, s1, AGX_ICOND_UGT);
+
    case nir_op_iadd: return agx_iadd_to(b, dst, s0, s1, 0);
    case nir_op_isub: return agx_iadd_to(b, dst, s0, agx_neg(s1), 0);
    case nir_op_ineg: return agx_iadd_to(b, dst, agx_zero(), agx_neg(s0), 0);
