@@ -125,7 +125,7 @@ idep_vulkan_util_headers = declare_dependency(
   include_directories : include_directories('.')
 )
 
-if with_platform_windows
+if cc.get_id() == 'msvc'
   idep_vulkan_util = declare_dependency(
     link_with : libvulkan_util,
     dependencies : idep_vulkan_util_headers
