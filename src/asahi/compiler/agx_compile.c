@@ -273,6 +273,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
      agx_emit_load_ubo(b, instr);
      break;
 
+  case nir_intrinsic_load_vertex_id:
+     agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32))); /* TODO: RA */
+     break;
+
   default:
        fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
        assert(0);
