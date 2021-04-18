@@ -1340,6 +1340,11 @@ clc_to_dxil(struct clc_context *ctx,
    nir_variable *work_properties_var =
       add_work_properties_var(dxil, nir, &cbv_id);
 
+   memcpy(metadata->local_size, nir->info.cs.local_size,
+          sizeof(metadata->local_size));
+   memcpy(metadata->local_size_hint, nir->info.cs.local_size_hint,
+          sizeof(metadata->local_size));
+
    // Patch the localsize before calling clc_nir_lower_system_values().
    if (conf) {
       for (unsigned i = 0; i < ARRAY_SIZE(nir->info.cs.local_size); i++) {
@@ -1354,6 +1359,14 @@ clc_to_dxil(struct clc_context *ctx,
          }
 
          nir->info.cs.local_size[i] = conf->local_size[i];
+      }
+      memcpy(metadata->local_size, nir->info.cs.local_size,
+            sizeof(metadata->local_size));
+   } else {
+      /* Make sure there's at least one thread that's set to run */
+      for (unsigned i = 0; i < ARRAY_SIZE(nir->info.cs.local_size); i++) {
+         if (nir->info.cs.local_size[i] == 0)
+            nir->info.cs.local_size[i] = 1;
       }
    }
 
@@ -1427,11 +1440,6 @@ clc_to_dxil(struct clc_context *ctx,
       debug_printf("D3D12: nir_to_dxil failed\n");
       goto err_free_dxil;
    }
-
-   memcpy(metadata->local_size, nir->info.cs.local_size,
-          sizeof(metadata->local_size));
-   memcpy(metadata->local_size_hint, nir->info.cs.local_size_hint,
-          sizeof(metadata->local_size));
 
    nir_foreach_variable_with_modes(var, nir, nir_var_mem_ssbo) {
       if (var->constant_initializer) {
