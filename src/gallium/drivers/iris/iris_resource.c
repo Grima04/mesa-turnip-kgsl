@@ -175,28 +175,6 @@ select_best_modifier(struct gen_device_info *devinfo, enum pipe_format pfmt,
    return priority_to_modifier[prio];
 }
 
-enum isl_surf_dim
-target_to_isl_surf_dim(enum pipe_texture_target target)
-{
-   switch (target) {
-   case PIPE_BUFFER:
-   case PIPE_TEXTURE_1D:
-   case PIPE_TEXTURE_1D_ARRAY:
-      return ISL_SURF_DIM_1D;
-   case PIPE_TEXTURE_2D:
-   case PIPE_TEXTURE_CUBE:
-   case PIPE_TEXTURE_RECT:
-   case PIPE_TEXTURE_2D_ARRAY:
-   case PIPE_TEXTURE_CUBE_ARRAY:
-      return ISL_SURF_DIM_2D;
-   case PIPE_TEXTURE_3D:
-      return ISL_SURF_DIM_3D;
-   case PIPE_MAX_TEXTURE_TYPES:
-      break;
-   }
-   unreachable("invalid texture type");
-}
-
 static inline bool is_modifier_external_only(enum pipe_format pfmt,
                                              uint64_t modifier)
 {
