@@ -129,6 +129,13 @@ fd_fence_populate(struct pipe_fence_handle *fence, uint32_t timestamp,
    }
 }
 
+void
+fd_fence_repopulate(struct pipe_fence_handle *fence, struct pipe_fence_handle *last_fence)
+{
+   int fence_fd = (last_fence->fence_fd == -1) ? -1 : dup(last_fence->fence_fd);
+   fd_fence_populate(fence, last_fence->timestamp, fence_fd);
+}
+
 static void
 fd_fence_destroy(struct pipe_fence_handle *fence)
 {

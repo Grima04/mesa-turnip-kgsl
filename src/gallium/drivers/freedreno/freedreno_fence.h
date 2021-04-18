@@ -31,6 +31,8 @@
 
 void fd_fence_populate(struct pipe_fence_handle *fence, uint32_t timestamp,
                        int fence_fd);
+void fd_fence_repopulate(struct pipe_fence_handle *fence,
+                         struct pipe_fence_handle *last_fence);
 void fd_fence_ref(struct pipe_fence_handle **ptr,
                   struct pipe_fence_handle *pfence);
 bool fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *ctx,

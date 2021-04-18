@@ -77,11 +77,15 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
       fd_fence_set_batch(*fencep, batch);
       fd_fence_ref(&batch->fence, *fencep);
 
-      /* We (a) cannot substitute the provided fence with last_fence,
-       * and (b) need fd_fence_populate() to be eventually called on
-       * the fence that was pre-created in frontend-thread:
+      /* If we have nothing to flush, update the pre-created unflushed
+       * fence with the current state of the last-fence:
        */
-      fd_fence_ref(&ctx->last_fence, NULL);
+      if (ctx->last_fence) {
+         fd_fence_repopulate(*fencep, ctx->last_fence);
+         fd_fence_ref(&fence, *fencep);
+         fd_bc_dump(ctx->screen, "%p: (deferred) reuse last_fence, remaining:\n", ctx);
+         goto out;
+      }
 
       /* async flush is not compatible with deferred flush, since
        * nothing triggers the batch flush which fence_flush() would
