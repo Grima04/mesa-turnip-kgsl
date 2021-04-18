@@ -223,6 +223,7 @@ vn_AllocateMemory(VkDevice device,
          vk_free(alloc, mem);
          return vn_error(dev->instance, result);
       }
+      vn_instance_roundtrip(dev->instance);
 
       const VkImportMemoryResourceInfoMESA import_memory_resource_info = {
          .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_RESOURCE_INFO_MESA,
@@ -435,6 +436,7 @@ vn_GetMemoryFdPropertiesKHR(VkDevice device,
                                                   fd, 0, handleType, &bo);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
+   vn_instance_roundtrip(dev->instance);
 
    VkMemoryResourcePropertiesMESA memory_resource_properties = {
       .sType = VK_STRUCTURE_TYPE_MEMORY_RESOURCE_PROPERTIES_MESA,
