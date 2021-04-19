@@ -173,7 +173,7 @@ flush_ring(void)
    if (!dev.submit)
       return;
 
-   ret = fd_submit_flush(dev.submit, -1, NULL, NULL);
+   ret = fd_submit_flush(dev.submit, -1, NULL);
    if (ret)
       errx(1, "submit failed: %d", ret);
    fd_ringbuffer_del(dev.ring);

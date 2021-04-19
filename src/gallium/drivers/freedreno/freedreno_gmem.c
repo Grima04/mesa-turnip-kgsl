@@ -654,18 +654,14 @@ render_sysmem(struct fd_batch *batch) assert_dt
 static void
 flush_ring(struct fd_batch *batch)
 {
-   uint32_t timestamp = 0;
-   int out_fence_fd = -1;
-
    if (FD_DBG(NOHW))
       return;
 
    fd_submit_flush(batch->submit, batch->in_fence_fd,
-                   batch->needs_out_fence_fd ? &out_fence_fd : NULL,
-                   batch->fence ? &timestamp : NULL);
+                   batch->fence ? &batch->fence->submit_fence : NULL);
 
    if (batch->fence)
-      fd_fence_populate(batch->fence, timestamp, out_fence_fd);
+      fd_fence_set_batch(batch->fence, NULL);
 }
 
 void

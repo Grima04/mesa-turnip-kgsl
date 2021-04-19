@@ -61,7 +61,6 @@ struct fd_batch {
    uint32_t *last_timestamp_cmd;
 
    int in_fence_fd;
-   bool needs_out_fence_fd;
    struct pipe_fence_handle *fence;
 
    struct fd_context *ctx;

@@ -284,7 +284,7 @@ main(int argc, char **argv)
 
    backend->emit_grid(kernel, grid, submit);
 
-   fd_submit_flush(submit, -1, NULL, NULL);
+   fd_submit_flush(submit, -1, NULL);
 
    for (int i = 0; i < kernel->num_bufs; i++) {
       fd_bo_cpu_prep(kernel->bufs[i], pipe, FD_BO_PREP_READ);

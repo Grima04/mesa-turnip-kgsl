@@ -205,7 +205,7 @@ batch_fini(struct fd_batch *batch)
 
    /* in case batch wasn't flushed but fence was created: */
    if (batch->fence)
-      fd_fence_populate(batch->fence, 0, -1);
+      fd_fence_set_batch(batch->fence, NULL);
 
    fd_fence_ref(&batch->fence, NULL);
 

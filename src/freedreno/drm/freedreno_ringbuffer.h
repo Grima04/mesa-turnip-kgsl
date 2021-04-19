@@ -92,11 +92,26 @@ struct fd_ringbuffer *fd_submit_new_ringbuffer(struct fd_submit *submit,
                                                uint32_t size,
                                                enum fd_ringbuffer_flags flags);
 
+/**
+ * Encapsulates submit out-fence(s), which consist of a 'timestamp' (per-
+ * pipe (submitqueue) sequence number) and optionally, if requested, an
+ * out-fence-fd
+ */
+struct fd_submit_fence {
+   struct fd_fence fence;
+
+   /**
+    * Optional dma_fence fd, returned by submit if use_fence_fd is true
+    */
+   int fence_fd;
+   bool use_fence_fd;
+};
+
 /* in_fence_fd: -1 for no in-fence, else fence fd
- * out_fence_fd: NULL for no output-fence requested, else ptr to return out-fence
+ * out_fence can be NULL if no output fence is required
  */
 int fd_submit_flush(struct fd_submit *submit, int in_fence_fd,
-                    int *out_fence_fd, uint32_t *out_fence);
+                    struct fd_submit_fence *out_fence);
 
 struct fd_ringbuffer;
 struct fd_reloc;

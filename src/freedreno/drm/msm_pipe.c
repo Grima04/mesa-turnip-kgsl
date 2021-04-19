@@ -106,11 +106,11 @@ msm_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
 }
 
 static int
-msm_pipe_wait(struct fd_pipe *pipe, uint32_t timestamp, uint64_t timeout)
+msm_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence, uint64_t timeout)
 {
    struct fd_device *dev = pipe->dev;
    struct drm_msm_wait_fence req = {
-      .fence = timestamp,
+      .fence = fence->kfence,
       .queueid = to_msm_pipe(pipe)->queue_id,
    };
    int ret;

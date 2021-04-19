@@ -147,7 +147,8 @@ struct fd_pipe_funcs {
    struct fd_submit *(*submit_new)(struct fd_pipe *pipe);
    int (*get_param)(struct fd_pipe *pipe, enum fd_param_id param,
                     uint64_t *value);
-   int (*wait)(struct fd_pipe *pipe, uint32_t timestamp, uint64_t timeout);
+   int (*wait)(struct fd_pipe *pipe, const struct fd_fence *fence,
+               uint64_t timeout);
    void (*destroy)(struct fd_pipe *pipe);
 };
 
@@ -188,8 +189,8 @@ struct fd_submit_funcs {
    struct fd_ringbuffer *(*new_ringbuffer)(struct fd_submit *submit,
                                            uint32_t size,
                                            enum fd_ringbuffer_flags flags);
-   int (*flush)(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
-                uint32_t *out_fence);
+   int (*flush)(struct fd_submit *submit, int in_fence_fd,
+                struct fd_submit_fence *out_fence);
    void (*destroy)(struct fd_submit *submit);
 };
 

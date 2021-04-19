@@ -79,6 +79,22 @@ fd_fence_after(uint32_t a, uint32_t b)
    return (int32_t)(a - b) > 0;
 }
 
+/**
+ * Per submit, there are actually two fences:
+ *  1) The userspace maintained fence, which is used to optimistically
+ *     avoid kernel ioctls to query if specific rendering is completed
+ *  2) The kernel maintained fence, which we cannot directly do anything
+ *     with, other than pass it back to the kernel
+ *
+ * The userspace fence is mostly internal to the drm layer, but we want
+ * the gallium layer to be able to pass it back to us for things like
+ * fd_pipe_wait().  So this struct encapsulates the two.
+ */
+struct fd_fence {
+   uint32_t kfence;     /* kernel fence */
+   uint32_t ufence;     /* userspace fence */
+};
+
 /* bo flags: */
 #define FD_BO_GPUREADONLY  BITSET_BIT(1)
 #define FD_BO_SCANOUT      BITSET_BIT(2)
@@ -126,9 +142,9 @@ struct fd_pipe *fd_pipe_ref_locked(struct fd_pipe *pipe);
 void fd_pipe_del(struct fd_pipe *pipe);
 int fd_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param,
                       uint64_t *value);
-int fd_pipe_wait(struct fd_pipe *pipe, uint32_t timestamp);
+int fd_pipe_wait(struct fd_pipe *pipe, const struct fd_fence *fence);
 /* timeout in nanosec */
-int fd_pipe_wait_timeout(struct fd_pipe *pipe, uint32_t timestamp,
+int fd_pipe_wait_timeout(struct fd_pipe *pipe, const struct fd_fence *fence,
                          uint64_t timeout);
 
 /* buffer-object functions:
