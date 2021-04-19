@@ -1007,11 +1007,12 @@ panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch, unsigned rt,
 }
 
 static void
-panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
+panfrost_upload_sysvals(struct panfrost_batch *batch,
+                        const struct panfrost_ptr *ptr,
                         struct panfrost_shader_state *ss,
                         enum pipe_shader_type st)
 {
-        struct sysval_uniform *uniforms = (void *)buf;
+        struct sysval_uniform *uniforms = ptr->cpu;
 
         for (unsigned i = 0; i < ss->info.sysvals.sysval_count; ++i) {
                 int sysval = ss->info.sysvals.sysvals[i];
@@ -1036,6 +1037,10 @@ panfrost_upload_sysvals(struct panfrost_batch *batch, void *buf,
                                                     &uniforms[i]);
                         break;
                 case PAN_SYSVAL_NUM_WORK_GROUPS:
+                        for (unsigned j = 0; j < 3; j++) {
+                                batch->num_wg_sysval[j] =
+                                        ptr->gpu + (i * sizeof(*uniforms)) + (j * 4);
+                        }
                         panfrost_upload_num_work_groups_sysval(batch,
                                                                &uniforms[i]);
                         break;
@@ -1115,7 +1120,7 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
                 panfrost_pool_alloc_aligned(&batch->pool, sys_size, 16);
 
         /* Upload sysvals requested by the shader */
-        panfrost_upload_sysvals(batch, transfer.cpu, ss, stage);
+        panfrost_upload_sysvals(batch, &transfer, ss, stage);
 
         /* Next up, attach UBOs. UBO count includes gaps but no sysval UBO */
         struct panfrost_shader_state *shader = panfrost_get_shader_state(ctx, stage);
@@ -1171,6 +1176,15 @@ panfrost_emit_const_buf(struct panfrost_batch *batch,
         for (unsigned i = 0; i < ss->info.push.count; ++i) {
                 struct panfrost_ubo_word src = ss->info.push.words[i];
 
+                if (src.ubo == sysval_ubo) {
+                        unsigned sysval_idx = src.offset / 16;
+                        unsigned sysval_type = PAN_SYSVAL_TYPE(ss->info.sysvals.sysvals[sysval_idx]);
+                        if (sysval_type == PAN_SYSVAL_NUM_WORK_GROUPS) {
+                                unsigned word = (src.offset % 16) / 4;
+
+                                batch->num_wg_sysval[word] = push_transfer.gpu + (4 * i);
+                        }
+                }
                 /* Map the UBO, this should be cheap. However this is reading
                  * from write-combine memory which is _very_ slow. It might pay
                  * off to upload sysvals to a staging buffer on the CPU on the

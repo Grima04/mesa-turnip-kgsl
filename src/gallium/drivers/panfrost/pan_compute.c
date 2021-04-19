@@ -30,6 +30,7 @@
 #include "pan_cmdstream.h"
 #include "panfrost-quirks.h"
 #include "pan_bo.h"
+#include "pan_indirect_dispatch.h"
 #include "pan_shader.h"
 #include "util/u_memory.h"
 #include "nir_serialize.h"
@@ -106,9 +107,6 @@ panfrost_launch_grid(struct pipe_context *pipe,
          */
         panfrost_batch_reserve_tls(batch, true);
 
-        /* TODO: Indirect compute dispatch */
-        assert(!info->indirect);
-
         ctx->compute_grid = info;
 
         struct panfrost_ptr t =
@@ -131,9 +129,13 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         void *invocation =
                 pan_section_ptr(t.cpu, COMPUTE_JOB, INVOCATION);
+        unsigned num_wg[3] = { info->grid[0], info->grid[1], info->grid[2] };
+
+        if (info->indirect)
+                num_wg[0] = num_wg[1] = num_wg[2] = 1;
+
         panfrost_pack_work_groups_compute(invocation,
-                                          info->grid[0], info->grid[1],
-                                          info->grid[2],
+                                          num_wg[0], num_wg[1], num_wg[2],
                                           info->block[0], info->block[1],
                                           info->block[2],
                                           false);
@@ -162,8 +164,27 @@ panfrost_launch_grid(struct pipe_context *pipe,
 
         pan_section_pack(t.cpu, COMPUTE_JOB, DRAW_PADDING, cfg);
 
+        unsigned indirect_dep = 0;
+        if (info->indirect) {
+                struct pan_indirect_dispatch_info indirect = {
+                        .job = t.gpu,
+                        .indirect_dim = pan_resource(info->indirect)->image.data.bo->ptr.gpu +
+                                        info->indirect_offset,
+                        .num_wg_sysval = {
+                                batch->num_wg_sysval[0],
+                                batch->num_wg_sysval[1],
+                                batch->num_wg_sysval[2],
+                        },
+                };
+
+                indirect_dep = pan_indirect_dispatch_emit(&batch->pool,
+                                                          &batch->scoreboard,
+                                                          &indirect);
+        }
+
         panfrost_add_job(&batch->pool, &batch->scoreboard,
-                         MALI_JOB_TYPE_COMPUTE, true, false, 0, 0, &t, true);
+                         MALI_JOB_TYPE_COMPUTE, true, false,
+                         indirect_dep, 0, &t, false);
         panfrost_flush_all_batches(ctx);
 }
 

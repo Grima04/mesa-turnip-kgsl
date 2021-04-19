@@ -50,6 +50,7 @@
 #include "pan_resource.h"
 #include "pan_public.h"
 #include "pan_util.h"
+#include "pan_indirect_dispatch.h"
 #include "pan_indirect_draw.h"
 #include "decode.h"
 
@@ -696,6 +697,7 @@ panfrost_destroy_screen(struct pipe_screen *pscreen)
 {
         struct panfrost_device *dev = pan_device(pscreen);
 
+        pan_indirect_dispatch_cleanup(dev);
         panfrost_cleanup_indirect_draw_shaders(dev);
         pan_blitter_cleanup(dev);
         pan_blend_shaders_cleanup(dev);
@@ -872,6 +874,7 @@ panfrost_create_screen(int fd, struct renderonly *ro)
         panfrost_resource_screen_init(&screen->base);
         pan_blend_shaders_init(dev);
         panfrost_init_indirect_draw_shaders(dev);
+        pan_indirect_dispatch_init(dev);
         pan_blitter_init(dev);
 
         return &screen->base;
