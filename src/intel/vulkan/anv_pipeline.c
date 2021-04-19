@@ -1743,7 +1743,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
          const unsigned chunk_size = 16;
          const unsigned shared_size = ALIGN(stage.nir->info.shared_size, chunk_size);
          assert(shared_size <=
-                calculate_gen_slm_size(compiler->devinfo->ver, stage.nir->info.shared_size));
+                intel_calculate_slm_size(compiler->devinfo->ver, stage.nir->info.shared_size));
 
          NIR_PASS_V(stage.nir, nir_zero_initialize_shared_memory,
                     shared_size, chunk_size);

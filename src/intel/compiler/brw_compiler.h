@@ -1644,7 +1644,7 @@ void brw_debug_key_recompile(const struct brw_compiler *c, void *log,
  * and also have a Gen-dependent minimum value if not zero.
  */
 static inline uint32_t
-calculate_gen_slm_size(unsigned gen, uint32_t bytes)
+intel_calculate_slm_size(unsigned gen, uint32_t bytes)
 {
    assert(bytes <= 64 * 1024);
    if (bytes > 0)
@@ -1669,7 +1669,7 @@ encode_slm_size(unsigned gen, uint32_t bytes)
     */
 
    if (bytes > 0) {
-      slm_size = calculate_gen_slm_size(gen, bytes);
+      slm_size = intel_calculate_slm_size(gen, bytes);
       assert(util_is_power_of_two_nonzero(slm_size));
 
       if (gen >= 9) {
