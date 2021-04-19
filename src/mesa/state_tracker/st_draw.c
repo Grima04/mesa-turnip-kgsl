@@ -187,7 +187,7 @@ st_draw_gallium(struct gl_context *ctx,
 }
 
 static void
-st_draw_gallium_complex(struct gl_context *ctx,
+st_draw_gallium_multimode(struct gl_context *ctx,
                         struct pipe_draw_info *info,
                         const struct pipe_draw_start_count_bias *draws,
                         const unsigned char *mode,
@@ -316,7 +316,7 @@ st_init_draw_functions(struct dd_function_table *functions)
 {
    functions->Draw = NULL;
    functions->DrawGallium = st_draw_gallium;
-   functions->DrawGalliumComplex = st_draw_gallium_complex;
+   functions->DrawGalliumMultiMode = st_draw_gallium_multimode;
    functions->DrawIndirect = st_indirect_draw_vbo;
    functions->DrawTransformFeedback = st_draw_transform_feedback;
 }

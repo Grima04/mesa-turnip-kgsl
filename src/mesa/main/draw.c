@@ -1064,7 +1064,7 @@ _mesa_draw_gallium_fallback(struct gl_context *ctx,
  * Called via Driver.DrawGallium. This is a fallback invoking Driver.Draw.
  */
 void
-_mesa_draw_gallium_complex_fallback(struct gl_context *ctx,
+_mesa_draw_gallium_multimode_fallback(struct gl_context *ctx,
                                     struct pipe_draw_info *info,
                                     const struct pipe_draw_start_count_bias *draws,
                                     const unsigned char *mode,

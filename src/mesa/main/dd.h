@@ -596,7 +596,7 @@ struct dd_function_table {
     *
     * This function exists to decrease complexity of DrawGallium.
     */
-   void (*DrawGalliumComplex)(struct gl_context *ctx,
+   void (*DrawGalliumMultiMode)(struct gl_context *ctx,
                               struct pipe_draw_info *info,
                               const struct pipe_draw_start_count_bias *draws,
                               const unsigned char *mode,

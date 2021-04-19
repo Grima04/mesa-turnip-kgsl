@@ -235,7 +235,7 @@ vbo_save_playback_vertex_list(struct gl_context *ctx, void *data)
             info->vertices_per_patch = ctx->TessCtrlProgram.patch_vertices;
             void *gl_bo = info->index.gl_bo;
             if (node->merged.mode) {
-               ctx->Driver.DrawGalliumComplex(ctx, info,
+               ctx->Driver.DrawGalliumMultiMode(ctx, info,
                                               node->merged.start_count,
                                               node->merged.mode,
                                               node->merged.num_draws);
