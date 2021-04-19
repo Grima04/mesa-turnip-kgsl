@@ -1484,6 +1484,14 @@ vtn_handle_type(struct vtn_builder *b, SpvOp opcode,
       };
 
       vtn_foreach_decoration(b, val, struct_member_decoration_cb, &ctx);
+
+      /* Propagate access specifiers that are present on all members to the overall type */
+      enum gl_access_qualifier overall_access = ACCESS_COHERENT | ACCESS_VOLATILE |
+                                                ACCESS_NON_READABLE | ACCESS_NON_WRITEABLE;
+      for (unsigned i = 0; i < num_fields; ++i)
+         overall_access &= val->type->members[i]->access;
+      val->type->access = overall_access;
+
       vtn_foreach_decoration(b, val, struct_member_matrix_stride_cb, &ctx);
 
       vtn_foreach_decoration(b, val, struct_block_decoration_cb, NULL);
