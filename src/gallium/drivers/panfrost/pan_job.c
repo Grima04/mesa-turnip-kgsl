@@ -910,7 +910,7 @@ panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
 }
 
 mali_ptr
-panfrost_batch_reserve_tls(struct panfrost_batch *batch)
+panfrost_batch_reserve_tls(struct panfrost_batch *batch, bool compute)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
@@ -919,7 +919,7 @@ panfrost_batch_reserve_tls(struct panfrost_batch *batch)
         if (batch->tls.gpu)
                 return batch->tls.gpu;
 
-        if (pan_is_bifrost(dev)) {
+        if (pan_is_bifrost(dev) || compute) {
                 batch->tls = panfrost_pool_alloc_desc(&batch->pool, LOCAL_STORAGE);
         } else {
                 /* On Midgard, the FB descriptor contains a thread storage
@@ -1122,7 +1122,7 @@ panfrost_batch_submit(struct panfrost_batch *batch,
 
         panfrost_batch_to_fb_info(batch, &fb, rts, &zs, &s, false);
 
-        panfrost_batch_reserve_tls(batch);
+        panfrost_batch_reserve_tls(batch, false);
         panfrost_batch_draw_wallpaper(batch, &fb);
 
 

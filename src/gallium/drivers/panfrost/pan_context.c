@@ -460,7 +460,7 @@ panfrost_direct_draw(struct panfrost_context *ctx,
 
         unsigned vertex_count = ctx->vertex_count;
 
-        mali_ptr shared_mem = panfrost_batch_reserve_tls(batch);
+        mali_ptr shared_mem = panfrost_batch_reserve_tls(batch, false);
 
         unsigned min_index = 0, max_index = 0;
         mali_ptr indices = 0;

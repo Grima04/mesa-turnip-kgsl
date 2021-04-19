@@ -2267,7 +2267,7 @@ panfrost_emit_tls(struct panfrost_batch *batch)
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
 
         /* Emitted with the FB descriptor on Midgard. */
-        if (!pan_is_bifrost(dev))
+        if (!pan_is_bifrost(dev) && batch->framebuffer.gpu)
                 return;
 
         struct panfrost_bo *tls_bo =

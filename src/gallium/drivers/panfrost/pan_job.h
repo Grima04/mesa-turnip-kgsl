@@ -200,6 +200,6 @@ mali_ptr
 panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch);
 
 mali_ptr
-panfrost_batch_reserve_tls(struct panfrost_batch *batch);
+panfrost_batch_reserve_tls(struct panfrost_batch *batch, bool compute);
 
 #endif
