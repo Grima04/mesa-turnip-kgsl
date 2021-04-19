@@ -1485,6 +1485,7 @@ vn_physical_device_get_supported_extensions(
 
       /* EXT */
       .EXT_image_drm_format_modifier = true,
+      .EXT_queue_family_foreign = true,
       .EXT_transform_feedback = true,
    };
 }
@@ -3067,8 +3068,14 @@ vn_device_fix_create_info(const struct vn_device *dev,
          VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
 #endif
 
-   if (dev->base.base.enabled_extensions.ANDROID_native_buffer)
+   if (dev->base.base.enabled_extensions.ANDROID_native_buffer) {
       block_exts[block_count++] = VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME;
+
+      if (!dev->base.base.enabled_extensions.EXT_queue_family_foreign &&
+          dev->physical_device->renderer_extensions.EXT_queue_family_foreign)
+         extra_exts[extra_count++] =
+            VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME;
+   }
 
    if (dev->base.base.enabled_extensions.KHR_external_memory_fd ||
        dev->base.base.enabled_extensions.EXT_external_memory_dma_buf) {
