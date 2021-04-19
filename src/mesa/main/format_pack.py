@@ -189,37 +189,6 @@ _mesa_pack_ubyte_rgba_row(mesa_format format, uint32_t n,
    }
 }
 
-
-/**
- * Pack a 2D image of ubyte RGBA pixels in the given format.
- * \param srcRowStride  source image row stride in bytes
- * \param dstRowStride  destination image row stride in bytes
- */
-void
-_mesa_pack_ubyte_rgba_rect(mesa_format format, uint32_t width, uint32_t height,
-                           const uint8_t *src, int32_t srcRowStride,
-                           void *dst, int32_t dstRowStride)
-{
-   uint8_t *dstUB = dst;
-   uint32_t i;
-
-   if (srcRowStride == width * 4 * sizeof(uint8_t) &&
-       dstRowStride == _mesa_format_row_stride(format, width)) {
-      /* do whole image at once */
-      _mesa_pack_ubyte_rgba_row(format, width * height,
-                                (const uint8_t (*)[4]) src, dst);
-   }
-   else {
-      /* row by row */
-      for (i = 0; i < height; i++) {
-         _mesa_pack_ubyte_rgba_row(format, width,
-                                   (const uint8_t (*)[4]) src, dstUB);
-         src += srcRowStride;
-         dstUB += dstRowStride;
-      }
-   }
-}
-
 """
 
 template = Template(string, future_imports=['division'])
