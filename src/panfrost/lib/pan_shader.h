@@ -104,7 +104,8 @@ pan_shader_classify_pixel_kill_coverage(const struct pan_shader_info *info,
 #undef SET_PIXEL_KILL
 
 static inline void
-pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
+pan_shader_prepare_bifrost_rsd(const struct panfrost_device *dev,
+                               const struct pan_shader_info *info,
                                struct MALI_RENDERER_STATE *rsd)
 {
         unsigned fau_count = DIV_ROUND_UP(info->push.count, 2);
@@ -121,8 +122,10 @@ pan_shader_prepare_bifrost_rsd(const struct pan_shader_info *info,
         case MESA_SHADER_FRAGMENT:
                 pan_shader_classify_pixel_kill_coverage(info, rsd);
 
-                rsd->properties.bifrost.shader_wait_dependency_6 = info->bifrost.wait_6;
-                rsd->properties.bifrost.shader_wait_dependency_7 = info->bifrost.wait_7;
+                if (dev->arch > 6) {
+                        rsd->properties.bifrost.shader_wait_dependency_6 = info->bifrost.wait_6;
+                        rsd->properties.bifrost.shader_wait_dependency_7 = info->bifrost.wait_7;
+                }
 
                 rsd->preload.fragment.fragment_position = info->fs.reads_frag_coord;
                 rsd->preload.fragment.coverage = true;
@@ -188,7 +191,7 @@ pan_shader_prepare_rsd(const struct panfrost_device *dev,
         }
 
         if (pan_is_bifrost(dev))
-                pan_shader_prepare_bifrost_rsd(shader_info, rsd);
+                pan_shader_prepare_bifrost_rsd(dev, shader_info, rsd);
         else
                 pan_shader_prepare_midgard_rsd(shader_info, rsd);
 }
