@@ -59,6 +59,16 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
          }
       }
 
+      /* If after the pre-created unflushed fence is flushed, we end up
+       * re-populated to a previous last_fence, then *that* is the one
+       * whose submit_fence.ready we want to wait on:
+       */
+      if (fence->last_fence) {
+         return fence_flush(pctx, fence->last_fence, timeout);
+      }
+
+      util_queue_fence_wait(&fence->submit_fence.ready);
+
       /* We've already waited for batch to be flushed and fence->batch
        * to be cleared:
        */
@@ -68,6 +78,8 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
 
    if (fence->batch)
       fd_batch_flush(fence->batch);
+
+   util_queue_fence_wait(&fence->submit_fence.ready);
 
    debug_assert(!fence->batch);
 
@@ -81,19 +93,37 @@ fd_fence_repopulate(struct pipe_fence_handle *fence, struct pipe_fence_handle *l
     * might have been)
     */
    assert(!fence->submit_fence.use_fence_fd);
+   assert(!last_fence->batch);
 
    fence->submit_fence.fence = last_fence->submit_fence.fence;
+
+   fd_fence_ref(&fence->last_fence, last_fence);
+
+   /* We have nothing to flush, so nothing will clear the batch reference
+    * (which is normally done when the batch is flushed), so do it now:
+    */
+   fd_fence_set_batch(fence, NULL);
 }
 
 static void
 fd_fence_destroy(struct pipe_fence_handle *fence)
 {
+   fd_fence_ref(&fence->last_fence, NULL);
+
    tc_unflushed_batch_token_reference(&fence->tc_token, NULL);
    if (fence->submit_fence.use_fence_fd)
       close(fence->submit_fence.fence_fd);
    if (fence->syncobj)
       drmSyncobjDestroy(fd_device_fd(fence->screen->dev), fence->syncobj);
    fd_pipe_del(fence->pipe);
+
+   /* TODO might be worth trying harder to avoid a potential stall here,
+    * but that would require the submit somehow holding a reference to
+    * the pipe_fence_handle.. and I'm not sure if it is a thing that is
+    * likely to matter much.
+    */
+   util_queue_fence_wait(&fence->submit_fence.ready);
+
    FREE(fence);
 }
 
@@ -112,6 +142,9 @@ fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
 {
    if (!fence_flush(pctx, fence, timeout))
       return false;
+
+   if (fence->last_fence)
+      fence = fence->last_fence;
 
    if (fence->submit_fence.use_fence_fd) {
       int ret = sync_wait(fence->submit_fence.fence_fd, timeout / 1000000);
@@ -136,9 +169,10 @@ fence_create(struct fd_context *ctx, struct fd_batch *batch, int fence_fd,
 
    pipe_reference_init(&fence->reference, 1);
    util_queue_fence_init(&fence->ready);
+   util_queue_fence_init(&fence->submit_fence.ready);
 
    fence->ctx = ctx;
-   fence->batch = batch;
+   fd_fence_set_batch(fence, batch);
    fence->pipe = fd_pipe_ref(ctx->pipe);
    fence->screen = ctx->screen;
    fence->submit_fence.fence_fd = fence_fd;
@@ -237,6 +271,7 @@ fd_fence_set_batch(struct pipe_fence_handle *fence, struct fd_batch *batch)
    if (batch) {
       assert(!fence->batch);
       fence->batch = batch;
+      batch->needs_flush = true;
    } else {
       fence->batch = NULL;
 

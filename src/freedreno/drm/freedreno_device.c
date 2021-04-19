@@ -33,8 +33,7 @@
 #include "freedreno_drmif.h"
 #include "freedreno_priv.h"
 
-struct fd_device *kgsl_device_new(int fd);
-struct fd_device *msm_device_new(int fd);
+struct fd_device *msm_device_new(int fd, drmVersionPtr version);
 
 struct fd_device *
 fd_device_new(int fd)
@@ -58,7 +57,7 @@ fd_device_new(int fd)
          goto out;
       }
 
-      dev = msm_device_new(fd);
+      dev = msm_device_new(fd, version);
       dev->version = version->version_minor;
 #if HAVE_FREEDRENO_KGSL
    } else if (!strcmp(version->name, "kgsl")) {

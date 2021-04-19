@@ -34,6 +34,9 @@ static void
 msm_device_destroy(struct fd_device *dev)
 {
    struct msm_device *msm_dev = to_msm_device(dev);
+   if (util_queue_is_initialized(&msm_dev->submit_queue)) {
+      util_queue_destroy(&msm_dev->submit_queue);
+   }
    free(msm_dev);
 }
 
@@ -45,7 +48,7 @@ static const struct fd_device_funcs funcs = {
 };
 
 struct fd_device *
-msm_device_new(int fd)
+msm_device_new(int fd, drmVersionPtr version)
 {
    struct msm_device *msm_dev;
    struct fd_device *dev;
@@ -60,6 +63,15 @@ msm_device_new(int fd)
 
    dev = &msm_dev->base;
    dev->funcs = &funcs;
+
+   /* async submit_queue currently only used for msm_submit_sp: */
+   if (version->version_minor >= FD_VERSION_SOFTPIN) {
+      /* Note the name is intentionally short to avoid the queue
+       * thread's comm truncating the interesting part of the
+       * process name.
+       */
+      util_queue_init(&msm_dev->submit_queue, "sq", 8, 1, 0);
+   }
 
    dev->bo_size = sizeof(struct msm_bo);
 

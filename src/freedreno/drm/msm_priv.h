@@ -40,10 +40,11 @@
 struct msm_device {
    struct fd_device base;
    struct fd_bo_cache ring_cache;
+   struct util_queue submit_queue;
 };
 FD_DEFINE_CAST(fd_device, msm_device);
 
-struct fd_device *msm_device_new(int fd);
+struct fd_device *msm_device_new(int fd, drmVersionPtr version);
 
 struct msm_pipe {
    struct fd_pipe base;
@@ -54,6 +55,14 @@ struct msm_pipe {
    uint32_t chip_id;
    uint32_t queue_id;
    struct slab_parent_pool ring_pool;
+
+   /**
+    * The last fence seqno that was flushed to kernel (doesn't mean that it
+    * is complete, just that the kernel knows about it)
+    */
+   uint32_t last_submit_fence;
+
+   uint32_t last_enqueue_fence;   /* just for debugging */
 };
 FD_DEFINE_CAST(fd_pipe, msm_pipe);
 

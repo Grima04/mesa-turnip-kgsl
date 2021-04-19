@@ -30,7 +30,7 @@
 #include <stdio.h>
 #include "util/u_atomic.h"
 #include "util/u_debug.h"
-#include "util/u_dynarray.h"
+#include "util/u_queue.h"
 
 #include "adreno_common.xml.h"
 #include "adreno_pm4.xml.h"
@@ -98,6 +98,13 @@ struct fd_ringbuffer *fd_submit_new_ringbuffer(struct fd_submit *submit,
  * out-fence-fd
  */
 struct fd_submit_fence {
+   /**
+    * The ready fence is signaled once the submit is actually flushed down
+    * to the kernel, and fence/fence_fd are populated.  You must wait for
+    * this fence to be signaled before reading fence/fence_fd.
+    */
+   struct util_queue_fence ready;
+
    struct fd_fence fence;
 
    /**

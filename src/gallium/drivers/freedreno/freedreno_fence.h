@@ -35,6 +35,12 @@
 struct pipe_fence_handle {
    struct pipe_reference reference;
 
+   /* When a pre-created unflushed fence has no actual rendering to flush, and
+    * the last_fence optimization is used, this will be a reference to the
+    * *actualy* fence which needs to be flushed before waiting.
+    */
+   struct pipe_fence_handle *last_fence;
+
    /* fence holds a weak reference to the batch until the batch is flushed, to
     * accommodate PIPE_FLUSH_DEFERRED.  When the batch is actually flushed, it
     * is cleared (before the batch reference is dropped).  If we need to wait
