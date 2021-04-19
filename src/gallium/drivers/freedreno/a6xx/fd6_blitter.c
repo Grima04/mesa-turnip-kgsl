@@ -936,6 +936,10 @@ handle_rgba_blit(struct fd_context *ctx,
 
    emit_setup(batch);
 
+   DBG("%p: %s (%p) -> %s (%p)", batch,
+       util_str_tex_target(info->src.resource->target, true), info->src.resource,
+       util_str_tex_target(info->dst.resource->target, true), info->dst.resource);
+
    trace_start_blit(&batch->trace, info->src.resource->target,
                     info->dst.resource->target);
 

@@ -574,6 +574,11 @@ fd_launch_grid(struct pipe_context *pctx,
 
    fd_screen_unlock(ctx->screen);
 
+   DBG("%p: work_dim=%u, block=%ux%ux%u, grid=%ux%ux%u",
+       batch, info->work_dim,
+       info->block[0], info->block[1], info->block[2],
+       info->grid[0], info->grid[1], info->grid[2]);
+
    batch->needs_flush = true;
    ctx->launch_grid(ctx, info);
 
