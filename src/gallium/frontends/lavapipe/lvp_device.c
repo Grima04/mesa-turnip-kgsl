@@ -1929,6 +1929,34 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
                        VK_OBJECT_TYPE_SAMPLER);
    sampler->create_info = *pCreateInfo;
 
+   switch (pCreateInfo->borderColor) {
+   case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
+   case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
+   default:
+      memset(&sampler->border_color, 0, sizeof(union pipe_color_union));
+      break;
+   case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
+      sampler->border_color.f[0] = sampler->border_color.f[1] =
+      sampler->border_color.f[2] = 0.0f;
+      sampler->border_color.f[3] = 1.0f;
+      break;
+   case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
+      sampler->border_color.i[0] = sampler->border_color.i[1] =
+      sampler->border_color.i[2] = 0;
+      sampler->border_color.i[3] = 1;
+      break;
+   case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
+      sampler->border_color.f[0] = sampler->border_color.f[1] =
+      sampler->border_color.f[2] = 1.0f;
+      sampler->border_color.f[3] = 1.0f;
+      break;
+   case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
+      sampler->border_color.i[0] = sampler->border_color.i[1] =
+      sampler->border_color.i[2] = 1;
+      sampler->border_color.i[3] = 1;
+      break;
+   }
+
    sampler->reduction_mode = VK_SAMPLER_REDUCTION_MODE_WEIGHTED_AVERAGE;
    if (reduction_mode_create_info)
       sampler->reduction_mode = reduction_mode_create_info->reductionMode;

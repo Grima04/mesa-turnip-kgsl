@@ -309,6 +309,7 @@ struct lvp_render_pass {
 struct lvp_sampler {
    struct vk_object_base base;
    VkSamplerCreateInfo create_info;
+   union pipe_color_union border_color;
    VkSamplerReductionMode reduction_mode;
    uint32_t state[4];
 };

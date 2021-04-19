@@ -781,30 +781,8 @@ static void fill_sampler(struct pipe_sampler_state *ss,
    ss->compare_func = samp->create_info.compareOp;
    ss->seamless_cube_map = true;
    ss->reduction_mode = samp->reduction_mode;
-
-   switch (samp->create_info.borderColor) {
-   case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
-   case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
-   default:
-      memset(ss->border_color.f, 0, 4 * sizeof(float));
-      break;
-   case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
-      ss->border_color.f[0] = ss->border_color.f[1] = ss->border_color.f[2] = 0.0f;
-      ss->border_color.f[3] = 1.0f;
-      break;
-   case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
-      ss->border_color.i[0] = ss->border_color.i[1] = ss->border_color.i[2] = 0;
-      ss->border_color.i[3] = 1;
-      break;
-   case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
-      ss->border_color.f[0] = ss->border_color.f[1] = ss->border_color.f[2] = 1.0f;
-      ss->border_color.f[3] = 1.0f;
-      break;
-   case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
-      ss->border_color.i[0] = ss->border_color.i[1] = ss->border_color.i[2] = 1;
-      ss->border_color.i[3] = 1;
-      break;
-   }
+   memcpy(&ss->border_color, &samp->border_color,
+          sizeof(union pipe_color_union));
 }
 
 static void fill_sampler_stage(struct rendering_state *state,
