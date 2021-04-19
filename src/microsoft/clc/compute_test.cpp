@@ -794,7 +794,6 @@ ComputeTest::compile(const std::vector<const char *> &sources,
    struct clc_compile_args args = { 0 };
    args.args = compile_args.data();
    args.num_args = (unsigned)compile_args.size();
-   struct clc_dxil_object *dxil;
    ComputeTest::Shader shader;
 
    std::vector<Shader> shaders;

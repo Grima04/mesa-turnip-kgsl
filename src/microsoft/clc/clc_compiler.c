@@ -1018,8 +1018,6 @@ clc_to_dxil(struct clc_context *ctx,
 {
    struct clc_dxil_object *dxil;
    struct nir_shader *nir;
-   char *err_log;
-   int ret;
 
    dxil = calloc(1, sizeof(*dxil));
    if (!dxil) {
