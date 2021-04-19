@@ -18,6 +18,21 @@ softpipe-gles31:
     DEQP_VER: gles31
   extends: softpipe-gles2
 
+softpipe-khr-gles2:
+  variables:
+    DEQP_VER: gles2-khr
+  extends: softpipe-gles2
+
+softpipe-khr-gles3:
+  variables:
+    DEQP_VER: gles3-khr
+  extends: softpipe-gles2
+
+softpipe-khr-gles31:
+  variables:
+    DEQP_VER: gles31-khr
+  extends: softpipe-gles2
+
 softpipe-asan-gles31:
   variables:
     GPU_VERSION: softpipe-asan
