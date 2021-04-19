@@ -351,6 +351,13 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
          get_glsl_basetype(ctx, glsl_get_base_type(type)),
          glsl_get_vector_elements(type));
 
+   if (glsl_type_is_matrix(type))
+      return spirv_builder_type_matrix(&ctx->builder,
+                                       spirv_builder_type_vector(&ctx->builder,
+                                                                 get_glsl_basetype(ctx, glsl_get_base_type(type)),
+                                                                 glsl_get_vector_elements(type)),
+                                       glsl_get_matrix_columns(type));
+
    if (glsl_type_is_array(type)) {
       SpvId ret;
       SpvId element_type = get_glsl_type(ctx, glsl_get_array_element(type));
@@ -379,13 +386,6 @@ get_glsl_type(struct ntv_context *ctx, const struct glsl_type *type)
          spirv_builder_emit_member_offset(&ctx->builder, ret, i, glsl_get_struct_field_offset(type, i));
       return ret;
    }
-
-   if (glsl_type_is_matrix(type))
-      return spirv_builder_type_matrix(&ctx->builder,
-                                       spirv_builder_type_vector(&ctx->builder,
-                                                                 get_glsl_basetype(ctx, glsl_get_base_type(type)),
-                                                                 glsl_get_vector_elements(type)),
-                                       glsl_get_matrix_columns(type));
 
    unreachable("we shouldn't get here, I think...");
 }
