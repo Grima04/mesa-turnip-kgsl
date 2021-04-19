@@ -41,9 +41,13 @@ _mesa_pack_float_rgba_row(mesa_format format, uint32_t n,
    util_format_pack_rgba(format, dst, src, n);
 }
 
-extern void
+static inline void
 _mesa_pack_ubyte_rgba_row(mesa_format format, uint32_t n,
-                          const uint8_t src[][4], void *dst);
+                          const uint8_t *src, void *dst)
+{
+   const struct util_format_pack_description *pack = util_format_pack_description(format);
+   pack->pack_rgba_8unorm((uint8_t *)dst, 0, src, 0, n, 1);
+}
 
 static inline void
 _mesa_pack_uint_rgba_row(mesa_format format, uint32_t n,

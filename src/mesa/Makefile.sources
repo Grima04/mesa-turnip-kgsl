@@ -99,7 +99,6 @@ MAIN_FILES = \
 	main/format_fallback.c \
 	main/format_info.h \
 	main/format_pack.h \
-	main/format_pack.c \
 	main/format_unpack.h \
 	main/formatquery.c \
 	main/formatquery.h \
