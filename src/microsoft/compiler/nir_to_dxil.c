@@ -4687,7 +4687,7 @@ nir_var_to_dxil_sysvalue_type(nir_variable *var, uint64_t other_stage_mask)
    case VARYING_SLOT_CLIP_DIST0:
    case VARYING_SLOT_CLIP_DIST1:
    case VARYING_SLOT_PSIZ:
-      if (!((1 << var->data.location) & other_stage_mask))
+      if (!((1ull << var->data.location) & other_stage_mask))
          return DXIL_SYSVALUE;
       FALLTHROUGH;
    default:
