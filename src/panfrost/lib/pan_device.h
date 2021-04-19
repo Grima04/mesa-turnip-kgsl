@@ -139,6 +139,12 @@ struct pan_indirect_draw_shaders {
         struct panfrost_bo *varying_heap;
 };
 
+struct pan_indirect_dispatch {
+        struct panfrost_ubo_push push;
+        struct panfrost_bo *bin;
+        struct panfrost_bo *descs;
+};
+
 typedef uint32_t mali_pixel_format;
 
 struct panfrost_format {
@@ -195,6 +201,7 @@ struct panfrost_device {
         struct pan_blitter blitter;
         struct pan_blend_shaders blend_shaders;
         struct pan_indirect_draw_shaders indirect_draw_shaders;
+        struct pan_indirect_dispatch indirect_dispatch;
 
         /* Tiler heap shared across all tiler jobs, allocated against the
          * device since there's only a single tiler. Since this is invisible to
