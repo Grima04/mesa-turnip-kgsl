@@ -40,33 +40,33 @@ __gen_combine_address(__attribute__((unused)) void *data,
 #include "isl_priv.h"
 
 #if GFX_VER >= 8
-static const uint8_t isl_to_gen_halign[] = {
+static const uint8_t isl_encode_halign[] = {
     [4] = HALIGN4,
     [8] = HALIGN8,
     [16] = HALIGN16,
 };
 #elif GFX_VER >= 7
-static const uint8_t isl_to_gen_halign[] = {
+static const uint8_t isl_encode_halign[] = {
     [4] = HALIGN_4,
     [8] = HALIGN_8,
 };
 #endif
 
 #if GFX_VER >= 8
-static const uint8_t isl_to_gen_valign[] = {
+static const uint8_t isl_encode_valign[] = {
     [4] = VALIGN4,
     [8] = VALIGN8,
     [16] = VALIGN16,
 };
 #elif GFX_VER >= 6
-static const uint8_t isl_to_gen_valign[] = {
+static const uint8_t isl_encode_valign[] = {
     [2] = VALIGN_2,
     [4] = VALIGN_4,
 };
 #endif
 
 #if GFX_VER >= 8
-static const uint8_t isl_to_gen_tiling[] = {
+static const uint8_t isl_encode_tiling[] = {
    [ISL_TILING_LINEAR]  = LINEAR,
    [ISL_TILING_X]       = XMAJOR,
    [ISL_TILING_Y0]      = YMAJOR,
@@ -79,7 +79,7 @@ static const uint8_t isl_to_gen_tiling[] = {
 #endif
 
 #if GFX_VER >= 7
-static const uint32_t isl_to_gen_multisample_layout[] = {
+static const uint32_t isl_encode_multisample_layout[] = {
    [ISL_MSAA_LAYOUT_NONE]           = MSFMT_MSS,
    [ISL_MSAA_LAYOUT_INTERLEAVED]    = MSFMT_DEPTH_STENCIL,
    [ISL_MSAA_LAYOUT_ARRAY]          = MSFMT_MSS,
@@ -87,7 +87,7 @@ static const uint32_t isl_to_gen_multisample_layout[] = {
 #endif
 
 #if GFX_VER >= 12
-static const uint32_t isl_to_gen_aux_mode[] = {
+static const uint32_t isl_encode_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_MC] = AUX_NONE,
    [ISL_AUX_USAGE_MCS] = AUX_CCS_E,
@@ -98,7 +98,7 @@ static const uint32_t isl_to_gen_aux_mode[] = {
    [ISL_AUX_USAGE_STC_CCS] = AUX_CCS_E,
 };
 #elif GFX_VER >= 9
-static const uint32_t isl_to_gen_aux_mode[] = {
+static const uint32_t isl_encode_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_HIZ] = AUX_HIZ,
    [ISL_AUX_USAGE_MCS] = AUX_CCS_D,
@@ -106,7 +106,7 @@ static const uint32_t isl_to_gen_aux_mode[] = {
    [ISL_AUX_USAGE_CCS_E] = AUX_CCS_E,
 };
 #elif GFX_VER >= 8
-static const uint32_t isl_to_gen_aux_mode[] = {
+static const uint32_t isl_encode_aux_mode[] = {
    [ISL_AUX_USAGE_NONE] = AUX_NONE,
    [ISL_AUX_USAGE_HIZ] = AUX_HIZ,
    [ISL_AUX_USAGE_MCS] = AUX_MCS,
@@ -143,7 +143,7 @@ get_surftype(enum isl_surf_dim dim, isl_surf_usage_flags_t usage)
 /**
  * Get the horizontal and vertical alignment in the units expected by the
  * hardware.  Note that this does NOT give you the actual hardware enum values
- * but an index into the isl_to_gen_[hv]align arrays above.
+ * but an index into the isl_encode_[hv]align arrays above.
  */
 UNUSED static struct isl_extent3d
 get_image_alignment(const struct isl_surf *surf)
@@ -470,9 +470,9 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER >= 6
    const struct isl_extent3d image_align = get_image_alignment(info->surf);
-   s.SurfaceVerticalAlignment = isl_to_gen_valign[image_align.height];
+   s.SurfaceVerticalAlignment = isl_encode_valign[image_align.height];
 #if GFX_VER >= 7
-   s.SurfaceHorizontalAlignment = isl_to_gen_halign[image_align.width];
+   s.SurfaceHorizontalAlignment = isl_encode_halign[image_align.width];
 #endif
 #endif
 
@@ -492,7 +492,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
 
 #if GFX_VER >= 8
    assert(GFX_VER < 12 || info->surf->tiling != ISL_TILING_W);
-   s.TileMode = isl_to_gen_tiling[info->surf->tiling];
+   s.TileMode = isl_encode_tiling[info->surf->tiling];
 #else
    s.TiledSurface = info->surf->tiling != ISL_TILING_LINEAR,
    s.TileWalk = info->surf->tiling == ISL_TILING_Y0 ? TILEWALK_YMAJOR :
@@ -525,7 +525,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
    s.NumberofMultisamples = ffs(info->surf->samples) - 1;
 #if GFX_VER >= 7
    s.MultisampledSurfaceStorageFormat =
-      isl_to_gen_multisample_layout[info->surf->msaa_layout];
+      isl_encode_multisample_layout[info->surf->msaa_layout];
 #endif
 #endif
 
@@ -669,7 +669,7 @@ isl_genX(surf_fill_state_s)(const struct isl_device *dev, void *state,
       s.MemoryCompressionEnable = info->aux_usage == ISL_AUX_USAGE_MC;
 #endif
 #if GFX_VER >= 8
-      s.AuxiliarySurfaceMode = isl_to_gen_aux_mode[info->aux_usage];
+      s.AuxiliarySurfaceMode = isl_encode_aux_mode[info->aux_usage];
 #else
       s.MCSEnable = true;
 #endif
@@ -858,9 +858,9 @@ isl_genX(buffer_fill_state_s)(const struct isl_device *dev, void *state,
    s.SurfaceFormat = info->format;
 
 #if GFX_VER >= 6
-   s.SurfaceVerticalAlignment = isl_to_gen_valign[4];
+   s.SurfaceVerticalAlignment = isl_encode_valign[4];
 #if GFX_VER >= 7
-   s.SurfaceHorizontalAlignment = isl_to_gen_halign[4];
+   s.SurfaceHorizontalAlignment = isl_encode_halign[4];
    s.SurfaceArray = false;
 #endif
 #endif
