@@ -136,6 +136,7 @@ static const struct vk_device_extension_table lvp_device_extensions_supported = 
    .EXT_shader_viewport_index_layer       = true,
    .EXT_transform_feedback                = true,
    .EXT_vertex_attribute_divisor          = true,
+   .EXT_custom_border_color               = true,
    .GOOGLE_decorate_string                = true,
    .GOOGLE_hlsl_functionality1            = true,
 };
@@ -628,6 +629,14 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceFeatures2(
          features->imagelessFramebuffer = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_FEATURES_EXT: {
+         VkPhysicalDeviceCustomBorderColorFeaturesEXT *features =
+            (VkPhysicalDeviceCustomBorderColorFeaturesEXT *)ext;
+         features->customBorderColors = true;
+         features->customBorderColorWithoutFormat = true;
+         break;
+      }
+
       default:
          break;
       }
@@ -939,6 +948,12 @@ VKAPI_ATTR void VKAPI_CALL lvp_GetPhysicalDeviceProperties2(
       case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_PROPERTIES:
          lvp_get_physical_device_properties_1_1(pdevice, (void *)ext);
          break;
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_CUSTOM_BORDER_COLOR_PROPERTIES_EXT: {
+         VkPhysicalDeviceCustomBorderColorPropertiesEXT *properties =
+            (VkPhysicalDeviceCustomBorderColorPropertiesEXT *)ext;
+         properties->maxCustomBorderColorSamplers = 32 * 1024;
+         break;
+      }
       default:
          break;
       }
@@ -1917,6 +1932,9 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
    const VkSamplerReductionModeCreateInfo *reduction_mode_create_info =
       vk_find_struct_const(pCreateInfo->pNext,
                            SAMPLER_REDUCTION_MODE_CREATE_INFO);
+   const VkSamplerCustomBorderColorCreateInfoEXT *custom_border_color_create_info =
+      vk_find_struct_const(pCreateInfo->pNext,
+                           SAMPLER_CUSTOM_BORDER_COLOR_CREATE_INFO_EXT);
 
    assert(pCreateInfo->sType == VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO);
 
@@ -1954,6 +1972,13 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateSampler(
       sampler->border_color.i[0] = sampler->border_color.i[1] =
       sampler->border_color.i[2] = 1;
       sampler->border_color.i[3] = 1;
+      break;
+   case VK_BORDER_COLOR_FLOAT_CUSTOM_EXT:
+   case VK_BORDER_COLOR_INT_CUSTOM_EXT:
+      assert(custom_border_color_create_info != NULL);
+      memcpy(&sampler->border_color,
+             &custom_border_color_create_info->customBorderColor,
+             sizeof(union pipe_color_union));
       break;
    }
 

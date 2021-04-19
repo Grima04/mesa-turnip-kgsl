@@ -53,23 +53,13 @@ spec@!opengl 1.1@read-front clear-front-first samples=2,Fail
 spec@!opengl 1.1@read-front clear-front-first samples=4,Fail
 spec@!opengl 1.1@read-front samples=2,Fail
 spec@!opengl 1.1@read-front samples=4,Fail
-spec@!opengl 1.1@texwrap 1d bordercolor,Fail
-spec@!opengl 1.1@texwrap 1d proj bordercolor,Fail
-spec@!opengl 1.1@texwrap 2d bordercolor,Fail
-spec@!opengl 1.1@texwrap 2d proj bordercolor,Fail
-spec@!opengl 1.1@texwrap formats bordercolor,Fail
 spec@!opengl 1.1@texwrap formats bordercolor-swizzled,Fail
 spec@!opengl 1.2@copyteximage 3d,Fail
-spec@!opengl 1.2@texwrap 3d bordercolor,Fail
-spec@!opengl 1.2@texwrap 3d proj bordercolor,Fail
 spec@!opengl 1.3@gl-1.3-texture-env,Fail
-spec@!opengl 1.3@tex-border-1,Fail
-spec@!opengl 1.3@tex3d-depth1,Fail
 spec@!opengl 1.4@gl-1.4-polygon-offset,Fail
 spec@!opengl 2.0@depth-tex-modes-glsl,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag,Fail
 spec@!opengl 2.0@gl-2.0-edgeflag-immediate,Fail
-spec@!opengl 2.0@max-samplers border,Fail
 spec@!opengl 2.1@pbo,Fail
 spec@!opengl 2.1@polygon-stipple-fs,Fail
 spec@!opengl 3.0@sampler-cube-shadow,Fail
@@ -85,12 +75,7 @@ spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
 spec@!opengl 3.2@gl-3.2-adj-prims pv-last,Fail
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
-spec@arb_depth_buffer_float@texwrap formats bordercolor,Fail
-spec@arb_depth_buffer_float@texwrap formats bordercolor-swizzled,Fail
 spec@arb_depth_texture@depth-tex-modes,Fail
-spec@arb_depth_texture@texwrap formats bordercolor,Fail
-spec@arb_depth_texture@texwrap formats bordercolor-swizzled,Fail
-spec@arb_es2_compatibility@texwrap formats bordercolor,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
 spec@arb_fragment_program@fp-abs-01,Crash
 spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
@@ -119,27 +104,16 @@ spec@arb_tessellation_shader@arb_tessellation_shader-tes-gs-max-output -small -s
 spec@arb_texture_buffer_object@indexed,Fail
 spec@arb_texture_buffer_object@render-no-bo,Crash
 spec@arb_texture_buffer_range@ranges-2 compat,Fail
-spec@arb_texture_compression@texwrap formats bordercolor,Fail
 spec@arb_texture_compression@texwrap formats bordercolor-swizzled,Fail
-spec@arb_texture_compression_bptc@texwrap formats bordercolor,Fail
 spec@arb_texture_compression_bptc@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_cube_map_array@arb_texture_cube_map_array-sampler-cube-array-shadow,Fail
 spec@arb_texture_float@fbo-blending-formats,Fail
-spec@arb_texture_float@texwrap formats bordercolor,Fail
 spec@arb_texture_float@texwrap formats bordercolor-swizzled,Fail
-spec@arb_texture_rectangle@texwrap rect bordercolor,Fail
-spec@arb_texture_rectangle@texwrap rect proj bordercolor,Fail
 spec@arb_texture_rg@multisample-fast-clear gl_arb_texture_rg-int,Fail
-spec@arb_texture_rg@texwrap formats bordercolor,Fail
 spec@arb_texture_rg@texwrap formats bordercolor-swizzled,Fail
-spec@arb_texture_rg@texwrap formats-float bordercolor,Fail
 spec@arb_texture_rg@texwrap formats-float bordercolor-swizzled,Fail
-spec@arb_texture_rg@texwrap formats-int bordercolor,Fail
 spec@arb_texture_rg@texwrap formats-int bordercolor-swizzled,Fail
-spec@arb_texture_rgb10_a2ui@texwrap formats bordercolor,Fail
 spec@arb_texture_rgb10_a2ui@texwrap formats bordercolor-swizzled,Fail
-spec@arb_texture_stencil8@texwrap formats bordercolor,Fail
-spec@arb_texture_stencil8@texwrap formats bordercolor-swizzled,Fail
 spec@arb_texture_view@rendering-formats,Fail
 spec@arb_texture_view@sampling-2d-array-as-cubemap-array,Fail
 spec@arb_uniform_buffer_object@maxblocks,Crash
@@ -191,27 +165,17 @@ spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yuyv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_yvu420,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-transcode-nv12-as-r8-gr88,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-unsupported_format,Fail
-spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
-spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
-spec@ext_packed_float@texwrap formats bordercolor,Fail
 spec@ext_packed_float@texwrap formats bordercolor-swizzled,Fail
 spec@ext_provoking_vertex@provoking-vertex,Fail
-spec@ext_texture_compression_rgtc@texwrap formats bordercolor,Fail
 spec@ext_texture_compression_rgtc@texwrap formats bordercolor-swizzled,Fail
-spec@ext_texture_compression_s3tc@texwrap formats bordercolor,Fail
 spec@ext_texture_compression_s3tc@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_integer@multisample-fast-clear gl_ext_texture_integer,Fail
-spec@ext_texture_integer@texwrap formats bordercolor,Fail
 spec@ext_texture_integer@texwrap formats bordercolor-swizzled,Fail
-spec@ext_texture_shared_exponent@texwrap formats bordercolor,Fail
 spec@ext_texture_shared_exponent@texwrap formats bordercolor-swizzled,Fail
 spec@ext_texture_snorm@fbo-blending-formats,Fail
-spec@ext_texture_snorm@texwrap formats bordercolor,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
-spec@ext_texture_srgb@texwrap formats bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats bordercolor-swizzled,Fail
-spec@ext_texture_srgb@texwrap formats-s3tc bordercolor,Fail
 spec@ext_texture_srgb@texwrap formats-s3tc bordercolor-swizzled,Fail
 spec@ext_texture_swizzle@depth_texture_mode_and_swizzle,Fail
 spec@ext_transform_feedback2@counting with pause,Fail
