@@ -34,21 +34,6 @@
 extern "C" {
 #endif
 
-/** Pack a uint32_t Z value to dest address */
-typedef void (*mesa_pack_uint_z_func)(const uint32_t *src, void *dst);
-
-/** Pack a uint8_t stencil value to dest address */
-typedef void (*mesa_pack_ubyte_stencil_func)(const uint8_t *src, void *dst);
-
-
-extern mesa_pack_uint_z_func
-_mesa_get_pack_uint_z_func(mesa_format format);
-
-
-extern mesa_pack_ubyte_stencil_func
-_mesa_get_pack_ubyte_stencil_func(mesa_format format);
-
-
 static inline void
 _mesa_pack_float_rgba_row(mesa_format format, uint32_t n,
                           const float src[][4], void *dst)
