@@ -324,9 +324,13 @@ zink_get_param(struct pipe_screen *pscreen, enum pipe_cap param)
       return 0;
 
    case PIPE_CAP_TEXTURE_BORDER_COLOR_QUIRK:
-      return screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_OPEN_SOURCE_MESA_KHR ||
-             screen->info.driver_props.driverID == VK_DRIVER_ID_INTEL_PROPRIETARY_WINDOWS_KHR ?
-             0 : PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50;
+      /* This is also broken on the other AMD drivers for old HW, but
+       * there's no obvious way to test for that.
+       */
+      if (screen->info.driver_props.driverID == VK_DRIVER_ID_MESA_RADV ||
+          screen->info.driver_props.driverID == VK_DRIVER_ID_NVIDIA_PROPRIETARY)
+         return PIPE_QUIRK_TEXTURE_BORDER_COLOR_SWIZZLE_NV50;
+      return 0;
 
    case PIPE_CAP_MAX_TEXTURE_2D_SIZE:
       return screen->info.props.limits.maxImageDimension2D;
