@@ -449,8 +449,8 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
          .GlobalDepthOffsetConstant = d->depth_bias.bias,
          .GlobalDepthOffsetScale = d->depth_bias.slope,
          .GlobalDepthOffsetClamp = d->depth_bias.clamp,
-         .CullMode = genX(vk_to_gen_cullmode)[d->cull_mode],
-         .FrontWinding = genX(vk_to_gen_front_face)[d->front_face],
+         .CullMode = genX(vk_to_intel_cullmode)[d->cull_mode],
+         .FrontWinding = genX(vk_to_intel_front_face)[d->front_face],
       };
       GENX(3DSTATE_RASTER_pack)(NULL, raster_dw, &raster);
       anv_batch_emit_merge(&cmd_buffer->batch, raster_dw,
@@ -511,16 +511,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          .DepthTestEnable = d->depth_test_enable,
          .DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable,
-         .DepthTestFunction = genX(vk_to_gen_compare_op)[d->depth_compare_op],
+         .DepthTestFunction = genX(vk_to_intel_compare_op)[d->depth_compare_op],
          .StencilTestEnable = d->stencil_test_enable,
-         .StencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.fail_op],
-         .StencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.pass_op],
-         .StencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.depth_fail_op],
-         .StencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.front.compare_op],
-         .BackfaceStencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.fail_op],
-         .BackfaceStencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.pass_op],
-         .BackfaceStencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.depth_fail_op],
-         .BackfaceStencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.back.compare_op],
+         .StencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.fail_op],
+         .StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.pass_op],
+         .StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.depth_fail_op],
+         .StencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.front.compare_op],
+         .BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.fail_op],
+         .BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.pass_op],
+         .BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.depth_fail_op],
+         .BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.back.compare_op],
       };
       GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, wm_depth_stencil_dw,
                                           &wm_depth_stencil);
@@ -580,16 +580,16 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
 
          .DepthTestEnable = d->depth_test_enable,
          .DepthBufferWriteEnable = d->depth_test_enable && d->depth_write_enable,
-         .DepthTestFunction = genX(vk_to_gen_compare_op)[d->depth_compare_op],
+         .DepthTestFunction = genX(vk_to_intel_compare_op)[d->depth_compare_op],
          .StencilTestEnable = d->stencil_test_enable,
-         .StencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.fail_op],
-         .StencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.pass_op],
-         .StencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.front.depth_fail_op],
-         .StencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.front.compare_op],
-         .BackfaceStencilFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.fail_op],
-         .BackfaceStencilPassDepthPassOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.pass_op],
-         .BackfaceStencilPassDepthFailOp = genX(vk_to_gen_stencil_op)[d->stencil_op.back.depth_fail_op],
-         .BackfaceStencilTestFunction = genX(vk_to_gen_compare_op)[d->stencil_op.back.compare_op],
+         .StencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.fail_op],
+         .StencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.pass_op],
+         .StencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.front.depth_fail_op],
+         .StencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.front.compare_op],
+         .BackfaceStencilFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.fail_op],
+         .BackfaceStencilPassDepthPassOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.pass_op],
+         .BackfaceStencilPassDepthFailOp = genX(vk_to_intel_stencil_op)[d->stencil_op.back.depth_fail_op],
+         .BackfaceStencilTestFunction = genX(vk_to_intel_compare_op)[d->stencil_op.back.compare_op],
 
       };
       GENX(3DSTATE_WM_DEPTH_STENCIL_pack)(NULL, dwords, &wm_depth_stencil);
@@ -639,7 +639,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
       if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
          topology = d->primitive_topology;
       else
-         topology = genX(vk_to_gen_primitive_type)[d->primitive_topology];
+         topology = genX(vk_to_intel_primitive_type)[d->primitive_topology];
 
       cmd_buffer->state.gfx.primitive_topology = topology;
 
@@ -658,7 +658,7 @@ genX(cmd_buffer_flush_dynamic_state)(struct anv_cmd_buffer *cmd_buffer)
    cmd_buffer->state.gfx.dirty = 0;
 }
 
-static uint32_t vk_to_gen_index_type(VkIndexType type)
+static uint32_t vk_to_intel_index_type(VkIndexType type)
 {
    switch (type) {
    case VK_INDEX_TYPE_UINT8_EXT:
@@ -698,7 +698,7 @@ void genX(CmdBindIndexBuffer)(
    cmd_buffer->state.restart_index = restart_index_for_type(indexType);
 
    anv_batch_emit(&cmd_buffer->batch, GENX(3DSTATE_INDEX_BUFFER), ib) {
-      ib.IndexFormat           = vk_to_gen_index_type(indexType);
+      ib.IndexFormat           = vk_to_intel_index_type(indexType);
       ib.MOCS                  = anv_mocs(cmd_buffer->device,
                                           buffer->address.bo,
                                           ISL_SURF_USAGE_INDEX_BUFFER_BIT);

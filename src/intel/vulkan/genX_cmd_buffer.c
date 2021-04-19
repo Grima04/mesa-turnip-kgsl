@@ -3394,8 +3394,8 @@ cmd_buffer_emit_clip(struct anv_cmd_buffer *cmd_buffer)
    struct GENX(3DSTATE_CLIP) clip = {
       GENX(3DSTATE_CLIP_header),
 #if GFX_VER <= 7
-      .FrontWinding = genX(vk_to_gen_front_face)[d->front_face],
-      .CullMode     = genX(vk_to_gen_cullmode)[d->cull_mode],
+      .FrontWinding = genX(vk_to_intel_front_face)[d->front_face],
+      .CullMode     = genX(vk_to_intel_cullmode)[d->cull_mode],
 #endif
    };
    uint32_t dwords[GENX(3DSTATE_CLIP_length)];

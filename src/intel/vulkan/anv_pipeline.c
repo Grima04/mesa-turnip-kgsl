@@ -348,7 +348,7 @@ void anv_DestroyPipeline(
    vk_free2(&device->vk.alloc, pAllocator, pipeline);
 }
 
-static const uint32_t vk_to_gen_primitive_type[] = {
+static const uint32_t vk_to_intel_primitive_type[] = {
    [VK_PRIMITIVE_TOPOLOGY_POINT_LIST]                    = _3DPRIM_POINTLIST,
    [VK_PRIMITIVE_TOPOLOGY_LINE_LIST]                     = _3DPRIM_LINELIST,
    [VK_PRIMITIVE_TOPOLOGY_LINE_STRIP]                    = _3DPRIM_LINESTRIP,
@@ -2290,7 +2290,7 @@ anv_graphics_pipeline_init(struct anv_graphics_pipeline *pipeline,
    if (anv_pipeline_has_stage(pipeline, MESA_SHADER_TESS_EVAL))
       pipeline->topology = _3DPRIM_PATCHLIST(tess_info->patchControlPoints);
    else
-      pipeline->topology = vk_to_gen_primitive_type[ia_info->topology];
+      pipeline->topology = vk_to_intel_primitive_type[ia_info->topology];
 
    return VK_SUCCESS;
 }

@@ -36,15 +36,15 @@
 #error This file is included by means other than anv_private.h
 #endif
 
-extern const uint32_t genX(vk_to_gen_cullmode)[];
+extern const uint32_t genX(vk_to_intel_cullmode)[];
 
-extern const uint32_t genX(vk_to_gen_front_face)[];
+extern const uint32_t genX(vk_to_intel_front_face)[];
 
-extern const uint32_t genX(vk_to_gen_primitive_type)[];
+extern const uint32_t genX(vk_to_intel_primitive_type)[];
 
-extern const uint32_t genX(vk_to_gen_compare_op)[];
+extern const uint32_t genX(vk_to_intel_compare_op)[];
 
-extern const uint32_t genX(vk_to_gen_stencil_op)[];
+extern const uint32_t genX(vk_to_intel_stencil_op)[];
 
 void genX(init_physical_device_state)(struct anv_physical_device *device);
 
