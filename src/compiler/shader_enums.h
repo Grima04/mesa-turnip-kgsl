@@ -231,7 +231,7 @@ const char *gl_vert_attrib_name(gl_vert_attrib attrib);
 #define VERT_BIT_POINT_SIZE      BITFIELD_BIT(VERT_ATTRIB_POINT_SIZE)
 #define VERT_BIT_GENERIC0        BITFIELD_BIT(VERT_ATTRIB_GENERIC0)
 
-#define VERT_BIT(i)              BITFIELD_BIT(i)
+#define VERT_BIT(i)              BITFIELD64_BIT(i)
 #define VERT_BIT_ALL             BITFIELD_RANGE(0, VERT_ATTRIB_MAX)
 
 #define VERT_BIT_FF(i)           VERT_BIT(i)
