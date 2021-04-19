@@ -3056,12 +3056,13 @@ void visit_alu_instr(isel_context *ctx, nir_alu_instr *instr)
           */
          f32 = bld.vop1(aco_opcode::v_cvt_f32_f16, bld.def(v1), f16);
          Temp smallest = bld.copy(bld.def(s1), Operand(0x38800000u));
-         Instruction* vop3 = bld.vopc_e64(aco_opcode::v_cmp_nlt_f32, bld.hint_vcc(bld.def(bld.lm)), f32, smallest);
-         vop3->vop3().abs[0] = true;
-         cmp_res = vop3->definitions[0].getTemp();
+         Instruction* tmp0 = bld.vopc_e64(aco_opcode::v_cmp_lt_f32, bld.def(bld.lm), f32, smallest);
+         tmp0->vop3().abs[0] = true;
+         Temp tmp1 = bld.vopc(aco_opcode::v_cmp_lg_f32, bld.hint_vcc(bld.def(bld.lm)), Operand(0u), f32);
+         cmp_res = bld.sop2(aco_opcode::s_nand_b64, bld.def(s2), bld.def(s1, scc), tmp0->definitions[0].getTemp(), tmp1);
       }
 
-      if (ctx->block->fp_mode.preserve_signed_zero_inf_nan32 || ctx->program->chip_class < GFX8) {
+      if (ctx->block->fp_mode.preserve_signed_zero_inf_nan32) {
          Temp copysign_0 = bld.vop2(aco_opcode::v_mul_f32, bld.def(v1), Operand(0u), as_vgpr(ctx, src));
          bld.vop2(aco_opcode::v_cndmask_b32, Definition(dst), copysign_0, f32, cmp_res);
       } else {
