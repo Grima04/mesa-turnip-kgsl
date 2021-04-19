@@ -5370,6 +5370,7 @@ vtn_handle_body_instruction(struct vtn_builder *b, SpvOp opcode,
    case SpvOpGenericPtrMemSemantics:
    case SpvOpSubgroupBlockReadINTEL:
    case SpvOpSubgroupBlockWriteINTEL:
+   case SpvOpConvertUToAccelerationStructureKHR:
       vtn_handle_variables(b, opcode, w, count);
       break;
 
