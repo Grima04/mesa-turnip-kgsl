@@ -84,14 +84,6 @@ get_resource_usage(struct zink_resource *res)
 }
 
 static void
-resource_sync_reads(struct zink_context *ctx, struct zink_resource *res)
-{
-   uint32_t reads = p_atomic_read(&res->obj->reads.usage);
-   assert(reads);
-   zink_wait_on_batch(ctx, reads);
-}
-
-static void
 resource_sync_writes_from_batch_usage(struct zink_context *ctx, struct zink_resource *res)
 {
    uint32_t writes = p_atomic_read(&res->obj->writes.usage);
@@ -1043,14 +1035,11 @@ zink_transfer_map(struct pipe_context *pctx,
          base = map_resource(screen, res);
          if (!base)
             return NULL;
-         /* special case compute reads since they aren't handled by zink_fence_wait() */
-         if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_READ))
-            resource_sync_reads(ctx, res);
          if (zink_resource_has_usage(res, ZINK_RESOURCE_ACCESS_RW)) {
-            if (usage & PIPE_MAP_READ)
-               resource_sync_writes_from_batch_usage(ctx, res);
-            else
+            if (usage & PIPE_MAP_WRITE)
                zink_fence_wait(pctx);
+            else
+               resource_sync_writes_from_batch_usage(ctx, res);
          }
          VkImageSubresource isr = {
             res->aspect,
