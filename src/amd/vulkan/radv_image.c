@@ -1997,8 +1997,17 @@ bool
 radv_layout_fmask_compressed(const struct radv_device *device, const struct radv_image *image,
                              VkImageLayout layout, unsigned queue_mask)
 {
-   return radv_image_has_fmask(image) && layout != VK_IMAGE_LAYOUT_GENERAL &&
-          queue_mask == (1u << RADV_QUEUE_GENERAL);
+   if (!radv_image_has_fmask(image))
+      return false;
+
+   /* Don't compress compute transfer dst because image stores ignore FMASK and it needs to be
+    * expanded before.
+    */
+   if ((layout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL || layout == VK_IMAGE_LAYOUT_GENERAL) &&
+       (queue_mask & (1u << RADV_QUEUE_COMPUTE)))
+      return false;
+
+   return layout != VK_IMAGE_LAYOUT_GENERAL;
 }
 
 unsigned
