@@ -814,7 +814,6 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
        */
       if (ctx->screen->reorder && busy && !(usage & PIPE_MAP_READ) &&
           (usage & PIPE_MAP_DISCARD_RANGE)) {
-         assert(!(usage & TC_TRANSFER_MAP_NO_INVALIDATE));
 
          /* try shadowing only if it avoids a flush, otherwise staging would
           * be better:
@@ -888,7 +887,6 @@ improve_transfer_map_usage(struct fd_context *ctx, struct fd_resource *rsc,
 {
    if (usage & TC_TRANSFER_MAP_NO_INVALIDATE) {
       usage &= ~PIPE_MAP_DISCARD_WHOLE_RESOURCE;
-      usage &= ~PIPE_MAP_DISCARD_RANGE;
    }
 
    if (usage & TC_TRANSFER_MAP_THREADED_UNSYNC)
