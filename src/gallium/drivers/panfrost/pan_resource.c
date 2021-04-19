@@ -103,6 +103,13 @@ panfrost_resource_from_handle(struct pipe_screen *pscreen,
         }
 
         rsc->image.data.bo = panfrost_bo_import(dev, whandle->handle);
+        /* Sometimes an import can fail e.g. on an invalid buffer fd, out of
+         * memory space to mmap it etc.
+         */
+        if (!rsc->image.data.bo) {
+                ralloc_free(rsc);
+                return NULL;
+        }
         if (rsc->image.layout.crc_mode == PAN_IMAGE_CRC_OOB)
                 rsc->image.crc.bo = panfrost_bo_create(dev, rsc->image.layout.crc_size, 0);
 
