@@ -1983,7 +1983,7 @@ void select_trap_handler_shader(Program *program, struct nir_shader *shader,
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
-live live_var_analysis(Program* program);
+live live_var_analysis(Program* program, bool update_register_demand=true);
 std::vector<uint16_t> dead_code_analysis(Program *program);
 void dominator_tree(Program* program);
 void insert_exec_mask(Program *program);
