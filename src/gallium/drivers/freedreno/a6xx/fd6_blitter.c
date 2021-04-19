@@ -1006,6 +1006,9 @@ handle_zs_blit(struct fd_context *ctx,
       dump_blit_info(info);
    }
 
+   if (info->src.format != info->dst.format)
+      return false;
+
    struct fd_resource *src = fd_resource(info->src.resource);
    struct fd_resource *dst = fd_resource(info->dst.resource);
 
