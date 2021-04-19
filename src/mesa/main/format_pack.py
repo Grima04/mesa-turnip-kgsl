@@ -362,45 +362,6 @@ _mesa_get_pack_ubyte_stencil_func(mesa_format format)
 }
 
 
-/**
- * Incoming Z/stencil values are always in uint_24_8 format.
- */
-void
-_mesa_pack_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n,
-                                       const uint32_t *src, void *dst)
-{
-   switch (format) {
-   case MESA_FORMAT_S8_UINT_Z24_UNORM:
-      memcpy(dst, src, n * sizeof(uint32_t));
-      break;
-   case MESA_FORMAT_Z24_UNORM_S8_UINT:
-      {
-         uint32_t *d = ((uint32_t *) dst);
-         uint32_t i;
-         for (i = 0; i < n; i++) {
-            uint32_t s = src[i] << 24;
-            uint32_t z = src[i] >> 8;
-            d[i] = s | z;
-         }
-      }
-      break;
-   case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
-      {
-         const double scale = 1.0 / (double) 0xffffff;
-         struct z32f_x24s8 *d = (struct z32f_x24s8 *) dst;
-         uint32_t i;
-         for (i = 0; i < n; i++) {
-            float z = (float) ((src[i] >> 8) * scale);
-            d[i].z = z;
-            d[i].x24s8 = src[i];
-         }
-      }
-      break;
-   default:
-      unreachable("bad format in _mesa_pack_ubyte_s_row");
-   }
-}
-
 """
 
 template = Template(string, future_imports=['division'])
