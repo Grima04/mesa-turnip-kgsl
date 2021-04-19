@@ -1538,7 +1538,7 @@ ntt_emit_load_input(struct ntt_compile *c, nir_intrinsic_instr *instr)
           * emit the extra TGSI interp instruction, we can just read the
           * input.
           */
-         if (c->centroid_inputs & (1 << nir_intrinsic_base(instr))) {
+         if (c->centroid_inputs & (1ull << nir_intrinsic_base(instr))) {
             ntt_store(c, &instr->dest, input);
          } else {
             ureg_INTERP_CENTROID(c->ureg, ntt_get_dest(c, &instr->dest),

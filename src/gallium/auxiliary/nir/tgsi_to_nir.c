@@ -362,7 +362,7 @@ ttn_emit_declaration(struct ttn_compile *c)
             c->inputs[idx] = var;
 
             for (int i = 0; i < array_size; i++)
-               b->shader->info.inputs_read |= 1 << (var->data.location + i);
+               b->shader->info.inputs_read |= 1ull << (var->data.location + i);
 
             break;
          case TGSI_FILE_OUTPUT: {
