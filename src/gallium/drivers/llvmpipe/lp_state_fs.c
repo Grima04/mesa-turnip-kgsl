@@ -720,7 +720,7 @@ generate_fs_loop(struct gallivm_state *gallivm,
          else
             mask_val = LLVMBuildOr(builder, s_mask, mask_val, "");
 
-         LLVMValueRef mask_in = LLVMBuildAnd(builder, s_mask, lp_build_const_int_vec(gallivm, type, (1 << s)), "");
+         LLVMValueRef mask_in = LLVMBuildAnd(builder, s_mask, lp_build_const_int_vec(gallivm, type, (1ll << s)), "");
          sample_mask_in = LLVMBuildOr(builder, sample_mask_in, mask_in, "");
       }
    } else {
