@@ -1262,7 +1262,8 @@ radv_emit_graphics_pipeline(struct radv_cmd_buffer *cmd_buffer)
          RADV_CMD_DIRTY_DYNAMIC_CULL_MODE | RADV_CMD_DIRTY_DYNAMIC_FRONT_FACE;
 
    if (!cmd_buffer->state.emitted_pipeline)
-      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY;
+      cmd_buffer->state.dirty |= RADV_CMD_DIRTY_DYNAMIC_PRIMITIVE_TOPOLOGY |
+                                 RADV_CMD_DIRTY_DYNAMIC_DEPTH_BIAS;
 
    if (!cmd_buffer->state.emitted_pipeline ||
        cmd_buffer->state.emitted_pipeline->graphics.db_depth_control !=
