@@ -583,55 +583,52 @@ radv_descriptor_set_create(struct radv_device *device, struct radv_descriptor_po
       layout_size = layout->binding[layout->binding_count - 1].offset + *variable_count * stride;
    }
    layout_size = align_u32(layout_size, 32);
-   if (layout_size) {
-      set->header.size = layout_size;
+   set->header.size = layout_size;
 
-      if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
+   if (!pool->host_memory_base && pool->entry_count == pool->max_entry_count) {
+      vk_free2(&device->vk.alloc, NULL, set);
+      return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
+   }
+
+   /* try to allocate linearly first, so that we don't spend
+    * time looking for gaps if the app only allocates &
+    * resets via the pool. */
+   if (pool->current_offset + layout_size <= pool->size) {
+      set->header.bo = pool->bo;
+      set->header.mapped_ptr = (uint32_t *)(pool->mapped_ptr + pool->current_offset);
+      set->header.va = pool->bo ? (radv_buffer_get_va(set->header.bo) + pool->current_offset) : 0;
+      if (!pool->host_memory_base) {
+         pool->entries[pool->entry_count].offset = pool->current_offset;
+         pool->entries[pool->entry_count].size = layout_size;
+         pool->entries[pool->entry_count].set = set;
+         pool->entry_count++;
+      }
+      pool->current_offset += layout_size;
+   } else if (!pool->host_memory_base) {
+      uint64_t offset = 0;
+      int index;
+
+      for (index = 0; index < pool->entry_count; ++index) {
+         if (pool->entries[index].offset - offset >= layout_size)
+            break;
+         offset = pool->entries[index].offset + pool->entries[index].size;
+      }
+
+      if (pool->size - offset < layout_size) {
          vk_free2(&device->vk.alloc, NULL, set);
          return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
       }
-
-      /* try to allocate linearly first, so that we don't spend
-       * time looking for gaps if the app only allocates &
-       * resets via the pool. */
-      if (pool->current_offset + layout_size <= pool->size) {
-         set->header.bo = pool->bo;
-         set->header.mapped_ptr = (uint32_t *)(pool->mapped_ptr + pool->current_offset);
-         set->header.va =
-            pool->bo ? (radv_buffer_get_va(set->header.bo) + pool->current_offset) : 0;
-         if (!pool->host_memory_base) {
-            pool->entries[pool->entry_count].offset = pool->current_offset;
-            pool->entries[pool->entry_count].size = layout_size;
-            pool->entries[pool->entry_count].set = set;
-            pool->entry_count++;
-         }
-         pool->current_offset += layout_size;
-      } else if (!pool->host_memory_base) {
-         uint64_t offset = 0;
-         int index;
-
-         for (index = 0; index < pool->entry_count; ++index) {
-            if (pool->entries[index].offset - offset >= layout_size)
-               break;
-            offset = pool->entries[index].offset + pool->entries[index].size;
-         }
-
-         if (pool->size - offset < layout_size) {
-            vk_free2(&device->vk.alloc, NULL, set);
-            return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
-         }
-         set->header.bo = pool->bo;
-         set->header.mapped_ptr = (uint32_t *)(pool->mapped_ptr + offset);
-         set->header.va = pool->bo ? (radv_buffer_get_va(set->header.bo) + offset) : 0;
-         memmove(&pool->entries[index + 1], &pool->entries[index],
-                 sizeof(pool->entries[0]) * (pool->entry_count - index));
-         pool->entries[index].offset = offset;
-         pool->entries[index].size = layout_size;
-         pool->entries[index].set = set;
-         pool->entry_count++;
-      } else
-         return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
-   }
+      set->header.bo = pool->bo;
+      set->header.mapped_ptr = (uint32_t *)(pool->mapped_ptr + offset);
+      set->header.va = pool->bo ? (radv_buffer_get_va(set->header.bo) + offset) : 0;
+      memmove(&pool->entries[index + 1], &pool->entries[index],
+              sizeof(pool->entries[0]) * (pool->entry_count - index));
+      pool->entries[index].offset = offset;
+      pool->entries[index].size = layout_size;
+      pool->entries[index].set = set;
+      pool->entry_count++;
+   } else
+      return vk_error(device->instance, VK_ERROR_OUT_OF_POOL_MEMORY);
 
    if (layout->has_immutable_samplers) {
       for (unsigned i = 0; i < layout->binding_count; ++i) {
@@ -661,10 +658,9 @@ radv_descriptor_set_destroy(struct radv_device *device, struct radv_descriptor_p
 {
    assert(!pool->host_memory_base);
 
-   if (free_bo && set->header.size && !pool->host_memory_base) {
-      uint32_t offset = (uint8_t *)set->header.mapped_ptr - pool->mapped_ptr;
+   if (free_bo && !pool->host_memory_base) {
       for (int i = 0; i < pool->entry_count; ++i) {
-         if (pool->entries[i].offset == offset) {
+         if (pool->entries[i].set == set) {
             memmove(&pool->entries[i], &pool->entries[i + 1],
                     sizeof(pool->entries[i]) * (pool->entry_count - i - 1));
             --pool->entry_count;
