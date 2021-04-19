@@ -394,7 +394,7 @@ static int qsort_hw_context_first(const void *a, const void *b)
 }
 
 static struct intel_batch_decode_bo
-get_gen_batch_bo(void *user_data, bool ppgtt, uint64_t address)
+get_intel_batch_bo(void *user_data, bool ppgtt, uint64_t address)
 {
    for (int s = 0; s < num_sections; s++) {
       if (sections[s].gtt_offset <= address &&
@@ -663,7 +663,7 @@ read_data_file(FILE *file)
 
    struct intel_batch_decode_ctx batch_ctx;
    intel_batch_decode_ctx_init(&batch_ctx, &devinfo, stdout, batch_flags,
-                               xml_path, get_gen_batch_bo, NULL, NULL);
+                               xml_path, get_intel_batch_bo, NULL, NULL);
 
 
    for (int s = 0; s < num_sections; s++) {

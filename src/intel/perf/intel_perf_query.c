@@ -771,7 +771,7 @@ intel_perf_begin_query(struct intel_perf_context *perf_ctx,
           * which reads a counter that increments by the number of clock
           * cycles multiplied by the number of EUs. It can be calculated as:
           *
-          * 2^(number of bits in A counter) / (n_eus * max_gen_freq * 2)
+          * 2^(number of bits in A counter) / (n_eus * max_intel_freq * 2)
           *
           * (E.g. 40 EUs @ 1GHz = ~53ms)
           *
