@@ -49,7 +49,6 @@
                 MALI_COLOR_BUFFER_INTERNAL_FORMAT_## internal, \
                 MALI_MFBD_COLOR_FORMAT_## writeback, \
                 MALI_BLEND_AU_ ## internal | (srgb ? (1 << 20) : 0), \
-                MALI_BLEND_PU_ ## internal | (srgb ? (1 << 20) : 0), \
         }
 
 #define BFMT(pipe, internal_and_writeback) \
@@ -699,8 +698,7 @@ unsigned
 panfrost_format_to_bifrost_blend(const struct panfrost_device *dev,
                                  enum pipe_format format)
 {
-        mali_pixel_format pixfmt =
-                panfrost_blendable_formats[format].bifrost_dither;
+        mali_pixel_format pixfmt = panfrost_blendable_formats[format].bifrost;
 
         if (pixfmt) {
                 return pixfmt | ((dev->quirks & HAS_SWIZZLES) ?
