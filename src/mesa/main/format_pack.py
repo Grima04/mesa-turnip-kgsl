@@ -230,85 +230,6 @@ struct z32f_x24s8
 
 
 /**
- ** Pack float Z pixels
- **/
-
-static void
-pack_float_S8_UINT_Z24_UNORM(const float *src, void *dst)
-{
-   /* don't disturb the stencil values */
-   uint32_t *d = ((uint32_t *) dst);
-   const double scale = (double) 0xffffff;
-   uint32_t s = *d & 0xff;
-   uint32_t z = (uint32_t) (*src * scale);
-   assert(z <= 0xffffff);
-   *d = (z << 8) | s;
-}
-
-static void
-pack_float_Z24_UNORM_S8_UINT(const float *src, void *dst)
-{
-   /* don't disturb the stencil values */
-   uint32_t *d = ((uint32_t *) dst);
-   const double scale = (double) 0xffffff;
-   uint32_t s = *d & 0xff000000;
-   uint32_t z = (uint32_t) (*src * scale);
-   assert(z <= 0xffffff);
-   *d = s | z;
-}
-
-static void
-pack_float_Z_UNORM16(const float *src, void *dst)
-{
-   uint16_t *d = ((uint16_t *) dst);
-   const float scale = (float) 0xffff;
-   *d = (uint16_t) (*src * scale);
-}
-
-static void
-pack_float_Z_UNORM32(const float *src, void *dst)
-{
-   uint32_t *d = ((uint32_t *) dst);
-   const double scale = (double) 0xffffffff;
-   *d = (uint32_t) (*src * scale);
-}
-
-/**
- ** Pack float to Z_FLOAT32 or Z_FLOAT32_X24S8.
- **/
-
-static void
-pack_float_Z_FLOAT32(const float *src, void *dst)
-{
-   float *d = (float *) dst;
-   *d = *src;
-}
-
-mesa_pack_float_z_func
-_mesa_get_pack_float_z_func(mesa_format format)
-{
-   switch (format) {
-   case MESA_FORMAT_S8_UINT_Z24_UNORM:
-   case MESA_FORMAT_X8_UINT_Z24_UNORM:
-      return pack_float_S8_UINT_Z24_UNORM;
-   case MESA_FORMAT_Z24_UNORM_S8_UINT:
-   case MESA_FORMAT_Z24_UNORM_X8_UINT:
-      return pack_float_Z24_UNORM_S8_UINT;
-   case MESA_FORMAT_Z_UNORM16:
-      return pack_float_Z_UNORM16;
-   case MESA_FORMAT_Z_UNORM32:
-      return pack_float_Z_UNORM32;
-   case MESA_FORMAT_Z_FLOAT32:
-   case MESA_FORMAT_Z32_FLOAT_S8X24_UINT:
-      return pack_float_Z_FLOAT32;
-   default:
-      unreachable("unexpected format in _mesa_get_pack_float_z_func()");
-   }
-}
-
-
-
-/**
  ** Pack uint Z pixels.  The incoming src value is always in
  ** the range [0, 2^32-1].
  **/
@@ -482,6 +403,6 @@ _mesa_pack_uint_24_8_depth_stencil_row(mesa_format format, uint32_t n,
 
 """
 
-template = Template(string, future_imports=['division']);
+template = Template(string, future_imports=['division'])
 
-print(template.render(argv = argv[0:]))
+print(template.render(argv=argv[0:]))
