@@ -1432,7 +1432,8 @@ check_base_requirements(struct zink_screen *screen)
        !screen->info.feats.features.shaderClipDistance ||
        !(screen->info.feats12.scalarBlockLayout ||
          screen->info.have_EXT_scalar_block_layout) ||
-       !screen->info.have_KHR_maintenance1) {
+       !screen->info.have_KHR_maintenance1 ||
+       !screen->info.have_EXT_custom_border_color) {
       fprintf(stderr, "WARNING: The Vulkan device doesn't support "
               "the base Zink requirements, some incorrect rendering "
               "might occur\n");
