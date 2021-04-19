@@ -34,45 +34,6 @@
 /* TODO: Use the interface drm/freedreno_drmif.h instead of calling directly */
 #include <xf86drm.h>
 
-struct pipe_fence_handle {
-   struct pipe_reference reference;
-
-   /* fence holds a weak reference to the batch until the batch is flushed,
-    * at which point fd_fence_populate() is called and timestamp and possibly
-    * fence_fd become valid and the week reference is dropped.
-    *
-    * Note that with u_threaded_context async flushes, if a fence is requested
-    * by the frontend, the fence is initially created without a weak reference
-    * to the batch, which is filled in later when fd_context_flush() is called
-    * from the driver thread.  In this case tc_token will be non-null, in
-    * which case threaded_context_flush() should be called in fd_fence_finish()
-    */
-   struct fd_batch *batch;
-
-   struct tc_unflushed_batch_token *tc_token;
-   bool needs_signal;
-
-   /* For threaded_context async flushes, we must wait on the fence, signalled
-    * in fd_fence_populate(), to know that the rendering has been actually
-    * flushed from the driver thread.
-    *
-    * The ready fence is created signaled for non-async-flush fences, and only
-    * transitions once from unsignalled->signalled for async-flush fences
-    */
-   struct util_queue_fence ready;
-
-   /* Note that a fence can outlive the ctx, so we can only assume this is a
-    * valid ptr for unflushed fences.  However we hold a reference to the
-    * fence->pipe so that is safe to use after flushing.
-    */
-   struct fd_context *ctx;
-   struct fd_pipe *pipe;
-   struct fd_screen *screen;
-   int fence_fd;
-   uint32_t timestamp;
-   uint32_t syncobj;
-};
-
 static bool
 fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
             uint64_t timeout)
