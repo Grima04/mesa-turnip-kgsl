@@ -752,10 +752,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
       return (1 << PIPE_SHADER_IR_NIR) | (1 << PIPE_SHADER_IR_TGSI);
 
    case PIPE_SHADER_CAP_MAX_SHADER_IMAGES:
-      if (screen->info.have_KHR_vulkan_memory_model &&
-          (screen->info.feats.features.shaderStorageImageExtendedFormats ||
+      if (screen->info.feats.features.shaderStorageImageExtendedFormats ||
           (screen->info.feats.features.shaderStorageImageWriteWithoutFormat &&
-           screen->info.feats.features.shaderStorageImageReadWithoutFormat)))
+           screen->info.feats.features.shaderStorageImageReadWithoutFormat))
          return MIN2(screen->info.props.limits.maxPerStageDescriptorStorageImages,
                      PIPE_MAX_SHADER_IMAGES);
       return 0;

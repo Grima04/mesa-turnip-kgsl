@@ -1486,7 +1486,7 @@ spirv_builder_emit_memory_barrier(struct spirv_builder *b, SpvScope scope, SpvMe
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 3);
    spirv_buffer_emit_word(&b->instructions, SpvOpMemoryBarrier | (3 << 16));
    spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, scope));
-   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, semantics | SpvMemorySemanticsMakeAvailableMask | SpvMemorySemanticsMakeVisibleMask));
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, semantics));
 }
 
 void
@@ -1496,7 +1496,7 @@ spirv_builder_emit_control_barrier(struct spirv_builder *b, SpvScope scope, SpvS
    spirv_buffer_emit_word(&b->instructions, SpvOpControlBarrier | (4 << 16));
    spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, scope));
    spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, mem_scope));
-   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, semantics | SpvMemorySemanticsMakeAvailableMask | SpvMemorySemanticsMakeVisibleMask));
+   spirv_buffer_emit_word(&b->instructions, spirv_builder_const_uint(b, 32, semantics));
 }
 
 SpvId
