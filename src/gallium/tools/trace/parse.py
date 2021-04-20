@@ -359,7 +359,7 @@ class TraceDumper(TraceParser):
             self.formatter = format.Formatter(outStream)
         else:
             self.formatter = format.DefaultFormatter(outStream)
-        self.pretty_printer = PrettyPrinter(self.formatter)
+        self.pretty_printer = PrettyPrinter(self.formatter, options)
 
     def handle_call(self, call):
         call.visit(self.pretty_printer)
@@ -400,6 +400,9 @@ class Main:
         optparser.add_argument("-p", "--plain",
             action="store_const", const=True, default=False,
             dest="plain", help="disable ANSI color etc. formatting")
+        optparser.add_argument("-S", "--suppress",
+            action="store_const", const=True, default=False,
+            dest="suppress_variants", help="suppress some variants in output for better diffability")
         return optparser
 
     def process_arg(self, stream, options):

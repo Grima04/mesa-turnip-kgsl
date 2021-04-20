@@ -49,13 +49,11 @@ strip_dump()
 	OUTFILE="$1"
 	shift
 
-	python3 "$TRACEDUMP" --plain "$@" "$INFILE" \
+	python3 "$TRACEDUMP" --plain --suppress "$@" "$INFILE" \
 	| sed \
-		-e 's@ // time .*@@' \
 		-e '/pipe_screen::is_format_supported/d' \
 		-e '/pipe_screen::get_\(shader_\)\?paramf\?/d' \
 		-e 's/\r$//g' \
-		-e 's/^[0-9]\+ //' \
 		-e 's/pipe = \w\+/pipe/g' \
 		-e 's/screen = \w\+/screen/g' \
 		-e 's/, /,\n\t/g' \

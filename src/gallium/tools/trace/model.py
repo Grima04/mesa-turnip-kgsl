@@ -45,7 +45,7 @@ class Node:
     def __str__(self):
         stream = StringIO()
         formatter = format.Formatter(stream)
-        pretty_printer = PrettyPrinter(formatter)
+        pretty_printer = PrettyPrinter(formatter, {})
         self.visit(pretty_printer)
         return stream.getvalue()
 
@@ -164,9 +164,11 @@ class Visitor:
 
 class PrettyPrinter:
 
-    def __init__(self, formatter):
+    def __init__(self, formatter, options):
         self.formatter = formatter
     
+        self.options = options
+
     def visit_literal(self, node):
         if node.value is None:
             self.formatter.literal('NULL')
@@ -208,7 +210,8 @@ class PrettyPrinter:
         self.formatter.address(node.address)
 
     def visit_call(self, node):
-        self.formatter.text('%s ' % node.no)
+        if not self.options.suppress_variants:
+            self.formatter.text('%s ' % node.no)
         if node.klass is not None:
             self.formatter.function(node.klass + '::' + node.method)
         else:
@@ -225,7 +228,7 @@ class PrettyPrinter:
         if node.ret is not None:
             self.formatter.text(' = ')
             node.ret.visit(self)
-        if node.time is not None:
+        if not self.options.suppress_variants and node.time is not None:
             self.formatter.text(' // time ')
             node.time.visit(self)
 
