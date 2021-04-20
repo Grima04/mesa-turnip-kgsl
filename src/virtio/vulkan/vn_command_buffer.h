@@ -38,6 +38,11 @@ struct vn_command_buffer {
 
    struct vn_device *device;
 
+   /* for scrubbing VK_IMAGE_LAYOUT_PRESENT_SRC_KHR */
+   VkAllocationCallbacks allocator;
+   uint32_t image_barrier_count;
+   VkImageMemoryBarrier *image_barriers;
+
    struct list_head head;
 
    enum vn_command_buffer_state state;
