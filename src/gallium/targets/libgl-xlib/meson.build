@@ -55,4 +55,5 @@ libgl = shared_library(
   dependencies : [dep_thread, dep_clock, dep_unwind, driver_swrast, driver_swr, driver_virgl],
   install : true,
   version : '1.5.0',
+  darwin_versions : '4.0.0',
 )
