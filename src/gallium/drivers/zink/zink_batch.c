@@ -349,9 +349,134 @@ submit_queue(void *data, int thread_index)
    p_atomic_set(&bs->fence.submitted, true);
 }
 
+
+/* TODO: remove for wsi */
+static void
+copy_scanout(struct zink_context *ctx, struct zink_resource *res)
+{
+   VkImageCopy region = {};
+   struct pipe_box box = {0, 0, 0,
+                          u_minify(res->base.b.width0, 0),
+                          u_minify(res->base.b.height0, 0), res->base.b.array_size};
+   box.depth = util_num_layers(&res->base.b, 0);
+   struct pipe_box *src_box = &box;
+   unsigned dstz = 0;
+
+   region.srcSubresource.aspectMask = res->aspect;
+   region.srcSubresource.mipLevel = 0;
+   switch (res->base.b.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.srcSubresource.baseArrayLayer = src_box->z;
+      region.srcSubresource.layerCount = src_box->depth;
+      region.srcOffset.z = 0;
+      region.extent.depth = 1;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
+      region.srcSubresource.baseArrayLayer = 0;
+      region.srcSubresource.layerCount = 1;
+      region.srcOffset.z = src_box->z;
+      region.extent.depth = src_box->depth;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.srcSubresource.baseArrayLayer = 0;
+      region.srcSubresource.layerCount = 1;
+      region.srcOffset.z = 0;
+      region.extent.depth = 1;
+   }
+
+   region.srcOffset.x = src_box->x;
+   region.srcOffset.y = src_box->y;
+
+   region.dstSubresource.aspectMask = res->aspect;
+   region.dstSubresource.mipLevel = 0;
+   switch (res->base.b.target) {
+   case PIPE_TEXTURE_CUBE:
+   case PIPE_TEXTURE_CUBE_ARRAY:
+   case PIPE_TEXTURE_2D_ARRAY:
+   case PIPE_TEXTURE_1D_ARRAY:
+      /* these use layer */
+      region.dstSubresource.baseArrayLayer = dstz;
+      region.dstSubresource.layerCount = src_box->depth;
+      region.dstOffset.z = 0;
+      break;
+   case PIPE_TEXTURE_3D:
+      /* this uses depth */
+      region.dstSubresource.baseArrayLayer = 0;
+      region.dstSubresource.layerCount = 1;
+      region.dstOffset.z = dstz;
+      break;
+   default:
+      /* these must only copy one layer */
+      region.dstSubresource.baseArrayLayer = 0;
+      region.dstSubresource.layerCount = 1;
+      region.dstOffset.z = 0;
+   }
+
+   region.dstOffset.x = 0;
+   region.dstOffset.y = 0;
+   region.extent.width = src_box->width;
+   region.extent.height = src_box->height;
+   zink_resource_image_barrier(ctx, NULL, res, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_ACCESS_TRANSFER_READ_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT);
+
+   VkImageSubresourceRange isr = {
+      res->aspect,
+      0, VK_REMAINING_MIP_LEVELS,
+      0, VK_REMAINING_ARRAY_LAYERS
+   };
+   VkImageMemoryBarrier imb = {
+      VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+      NULL,
+      0,
+      VK_ACCESS_TRANSFER_WRITE_BIT,
+      res->scanout_obj_init ? VK_IMAGE_LAYOUT_PRESENT_SRC_KHR : VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+      VK_QUEUE_FAMILY_IGNORED,
+      VK_QUEUE_FAMILY_IGNORED,
+      res->scanout_obj->image,
+      isr
+   };
+   vkCmdPipelineBarrier(
+      ctx->batch.state->cmdbuf,
+      VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      0,
+      0, NULL,
+      0, NULL,
+      1, &imb
+   );
+
+   vkCmdCopyImage(ctx->batch.state->cmdbuf, res->obj->image, res->layout,
+                  res->scanout_obj->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                  1, &region);
+   imb.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+   imb.dstAccessMask = 0;
+   imb.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+   imb.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+   vkCmdPipelineBarrier(
+      ctx->batch.state->cmdbuf,
+      VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+      0,
+      0, NULL,
+      0, NULL,
+      1, &imb
+   );
+   /* separate flag to avoid annoying validation errors for new scanout objs */
+   res->scanout_obj_init = true;
+}
+
 void
 zink_end_batch(struct zink_context *ctx, struct zink_batch *batch)
 {
+   if (batch->state->flush_res)
+      copy_scanout(ctx, batch->state->flush_res);
+
    if (!ctx->queries_disabled)
       zink_suspend_queries(ctx, batch);
 
