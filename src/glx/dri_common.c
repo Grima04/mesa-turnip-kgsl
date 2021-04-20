@@ -206,8 +206,7 @@ driConfigEqual(const __DRIcoreExtension *core,
             if (config->visualRating == GLX_NONE) {
                static int warned;
                if (!warned) {
-                  glx_message(_LOADER_DEBUG,
-                              "Not downgrading visual rating\n");
+                  DebugMessageF("Not downgrading visual rating\n");
                   warned = 1;
                }
             } else {
@@ -220,8 +219,7 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, value)) {
             static int warned;
             if (!warned) {
-               glx_message(_LOADER_DEBUG,
-                           "Disabling server's aux buffer support\n");
+               DebugMessageF("Disabling server's aux buffer support\n");
                warned = 1;
             }
             config->numAuxBuffers = 0;
@@ -232,8 +230,7 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, value)) {
             static int warned;
             if (!warned) {
-               glx_message(_LOADER_DEBUG,
-                           "Disabling server's tfp mipmap support\n");
+               DebugMessageF("Disabling server's tfp mipmap support\n");
                warned = 1;
             }
             config->bindToMipmapTexture = 0;
@@ -244,8 +241,7 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, value)) {
             static int warned;
             if (!warned) {
-               glx_message(_LOADER_DEBUG,
-                           "Disabling server's sRGB support\n");
+               DebugMessageF("Disabling server's sRGB support\n");
                warned = 1;
             }
             config->sRGBCapable = 0;

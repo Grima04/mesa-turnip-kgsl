@@ -68,6 +68,7 @@ extern "C" {
 
 extern void glx_message(int level, const char *f, ...) PRINTFLIKE(2, 3);
 
+#define DebugMessageF(...) glx_message(_LOADER_DEBUG, __VA_ARGS__)
 #define InfoMessageF(...) glx_message(_LOADER_INFO, __VA_ARGS__)
 #define ErrorMessageF(...) glx_message(_LOADER_WARNING, __VA_ARGS__)
 #define CriticalErrorMessageF(...) glx_message(_LOADER_FATAL, __VA_ARGS__)
