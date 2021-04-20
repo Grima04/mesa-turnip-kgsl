@@ -51,30 +51,6 @@
 #define RTLD_GLOBAL 0
 #endif
 
-_X_HIDDEN void
-dri_message(int level, const char *f, ...)
-{
-   va_list args;
-   int threshold = _LOADER_WARNING;
-   const char *libgl_debug;
-
-   libgl_debug = getenv("LIBGL_DEBUG");
-   if (libgl_debug) {
-      if (strstr(libgl_debug, "quiet"))
-         threshold = _LOADER_FATAL;
-      else if (strstr(libgl_debug, "verbose"))
-         threshold = _LOADER_DEBUG;
-   }
-
-   /* Note that the _LOADER_* levels are lower numbers for more severe. */
-   if (level <= threshold) {
-      fprintf(stderr, "libGL%s: ", level <= _LOADER_WARNING ? " error" : "");
-      va_start(args, f);
-      vfprintf(stderr, f, args);
-      va_end(args);
-   }
-}
-
 #ifndef GL_LIB_NAME
 #define GL_LIB_NAME "libGL.so.1"
 #endif
@@ -230,7 +206,7 @@ driConfigEqual(const __DRIcoreExtension *core,
             if (config->visualRating == GLX_NONE) {
                static int warned;
                if (!warned) {
-                  dri_message(_LOADER_DEBUG,
+                  glx_message(_LOADER_DEBUG,
                               "Not downgrading visual rating\n");
                   warned = 1;
                }
@@ -244,7 +220,7 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, value)) {
             static int warned;
             if (!warned) {
-               dri_message(_LOADER_DEBUG,
+               glx_message(_LOADER_DEBUG,
                            "Disabling server's aux buffer support\n");
                warned = 1;
             }
@@ -256,7 +232,7 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, value)) {
             static int warned;
             if (!warned) {
-               dri_message(_LOADER_DEBUG,
+               glx_message(_LOADER_DEBUG,
                            "Disabling server's tfp mipmap support\n");
                warned = 1;
             }
@@ -268,7 +244,7 @@ driConfigEqual(const __DRIcoreExtension *core,
          if (!scalarEqual(config, attrib, value)) {
             static int warned;
             if (!warned) {
-               dri_message(_LOADER_DEBUG,
+               glx_message(_LOADER_DEBUG,
                            "Disabling server's sRGB support\n");
                warned = 1;
             }

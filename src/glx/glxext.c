@@ -39,6 +39,7 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdarg.h>
 
 #include "glxclient.h"
 #include <X11/extensions/Xext.h>
@@ -74,6 +75,30 @@
 #ifdef DEBUG
 void __glXDumpDrawBuffer(struct glx_context * ctx);
 #endif
+
+_X_HIDDEN void
+glx_message(int level, const char *f, ...)
+{
+   va_list args;
+   int threshold = _LOADER_WARNING;
+   const char *libgl_debug;
+
+   libgl_debug = getenv("LIBGL_DEBUG");
+   if (libgl_debug) {
+      if (strstr(libgl_debug, "quiet"))
+         threshold = _LOADER_FATAL;
+      else if (strstr(libgl_debug, "verbose"))
+         threshold = _LOADER_DEBUG;
+   }
+
+   /* Note that the _LOADER_* levels are lower numbers for more severe. */
+   if (level <= threshold) {
+      fprintf(stderr, "libGL%s: ", level <= _LOADER_WARNING ? " error" : "");
+      va_start(args, f);
+      vfprintf(stderr, f, args);
+      va_end(args);
+   }
+}
 
 /*
 ** You can set this cell to 1 to force the gl drawing stuff to be
@@ -914,7 +939,7 @@ __glXInitialize(Display * dpy)
 
 #ifndef GLX_USE_APPLEGL
    /* Set the logger before the *CreateDisplay functions. */
-   loader_set_logger(dri_message);
+   loader_set_logger(glx_message);
 #endif
 
    /*
