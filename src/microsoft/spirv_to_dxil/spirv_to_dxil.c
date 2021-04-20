@@ -108,6 +108,7 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
       } while (progress);
    }
 
+   NIR_PASS_V(nir, nir_lower_readonly_images_to_tex, true);
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
 
