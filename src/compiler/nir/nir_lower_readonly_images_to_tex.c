@@ -24,8 +24,44 @@
 #include "nir.h"
 #include "nir_builder.h"
 
+static const struct glsl_type *
+get_sampler_type_for_image(const struct glsl_type *type)
+{
+   if (glsl_type_is_array(type)) {
+      const struct glsl_type *elem_type =
+         get_sampler_type_for_image(glsl_get_array_element(type));
+      return glsl_array_type(elem_type, glsl_get_length(type), 0 /*explicit size*/);
+   }
+
+   assert((glsl_type_is_image(type)));
+   return glsl_sampler_type(glsl_get_sampler_dim(type), false,
+                            glsl_sampler_type_is_array(type),
+                            glsl_get_sampler_result_type(type));
+}
+
+static void
+replace_image_type_with_sampler(nir_deref_instr *deref)
+{
+   const struct glsl_type *type = deref->type;
+
+   /* If we've already chased up the deref chain this far from a different intrinsic, we're done */
+   if (glsl_type_is_sampler(glsl_without_array(type)))
+      return;
+
+   deref->type = get_sampler_type_for_image(type);
+   if (deref->deref_type == nir_deref_type_var) {
+      type = deref->var->type;
+      if (!glsl_type_is_sampler(glsl_without_array(type)))
+         deref->var->type = get_sampler_type_for_image(type);
+   } else {
+      nir_deref_instr *parent = nir_deref_instr_parent(deref);
+      if (parent)
+         replace_image_type_with_sampler(parent);
+   }
+}
+
 static bool
-lower_readonly_images_to_tex_impl(nir_function_impl *impl)
+lower_readonly_images_to_tex_impl(nir_function_impl *impl, bool per_variable)
 {
    bool progress = false;
 
@@ -55,6 +91,9 @@ lower_readonly_images_to_tex_impl(nir_function_impl *impl)
             continue;
          }
 
+         nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+         nir_variable *var = nir_deref_instr_get_variable(deref);
+
          /* In CL 1.2, images are required to be either read-only or
           * write-only.  We can always translate the read-only image ops to
           * texture ops.  In CL 2.0 (and an extension), the ability is added
@@ -62,10 +101,14 @@ lower_readonly_images_to_tex_impl(nir_function_impl *impl)
           * allowed on read-only images.  As long as we only lower read-only
           * images to texture ops, everything should stay consistent.
           */
-         if (!(nir_intrinsic_access(intrin) & ACCESS_NON_WRITEABLE))
+         enum gl_access_qualifier access = 0;
+         if (per_variable) {
+            if (var)
+               access = var->data.access;
+         } else
+            access = nir_intrinsic_access(intrin);
+         if (!(access & ACCESS_NON_WRITEABLE))
             continue;
-
-         nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
 
          b.cursor = nir_instr_remove(&intrin->instr);
 
@@ -83,6 +126,11 @@ lower_readonly_images_to_tex_impl(nir_function_impl *impl)
 
          tex->src[0].src_type = nir_tex_src_texture_deref;
          tex->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
+         
+         if (per_variable) {
+            assert(var);
+            replace_image_type_with_sampler(deref);
+         }
 
          switch (intrin->intrinsic) {
          case nir_intrinsic_image_deref_load: {
@@ -147,14 +195,23 @@ lower_readonly_images_to_tex_impl(nir_function_impl *impl)
    return progress;
 }
 
-/** Lowers image ops to texture ops for read-only images */
+/** Lowers image ops to texture ops for read-only images
+  * 
+  * If per_variable is set:
+  * - Variable access is used to indicate read-only instead of intrinsic access
+  * - Variable/deref types will be changed from image types to sampler types
+  * 
+  * per_variable should not be set for OpenCL, because all image types will be void-returning,
+  * and there is no corresponding valid sampler type, and it will collide with the "bare" sampler type.
+  */
 bool
-nir_lower_readonly_images_to_tex(nir_shader *shader)
+nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable)
 {
+   assert(shader->info.stage != MESA_SHADER_KERNEL || !per_variable);
    bool progress = false;
 
    nir_foreach_function(function, shader) {
-      if (function->impl && lower_readonly_images_to_tex_impl(function->impl))
+      if (function->impl && lower_readonly_images_to_tex_impl(function->impl, per_variable))
          progress = true;
    }
 
