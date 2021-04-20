@@ -621,16 +621,12 @@ __glXInitializeVisualConfigFromTags(struct glx_config * config, int count,
       case None:
          i = count;
          break;
-      default:
-         if(env_var_as_boolean("LIBGL_DIAGNOSTIC", false)) {
-             long int tagvalue = *bp++;
-             fprintf(stderr, "WARNING: unknown GLX tag from server: "
-                     "tag 0x%lx value 0x%lx\n", tag, tagvalue);
-         } else {
-             /* Ignore the unrecognized tag's value */
-             bp++;
+      default: {
+            long int tagvalue = *bp++;
+            DebugMessageF("WARNING: unknown GLX tag from server: "
+                          "tag 0x%lx value 0x%lx\n", tag, tagvalue);
+            break;
          }
-         break;
       }
    }
 
