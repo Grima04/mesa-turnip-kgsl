@@ -72,10 +72,6 @@
 #define __GLX_TOTAL_CONFIG \
    (__GLX_MIN_CONFIG_PROPS + 2 * __GLX_EXT_CONFIG_PROPS)
 
-#ifdef DEBUG
-void __glXDumpDrawBuffer(struct glx_context * ctx);
-#endif
-
 _X_HIDDEN void
 glx_message(int level, const char *f, ...)
 {
@@ -1140,30 +1136,3 @@ __glXSendLargeCommand(struct glx_context * ctx,
    assert(dataLen <= maxSize);
    __glXSendLargeChunk(ctx, requestNumber, totalRequests, data, dataLen);
 }
-
-/************************************************************************/
-
-#ifdef DEBUG
-_X_HIDDEN void
-__glXDumpDrawBuffer(struct glx_context * ctx)
-{
-   GLubyte *p = ctx->buf;
-   GLubyte *end = ctx->pc;
-   GLushort opcode, length;
-
-   while (p < end) {
-      /* Fetch opcode */
-      opcode = *((GLushort *) p);
-      length = *((GLushort *) (p + 2));
-      printf("%2x: %5d: ", opcode, length);
-      length -= 4;
-      p += 4;
-      while (length > 0) {
-         printf("%08x ", *((unsigned *) p));
-         p += 4;
-         length -= 4;
-      }
-      printf("\n");
-   }
-}
-#endif
