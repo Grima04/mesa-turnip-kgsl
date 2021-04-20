@@ -1722,10 +1722,6 @@ zink_flush(struct pipe_context *pctx,
          /* start rp to do all the clears */
          zink_begin_render_pass(ctx, batch);
       zink_end_render_pass(ctx, batch);
-      if (ctx->flush_res) {
-         batch->state->flush_res = ctx->flush_res;
-         ctx->flush_res = NULL;
-      }
    }
 
    if (!batch->has_work) {
@@ -2071,7 +2067,7 @@ zink_flush_resource(struct pipe_context *pctx,
     * WSI support is added
     */
    if (pres->bind & (PIPE_BIND_SHARED | PIPE_BIND_SCANOUT))
-      ctx->flush_res = zink_resource(pres);
+      ctx->batch.state->flush_res = zink_resource(pres);
 }
 
 void

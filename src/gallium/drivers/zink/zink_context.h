@@ -181,7 +181,6 @@ struct zink_context {
 
    struct primconvert_context *primconvert;
 
-   struct zink_resource *flush_res;
    struct zink_framebuffer *framebuffer;
    struct zink_framebuffer_clear fb_clears[PIPE_MAX_COLOR_BUFS + 1];
    uint16_t clears_enabled;
