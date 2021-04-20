@@ -355,7 +355,7 @@ class TraceDumper(TraceParser):
     
     def __init__(self, fp, options, outStream = sys.stdout):
         TraceParser.__init__(self, fp)
-        if options.plain:
+        if "plain" in options and options.plain:
             self.formatter = format.Formatter(outStream)
         else:
             self.formatter = format.DefaultFormatter(outStream)

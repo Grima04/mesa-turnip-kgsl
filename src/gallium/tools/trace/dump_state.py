@@ -33,6 +33,7 @@ import json
 import binascii
 import re
 import copy
+import argparse
 
 import model
 import parse as parser
@@ -705,7 +706,7 @@ class Context(Dispatcher):
         return so_target
 
 
-class Interpreter(parser.TraceDumper):
+class Interpreter(parser.TraceParser):
     '''Specialization of a trace parser that interprets the calls as it goes
     along.'''
     
@@ -722,7 +723,7 @@ class Interpreter(parser.TraceDumper):
     ))
 
     def __init__(self, stream, options):
-        parser.TraceDumper.__init__(self, stream, options, sys.stderr)
+        parser.TraceParser.__init__(self, stream)
         self.options = options
         self.objects = {}
         self.result = None
@@ -791,9 +792,12 @@ class Interpreter(parser.TraceDumper):
 class Main(parser.Main):
 
     def get_optparser(self):
-        '''Custom options.'''
+        optparser = argparse.ArgumentParser(
+            description="Parse and dump Gallium trace(s) as JSON")
 
-        optparser = parser.Main.get_optparser(self)
+        optparser.add_argument("filename", action="extend", nargs="+",
+            type=str, metavar="filename", help="Gallium trace filename (plain or .gz, .bz2)")
+
         optparser.add_argument("-v", "--verbose", action="count", default=0, dest="verbosity", help="increase verbosity level")
         optparser.add_argument("-q", "--quiet", action="store_const", const=0, dest="verbosity", help="no messages")
         optparser.add_argument("-c", "--call", action="store", type=int, dest="call", default=0xffffffff, help="dump on this call")
