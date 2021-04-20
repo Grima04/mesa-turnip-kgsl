@@ -439,8 +439,10 @@ VkBool32 wsi_get_physical_device_xcb_presentation_support(
    if (!wsi_conn)
       return false;
 
-   if (!wsi_x11_check_for_dri3(wsi_conn))
-      return false;
+   if (!wsi_device->sw) {
+      if (!wsi_x11_check_for_dri3(wsi_conn))
+         return false;
+   }
 
    unsigned visual_depth;
    if (!connection_get_visualtype(connection, visual_id, &visual_depth))
@@ -484,9 +486,11 @@ x11_surface_get_support(VkIcdSurfaceBase *icd_surface,
    if (!wsi_conn)
       return VK_ERROR_OUT_OF_HOST_MEMORY;
 
-   if (!wsi_x11_check_for_dri3(wsi_conn)) {
-      *pSupported = false;
-      return VK_SUCCESS;
+   if (!wsi_device->sw) {
+      if (!wsi_x11_check_for_dri3(wsi_conn)) {
+         *pSupported = false;
+         return VK_SUCCESS;
+      }
    }
 
    unsigned visual_depth;
