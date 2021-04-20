@@ -19,6 +19,22 @@
 # SOFTWARE.
 
 files_asahi = files(
+  'agx_pipe.c',
+  'agx_state.c',
   'agx_uniforms.c',
   'magic.c',
+)
+
+libasahi = static_library(
+  'asahi',
+  files_asahi,
+  include_directories : [inc_gallium_aux, inc_gallium, inc_include, inc_src],
+  c_args : [c_msvc_compat_args],
+  gnu_symbol_visibility : 'hidden',
+  dependencies : idep_nir,
+)
+
+driver_asahi = declare_dependency(
+  compile_args : '-DGALLIUM_ASAHI',
+  link_with : [libasahi, libasahi_compiler, libasahi_lib, libasahi_decode]
 )

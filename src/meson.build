@@ -98,7 +98,7 @@ endif
 if with_gallium_nouveau
   subdir('nouveau')
 endif
-if with_tools.contains('asahi')
+if with_gallium_asahi or with_tools.contains('asahi')
   subdir('asahi')
 endif
 subdir('mesa')
