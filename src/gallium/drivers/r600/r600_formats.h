@@ -119,15 +119,6 @@ static inline bool r600_is_vertex_format_supported(enum pipe_format format)
 	if (desc->channel[i].size == 8 && desc->nr_channels == 3)
 		return false;
 
-        /* No 16 bit scaled integer formats */
-        if (desc->channel[i].size == 16) {
-           if (desc->channel[i].type == UTIL_FORMAT_TYPE_UNSIGNED ||
-               desc->channel[i].type == UTIL_FORMAT_TYPE_SIGNED) {
-              if (!desc->channel[i].normalized && !desc->channel[i].pure_integer)
-                 return false;
-           }
-        }
-
 	return true;
 }
 
