@@ -2413,6 +2413,16 @@ do_common_optimization(exec_list *ir, bool linked,
       delete ls;
    }
 
+   /* If the PIPE_CAP_GLSL_OPTIMIZE_CONSERVATIVELY cap is set, this pass will
+    * only be called once rather than repeatedly until no further progress is
+    * made.
+    *
+    * If an optimization pass fails to preserve the invariant flag, calling
+    * the pass only once may result in incorrect code generation. Always call
+    * propagate_invariance() last to avoid this possibility.
+    */
+   OPT(propagate_invariance, ir);
+
 #undef OPT
 
    return progress;
