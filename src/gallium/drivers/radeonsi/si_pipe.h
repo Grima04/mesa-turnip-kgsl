@@ -1320,7 +1320,8 @@ struct si_context {
 
    /* Shaders. */
    /* TODO: move other shaders here too */
-   void *cs_clear_dcc_msaa[32][5][2][2]; /* [swizzle_mode][log2(bpe)][samples == 8][is_array] */
+   /* Only used for DCC MSAA clears with 4-8 fragments and 4-16 samples. */
+   void *cs_clear_dcc_msaa[32][5][2][3][2]; /* [swizzle_mode][log2(bpe)][fragments == 8][log2(samples)-2][is_array] */
 };
 
 /* si_blit.c */

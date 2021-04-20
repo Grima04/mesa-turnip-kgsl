@@ -693,9 +693,10 @@ void gfx9_clear_dcc_msaa(struct si_context *sctx, struct pipe_resource *res, uin
    /* These variables identify the shader variant. */
    unsigned swizzle_mode = tex->surface.u.gfx9.swizzle_mode;
    unsigned bpe_log2 = util_logbase2(tex->surface.bpe);
-   bool samples8 = tex->buffer.b.b.nr_storage_samples == 8;
+   unsigned log2_samples = util_logbase2(tex->buffer.b.b.nr_samples);
+   bool fragments8 = tex->buffer.b.b.nr_storage_samples == 8;
    bool is_array = tex->buffer.b.b.array_size > 1;
-   void **shader = &sctx->cs_clear_dcc_msaa[swizzle_mode][bpe_log2][samples8][is_array];
+   void **shader = &sctx->cs_clear_dcc_msaa[swizzle_mode][bpe_log2][fragments8][log2_samples - 2][is_array];
 
    if (!*shader)
       *shader = gfx9_create_clear_dcc_msaa_cs(sctx, tex);
