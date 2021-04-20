@@ -88,6 +88,7 @@ strip_dump "$INFILE1" "$FIFO1" "$@" &
 strip_dump "$INFILE2" "$FIFO2" "$@" &
 
 sdiff \
+	--left-column \
 	--width="$(tput cols)" \
 	--speed-large-files \
 	"$FIFO1" "$FIFO2" \
