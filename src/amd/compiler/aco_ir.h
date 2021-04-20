@@ -1859,6 +1859,12 @@ struct DeviceInfo {
    bool sram_ecc_enabled = false;
 };
 
+enum class CompilationProgress {
+   after_isel,
+   after_spilling,
+   after_ra,
+};
+
 class Program final {
 public:
    std::vector<Block> blocks;
@@ -1888,6 +1894,8 @@ public:
 
    bool needs_vcc = false;
    bool needs_flat_scr = false;
+
+   CompilationProgress progress;
 
    bool collect_statistics = false;
    uint32_t statistics[num_statistics];
@@ -1983,7 +1991,7 @@ void select_trap_handler_shader(Program *program, struct nir_shader *shader,
 void lower_phis(Program* program);
 void calc_min_waves(Program* program);
 void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand);
-live live_var_analysis(Program* program, bool update_register_demand=true);
+live live_var_analysis(Program* program);
 std::vector<uint16_t> dead_code_analysis(Program *program);
 void dominator_tree(Program* program);
 void insert_exec_mask(Program *program);

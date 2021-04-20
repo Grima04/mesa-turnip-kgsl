@@ -2625,6 +2625,8 @@ void register_allocation(Program *program, std::vector<IDSet>& live_out_per_bloc
    /* num_gpr = rnd_up(max_used_gpr + 1) */
    program->config->num_vgprs = get_vgpr_alloc(program, ctx.max_used_vgpr + 1);
    program->config->num_sgprs = get_sgpr_alloc(program, ctx.max_used_sgpr + 1);
+
+   program->progress = CompilationProgress::after_ra;
 }
 
 }

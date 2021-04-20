@@ -1704,6 +1704,8 @@ void spill(Program* program, live& live_vars)
    program->config->spilled_vgprs = 0;
    program->config->spilled_sgprs = 0;
 
+   program->progress = CompilationProgress::after_spilling;
+
    /* no spilling when register pressure is low enough */
    if (program->num_waves > 0)
       return;

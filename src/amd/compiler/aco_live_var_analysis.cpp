@@ -82,8 +82,7 @@ RegisterDemand get_demand_before(RegisterDemand demand, aco_ptr<Instruction>& in
 
 namespace {
 void process_live_temps_per_block(Program *program, live& lives, Block* block,
-                                  std::set<unsigned>& worklist, std::vector<uint16_t>& phi_sgpr_ops,
-                                  bool update_register_demand)
+                                  std::set<unsigned>& worklist, std::vector<uint16_t>& phi_sgpr_ops)
 {
    std::vector<RegisterDemand>& register_demand = lives.register_demand[block->index];
    RegisterDemand new_demand;
@@ -165,7 +164,7 @@ void process_live_temps_per_block(Program *program, live& lives, Block* block,
 
    /* update block's register demand for a last time */
    block_register_demand.update(new_demand);
-   if (update_register_demand)
+   if (program->progress < CompilationProgress::after_ra)
       block->register_demand = block_register_demand;
 
    /* handle phi definitions */
@@ -365,7 +364,7 @@ void update_vgpr_sgpr_demand(Program* program, const RegisterDemand new_demand)
    }
 }
 
-live live_var_analysis(Program* program, bool update_register_demand)
+live live_var_analysis(Program* program)
 {
    live result;
    result.live_out.resize(program->blocks.size());
@@ -383,13 +382,12 @@ live live_var_analysis(Program* program, bool update_register_demand)
       std::set<unsigned>::reverse_iterator b_it = worklist.rbegin();
       unsigned block_idx = *b_it;
       worklist.erase(block_idx);
-      process_live_temps_per_block(program, result, &program->blocks[block_idx], worklist,
-                                   phi_sgpr_ops, update_register_demand);
+      process_live_temps_per_block(program, result, &program->blocks[block_idx], worklist, phi_sgpr_ops);
       new_demand.update(program->blocks[block_idx].register_demand);
    }
 
    /* calculate the program's register demand and number of waves */
-   if (update_register_demand)
+   if (program->progress < CompilationProgress::after_ra)
       update_vgpr_sgpr_demand(program, new_demand);
 
    return result;
