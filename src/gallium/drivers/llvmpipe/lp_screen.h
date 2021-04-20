@@ -79,6 +79,7 @@ void lp_disk_cache_insert_shader(struct llvmpipe_screen *screen,
                                  struct lp_cached_code *cache,
                                  unsigned char ir_sha1_cache_key[20]);
 
+bool llvmpipe_screen_late_init(struct llvmpipe_screen *screen);
 
 static inline struct llvmpipe_screen *
 llvmpipe_screen( struct pipe_screen *pipe )

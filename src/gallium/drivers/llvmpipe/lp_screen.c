@@ -875,7 +875,7 @@ void lp_disk_cache_insert_shader(struct llvmpipe_screen *screen,
    disk_cache_put(screen->disk_shader_cache, sha1, cache->data, cache->data_size, NULL);
 }
 
-static bool
+bool
 llvmpipe_screen_late_init(struct llvmpipe_screen *screen)
 {
    bool ret = true;
@@ -971,11 +971,6 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    (void) mtx_init(&screen->rast_mutex, mtx_plain);
 
    (void) mtx_init(&screen->late_mutex, mtx_plain);
-   if (!llvmpipe_screen_late_init(screen)) {
-      lp_jit_screen_cleanup(screen);
-      FREE(screen);
-      return NULL;
-   }
 
    return &screen->base;
 }
