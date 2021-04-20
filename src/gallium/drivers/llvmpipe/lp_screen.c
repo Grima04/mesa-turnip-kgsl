@@ -874,6 +874,25 @@ void lp_disk_cache_insert_shader(struct llvmpipe_screen *screen,
    disk_cache_compute_key(screen->disk_shader_cache, ir_sha1_cache_key, 20, sha1);
    disk_cache_put(screen->disk_shader_cache, sha1, cache->data, cache->data_size, NULL);
 }
+
+static bool
+llvmpipe_screen_late_init(struct llvmpipe_screen *screen)
+{
+   screen->rast = lp_rast_create(screen->num_threads);
+   if (!screen->rast) {
+      return false;
+   }
+
+   screen->cs_tpool = lp_cs_tpool_create(screen->num_threads);
+   if (!screen->cs_tpool) {
+      lp_rast_destroy(screen->rast);
+      return false;
+   }
+
+   lp_disk_cache_create(screen);
+   return true;
+}
+
 /**
  * Create a new pipe_screen object
  * Note: we're not presently subclassing pipe_screen (no llvmpipe_screen).
@@ -937,23 +956,14 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    screen->num_threads = debug_get_num_option("LP_NUM_THREADS", screen->num_threads);
    screen->num_threads = MIN2(screen->num_threads, LP_MAX_THREADS);
 
-   screen->rast = lp_rast_create(screen->num_threads);
-   if (!screen->rast) {
-      lp_jit_screen_cleanup(screen);
-      FREE(screen);
-      return NULL;
-   }
+   (void) mtx_init(&screen->cs_mutex, mtx_plain);
    (void) mtx_init(&screen->rast_mutex, mtx_plain);
 
-   screen->cs_tpool = lp_cs_tpool_create(screen->num_threads);
-   if (!screen->cs_tpool) {
-      lp_rast_destroy(screen->rast);
+   if (!llvmpipe_screen_late_init(screen)) {
       lp_jit_screen_cleanup(screen);
       FREE(screen);
       return NULL;
    }
-   (void) mtx_init(&screen->cs_mutex, mtx_plain);
 
-   lp_disk_cache_create(screen);
    return &screen->base;
 }
