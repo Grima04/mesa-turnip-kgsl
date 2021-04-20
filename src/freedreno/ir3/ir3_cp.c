@@ -100,6 +100,24 @@ static bool is_eligible_mov(struct ir3_instruction *instr,
 	return false;
 }
 
+/* we can end up with extra cmps.s from frontend, which uses a
+ *
+ *    cmps.s p0.x, cond, 0
+ *
+ * as a way to mov into the predicate register.  But frequently 'cond'
+ * is itself a cmps.s/cmps.f/cmps.u. So detect this special case.
+ */
+static bool is_foldable_double_cmp(struct ir3_instruction *cmp)
+{
+	struct ir3_instruction *cond = ssa(cmp->regs[1]);
+	return (cmp->regs[0]->num == regid(REG_P0, 0)) &&
+				cond &&
+				(cmp->regs[2]->flags & IR3_REG_IMMED) &&
+				(cmp->regs[2]->iim_val == 0) &&
+				(cmp->cat2.condition == IR3_COND_NE) &&
+				(!cond->address || (cmp->block == cond->address->block));
+}
+
 /* propagate register flags from src to dst.. negates need special
  * handling to cancel each other out.
  */
@@ -532,21 +550,10 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 		ir3_instr_set_address(instr, eliminate_output_mov(ctx, instr->address));
 	}
 
-	/* we can end up with extra cmps.s from frontend, which uses a
-	 *
-	 *    cmps.s p0.x, cond, 0
-	 *
-	 * as a way to mov into the predicate register.  But frequently 'cond'
-	 * is itself a cmps.s/cmps.f/cmps.u.  So detect this special case and
-	 * just re-write the instruction writing predicate register to get rid
+	/* Re-write the instruction writing predicate register to get rid
 	 * of the double cmps.
 	 */
-	if ((instr->opc == OPC_CMPS_S) &&
-			(instr->regs[0]->num == regid(REG_P0, 0)) &&
-			ssa(instr->regs[1]) &&
-			(instr->regs[2]->flags & IR3_REG_IMMED) &&
-			(instr->regs[2]->iim_val == 0) &&
-			(instr->cat2.condition == IR3_COND_NE)) {
+	if ((instr->opc == OPC_CMPS_S) && is_foldable_double_cmp(instr)) {
 		struct ir3_instruction *cond = ssa(instr->regs[1]);
 		switch (cond->opc) {
 		case OPC_CMPS_S:
