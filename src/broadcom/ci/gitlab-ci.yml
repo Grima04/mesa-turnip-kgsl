@@ -18,16 +18,28 @@
   tags:
     - igalia-rpi3
 
-vc4-rpi3-gles2:armhf:
+.vc4-rpi3-deqp:armhf:
   extends:
     - .vc4-rpi3-test:armhf
-  parallel: 4
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/deqp-runner.sh"
-    DEQP_VER: gles2
     # The vc4s are so slow that it takes about a minute to get through the
     # default 500 tests in a group, triggering the serial watchdog.
     DEQP_RUNNER_OPTIONS: "--tests-per-group 250"
+
+vc4-rpi3-gles2:armhf:
+  extends:
+    - .vc4-rpi3-deqp:armhf
+  parallel: 4
+  variables:
+    DEQP_VER: gles2
+
+vc4-rpi3-khr-gles2:armhf:
+  extends:
+    - .vc4-rpi3-deqp:armhf
+    - .test-manual
+  variables:
+    DEQP_VER: gles2-khr
 
 .vc4-rpi3-piglit:armhf:
   extends:
