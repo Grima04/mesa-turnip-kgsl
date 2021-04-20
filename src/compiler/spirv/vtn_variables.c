@@ -1840,6 +1840,7 @@ vtn_create_variable(struct vtn_builder *b, struct vtn_value *val,
       var->var->data.mode = nir_mode;
       var->var->data.location = -1;
       var->var->data.driver_location = 0;
+      var->var->data.access = var->type->access;
       break;
 
    case vtn_variable_mode_workgroup:
