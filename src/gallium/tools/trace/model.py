@@ -105,8 +105,22 @@ class Struct(Node):
         
 class Pointer(Node):
     
-    def __init__(self, address):
+    ptr_list = {}
+    ptr_type_list = {}
+    ptr_types_list = {}
+
+    def __init__(self, address, pname):
         self.address = address
+
+        if address not in self.ptr_list or (self.ptr_type_list[address] == "ret" and pname != "ret"):
+            if pname not in self.ptr_types_list:
+                self.ptr_types_list[pname] = 1
+            else:
+                self.ptr_types_list[pname] += 1
+
+            tmp = "{}_{}".format(pname, self.ptr_types_list[pname])
+            self.ptr_list[address] = tmp
+            self.ptr_type_list[address] = pname
 
     def visit(self, visitor):
         visitor.visit_pointer(self)
@@ -166,7 +180,6 @@ class PrettyPrinter:
 
     def __init__(self, formatter, options):
         self.formatter = formatter
-    
         self.options = options
 
     def visit_literal(self, node):
@@ -207,7 +220,10 @@ class PrettyPrinter:
         self.formatter.text('}')
     
     def visit_pointer(self, node):
-        self.formatter.address(node.address)
+        if "named_ptrs" in self.options and self.options.named_ptrs:
+            self.formatter.address(node.ptr_list[node.address])
+        else:
+            self.formatter.address(node.address)
 
     def visit_call(self, node):
         if not self.options.suppress_variants:

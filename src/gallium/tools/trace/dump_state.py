@@ -36,6 +36,7 @@ import copy
 import argparse
 
 import model
+import format
 import parse as parser
 
 
@@ -706,7 +707,7 @@ class Context(Dispatcher):
         return so_target
 
 
-class Interpreter(parser.TraceParser):
+class Interpreter(parser.SimpleTraceDumper):
     '''Specialization of a trace parser that interprets the calls as it goes
     along.'''
     
@@ -722,9 +723,8 @@ class Interpreter(parser.TraceParser):
             ('pipe_context', 'flush_resource'),
     ))
 
-    def __init__(self, stream, options):
-        parser.TraceParser.__init__(self, stream)
-        self.options = options
+    def __init__(self, stream, options, formatter):
+        parser.SimpleTraceDumper.__init__(self, stream, options, formatter)
         self.objects = {}
         self.result = None
         self.globl = Global(self)
@@ -805,7 +805,8 @@ class Main(parser.Main):
         return optparser
 
     def process_arg(self, stream, options):
-        parser = Interpreter(stream, options)
+        formatter = format.Formatter(sys.stderr)
+        parser = Interpreter(stream, options, formatter)
         parser.parse()
 
 
