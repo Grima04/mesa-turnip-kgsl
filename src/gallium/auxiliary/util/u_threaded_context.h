@@ -265,14 +265,6 @@ struct threaded_resource {
     */
    struct util_range valid_buffer_range;
 
-   /* If "this" is not the base instance of the buffer, but it's one of its
-    * reallocations (set in "latest" of the base instance), this points to
-    * the valid range of the base instance. It's used for transfers after
-    * a buffer invalidation, because such transfers operate on "latest", not
-    * the base instance. Initially it's set to &valid_buffer_range.
-    */
-   struct util_range *base_valid_buffer_range;
-
    /* Drivers are required to update this for shared resources and user
     * pointers. */
    bool	is_shared;
@@ -287,6 +279,7 @@ struct threaded_resource {
    /* If positive, then a staging transfer is in progress.
     */
    int pending_staging_uploads;
+
    /* If staging uploads are pending, this will hold the union of the mapped
     * ranges.
     */
@@ -298,6 +291,14 @@ struct threaded_transfer {
 
    /* Staging buffer for DISCARD_RANGE transfers. */
    struct pipe_resource *staging;
+
+   /* If b.resource is not the base instance of the buffer, but it's one of its
+    * reallocations (set in "latest" of the base instance), this points to
+    * the valid range of the base instance. It's used for transfers after
+    * a buffer invalidation, because such transfers operate on "latest", not
+    * the base instance. Initially it's set to &b.resource->valid_buffer_range.
+    */
+   struct util_range *valid_buffer_range;
 };
 
 struct threaded_query {

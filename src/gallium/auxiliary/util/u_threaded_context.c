@@ -412,7 +412,6 @@ threaded_resource_init(struct pipe_resource *res)
 
    tres->latest = &tres->b;
    util_range_init(&tres->valid_buffer_range);
-   tres->base_valid_buffer_range = &tres->valid_buffer_range;
    tres->is_shared = false;
    tres->is_user_ptr = false;
    tres->pending_staging_uploads = 0;
@@ -1571,10 +1570,6 @@ tc_invalidate_buffer(struct threaded_context *tc,
    tbuf->latest = new_buf;
    util_range_set_empty(&tbuf->valid_buffer_range);
 
-   /* The valid range should point to the original buffer. */
-   threaded_resource(new_buf)->base_valid_buffer_range =
-      &tbuf->valid_buffer_range;
-
    /* Enqueue storage replacement of the original buffer. */
    struct tc_replace_buffer_storage *p =
       tc_add_struct_typed_call(tc, TC_CALL_replace_buffer_storage,
@@ -1723,6 +1718,7 @@ tc_transfer_map(struct pipe_context *_pipe,
          ttrans->b.box = *box;
          ttrans->b.stride = 0;
          ttrans->b.layer_stride = 0;
+         ttrans->valid_buffer_range = &tres->valid_buffer_range;
          *transfer = &ttrans->b;
 
          p_atomic_inc(&tres->pending_staging_uploads);
@@ -1758,6 +1754,8 @@ tc_transfer_map(struct pipe_context *_pipe,
 
    void *ret = pipe->transfer_map(pipe, tres->latest ? tres->latest : resource,
                              level, usage, box, transfer);
+   if (resource->target == PIPE_BUFFER)
+      threaded_transfer(*transfer)->valid_buffer_range = &tres->valid_buffer_range;
 
    if (!(usage & TC_TRANSFER_MAP_THREADED_UNSYNC))
       tc_clear_driver_thread(tc);
@@ -1815,7 +1813,7 @@ tc_buffer_do_flush_region(struct threaded_context *tc,
                               ttrans->staging, 0, &src_box);
    }
 
-   util_range_add(&tres->b, tres->base_valid_buffer_range,
+   util_range_add(&tres->b, ttrans->valid_buffer_range,
                   box->x, box->x + box->width);
 }
 
@@ -1893,8 +1891,10 @@ tc_transfer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
                                   PIPE_MAP_DISCARD_RANGE)));
 
       struct pipe_context *pipe = tc->pipe;
-      util_range_add(&tres->b, tres->base_valid_buffer_range,
-                      transfer->box.x, transfer->box.x + transfer->box.width);
+      if (tres->b.target == PIPE_BUFFER) {
+         util_range_add(&tres->b, ttrans->valid_buffer_range,
+                         transfer->box.x, transfer->box.x + transfer->box.width);
+      }
       pipe->transfer_unmap(pipe, transfer);
       return;
    }
