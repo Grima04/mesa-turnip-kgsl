@@ -7506,6 +7506,8 @@ Temp emit_reduction_instr(isel_context *ctx, aco_opcode aco_op, ReduceOp op,
    bool clobber_vcc = false;
    if ((op == iadd32 || op == imul64) && ctx->program->chip_class < GFX9)
       clobber_vcc = true;
+   if ((op == iadd8 || op == iadd16) && ctx->program->chip_class < GFX8)
+      clobber_vcc = true;
    if (op == iadd64 || op == umin64 || op == umax64 || op == imin64 || op == imax64)
       clobber_vcc = true;
 
