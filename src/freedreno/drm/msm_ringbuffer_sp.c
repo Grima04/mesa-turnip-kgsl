@@ -334,8 +334,13 @@ flush_submit_list(struct list_head *submit_list)
    }
 
    if (msm_submit->in_fence_fd != -1) {
-      req.flags |= MSM_SUBMIT_FENCE_FD_IN | MSM_SUBMIT_NO_IMPLICIT;
+      req.flags |= MSM_SUBMIT_FENCE_FD_IN;
       req.fence_fd = msm_submit->in_fence_fd;
+      msm_pipe->no_implicit_sync = true;
+   }
+
+   if (msm_pipe->no_implicit_sync) {
+      req.flags |= MSM_SUBMIT_NO_IMPLICIT;
    }
 
    if (msm_submit->out_fence && msm_submit->out_fence->use_fence_fd) {

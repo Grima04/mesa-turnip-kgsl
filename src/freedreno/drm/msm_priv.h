@@ -63,6 +63,12 @@ struct msm_pipe {
    uint32_t last_submit_fence;
 
    uint32_t last_enqueue_fence;   /* just for debugging */
+
+   /**
+    * If we *ever* see an in-fence-fd, assume that userspace is
+    * not relying on implicit fences.
+    */
+   bool no_implicit_sync;
 };
 FD_DEFINE_CAST(fd_pipe, msm_pipe);
 
