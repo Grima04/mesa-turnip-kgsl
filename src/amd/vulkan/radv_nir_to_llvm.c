@@ -2121,8 +2121,12 @@ handle_ngg_outputs_post_2(struct radv_shader_context *ctx)
          ac_build_s_barrier(&ctx->ac);
 
       ac_build_ifcc(&ctx->ac, is_gs_thread, 5400);
-      /* Extract the PROVOKING_VTX_INDEX field. */
+
       LLVMValueRef provoking_vtx_in_prim = LLVMConstInt(ctx->ac.i32, 0, false);
+
+      /* For provoking vertex last mode, use num_vtx_in_prim - 1. */
+      if (ctx->args->options->key.vs.provoking_vtx_last)
+         provoking_vtx_in_prim = LLVMConstInt(ctx->ac.i32, ctx->args->options->key.vs.outprim, false);
 
       /* provoking_vtx_index = vtxindex[provoking_vtx_in_prim]; */
       LLVMValueRef indices = ac_build_gather_values(&ctx->ac, vtxindex, 3);
@@ -2464,20 +2468,15 @@ gfx10_ngg_gs_emit_epilogue_2(struct radv_shader_context *ctx)
          prim.edgeflag[i] = ctx->ac.i1false;
       }
 
-      /* Geometry shaders output triangle strips, but NGG expects
-       * triangles. We need to change the vertex order for odd
-       * triangles to get correct front/back facing by swapping 2
-       * vertex indices, but we also have to keep the provoking
-       * vertex in the same place.
-       */
+      /* Geometry shaders output triangle strips, but NGG expects triangles. */
       if (verts_per_prim == 3) {
          LLVMValueRef is_odd = LLVMBuildLShr(builder, flags, ctx->ac.i8_1, "");
          is_odd = LLVMBuildTrunc(builder, is_odd, ctx->ac.i1, "");
 
-         struct ac_ngg_prim in = prim;
-         prim.index[0] = in.index[0];
-         prim.index[1] = LLVMBuildSelect(builder, is_odd, in.index[2], in.index[1], "");
-         prim.index[2] = LLVMBuildSelect(builder, is_odd, in.index[1], in.index[2], "");
+         LLVMValueRef flatshade_first =
+            LLVMConstInt(ctx->ac.i32, !ctx->args->options->key.vs.provoking_vtx_last, false);
+
+         ac_build_triangle_strip_indices_to_triangle(&ctx->ac, is_odd, flatshade_first, prim.index);
       }
 
       ac_build_export_prim(&ctx->ac, &prim);
