@@ -13,3 +13,4 @@ dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_linear_linear_mipmap_nearest_repeat
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_clamp
 dEQP-VK.texture.explicit_lod.2d.sizes.128x128_nearest_linear_mipmap_linear_repeat
+dEQP-VK.ubo.random.all_shared_buffer.48

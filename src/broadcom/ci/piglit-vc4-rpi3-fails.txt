@@ -1,12 +1,9 @@
-spec@egl 1.4@eglcreatepbuffersurface with egl_samples set,Crash
-spec@egl_android_native_fence_sync@egl_khr_fence_sync android_native,Crash
-spec@egl_ext_device_base@conformance,Crash
-spec@egl_khr_wait_sync@conformance,Crash
 glx@glx-copy-sub-buffer samples=2,Crash
 glx@glx-copy-sub-buffer samples=4,Crash
 glx@glx-make-current,Crash
 glx@glx-multithread-buffer,Fail
 glx@glx-multithread-texture,Timeout
+glx@glx-query-drawable-glx_fbconfig_id-window,Fail
 glx@glx-swap-pixmap-bad,Fail
 glx@glx-visuals-depth -pixmap,Crash
 glx@glx-visuals-depth,Crash
@@ -188,12 +185,16 @@ spec@arb_texture_storage@texture-storage,Fail
 spec@arb_vertex_program@minmax,Fail
 spec@arb_vertex_type_2_10_10_10_rev@attrib-p-type-size-match,Fail
 spec@egl 1.4@egl-copy-buffers,Crash
+spec@egl 1.4@eglcreatepbuffersurface with egl_samples set,Crash
 spec@egl 1.4@eglterminate then unbind context,Fail
 spec@egl 1.4@largest possible eglcreatepbuffersurface and then glclear,Fail
+spec@egl_android_native_fence_sync@egl_khr_fence_sync android_native,Crash
+spec@egl_ext_device_base@conformance,Crash
 spec@egl_ext_protected_content@conformance,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_depth_component24,Fail
 spec@egl_khr_gl_image@egl_khr_gl_renderbuffer_image-clear-shared-image gl_rgba,Fail
 spec@egl_khr_surfaceless_context@viewport,Fail
+spec@egl_khr_wait_sync@conformance,Crash
 spec@egl_mesa_configless_context@basic,Fail
 spec@ext_direct_state_access@indexed-state-queries 12,Fail
 spec@ext_direct_state_access@multi-texture,Crash
@@ -391,8 +392,6 @@ spec@glsl-1.10@execution@texture3d,Fail
 spec@glsl-1.20@built-in constants,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-max,Fail
 spec@glsl-1.20@execution@fs-nan-builtin-min,Fail
-spec@glsl-1.20@execution@vs-nan-builtin-max,Fail
-spec@glsl-1.20@execution@vs-nan-builtin-min,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1d,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 1dshadow,Fail
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:texture() 2d,Fail
@@ -421,6 +420,8 @@ spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj(bias) 2dshadow,F
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj(bias) 3d,Fail
 spec@glsl-1.20@execution@variable-indexing@fs-temp-array-mat4-index-col-row-wr,Fail
 spec@glsl-1.20@execution@variable-indexing@vs-temp-array-mat4-index-col-row-wr,Fail
+spec@glsl-1.20@execution@vs-nan-builtin-max,Fail
+spec@glsl-1.20@execution@vs-nan-builtin-min,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
 spec@khr_texture_compression_astc@basic-gles,Fail
 spec@khr_texture_compression_astc@miptree-gl ldr,Fail
