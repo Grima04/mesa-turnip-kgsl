@@ -26,13 +26,32 @@
 
 set -e
 
-TRACEDUMP=${TRACEDUMP:-`dirname "$0"`/dump.py}
 
-stripdump () {
-	python3 $TRACEDUMP "$1" \
+fatal()
+{
+	echo "ERROR: $1"
+	exit 1
+}
+
+
+do_cleanup()
+{
+	if test -d "$FIFODIR"; then
+		rm -rf "$FIFODIR"
+	fi
+}
+
+
+strip_dump()
+{
+	INFILE="$1"
+	shift
+	OUTFILE="$1"
+	shift
+
+	python3 "$TRACEDUMP" --plain "$@" "$INFILE" \
 	| sed \
 		-e 's@ // time .*@@' \
-		-e 's/\x1b\[[0-9]\{1,2\}\(;[0-9]\{1,2\}\)\{0,2\}m//g' \
 		-e '/pipe_screen::is_format_supported/d' \
 		-e '/pipe_screen::get_\(shader_\)\?paramf\?/d' \
 		-e 's/\r$//g' \
@@ -40,27 +59,38 @@ stripdump () {
 		-e 's/pipe = \w\+/pipe/g' \
 		-e 's/screen = \w\+/screen/g' \
 		-e 's/, /,\n\t/g' \
-	-e 's/) = /)\n\t= /' \
-	> "$2"
-	echo \
-		-e 's/\<0x[0-9a-fA-F]\+\>/xxx/g' \
-	> /dev/null
+		-e 's/) = /)\n\t= /' \
+	> "$OUTFILE"
 }
 
-FIFODIR=`mktemp -d`
-FIFO1="$FIFODIR/1"
-FIFO2="$FIFODIR/2"
 
-mkfifo "$FIFO1"
-mkfifo "$FIFO2"
+### Main code starts
+trap do_cleanup HUP INT TERM
 
-stripdump "$1" "$FIFO1" &
-stripdump "$2" "$FIFO2" &
+TRACEDUMP="${TRACEDUMP:-$(dirname "$0")/dump.py}"
+
+if test $# -lt 2; then
+	echo "Usage: $0 <tracefile1> <tracefile2> [extra dump.py args]"
+	exit 0
+fi
+
+FIFODIR="$(mktemp -d)"
+FIFO1="${FIFODIR}/1"
+FIFO2="${FIFODIR}/2"
+
+mkfifo "$FIFO1" || fatal "Could not create fifo 1"
+mkfifo "$FIFO2" || fatal "Could not create fifo 2"
+
+INFILE1="$1"
+shift
+INFILE2="$1"
+shift
+
+strip_dump "$INFILE1" "$FIFO1" "$@" &
+strip_dump "$INFILE2" "$FIFO2" "$@" &
 
 sdiff \
-	--width=`tput cols` \
+	--width="$(tput cols)" \
 	--speed-large-files \
 	"$FIFO1" "$FIFO2" \
 | less
-
-rm -rf "$FIFODIR"
