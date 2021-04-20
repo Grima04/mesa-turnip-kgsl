@@ -1590,9 +1590,10 @@ vtn_mode_to_address_format(struct vtn_builder *b, enum vtn_variable_mode mode)
 nir_ssa_def *
 vtn_pointer_to_ssa(struct vtn_builder *b, struct vtn_pointer *ptr)
 {
-   if (vtn_pointer_is_external_block(b, ptr) &&
-       vtn_type_contains_block(b, ptr->type) &&
-       ptr->mode != vtn_variable_mode_phys_ssbo) {
+   if ((vtn_pointer_is_external_block(b, ptr) &&
+        vtn_type_contains_block(b, ptr->type) &&
+        ptr->mode != vtn_variable_mode_phys_ssbo) ||
+       ptr->mode == vtn_variable_mode_accel_struct) {
       /* In this case, we're looking for a block index and not an actual
        * deref.
        *
@@ -1641,11 +1642,13 @@ vtn_pointer_from_ssa(struct vtn_builder *b, nir_ssa_def *ssa,
 
    const struct glsl_type *deref_type =
       vtn_type_get_nir_type(b, ptr_type->deref, ptr->mode);
-   if (!vtn_pointer_is_external_block(b, ptr)) {
+   if (!vtn_pointer_is_external_block(b, ptr) &&
+       ptr->mode != vtn_variable_mode_accel_struct) {
       ptr->deref = nir_build_deref_cast(&b->nb, ssa, nir_mode,
                                         deref_type, ptr_type->stride);
-   } else if (vtn_type_contains_block(b, ptr->type) &&
-              ptr->mode != vtn_variable_mode_phys_ssbo) {
+   } else if ((vtn_type_contains_block(b, ptr->type) &&
+               ptr->mode != vtn_variable_mode_phys_ssbo) ||
+              ptr->mode == vtn_variable_mode_accel_struct) {
       /* This is a pointer to somewhere in an array of blocks, not a
        * pointer to somewhere inside the block.  Set the block index
        * instead of making a cast.
