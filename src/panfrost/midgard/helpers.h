@@ -153,6 +153,21 @@
 #define REGISTER_TEXTURE_BASE 28
 #define REGISTER_SELECT 31
 
+/* The following registers are read-only */
+
+/* XY is Program Counter, ZW is Stack Pointer */
+#define REGISTER_LDST_PC_SP 2
+
+/* XY is Thread Local Storage pointer, ZW is Workgroup Local Storage pointer */
+#define REGISTER_LDST_LOCAL_STORAGE_PTR 3
+
+#define REGISTER_LDST_LOCAL_THREAD_ID 4
+#define REGISTER_LDST_GROUP_ID 5
+#define REGISTER_LDST_GLOBAL_THREAD_ID 6
+
+/* This register is always zeroed when read. */
+#define REGISTER_LDST_ZERO 7
+
 /* SSA helper aliases to mimic the registers. */
 
 #define SSA_FIXED_SHIFT 24
@@ -246,6 +261,9 @@ struct mir_tag_props {
 
 /* Some fields such swizzle and address have special meanings */
 #define LDST_ATOMIC (1 << 6)
+
+/* Operates on attributes/varyings (including images) */
+#define LDST_ATTRIB (1 << 7)
 
 /* This file is common, so don't define the tables themselves. #include
  * midgard_op.h if you need that, or edit midgard_ops.c directly */
