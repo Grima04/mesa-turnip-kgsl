@@ -761,9 +761,6 @@ struct pipe_draw_info
    unsigned start_instance; /**< first instance id */
    unsigned instance_count; /**< number of instances */
 
-   int _pad2; /**< padding for memcmp and index_bias reuse */
-   unsigned _pad3; /**< id of this draw in a multidraw */
-
    /**
     * Primitive restart enable/index (only applies to indexed drawing)
     */
