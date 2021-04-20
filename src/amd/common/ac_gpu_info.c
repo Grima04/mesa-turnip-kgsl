@@ -34,6 +34,7 @@
 #include <stdio.h>
 
 #ifdef _WIN32
+#define DRM_CAP_ADDFB2_MODIFIERS 0x10
 #define DRM_CAP_SYNCOBJ 0x13
 #define DRM_CAP_SYNCOBJ_TIMELINE 0x14
 #define AMDGPU_GEM_DOMAIN_GTT 0x2
@@ -274,6 +275,14 @@ static bool has_timeline_syncobj(int fd)
 {
    uint64_t value;
    if (drmGetCap(fd, DRM_CAP_SYNCOBJ_TIMELINE, &value))
+      return false;
+   return value ? true : false;
+}
+
+static bool has_modifiers(int fd)
+{
+   uint64_t value;
+   if (drmGetCap(fd, DRM_CAP_ADDFB2_MODIFIERS, &value))
       return false;
    return value ? true : false;
 }
@@ -705,7 +714,7 @@ bool ac_query_gpu_info(int fd, void *dev_p, struct radeon_info *info,
    info->has_scheduled_fence_dependency = info->drm_minor >= 28;
    info->mid_command_buffer_preemption_enabled = amdinfo->ids_flags & AMDGPU_IDS_FLAGS_PREEMPTION;
    info->has_tmz_support = has_tmz_support(dev, info, amdinfo);
-   info->kernel_has_modifiers = info->chip_class >= GFX9 && info->drm_minor >= 40;
+   info->kernel_has_modifiers = has_modifiers(fd);
    info->has_graphics = gfx.available_rings > 0;
 
    info->pa_sc_tile_steering_override = device_info.pa_sc_tile_steering_override;
