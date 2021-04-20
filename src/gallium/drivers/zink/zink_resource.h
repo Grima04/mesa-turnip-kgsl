@@ -90,6 +90,7 @@ struct zink_resource {
    struct zink_resource_object *obj;
    struct zink_resource_object *scanout_obj; //TODO: remove for wsi
    bool scanout_obj_init;
+   bool scanout_dirty;
    union {
       struct util_range valid_buffer_range;
       struct {

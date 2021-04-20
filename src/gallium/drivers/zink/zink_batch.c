@@ -362,6 +362,8 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
    struct pipe_box *src_box = &box;
    unsigned dstz = 0;
 
+   if (!res->scanout_dirty)
+      return;
    region.srcSubresource.aspectMask = res->aspect;
    region.srcSubresource.mipLevel = 0;
    switch (res->base.b.target) {
@@ -469,6 +471,7 @@ copy_scanout(struct zink_context *ctx, struct zink_resource *res)
    );
    /* separate flag to avoid annoying validation errors for new scanout objs */
    res->scanout_obj_init = true;
+   res->scanout_dirty = false;
 }
 
 void
@@ -555,6 +558,7 @@ zink_batch_reference_resource_rw(struct zink_batch *batch, struct zink_resource 
             zink_batch_usage_set(&stencil->obj->writes, batch->state->fence.batch_id);
          zink_batch_usage_set(&res->obj->writes, batch->state->fence.batch_id);
       }
+      res->scanout_dirty = !!res->scanout_obj;
    } else {
       if (res->obj->reads.usage != batch->state->fence.batch_id) {
          if (stencil)
