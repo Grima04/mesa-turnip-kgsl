@@ -802,6 +802,19 @@ util_format_is_rgba8_variant(const struct util_format_description *desc)
    return TRUE;
 }
 
+
+static inline bool
+util_format_is_rgbx_or_bgrx(enum pipe_format format)
+{
+   const struct util_format_description *desc = util_format_description(format);
+   return desc->layout == UTIL_FORMAT_LAYOUT_PLAIN &&
+          desc->nr_channels == 4 &&
+          (desc->swizzle[0] == PIPE_SWIZZLE_X || desc->swizzle[0] == PIPE_SWIZZLE_Z) &&
+          desc->swizzle[1] == PIPE_SWIZZLE_Y &&
+          (desc->swizzle[2] == PIPE_SWIZZLE_Z || desc->swizzle[2] == PIPE_SWIZZLE_X) &&
+          desc->swizzle[3] == PIPE_SWIZZLE_1;
+}
+
 /**
  * Return total bits needed for the pixel format per block.
  */
