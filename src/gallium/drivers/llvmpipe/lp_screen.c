@@ -878,19 +878,30 @@ void lp_disk_cache_insert_shader(struct llvmpipe_screen *screen,
 static bool
 llvmpipe_screen_late_init(struct llvmpipe_screen *screen)
 {
+   bool ret = true;
+   mtx_lock(&screen->late_mutex);
+
+   if (screen->late_init_done)
+      goto out;
+
    screen->rast = lp_rast_create(screen->num_threads);
    if (!screen->rast) {
-      return false;
+      ret = false;
+      goto out;
    }
 
    screen->cs_tpool = lp_cs_tpool_create(screen->num_threads);
    if (!screen->cs_tpool) {
       lp_rast_destroy(screen->rast);
-      return false;
+      ret = false;
+      goto out;
    }
 
    lp_disk_cache_create(screen);
-   return true;
+   screen->late_init_done = true;
+out:
+   mtx_unlock(&screen->late_mutex);
+   return ret;
 }
 
 /**
@@ -959,6 +970,7 @@ llvmpipe_create_screen(struct sw_winsys *winsys)
    (void) mtx_init(&screen->cs_mutex, mtx_plain);
    (void) mtx_init(&screen->rast_mutex, mtx_plain);
 
+   (void) mtx_init(&screen->late_mutex, mtx_plain);
    if (!llvmpipe_screen_late_init(screen)) {
       lp_jit_screen_cleanup(screen);
       FREE(screen);
