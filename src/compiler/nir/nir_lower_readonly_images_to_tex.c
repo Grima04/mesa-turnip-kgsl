@@ -25,7 +25,7 @@
 #include "nir_builder.h"
 
 static bool
-lower_cl_images_to_tex_impl(nir_function_impl *impl)
+lower_readonly_images_to_tex_impl(nir_function_impl *impl)
 {
    bool progress = false;
 
@@ -147,14 +147,14 @@ lower_cl_images_to_tex_impl(nir_function_impl *impl)
    return progress;
 }
 
-/** Lowers OpenCL image ops to texture ops for read-only images */
+/** Lowers image ops to texture ops for read-only images */
 bool
-nir_lower_cl_images_to_tex(nir_shader *shader)
+nir_lower_readonly_images_to_tex(nir_shader *shader)
 {
    bool progress = false;
 
    nir_foreach_function(function, shader) {
-      if (function->impl && lower_cl_images_to_tex_impl(function->impl))
+      if (function->impl && lower_readonly_images_to_tex_impl(function->impl))
          progress = true;
    }
 

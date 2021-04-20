@@ -4847,7 +4847,7 @@ typedef struct nir_lower_tex_options {
 bool nir_lower_tex(nir_shader *shader,
                    const nir_lower_tex_options *options);
 
-bool nir_lower_cl_images_to_tex(nir_shader *shader);
+bool nir_lower_readonly_images_to_tex(nir_shader *shader);
 
 enum nir_lower_non_uniform_access_type {
    nir_lower_non_uniform_ubo_access     = (1 << 0),
