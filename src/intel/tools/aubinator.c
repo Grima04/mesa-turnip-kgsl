@@ -44,7 +44,6 @@
 #include "aub_mem.h"
 
 #define CSI "\e["
-#define BLUE_HEADER  CSI "0;44m"
 #define GREEN_HEADER CSI "1;42m"
 #define NORMAL       CSI "0m"
 

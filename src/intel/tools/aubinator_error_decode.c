@@ -42,11 +42,6 @@
 #include "dev/intel_debug.h"
 #include "util/macros.h"
 
-#define CSI "\e["
-#define BLUE_HEADER  CSI "0;44m"
-#define GREEN_HEADER CSI "1;42m"
-#define NORMAL       CSI "0m"
-
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 
 /* options */
