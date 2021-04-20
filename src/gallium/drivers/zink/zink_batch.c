@@ -337,7 +337,7 @@ submit_queue(void *data, int thread_index)
       .pNext = si.pNext,
    };
 
-   if (bs->flush_res) {
+   if (bs->flush_res && zink_screen(bs->ctx->base.screen)->needs_mesa_flush_wsi) {
       mem_signal.memory = bs->flush_res->scanout_obj ? bs->flush_res->scanout_obj->mem : bs->flush_res->obj->mem;
       si.pNext = &mem_signal;
    }

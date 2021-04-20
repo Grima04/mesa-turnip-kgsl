@@ -1723,8 +1723,7 @@ zink_flush(struct pipe_context *pctx,
          zink_begin_render_pass(ctx, batch);
       zink_end_render_pass(ctx, batch);
       if (ctx->flush_res) {
-         if (zink_screen(pctx->screen)->needs_mesa_flush_wsi)
-            batch->state->flush_res = ctx->flush_res;
+         batch->state->flush_res = ctx->flush_res;
          ctx->flush_res = NULL;
       }
    }
