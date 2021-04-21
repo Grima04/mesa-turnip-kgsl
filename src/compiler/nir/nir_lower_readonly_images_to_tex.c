@@ -60,139 +60,134 @@ replace_image_type_with_sampler(nir_deref_instr *deref)
    }
 }
 
+struct readonly_image_lower_options {
+   bool per_variable;
+};
+
 static bool
-lower_readonly_images_to_tex_impl(nir_function_impl *impl, bool per_variable)
+is_readonly_image_op(const nir_instr *instr, const void *context)
 {
-   bool progress = false;
+   struct readonly_image_lower_options *options = (struct readonly_image_lower_options *)context;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   if (intrin->intrinsic != nir_intrinsic_image_deref_load &&
+       intrin->intrinsic != nir_intrinsic_image_deref_size)
+      return false;
 
-   nir_builder b;
-   nir_builder_init(&b, impl);
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
+   nir_variable *var = nir_deref_instr_get_variable(deref);
 
-   nir_foreach_block(block, impl) {
-      nir_foreach_instr_safe(instr, block) {
-         if (instr->type != nir_instr_type_intrinsic)
-            continue;
+   /* In CL 1.2, images are required to be either read-only or
+    * write-only.  We can always translate the read-only image ops to
+    * texture ops.  In CL 2.0 (and an extension), the ability is added
+    * to have read-write images but sampling (with a sampler) is only
+    * allowed on read-only images.  As long as we only lower read-only
+    * images to texture ops, everything should stay consistent.
+    */
+   enum gl_access_qualifier access = 0;
+   if (options->per_variable) {
+      if (var)
+         access = var->data.access;
+   } else
+      access = nir_intrinsic_access(intrin);
+   if (access & ACCESS_NON_WRITEABLE)
+      return true;
 
-         nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   return false;
+}
 
-         unsigned num_srcs;
-         nir_texop texop;
-         switch (intrin->intrinsic) {
-         case nir_intrinsic_image_deref_load:
-            texop = nir_texop_txf;
-            num_srcs = 3;
-            break;
-         case nir_intrinsic_image_deref_size:
-            texop = nir_texop_txs;
-            num_srcs = 2;
-            break;
-         default:
-            /* Not an op we can lower */
-            continue;
-         }
+static nir_ssa_def *
+lower_readonly_image_op(nir_builder *b, nir_instr *instr, void *context)
+{
+   struct readonly_image_lower_options *options = (struct readonly_image_lower_options *)context;
+   nir_intrinsic_instr *intrin = nir_instr_as_intrinsic(instr);
+   unsigned num_srcs;
+   nir_texop texop;
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_image_deref_load:
+      texop = nir_texop_txf;
+      num_srcs = 3;
+      break;
+   case nir_intrinsic_image_deref_size:
+      texop = nir_texop_txs;
+      num_srcs = 2;
+      break;
+   default:
+      unreachable("Filtered above");
+   }
 
-         nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
-         nir_variable *var = nir_deref_instr_get_variable(deref);
+   nir_deref_instr *deref = nir_src_as_deref(intrin->src[0]);
 
-         /* In CL 1.2, images are required to be either read-only or
-          * write-only.  We can always translate the read-only image ops to
-          * texture ops.  In CL 2.0 (and an extension), the ability is added
-          * to have read-write images but sampling (with a sampler) is only
-          * allowed on read-only images.  As long as we only lower read-only
-          * images to texture ops, everything should stay consistent.
-          */
-         enum gl_access_qualifier access = 0;
-         if (per_variable) {
-            if (var)
-               access = var->data.access;
-         } else
-            access = nir_intrinsic_access(intrin);
-         if (!(access & ACCESS_NON_WRITEABLE))
-            continue;
+   nir_tex_instr *tex = nir_tex_instr_create(b->shader, num_srcs);
+   tex->op = texop;
 
-         b.cursor = nir_instr_remove(&intrin->instr);
+   tex->sampler_dim = glsl_get_sampler_dim(deref->type);
+   tex->is_array = glsl_sampler_type_is_array(deref->type);
+   tex->is_shadow = false;
 
-         nir_tex_instr *tex = nir_tex_instr_create(b.shader, num_srcs);
-         tex->op = texop;
+   unsigned coord_components =
+      glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
+   if (glsl_sampler_type_is_array(deref->type))
+      tex->coord_components++;
 
-         tex->sampler_dim = glsl_get_sampler_dim(deref->type);
-         tex->is_array = glsl_sampler_type_is_array(deref->type);
-         tex->is_shadow = false;
-
-         unsigned coord_components =
-            glsl_get_sampler_dim_coordinate_components(tex->sampler_dim);
-         if (glsl_sampler_type_is_array(deref->type))
-            tex->coord_components++;
-
-         tex->src[0].src_type = nir_tex_src_texture_deref;
-         tex->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
+   tex->src[0].src_type = nir_tex_src_texture_deref;
+   tex->src[0].src = nir_src_for_ssa(&deref->dest.ssa);
          
-         if (per_variable) {
-            assert(var);
-            replace_image_type_with_sampler(deref);
-         }
-
-         switch (intrin->intrinsic) {
-         case nir_intrinsic_image_deref_load: {
-            assert(intrin->src[1].is_ssa);
-            tex->coord_components = coord_components;
-            nir_ssa_def *coord =
-               nir_channels(&b, intrin->src[1].ssa,
-                            (1 << tex->coord_components) - 1);
-            tex->src[1].src_type = nir_tex_src_coord;
-            tex->src[1].src = nir_src_for_ssa(coord);
-
-            assert(intrin->src[3].is_ssa);
-            nir_ssa_def *lod = intrin->src[3].ssa;
-            tex->src[2].src_type = nir_tex_src_lod;
-            tex->src[2].src = nir_src_for_ssa(lod);
-
-            assert(num_srcs == 3);
-
-            tex->dest_type = nir_intrinsic_dest_type(intrin);
-            nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
-            break;
-         }
-
-         case nir_intrinsic_image_deref_size: {
-            assert(intrin->src[1].is_ssa);
-            nir_ssa_def *lod = intrin->src[1].ssa;
-            tex->src[1].src_type = nir_tex_src_lod;
-            tex->src[1].src = nir_src_for_ssa(lod);
-
-            assert(num_srcs == 2);
-
-            tex->dest_type = nir_type_uint32;
-            nir_ssa_dest_init(&tex->instr, &tex->dest,
-                              coord_components, 32, NULL);
-            break;
-         }
-
-         default:
-            unreachable("Unsupported intrinsic");
-         }
-
-         nir_builder_instr_insert(&b, &tex->instr);
-
-         nir_ssa_def *res = &tex->dest.ssa;
-         if (res->num_components != intrin->dest.ssa.num_components) {
-            unsigned num_components = intrin->dest.ssa.num_components;
-            res = nir_channels(&b, res, (1 << num_components) - 1);
-         }
-
-         nir_ssa_def_rewrite_uses(&intrin->dest.ssa, res);
-         progress = true;
-      }
+   if (options->per_variable) {
+      assert(nir_deref_instr_get_variable(deref));
+      replace_image_type_with_sampler(deref);
    }
 
-   if (progress) {
-      nir_metadata_preserve(impl, nir_metadata_block_index |
-                                  nir_metadata_dominance);
-   } else {
-      nir_metadata_preserve(impl, nir_metadata_all);
+   switch (intrin->intrinsic) {
+   case nir_intrinsic_image_deref_load: {
+      assert(intrin->src[1].is_ssa);
+      tex->coord_components = coord_components;
+      nir_ssa_def *coord =
+         nir_channels(b, intrin->src[1].ssa,
+                      (1 << tex->coord_components) - 1);
+      tex->src[1].src_type = nir_tex_src_coord;
+      tex->src[1].src = nir_src_for_ssa(coord);
+
+      assert(intrin->src[3].is_ssa);
+      nir_ssa_def *lod = intrin->src[3].ssa;
+      tex->src[2].src_type = nir_tex_src_lod;
+      tex->src[2].src = nir_src_for_ssa(lod);
+
+      assert(num_srcs == 3);
+
+      tex->dest_type = nir_intrinsic_dest_type(intrin);
+      nir_ssa_dest_init(&tex->instr, &tex->dest, 4, 32, NULL);
+      break;
    }
 
-   return progress;
+   case nir_intrinsic_image_deref_size: {
+      assert(intrin->src[1].is_ssa);
+      nir_ssa_def *lod = intrin->src[1].ssa;
+      tex->src[1].src_type = nir_tex_src_lod;
+      tex->src[1].src = nir_src_for_ssa(lod);
+
+      assert(num_srcs == 2);
+
+      tex->dest_type = nir_type_uint32;
+      nir_ssa_dest_init(&tex->instr, &tex->dest,
+                        coord_components, 32, NULL);
+      break;
+   }
+
+   default:
+      unreachable("Unsupported intrinsic");
+   }
+
+   nir_builder_instr_insert(b, &tex->instr);
+
+   nir_ssa_def *res = &tex->dest.ssa;
+   if (res->num_components != intrin->dest.ssa.num_components) {
+      unsigned num_components = intrin->dest.ssa.num_components;
+      res = nir_channels(b, res, (1 << num_components) - 1);
+   }
+
+   return res;
 }
 
 /** Lowers image ops to texture ops for read-only images
@@ -208,12 +203,10 @@ bool
 nir_lower_readonly_images_to_tex(nir_shader *shader, bool per_variable)
 {
    assert(shader->info.stage != MESA_SHADER_KERNEL || !per_variable);
-   bool progress = false;
 
-   nir_foreach_function(function, shader) {
-      if (function->impl && lower_readonly_images_to_tex_impl(function->impl, per_variable))
-         progress = true;
-   }
-
-   return progress;
+   struct readonly_image_lower_options options = { per_variable };
+   return nir_shader_lower_instructions(shader,
+                                        is_readonly_image_op,
+                                        lower_readonly_image_op,
+                                        &options);
 }
