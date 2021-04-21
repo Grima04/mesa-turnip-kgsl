@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef VC5_SCREEN_H
-#define VC5_SCREEN_H
+#ifndef V3D_SCREEN_H
+#define V3D_SCREEN_H
 
 #include "pipe/p_screen.h"
 #include "renderonly/renderonly.h"
@@ -97,4 +97,4 @@ struct pipe_screen *v3d_screen_create(int fd,
 void
 v3d_fence_init(struct v3d_screen *screen);
 
-#endif /* VC5_SCREEN_H */
+#endif /* V3D_SCREEN_H */

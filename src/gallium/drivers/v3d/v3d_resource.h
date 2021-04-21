@@ -22,8 +22,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef VC5_RESOURCE_H
-#define VC5_RESOURCE_H
+#ifndef V3D_RESOURCE_H
+#define V3D_RESOURCE_H
 
 #include "v3d_screen.h"
 #include "util/u_transfer.h"
@@ -188,4 +188,4 @@ uint32_t v3d_layer_offset(struct pipe_resource *prsc, uint32_t level,
                           uint32_t layer);
 
 
-#endif /* VC5_RESOURCE_H */
+#endif /* V3D_RESOURCE_H */

@@ -21,8 +21,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef VC5_CL_H
-#define VC5_CL_H
+#ifndef V3D_CL_H
+#define V3D_CL_H
 
 #include <stdint.h>
 
@@ -289,4 +289,4 @@ cl_pack_emit_reloc(struct v3d_cl *cl, const struct v3d_cl_reloc *reloc)
                 v3d_job_add_bo(cl->job, reloc->bo);
 }
 
-#endif /* VC5_CL_H */
+#endif /* V3D_CL_H */

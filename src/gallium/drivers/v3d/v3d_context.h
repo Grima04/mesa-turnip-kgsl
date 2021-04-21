@@ -22,8 +22,8 @@
  * IN THE SOFTWARE.
  */
 
-#ifndef VC5_CONTEXT_H
-#define VC5_CONTEXT_H
+#ifndef V3D_CONTEXT_H
+#define V3D_CONTEXT_H
 
 #ifdef V3D_VERSION
 #include "broadcom/common/v3d_macros.h"
@@ -742,4 +742,4 @@ void v3d_get_tile_buffer_size(bool is_msaa,
 #  undef v3dX
 #endif
 
-#endif /* VC5_CONTEXT_H */
+#endif /* V3D_CONTEXT_H */
