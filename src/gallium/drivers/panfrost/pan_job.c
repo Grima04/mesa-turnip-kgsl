@@ -873,7 +873,7 @@ panfrost_batch_to_fb_info(const struct panfrost_batch *batch,
         }
 }
 
-mali_ptr
+static mali_ptr
 panfrost_batch_reserve_framebuffer(struct panfrost_batch *batch)
 {
         struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
