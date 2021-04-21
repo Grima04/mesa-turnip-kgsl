@@ -248,6 +248,8 @@ typedef enum VkCommandTypeEXT {
     VK_COMMAND_TYPE_vkCmdBeginQueryIndexedEXT_EXT = 184,
     VK_COMMAND_TYPE_vkCmdEndQueryIndexedEXT_EXT = 185,
     VK_COMMAND_TYPE_vkCmdDrawIndirectByteCountEXT_EXT = 186,
+    VK_COMMAND_TYPE_vkGetMemoryFdKHR_EXT = 193,
+    VK_COMMAND_TYPE_vkGetMemoryFdPropertiesKHR_EXT = 194,
     VK_COMMAND_TYPE_vkGetImageDrmFormatModifierPropertiesEXT_EXT = 187,
     VK_COMMAND_TYPE_vkSetReplyCommandStreamMESA_EXT = 178,
     VK_COMMAND_TYPE_vkSeekReplyCommandStreamMESA_EXT = 179,
