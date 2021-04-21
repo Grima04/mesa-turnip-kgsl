@@ -570,7 +570,7 @@ panfrost_indirect_draw(struct panfrost_context *ctx,
 
         panfrost_batch_set_requirements(batch);
 
-        mali_ptr shared_mem = panfrost_batch_reserve_framebuffer(batch);
+        mali_ptr shared_mem = panfrost_batch_reserve_tls(batch, false);
 
         struct panfrost_ptr tiler =
                 panfrost_pool_alloc_aligned(&batch->pool,
