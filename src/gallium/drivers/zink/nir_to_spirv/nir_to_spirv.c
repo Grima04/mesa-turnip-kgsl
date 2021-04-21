@@ -626,11 +626,9 @@ type_to_dim(enum glsl_sampler_dim gdim, bool *is_ms)
 }
 
 static inline SpvImageFormat
-get_image_format(enum pipe_format format)
+get_shader_image_format(enum pipe_format format)
 {
    switch (format) {
-   case PIPE_FORMAT_NONE:
-      return SpvImageFormatUnknown;
    case PIPE_FORMAT_R32G32B32A32_FLOAT:
       return SpvImageFormatRgba32f;
    case PIPE_FORMAT_R16G16B16A16_FLOAT:
@@ -641,6 +639,31 @@ get_image_format(enum pipe_format format)
       return SpvImageFormatRgba8;
    case PIPE_FORMAT_R8G8B8A8_SNORM:
       return SpvImageFormatRgba8Snorm;
+   case PIPE_FORMAT_R32G32B32A32_SINT:
+      return SpvImageFormatRgba32i;
+   case PIPE_FORMAT_R16G16B16A16_SINT:
+      return SpvImageFormatRgba16i;
+   case PIPE_FORMAT_R8G8B8A8_SINT:
+      return SpvImageFormatRgba8i;
+   case PIPE_FORMAT_R32_SINT:
+      return SpvImageFormatR32i;
+   case PIPE_FORMAT_R32G32B32A32_UINT:
+      return SpvImageFormatRgba32ui;
+   case PIPE_FORMAT_R16G16B16A16_UINT:
+      return SpvImageFormatRgba16ui;
+   case PIPE_FORMAT_R8G8B8A8_UINT:
+      return SpvImageFormatRgba8ui;
+   case PIPE_FORMAT_R32_UINT:
+      return SpvImageFormatR32ui;
+   default:
+      return SpvImageFormatUnknown;
+   }
+}
+
+static inline SpvImageFormat
+get_extended_image_format(enum pipe_format format)
+{
+   switch (format) {
    case PIPE_FORMAT_R32G32_FLOAT:
       return SpvImageFormatRg32f;
    case PIPE_FORMAT_R16G16_FLOAT:
@@ -671,14 +694,6 @@ get_image_format(enum pipe_format format)
       return SpvImageFormatR16Snorm;
    case PIPE_FORMAT_R8_SNORM:
       return SpvImageFormatR8Snorm;
-   case PIPE_FORMAT_R32G32B32A32_SINT:
-      return SpvImageFormatRgba32i;
-   case PIPE_FORMAT_R16G16B16A16_SINT:
-      return SpvImageFormatRgba16i;
-   case PIPE_FORMAT_R8G8B8A8_SINT:
-      return SpvImageFormatRgba8i;
-   case PIPE_FORMAT_R32_SINT:
-      return SpvImageFormatR32i;
    case PIPE_FORMAT_R32G32_SINT:
       return SpvImageFormatRg32i;
    case PIPE_FORMAT_R16G16_SINT:
@@ -689,14 +704,6 @@ get_image_format(enum pipe_format format)
       return SpvImageFormatR16i;
    case PIPE_FORMAT_R8_SINT:
       return SpvImageFormatR8i;
-   case PIPE_FORMAT_R32G32B32A32_UINT:
-      return SpvImageFormatRgba32ui;
-   case PIPE_FORMAT_R16G16B16A16_UINT:
-      return SpvImageFormatRgba16ui;
-   case PIPE_FORMAT_R8G8B8A8_UINT:
-      return SpvImageFormatRgba8ui;
-   case PIPE_FORMAT_R32_UINT:
-      return SpvImageFormatR32ui;
    case PIPE_FORMAT_R10G10B10A2_UINT:
       return SpvImageFormatRgb10a2ui;
    case PIPE_FORMAT_R32G32_UINT:
@@ -709,11 +716,30 @@ get_image_format(enum pipe_format format)
       return SpvImageFormatR16ui;
    case PIPE_FORMAT_R8_UINT:
       return SpvImageFormatR8ui;
+
    default:
-      break;
+      return SpvImageFormatUnknown;
    }
-   unreachable("unknown format");
-   return SpvImageFormatUnknown;
+}
+
+static inline SpvImageFormat
+get_image_format(struct ntv_context *ctx, enum pipe_format format)
+{
+   /* always supported */
+   if (format == PIPE_FORMAT_NONE)
+      return SpvImageFormatUnknown;
+
+   SpvImageFormat ret = get_shader_image_format(format);
+   if (ret != SpvImageFormatUnknown) {
+      /* requires the shader-cap, but we already emit that */
+      return ret;
+   }
+
+   ret = get_extended_image_format(format);
+   assert(ret != SpvImageFormatUnknown);
+   spirv_builder_emit_cap(&ctx->builder,
+                          SpvCapabilityStorageImageExtendedFormats);
+   return ret;
 }
 
 static void
@@ -741,7 +767,7 @@ emit_image(struct ntv_context *ctx, struct nir_variable *var)
                                                dimension, false,
                                                arrayed,
                                                is_ms, is_sampler ? 1 : 2,
-                                               get_image_format(var->data.image.format));
+                                               get_image_format(ctx, var->data.image.format));
 
    SpvId var_type = is_sampler ? spirv_builder_type_sampled_image(&ctx->builder, image_type) : image_type;
 
@@ -3498,7 +3524,6 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info)
    if (s->info.num_images) {
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImage1D);
       spirv_builder_emit_cap(&ctx.builder, SpvCapabilityImageQuery);
-      spirv_builder_emit_cap(&ctx.builder, SpvCapabilityStorageImageExtendedFormats);
    }
 
    if (s->info.bit_sizes_int & 64)
