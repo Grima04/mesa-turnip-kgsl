@@ -3602,7 +3602,7 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spir
 
    ctx.info = &s->info;
 
-   if (s->info.stage != MESA_SHADER_GEOMETRY) {
+   if (s->info.stage < MESA_SHADER_GEOMETRY) {
       if (s->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_LAYER) ||
           s->info.inputs_read & BITFIELD64_BIT(VARYING_SLOT_LAYER)) {
          spirv_builder_emit_extension(&ctx.builder, "SPV_EXT_shader_viewport_index_layer");
@@ -3614,7 +3614,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spir
    if (s->info.num_ssbos)
       spirv_builder_emit_extension(&ctx.builder, "SPV_KHR_storage_buffer_storage_class");
 
-   if (s->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_VIEWPORT)) {
+   if (s->info.stage < MESA_SHADER_FRAGMENT &&
+       s->info.outputs_written & BITFIELD64_BIT(VARYING_SLOT_VIEWPORT)) {
       if (s->info.stage < MESA_SHADER_GEOMETRY)
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilityShaderViewportIndex);
       else
