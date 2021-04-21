@@ -104,6 +104,10 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
         /* Don't expose MRT related CAPs on GPUs that don't implement them */
         bool has_mrt = !(dev->quirks & MIDGARD_SFBD);
 
+        /* Only kernel drivers >= 1.1 can allocate HEAP BOs */
+        bool has_heap = dev->kernel_version->version_major > 1 ||
+                        dev->kernel_version->version_minor >= 1;
+
         /* Bifrost is WIP */
         switch (param) {
         case PIPE_CAP_NPOT_TEXTURES:
@@ -304,7 +308,7 @@ panfrost_get_param(struct pipe_screen *screen, enum pipe_cap param)
                 return 0;
 
         case PIPE_CAP_DRAW_INDIRECT:
-                return is_deqp;
+                return has_heap && is_deqp;
 
         default:
                 return u_pipe_screen_get_param_defaults(screen, param);
