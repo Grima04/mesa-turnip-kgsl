@@ -5991,11 +5991,8 @@ radv_handle_depth_image_transition(struct radv_cmd_buffer *cmd_buffer, struct ra
 
 static uint32_t
 radv_init_cmask(struct radv_cmd_buffer *cmd_buffer, struct radv_image *image,
-                const VkImageSubresourceRange *range)
+                const VkImageSubresourceRange *range, uint32_t value)
 {
-   static const uint32_t cmask_clear_values[4] = {0xffffffff, 0xdddddddd, 0xeeeeeeee, 0xffffffff};
-   uint32_t log2_samples = util_logbase2(image->info.samples);
-   uint32_t value = cmask_clear_values[log2_samples];
    struct radv_barrier_data barrier = {0};
 
    barrier.layout_transitions.init_mask_ram = 1;
@@ -6079,7 +6076,26 @@ radv_init_color_image_metadata(struct radv_cmd_buffer *cmd_buffer, struct radv_i
       radv_src_access_flush(cmd_buffer, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, image);
 
    if (radv_image_has_cmask(image)) {
-      flush_bits |= radv_init_cmask(cmd_buffer, image, range);
+      uint32_t value;
+
+      if (cmd_buffer->device->physical_device->rad_info.chip_class == GFX9) {
+         /* TODO: Fix clearing CMASK layers on GFX9. */
+         if (radv_image_is_tc_compat_cmask(image) ||
+             (radv_image_has_fmask(image) &&
+              radv_layout_can_fast_clear(cmd_buffer->device, image, dst_layout,
+                                         dst_render_loop, dst_queue_mask))) {
+            value = 0xccccccccu;
+         } else {
+            value = 0xffffffffu;
+         }
+      } else {
+         static const uint32_t cmask_clear_values[4] = {0xffffffff, 0xdddddddd, 0xeeeeeeee, 0xffffffff};
+         uint32_t log2_samples = util_logbase2(image->info.samples);
+
+         value = cmask_clear_values[log2_samples];
+      }
+
+      flush_bits |= radv_init_cmask(cmd_buffer, image, range, value);
    }
 
    if (radv_image_has_fmask(image)) {
