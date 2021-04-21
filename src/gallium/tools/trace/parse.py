@@ -424,6 +424,9 @@ class Main:
         optparser.add_argument("-N", "--named",
             action="store_const", const=True, default=False,
             dest="named_ptrs", help="generate symbolic names for raw pointer values")
+        optparser.add_argument("-M", "--method-only",
+            action="store_const", const=True, default=False,
+            dest="method_only", help="output only call names without arguments")
 
         return optparser
 

@@ -228,22 +228,26 @@ class PrettyPrinter:
     def visit_call(self, node):
         if not self.options.suppress_variants:
             self.formatter.text('%s ' % node.no)
+
         if node.klass is not None:
             self.formatter.function(node.klass + '::' + node.method)
         else:
             self.formatter.function(node.method)
-        self.formatter.text('(')
-        sep = ''
-        for name, value in node.args:
-            self.formatter.text(sep)
-            self.formatter.variable(name)
-            self.formatter.text(' = ')
-            value.visit(self) 
-            sep = ', '
-        self.formatter.text(')')
-        if node.ret is not None:
-            self.formatter.text(' = ')
-            node.ret.visit(self)
+
+        if not self.options.method_only:
+            self.formatter.text('(')
+            sep = ''
+            for name, value in node.args:
+                self.formatter.text(sep)
+                self.formatter.variable(name)
+                self.formatter.text(' = ')
+                value.visit(self)
+                sep = ', '
+            self.formatter.text(')')
+            if node.ret is not None:
+                self.formatter.text(' = ')
+                node.ret.visit(self)
+
         if not self.options.suppress_variants and node.time is not None:
             self.formatter.text(' // time ')
             node.time.visit(self)

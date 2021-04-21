@@ -58,6 +58,7 @@ print_help()
   echo ""
   echo "dump.py options:"
   echo "  -N, --named        generate symbolic names for raw pointer values"
+  echo "  -M, --method-only  output only call names without arguments"
   echo ""
   echo "sdiff options:"
   echo "  -d, --minimal      try hard to find a smaller set of changes"
@@ -109,7 +110,7 @@ do
       print_help
       exit 0
       ;;
-    -N|--named)
+    -N|--named|-M|--method-only)
       DUMP_ARGS+=("$1")
       shift
       ;;
