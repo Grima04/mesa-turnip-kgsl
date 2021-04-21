@@ -137,8 +137,8 @@ fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
 }
 
 static struct pipe_fence_handle *
-fence_create(struct fd_context *ctx, struct fd_batch *batch, uint32_t timestamp,
-             int fence_fd, int syncobj)
+fence_create(struct fd_context *ctx, struct fd_batch *batch, int fence_fd,
+             int syncobj)
 {
    struct pipe_fence_handle *fence;
 
@@ -153,7 +153,6 @@ fence_create(struct fd_context *ctx, struct fd_batch *batch, uint32_t timestamp,
    fence->batch = batch;
    fence->pipe = fd_pipe_ref(ctx->pipe);
    fence->screen = ctx->screen;
-   fence->timestamp = timestamp;
    fence->fence_fd = fence_fd;
    fence->syncobj = syncobj;
 
@@ -169,7 +168,7 @@ fd_create_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfence,
    switch (type) {
    case PIPE_FD_TYPE_NATIVE_SYNC:
       *pfence =
-         fence_create(fd_context(pctx), NULL, 0, os_dupfd_cloexec(fd), 0);
+         fence_create(fd_context(pctx), NULL, os_dupfd_cloexec(fd), 0);
       break;
    case PIPE_FD_TYPE_SYNCOBJ: {
       int ret;
@@ -180,7 +179,7 @@ fd_create_fence_fd(struct pipe_context *pctx, struct pipe_fence_handle **pfence,
       if (!ret)
          close(fd);
 
-      *pfence = fence_create(fd_context(pctx), NULL, 0, -1, syncobj);
+      *pfence = fence_create(fd_context(pctx), NULL, -1, syncobj);
       break;
    }
    default:
@@ -238,7 +237,7 @@ fd_fence_is_fd(struct pipe_fence_handle *fence)
 struct pipe_fence_handle *
 fd_fence_create(struct fd_batch *batch)
 {
-   return fence_create(batch->ctx, batch, 0, -1, 0);
+   return fence_create(batch->ctx, batch, -1, 0);
 }
 
 void
@@ -253,7 +252,7 @@ fd_fence_create_unflushed(struct pipe_context *pctx,
                           struct tc_unflushed_batch_token *tc_token)
 {
    struct pipe_fence_handle *fence =
-      fence_create(fd_context(pctx), NULL, 0, -1, 0);
+      fence_create(fd_context(pctx), NULL, -1, 0);
    fence->needs_signal = true;
    util_queue_fence_reset(&fence->ready);
    tc_unflushed_batch_token_reference(&fence->tc_token, tc_token);
