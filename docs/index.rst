@@ -83,6 +83,7 @@ and other operating systems.
 
    drivers/d3d12
    drivers/freedreno
+   drivers/lima
    drivers/llvmpipe
    drivers/openswr
    drivers/panfrost
