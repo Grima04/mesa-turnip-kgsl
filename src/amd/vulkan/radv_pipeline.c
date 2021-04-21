@@ -2605,9 +2605,18 @@ radv_generate_graphics_pipeline_key(const struct radv_pipeline *pipeline,
       key.is_int10 = blend->col_format_is_int10;
    }
 
-   if (pipeline->device->physical_device->rad_info.chip_class >= GFX10)
+   if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
       key.topology = pCreateInfo->pInputAssemblyState->topology;
 
+      const VkPipelineRasterizationStateCreateInfo *raster_info = pCreateInfo->pRasterizationState;
+      const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
+         vk_find_struct_const(raster_info->pNext,
+                              PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
+      if (provoking_vtx_info &&
+          provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
+         key.provoking_vtx_last = true;
+      }
+   }
    return key;
 }
 
@@ -2636,6 +2645,7 @@ radv_fill_shader_keys(struct radv_device *device, struct radv_shader_variant_key
       keys[MESA_SHADER_VERTEX].vs.alpha_adjust[i] = key->vertex_alpha_adjust[i];
    }
    keys[MESA_SHADER_VERTEX].vs.outprim = si_conv_prim_to_gs_out(key->topology);
+   keys[MESA_SHADER_VERTEX].vs.provoking_vtx_last = key->provoking_vtx_last;
 
    if (nir[MESA_SHADER_TESS_CTRL]) {
       keys[MESA_SHADER_VERTEX].vs_common_out.as_ls = true;

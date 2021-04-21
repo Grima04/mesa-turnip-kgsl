@@ -76,6 +76,9 @@ struct radv_vs_variant_key {
 
    /* Output primitive type. */
    uint8_t outprim;
+
+   /* Provoking vertex mode. */
+   bool provoking_vtx_last;
 };
 
 struct radv_tes_variant_key {

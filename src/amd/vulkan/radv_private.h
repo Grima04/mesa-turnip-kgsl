@@ -366,6 +366,7 @@ struct radv_pipeline_key {
    uint8_t num_samples;
    uint32_t has_multiview_view_index : 1;
    uint32_t optimisations_disabled : 1;
+   uint32_t provoking_vtx_last : 1;
    uint8_t topology;
 
    /* Non-zero if a required subgroup size is specified via
