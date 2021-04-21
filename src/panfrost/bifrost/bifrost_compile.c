@@ -527,10 +527,9 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
         }
 
         if (emit_blend) {
-                assert(loc == FRAG_RESULT_COLOR || loc >= FRAG_RESULT_DATA0);
+                assert(loc >= FRAG_RESULT_DATA0);
 
-                unsigned rt = loc == FRAG_RESULT_COLOR ? 0 :
-                        (loc - FRAG_RESULT_DATA0);
+                unsigned rt = (loc - FRAG_RESULT_DATA0);
                 bi_index color = bi_src_index(&instr->src[0]);
 
                 /* Explicit copy since BLEND inputs are precoloured to R0-R3,
@@ -932,9 +931,8 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
                         nir_find_variable_with_driver_location(b->shader->nir,
                                         nir_var_shader_out, nir_intrinsic_base(instr));
                 unsigned loc = var->data.location;
-                assert(loc == FRAG_RESULT_COLOR || loc >= FRAG_RESULT_DATA0);
-                rt = loc == FRAG_RESULT_COLOR ? 0 :
-                        (loc - FRAG_RESULT_DATA0);
+                assert(loc >= FRAG_RESULT_DATA0);
+                rt = (loc - FRAG_RESULT_DATA0);
         }
 
         /* We want to load the current pixel.

@@ -1650,9 +1650,6 @@ output_load_rt_addr(compiler_context *ctx, nir_intrinsic_instr *instr)
 
         unsigned loc = var->data.location;
 
-        if (loc == FRAG_RESULT_COLOR)
-                loc = FRAG_RESULT_DATA0;
-
         if (loc >= FRAG_RESULT_DATA0)
                 return loc - FRAG_RESULT_DATA0;
 
@@ -1900,9 +1897,7 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                         }
 
                         enum midgard_rt_id rt;
-                        if (var->data.location == FRAG_RESULT_COLOR)
-                                rt = MIDGARD_COLOR_RT0;
-                        else if (var->data.location >= FRAG_RESULT_DATA0)
+                        if (var->data.location >= FRAG_RESULT_DATA0)
                                 rt = MIDGARD_COLOR_RT0 + var->data.location -
                                      FRAG_RESULT_DATA0;
                         else if (combined)

@@ -177,20 +177,12 @@ pan_shader_compile(const struct panfrost_device *dev,
                 if (s->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_SAMPLE_MASK))
                         info->fs.writes_coverage = true;
 
-                uint64_t outputs_read = s->info.outputs_read;
-                uint64_t outputs_written = s->info.outputs_written;
-
-                if (outputs_read & BITFIELD64_BIT(FRAG_RESULT_COLOR))
-                        outputs_read |= BITFIELD64_BIT(FRAG_RESULT_DATA0);
-                if (outputs_written & BITFIELD64_BIT(FRAG_RESULT_COLOR))
-                        outputs_written |= BITFIELD64_BIT(FRAG_RESULT_DATA0);
-
-                info->fs.outputs_read = outputs_read >> FRAG_RESULT_DATA0;
-                info->fs.outputs_written = outputs_written >> FRAG_RESULT_DATA0;
+                info->fs.outputs_read = s->info.outputs_read >> FRAG_RESULT_DATA0;
+                info->fs.outputs_written = s->info.outputs_written >> FRAG_RESULT_DATA0;
 
                 /* EXT_shader_framebuffer_fetch requires per-sample */
                 info->fs.sample_shading = s->info.fs.uses_sample_shading ||
-                                          outputs_read;
+                                          info->fs.outputs_read;
 
                 info->fs.can_discard = s->info.fs.uses_discard;
                 info->fs.helper_invocations = s->info.fs.needs_quad_helper_invocations;

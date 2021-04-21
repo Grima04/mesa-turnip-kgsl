@@ -738,15 +738,11 @@ pan_lower_framebuffer(nir_shader *shader, const enum pipe_format *rt_fmts,
                                 if (var->data.mode != nir_var_shader_out)
                                         continue;
 
-                                unsigned base = var->data.driver_location;
-
-                                unsigned rt;
-                                if (var->data.location == FRAG_RESULT_COLOR)
-                                        rt = 0;
-                                else if (var->data.location >= FRAG_RESULT_DATA0)
-                                        rt = var->data.location - FRAG_RESULT_DATA0;
-                                else
+                                if (var->data.location < FRAG_RESULT_DATA0)
                                         continue;
+
+                                unsigned base = var->data.driver_location;
+                                unsigned rt = var->data.location - FRAG_RESULT_DATA0;
 
                                 if (rt_fmts[rt] == PIPE_FORMAT_NONE)
                                         continue;
