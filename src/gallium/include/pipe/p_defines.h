@@ -490,7 +490,6 @@ enum pipe_flush_flags
 #define PIPE_BIND_COMPUTE_RESOURCE     (1 << 16) /* set_compute_resources */
 #define PIPE_BIND_COMMAND_ARGS_BUFFER  (1 << 17) /* pipe_draw_info.indirect */
 #define PIPE_BIND_QUERY_BUFFER         (1 << 18) /* get_query_result_resource */
-#define PIPE_BIND_SAMPLER_REDUCTION_MINMAX (1 << 19) /* PIPE_CAP_SAMPLER_REDUCTION_MINMAX */
 
 /**
  * The first two flags above were previously part of the amorphous
@@ -514,6 +513,7 @@ enum pipe_flush_flags
 #define PIPE_BIND_SHARED      (1 << 20) /* get_texture_handle ??? */
 #define PIPE_BIND_LINEAR      (1 << 21)
 #define PIPE_BIND_PROTECTED   (1 << 22) /* Resource will be protected/encrypted */
+#define PIPE_BIND_SAMPLER_REDUCTION_MINMAX (1 << 23) /* PIPE_CAP_SAMPLER_REDUCTION_MINMAX */
 
 
 /**
