@@ -74,6 +74,7 @@ EXTENSIONS = [
     Extension("VK_KHR_driver_properties",
         alias="driver",
         properties=True),
+    Extension("VK_EXT_memory_budget"),
     Extension("VK_KHR_draw_indirect_count"),
     Extension("VK_EXT_fragment_shader_interlock",
        alias="interlock",
