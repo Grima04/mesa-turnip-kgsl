@@ -902,7 +902,6 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
       unsigned number_of_ibs;
       uint32_t *ptr;
       unsigned cnt = 0;
-      unsigned pad_words = 0;
 
       /* Compute the number of IBs for this submit. */
       number_of_ibs = cs->num_old_cs_buffers + 1;
@@ -935,6 +934,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
          for (unsigned j = 0; j < number_of_ibs; j++) {
             struct radeon_cmdbuf *rcs = new_cs_array[j];
             bool needs_preamble = preamble_cs && j == 0;
+            unsigned pad_words = 0;
             unsigned size = 0;
 
             if (needs_preamble)
@@ -973,6 +973,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
          cnt++;
          free(new_cs_array);
       } else {
+         unsigned pad_words = 0;
          unsigned size = 0;
 
          if (preamble_cs)
