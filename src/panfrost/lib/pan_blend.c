@@ -527,7 +527,7 @@ pan_blend_create_shader(const struct panfrost_device *dev,
                 nir_variable_create(b.shader, nir_var_shader_out,
                                     glsl_vector_type(glsl_type, 4),
                                     "gl_FragColor");
-        c_out->data.location = FRAG_RESULT_COLOR;
+        c_out->data.location = FRAG_RESULT_DATA0;
 
         nir_ssa_def *s_src[] = {nir_load_var(&b, c_src), nir_load_var(&b, c_src1)};
 

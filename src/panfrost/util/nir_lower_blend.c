@@ -337,7 +337,8 @@ nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
 
    /* TODO: Extending to MRT */
    nir_variable *var = nir_intrinsic_get_var(intr, 0);
-   if (var->data.location != FRAG_RESULT_COLOR)
+   if (var->data.location != FRAG_RESULT_COLOR &&
+         var->data.location < FRAG_RESULT_DATA0)
       return false;
 
    b->cursor = nir_before_instr(instr);
