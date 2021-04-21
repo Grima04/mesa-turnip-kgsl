@@ -534,7 +534,14 @@ pan_blend_create_shader(const struct panfrost_device *dev,
         for (int i = 0; i < ARRAY_SIZE(s_src); ++i) {
                 switch (nir_type) {
                 case nir_type_float16:
-                        s_src[i] = nir_f2f16(&b, s_src[i]);
+                case nir_type_float32:
+                        s_src[i] = nir_type_convert(&b, s_src[i], nir_type_float, nir_type);
+                        break;
+                case nir_type_int32:
+                        s_src[i] = nir_i2i32(&b, s_src[i]);
+                        break;
+                case nir_type_uint32:
+                        s_src[i] = nir_u2u32(&b, s_src[i]);
                         break;
                 case nir_type_int16:
                         s_src[i] = nir_i2i16(&b, nir_iclamp(&b, s_src[i], -32768, 32767));
@@ -549,7 +556,7 @@ pan_blend_create_shader(const struct panfrost_device *dev,
                         s_src[i] = nir_u2u8(&b, nir_umin(&b, s_src[i], nir_imm_int(&b, 255)));
                         break;
                 default:
-                        break;
+                        unreachable("Unhandled source type to blend shader");
                 }
         }
 
