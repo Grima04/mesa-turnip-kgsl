@@ -1331,21 +1331,39 @@ vn_physical_device_init_memory_properties(
 }
 
 static void
-vn_physical_device_init_external_memory_handles(
+vn_physical_device_init_external_memory(
    struct vn_physical_device *physical_dev)
 {
+   /* When a renderer VkDeviceMemory is exportable, we can create a
+    * vn_renderer_bo from it.  The vn_renderer_bo can be freely exported as an
+    * opaque fd or a dma-buf.
+    *
+    * However, to know if a rendender VkDeviceMemory is exportable, we have to
+    * start from VkPhysicalDeviceExternalImageFormatInfo (or
+    * vkGetPhysicalDeviceExternalBufferProperties).  That means we need to
+    * know the handle type that the renderer will use to make those queries.
+    *
+    * XXX We also assume that a vn_renderer_bo can be created as long as the
+    * renderer VkDeviceMemory has a mappable memory type.  That is plain
+    * wrong.  It is impossible to fix though until some new extension is
+    * created and supported by the driver, and that the renderer switches to
+    * the extension.
+    */
+
    if (!physical_dev->instance->renderer_info.has_dmabuf_import)
       return;
 
-   /* We have export support but we don't advertise it.  It is for WSI only at
-    * the moment.  For import support, we need to be able to serialize
-    * vkGetMemoryFdPropertiesKHR and VkImportMemoryFdInfoKHR.  We can
-    * serialize fd to bo->res_id, but we probably want to add new
-    * commands/structs first (using VK_MESA_venus_protocol).
-    *
-    * We also create a BO when a vn_device_memory is mappable.  We don't know
-    * which handle type the renderer uses.  That seems fine though.
+   /* TODO We assume the renderer uses dma-bufs here.  This should be
+    * negotiated by adding a new function to VK_MESA_venus_protocol.
     */
+   if (physical_dev->renderer_extensions.EXT_external_memory_dma_buf) {
+      physical_dev->external_memory.renderer_handle_type =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+
+      physical_dev->external_memory.supported_handle_types =
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
+         VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
+   }
 }
 
 static void
@@ -1618,7 +1636,7 @@ vn_physical_device_init(struct vn_physical_device *physical_dev)
 
    vn_physical_device_init_memory_properties(physical_dev);
 
-   vn_physical_device_init_external_memory_handles(physical_dev);
+   vn_physical_device_init_external_memory(physical_dev);
    vn_physical_device_init_external_fence_handles(physical_dev);
    vn_physical_device_init_external_semaphore_handles(physical_dev);
 
@@ -2635,6 +2653,55 @@ vn_GetPhysicalDeviceFormatProperties2(VkPhysicalDevice physicalDevice,
       physical_dev->instance, physicalDevice, format, pFormatProperties);
 }
 
+struct vn_physical_device_image_format_info {
+   VkPhysicalDeviceImageFormatInfo2 format;
+   VkPhysicalDeviceExternalImageFormatInfo external;
+   VkImageFormatListCreateInfo list;
+   VkImageStencilUsageCreateInfo stencil_usage;
+};
+
+static const VkPhysicalDeviceImageFormatInfo2 *
+vn_physical_device_fix_image_format_info(
+   struct vn_physical_device *physical_dev,
+   const VkPhysicalDeviceImageFormatInfo2 *info,
+   struct vn_physical_device_image_format_info *local_info)
+{
+   local_info->format = *info;
+   VkBaseOutStructure *dst = (void *)&local_info->format;
+
+   /* we should generate deep copy functions... */
+   vk_foreach_struct_const(src, info->pNext) {
+      void *pnext = NULL;
+      switch (src->sType) {
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO:
+         memcpy(&local_info->external, src, sizeof(local_info->external));
+         local_info->external.handleType =
+            physical_dev->external_memory.renderer_handle_type;
+         pnext = &local_info->external;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO:
+         memcpy(&local_info->list, src, sizeof(local_info->list));
+         pnext = &local_info->list;
+         break;
+      case VK_STRUCTURE_TYPE_IMAGE_STENCIL_USAGE_CREATE_INFO_EXT:
+         memcpy(&local_info->stencil_usage, src,
+                sizeof(local_info->stencil_usage));
+         pnext = &local_info->stencil_usage;
+         break;
+      default:
+         break;
+      }
+
+      if (pnext) {
+         dst->pNext = pnext;
+         dst = pnext;
+      }
+   }
+
+   dst->pNext = NULL;
+   return &local_info->format;
+}
+
 VkResult
 vn_GetPhysicalDeviceImageFormatProperties2(
    VkPhysicalDevice physicalDevice,
@@ -2643,6 +2710,10 @@ vn_GetPhysicalDeviceImageFormatProperties2(
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
+      physical_dev->external_memory.renderer_handle_type;
+   const VkExternalMemoryHandleTypeFlags supported_handle_types =
+      physical_dev->external_memory.supported_handle_types;
 
    const VkPhysicalDeviceExternalImageFormatInfo *external_info =
       vk_find_struct_const(pImageFormatInfo->pNext,
@@ -2650,9 +2721,18 @@ vn_GetPhysicalDeviceImageFormatProperties2(
    if (external_info && !external_info->handleType)
       external_info = NULL;
 
-   if (external_info &&
-       !(external_info->handleType & physical_dev->external_memory_handles))
-      return vn_error(physical_dev->instance, VK_ERROR_FORMAT_NOT_SUPPORTED);
+   struct vn_physical_device_image_format_info local_info;
+   if (external_info) {
+      if (!(external_info->handleType & supported_handle_types)) {
+         return vn_error(physical_dev->instance,
+                         VK_ERROR_FORMAT_NOT_SUPPORTED);
+      }
+
+      if (external_info->handleType != renderer_handle_type) {
+         pImageFormatInfo = vn_physical_device_fix_image_format_info(
+            physical_dev, pImageFormatInfo, &local_info);
+      }
+   }
 
    VkResult result;
    /* TODO per-device cache */
@@ -2666,10 +2746,11 @@ vn_GetPhysicalDeviceImageFormatProperties2(
       VkExternalMemoryProperties *mem_props =
          &img_props->externalMemoryProperties;
 
-      mem_props->compatibleHandleTypes &=
-         physical_dev->external_memory_handles;
-      mem_props->exportFromImportedHandleTypes &=
-         physical_dev->external_memory_handles;
+      mem_props->compatibleHandleTypes = supported_handle_types;
+      mem_props->exportFromImportedHandleTypes =
+         (mem_props->exportFromImportedHandleTypes & renderer_handle_type)
+            ? supported_handle_types
+            : 0;
    }
 
    return vn_result(physical_dev->instance, result);
@@ -2699,15 +2780,25 @@ vn_GetPhysicalDeviceExternalBufferProperties(
 {
    struct vn_physical_device *physical_dev =
       vn_physical_device_from_handle(physicalDevice);
+   const VkExternalMemoryHandleTypeFlagBits renderer_handle_type =
+      physical_dev->external_memory.renderer_handle_type;
+   const VkExternalMemoryHandleTypeFlags supported_handle_types =
+      physical_dev->external_memory.supported_handle_types;
+
    VkExternalMemoryProperties *props =
       &pExternalBufferProperties->externalMemoryProperties;
-
-   if (!(pExternalBufferInfo->handleType &
-         physical_dev->external_memory_handles)) {
+   if (!(pExternalBufferInfo->handleType & supported_handle_types)) {
       props->compatibleHandleTypes = pExternalBufferInfo->handleType;
       props->exportFromImportedHandleTypes = 0;
       props->externalMemoryFeatures = 0;
       return;
+   }
+
+   VkPhysicalDeviceExternalBufferInfo local_info;
+   if (pExternalBufferInfo->handleType != renderer_handle_type) {
+      local_info = *pExternalBufferInfo;
+      local_info.handleType = renderer_handle_type;
+      pExternalBufferInfo = &local_info;
    }
 
    /* TODO per-device cache */
@@ -2715,9 +2806,11 @@ vn_GetPhysicalDeviceExternalBufferProperties(
       physical_dev->instance, physicalDevice, pExternalBufferInfo,
       pExternalBufferProperties);
 
-   props->compatibleHandleTypes &= physical_dev->external_memory_handles;
-   props->exportFromImportedHandleTypes &=
-      physical_dev->external_memory_handles;
+   props->compatibleHandleTypes = supported_handle_types;
+   props->exportFromImportedHandleTypes =
+      (props->exportFromImportedHandleTypes & renderer_handle_type)
+         ? supported_handle_types
+         : 0;
 }
 
 void
