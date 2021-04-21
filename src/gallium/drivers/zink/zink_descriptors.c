@@ -1224,7 +1224,7 @@ zink_descriptors_update(struct zink_context *ctx, struct zink_screen *screen, bo
                                                is_compute, cache_hit[ZINK_DESCRIPTOR_TYPE_IMAGE],
                                                need_resource_refs[ZINK_DESCRIPTOR_TYPE_IMAGE]);
 
-   for (int h = 0; zds[h] && h < ZINK_DESCRIPTOR_TYPES; h++) {
+   for (int h = 0; h < ZINK_DESCRIPTOR_TYPES && zds[h]; h++) {
       /* skip null descriptor sets since they have no resources */
       if (!zds[h]->hash)
          continue;
