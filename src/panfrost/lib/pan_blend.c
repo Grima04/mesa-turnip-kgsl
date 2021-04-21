@@ -486,7 +486,7 @@ pan_blend_create_shader(const struct panfrost_device *dev,
                 .colormask = rt_state->equation.color_mask,
                 .half = nir_type == nir_type_float16,
                 .format = rt_state->format,
-                .is_bifrost = pan_is_bifrost(dev),
+                .scalar = pan_is_bifrost(dev),
         };
 
         if (!rt_state->equation.blend_enable) {
