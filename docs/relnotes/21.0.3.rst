@@ -19,7 +19,7 @@ SHA256 checksum
 
 ::
 
-    TBD.
+    565c6f4bd2d5747b919454fc1d439963024fc78ca56fd05158c3b2cde2f6912b  mesa-21.0.3.tar.xz
 
 
 New features
