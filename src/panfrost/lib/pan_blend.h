@@ -71,6 +71,7 @@ struct pan_blend_state {
 
 struct pan_blend_shader_key {
         enum pipe_format format;
+        nir_alu_type src0_type, src1_type;
         unsigned rt : 3;
         unsigned has_constants : 1;
         unsigned logicop_enable : 1;
@@ -125,6 +126,8 @@ pan_blend_to_fixed_function_equation(const struct panfrost_device *dev,
 nir_shader *
 pan_blend_create_shader(const struct panfrost_device *dev,
                         const struct pan_blend_state *state,
+                        nir_alu_type src0_type,
+                        nir_alu_type src1_type,
                         unsigned rt);
 
 uint64_t
@@ -138,6 +141,8 @@ pan_blend_get_bifrost_desc(const struct panfrost_device *dev,
 struct pan_blend_shader_variant *
 pan_blend_get_shader_locked(const struct panfrost_device *dev,
                             const struct pan_blend_state *state,
+                            nir_alu_type src0_type,
+                            nir_alu_type src1_type,
                             unsigned rt);
 
 void

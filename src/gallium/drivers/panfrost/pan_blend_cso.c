@@ -168,9 +168,22 @@ panfrost_get_blend_for_context(struct panfrost_context *ctx, unsigned rti, struc
                    PAN_BO_ACCESS_FRAGMENT);
         }
 
+        struct panfrost_shader_state *ss = panfrost_get_shader_state(ctx, PIPE_SHADER_FRAGMENT);
+
+        /* Default for Midgard */
+        nir_alu_type col0_type = nir_type_float32;
+        nir_alu_type col1_type = nir_type_float32;
+
+        /* Bifrost has per-output types, respect them */
+        if (pan_is_bifrost(dev)) {
+                col0_type = ss->info.bifrost.blend[rti].type;
+                col1_type = ss->info.bifrost.blend_src1_type;
+        }
+
         pthread_mutex_lock(&dev->blend_shaders.lock);
         struct pan_blend_shader_variant *shader =
-                pan_blend_get_shader_locked(dev, &pan_blend, rti);
+                pan_blend_get_shader_locked(dev, &pan_blend,
+                                col0_type, col1_type, rti);
 
         /* Size check */
         assert((*shader_offset + shader->binary.size) < 4096);

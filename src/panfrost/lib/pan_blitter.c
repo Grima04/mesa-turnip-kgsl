@@ -76,10 +76,12 @@ struct pan_blit_shader_data {
         struct pan_blit_shader_key key;
         mali_ptr address;
         unsigned blend_ret_offsets[8];
+        nir_alu_type blend_types[8];
 };
 
 struct pan_blit_blend_shader_key {
         enum pipe_format format;
+        nir_alu_type type;
         unsigned rt : 3;
         unsigned nr_samples : 5;
 };
@@ -361,6 +363,7 @@ static void
 pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                               unsigned rt_count,
                               const struct pan_image_view **rts,
+                              const struct pan_blit_shader_data *blit_shader,
                               mali_ptr *blend_shaders)
 {
         if (!rt_count)
@@ -378,6 +381,7 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
                         .format = rts[i]->format,
                         .rt = i,
                         .nr_samples = rts[i]->image->layout.nr_samples,
+                        .type = blit_shader->blend_types[i],
                 };
 
                 pthread_mutex_lock(&dev->blitter.shaders.lock);
@@ -413,7 +417,10 @@ pan_blitter_get_blend_shaders(struct panfrost_device *dev,
 
                 pthread_mutex_lock(&dev->blend_shaders.lock);
                 struct pan_blend_shader_variant *b =
-                        pan_blend_get_shader_locked(dev, &blend_state, i);
+                        pan_blend_get_shader_locked(dev, &blend_state,
+                                        blit_shader->blend_types[i],
+                                        nir_type_float32, /* unused */
+                                        i);
 
                 assert(b->work_reg_count <= 4);
                 struct panfrost_ptr bin =
@@ -561,8 +568,12 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
         if (!pan_is_bifrost(dev))
                 shader->address |= info.midgard.first_tag;
 
-        for (unsigned i = 0; i < ARRAY_SIZE(shader->blend_ret_offsets); i++)
-                shader->blend_ret_offsets[i] = info.bifrost.blend[i].return_offset;
+        if (pan_is_bifrost(dev)) {
+                for (unsigned i = 0; i < ARRAY_SIZE(shader->blend_ret_offsets); i++) {
+                        shader->blend_ret_offsets[i] = info.bifrost.blend[i].return_offset;
+                        shader->blend_types[i] = info.bifrost.blend[i].type;
+                }
+        }
 
         _mesa_hash_table_insert(dev->blitter.shaders.blit, &shader->key, shader);
 
@@ -632,9 +643,12 @@ pan_blitter_get_rsd(struct panfrost_device *dev,
 
         mali_ptr blend_shaders[8] = { 0 };
 
-        pan_blitter_get_blend_shaders(dev, rt_count, rts, blend_shaders);
+        const struct pan_blit_shader_data *blit_shader =
+                pan_blitter_get_blit_shader(dev, &blit_key);
 
-        pan_blitter_emit_rsd(dev, pan_blitter_get_blit_shader(dev, &blit_key),
+        pan_blitter_get_blend_shaders(dev, rt_count, rts, blit_shader, blend_shaders);
+
+        pan_blitter_emit_rsd(dev, blit_shader,
                              MAX2(rt_count, 1), rts, blend_shaders,
                              z, s, rsd_ptr.cpu);
         rsd->address = rsd_ptr.gpu;

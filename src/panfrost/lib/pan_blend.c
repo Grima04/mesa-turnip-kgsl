@@ -30,6 +30,7 @@
 #include "util/format/u_format.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
+#include "compiler/nir/nir_conversion_builder.h"
 
 /* Fixed function blending */
 
@@ -448,15 +449,11 @@ get_equation_str(const struct pan_blend_rt_state *rt_state,
          }
 }
 
-static nir_ssa_def *
-nir_iclamp(nir_builder *b, nir_ssa_def *v, int32_t lo, int32_t hi)
-{
-        return nir_imin(b, nir_imax(b, v, nir_imm_int(b, lo)), nir_imm_int(b, hi));
-}
-
 nir_shader *
 pan_blend_create_shader(const struct panfrost_device *dev,
                         const struct pan_blend_state *state,
+                        nir_alu_type src0_type,
+                        nir_alu_type src1_type,
                         unsigned rt)
 {
         const struct pan_blend_rt_state *rt_state = &state->rts[rt];
@@ -512,14 +509,22 @@ pan_blend_create_shader(const struct panfrost_device *dev,
                 options.alpha.invert_dst_factor = rt_state->equation.alpha_invert_dst_factor;
         }
 
+        nir_alu_type src_types[] = { src0_type ?: nir_type_float32, src1_type ?: nir_type_float32 };
+
+        /* HACK: workaround buggy TGSI shaders (u_blitter) */
+        for (unsigned i = 0; i < ARRAY_SIZE(src_types); ++i) {
+                src_types[i] = nir_alu_type_get_base_type(nir_type) |
+                        nir_alu_type_get_type_size(src_types[i]);
+        }
+
 	nir_variable *c_src =
                 nir_variable_create(b.shader, nir_var_shader_in,
-                                    glsl_vector_type(GLSL_TYPE_FLOAT, 4),
+                                    glsl_vector_type(nir_get_glsl_base_type_for_nir_type(src_types[0]), 4),
                                     "gl_Color");
         c_src->data.location = VARYING_SLOT_COL0;
         nir_variable *c_src1 =
                 nir_variable_create(b.shader, nir_var_shader_in,
-                                    glsl_vector_type(GLSL_TYPE_FLOAT, 4),
+                                    glsl_vector_type(nir_get_glsl_base_type_for_nir_type(src_types[1]), 4),
                                     "gl_Color1");
         c_src1->data.location = VARYING_SLOT_VAR0;
         c_src1->data.driver_location = 1;
@@ -531,33 +536,13 @@ pan_blend_create_shader(const struct panfrost_device *dev,
 
         nir_ssa_def *s_src[] = {nir_load_var(&b, c_src), nir_load_var(&b, c_src1)};
 
+        /* Saturate integer conversions */
         for (int i = 0; i < ARRAY_SIZE(s_src); ++i) {
-                switch (nir_type) {
-                case nir_type_float16:
-                case nir_type_float32:
-                        s_src[i] = nir_type_convert(&b, s_src[i], nir_type_float, nir_type);
-                        break;
-                case nir_type_int32:
-                        s_src[i] = nir_i2i32(&b, s_src[i]);
-                        break;
-                case nir_type_uint32:
-                        s_src[i] = nir_u2u32(&b, s_src[i]);
-                        break;
-                case nir_type_int16:
-                        s_src[i] = nir_i2i16(&b, nir_iclamp(&b, s_src[i], -32768, 32767));
-                        break;
-                case nir_type_uint16:
-                        s_src[i] = nir_u2u16(&b, nir_umin(&b, s_src[i], nir_imm_int(&b, 65535)));
-                        break;
-                case nir_type_int8:
-                        s_src[i] = nir_i2i8(&b, nir_iclamp(&b, s_src[i], -128, 127));
-                        break;
-                case nir_type_uint8:
-                        s_src[i] = nir_u2u8(&b, nir_umin(&b, s_src[i], nir_imm_int(&b, 255)));
-                        break;
-                default:
-                        unreachable("Unhandled source type to blend shader");
-                }
+                bool is_float = nir_alu_type_get_base_type(nir_type);
+                s_src[i] = nir_convert_with_rounding(&b, s_src[i],
+                                src_types[i], nir_type,
+                                nir_rounding_mode_undef,
+                                !is_float);
         }
 
         /* Build a trivial blend shader */
@@ -629,10 +614,14 @@ pan_blend_get_bifrost_desc(const struct panfrost_device *dev,
 struct pan_blend_shader_variant *
 pan_blend_get_shader_locked(const struct panfrost_device *dev,
                             const struct pan_blend_state *state,
+                            nir_alu_type src0_type,
+                            nir_alu_type src1_type,
                             unsigned rt)
 {
         struct pan_blend_shader_key key = {
                 .format = state->rts[rt].format,
+                .src0_type = src0_type,
+                .src1_type = src1_type,
                 .rt = rt,
                 .has_constants = pan_blend_constant_mask(state, rt) != 0,
                 .logicop_enable = state->logicop_enable,
@@ -674,7 +663,7 @@ pan_blend_get_shader_locked(const struct panfrost_device *dev,
                 util_dynarray_clear(&variant->binary);
         }
 
-        nir_shader *nir = pan_blend_create_shader(dev, state, rt);
+        nir_shader *nir = pan_blend_create_shader(dev, state, src0_type, src1_type, rt);
 
         /* Compile the NIR shader */
         struct panfrost_compile_inputs inputs = {
