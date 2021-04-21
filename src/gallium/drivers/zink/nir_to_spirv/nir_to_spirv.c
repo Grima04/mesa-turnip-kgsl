@@ -2544,8 +2544,6 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_instance_id:
-      spirv_builder_emit_extension(&ctx->builder, "SPV_KHR_shader_draw_parameters");
-      spirv_builder_emit_cap(&ctx->builder, SpvCapabilityDrawParameters);
       emit_load_uint_input(ctx, intr, &ctx->instance_id_var, "gl_InstanceId", SpvBuiltInInstanceIndex);
       break;
 
@@ -3577,6 +3575,10 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spir
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleMaskPostDepthCoverage);
       if (s->info.fs.uses_sample_shading)
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
+      if (BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_INSTANCE_ID)) {
+         spirv_builder_emit_extension(&ctx.builder, "SPV_KHR_shader_draw_parameters");
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilityDrawParameters);
+      }
       break;
 
    case MESA_SHADER_TESS_CTRL:
