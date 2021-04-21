@@ -327,56 +327,51 @@ nir_is_blend_replace(nir_lower_blend_options options)
       nir_is_blend_channel_replace(options.alpha);
 }
 
+static bool
+nir_lower_blend_instr(nir_builder *b, nir_instr *instr, void *data)
+{
+   nir_lower_blend_options *options = data;
+   if (instr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+   if (intr->intrinsic != nir_intrinsic_store_deref)
+      return false;
+
+   /* TODO: Extending to MRT */
+   nir_variable *var = nir_intrinsic_get_var(intr, 0);
+   if (var->data.location != FRAG_RESULT_COLOR)
+      return false;
+
+   b->cursor = nir_before_instr(instr);
+
+   /* Grab the input color */
+   nir_ssa_def *src = nir_ssa_for_src(b, intr->src[1], 4);
+
+   /* Grab the dual-source input color */
+   nir_ssa_def *src1 = options->src1;
+
+   /* Grab the tilebuffer color - io lowered to load_output */
+   nir_ssa_def *dst = nir_load_var(b, var);
+
+   /* Blend the two colors per the passed options */
+   nir_ssa_def *blended = nir_blend(b, *options, src, src1, dst);
+
+   /* Write out the final color instead of the input */
+   nir_instr_rewrite_src_ssa(instr, &intr->src[1], blended);
+   return true;
+}
+
 void
 nir_lower_blend(nir_shader *shader, nir_lower_blend_options options)
 {
-   /* Blend shaders are represented as special fragment shaders */
    assert(shader->info.stage == MESA_SHADER_FRAGMENT);
 
-   /* Special case replace, since there's nothing to do and we don't want to
-    * degrade intermediate precision (e.g. for non-blendable R32F targets) */
-   if (nir_is_blend_replace(options))
-      return;
+   /* Only run for actual blending, since there's nothing to do and we don't
+    * want to degrade intermediate precision for non-blendable R32F targets) */
 
-   nir_foreach_function(func, shader) {
-      nir_foreach_block(block, func->impl) {
-         nir_foreach_instr_safe(instr, block) {
-            if (instr->type != nir_instr_type_intrinsic)
-               continue;
-
-            nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
-            if (intr->intrinsic != nir_intrinsic_store_deref)
-               continue;
-
-            /* TODO: Extending to MRT */
-            nir_variable *var = nir_intrinsic_get_var(intr, 0);
-            if (var->data.location != FRAG_RESULT_COLOR)
-               continue;
-
-            nir_builder b;
-            nir_builder_init(&b, func->impl);
-            b.cursor = nir_before_instr(instr);
-
-            /* Grab the input color */
-            nir_ssa_def *src = nir_ssa_for_src(&b, intr->src[1], 4);
-
-            /* Grab the dual-source input color */
-            nir_ssa_def *src1 = options.src1;
-
-            /* Grab the tilebuffer color - io lowered to load_output */
-            nir_ssa_def *dst = nir_load_var(&b, var);
-
-            /* Blend the two colors per the passed options */
-            nir_ssa_def *blended = nir_blend(&b, options, src, src1, dst);
-
-            /* Write out the final color instead of the input */
-            nir_instr_rewrite_src(instr, &intr->src[1],
-                                  nir_src_for_ssa(blended));
-
-         }
-      }
-
-      nir_metadata_preserve(func->impl, nir_metadata_block_index |
-                            nir_metadata_dominance);
+   if (!nir_is_blend_replace(options)) {
+      nir_shader_instructions_pass(shader, nir_lower_blend_instr,
+            nir_metadata_block_index | nir_metadata_dominance, &options);
    }
 }
