@@ -122,14 +122,6 @@ get_bucket(struct fd_bo_cache *cache, uint32_t size)
    return NULL;
 }
 
-static int
-is_idle(struct fd_bo *bo)
-{
-   return fd_bo_cpu_prep(bo, NULL,
-                         FD_BO_PREP_READ | FD_BO_PREP_WRITE |
-                            FD_BO_PREP_NOSYNC) == 0;
-}
-
 static struct fd_bo *
 find_in_bucket(struct fd_bo_bucket *bucket, uint32_t flags)
 {
@@ -146,7 +138,7 @@ find_in_bucket(struct fd_bo_bucket *bucket, uint32_t flags)
    if (!list_is_empty(&bucket->list)) {
       bo = LIST_ENTRY(struct fd_bo, bucket->list.next, list);
       /* TODO check for compatible flags? */
-      if (is_idle(bo)) {
+      if (fd_bo_state(bo) == FD_BO_STATE_IDLE) {
          list_del(&bo->list);
       } else {
          bo = NULL;

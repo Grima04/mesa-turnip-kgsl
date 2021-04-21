@@ -48,7 +48,7 @@ int
 fd_submit_flush(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
                 uint32_t *out_fence)
 {
-   debug_assert(submit->primary);
+   submit->fence = fd_pipe_emit_fence(submit->pipe, submit->primary);
    return submit->funcs->flush(submit, in_fence_fd, out_fence_fd, out_fence);
 }
 

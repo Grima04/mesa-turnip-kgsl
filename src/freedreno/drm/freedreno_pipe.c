@@ -60,6 +60,19 @@ fd_pipe_new2(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
    fd_pipe_get_param(pipe, FD_GPU_ID, &val);
    pipe->gpu_id = val;
 
+   pipe->control_mem = fd_bo_new(dev, sizeof(*pipe->control),
+                                 0, "pipe-control");
+   pipe->control = fd_bo_map(pipe->control_mem);
+
+   /* We don't want the control_mem bo to hold a reference to the ourself,
+    * so disable userspace fencing.  This also means that we won't be able
+    * to determine if the buffer is idle which is needed by bo-cache.  But
+    * pipe creation/destroy is not a high frequency event so just disable
+    * the bo-cache as well:
+    */
+   pipe->control_mem->nosync = true;
+   pipe->control_mem->bo_reuse = NO_CACHE;
+
    return pipe;
 }
 
@@ -72,16 +85,26 @@ fd_pipe_new(struct fd_device *dev, enum fd_pipe_id id)
 struct fd_pipe *
 fd_pipe_ref(struct fd_pipe *pipe)
 {
-   p_atomic_inc(&pipe->refcnt);
+   simple_mtx_lock(&table_lock);
+   fd_pipe_ref_locked(pipe);
+   simple_mtx_unlock(&table_lock);
+   return pipe;
+}
+
+struct fd_pipe *
+fd_pipe_ref_locked(struct fd_pipe *pipe)
+{
+   simple_mtx_assert_locked(&table_lock);
+   pipe->refcnt++;
    return pipe;
 }
 
 void
 fd_pipe_del(struct fd_pipe *pipe)
 {
-   if (!p_atomic_dec_zero(&pipe->refcnt))
-      return;
-   pipe->funcs->destroy(pipe);
+   simple_mtx_lock(&table_lock);
+   fd_pipe_del_locked(pipe);
+   simple_mtx_unlock(&table_lock);
 }
 
 void
@@ -90,6 +113,7 @@ fd_pipe_del_locked(struct fd_pipe *pipe)
    simple_mtx_assert_locked(&table_lock);
    if (!p_atomic_dec_zero(&pipe->refcnt))
       return;
+   fd_bo_del_locked(pipe->control_mem);
    pipe->funcs->destroy(pipe);
 }
 
@@ -108,5 +132,26 @@ fd_pipe_wait(struct fd_pipe *pipe, uint32_t timestamp)
 int
 fd_pipe_wait_timeout(struct fd_pipe *pipe, uint32_t timestamp, uint64_t timeout)
 {
+
    return pipe->funcs->wait(pipe, timestamp, timeout);
+}
+
+uint32_t
+fd_pipe_emit_fence(struct fd_pipe *pipe, struct fd_ringbuffer *ring)
+{
+   uint32_t fence = ++pipe->last_fence;
+
+   if (pipe->gpu_id >= 500) {
+      OUT_PKT7(ring, CP_EVENT_WRITE, 4);
+      OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_TS));
+      OUT_RELOC(ring, control_ptr(pipe, fence));   /* ADDR_LO/HI */
+      OUT_RING(ring, fence);
+   } else {
+      OUT_PKT3(ring, CP_EVENT_WRITE, 3);
+      OUT_RING(ring, CP_EVENT_WRITE_0_EVENT(CACHE_FLUSH_TS));
+      OUT_RELOC(ring, control_ptr(pipe, fence));   /* ADDR */
+      OUT_RING(ring, fence);
+   }
+
+   return fence;
 }

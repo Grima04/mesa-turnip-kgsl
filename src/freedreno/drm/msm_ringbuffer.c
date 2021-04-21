@@ -343,6 +343,12 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
       }
    }
 
+   simple_mtx_lock(&table_lock);
+   for (unsigned j = 0; j < msm_submit->nr_bos; j++) {
+      fd_bo_add_fence(msm_submit->bos[j], submit->pipe, submit->fence);
+   }
+   simple_mtx_unlock(&table_lock);
+
    if (in_fence_fd != -1) {
       req.flags |= MSM_SUBMIT_FENCE_FD_IN | MSM_SUBMIT_NO_IMPLICIT;
       req.fence_fd = in_fence_fd;
