@@ -48,8 +48,15 @@
  */
 
 static bool
-lower_fragcolor_instr(nir_intrinsic_instr *instr, nir_builder *b, unsigned max_draw_buffers)
+lower_fragcolor_instr(nir_builder *b, nir_instr *intr, UNUSED void *data)
 {
+   if (intr->type != nir_instr_type_intrinsic)
+      return false;
+
+   nir_intrinsic_instr *instr = nir_instr_as_intrinsic(intr);
+   const unsigned max_draw_buffers =
+      b->shader->info.fs.color_is_dual_source ? 1 : 8;
+
    nir_variable *out;
    if (instr->intrinsic != nir_intrinsic_store_deref)
       return false;
@@ -93,29 +100,9 @@ lower_fragcolor_instr(nir_intrinsic_instr *instr, nir_builder *b, unsigned max_d
 bool
 nir_lower_fragcolor(nir_shader *shader)
 {
-   bool progress = false;
-
    if (shader->info.stage != MESA_SHADER_FRAGMENT)
       return false;
 
-   const unsigned max_draw_buffers =
-      shader->info.fs.color_is_dual_source ? 1 : 8;
-
-   nir_foreach_function(function, shader) {
-      if (function->impl) {
-         nir_builder builder;
-         nir_builder_init(&builder, function->impl);
-         nir_foreach_block(block, function->impl) {
-            nir_foreach_instr_safe(instr, block) {
-               if (instr->type == nir_instr_type_intrinsic)
-                  progress |= lower_fragcolor_instr(nir_instr_as_intrinsic(instr),
-                                                    &builder, max_draw_buffers);
-            }
-         }
-
-         nir_metadata_preserve(function->impl, nir_metadata_block_index | nir_metadata_dominance);
-      }
-   }
-
-   return progress;
+   return nir_shader_instructions_pass(shader, lower_fragcolor_instr,
+         nir_metadata_block_index | nir_metadata_dominance, NULL);
 }
