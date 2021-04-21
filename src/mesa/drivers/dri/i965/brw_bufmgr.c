@@ -794,7 +794,6 @@ brw_bo_gem_create_from_name(struct brw_bufmgr *bufmgr,
     */
    bo = hash_find_bo(bufmgr->handle_table, open_arg.handle);
    if (bo) {
-      assert(list_is_empty(&bo->exports));
       brw_bo_reference(bo);
       goto out;
    }
@@ -1485,7 +1484,6 @@ brw_bo_gem_create_from_prime_internal(struct brw_bufmgr *bufmgr, int prime_fd,
     */
    bo = hash_find_bo(bufmgr->handle_table, handle);
    if (bo) {
-      assert(list_is_empty(&bo->exports));
       brw_bo_reference(bo);
       goto out;
    }
