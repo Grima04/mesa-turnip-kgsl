@@ -494,10 +494,8 @@ emit_input(struct ntv_context *ctx, struct nir_variable *var)
       }
       if (var->data.centroid)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationCentroid);
-      else if (var->data.sample) {
-         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
+      else if (var->data.sample)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
-      }
    } else if (ctx->stage < MESA_SHADER_FRAGMENT) {
       switch (var->data.location) {
       HANDLE_EMIT_BUILTIN(POS, Position);
@@ -602,10 +600,8 @@ emit_output(struct ntv_context *ctx, struct nir_variable *var)
             spirv_builder_emit_index(&ctx->builder, var_id, var->data.index);
          }
       }
-      if (var->data.sample) {
-         spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
+      if (var->data.sample)
          spirv_builder_emit_decoration(&ctx->builder, var_id, SpvDecorationSample);
-      }
    }
 
    if (var->data.location_frac)
@@ -2574,12 +2570,10 @@ emit_intrinsic(struct ntv_context *ctx, nir_intrinsic_instr *intr)
       break;
 
    case nir_intrinsic_load_sample_id:
-      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
       emit_load_uint_input(ctx, intr, &ctx->sample_id_var, "gl_SampleId", SpvBuiltInSampleId);
       break;
 
    case nir_intrinsic_load_sample_pos:
-      spirv_builder_emit_cap(&ctx->builder, SpvCapabilitySampleRateShading);
       emit_load_vec_input(ctx, intr, &ctx->sample_pos_var, "gl_SamplePosition", SpvBuiltInSamplePosition, nir_type_float);
       break;
 
@@ -3581,6 +3575,8 @@ nir_to_spirv(struct nir_shader *s, const struct zink_so_info *so_info, bool spir
       if (s->info.fs.post_depth_coverage &&
           BITSET_TEST(s->info.system_values_read, SYSTEM_VALUE_SAMPLE_MASK_IN))
          spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleMaskPostDepthCoverage);
+      if (s->info.fs.uses_sample_shading)
+         spirv_builder_emit_cap(&ctx.builder, SpvCapabilitySampleRateShading);
       break;
 
    case MESA_SHADER_TESS_CTRL:
