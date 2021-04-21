@@ -312,7 +312,9 @@ panfrost_emit_bifrost_blend(struct panfrost_batch *batch,
                         } else {
                                 cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
                                 cfg.load_destination = blend[i].load_dest;
+
                                 cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
+                                cfg.alpha_to_one = batch->ctx->blend->base.alpha_to_one;
                         }
 
                         if (blend[i].is_shader) {
@@ -400,6 +402,7 @@ panfrost_emit_midgard_blend(struct panfrost_batch *batch,
                         cfg.srgb = util_format_is_srgb(batch->key.cbufs[i]->format);
                         cfg.load_destination = blend[i].load_dest;
                         cfg.round_to_fb_precision = !batch->ctx->blend->base.dither;
+                        cfg.alpha_to_one = batch->ctx->blend->base.alpha_to_one;
                         cfg.midgard.blend_shader = blend[i].is_shader;
                         if (blend[i].is_shader) {
                                 cfg.midgard.shader_pc = blend[i].shader.gpu | blend[i].shader.first_tag;
@@ -536,6 +539,7 @@ panfrost_prepare_midgard_fs_state(struct panfrost_context *ctx,
                 state->stencil_mask_misc.sfbd_write_enable = !blend[0].no_colour;
                 state->stencil_mask_misc.sfbd_srgb = util_format_is_srgb(ctx->pipe_framebuffer.cbufs[0]->format);
                 state->stencil_mask_misc.sfbd_dither_disable = !ctx->blend->base.dither;
+                state->stencil_mask_misc.sfbd_alpha_to_one = ctx->blend->base.alpha_to_one;
 
                 if (blend[0].is_shader) {
                         state->sfbd_blend_shader = blend[0].shader.gpu |
