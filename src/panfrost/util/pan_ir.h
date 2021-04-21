@@ -130,6 +130,7 @@ struct panfrost_compile_inputs {
         bool no_ubo_to_push;
 
         enum pipe_format rt_formats[8];
+        unsigned nr_cbufs;
 };
 
 struct pan_shader_varying {

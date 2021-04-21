@@ -216,7 +216,9 @@ struct panfrost_shader_state {
         /* GPU-executable memory */
         struct panfrost_bo *bo;
 
+        /* Variants */
         enum pipe_format rt_formats[8];
+        unsigned nr_cbufs;
 };
 
 /* A collection of varyings (the CSO) */

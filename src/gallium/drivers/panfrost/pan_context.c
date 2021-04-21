@@ -959,6 +959,10 @@ panfrost_variant_matches(
                 }
         }
 
+        if (variant->info.stage == MESA_SHADER_FRAGMENT &&
+            variant->nr_cbufs != ctx->pipe_framebuffer.nr_cbufs)
+                return false;
+
         /* Otherwise, we're good to go */
         return true;
 }
@@ -1054,6 +1058,8 @@ panfrost_bind_shader_state(
 
                 if (type == PIPE_SHADER_FRAGMENT) {
                         struct pipe_framebuffer_state *fb = &ctx->pipe_framebuffer;
+                        v->nr_cbufs = fb->nr_cbufs;
+
                         for (unsigned i = 0; i < fb->nr_cbufs; ++i) {
                                 enum pipe_format fmt = PIPE_FORMAT_R8G8B8A8_UNORM;
 
