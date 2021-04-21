@@ -114,6 +114,4 @@ zink_shader_descriptor_is_buffer(struct zink_shader *zs, enum zink_descriptor_ty
           zs->bindings[type][i].type == VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER;
 }
 
-uint32_t
-zink_binding(gl_shader_stage stage, VkDescriptorType type, int index);;
 #endif
