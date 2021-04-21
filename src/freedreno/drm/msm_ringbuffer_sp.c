@@ -50,8 +50,6 @@ struct msm_submit_sp {
 
    struct slab_child_pool ring_pool;
 
-   struct fd_ringbuffer *primary;
-
    /* Allow for sub-allocation of stateobj ring buffers (ie. sharing
     * the same underlying bo)..
     *
@@ -203,11 +201,6 @@ msm_submit_sp_new_ringbuffer(struct fd_submit *submit, uint32_t size,
    if (!msm_ringbuffer_sp_init(msm_ring, size, flags))
       return NULL;
 
-   if (flags & FD_RINGBUFFER_PRIMARY) {
-      debug_assert(!msm_submit->primary);
-      msm_submit->primary = fd_ringbuffer_ref(&msm_ring->base);
-   }
-
    return &msm_ring->base;
 }
 
@@ -223,11 +216,10 @@ msm_submit_sp_flush(struct fd_submit *submit, int in_fence_fd,
    };
    int ret;
 
-   debug_assert(msm_submit->primary);
-   finalize_current_cmd(msm_submit->primary);
+   finalize_current_cmd(submit->primary);
 
    struct msm_ringbuffer_sp *primary =
-      to_msm_ringbuffer_sp(msm_submit->primary);
+      to_msm_ringbuffer_sp(submit->primary);
    struct drm_msm_gem_submit_cmd cmds[primary->u.nr_cmds];
 
    for (unsigned i = 0; i < primary->u.nr_cmds; i++) {
@@ -298,8 +290,6 @@ msm_submit_sp_destroy(struct fd_submit *submit)
 {
    struct msm_submit_sp *msm_submit = to_msm_submit_sp(submit);
 
-   if (msm_submit->primary)
-      fd_ringbuffer_del(msm_submit->primary);
    if (msm_submit->suballoc_ring)
       fd_ringbuffer_del(msm_submit->suballoc_ring);
 

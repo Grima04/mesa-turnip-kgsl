@@ -54,8 +54,6 @@ struct msm_submit {
    /* hash-set of associated rings: */
    struct set *ring_set;
 
-   struct fd_ringbuffer *primary;
-
    /* Allow for sub-allocation of stateobj ring buffers (ie. sharing
     * the same underlying bo)..
     *
@@ -246,11 +244,6 @@ msm_submit_new_ringbuffer(struct fd_submit *submit, uint32_t size,
    if (!msm_ringbuffer_init(msm_ring, size, flags))
       return NULL;
 
-   if (flags & FD_RINGBUFFER_PRIMARY) {
-      debug_assert(!msm_submit->primary);
-      msm_submit->primary = fd_ringbuffer_ref(&msm_ring->base);
-   }
-
    return &msm_ring->base;
 }
 
@@ -285,10 +278,8 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
    };
    int ret;
 
-   debug_assert(msm_submit->primary);
-
-   finalize_current_cmd(msm_submit->primary);
-   append_ring(msm_submit->ring_set, msm_submit->primary);
+   finalize_current_cmd(submit->primary);
+   append_ring(msm_submit->ring_set, submit->primary);
 
    unsigned nr_cmds = 0;
    unsigned nr_objs = 0;
@@ -299,7 +290,7 @@ msm_submit_flush(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
          nr_cmds += 1;
          nr_objs += 1;
       } else {
-         if (ring != msm_submit->primary)
+         if (ring != submit->primary)
             finalize_current_cmd(ring);
          nr_cmds += to_msm_ringbuffer(ring)->u.nr_cmds;
       }
@@ -399,8 +390,6 @@ msm_submit_destroy(struct fd_submit *submit)
 {
    struct msm_submit *msm_submit = to_msm_submit(submit);
 
-   if (msm_submit->primary)
-      fd_ringbuffer_del(msm_submit->primary);
    if (msm_submit->suballoc_ring)
       fd_ringbuffer_del(msm_submit->suballoc_ring);
 

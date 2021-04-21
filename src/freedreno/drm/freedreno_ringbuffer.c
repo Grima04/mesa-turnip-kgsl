@@ -39,6 +39,8 @@ fd_submit_new(struct fd_pipe *pipe)
 void
 fd_submit_del(struct fd_submit *submit)
 {
+   if (submit->primary)
+      fd_ringbuffer_del(submit->primary);
    return submit->funcs->destroy(submit);
 }
 
@@ -46,6 +48,7 @@ int
 fd_submit_flush(struct fd_submit *submit, int in_fence_fd, int *out_fence_fd,
                 uint32_t *out_fence)
 {
+   debug_assert(submit->primary);
    return submit->funcs->flush(submit, in_fence_fd, out_fence_fd, out_fence);
 }
 
@@ -58,7 +61,15 @@ fd_submit_new_ringbuffer(struct fd_submit *submit, uint32_t size,
       debug_assert(!(flags & FD_RINGBUFFER_GROWABLE));
       debug_assert(!(flags & FD_RINGBUFFER_PRIMARY));
    }
-   return submit->funcs->new_ringbuffer(submit, size, flags);
+   struct fd_ringbuffer *ring =
+         submit->funcs->new_ringbuffer(submit, size, flags);
+
+   if (flags & FD_RINGBUFFER_PRIMARY) {
+      debug_assert(!submit->primary);
+      submit->primary = fd_ringbuffer_ref(ring);
+   }
+
+   return ring;
 }
 
 struct fd_ringbuffer *

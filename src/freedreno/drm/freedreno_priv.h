@@ -138,6 +138,8 @@ struct fd_submit_funcs {
 struct fd_submit {
    struct fd_pipe *pipe;
    const struct fd_submit_funcs *funcs;
+
+   struct fd_ringbuffer *primary;
 };
 
 struct fd_bo_funcs {
