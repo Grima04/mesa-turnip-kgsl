@@ -545,7 +545,7 @@ zink_descriptor_program_init(struct zink_context *ctx,
 
    unsigned total_descs = 0;
    for (unsigned i = 0; i < ZINK_DESCRIPTOR_TYPES; i++) {
-      total_descs += num_bindings[i];;
+      total_descs += num_bindings[i];
    }
    if (!total_descs)
       return true;

@@ -411,7 +411,7 @@ update_shader_modules(struct zink_context *ctx, struct zink_shader *stages[ZINK_
       prog->shaders[type] = stages[type];
    }
    ctx->gfx_pipeline_state.module_hash = _mesa_hash_data(ctx->gfx_pipeline_state.modules, sizeof(ctx->gfx_pipeline_state.modules));
-   unsigned clean = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);;
+   unsigned clean = u_bit_consecutive(PIPE_SHADER_VERTEX, 5);
    ctx->dirty_shader_stages &= ~clean;
 }
 
