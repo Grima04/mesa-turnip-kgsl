@@ -26,70 +26,131 @@
 
 set -e
 
+PROGNAME="$(basename "$0")"
+TRACEDUMP="${TRACEDUMP:-$(dirname "$0")/dump.py}"
 
+
+
+###
+### Helper functions
+###
 fatal()
 {
-	echo "ERROR: $1"
-	exit 1
+  echo "ERROR: $1"
+  exit 1
+}
+
+
+print_version()
+{
+  echo "TraceDiff - Compare two Gallium trace files"
+  echo "(C) Copyright 2011 Jose Fonseca"
+  echo ""
+}
+
+
+print_help()
+{
+  echo "Usage: ${PROGNAME} [options] <tracefile1> <tracefile2>"
+  echo ""
+  echo "  -h, --help         display this help and exit"
+  echo "  -V, --version      output version information and exit"
+  echo ""
+  echo "dump.py options:"
+  echo "  -N, --named        generate symbolic names for raw pointer values"
+  echo ""
+  echo "sdiff options:"
+  echo "  -d, --minimal      try hard to find a smaller set of changes"
+  echo ""
 }
 
 
 do_cleanup()
 {
-	if test -d "$FIFODIR"; then
-		rm -rf "$FIFODIR"
-	fi
+  if test -d "$TEMPDIR"; then
+    rm -rf "$TEMPDIR"
+  fi
 }
 
 
 strip_dump()
 {
-	INFILE="$1"
-	shift
-	OUTFILE="$1"
-	shift
+  INFILE="$1"
+  OUTFILE="$2"
 
-	python3 "$TRACEDUMP" --plain --suppress "$@" "$INFILE" \
-	| sed \
-		-e '/pipe_screen::is_format_supported/d' \
-		-e '/pipe_screen::get_\(shader_\)\?paramf\?/d' \
-		-e 's/\r$//g' \
-		-e 's/pipe = \w\+/pipe/g' \
-		-e 's/screen = \w\+/screen/g' \
-		-e 's/, /,\n\t/g' \
-		-e 's/) = /)\n\t= /' \
-	> "$OUTFILE"
+  python3 "$TRACEDUMP" --plain --suppress \
+    "${DUMP_ARGS[@]}" "$INFILE" \
+  | sed \
+    -e '/pipe_screen::is_format_supported/d' \
+    -e '/pipe_screen::get_\(shader_\)\?paramf\?/d' \
+    -e 's/\r$//g' \
+    -e 's/, /,\n\t/g' \
+    -e 's/) = /)\n\t= /' \
+  > "$OUTFILE"
 }
 
 
+###
 ### Main code starts
+###
 trap do_cleanup HUP INT TERM
+DUMP_ARGS=()
+SDIFF_ARGS=()
 
-TRACEDUMP="${TRACEDUMP:-$(dirname "$0")/dump.py}"
+while test -n "$1"
+do
+  case "$1" in
+    --version|-V)
+      print_version
+      exit 0
+      ;;
+    --help|-h)
+      print_version
+      print_help
+      exit 0
+      ;;
+    -N|--named)
+      DUMP_ARGS+=("$1")
+      shift
+      ;;
+    -d|--minimal)
+      SDIFF_ARGS+=("$1")
+      shift
+      ;;
+    *)
+      if test "x$INFILE1" = "x"; then
+        INFILE1="$1";
+      elif test "x$INFILE2" = "x"; then
+        INFILE2="$1";
+      else
+        fatal "Too many input filenames specified."
+      fi
+      shift
+      ;;
+  esac
+done
 
-if test $# -lt 2; then
-	echo "Usage: $0 <tracefile1> <tracefile2> [extra dump.py args]"
-	exit 0
+
+if test "x$INFILE1" = "x" -o "x$INFILE2" = "x"; then
+  print_help
+  fatal "Not enough input file(s) specified!"
 fi
 
-FIFODIR="$(mktemp -d)"
-FIFO1="${FIFODIR}/1"
-FIFO2="${FIFODIR}/2"
 
-mkfifo "$FIFO1" || fatal "Could not create fifo 1"
-mkfifo "$FIFO2" || fatal "Could not create fifo 2"
+TEMPDIR="$(mktemp -d)"
+TEMP1="${TEMPDIR}/1"
+TEMP2="${TEMPDIR}/2"
 
-INFILE1="$1"
-shift
-INFILE2="$1"
-shift
+mkfifo "$TEMP1" || fatal "Could not create fifo 1"
+mkfifo "$TEMP2" || fatal "Could not create fifo 2"
 
-strip_dump "$INFILE1" "$FIFO1" "$@" &
-strip_dump "$INFILE2" "$FIFO2" "$@" &
+strip_dump "$INFILE1" "$TEMP1" "$@" &
+strip_dump "$INFILE2" "$TEMP2" "$@" &
 
 sdiff \
-	--left-column \
-	--width="$(tput cols)" \
-	--speed-large-files \
-	"$FIFO1" "$FIFO2" \
+  --left-column \
+  --width="$(tput cols)" \
+  --speed-large-files \
+  "${SDIFF_ARGS[@]}" \
+  "$TEMP1" "$TEMP2" \
 | less
