@@ -239,5 +239,5 @@ pan_shader_compile(const struct panfrost_device *dev,
         info->attribute_count += util_bitcount(s->info.images_used);
         info->writes_global = s->info.writes_memory;
 
-        info->sampler_count = info->texture_count = s->info.num_textures;
+        info->sampler_count = info->texture_count = BITSET_LAST_BIT(s->info.textures_used);
 }
