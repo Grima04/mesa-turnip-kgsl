@@ -11283,7 +11283,13 @@ void ngg_nogs_export_primitives(isel_context *ctx)
    if (ctx->stage == vertex_ngg && ctx->args->options->key.vs_common_out.export_prim_id) {
       /* Copy Primitive IDs from GS threads to the LDS address corresponding to the ES thread of the provoking vertex. */
       Temp prim_id = get_arg(ctx, ctx->args->ac.gs_prim_id);
-      Temp provoking_vtx_index = vtxindex[0];
+      unsigned provoking_vtx_in_prim = 0;
+
+      /* For provoking vertex last mode, use num_vtx_in_prim - 1. */
+      if (ctx->args->options->key.vs.provoking_vtx_last)
+         provoking_vtx_in_prim = ctx->args->options->key.vs.outprim;
+
+      Temp provoking_vtx_index = vtxindex[provoking_vtx_in_prim];
       Temp addr = bld.v_mul_imm(bld.def(v1), provoking_vtx_index, 4u);
 
       store_lds(ctx, 4, prim_id, 0x1u, addr, 0u, 4u);
@@ -11609,11 +11615,17 @@ void ngg_gs_export_primitives(isel_context *ctx, Temp max_prmcnt, Temp tid_in_tg
       * We already have triangles due to how we set the primitive flags, but we need to
       * make sure the vertex order is so that the front/back is correct, and the provoking vertex is kept.
       */
+      bool flatshade_first = !ctx->args->options->key.vs.provoking_vtx_last;
 
-      /* If the primitive is odd, this will increment indices[1] and decrement indices[2] */
+      /* If the triangle is odd, this will swap its two non-provoking vertices. */
       Temp is_odd = bld.vop3(aco_opcode::v_bfe_u32, bld.def(v1), Operand(prim_flag_0), Operand(1u), Operand(1u));
-      indices[1] = bld.vadd32(bld.def(v1), indices[1], Operand(is_odd));
-      indices[2] = bld.vsub32(bld.def(v1), indices[2], Operand(is_odd));
+      if (flatshade_first) {
+         indices[1] = bld.vadd32(bld.def(v1), indices[1], Operand(is_odd));
+         indices[2] = bld.vsub32(bld.def(v1), indices[2], Operand(is_odd));
+      } else {
+         indices[0] = bld.vadd32(bld.def(v1), indices[0], Operand(is_odd));
+         indices[1] = bld.vsub32(bld.def(v1), indices[1], Operand(is_odd));
+      }
    }
 
    ngg_emit_prim_export(ctx, total_vtx_per_prim, indices, is_null_prim);
