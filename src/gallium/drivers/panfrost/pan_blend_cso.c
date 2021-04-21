@@ -49,12 +49,10 @@
  * However, that same blend configuration will compile to many different blend
  * shaders, depending on the framebuffer formats active. The rationale is that
  * blend shaders override not just fixed-function blending but also
- * fixed-function format conversion. As such, each blend shader must be
- * hardcoded to a particular framebuffer format to correctly pack/unpack it. As
- * a concrete example, to the hardware there is no difference (!) between RG16F
- * and RG16UI -- both are simply 4-byte-per-pixel chunks. Thus both formats
- * require a blend shader (even with blending is totally disabled!), required
- * to do conversion as necessary (if necessary).
+ * fixed-function format conversion, so blend shaders are keyed to a particular
+ * framebuffer format. As an example, the tilebuffer format is identical for
+ * RG16F and RG16UI -- both are simply 32-bit raw pixels -- so both require
+ * blend shaders.
  *
  * All of this state is encapsulated in the panfrost_blend_state struct
  * (our subclass of pipe_blend_state).
