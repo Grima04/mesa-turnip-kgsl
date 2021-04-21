@@ -268,6 +268,29 @@ softpipe_get_query_result(struct pipe_context *pipe,
    return true;
 }
 
+static bool
+is_result_nonzero(struct pipe_query *q,
+                  union pipe_query_result *vresult)
+{
+   struct softpipe_query *sq = softpipe_query(q);
+
+   switch (sq->type) {
+   case PIPE_QUERY_TIMESTAMP_DISJOINT:
+   case PIPE_QUERY_SO_STATISTICS:
+   case PIPE_QUERY_PIPELINE_STATISTICS:
+      unreachable("unpossible");
+      break;
+   case PIPE_QUERY_GPU_FINISHED:
+   case PIPE_QUERY_OCCLUSION_PREDICATE:
+   case PIPE_QUERY_OCCLUSION_PREDICATE_CONSERVATIVE:
+   case PIPE_QUERY_SO_OVERFLOW_PREDICATE:
+   case PIPE_QUERY_SO_OVERFLOW_ANY_PREDICATE:
+      return vresult->b;
+   default:
+      return !!vresult->u64;
+   }
+   return false;
+}
 
 /**
  * Called by rendering function to check rendering is conditional.
@@ -278,7 +301,8 @@ softpipe_check_render_cond(struct softpipe_context *sp)
 {
    struct pipe_context *pipe = &sp->pipe;
    boolean b, wait;
-   uint64_t result;
+   union pipe_query_result result;
+   memset(&result, 0, sizeof(union pipe_query_result));
 
    if (!sp->render_cond_query) {
       return TRUE;  /* no query predicate, draw normally */
@@ -288,9 +312,9 @@ softpipe_check_render_cond(struct softpipe_context *sp)
            sp->render_cond_mode == PIPE_RENDER_COND_BY_REGION_WAIT);
 
    b = pipe->get_query_result(pipe, sp->render_cond_query, wait,
-                              (void*)&result);
+                              &result);
    if (b)
-      return (!result) == sp->render_cond_cond;
+      return !is_result_nonzero(sp->render_cond_query, &result) == sp->render_cond_cond;
    else
       return TRUE;
 }
