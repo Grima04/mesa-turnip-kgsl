@@ -287,24 +287,28 @@ pandecode_mfbd_bfr(uint64_t gpu_va, int job_no, bool is_fragment, bool is_bifros
 
         if (is_bifrost) {
                 pandecode_sample_locations(fb, job_no);
+
                 pan_section_unpack(fb, MULTI_TARGET_FRAMEBUFFER, BIFROST_PARAMETERS, bparams);
                 unsigned dcd_size = MALI_DRAW_LENGTH + MALI_DRAW_PADDING_LENGTH;
+                struct pandecode_mapped_memory *dcdmem =
+                        pandecode_find_mapped_gpu_mem_containing(bparams.frame_shader_dcds);
+
                 if (bparams.pre_frame_0 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
-                        const void *PANDECODE_PTR_VAR(dcd, mem, bparams.frame_shader_dcds + (0 * dcd_size));
+                        const void *PANDECODE_PTR_VAR(dcd, dcdmem, bparams.frame_shader_dcds + (0 * dcd_size));
                         pan_unpack(dcd, DRAW, draw);
                         pandecode_log("Pre frame 0:\n");
                         pandecode_dcd(&draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", true, gpu_id);
                 }
 
                 if (bparams.pre_frame_1 != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
-                        const void *PANDECODE_PTR_VAR(dcd, mem, bparams.frame_shader_dcds + (1 * dcd_size));
+                        const void *PANDECODE_PTR_VAR(dcd, dcdmem, bparams.frame_shader_dcds + (1 * dcd_size));
                         pan_unpack(dcd, DRAW, draw);
                         pandecode_log("Pre frame 1:\n");
                         pandecode_dcd(&draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", true, gpu_id);
                 }
 
                 if (bparams.post_frame != MALI_PRE_POST_FRAME_SHADER_MODE_NEVER) {
-                        const void *PANDECODE_PTR_VAR(dcd, mem, bparams.frame_shader_dcds + (2 * dcd_size));
+                        const void *PANDECODE_PTR_VAR(dcd, dcdmem, bparams.frame_shader_dcds + (2 * dcd_size));
                         pan_unpack(dcd, DRAW, draw);
                         pandecode_log("Post frame:\n");
                         pandecode_dcd(&draw, job_no, MALI_JOB_TYPE_FRAGMENT, "", true, gpu_id);
