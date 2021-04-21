@@ -86,8 +86,7 @@ lower_fragcolor_instr(nir_builder *b, nir_instr *intr, UNUSED void *data)
       char name[28];
       snprintf(name, sizeof(name), name_tmpl, i);
       nir_variable *out_color = nir_variable_create(b->shader, nir_var_shader_out,
-                                                   glsl_vec4_type(),
-                                                   name);
+                                                   out->type, name);
       out_color->data.location = FRAG_RESULT_DATA0 + i;
       out_color->data.driver_location = i;
       out_color->data.index = out->data.index;
