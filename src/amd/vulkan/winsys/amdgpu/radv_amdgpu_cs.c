@@ -925,7 +925,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
          struct radeon_cmdbuf **new_cs_array;
          unsigned idx = 0;
 
-         new_cs_array = malloc(cs->num_old_cs_buffers * sizeof(*new_cs_array));
+         new_cs_array = malloc(number_of_ibs * sizeof(*new_cs_array));
          assert(new_cs_array);
 
          for (unsigned j = 0; j < cs->num_old_cs_buffers; j++)
