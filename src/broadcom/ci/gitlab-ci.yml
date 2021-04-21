@@ -146,28 +146,17 @@ v3d-rpi3-egl:armhf:
     BM_START_XORG: 1
     DEQP_VER: egl
 
-.v3d-rpi4-piglit:armhf:
+v3d-rpi4-piglit:armhf:
   extends:
     - .piglit-test
     - .v3d-rpi4-test:armhf
     - .test-manual
+  parallel: 3
   variables:
     BARE_METAL_TEST_SCRIPT: "/install/piglit/piglit-runner.sh"
     BM_START_XORG: 1
     PIGLIT_PLATFORM: mixed_glx_egl
-
-v3d-rpi4-piglit-quick_gl:armhf:
-  extends:
-    - .v3d-rpi4-piglit:armhf
-  parallel: 2
-  variables:
-    PIGLIT_PROFILES: quick_gl
-
-v3d-rpi4-piglit-quick_shader:armhf:
-  extends:
-    - .v3d-rpi4-piglit:armhf
-  variables:
-    PIGLIT_PROFILES: quick_shader
+    PIGLIT_PROFILES: all
 
 v3dv-rpi4-vk:armhf:
   extends:

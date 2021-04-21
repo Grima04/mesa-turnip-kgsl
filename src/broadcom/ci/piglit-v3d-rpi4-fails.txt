@@ -63,6 +63,7 @@ spec@arb_pixel_buffer_object@pbo-getteximage,Fail
 spec@arb_pixel_buffer_object@texsubimage array pbo,Fail
 spec@arb_point_sprite@arb_point_sprite-checkerboard,Fail
 spec@arb_point_sprite@arb_point_sprite-mipmap,Fail
+spec@arb_shader_storage_buffer_object@compiler@atomicmin-swizzle.vert,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgrad,Fail
 spec@arb_shader_texture_lod@execution@arb_shader_texture_lod-texgradcube,Fail
 spec@arb_texture_float@fbo-blending-formats,Fail
@@ -110,6 +111,9 @@ spec@ext_texture_integer@getteximage-clamping,Fail
 spec@ext_texture_lod_bias@lodbias,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor,Fail
 spec@ext_texture_snorm@texwrap formats bordercolor-swizzled,Fail
+spec@glsl-1.10@execution@glsl-fs-inline-explosion,Crash
+spec@glsl-1.10@execution@glsl-vs-inline-explosion,Crash
+spec@glsl-1.20@compiler@invalid-vec4-array-to-vec3-array-conversion.vert,Fail
 spec@glsl-1.20@execution@clipping@vs-clip-vertex-primitives,Fail
 spec@glsl-1.20@execution@fs-underflow-mul-compare-zero,Fail
 spec@intel_performance_query@intel_performance_query-issue_2235,Fail
@@ -120,8 +124,57 @@ spec@nv_copy_depth_to_color@nv_copy_depth_to_color 0 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x223344ff,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color 1 0x76356278,Crash
 spec@nv_copy_depth_to_color@nv_copy_depth_to_color,Crash
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-2d-array.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-2d-array.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-2d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-2d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-3d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-3d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-cube.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-snorm-cube.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-2d-array.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-2d-array.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-2d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-2d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-3d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-3d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-cube.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-r16-unorm-cube.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-2d-array.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-2d-array.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-2d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-2d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-3d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-3d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-cube.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-snorm-cube.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-2d-array.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-2d-array.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-2d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-2d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-3d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-3d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-cube.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rg16-unorm-cube.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-2d-array.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-2d-array.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-2d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-2d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-3d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-3d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-cube.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-snorm-cube.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-2d-array.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-2d-array.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-2d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-2d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-3d.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-3d.vert,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-cube.frag,Fail
+spec@nv_image_formats@compiler@declaration-disallow-rgba16-unorm-cube.vert,Fail
 spec@nv_read_depth@read_depth_gles3,Fail
 spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
+spec@oes_shader_io_blocks@compiler@layout-location-aliasing.vert,Fail
 wgl@wgl-multi-context-single-window,Fail
 wgl@wgl-multi-window-single-context,Fail
 wgl@wgl-sanity,Fail
