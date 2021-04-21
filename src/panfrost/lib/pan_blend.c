@@ -162,41 +162,32 @@ pan_blend_can_fixed_function(const struct panfrost_device *dev,
                                            rt_state->equation.alpha_dst_factor);
 }
 
-static void
-to_c_factor(enum blend_factor factor, bool invert_factor,
-            struct MALI_BLEND_FUNCTION *function)
+static enum mali_blend_operand_c
+to_c_factor(enum blend_factor factor)
 {
-        function->invert_c = invert_factor;
-
         switch (factor) {
         case BLEND_FACTOR_ZERO:
-                function->c = MALI_BLEND_OPERAND_C_ZERO;
-                break;
+                return MALI_BLEND_OPERAND_C_ZERO;
 
         case BLEND_FACTOR_SRC_ALPHA:
-                function->c = MALI_BLEND_OPERAND_C_SRC_ALPHA;
-                break;
+                return MALI_BLEND_OPERAND_C_SRC_ALPHA;
 
         case BLEND_FACTOR_DST_ALPHA:
-                function->c = MALI_BLEND_OPERAND_C_DEST_ALPHA;
-                break;
+                return MALI_BLEND_OPERAND_C_DEST_ALPHA;
 
         case BLEND_FACTOR_SRC_COLOR:
-                function->c = MALI_BLEND_OPERAND_C_SRC;
-                break;
+                return MALI_BLEND_OPERAND_C_SRC;
 
         case BLEND_FACTOR_DST_COLOR:
-                function->c = MALI_BLEND_OPERAND_C_DEST;
-                break;
+                return MALI_BLEND_OPERAND_C_DEST;
 
         case BLEND_FACTOR_CONSTANT_COLOR:
         case BLEND_FACTOR_CONSTANT_ALPHA:
-                function->c = MALI_BLEND_OPERAND_C_CONSTANT;
-                break;
-        default:
-                unreachable("Invalid blend factor");
-        }
+                return MALI_BLEND_OPERAND_C_CONSTANT;
 
+        default:
+                unreachable("Unsupported blend factor");
+        }
 }
 
 static void
@@ -214,7 +205,8 @@ to_panfrost_function(enum blend_func blend_func,
                 function->b = MALI_BLEND_OPERAND_B_DEST;
                 if (blend_func == BLEND_FUNC_SUBTRACT)
                         function->negate_b = true;
-                to_c_factor(dest_factor, invert_dest, function);
+                function->invert_c = invert_dest;
+                function->c = to_c_factor(dest_factor);
         } else if (src_factor == BLEND_FACTOR_ZERO && invert_src) {
                 function->a = MALI_BLEND_OPERAND_A_SRC;
                 function->b = MALI_BLEND_OPERAND_B_DEST;
@@ -222,13 +214,15 @@ to_panfrost_function(enum blend_func blend_func,
                         function->negate_b = true;
                 else if (blend_func == BLEND_FUNC_REVERSE_SUBTRACT)
                         function->negate_a = true;
-                to_c_factor(dest_factor, invert_dest, function);
+                function->invert_c = invert_dest;
+                function->c = to_c_factor(dest_factor);
         } else if (dest_factor == BLEND_FACTOR_ZERO && !invert_dest) {
                 function->a = MALI_BLEND_OPERAND_A_ZERO;
                 function->b = MALI_BLEND_OPERAND_B_SRC;
                 if (blend_func == BLEND_FUNC_REVERSE_SUBTRACT)
                         function->negate_b = true;
-                to_c_factor(src_factor, invert_src, function);
+                function->invert_c = invert_src;
+                function->c = to_c_factor(src_factor);
         } else if (dest_factor == BLEND_FACTOR_ZERO && invert_dest) {
                 function->a = MALI_BLEND_OPERAND_A_DEST;
                 function->b = MALI_BLEND_OPERAND_B_SRC;
@@ -236,10 +230,12 @@ to_panfrost_function(enum blend_func blend_func,
                         function->negate_a = true;
                 else if (blend_func == BLEND_FUNC_REVERSE_SUBTRACT)
                         function->negate_b = true;
-                to_c_factor(src_factor, invert_src, function);
+                function->invert_c = invert_src;
+                function->c = to_c_factor(src_factor);
         } else if (src_factor == dest_factor && invert_src == invert_dest) {
                 function->a = MALI_BLEND_OPERAND_A_ZERO;
-                to_c_factor(src_factor, invert_src, function);
+                function->invert_c = invert_src;
+                function->c = to_c_factor(src_factor);
 
                 switch (blend_func) {
                 case BLEND_FUNC_ADD:
@@ -258,7 +254,8 @@ to_panfrost_function(enum blend_func blend_func,
                 assert(src_factor == dest_factor && invert_src != invert_dest);
 
                 function->a = MALI_BLEND_OPERAND_A_DEST;
-                to_c_factor(src_factor, invert_src, function);
+                function->invert_c = invert_src;
+                function->c = to_c_factor(src_factor);
 
                 switch (blend_func) {
                 case BLEND_FUNC_ADD:
