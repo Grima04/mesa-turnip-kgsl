@@ -476,6 +476,9 @@ bi_emit_fragment_out(bi_builder *b, nir_intrinsic_instr *instr)
                 for (unsigned i = 0; i < count; ++i)
                         bi_mov_i32_to(b, bi_register(4 + i), bi_word(src0, i));
 
+                b->shader->info->bifrost.blend_src1_type =
+                        nir_intrinsic_src_type(instr);
+
                 return;
         }
 
