@@ -100,19 +100,16 @@ panfrost_create_blend_state(struct pipe_context *pipe,
 }
 
 static void
-panfrost_bind_blend_state(struct pipe_context *pipe,
-                          void *cso)
+panfrost_bind_blend_state(struct pipe_context *pipe, void *cso)
 {
         struct panfrost_context *ctx = pan_context(pipe);
-        ctx->blend = (struct panfrost_blend_state *) cso;
+        ctx->blend = cso;
 }
 
 static void
-panfrost_delete_blend_state(struct pipe_context *pipe,
-                            void *cso)
+panfrost_delete_blend_state(struct pipe_context *pipe, void *cso)
 {
-        struct panfrost_blend_state *blend = (struct panfrost_blend_state *) cso;
-        ralloc_free(blend);
+        ralloc_free(cso);
 }
 
 static void
