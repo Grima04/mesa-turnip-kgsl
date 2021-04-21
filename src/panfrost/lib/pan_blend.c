@@ -31,10 +31,7 @@
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 
-/* Implements fixed-function blending on Midgard. */
-
-/* Check if this is a special edge case blend factor, which may require the use
- * of clip modifiers */
+/* Fixed function blending */
 
 static bool
 factor_is_supported(enum blend_factor factor)
