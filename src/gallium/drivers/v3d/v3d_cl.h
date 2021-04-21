@@ -278,7 +278,7 @@ cl_get_emit_space(struct v3d_cl_out **cl, size_t size)
  * Helper function called by the XML-generated pack functions for filling in
  * an address field in shader records.
  *
- * Since we have a private address space as of VC5, our BOs can have lifelong
+ * Since we have a private address space as of V3D, our BOs can have lifelong
  * offsets, and all the kernel needs to know is which BOs need to be paged in
  * for this exec.
  */

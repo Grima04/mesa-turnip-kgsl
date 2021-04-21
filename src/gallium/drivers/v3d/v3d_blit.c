@@ -245,7 +245,7 @@ v3d_tfu(struct pipe_context *pctx,
                 return false;
 
         /* Can't write to raster. */
-        if (dst_base_slice->tiling == VC5_TILING_RASTER)
+        if (dst_base_slice->tiling == V3D_TILING_RASTER)
                 return false;
 
         /* When using TFU for blit, we are doing exact copies (both input and
@@ -288,12 +288,12 @@ v3d_tfu(struct pipe_context *pctx,
         uint32_t src_offset = (src->bo->offset +
                                v3d_layer_offset(psrc, src_level, src_layer));
         tfu.iia |= src_offset;
-        if (src_base_slice->tiling == VC5_TILING_RASTER) {
+        if (src_base_slice->tiling == V3D_TILING_RASTER) {
                 tfu.icfg |= (V3D_TFU_ICFG_FORMAT_RASTER <<
                              V3D_TFU_ICFG_FORMAT_SHIFT);
         } else {
                 tfu.icfg |= ((V3D_TFU_ICFG_FORMAT_LINEARTILE +
-                              (src_base_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                              (src_base_slice->tiling - V3D_TILING_LINEARTILE)) <<
                              V3D_TFU_ICFG_FORMAT_SHIFT);
         }
 
@@ -303,24 +303,24 @@ v3d_tfu(struct pipe_context *pctx,
         if (last_level != base_level)
                 tfu.ioa |= V3D_TFU_IOA_DIMTW;
         tfu.ioa |= ((V3D_TFU_IOA_FORMAT_LINEARTILE +
-                     (dst_base_slice->tiling - VC5_TILING_LINEARTILE)) <<
+                     (dst_base_slice->tiling - V3D_TILING_LINEARTILE)) <<
                     V3D_TFU_IOA_FORMAT_SHIFT);
 
         tfu.icfg |= tex_format << V3D_TFU_ICFG_TTYPE_SHIFT;
         tfu.icfg |= (last_level - base_level) << V3D_TFU_ICFG_NUMMM_SHIFT;
 
         switch (src_base_slice->tiling) {
-        case VC5_TILING_UIF_NO_XOR:
-        case VC5_TILING_UIF_XOR:
+        case V3D_TILING_UIF_NO_XOR:
+        case V3D_TILING_UIF_XOR:
                 tfu.iis |= (src_base_slice->padded_height /
                             (2 * v3d_utile_height(src->cpp)));
                 break;
-        case VC5_TILING_RASTER:
+        case V3D_TILING_RASTER:
                 tfu.iis |= src_base_slice->stride / src->cpp;
                 break;
-        case VC5_TILING_LINEARTILE:
-        case VC5_TILING_UBLINEAR_1_COLUMN:
-        case VC5_TILING_UBLINEAR_2_COLUMN:
+        case V3D_TILING_LINEARTILE:
+        case V3D_TILING_UBLINEAR_1_COLUMN:
+        case V3D_TILING_UBLINEAR_2_COLUMN:
                 break;
        }
 
@@ -329,8 +329,8 @@ v3d_tfu(struct pipe_context *pctx,
          * those necessary to cover the height).  When filling mipmaps, the
          * miplevel 1+ tiling state is inferred.
          */
-        if (dst_base_slice->tiling == VC5_TILING_UIF_NO_XOR ||
-            dst_base_slice->tiling == VC5_TILING_UIF_XOR) {
+        if (dst_base_slice->tiling == V3D_TILING_UIF_NO_XOR ||
+            dst_base_slice->tiling == V3D_TILING_UIF_XOR) {
                 int uif_block_h = 2 * v3d_utile_height(dst->cpp);
                 int implicit_padded_height = align(height, uif_block_h);
 

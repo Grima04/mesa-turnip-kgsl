@@ -635,9 +635,9 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
                          const struct pipe_draw_info *info)
 {
         struct v3d_job *job = v3d->job;
-        /* VC5_DIRTY_VTXSTATE */
+        /* V3D_DIRTY_VTXSTATE */
         struct v3d_vertex_stateobj *vtx = v3d->vtx;
-        /* VC5_DIRTY_VTXBUF */
+        /* V3D_DIRTY_VTXBUF */
         struct v3d_vertexbuf_stateobj *vertexbuf = &v3d->vertexbuf;
 
         /* Upload the uniforms to the indirect CL first */
@@ -760,7 +760,7 @@ v3d_emit_gl_shader_state(struct v3d_context *v3d,
 
         cl_emit(&job->indirect, GL_SHADER_STATE_RECORD, shader) {
                 shader.enable_clipping = true;
-                /* VC5_DIRTY_PRIM_MODE | VC5_DIRTY_RASTERIZER */
+                /* V3D_DIRTY_PRIM_MODE | V3D_DIRTY_RASTERIZER */
                 shader.point_size_in_shaded_vertex_data =
                         (info->mode == PIPE_PRIM_POINTS &&
                          v3d->rasterizer->base.point_size_per_vertex);
@@ -1012,30 +1012,30 @@ static void
 v3d_update_job_ez(struct v3d_context *v3d, struct v3d_job *job)
 {
         switch (v3d->zsa->ez_state) {
-        case VC5_EZ_UNDECIDED:
+        case V3D_EZ_UNDECIDED:
                 /* If the Z/S state didn't pick a direction but didn't
                  * disable, then go along with the current EZ state.  This
                  * allows EZ optimization for Z func == EQUAL or NEVER.
                  */
                 break;
 
-        case VC5_EZ_LT_LE:
-        case VC5_EZ_GT_GE:
+        case V3D_EZ_LT_LE:
+        case V3D_EZ_GT_GE:
                 /* If the Z/S state picked a direction, then it needs to match
                  * the current direction if we've decided on one.
                  */
-                if (job->ez_state == VC5_EZ_UNDECIDED)
+                if (job->ez_state == V3D_EZ_UNDECIDED)
                         job->ez_state = v3d->zsa->ez_state;
                 else if (job->ez_state != v3d->zsa->ez_state)
-                        job->ez_state = VC5_EZ_DISABLED;
+                        job->ez_state = V3D_EZ_DISABLED;
                 break;
 
-        case VC5_EZ_DISABLED:
+        case V3D_EZ_DISABLED:
                 /* If the current Z/S state disables EZ because of a bad Z
                  * func or stencil operation, then we can't do any more EZ in
                  * this frame.
                  */
-                job->ez_state = VC5_EZ_DISABLED;
+                job->ez_state = V3D_EZ_DISABLED;
                 break;
         }
 
@@ -1044,11 +1044,11 @@ v3d_update_job_ez(struct v3d_context *v3d, struct v3d_job *job)
          * ARB_conservative_depth's hints to avoid this)
          */
         if (v3d->prog.fs->prog_data.fs->writes_z) {
-                job->ez_state = VC5_EZ_DISABLED;
+                job->ez_state = V3D_EZ_DISABLED;
         }
 
-        if (job->first_ez_state == VC5_EZ_UNDECIDED &&
-            (job->ez_state != VC5_EZ_DISABLED || job->draw_calls_queued == 0))
+        if (job->first_ez_state == V3D_EZ_UNDECIDED &&
+            (job->ez_state != V3D_EZ_DISABLED || job->draw_calls_queued == 0))
                 job->first_ez_state = job->ez_state;
 }
 
@@ -1224,7 +1224,7 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
 
         if (v3d->prim_mode != info->mode) {
                 v3d->prim_mode = info->mode;
-                v3d->dirty |= VC5_DIRTY_PRIM_MODE;
+                v3d->dirty |= V3D_DIRTY_PRIM_MODE;
         }
 
         v3d_start_draw(v3d);
@@ -1249,15 +1249,15 @@ v3d_draw_vbo(struct pipe_context *pctx, const struct pipe_draw_info *info,
         v3d33_emit_state(pctx);
 #endif
 
-        if (v3d->dirty & (VC5_DIRTY_VTXBUF |
-                          VC5_DIRTY_VTXSTATE |
-                          VC5_DIRTY_PRIM_MODE |
-                          VC5_DIRTY_RASTERIZER |
-                          VC5_DIRTY_COMPILED_CS |
-                          VC5_DIRTY_COMPILED_VS |
-                          VC5_DIRTY_COMPILED_GS_BIN |
-                          VC5_DIRTY_COMPILED_GS |
-                          VC5_DIRTY_COMPILED_FS |
+        if (v3d->dirty & (V3D_DIRTY_VTXBUF |
+                          V3D_DIRTY_VTXSTATE |
+                          V3D_DIRTY_PRIM_MODE |
+                          V3D_DIRTY_RASTERIZER |
+                          V3D_DIRTY_COMPILED_CS |
+                          V3D_DIRTY_COMPILED_VS |
+                          V3D_DIRTY_COMPILED_GS_BIN |
+                          V3D_DIRTY_COMPILED_GS |
+                          V3D_DIRTY_COMPILED_FS |
                           v3d->prog.cs->uniform_dirty_bits |
                           v3d->prog.vs->uniform_dirty_bits |
                           (v3d->prog.gs_bin ?
