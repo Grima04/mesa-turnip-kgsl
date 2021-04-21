@@ -990,16 +990,18 @@ panfrost_upload_multisampled_sysval(struct panfrost_batch *batch,
 }
 
 static void
-panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch, unsigned rt,
-                struct sysval_uniform *uniform)
+panfrost_upload_rt_conversion_sysval(struct panfrost_batch *batch,
+                unsigned size_and_rt, struct sysval_uniform *uniform)
 {
         struct panfrost_context *ctx = batch->ctx;
         struct panfrost_device *dev = pan_device(ctx->base.screen);
+        unsigned rt = size_and_rt & 0xF;
+        unsigned size = size_and_rt >> 4;
 
         if (rt < batch->key.nr_cbufs && batch->key.cbufs[rt]) {
                 enum pipe_format format = batch->key.cbufs[rt]->format;
                 uniform->u[0] =
-                        pan_blend_get_bifrost_desc(dev, format, rt, 32) >> 32;
+                        pan_blend_get_bifrost_desc(dev, format, rt, size) >> 32;
         } else {
                 pan_pack(&uniform->u[0], BIFROST_INTERNAL_CONVERSION, cfg)
                         cfg.memory_format = dev->formats[PIPE_FORMAT_NONE].hw;

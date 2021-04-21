@@ -920,6 +920,7 @@ static void
 bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
 {
         unsigned rt = b->shader->inputs->blend.rt;
+        unsigned size = nir_dest_bit_size(instr->dest);
 
         /* Get the render target */
         if (!b->shader->inputs->is_blend) {
@@ -943,7 +944,7 @@ bi_emit_ld_tile(bi_builder *b, nir_intrinsic_instr *instr)
 
         bi_index desc = b->shader->inputs->is_blend ?
                 bi_imm_u32(b->shader->inputs->blend.bifrost_blend_desc >> 32) :
-                bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt), 1, 0);
+                bi_load_sysval(b, PAN_SYSVAL(RT_CONVERSION, rt | (size << 4)), 1, 0);
 
         uint32_t indices = 0;
         memcpy(&indices, &pix, sizeof(indices));
