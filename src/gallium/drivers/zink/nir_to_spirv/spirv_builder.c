@@ -825,7 +825,7 @@ spirv_builder_emit_image_read(struct spirv_builder *b,
 {
    SpvId result = spirv_builder_new_id(b);
 
-   SpvImageOperandsMask operand_mask = SpvImageOperandsMakeTexelVisibleMask | SpvImageOperandsNonPrivateTexelMask;
+   SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[5];
    int num_extra_operands = 1;
    if (lod) {
@@ -842,7 +842,6 @@ spirv_builder_emit_image_read(struct spirv_builder *b,
    }
    /* finalize num_extra_operands / extra_operands */
    extra_operands[0] = operand_mask;
-   extra_operands[num_extra_operands++] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 5 + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, SpvOpImageRead |
@@ -865,7 +864,7 @@ spirv_builder_emit_image_write(struct spirv_builder *b,
                                SpvId sample,
                                SpvId offset)
 {
-   SpvImageOperandsMask operand_mask = SpvImageOperandsMakeTexelAvailableMask | SpvImageOperandsNonPrivateTexelMask;
+   SpvImageOperandsMask operand_mask = SpvImageOperandsMaskNone;
    SpvId extra_operands[5];
    int num_extra_operands = 1;
    if (lod) {
@@ -882,7 +881,6 @@ spirv_builder_emit_image_write(struct spirv_builder *b,
    }
    /* finalize num_extra_operands / extra_operands */
    extra_operands[0] = operand_mask;
-   extra_operands[num_extra_operands++] = spirv_builder_const_uint(b, 32, SpvScopeWorkgroup);
 
    spirv_buffer_prepare(&b->instructions, b->mem_ctx, 4 + num_extra_operands);
    spirv_buffer_emit_word(&b->instructions, SpvOpImageWrite |
