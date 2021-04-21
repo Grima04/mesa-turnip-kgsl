@@ -46,7 +46,12 @@ v3dv_clif_dump(struct v3dv_device *device,
       char *name = ralloc_asprintf(NULL, "%s_0x%x",
                                    bo->name, bo->offset);
 
-      v3dv_bo_map(device, bo, bo->size);
+      bool ok = v3dv_bo_map(device, bo, bo->size);
+      if (!ok) {
+         fprintf(stderr, "failed to map BO for clif_dump.\n");
+         ralloc_free(name);
+         goto free_clif;
+      }
       clif_dump_add_bo(clif, name, bo->offset, bo->size, bo->map);
 
       ralloc_free(name);
@@ -54,6 +59,7 @@ v3dv_clif_dump(struct v3dv_device *device,
 
    clif_dump(clif, submit);
 
+ free_clif:
    clif_dump_destroy(clif);
 }
 
