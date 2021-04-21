@@ -101,6 +101,11 @@ can_blend_constant(const struct panfrost_device *dev,
         if (dev->arch == 6)
                 return false;
 
+        /* v7 only uses the constant from RT 0 (TODO: what if it's the same
+         * constant? or a constant is shared?) */
+        if (dev->arch == 7 && rt > 0)
+                return false;
+
         unsigned first_constant = ffs(constant_mask) - 1;
         float constant = state->constants[first_constant];
 
