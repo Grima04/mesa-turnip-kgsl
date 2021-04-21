@@ -1728,6 +1728,15 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
                                 const VkGraphicsPipelineCreateInfo *pCreateInfo)
 {
    const VkPipelineRasterizationStateCreateInfo *raster_info = pCreateInfo->pRasterizationState;
+   const VkPipelineRasterizationProvokingVertexStateCreateInfoEXT *provoking_vtx_info =
+      vk_find_struct_const(raster_info->pNext,
+                           PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT);
+   bool provoking_vtx_last = false;
+
+   if (provoking_vtx_info &&
+       provoking_vtx_info->provokingVertexMode == VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT) {
+      provoking_vtx_last = true;
+   }
 
    pipeline->graphics.pa_su_sc_mode_cntl =
       S_028814_FACE(raster_info->frontFace) |
@@ -1738,7 +1747,8 @@ radv_pipeline_init_raster_state(struct radv_pipeline *pipeline,
       S_028814_POLYMODE_BACK_PTYPE(si_translate_fill(raster_info->polygonMode)) |
       S_028814_POLY_OFFSET_FRONT_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
       S_028814_POLY_OFFSET_BACK_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
-      S_028814_POLY_OFFSET_PARA_ENABLE(raster_info->depthBiasEnable ? 1 : 0);
+      S_028814_POLY_OFFSET_PARA_ENABLE(raster_info->depthBiasEnable ? 1 : 0) |
+      S_028814_PROVOKING_VTX_LAST(provoking_vtx_last);
 
    if (pipeline->device->physical_device->rad_info.chip_class >= GFX10) {
       /* It should also be set if PERPENDICULAR_ENDCAP_ENA is set. */

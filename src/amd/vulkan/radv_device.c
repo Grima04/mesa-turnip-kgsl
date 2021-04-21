@@ -455,6 +455,7 @@ radv_physical_device_get_supported_extensions(const struct radv_physical_device 
       .EXT_pipeline_creation_feedback = true,
       .EXT_post_depth_coverage = device->rad_info.chip_class >= GFX10,
       .EXT_private_data = true,
+      .EXT_provoking_vertex = true,
       .EXT_queue_family_foreign = true,
       .EXT_robustness2 = true,
       .EXT_sample_locations = device->rad_info.chip_class < GFX10,
@@ -1608,6 +1609,13 @@ radv_GetPhysicalDeviceFeatures2(VkPhysicalDevice physicalDevice,
          features->shaderZeroInitializeWorkgroupMemory = true;
          break;
       }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT: {
+         VkPhysicalDeviceProvokingVertexFeaturesEXT *features =
+            (VkPhysicalDeviceProvokingVertexFeaturesEXT *)ext;
+         features->provokingVertexLast = true;
+         features->transformFeedbackPreservesProvokingVertex = true;
+         break;
+      }
       default:
          break;
       }
@@ -2271,6 +2279,13 @@ radv_GetPhysicalDeviceProperties2(VkPhysicalDevice physicalDevice,
          props->fragmentShadingRateWithFragmentShaderInterlock = false;
          props->fragmentShadingRateWithCustomSampleLocations = true;
          props->fragmentShadingRateStrictMultiplyCombiner = true;
+         break;
+      }
+      case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT: {
+         VkPhysicalDeviceProvokingVertexPropertiesEXT *props =
+            (VkPhysicalDeviceProvokingVertexPropertiesEXT *)ext;
+         props->provokingVertexModePerPipeline = true;
+         props->transformFeedbackPreservesTriangleFanProvokingVertex = true;
          break;
       }
       default:

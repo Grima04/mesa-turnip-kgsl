@@ -1,1 +1,2 @@
 zink supports GL_ARB_texture_filter_minmax
+VK_EXT_provoking_vertex on RADV.
