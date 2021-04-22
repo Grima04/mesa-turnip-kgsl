@@ -1156,9 +1156,6 @@ radv_shader_variant_create(struct radv_device *device, const struct radv_shader_
       if (device->physical_device->rad_info.chip_class >= GFX9 &&
           (binary->stage == MESA_SHADER_GEOMETRY || binary->info.is_ngg) &&
           !binary->is_gs_copy_shader) {
-         /* We add this symbol even on LLVM <= 8 to ensure that
-          * shader->config.lds_size is set correctly below.
-          */
          struct ac_rtld_symbol *sym = &lds_symbols[num_lds_symbols++];
          sym->name = "esgs_ring";
          sym->size = binary->info.ngg_info.esgs_ring_size;
