@@ -574,12 +574,13 @@ struct glx_display
    int majorOpcode;
 
     /**
-     * \name Server Version
+     * \name Minor Version
      *
-     * Major and minor version returned by the server during initialization.
+     * Minor version returned by the server during initialization. The major
+     * version is asserted to be 1 during extension setup.
      */
    /*@{ */
-   int majorVersion, minorVersion;
+   int minorVersion;
    /*@} */
 
     /**

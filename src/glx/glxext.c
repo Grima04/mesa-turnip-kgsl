@@ -720,7 +720,7 @@ getVisualConfigs(struct glx_screen *psc,
 }
 
 static GLboolean
- getFBConfigs(struct glx_screen *psc, struct glx_display *priv, int screen)
+getFBConfigs(struct glx_screen *psc, struct glx_display *priv, int screen)
 {
    xGLXGetFBConfigsReq *fb_req;
    xGLXGetFBConfigsSGIXReq *sgi_req;
@@ -738,8 +738,7 @@ static GLboolean
    LockDisplay(dpy);
 
    psc->configs = NULL;
-   if (priv->majorVersion > 1 ||
-       (priv->majorVersion == 1 && priv->minorVersion >= 3)) {
+   if (priv->minorVersion >= 3) {
       GetReq(GLXGetFBConfigs, fb_req);
       fb_req->reqType = priv->majorOpcode;
       fb_req->glxCode = X_GLXGetFBConfigs;
@@ -874,7 +873,7 @@ __glXInitialize(Display * dpy)
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
    Bool glx_direct, glx_accel;
 #endif
-   int i;
+   int i, majorVersion = 0;
 
    _XLockMutex(_Xglobal_lock);
 
@@ -903,12 +902,13 @@ __glXInitialize(Display * dpy)
    dpyPriv->serverGLXvendor = 0x0;
    dpyPriv->serverGLXversion = 0x0;
 
-   /* See if the versions are compatible.  This GLX implementation does not
-    * work with servers that only support GLX 1.0.
+   /* This GLX implementation requires X_GLXQueryExtensionsString
+    * and X_GLXQueryServerString, which are new in GLX 1.1.
     */
    if (!QueryVersion(dpy, dpyPriv->majorOpcode,
-		     &dpyPriv->majorVersion, &dpyPriv->minorVersion)
-       || (dpyPriv->majorVersion == 1 && dpyPriv->minorVersion < 1)) {
+		     &majorVersion, &dpyPriv->minorVersion)
+       || (majorVersion != 1)
+       || (majorVersion == 1 && dpyPriv->minorVersion < 1)) {
       free(dpyPriv);
       return NULL;
    }

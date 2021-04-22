@@ -531,7 +531,7 @@ glXQueryVersion(Display * dpy, int *major, int *minor)
       return False;
 
    if (major)
-      *major = priv->majorVersion;
+      *major = GLX_MAJOR_VERSION;
    if (minor)
       *minor = priv->minorVersion;
    return True;
@@ -1461,7 +1461,7 @@ glXImportContextEXT(Display *dpy, GLXContextID contextID)
    /* Send the glXQueryContextInfoEXT request */
    LockDisplay(dpy);
 
-   if (priv->majorVersion > 1 || priv->minorVersion >= 3) {
+   if (priv->minorVersion >= 3) {
       xGLXQueryContextReq *req;
 
       GetReq(GLXQueryContext, req);
