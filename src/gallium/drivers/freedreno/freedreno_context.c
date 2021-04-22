@@ -116,6 +116,11 @@ fd_context_flush(struct pipe_context *pctx, struct pipe_fence_handle **fencep,
    fd_bc_dump(ctx->screen, "%p: flushing %p<%u>, flags=0x%x, pending:\n", ctx,
               batch, batch->seqno, flags);
 
+   /* If we get here, we need to flush for a fence, even if there is
+    * no rendering yet:
+    */
+   batch->needs_flush = true;
+
    if (!ctx->screen->reorder) {
       fd_batch_flush(batch);
    } else if (flags & PIPE_FLUSH_DEFERRED) {
