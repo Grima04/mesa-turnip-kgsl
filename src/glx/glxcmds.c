@@ -678,28 +678,13 @@ glXCopyContext(Display * dpy, GLXContext source_user,
 }
 
 
-/**
- * \todo
- * Shouldn't this function \b always return \c False when
- * \c GLX_DIRECT_RENDERING is not defined?  Do we really need to bother with
- * the GLX protocol here at all?
- */
 _GLX_PUBLIC Bool
 glXIsDirect(Display * dpy, GLXContext gc_user)
 {
    struct glx_context *gc = (struct glx_context *) gc_user;
 
-   if (!gc) {
-      return False;
-   }
-   else if (gc->isDirect) {
-      return True;
-   }
-#ifdef GLX_USE_APPLEGL  /* TODO: indirect on darwin */
-   return False;
-#else
-   return __glXIsDirect(dpy, gc->xid, NULL);
-#endif
+   /* This is set for us at context creation */
+   return gc ? gc->isDirect : False;
 }
 
 _GLX_PUBLIC GLXPixmap
