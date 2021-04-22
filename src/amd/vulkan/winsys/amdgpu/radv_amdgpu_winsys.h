@@ -47,7 +47,6 @@ struct radv_amdgpu_winsys {
    bool debug_log_bos;
    bool use_ib_bos;
    bool zero_all_vram_allocs;
-   bool use_llvm;
    uint64_t perftest;
 
    uint64_t allocated_vram;
