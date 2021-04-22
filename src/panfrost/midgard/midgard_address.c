@@ -85,6 +85,9 @@ mir_match_constant(struct mir_address *address)
 
 /* Matches an iadd when there is a free slot or constant */
 
+/* The offset field is a 18-bit signed integer */
+#define MAX_POSITIVE_OFFSET ((1 << 17) - 1)
+
 static void
 mir_match_iadd(struct mir_address *address, bool first_free)
 {
@@ -101,13 +104,17 @@ mir_match_iadd(struct mir_address *address, bool first_free)
         nir_ssa_scalar op1 = nir_ssa_scalar_chase_alu_src(address->B, 0);
         nir_ssa_scalar op2 = nir_ssa_scalar_chase_alu_src(address->B, 1);
 
-        if (nir_ssa_scalar_is_const(op1)) {
+        if (nir_ssa_scalar_is_const(op1) &&
+            nir_ssa_scalar_as_uint(op1) <= MAX_POSITIVE_OFFSET) {
                 address->bias += nir_ssa_scalar_as_uint(op1);
                 address->B = op2;
-        } else if (nir_ssa_scalar_is_const(op2)) {
+        } else if (nir_ssa_scalar_is_const(op2) &&
+                   nir_ssa_scalar_as_uint(op2) <= MAX_POSITIVE_OFFSET) {
                 address->bias += nir_ssa_scalar_as_uint(op2);
                 address->B = op1;
-        } else if (first_free && !address->A.def) {
+        } else if (!nir_ssa_scalar_is_const(op1) &&
+                   !nir_ssa_scalar_is_const(op2) &&
+                   first_free && !address->A.def) {
                 address->A = op1;
                 address->B = op2;
         }
