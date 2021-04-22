@@ -74,7 +74,7 @@ vn_device_memory_simple_free(struct vn_device *dev,
    const VkAllocationCallbacks *alloc = &dev->base.base.alloc;
 
    if (mem->base_bo)
-      vn_renderer_bo_unref(mem->base_bo);
+      vn_renderer_bo_unref(dev->renderer, mem->base_bo);
 
    vn_async_vkFreeMemory(dev->instance, vn_device_to_handle(dev),
                          vn_device_memory_to_handle(mem), NULL);
@@ -104,7 +104,8 @@ vn_device_memory_pool_grow_locked(struct vn_device *dev,
 
    struct vn_device_memory_pool *pool = &dev->memory_pools[mem_type_index];
    if (pool->memory) {
-      const bool bo_destroyed = vn_renderer_bo_unref(pool->memory->base_bo);
+      const bool bo_destroyed =
+         vn_renderer_bo_unref(dev->renderer, pool->memory->base_bo);
       pool->memory->base_bo = NULL;
 
       /* we use pool->memory's base_bo to keep it alive */
@@ -149,7 +150,7 @@ vn_device_memory_pool_alloc(struct vn_device *dev,
 
    /* we use base_bo to keep base_mem alive */
    *base_mem = pool->memory;
-   *base_bo = vn_renderer_bo_ref(pool->memory->base_bo);
+   *base_bo = vn_renderer_bo_ref(dev->renderer, pool->memory->base_bo);
 
    *base_offset = pool->used;
    pool->used += align64(size, pool_align);
@@ -165,7 +166,7 @@ vn_device_memory_pool_free(struct vn_device *dev,
                            struct vn_renderer_bo *base_bo)
 {
    /* we use base_bo to keep base_mem alive */
-   if (vn_renderer_bo_unref(base_bo))
+   if (vn_renderer_bo_unref(dev->renderer, base_bo))
       vn_device_memory_simple_free(dev, base_mem);
 }
 
@@ -240,7 +241,7 @@ vn_AllocateMemory(VkDevice device,
       result = vn_call_vkAllocateMemory(
          dev->instance, device, &memory_allocate_info, NULL, &mem_handle);
       if (result != VK_SUCCESS) {
-         vn_renderer_bo_unref(bo);
+         vn_renderer_bo_unref(dev->renderer, bo);
          vk_free(alloc, mem);
          return vn_error(dev->instance, result);
       }
@@ -299,7 +300,7 @@ vn_FreeMemory(VkDevice device,
       vn_device_memory_pool_free(dev, mem->base_memory, mem->base_bo);
    } else {
       if (mem->base_bo)
-         vn_renderer_bo_unref(mem->base_bo);
+         vn_renderer_bo_unref(dev->renderer, mem->base_bo);
       vn_async_vkFreeMemory(dev->instance, device, memory, NULL);
    }
 
@@ -330,7 +331,7 @@ vn_MapMemory(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_device_memory *mem = vn_device_memory_from_handle(memory);
 
-   void *ptr = vn_renderer_bo_map(mem->base_bo);
+   void *ptr = vn_renderer_bo_map(dev->renderer, mem->base_bo);
    if (!ptr)
       return vn_error(dev->instance, VK_ERROR_MEMORY_MAP_FAILED);
 
@@ -351,6 +352,8 @@ vn_FlushMappedMemoryRanges(VkDevice device,
                            uint32_t memoryRangeCount,
                            const VkMappedMemoryRange *pMemoryRanges)
 {
+   struct vn_device *dev = vn_device_from_handle(device);
+
    for (uint32_t i = 0; i < memoryRangeCount; i++) {
       const VkMappedMemoryRange *range = &pMemoryRanges[i];
       struct vn_device_memory *mem =
@@ -359,8 +362,8 @@ vn_FlushMappedMemoryRanges(VkDevice device,
       const VkDeviceSize size = range->size == VK_WHOLE_SIZE
                                    ? mem->map_end - range->offset
                                    : range->size;
-      vn_renderer_bo_flush(mem->base_bo, mem->base_offset + range->offset,
-                           size);
+      vn_renderer_bo_flush(dev->renderer, mem->base_bo,
+                           mem->base_offset + range->offset, size);
    }
 
    return VK_SUCCESS;
@@ -371,6 +374,8 @@ vn_InvalidateMappedMemoryRanges(VkDevice device,
                                 uint32_t memoryRangeCount,
                                 const VkMappedMemoryRange *pMemoryRanges)
 {
+   struct vn_device *dev = vn_device_from_handle(device);
+
    for (uint32_t i = 0; i < memoryRangeCount; i++) {
       const VkMappedMemoryRange *range = &pMemoryRanges[i];
       struct vn_device_memory *mem =
@@ -379,7 +384,7 @@ vn_InvalidateMappedMemoryRanges(VkDevice device,
       const VkDeviceSize size = range->size == VK_WHOLE_SIZE
                                    ? mem->map_end - range->offset
                                    : range->size;
-      vn_renderer_bo_invalidate(mem->base_bo,
+      vn_renderer_bo_invalidate(dev->renderer, mem->base_bo,
                                 mem->base_offset + range->offset, size);
    }
 
@@ -413,7 +418,7 @@ vn_GetMemoryFdKHR(VkDevice device,
           (VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
            VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT));
    assert(!mem->base_memory && mem->base_bo);
-   *pFd = vn_renderer_bo_export_dmabuf(mem->base_bo);
+   *pFd = vn_renderer_bo_export_dmabuf(dev->renderer, mem->base_bo);
    if (*pFd < 0)
       return vn_error(dev->instance, VK_ERROR_TOO_MANY_OBJECTS);
 
@@ -451,7 +456,7 @@ vn_GetMemoryFdPropertiesKHR(VkDevice device,
    pMemoryFdProperties->memoryTypeBits =
       memory_resource_properties.memoryTypeBits;
 
-   vn_renderer_bo_unref(bo);
+   vn_renderer_bo_unref(dev->renderer, bo);
 
    return result;
 }

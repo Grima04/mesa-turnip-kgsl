@@ -367,7 +367,7 @@ vn_renderer_bo_create_dmabuf(struct vn_renderer *renderer,
 }
 
 static inline struct vn_renderer_bo *
-vn_renderer_bo_ref(struct vn_renderer_bo *bo)
+vn_renderer_bo_ref(struct vn_renderer *renderer, struct vn_renderer_bo *bo)
 {
    const int old =
       atomic_fetch_add_explicit(&bo->refcount, 1, memory_order_relaxed);
@@ -377,7 +377,7 @@ vn_renderer_bo_ref(struct vn_renderer_bo *bo)
 }
 
 static inline bool
-vn_renderer_bo_unref(struct vn_renderer_bo *bo)
+vn_renderer_bo_unref(struct vn_renderer *renderer, struct vn_renderer_bo *bo)
 {
    const int old =
       atomic_fetch_sub_explicit(&bo->refcount, 1, memory_order_release);
@@ -393,19 +393,21 @@ vn_renderer_bo_unref(struct vn_renderer_bo *bo)
 }
 
 static inline int
-vn_renderer_bo_export_dmabuf(struct vn_renderer_bo *bo)
+vn_renderer_bo_export_dmabuf(struct vn_renderer *renderer,
+                             struct vn_renderer_bo *bo)
 {
    return bo->ops.export_dmabuf(bo);
 }
 
 static inline void *
-vn_renderer_bo_map(struct vn_renderer_bo *bo)
+vn_renderer_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *bo)
 {
    return bo->ops.map(bo);
 }
 
 static inline void
-vn_renderer_bo_flush(struct vn_renderer_bo *bo,
+vn_renderer_bo_flush(struct vn_renderer *renderer,
+                     struct vn_renderer_bo *bo,
                      VkDeviceSize offset,
                      VkDeviceSize end)
 {
@@ -413,7 +415,8 @@ vn_renderer_bo_flush(struct vn_renderer_bo *bo,
 }
 
 static inline void
-vn_renderer_bo_invalidate(struct vn_renderer_bo *bo,
+vn_renderer_bo_invalidate(struct vn_renderer *renderer,
+                          struct vn_renderer_bo *bo,
                           VkDeviceSize offset,
                           VkDeviceSize size)
 {
