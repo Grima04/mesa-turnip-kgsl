@@ -112,15 +112,30 @@ class Pointer(Node):
     def __init__(self, address, pname):
         self.address = address
 
-        if address not in self.ptr_list or (self.ptr_type_list[address] == "ret" and pname != "ret"):
-            if pname not in self.ptr_types_list:
-                self.ptr_types_list[pname] = 1
-            else:
-                self.ptr_types_list[pname] += 1
+        # Check if address exists in list and if it is a return value address
+        t1 = address in self.ptr_list
+        if t1:
+            t2 = self.ptr_type_list[address] == "ret" and pname != "ret"
+        else:
+            t2 = False
 
+        # If address does NOT exist (add it), OR IS a ret value (update with new type)
+        if not t1 or t2:
+            # If previously set to ret value, remove one from count
+            if t1 and t2:
+                self.adjust_ptr_type_count("ret", -1)
+
+            # Add / update
+            self.adjust_ptr_type_count(pname, 1)
             tmp = "{}_{}".format(pname, self.ptr_types_list[pname])
             self.ptr_list[address] = tmp
             self.ptr_type_list[address] = pname
+
+    def adjust_ptr_type_count(self, pname, delta):
+        if pname not in self.ptr_types_list:
+            self.ptr_types_list[pname] = 0
+
+        self.ptr_types_list[pname] += delta
 
     def visit(self, visitor):
         visitor.visit_pointer(self)
