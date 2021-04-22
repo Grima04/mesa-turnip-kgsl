@@ -136,6 +136,7 @@ vn_instance_ring_submit(struct vn_instance *instance,
 struct vn_instance_submit_command {
    /* empty command implies errors */
    struct vn_cs_encoder command;
+   struct vn_cs_encoder_buffer buffer;
    /* non-zero implies waiting */
    size_t reply_size;
 
@@ -144,8 +145,41 @@ struct vn_instance_submit_command {
    struct vn_cs_decoder reply;
 };
 
+static inline struct vn_cs_encoder *
+vn_instance_submit_command_init(struct vn_instance *instance,
+                                struct vn_instance_submit_command *submit,
+                                void *cmd_data,
+                                size_t cmd_size,
+                                size_t reply_size)
+{
+   submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
+   /* fix submit->command.buffers to not point to a local variable */
+   submit->buffer = submit->command.buffers[0];
+   submit->command.buffers = &submit->buffer;
+
+   submit->reply_size = reply_size;
+   submit->reply_bo = NULL;
+
+   return &submit->command;
+}
+
 void
 vn_instance_submit_command(struct vn_instance *instance,
                            struct vn_instance_submit_command *submit);
+
+static inline struct vn_cs_decoder *
+vn_instance_get_command_reply(struct vn_instance *instance,
+                              struct vn_instance_submit_command *submit)
+{
+   return submit->reply_bo ? &submit->reply : NULL;
+}
+
+static inline void
+vn_instance_free_command_reply(struct vn_instance *instance,
+                               struct vn_instance_submit_command *submit)
+{
+   assert(submit->reply_bo);
+   vn_renderer_bo_unref(submit->reply_bo);
+}
 
 #endif /* VN_DEVICE_H */
