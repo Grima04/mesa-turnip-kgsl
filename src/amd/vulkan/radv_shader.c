@@ -42,7 +42,6 @@
 #include "ac_exp_param.h"
 #include "ac_llvm_util.h"
 #include "ac_nir.h"
-#include "ac_nir_to_llvm.h"
 #include "ac_rtld.h"
 #include "aco_interface.h"
 #include "sid.h"

@@ -65,9 +65,7 @@
 
 #include "ac_binary.h"
 #include "ac_gpu_info.h"
-#include "ac_llvm_build.h"
-#include "ac_llvm_util.h"
-#include "ac_nir_to_llvm.h"
+#include "ac_shader_util.h"
 #include "ac_sqtt.h"
 #include "ac_surface.h"
 #include "radv_constants.h"

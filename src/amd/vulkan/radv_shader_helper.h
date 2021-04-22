@@ -22,6 +22,9 @@
  */
 #ifndef RADV_SHADER_HELPER_H
 #define RADV_SHADER_HELPER_H
+
+#include "ac_llvm_util.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
