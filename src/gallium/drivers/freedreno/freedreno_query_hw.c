@@ -229,7 +229,7 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q, bool wait,
          return false;
 
       ret = fd_resource_wait(
-         ctx, rsc, FD_BO_PREP_READ | FD_BO_PREP_NOSYNC);
+         ctx, rsc, FD_BO_PREP_READ | FD_BO_PREP_NOSYNC | FD_BO_PREP_FLUSH);
       if (ret)
          return false;
 

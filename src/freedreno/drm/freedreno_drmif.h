@@ -72,6 +72,7 @@ enum fd_param_id {
 #define FD_BO_PREP_READ   BITSET_BIT(0)
 #define FD_BO_PREP_WRITE  BITSET_BIT(1)
 #define FD_BO_PREP_NOSYNC BITSET_BIT(2)
+#define FD_BO_PREP_FLUSH  BITSET_BIT(3)
 
 
 /* device functions:
