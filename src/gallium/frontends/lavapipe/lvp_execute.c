@@ -1477,6 +1477,9 @@ static void render_pass_resolve(struct rendering_state *state)
 
       info.dst.box = info.src.box;
 
+      info.src.level = src_imgv->subresourceRange.baseMipLevel;
+      info.dst.level = dst_imgv->subresourceRange.baseMipLevel;
+
       state->pctx->blit(state->pctx, &info);
    }
 }
