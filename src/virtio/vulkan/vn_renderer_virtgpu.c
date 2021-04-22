@@ -59,7 +59,6 @@ struct virtgpu_shmem {
 
 struct virtgpu_bo {
    struct vn_renderer_bo base;
-   struct virtgpu *gpu;
 
    uint32_t blob_flags;
    VkDeviceSize size;
@@ -1054,7 +1053,8 @@ virtgpu_sync_create(struct vn_renderer *renderer)
 }
 
 static void
-virtgpu_bo_invalidate(struct vn_renderer_bo *bo,
+virtgpu_bo_invalidate(struct vn_renderer *renderer,
+                      struct vn_renderer_bo *bo,
                       VkDeviceSize offset,
                       VkDeviceSize size)
 {
@@ -1062,7 +1062,8 @@ virtgpu_bo_invalidate(struct vn_renderer_bo *bo,
 }
 
 static void
-virtgpu_bo_flush(struct vn_renderer_bo *bo,
+virtgpu_bo_flush(struct vn_renderer *renderer,
+                 struct vn_renderer_bo *bo,
                  VkDeviceSize offset,
                  VkDeviceSize size)
 {
@@ -1070,10 +1071,10 @@ virtgpu_bo_flush(struct vn_renderer_bo *bo,
 }
 
 static void *
-virtgpu_bo_map(struct vn_renderer_bo *_bo)
+virtgpu_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
-   struct virtgpu *gpu = bo->gpu;
    const bool mappable = bo->blob_flags & VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
 
    /* not thread-safe but is fine */
@@ -1084,16 +1085,32 @@ virtgpu_bo_map(struct vn_renderer_bo *_bo)
 }
 
 static int
-virtgpu_bo_export_dmabuf(struct vn_renderer_bo *_bo)
+virtgpu_bo_export_dmabuf(struct vn_renderer *renderer,
+                         struct vn_renderer_bo *_bo)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
-   struct virtgpu *gpu = bo->gpu;
    const bool mappable = bo->blob_flags & VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
    const bool shareable = bo->blob_flags & VIRTGPU_BLOB_FLAG_USE_SHAREABLE;
 
    return shareable
              ? virtgpu_ioctl_prime_handle_to_fd(gpu, bo->gem_handle, mappable)
              : -1;
+}
+
+static void
+virtgpu_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
+{
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
+   struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
+
+   if (bo->gem_handle) {
+      if (bo->gem_ptr)
+         munmap(bo->gem_ptr, bo->size);
+      virtgpu_ioctl_gem_close(gpu, bo->gem_handle);
+   }
+
+   free(bo);
 }
 
 static uint32_t
@@ -1112,14 +1129,15 @@ virtgpu_bo_blob_flags(VkMemoryPropertyFlags flags,
 }
 
 static VkResult
-virtgpu_bo_init_dmabuf(struct vn_renderer_bo *_bo,
+virtgpu_bo_init_dmabuf(struct vn_renderer *renderer,
+                       struct vn_renderer_bo *_bo,
                        VkDeviceSize size,
                        int fd,
                        VkMemoryPropertyFlags flags,
                        VkExternalMemoryHandleTypeFlags external_handles)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
-   struct virtgpu *gpu = bo->gpu;
    struct drm_virtgpu_resource_info info;
    uint32_t gem_handle = 0;
 
@@ -1161,14 +1179,15 @@ fail:
 }
 
 static VkResult
-virtgpu_bo_init_gpu(struct vn_renderer_bo *_bo,
+virtgpu_bo_init_gpu(struct vn_renderer *renderer,
+                    struct vn_renderer_bo *_bo,
                     VkDeviceSize size,
                     vn_object_id mem_id,
                     VkMemoryPropertyFlags flags,
                     VkExternalMemoryHandleTypeFlags external_handles)
 {
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
-   struct virtgpu *gpu = bo->gpu;
 
    bo->blob_flags = virtgpu_bo_blob_flags(flags, external_handles);
    bo->size = size;
@@ -1181,39 +1200,12 @@ virtgpu_bo_init_gpu(struct vn_renderer_bo *_bo,
    return bo->gem_handle ? VK_SUCCESS : VK_ERROR_OUT_OF_DEVICE_MEMORY;
 }
 
-static void
-virtgpu_bo_destroy(struct vn_renderer_bo *_bo)
-{
-   struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
-   struct virtgpu *gpu = bo->gpu;
-
-   if (bo->gem_handle) {
-      if (bo->gem_ptr)
-         munmap(bo->gem_ptr, bo->size);
-      virtgpu_ioctl_gem_close(gpu, bo->gem_handle);
-   }
-
-   free(bo);
-}
-
 static struct vn_renderer_bo *
 virtgpu_bo_create(struct vn_renderer *renderer)
 {
-   struct virtgpu *gpu = (struct virtgpu *)renderer;
-
    struct virtgpu_bo *bo = calloc(1, sizeof(*bo));
    if (!bo)
       return NULL;
-
-   bo->gpu = gpu;
-
-   bo->base.ops.destroy = virtgpu_bo_destroy;
-   bo->base.ops.init_gpu = virtgpu_bo_init_gpu;
-   bo->base.ops.init_dmabuf = virtgpu_bo_init_dmabuf;
-   bo->base.ops.export_dmabuf = virtgpu_bo_export_dmabuf;
-   bo->base.ops.map = virtgpu_bo_map;
-   bo->base.ops.flush = virtgpu_bo_flush;
-   bo->base.ops.invalidate = virtgpu_bo_invalidate;
 
    return &bo->base;
 }
@@ -1505,11 +1497,19 @@ virtgpu_init(struct virtgpu *gpu)
    gpu->base.ops.get_info = virtgpu_get_info;
    gpu->base.ops.submit = virtgpu_submit;
    gpu->base.ops.wait = virtgpu_wait;
-   gpu->base.ops.bo_create = virtgpu_bo_create;
    gpu->base.ops.sync_create = virtgpu_sync_create;
 
    gpu->base.shmem_ops.create = virtgpu_shmem_create;
    gpu->base.shmem_ops.destroy = virtgpu_shmem_destroy;
+
+   gpu->base.bo_ops.create = virtgpu_bo_create;
+   gpu->base.bo_ops.init_gpu = virtgpu_bo_init_gpu;
+   gpu->base.bo_ops.init_dmabuf = virtgpu_bo_init_dmabuf;
+   gpu->base.bo_ops.destroy = virtgpu_bo_destroy;
+   gpu->base.bo_ops.export_dmabuf = virtgpu_bo_export_dmabuf;
+   gpu->base.bo_ops.map = virtgpu_bo_map;
+   gpu->base.bo_ops.flush = virtgpu_bo_flush;
+   gpu->base.bo_ops.invalidate = virtgpu_bo_invalidate;
 
    return VK_SUCCESS;
 }
