@@ -1040,20 +1040,23 @@ tc_set_sampler_views(struct pipe_context *_pipe,
 
    struct threaded_context *tc = threaded_context(_pipe);
    struct tc_sampler_views *p =
-      tc_add_slot_based_call(tc, TC_CALL_set_sampler_views, tc_sampler_views, count);
+      tc_add_slot_based_call(tc, TC_CALL_set_sampler_views, tc_sampler_views,
+                             views ? count : 0);
 
    p->shader = shader;
    p->start = start;
-   p->count = count;
-   p->unbind_num_trailing_slots = unbind_num_trailing_slots;
 
    if (views) {
+      p->count = count;
+      p->unbind_num_trailing_slots = unbind_num_trailing_slots;
+
       for (unsigned i = 0; i < count; i++) {
          p->slot[i] = NULL;
          pipe_sampler_view_reference(&p->slot[i], views[i]);
       }
    } else {
-      memset(p->slot, 0, count * sizeof(views[0]));
+      p->count = 0;
+      p->unbind_num_trailing_slots = count + unbind_num_trailing_slots;
    }
 }
 
