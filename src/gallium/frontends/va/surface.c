@@ -772,6 +772,10 @@ vlVaCreateSurfaces2(VADriverContextP ctx, unsigned int format,
          modifiers_count = modifier_list->num_modifiers;
          break;
 #endif
+      case VASurfaceAttribUsageHint:
+         if (attrib_list[i].value.type != VAGenericValueTypeInteger)
+            return VA_STATUS_ERROR_INVALID_PARAMETER;
+         break;
       default:
          return VA_STATUS_ERROR_ATTR_NOT_SUPPORTED;
       }
