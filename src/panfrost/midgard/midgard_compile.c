@@ -435,7 +435,7 @@ emit_load_const(compiler_context *ctx, nir_load_const_instr *instr)
 {
         nir_ssa_def def = instr->def;
 
-        midgard_constants *consts = rzalloc(NULL, midgard_constants);
+        midgard_constants *consts = rzalloc(ctx, midgard_constants);
 
         assert(instr->def.num_components * instr->def.bit_size <= sizeof(*consts) * 8);
 
@@ -3040,7 +3040,7 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         /* Initialize at a global (not block) level hash tables */
 
-        ctx->ssa_constants = _mesa_hash_table_u64_create(NULL);
+        ctx->ssa_constants = _mesa_hash_table_u64_create(ctx);
 
         /* Lower gl_Position pre-optimisation, but after lowering vars to ssa
          * (so we don't accidentally duplicate the epilogue since mesa/st has
