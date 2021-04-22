@@ -449,7 +449,7 @@ midgard_pack_common_store_mask(midgard_instruction *ins) {
                                         if (comp_sz == total_sz)
                                                 packed |= 0xF;
                                         else if (comp_sz == total_sz / 2)
-                                                packed |= 0x3 << i;
+                                                packed |= 0x3 << (i * 2);
                                         else if (comp_sz == total_sz / 4)
                                                 packed |= 0x1 << i;
                                 }
