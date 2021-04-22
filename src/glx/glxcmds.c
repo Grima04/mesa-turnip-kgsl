@@ -1329,6 +1329,7 @@ glXQueryExtensionsString(Display * dpy, int screen)
 {
    struct glx_screen *psc;
    struct glx_display *priv;
+   int is_direct_capable = GL_FALSE;
 
    if (GetGLXPrivScreenConfig(dpy, screen, &priv, &psc) != Success) {
       return NULL;
@@ -1341,13 +1342,10 @@ glXQueryExtensionsString(Display * dpy, int screen)
                                    GLX_EXTENSIONS);
       }
 
-      __glXCalculateUsableExtensions(psc,
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
-                                     (psc->driScreen != NULL),
-#else
-                                     GL_FALSE,
+      is_direct_capable = (psc->driScreen != NULL);
 #endif
-                                     priv->minorVersion);
+      __glXCalculateUsableExtensions(psc, is_direct_capable);
    }
 
    return psc->effectiveGLXexts;

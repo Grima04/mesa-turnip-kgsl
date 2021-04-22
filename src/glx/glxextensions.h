@@ -263,8 +263,7 @@ extern GLboolean __glXExtensionBitIsEnabled(struct glx_screen *psc,
 extern const char *__glXGetClientExtensions(Display *dpy);
 extern void __glXCalculateUsableExtensions(struct glx_screen *psc,
                                            GLboolean
-                                           display_is_direct_capable,
-                                           int server_minor_version);
+                                           display_is_direct_capable);
 
 extern void __glXParseExtensionOverride(struct glx_screen *psc,
                                         const char *override);

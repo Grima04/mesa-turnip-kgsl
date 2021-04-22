@@ -644,13 +644,11 @@ __glXGetClientExtensions(Display *dpy)
  * \param psc                        Pointer to GLX per-screen record.
  * \param display_is_direct_capable  True if the display is capable of
  *                                   direct rendering.
- * \param minor_version              GLX minor version from the server.
  */
 
 void
 __glXCalculateUsableExtensions(struct glx_screen * psc,
-                               GLboolean display_is_direct_capable,
-                               int minor_version)
+                               GLboolean display_is_direct_capable)
 {
    unsigned char server_support[__GLX_EXT_BYTES];
    unsigned char usable[__GLX_EXT_BYTES];
@@ -663,29 +661,6 @@ __glXCalculateUsableExtensions(struct glx_screen * psc,
    __glXProcessServerString(known_glx_extensions,
                             psc->serverGLXexts, server_support);
 
-
-   /* This is a hack.  Some servers support GLX 1.3 but don't export
-    * all of the extensions implied by GLX 1.3.  If the server claims
-    * support for GLX 1.3, enable support for the extensions that can be
-    * "emulated" as well.
-    */
-#ifndef GLX_USE_APPLEGL
-   if (minor_version >= 3) {
-      SET_BIT(server_support, EXT_visual_info_bit);
-      SET_BIT(server_support, EXT_visual_rating_bit);
-      SET_BIT(server_support, SGI_make_current_read_bit);
-      SET_BIT(server_support, SGIX_fbconfig_bit);
-      SET_BIT(server_support, SGIX_pbuffer_bit);
-
-      /* This one is a little iffy.  GLX 1.3 doesn't incorporate all of this
-       * extension.  However, the only part that is not strictly client-side
-       * is shared.  That's the glXQueryContext / glXQueryContextInfoEXT
-       * function.
-       */
-
-      SET_BIT(server_support, EXT_import_context_bit);
-   }
-#endif
 
    /* An extension is supported if the client-side (i.e., libGL) supports
     * it and the "server" supports it.  In this case that means that either
