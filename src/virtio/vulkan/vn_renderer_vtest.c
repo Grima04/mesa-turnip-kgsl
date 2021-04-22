@@ -16,6 +16,7 @@
 #include <unistd.h>
 
 #include "util/os_file.h"
+#include "util/sparse_array.h"
 #include "util/u_process.h"
 #define VIRGL_RENDERER_UNSTABLE_APIS
 #include "virtio-gpu/virglrenderer_hw.h"
@@ -27,6 +28,10 @@
 #define VTEST_PCI_DEVICE_ID 0x1050
 
 struct vtest;
+
+struct vtest_shmem {
+   struct vn_renderer_shmem base;
+};
 
 struct vtest_bo {
    struct vn_renderer_bo base;
@@ -61,6 +66,8 @@ struct vtest {
       uint32_t version;
       struct virgl_renderer_capset_venus data;
    } capset;
+
+   struct util_sparse_array shmem_array;
 };
 
 static int
@@ -822,6 +829,56 @@ vtest_bo_create(struct vn_renderer *renderer)
    return &bo->base;
 }
 
+static void
+vtest_shmem_destroy(struct vn_renderer *renderer,
+                    struct vn_renderer_shmem *_shmem)
+{
+   struct vtest *vtest = (struct vtest *)renderer;
+   struct vtest_shmem *shmem = (struct vtest_shmem *)_shmem;
+
+   munmap(shmem->base.mmap_ptr, shmem->base.mmap_size);
+
+   mtx_lock(&vtest->sock_mutex);
+   vtest_vcmd_resource_unref(vtest, shmem->base.res_id);
+   mtx_unlock(&vtest->sock_mutex);
+}
+
+static struct vn_renderer_shmem *
+vtest_shmem_create(struct vn_renderer *renderer, size_t size)
+{
+   struct vtest *vtest = (struct vtest *)renderer;
+
+   mtx_lock(&vtest->sock_mutex);
+   int res_fd;
+   uint32_t res_id = vtest_vcmd_resource_create_blob(
+      vtest, VCMD_BLOB_TYPE_GUEST, VCMD_BLOB_FLAG_MAPPABLE, size, 0, &res_fd);
+   assert(res_id > 0 && res_fd >= 0);
+   mtx_unlock(&vtest->sock_mutex);
+
+   void *ptr =
+      mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, res_fd, 0);
+   close(res_fd);
+   if (ptr == MAP_FAILED) {
+      mtx_lock(&vtest->sock_mutex);
+      vtest_vcmd_resource_unref(vtest, res_id);
+      mtx_unlock(&vtest->sock_mutex);
+      return NULL;
+   }
+
+   struct vtest_shmem *shmem =
+      util_sparse_array_get(&vtest->shmem_array, res_id);
+   *shmem = (struct vtest_shmem){
+      .base = {
+         .refcount = 1,
+         .res_id = res_id,
+         .mmap_size = size,
+         .mmap_ptr = ptr,
+      },
+   };
+
+   return &shmem->base;
+}
+
 static VkResult
 sync_wait_poll(int fd, int poll_timeout)
 {
@@ -934,6 +991,7 @@ vtest_destroy(struct vn_renderer *renderer,
    }
 
    mtx_destroy(&vtest->sock_mutex);
+   util_sparse_array_finish(&vtest->shmem_array);
 
    vk_free(alloc, vtest);
 }
@@ -989,6 +1047,9 @@ vtest_init_protocol_version(struct vtest *vtest)
 static VkResult
 vtest_init(struct vtest *vtest)
 {
+   util_sparse_array_init(&vtest->shmem_array, sizeof(struct vtest_shmem),
+                          1024);
+
    mtx_init(&vtest->sock_mutex, mtx_plain);
    vtest->sock_fd =
       vtest_connect_socket(vtest->instance, VTEST_DEFAULT_SOCKET_NAME);
@@ -1016,6 +1077,9 @@ vtest_init(struct vtest *vtest)
    vtest->base.ops.wait = vtest_wait;
    vtest->base.ops.bo_create = vtest_bo_create;
    vtest->base.ops.sync_create = vtest_sync_create;
+
+   vtest->base.shmem_ops.create = vtest_shmem_create;
+   vtest->base.shmem_ops.destroy = vtest_shmem_destroy;
 
    return VK_SUCCESS;
 }

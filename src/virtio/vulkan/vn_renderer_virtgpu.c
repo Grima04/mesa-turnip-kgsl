@@ -13,6 +13,7 @@
 #include <xf86drm.h>
 
 #include "drm-uapi/virtgpu_drm.h"
+#include "util/sparse_array.h"
 #define VIRGL_RENDERER_UNSTABLE_APIS
 #include "virtio-gpu/virglrenderer_hw.h"
 
@@ -50,6 +51,11 @@ struct drm_virtgpu_context_init {
 #define VIRTGPU_PCI_DEVICE_ID 0x1050
 
 struct virtgpu;
+
+struct virtgpu_shmem {
+   struct vn_renderer_shmem base;
+   uint32_t gem_handle;
+};
 
 struct virtgpu_bo {
    struct vn_renderer_bo base;
@@ -100,6 +106,12 @@ struct virtgpu {
       uint32_t version;
       struct virgl_renderer_capset_venus data;
    } capset;
+
+   /* note that we use gem_handle instead of res_id to index because
+    * res_id is monotonically increasing by default (see
+    * virtio_gpu_resource_id_get)
+    */
+   struct util_sparse_array shmem_array;
 };
 
 #ifdef SIMULATE_SYNCOBJ
@@ -1223,6 +1235,50 @@ virtgpu_bo_create(struct vn_renderer *renderer)
    return &bo->base;
 }
 
+static void
+virtgpu_shmem_destroy(struct vn_renderer *renderer,
+                      struct vn_renderer_shmem *_shmem)
+{
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
+   struct virtgpu_shmem *shmem = (struct virtgpu_shmem *)_shmem;
+
+   munmap(shmem->base.mmap_ptr, shmem->base.mmap_size);
+   virtgpu_ioctl_gem_close(gpu, shmem->gem_handle);
+}
+
+static struct vn_renderer_shmem *
+virtgpu_shmem_create(struct vn_renderer *renderer, size_t size)
+{
+   struct virtgpu *gpu = (struct virtgpu *)renderer;
+
+   uint32_t res_id;
+   uint32_t gem_handle = virtgpu_ioctl_resource_create_blob(
+      gpu, VIRTGPU_BLOB_MEM_GUEST, VIRTGPU_BLOB_FLAG_USE_MAPPABLE, size, 0,
+      &res_id);
+   if (!gem_handle)
+      return NULL;
+
+   void *ptr = virtgpu_ioctl_map(gpu, gem_handle, size);
+   if (!ptr) {
+      virtgpu_ioctl_gem_close(gpu, gem_handle);
+      return NULL;
+   }
+
+   struct virtgpu_shmem *shmem =
+      util_sparse_array_get(&gpu->shmem_array, gem_handle);
+   *shmem = (struct virtgpu_shmem){
+      .base = {
+         .refcount = 1,
+         .res_id = res_id,
+         .mmap_size = size,
+         .mmap_ptr = ptr,
+      },
+      .gem_handle = gem_handle,
+   };
+
+   return &shmem->base;
+}
+
 static VkResult
 virtgpu_wait(struct vn_renderer *renderer,
              const struct vn_renderer_wait *wait)
@@ -1291,6 +1347,8 @@ virtgpu_destroy(struct vn_renderer *renderer,
 
    if (gpu->fd >= 0)
       close(gpu->fd);
+
+   util_sparse_array_finish(&gpu->shmem_array);
 
    vk_free(alloc, gpu);
 }
@@ -1447,6 +1505,9 @@ virtgpu_open(struct virtgpu *gpu)
 static VkResult
 virtgpu_init(struct virtgpu *gpu)
 {
+   util_sparse_array_init(&gpu->shmem_array, sizeof(struct virtgpu_shmem),
+                          1024);
+
    VkResult result = virtgpu_open(gpu);
    if (result == VK_SUCCESS)
       result = virtgpu_init_params(gpu);
@@ -1463,6 +1524,9 @@ virtgpu_init(struct virtgpu *gpu)
    gpu->base.ops.wait = virtgpu_wait;
    gpu->base.ops.bo_create = virtgpu_bo_create;
    gpu->base.ops.sync_create = virtgpu_sync_create;
+
+   gpu->base.shmem_ops.create = virtgpu_shmem_create;
+   gpu->base.shmem_ops.destroy = virtgpu_shmem_destroy;
 
    return VK_SUCCESS;
 }

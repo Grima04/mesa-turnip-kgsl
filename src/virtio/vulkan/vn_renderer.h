@@ -8,6 +8,13 @@
 
 #include "vn_common.h"
 
+struct vn_renderer_shmem {
+   atomic_int refcount;
+   uint32_t res_id;
+   size_t mmap_size; /* for internal use only (i.e., munmap) */
+   void *mmap_ptr;
+};
+
 struct vn_renderer_bo_ops {
    void (*destroy)(struct vn_renderer_bo *bo);
 
@@ -192,8 +199,16 @@ struct vn_renderer_ops {
    struct vn_renderer_sync *(*sync_create)(struct vn_renderer *renderer);
 };
 
+struct vn_renderer_shmem_ops {
+   struct vn_renderer_shmem *(*create)(struct vn_renderer *renderer,
+                                       size_t size);
+   void (*destroy)(struct vn_renderer *renderer,
+                   struct vn_renderer_shmem *shmem);
+};
+
 struct vn_renderer {
    struct vn_renderer_ops ops;
+   struct vn_renderer_shmem_ops shmem_ops;
 };
 
 VkResult
@@ -262,6 +277,46 @@ vn_renderer_wait(struct vn_renderer *renderer,
                  const struct vn_renderer_wait *wait)
 {
    return renderer->ops.wait(renderer, wait);
+}
+
+static inline struct vn_renderer_shmem *
+vn_renderer_shmem_create(struct vn_renderer *renderer, size_t size)
+{
+   struct vn_renderer_shmem *shmem =
+      renderer->shmem_ops.create(renderer, size);
+   if (shmem) {
+      assert(atomic_load(&shmem->refcount) == 1);
+      assert(shmem->res_id);
+      assert(shmem->mmap_size >= size);
+      assert(shmem->mmap_ptr);
+   }
+
+   return shmem;
+}
+
+static inline struct vn_renderer_shmem *
+vn_renderer_shmem_ref(struct vn_renderer *renderer,
+                      struct vn_renderer_shmem *shmem)
+{
+   const int old =
+      atomic_fetch_add_explicit(&shmem->refcount, 1, memory_order_relaxed);
+   assert(old >= 1);
+
+   return shmem;
+}
+
+static inline void
+vn_renderer_shmem_unref(struct vn_renderer *renderer,
+                        struct vn_renderer_shmem *shmem)
+{
+   const int old =
+      atomic_fetch_sub_explicit(&shmem->refcount, 1, memory_order_release);
+   assert(old >= 1);
+
+   if (old == 1) {
+      atomic_thread_fence(memory_order_acquire);
+      renderer->shmem_ops.destroy(renderer, shmem);
+   }
 }
 
 static inline VkResult
