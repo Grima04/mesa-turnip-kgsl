@@ -37,6 +37,7 @@
 #include "vk_util.h"
 #ifdef _WIN32
 typedef void *drmDevicePtr;
+#include <io.h>
 #else
 #include <amdgpu.h>
 #include <xf86drm.h>
