@@ -35,7 +35,7 @@ struct vn_instance {
 
    struct {
       mtx_t mutex;
-      struct vn_renderer_bo *bo;
+      struct vn_renderer_shmem *shmem;
       struct vn_ring ring;
       uint64_t id;
 
@@ -44,7 +44,7 @@ struct vn_instance {
    } ring;
 
    struct {
-      struct vn_renderer_bo *bo;
+      struct vn_renderer_shmem *shmem;
       size_t size;
       size_t used;
       void *ptr;
@@ -141,7 +141,7 @@ struct vn_instance_submit_command {
    size_t reply_size;
 
    /* when reply_size is non-zero, NULL can be returned on errors */
-   struct vn_renderer_bo *reply_bo;
+   struct vn_renderer_shmem *reply_shmem;
    struct vn_cs_decoder reply;
 };
 
@@ -158,7 +158,7 @@ vn_instance_submit_command_init(struct vn_instance *instance,
    submit->command.buffers = &submit->buffer;
 
    submit->reply_size = reply_size;
-   submit->reply_bo = NULL;
+   submit->reply_shmem = NULL;
 
    return &submit->command;
 }
@@ -171,15 +171,15 @@ static inline struct vn_cs_decoder *
 vn_instance_get_command_reply(struct vn_instance *instance,
                               struct vn_instance_submit_command *submit)
 {
-   return submit->reply_bo ? &submit->reply : NULL;
+   return submit->reply_shmem ? &submit->reply : NULL;
 }
 
 static inline void
 vn_instance_free_command_reply(struct vn_instance *instance,
                                struct vn_instance_submit_command *submit)
 {
-   assert(submit->reply_bo);
-   vn_renderer_bo_unref(submit->reply_bo);
+   assert(submit->reply_shmem);
+   vn_renderer_shmem_unref(instance->renderer, submit->reply_shmem);
 }
 
 #endif /* VN_DEVICE_H */

@@ -18,9 +18,6 @@ struct vn_renderer_shmem {
 struct vn_renderer_bo_ops {
    void (*destroy)(struct vn_renderer_bo *bo);
 
-   /* allocate a CPU shared memory as the storage */
-   VkResult (*init_cpu)(struct vn_renderer_bo *bo, VkDeviceSize size);
-
    /* import a VkDeviceMemory as the storage */
    VkResult (*init_gpu)(struct vn_renderer_bo *bo,
                         VkDeviceSize size,
@@ -317,27 +314,6 @@ vn_renderer_shmem_unref(struct vn_renderer *renderer,
       atomic_thread_fence(memory_order_acquire);
       renderer->shmem_ops.destroy(renderer, shmem);
    }
-}
-
-static inline VkResult
-vn_renderer_bo_create_cpu(struct vn_renderer *renderer,
-                          VkDeviceSize size,
-                          struct vn_renderer_bo **_bo)
-{
-   struct vn_renderer_bo *bo = renderer->ops.bo_create(renderer);
-   if (!bo)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   VkResult result = bo->ops.init_cpu(bo, size);
-   if (result != VK_SUCCESS) {
-      bo->ops.destroy(bo);
-      return result;
-   }
-
-   atomic_init(&bo->refcount, 1);
-
-   *_bo = bo;
-   return VK_SUCCESS;
 }
 
 static inline VkResult

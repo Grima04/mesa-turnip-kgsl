@@ -1181,22 +1181,6 @@ virtgpu_bo_init_gpu(struct vn_renderer_bo *_bo,
    return bo->gem_handle ? VK_SUCCESS : VK_ERROR_OUT_OF_DEVICE_MEMORY;
 }
 
-static VkResult
-virtgpu_bo_init_cpu(struct vn_renderer_bo *_bo, VkDeviceSize size)
-{
-   struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
-   struct virtgpu *gpu = bo->gpu;
-
-   bo->blob_flags = VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
-   bo->size = size;
-
-   bo->gem_handle = virtgpu_ioctl_resource_create_blob(
-      gpu, VIRTGPU_BLOB_MEM_GUEST, bo->blob_flags, bo->size, 0,
-      &bo->base.res_id);
-
-   return bo->gem_handle ? VK_SUCCESS : VK_ERROR_OUT_OF_HOST_MEMORY;
-}
-
 static void
 virtgpu_bo_destroy(struct vn_renderer_bo *_bo)
 {
@@ -1224,7 +1208,6 @@ virtgpu_bo_create(struct vn_renderer *renderer)
    bo->gpu = gpu;
 
    bo->base.ops.destroy = virtgpu_bo_destroy;
-   bo->base.ops.init_cpu = virtgpu_bo_init_cpu;
    bo->base.ops.init_gpu = virtgpu_bo_init_gpu;
    bo->base.ops.init_dmabuf = virtgpu_bo_init_dmabuf;
    bo->base.ops.export_dmabuf = virtgpu_bo_export_dmabuf;

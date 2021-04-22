@@ -726,7 +726,6 @@ static int
 vtest_bo_export_dmabuf(struct vn_renderer_bo *_bo)
 {
    const struct vtest_bo *bo = (struct vtest_bo *)_bo;
-   /* this suffices because vtest_bo_init_cpu does not set the bit */
    const bool shareable = bo->blob_flags & VCMD_BLOB_FLAG_SHAREABLE;
    return shareable ? os_dupfd_cloexec(bo->res_fd) : -1;
 }
@@ -768,23 +767,6 @@ vtest_bo_init_gpu(struct vn_renderer_bo *_bo,
    return VK_SUCCESS;
 }
 
-static VkResult
-vtest_bo_init_cpu(struct vn_renderer_bo *_bo, VkDeviceSize size)
-{
-   struct vtest_bo *bo = (struct vtest_bo *)_bo;
-   struct vtest *vtest = bo->vtest;
-
-   bo->blob_flags = VCMD_BLOB_FLAG_MAPPABLE;
-   bo->size = size;
-
-   mtx_lock(&vtest->sock_mutex);
-   bo->base.res_id = vtest_vcmd_resource_create_blob(
-      vtest, VCMD_BLOB_TYPE_GUEST, bo->blob_flags, bo->size, 0, &bo->res_fd);
-   mtx_unlock(&vtest->sock_mutex);
-
-   return VK_SUCCESS;
-}
-
 static void
 vtest_bo_destroy(struct vn_renderer_bo *_bo)
 {
@@ -818,7 +800,6 @@ vtest_bo_create(struct vn_renderer *renderer)
    bo->res_fd = -1;
 
    bo->base.ops.destroy = vtest_bo_destroy;
-   bo->base.ops.init_cpu = vtest_bo_init_cpu;
    bo->base.ops.init_gpu = vtest_bo_init_gpu;
    bo->base.ops.init_dmabuf = NULL;
    bo->base.ops.export_dmabuf = vtest_bo_export_dmabuf;
