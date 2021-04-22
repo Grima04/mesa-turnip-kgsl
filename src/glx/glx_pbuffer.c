@@ -45,30 +45,6 @@
 
 #include "glx_error.h"
 
-#define WARN_ONCE_GLX_1_3(a, b) {		\
-		static int warned=1;		\
-		if(warned) {			\
-			warn_GLX_1_3((a), b );	\
-			warned=0;		\
-		}				\
-	}
-
-/**
- * Emit a warning when clients use GLX 1.3 functions on pre-1.3 systems.
- */
-static void
-warn_GLX_1_3(Display * dpy, const char *function_name)
-{
-   struct glx_display *priv = __glXInitialize(dpy);
-
-   if (priv && priv->minorVersion < 3) {
-      fprintf(stderr,
-              "WARNING: Application calling GLX 1.3 function \"%s\" "
-              "when GLX 1.3 is not supported!  This is an application bug!\n",
-              function_name);
-   }
-}
-
 #ifndef GLX_USE_APPLEGL
 /**
  * Change a drawable's attribute.
@@ -714,8 +690,6 @@ glXCreatePbuffer(Display * dpy, GLXFBConfig config, const int *attrib_list)
    width = 0;
    height = 0;
 
-   WARN_ONCE_GLX_1_3(dpy, __func__);
-
 #ifdef GLX_USE_APPLEGL
    for (i = 0; attrib_list[i]; ++i) {
       switch (attrib_list[i]) {
@@ -797,7 +771,6 @@ _GLX_PUBLIC void
 glXQueryDrawable(Display * dpy, GLXDrawable drawable,
                  int attribute, unsigned int *value)
 {
-   WARN_ONCE_GLX_1_3(dpy, __func__);
 #ifdef GLX_USE_APPLEGL
    Window root;
    int x, y;
@@ -927,8 +900,6 @@ _GLX_PUBLIC GLXPixmap
 glXCreatePixmap(Display * dpy, GLXFBConfig config, Pixmap pixmap,
                 const int *attrib_list)
 {
-   WARN_ONCE_GLX_1_3(dpy, __func__);
-
 #ifdef GLX_USE_APPLEGL
    const struct glx_config *modes = (const struct glx_config *) config;
 
@@ -947,7 +918,6 @@ _GLX_PUBLIC GLXWindow
 glXCreateWindow(Display * dpy, GLXFBConfig config, Window win,
                 const int *attrib_list)
 {
-   WARN_ONCE_GLX_1_3(dpy, __func__);
 #ifdef GLX_USE_APPLEGL
    XWindowAttributes xwattr;
    XVisualInfo *visinfo;
@@ -981,7 +951,6 @@ glXCreateWindow(Display * dpy, GLXFBConfig config, Window win,
 _GLX_PUBLIC void
 glXDestroyPixmap(Display * dpy, GLXPixmap pixmap)
 {
-   WARN_ONCE_GLX_1_3(dpy, __func__);
 #ifdef GLX_USE_APPLEGL
    if (apple_glx_pixmap_destroy(dpy, pixmap))
       __glXSendError(dpy, GLXBadPixmap, pixmap, X_GLXDestroyPixmap, false);
@@ -994,7 +963,6 @@ glXDestroyPixmap(Display * dpy, GLXPixmap pixmap)
 _GLX_PUBLIC void
 glXDestroyWindow(Display * dpy, GLXWindow win)
 {
-   WARN_ONCE_GLX_1_3(dpy, __func__);
 #ifndef GLX_USE_APPLEGL
    DestroyDrawable(dpy, (GLXDrawable) win, X_GLXDestroyWindow);
 #endif
