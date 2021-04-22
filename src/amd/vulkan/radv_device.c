@@ -693,7 +693,9 @@ radv_physical_device_try_create(struct radv_instance *instance, drmDevicePtr drm
 
 fail_disk_cache:
    disk_cache_destroy(device->disk_cache);
+#ifdef ENABLE_SHADER_CACHE
 fail_wsi:
+#endif
    device->ws->destroy(device->ws);
 fail_base:
    vk_physical_device_finish(&device->vk);
