@@ -225,6 +225,7 @@ vn_AllocateMemory(VkDevice device,
       }
       vn_instance_roundtrip(dev->instance);
 
+      /* XXX fix VkImportMemoryResourceInfoMESA to support memory planes */
       const VkImportMemoryResourceInfoMESA import_memory_resource_info = {
          .sType = VK_STRUCTURE_TYPE_IMPORT_MEMORY_RESOURCE_INFO_MESA,
          .pNext = pAllocateInfo->pNext,

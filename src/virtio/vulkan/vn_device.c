@@ -2967,8 +2967,12 @@ vn_device_fix_create_info(const struct vn_device *dev,
    uint32_t extra_count = 0;
    uint32_t block_count = 0;
 
-   if (dev->physical_device->wsi_device.supports_modifiers)
-      extra_exts[extra_count++] = "VK_EXT_image_drm_format_modifier";
+#if defined(VN_USE_WSI_PLATFORM) || defined(ANDROID)
+   if (dev->physical_device->base.base.supported_extensions
+          .EXT_image_drm_format_modifier)
+      extra_exts[extra_count++] =
+         VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
+#endif
 
    if (dev->base.base.enabled_extensions.ANDROID_native_buffer)
       block_exts[block_count++] = VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME;

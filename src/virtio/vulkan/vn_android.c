@@ -11,6 +11,7 @@
 #include "vn_android.h"
 #include "vn_common.h"
 
+#include <drm/drm_fourcc.h>
 #include <hardware/hwvulkan.h>
 #include <vndk/hardware_buffer.h>
 #include <vulkan/vk_icd.h>
@@ -138,19 +139,6 @@ vn_image_from_anb(struct vn_device *dev,
    int dma_buf_fd = -1;
    int dup_fd = -1;
 
-   /* encoder will strip the Android specific pNext structs */
-   result = vn_image_create(dev, image_info, alloc, &img);
-   if (result != VK_SUCCESS)
-      goto fail;
-
-   image = vn_image_to_handle(img);
-   VkMemoryRequirements mem_req;
-   vn_GetImageMemoryRequirements(device, image, &mem_req);
-   if (!mem_req.memoryTypeBits) {
-      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
-      goto fail;
-   }
-
    if (anb_info->handle->numFds != 1) {
       if (VN_DEBUG(WSI))
          vn_log(dev->instance, "handle->numFds is %d, expected 1",
@@ -161,6 +149,55 @@ vn_image_from_anb(struct vn_device *dev,
 
    dma_buf_fd = anb_info->handle->data[0];
    if (dma_buf_fd < 0) {
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      goto fail;
+   }
+
+   /* XXX fix this!!!!! */
+   uint32_t offset = 0;
+   uint32_t bpp = 0;
+   switch (image_info->format) {
+   case VK_FORMAT_R8G8B8A8_UNORM:
+   case VK_FORMAT_R8G8B8A8_SRGB:
+      bpp = 4;
+      break;
+   case VK_FORMAT_R5G6B5_UNORM_PACK16:
+      bpp = 2;
+      break;
+   default:
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      goto fail;
+   };
+   uint32_t stride = align(image_info->extent.width * bpp, 512);
+   uint64_t modifier = I915_FORMAT_MOD_X_TILED;
+
+   const VkSubresourceLayout layout = {
+      .offset = offset,
+      .size = 0,
+      .rowPitch = stride,
+      .arrayPitch = 0,
+      .depthPitch = 0,
+   };
+   const VkImageDrmFormatModifierExplicitCreateInfoEXT drm_mod_info = {
+      .sType =
+         VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
+      .pNext = image_info->pNext,
+      .drmFormatModifier = modifier,
+      .drmFormatModifierPlaneCount = 1,
+      .pPlaneLayouts = &layout,
+   };
+   VkImageCreateInfo local_image_info = *image_info;
+   local_image_info.pNext = &drm_mod_info;
+   local_image_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+   /* encoder will strip the Android specific pNext structs */
+   result = vn_image_create(dev, &local_image_info, alloc, &img);
+   if (result != VK_SUCCESS)
+      goto fail;
+
+   image = vn_image_to_handle(img);
+   VkMemoryRequirements mem_req;
+   vn_GetImageMemoryRequirements(device, image, &mem_req);
+   if (!mem_req.memoryTypeBits) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
    }
