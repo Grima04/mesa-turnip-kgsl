@@ -229,7 +229,7 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q, bool wait,
          return false;
 
       ret = fd_resource_wait(
-         ctx, rsc, DRM_FREEDRENO_PREP_READ | DRM_FREEDRENO_PREP_NOSYNC);
+         ctx, rsc, FD_BO_PREP_READ | FD_BO_PREP_NOSYNC);
       if (ret)
          return false;
 
@@ -259,7 +259,7 @@ fd_hw_get_query_result(struct fd_context *ctx, struct fd_query *q, bool wait,
       if (!rsc->bo)
          continue;
 
-      fd_resource_wait(ctx, rsc, DRM_FREEDRENO_PREP_READ);
+      fd_resource_wait(ctx, rsc, FD_BO_PREP_READ);
 
       void *ptr = fd_bo_map(rsc->bo);
 

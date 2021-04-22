@@ -287,7 +287,7 @@ main(int argc, char **argv)
    fd_submit_flush(submit, -1, NULL, NULL);
 
    for (int i = 0; i < kernel->num_bufs; i++) {
-      fd_bo_cpu_prep(kernel->bufs[i], pipe, DRM_FREEDRENO_PREP_READ);
+      fd_bo_cpu_prep(kernel->bufs[i], pipe, FD_BO_PREP_READ);
       void *map = fd_bo_map(kernel->bufs[i]);
 
       printf("buf[%d]:\n", i);

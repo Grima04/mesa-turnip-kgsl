@@ -177,7 +177,7 @@ int
 __fd_resource_wait(struct fd_context *ctx, struct fd_resource *rsc, unsigned op,
                    const char *func)
 {
-   if (op & DRM_FREEDRENO_PREP_NOSYNC)
+   if (op & FD_BO_PREP_NOSYNC)
       return fd_bo_cpu_prep(rsc->bo, ctx->pipe, op);
 
    int ret;
@@ -499,7 +499,7 @@ fd_resource_uncompress(struct fd_context *ctx, struct fd_resource *rsc)
 void
 fd_resource_dump(struct fd_resource *rsc, const char *name)
 {
-   fd_bo_cpu_prep(rsc->bo, NULL, DRM_FREEDRENO_PREP_READ);
+   fd_bo_cpu_prep(rsc->bo, NULL, FD_BO_PREP_READ);
    printf("%s: \n", name);
    dump_hex(fd_bo_map(rsc->bo), fd_bo_size(rsc->bo));
 }
@@ -684,10 +684,10 @@ translate_usage(unsigned usage)
    uint32_t op = 0;
 
    if (usage & PIPE_MAP_READ)
-      op |= DRM_FREEDRENO_PREP_READ;
+      op |= FD_BO_PREP_READ;
 
    if (usage & PIPE_MAP_WRITE)
-      op |= DRM_FREEDRENO_PREP_WRITE;
+      op |= FD_BO_PREP_WRITE;
 
    return op;
 }
@@ -770,7 +770,7 @@ resource_transfer_map(struct pipe_context *pctx, struct pipe_resource *prsc,
          if (usage & PIPE_MAP_READ) {
             fd_blit_to_staging(ctx, trans);
 
-            fd_resource_wait(ctx, staging_rsc, DRM_FREEDRENO_PREP_READ);
+            fd_resource_wait(ctx, staging_rsc, FD_BO_PREP_READ);
          }
 
          buf = fd_bo_map(staging_rsc->bo);

@@ -126,8 +126,8 @@ static int
 is_idle(struct fd_bo *bo)
 {
    return fd_bo_cpu_prep(bo, NULL,
-                         DRM_FREEDRENO_PREP_READ | DRM_FREEDRENO_PREP_WRITE |
-                            DRM_FREEDRENO_PREP_NOSYNC) == 0;
+                         FD_BO_PREP_READ | FD_BO_PREP_WRITE |
+                            FD_BO_PREP_NOSYNC) == 0;
 }
 
 static struct fd_bo *

@@ -463,7 +463,7 @@ a6xx_read_perfcntrs(struct backend *b, uint64_t *results)
 {
    struct a6xx_backend *a6xx_backend = to_a6xx_backend(b);
 
-   fd_bo_cpu_prep(a6xx_backend->query_mem, NULL, DRM_FREEDRENO_PREP_READ);
+   fd_bo_cpu_prep(a6xx_backend->query_mem, NULL, FD_BO_PREP_READ);
    struct fd6_query_sample *samples = fd_bo_map(a6xx_backend->query_mem);
 
    for (unsigned i = 0; i < a6xx_backend->num_perfcntrs; i++) {

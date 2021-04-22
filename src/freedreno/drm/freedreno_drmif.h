@@ -69,9 +69,10 @@ enum fd_param_id {
 /* Default caching is WRITECOMBINE, we can add new bo flags later for cached/etc */
 
 /* bo access flags: (keep aligned to MSM_PREP_x) */
-#define DRM_FREEDRENO_PREP_READ   0x01
-#define DRM_FREEDRENO_PREP_WRITE  0x02
-#define DRM_FREEDRENO_PREP_NOSYNC 0x04
+#define FD_BO_PREP_READ   BITSET_BIT(0)
+#define FD_BO_PREP_WRITE  BITSET_BIT(1)
+#define FD_BO_PREP_NOSYNC BITSET_BIT(2)
+
 
 /* device functions:
  */

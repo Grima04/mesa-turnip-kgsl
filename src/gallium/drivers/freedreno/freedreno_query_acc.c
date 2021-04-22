@@ -60,7 +60,7 @@ realloc_query_bo(struct fd_context *ctx, struct fd_acc_query *aq)
    /* don't assume the buffer is zero-initialized: */
    rsc = fd_resource(aq->prsc);
 
-   fd_bo_cpu_prep(rsc->bo, ctx->pipe, DRM_FREEDRENO_PREP_WRITE);
+   fd_bo_cpu_prep(rsc->bo, ctx->pipe, FD_BO_PREP_WRITE);
 
    map = fd_bo_map(rsc->bo);
    memset(map, 0, aq->size);
@@ -170,7 +170,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q, bool wait,
       }
 
       ret = fd_resource_wait(
-         ctx, rsc, DRM_FREEDRENO_PREP_READ | DRM_FREEDRENO_PREP_NOSYNC);
+         ctx, rsc, FD_BO_PREP_READ | FD_BO_PREP_NOSYNC);
       if (ret)
          return false;
 
@@ -185,7 +185,7 @@ fd_acc_get_query_result(struct fd_context *ctx, struct fd_query *q, bool wait,
    }
 
    /* get the result: */
-   fd_resource_wait(ctx, rsc, DRM_FREEDRENO_PREP_READ);
+   fd_resource_wait(ctx, rsc, FD_BO_PREP_READ);
 
    void *ptr = fd_bo_map(rsc->bo);
    p->result(aq, ptr, result);

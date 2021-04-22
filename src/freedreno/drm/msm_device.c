@@ -50,6 +50,10 @@ msm_device_new(int fd)
    struct msm_device *msm_dev;
    struct fd_device *dev;
 
+   STATIC_ASSERT(FD_BO_PREP_READ == MSM_PREP_READ);
+   STATIC_ASSERT(FD_BO_PREP_WRITE == MSM_PREP_WRITE);
+   STATIC_ASSERT(FD_BO_PREP_NOSYNC == MSM_PREP_NOSYNC);
+
    msm_dev = calloc(1, sizeof(*msm_dev));
    if (!msm_dev)
       return NULL;
