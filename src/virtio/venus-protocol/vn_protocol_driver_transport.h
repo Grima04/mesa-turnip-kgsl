@@ -665,15 +665,15 @@ static inline void vn_submit_vkSetReplyCommandStreamMESA(struct vn_instance *vn_
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkSetReplyCommandStreamMESA_reply(pStream) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkSetReplyCommandStreamMESA(&submit->command, cmd_flags, pStream);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkSetReplyCommandStreamMESA_reply(pStream) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkSetReplyCommandStreamMESA(enc, cmd_flags, pStream);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkSeekReplyCommandStreamMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, size_t position, struct vn_instance_submit_command *submit)
@@ -686,15 +686,15 @@ static inline void vn_submit_vkSeekReplyCommandStreamMESA(struct vn_instance *vn
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkSeekReplyCommandStreamMESA_reply(position) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkSeekReplyCommandStreamMESA(&submit->command, cmd_flags, position);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkSeekReplyCommandStreamMESA_reply(position) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkSeekReplyCommandStreamMESA(enc, cmd_flags, position);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkExecuteCommandStreamsMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, uint32_t streamCount, const VkCommandStreamDescriptionMESA* pStreams, const size_t* pReplyPositions, uint32_t dependencyCount, const VkCommandStreamDependencyMESA* pDependencies, VkCommandStreamExecutionFlagsMESA flags, struct vn_instance_submit_command *submit)
@@ -707,15 +707,15 @@ static inline void vn_submit_vkExecuteCommandStreamsMESA(struct vn_instance *vn_
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkExecuteCommandStreamsMESA_reply(streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkExecuteCommandStreamsMESA(&submit->command, cmd_flags, streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkExecuteCommandStreamsMESA_reply(streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkExecuteCommandStreamsMESA(enc, cmd_flags, streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkCreateRingMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, uint64_t ring, const VkRingCreateInfoMESA* pCreateInfo, struct vn_instance_submit_command *submit)
@@ -728,15 +728,15 @@ static inline void vn_submit_vkCreateRingMESA(struct vn_instance *vn_instance, V
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkCreateRingMESA_reply(ring, pCreateInfo) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkCreateRingMESA(&submit->command, cmd_flags, ring, pCreateInfo);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkCreateRingMESA_reply(ring, pCreateInfo) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkCreateRingMESA(enc, cmd_flags, ring, pCreateInfo);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkDestroyRingMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, uint64_t ring, struct vn_instance_submit_command *submit)
@@ -749,15 +749,15 @@ static inline void vn_submit_vkDestroyRingMESA(struct vn_instance *vn_instance, 
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkDestroyRingMESA_reply(ring) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkDestroyRingMESA(&submit->command, cmd_flags, ring);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkDestroyRingMESA_reply(ring) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkDestroyRingMESA(enc, cmd_flags, ring);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkNotifyRingMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, uint64_t ring, uint32_t seqno, VkRingNotifyFlagsMESA flags, struct vn_instance_submit_command *submit)
@@ -770,15 +770,15 @@ static inline void vn_submit_vkNotifyRingMESA(struct vn_instance *vn_instance, V
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkNotifyRingMESA_reply(ring, seqno, flags) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkNotifyRingMESA(&submit->command, cmd_flags, ring, seqno, flags);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkNotifyRingMESA_reply(ring, seqno, flags) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkNotifyRingMESA(enc, cmd_flags, ring, seqno, flags);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkWriteRingExtraMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, uint64_t ring, size_t offset, uint32_t value, struct vn_instance_submit_command *submit)
@@ -791,15 +791,15 @@ static inline void vn_submit_vkWriteRingExtraMESA(struct vn_instance *vn_instanc
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkWriteRingExtraMESA_reply(ring, offset, value) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkWriteRingExtraMESA(&submit->command, cmd_flags, ring, offset, value);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkWriteRingExtraMESA_reply(ring, offset, value) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkWriteRingExtraMESA(enc, cmd_flags, ring, offset, value);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_submit_vkGetMemoryResourcePropertiesMESA(struct vn_instance *vn_instance, VkCommandFlagsEXT cmd_flags, VkDevice device, uint32_t resourceId, VkMemoryResourcePropertiesMESA* pMemoryResourceProperties, struct vn_instance_submit_command *submit)
@@ -812,24 +812,25 @@ static inline void vn_submit_vkGetMemoryResourcePropertiesMESA(struct vn_instanc
         if (!cmd_data)
             cmd_size = 0;
     }
+    const size_t reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkGetMemoryResourcePropertiesMESA_reply(device, resourceId, pMemoryResourceProperties) : 0;
 
-    submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
-    if (cmd_size)
-        vn_encode_vkGetMemoryResourcePropertiesMESA(&submit->command, cmd_flags, device, resourceId, pMemoryResourceProperties);
-    submit->reply_size = cmd_flags & VK_COMMAND_GENERATE_REPLY_BIT_EXT ? vn_sizeof_vkGetMemoryResourcePropertiesMESA_reply(device, resourceId, pMemoryResourceProperties) : 0;
-    vn_instance_submit_command(vn_instance, submit);
-
-    if (cmd_data != local_cmd_data)
-        free(cmd_data);
+    struct vn_cs_encoder *enc = vn_instance_submit_command_init(vn_instance, submit, cmd_data, cmd_size, reply_size);
+    if (cmd_size) {
+        vn_encode_vkGetMemoryResourcePropertiesMESA(enc, cmd_flags, device, resourceId, pMemoryResourceProperties);
+        vn_instance_submit_command(vn_instance, submit);
+        if (cmd_data != local_cmd_data)
+            free(cmd_data);
+    }
 }
 
 static inline void vn_call_vkSetReplyCommandStreamMESA(struct vn_instance *vn_instance, const VkCommandStreamDescriptionMESA* pStream)
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkSetReplyCommandStreamMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, pStream, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkSetReplyCommandStreamMESA_reply(&submit.reply, pStream);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkSetReplyCommandStreamMESA_reply(dec, pStream);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -843,9 +844,10 @@ static inline void vn_call_vkSeekReplyCommandStreamMESA(struct vn_instance *vn_i
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkSeekReplyCommandStreamMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, position, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkSeekReplyCommandStreamMESA_reply(&submit.reply, position);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkSeekReplyCommandStreamMESA_reply(dec, position);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -859,9 +861,10 @@ static inline void vn_call_vkExecuteCommandStreamsMESA(struct vn_instance *vn_in
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkExecuteCommandStreamsMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkExecuteCommandStreamsMESA_reply(&submit.reply, streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkExecuteCommandStreamsMESA_reply(dec, streamCount, pStreams, pReplyPositions, dependencyCount, pDependencies, flags);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -875,9 +878,10 @@ static inline void vn_call_vkCreateRingMESA(struct vn_instance *vn_instance, uin
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkCreateRingMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, ring, pCreateInfo, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkCreateRingMESA_reply(&submit.reply, ring, pCreateInfo);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkCreateRingMESA_reply(dec, ring, pCreateInfo);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -891,9 +895,10 @@ static inline void vn_call_vkDestroyRingMESA(struct vn_instance *vn_instance, ui
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkDestroyRingMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, ring, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkDestroyRingMESA_reply(&submit.reply, ring);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkDestroyRingMESA_reply(dec, ring);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -907,9 +912,10 @@ static inline void vn_call_vkNotifyRingMESA(struct vn_instance *vn_instance, uin
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkNotifyRingMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, ring, seqno, flags, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkNotifyRingMESA_reply(&submit.reply, ring, seqno, flags);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkNotifyRingMESA_reply(dec, ring, seqno, flags);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -923,9 +929,10 @@ static inline void vn_call_vkWriteRingExtraMESA(struct vn_instance *vn_instance,
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkWriteRingExtraMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, ring, offset, value, &submit);
-    if (submit.reply_bo) {
-        vn_decode_vkWriteRingExtraMESA_reply(&submit.reply, ring, offset, value);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        vn_decode_vkWriteRingExtraMESA_reply(dec, ring, offset, value);
+        vn_instance_free_command_reply(vn_instance, &submit);
     }
 }
 
@@ -939,9 +946,10 @@ static inline VkResult vn_call_vkGetMemoryResourcePropertiesMESA(struct vn_insta
 {
     struct vn_instance_submit_command submit;
     vn_submit_vkGetMemoryResourcePropertiesMESA(vn_instance, VK_COMMAND_GENERATE_REPLY_BIT_EXT, device, resourceId, pMemoryResourceProperties, &submit);
-    if (submit.reply_bo) {
-        const VkResult ret = vn_decode_vkGetMemoryResourcePropertiesMESA_reply(&submit.reply, device, resourceId, pMemoryResourceProperties);
-        vn_renderer_bo_unref(submit.reply_bo);
+    struct vn_cs_decoder *dec = vn_instance_get_command_reply(vn_instance, &submit);
+    if (dec) {
+        const VkResult ret = vn_decode_vkGetMemoryResourcePropertiesMESA_reply(dec, device, resourceId, pMemoryResourceProperties);
+        vn_instance_free_command_reply(vn_instance, &submit);
         return ret;
     } else {
         return VK_ERROR_OUT_OF_HOST_MEMORY;
