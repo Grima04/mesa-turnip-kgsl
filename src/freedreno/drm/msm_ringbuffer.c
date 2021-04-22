@@ -433,7 +433,6 @@ msm_submit_new(struct fd_pipe *pipe)
    slab_create(&msm_submit->ring_pool, sizeof(struct msm_ringbuffer), 16);
 
    submit = &msm_submit->base;
-   submit->pipe = pipe;
    submit->funcs = &submit_funcs;
 
    return submit;

@@ -530,7 +530,6 @@ msm_submit_sp_new(struct fd_pipe *pipe)
    slab_create_child(&msm_submit->ring_pool, &to_msm_pipe(pipe)->ring_pool);
 
    submit = &msm_submit->base;
-   submit->pipe = pipe;
    submit->funcs = &submit_funcs;
 
    return submit;
