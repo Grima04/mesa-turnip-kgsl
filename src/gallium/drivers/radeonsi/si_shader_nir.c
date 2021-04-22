@@ -23,6 +23,7 @@
  */
 
 #include "ac_nir_to_llvm.h"
+#include "ac_nir.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_deref.h"
@@ -871,7 +872,7 @@ static void si_lower_nir(struct si_screen *sscreen, struct nir_shader *nir)
       NIR_PASS(changed, nir, nir_opt_large_constants, glsl_get_natural_size_align_bytes, 16);
    }
 
-   changed |= ac_lower_indirect_derefs(nir, sscreen->info.chip_class);
+   changed |= ac_nir_lower_indirect_derefs(nir, sscreen->info.chip_class);
    if (changed)
       si_nir_opts(sscreen, nir, false);
 

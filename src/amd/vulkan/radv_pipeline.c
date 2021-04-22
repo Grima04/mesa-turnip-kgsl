@@ -43,6 +43,7 @@
 #include "ac_exp_param.h"
 #include "ac_llvm_util.h"
 #include "ac_nir_to_llvm.h"
+#include "ac_nir.h"
 #include "ac_shader_util.h"
 #include "aco_interface.h"
 #include "sid.h"
@@ -2339,16 +2340,16 @@ radv_link_shaders(struct radv_pipeline *pipeline, nir_shader **shaders,
 
       if (progress) {
          if (nir_lower_global_vars_to_local(ordered_shaders[i])) {
-            ac_lower_indirect_derefs(ordered_shaders[i],
-                                     pipeline->device->physical_device->rad_info.chip_class);
+            ac_nir_lower_indirect_derefs(ordered_shaders[i],
+                                         pipeline->device->physical_device->rad_info.chip_class);
             /* remove dead writes, which can remove input loads */
             nir_lower_vars_to_ssa(ordered_shaders[i]);
             nir_opt_dce(ordered_shaders[i]);
          }
 
          if (nir_lower_global_vars_to_local(ordered_shaders[i - 1])) {
-            ac_lower_indirect_derefs(ordered_shaders[i - 1],
-                                     pipeline->device->physical_device->rad_info.chip_class);
+            ac_nir_lower_indirect_derefs(ordered_shaders[i - 1],
+                                         pipeline->device->physical_device->rad_info.chip_class);
          }
       }
    }

@@ -644,7 +644,7 @@ radv_shader_compile_to_nir(struct radv_device *device, struct vk_shader_module *
     * bloat the instruction count of the loop and cause it to be
     * considered too large for unrolling.
     */
-   if (ac_lower_indirect_derefs(nir, device->physical_device->rad_info.chip_class) &&
+   if (ac_nir_lower_indirect_derefs(nir, device->physical_device->rad_info.chip_class) &&
        !(flags & VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT) &&
        nir->info.stage != MESA_SHADER_COMPUTE) {
       /* Optimize the lowered code before the linking optimizations. */
