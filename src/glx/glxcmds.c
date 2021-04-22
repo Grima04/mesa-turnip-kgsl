@@ -1323,8 +1323,7 @@ glXQueryExtensionsString(Display * dpy, int screen)
    if (!psc->effectiveGLXexts) {
       if (!psc->serverGLXexts) {
          psc->serverGLXexts =
-            __glXQueryServerString(dpy, priv->majorOpcode, screen,
-                                   GLX_EXTENSIONS);
+            __glXQueryServerString(dpy, screen, GLX_EXTENSIONS);
       }
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
@@ -1380,7 +1379,7 @@ glXQueryServerString(Display * dpy, int screen, int name)
    }
 
    if (*str == NULL) {
-      *str = __glXQueryServerString(dpy, priv->majorOpcode, screen, name);
+      *str = __glXQueryServerString(dpy, screen, name);
    }
 
    return *str;

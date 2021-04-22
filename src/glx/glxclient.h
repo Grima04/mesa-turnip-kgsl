@@ -771,10 +771,8 @@ extern void __glXInitializeVisualConfigFromTags(struct glx_config * config,
                                                 Bool tagged_only,
                                                 Bool fbconfig_style_tags);
 
-extern char *__glXQueryServerString(Display * dpy, int opcode,
-                                    CARD32 screen, CARD32 name);
-extern char *__glXGetString(Display * dpy, int opcode,
-                            CARD32 screen, CARD32 name);
+extern char *__glXQueryServerString(Display *dpy, CARD32 screen, CARD32 name);
+extern char *__glXGetString(Display *dpy, CARD32 screen, CARD32 name);
 
 extern const char __glXGLClientVersion[];
 extern const char __glXGLClientExtensions[];

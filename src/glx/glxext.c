@@ -728,8 +728,7 @@ getFBConfigs(struct glx_screen *psc, struct glx_display *priv, int screen)
    xGLXGetFBConfigsReply reply;
    Display *dpy = priv->dpy;
 
-   psc->serverGLXexts =
-      __glXQueryServerString(dpy, priv->majorOpcode, screen, GLX_EXTENSIONS);
+   psc->serverGLXexts = __glXQueryServerString(dpy, screen, GLX_EXTENSIONS);
 
    if (psc->serverGLXexts == NULL) {
       return GL_FALSE;
@@ -822,8 +821,7 @@ AllocAndFetchScreenConfigs(Display * dpy, struct glx_display * priv)
    if (!priv->screens)
       return GL_FALSE;
 
-   priv->serverGLXversion =
-      __glXQueryServerString(dpy, priv->majorOpcode, 0, GLX_VERSION);
+   priv->serverGLXversion = __glXQueryServerString(dpy, 0, GLX_VERSION);
    if (priv->serverGLXversion == NULL) {
       FreeScreenConfigs(priv);
       return GL_FALSE;
