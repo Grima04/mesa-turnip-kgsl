@@ -51,6 +51,37 @@
 
 extern simple_mtx_t table_lock;
 
+/*
+ * Stupid/simple growable array implementation:
+ */
+
+static inline void
+grow(void **ptr, uint16_t nr, uint16_t *max, uint16_t sz)
+{
+   if ((nr + 1) > *max) {
+      if ((*max * 2) < (nr + 1))
+         *max = nr + 5;
+      else
+         *max = *max * 2;
+      *ptr = realloc(*ptr, *max * sz);
+   }
+}
+
+#define DECLARE_ARRAY(type, name)                                              \
+   unsigned short nr_##name, max_##name;                                       \
+   type *name;
+
+#define APPEND(x, name, ...)                                                   \
+   ({                                                                          \
+      grow((void **)&(x)->name, (x)->nr_##name, &(x)->max_##name,              \
+           sizeof((x)->name[0]));                                              \
+      (x)->name[(x)->nr_##name] = __VA_ARGS__;                                 \
+      (x)->nr_##name++;                                                        \
+   })
+
+#define READ_ONCE(x) (*(volatile __typeof__(x) *)&(x))
+
+
 struct fd_device_funcs {
    int (*bo_new_handle)(struct fd_device *dev, uint32_t size, uint32_t flags,
                         uint32_t *handle);
