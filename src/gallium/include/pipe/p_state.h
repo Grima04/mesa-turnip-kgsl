@@ -586,6 +586,11 @@ struct pipe_transfer
    struct pipe_box box;            /**< region of the resource to access */
    unsigned stride;                /**< row stride in bytes */
    unsigned layer_stride;          /**< image/layer stride in bytes */
+
+   /* Offset into a driver-internal staging buffer to make use of unused
+    * padding in this structure.
+    */
+   unsigned offset;
 };
 
 

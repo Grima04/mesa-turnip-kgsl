@@ -1710,7 +1710,7 @@ tc_transfer_map(struct pipe_context *_pipe,
 
          u_upload_alloc(tc->base.stream_uploader, 0,
                         box->width + (box->x % tc->map_buffer_alignment),
-                        tc->map_buffer_alignment, &ttrans->offset,
+                        tc->map_buffer_alignment, &ttrans->b.offset,
                         &ttrans->staging, (void**)&map);
          if (!map) {
             slab_free(&tc->pool_transfers, ttrans);
@@ -1806,7 +1806,7 @@ tc_buffer_do_flush_region(struct threaded_context *tc,
    if (ttrans->staging) {
       struct pipe_box src_box;
 
-      u_box_1d(ttrans->offset + ttrans->b.box.x % tc->map_buffer_alignment +
+      u_box_1d(ttrans->b.offset + ttrans->b.box.x % tc->map_buffer_alignment +
                (box->x - ttrans->b.box.x),
                box->width, &src_box);
 

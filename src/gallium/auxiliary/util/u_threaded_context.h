@@ -298,10 +298,6 @@ struct threaded_transfer {
 
    /* Staging buffer for DISCARD_RANGE transfers. */
    struct pipe_resource *staging;
-
-   /* Offset into the staging buffer, because the backing buffer is
-    * sub-allocated. */
-   unsigned offset;
 };
 
 struct threaded_query {

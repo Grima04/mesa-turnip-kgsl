@@ -319,8 +319,8 @@ static void *si_buffer_get_transfer(struct pipe_context *ctx, struct pipe_resour
    transfer->b.b.box = *box;
    transfer->b.b.stride = 0;
    transfer->b.b.layer_stride = 0;
+   transfer->b.b.offset = offset;
    transfer->b.staging = NULL;
-   transfer->offset = offset;
    transfer->staging = staging;
    *ptransfer = &transfer->b.b;
    return data;
@@ -480,7 +480,7 @@ static void si_buffer_do_flush_region(struct pipe_context *ctx, struct pipe_tran
 
    if (stransfer->staging) {
       unsigned src_offset =
-         stransfer->offset + transfer->box.x % SI_MAP_BUFFER_ALIGNMENT + (box->x - transfer->box.x);
+         stransfer->b.b.offset + transfer->box.x % SI_MAP_BUFFER_ALIGNMENT + (box->x - transfer->box.x);
 
       /* Copy the staging buffer into the original one. */
       si_copy_buffer(sctx, transfer->resource, &stransfer->staging->b.b, box->x, src_offset,

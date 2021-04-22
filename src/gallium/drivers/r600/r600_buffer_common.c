@@ -322,7 +322,7 @@ static void *r600_buffer_get_transfer(struct pipe_context *ctx,
 	transfer->b.b.stride = 0;
 	transfer->b.b.layer_stride = 0;
 	transfer->b.staging = NULL;
-	transfer->offset = offset;
+	transfer->b.b.offset = offset;
 	transfer->staging = staging;
 	*ptransfer = &transfer->b.b;
 	return data;
@@ -490,7 +490,7 @@ static void r600_buffer_do_flush_region(struct pipe_context *ctx,
 
 		dst = transfer->resource;
 		src = &rtransfer->staging->b.b;
-		soffset = rtransfer->offset + box->x % R600_MAP_BUFFER_ALIGNMENT;
+		soffset = rtransfer->b.b.offset + box->x % R600_MAP_BUFFER_ALIGNMENT;
 
 		u_box_1d(soffset, box->width, &dma_box);
 

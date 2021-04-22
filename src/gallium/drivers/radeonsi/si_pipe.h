@@ -337,7 +337,6 @@ struct si_resource {
 struct si_transfer {
    struct threaded_transfer b;
    struct si_resource *staging;
-   unsigned offset;
 };
 
 struct si_texture {
