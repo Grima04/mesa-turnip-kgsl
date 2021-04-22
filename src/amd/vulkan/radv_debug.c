@@ -638,10 +638,8 @@ void
 radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 {
    struct radv_device *device = queue->device;
-   char dump_dir[256], dump_path[512];
    enum ring_type ring;
    uint64_t addr;
-   FILE *f;
 
    ring = radv_queue_family_to_ring(queue->queue_family_index);
 
@@ -655,12 +653,14 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
 
    fprintf(stderr, "radv: GPU hang detected...\n");
 
+#ifndef _WIN32
    /* Create a directory into $HOME/radv_dumps_<pid>_<time> to save
     * various debugging info about that GPU hang.
     */
    struct tm *timep, result;
    time_t raw_time;
-   char buf_time[128];
+   FILE *f;
+   char dump_dir[256], dump_path[512], buf_time[128];
 
    time(&raw_time);
    timep = os_localtime(&raw_time, &result);
@@ -768,6 +768,7 @@ radv_check_gpu_hangs(struct radv_queue *queue, struct radeon_cmdbuf *cs)
       radv_dump_dmesg(f);
       fclose(f);
    }
+#endif
 
    fprintf(stderr, "radv: GPU hang report saved successfully!\n");
    abort();
