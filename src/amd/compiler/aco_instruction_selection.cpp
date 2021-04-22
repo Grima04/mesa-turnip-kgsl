@@ -10228,7 +10228,7 @@ static void export_vs_varying(isel_context *ctx, int slot, bool is_pos, int *nex
    int offset = (ctx->stage.has(SWStage::TES) && !ctx->stage.has(SWStage::GS))
                 ? ctx->program->info->tes.outinfo.vs_output_param_offset[slot]
                 : ctx->program->info->vs.outinfo.vs_output_param_offset[slot];
-   uint64_t mask = ctx->outputs.mask[slot];
+   unsigned mask = ctx->outputs.mask[slot];
    if (!is_pos && !mask)
       return;
    if (!is_pos && offset == AC_EXP_PARAM_UNDEFINED)

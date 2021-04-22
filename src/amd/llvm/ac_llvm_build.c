@@ -1413,11 +1413,11 @@ static LLVMValueRef ac_ufN_to_float(struct ac_llvm_context *ctx, LLVMValueRef sr
    LLVMValueRef result;
 
    tmp = LLVMBuildICmp(ctx->builder, LLVMIntUGE, src,
-                       LLVMConstInt(ctx->i32, ((1 << exp_bits) - 1) << mant_bits, false), "");
+                       LLVMConstInt(ctx->i32, ((1ULL << exp_bits) - 1) << mant_bits, false), "");
    result = LLVMBuildSelect(ctx->builder, tmp, naninf, normal, "");
 
-   tmp = LLVMBuildICmp(ctx->builder, LLVMIntUGE, src, LLVMConstInt(ctx->i32, 1 << mant_bits, false),
-                       "");
+   tmp = LLVMBuildICmp(ctx->builder, LLVMIntUGE, src,
+                       LLVMConstInt(ctx->i32, 1ULL << mant_bits, false), "");
    result = LLVMBuildSelect(ctx->builder, tmp, result, denormal, "");
 
    tmp = LLVMBuildICmp(ctx->builder, LLVMIntNE, src, ctx->i32_0, "");
