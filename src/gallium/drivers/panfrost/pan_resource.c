@@ -1007,8 +1007,7 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
                 panfrost_resource_create_with_modifier(
                         ctx->base.screen, &rsrc->base, modifier);
         struct panfrost_resource *tmp_rsrc = pan_resource(tmp_prsrc);
-
-        struct pipe_blit_info blit = {0};
+        enum pipe_format blit_fmt = pan_blit_format(tmp_rsrc->base.format);
 
         unsigned depth = rsrc->base.target == PIPE_TEXTURE_3D ?
                 rsrc->base.depth0 : rsrc->base.array_size;
@@ -1016,22 +1015,22 @@ pan_resource_modifier_convert(struct panfrost_context *ctx,
         struct pipe_box box =
                 { 0, 0, 0, rsrc->base.width0, rsrc->base.height0, depth };
 
+        struct pipe_blit_info blit = {
+                .dst.resource = &tmp_rsrc->base,
+                .dst.format   = blit_fmt,
+                .dst.box      = box,
+                .src.resource = &rsrc->base,
+                .src.format   = pan_blit_format(rsrc->base.format),
+                .src.box      = box,
+                .mask         = util_format_get_mask(blit_fmt),
+                .filter       = PIPE_TEX_FILTER_NEAREST
+        };
+
         for (int i = 0; i <= rsrc->base.last_level; i++) {
-                if (!rsrc->state.slices[i].data_valid)
-                        continue;
-
-                blit.dst.resource = &tmp_rsrc->base;
-                blit.dst.format   = pan_blit_format(tmp_rsrc->base.format);
-                blit.dst.level    = i;
-                blit.dst.box      = box;
-                blit.src.resource = &rsrc->base;
-                blit.src.format   = pan_blit_format(rsrc->base.format);
-                blit.src.level    = i;
-                blit.src.box      = box;
-                blit.mask = util_format_get_mask(blit.dst.format);
-                blit.filter = PIPE_TEX_FILTER_NEAREST;
-
-                panfrost_blit(&ctx->base, &blit);
+                if (rsrc->state.slices[i].data_valid) {
+                        blit.dst.level = blit.src.level  = i;
+                        panfrost_blit(&ctx->base, &blit);
+                }
         }
 
         panfrost_bo_unreference(rsrc->image.data.bo);
