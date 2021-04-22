@@ -137,7 +137,9 @@ struct fd_bo *fd_bo_cache_alloc(struct fd_bo_cache *cache, uint32_t *size,
 int fd_bo_cache_free(struct fd_bo_cache *cache, struct fd_bo *bo);
 
 /* for where @table_lock is already held: */
+void fd_bo_del_locked(struct fd_bo *bo);
 void fd_device_del_locked(struct fd_device *dev);
+void fd_pipe_del_locked(struct fd_pipe *pipe);
 
 struct fd_pipe_funcs {
    struct fd_ringbuffer *(*ringbuffer_new_object)(struct fd_pipe *pipe,

@@ -84,6 +84,15 @@ fd_pipe_del(struct fd_pipe *pipe)
    pipe->funcs->destroy(pipe);
 }
 
+void
+fd_pipe_del_locked(struct fd_pipe *pipe)
+{
+   simple_mtx_assert_locked(&table_lock);
+   if (!p_atomic_dec_zero(&pipe->refcnt))
+      return;
+   pipe->funcs->destroy(pipe);
+}
+
 int
 fd_pipe_get_param(struct fd_pipe *pipe, enum fd_param_id param, uint64_t *value)
 {

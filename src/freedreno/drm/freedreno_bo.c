@@ -254,26 +254,43 @@ fd_bo_ref(struct fd_bo *bo)
    return bo;
 }
 
-void
-fd_bo_del(struct fd_bo *bo)
+static void
+bo_del_or_recycle(struct fd_bo *bo)
 {
    struct fd_device *dev = bo->dev;
+
+   simple_mtx_assert_locked(&table_lock);
+
+   if ((bo->bo_reuse == BO_CACHE) &&
+       (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
+      return;
+
+   if ((bo->bo_reuse == RING_CACHE) &&
+       (fd_bo_cache_free(&dev->ring_cache, bo) == 0))
+      return;
+
+   bo_del(bo);
+}
+
+void
+fd_bo_del_locked(struct fd_bo *bo)
+{
+   simple_mtx_assert_locked(&table_lock);
 
    if (!p_atomic_dec_zero(&bo->refcnt))
       return;
 
+   bo_del_or_recycle(bo);
+}
+
+void
+fd_bo_del(struct fd_bo *bo)
+{
+   if (!p_atomic_dec_zero(&bo->refcnt))
+      return;
+
    simple_mtx_lock(&table_lock);
-
-   if ((bo->bo_reuse == BO_CACHE) &&
-       (fd_bo_cache_free(&dev->bo_cache, bo) == 0))
-      goto out;
-   if ((bo->bo_reuse == RING_CACHE) &&
-       (fd_bo_cache_free(&dev->ring_cache, bo) == 0))
-      goto out;
-
-   bo_del(bo);
-
-out:
+   bo_del_or_recycle(bo);
    simple_mtx_unlock(&table_lock);
 }
 
