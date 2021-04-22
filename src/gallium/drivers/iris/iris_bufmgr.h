@@ -298,8 +298,8 @@ void iris_bo_unreference(struct iris_bo *bo);
 #define MAP_PERSISTENT    PIPE_MAP_PERSISTENT
 #define MAP_COHERENT      PIPE_MAP_COHERENT
 /* internal */
-#define MAP_INTERNAL_MASK (0xffu << 24)
-#define MAP_RAW           (0x01 << 24)
+#define MAP_RAW           (PIPE_MAP_DRV_PRV << 0)
+#define MAP_INTERNAL_MASK (MAP_RAW)
 
 #define MAP_FLAGS         (MAP_READ | MAP_WRITE | MAP_ASYNC | \
                            MAP_PERSISTENT | MAP_COHERENT | MAP_INTERNAL_MASK)
