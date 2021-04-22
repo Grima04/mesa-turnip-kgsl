@@ -196,8 +196,7 @@ realloc_bo(struct fd_resource *rsc, uint32_t size)
    struct pipe_resource *prsc = &rsc->b.b;
    struct fd_screen *screen = fd_screen(rsc->b.b.screen);
    uint32_t flags =
-      DRM_FREEDRENO_GEM_CACHE_WCOMBINE | DRM_FREEDRENO_GEM_TYPE_KMEM |
-      COND(prsc->bind & PIPE_BIND_SCANOUT, DRM_FREEDRENO_GEM_SCANOUT);
+      COND(prsc->bind & PIPE_BIND_SCANOUT, FD_BO_SCANOUT);
    /* TODO other flags? */
 
    /* if we start using things other than write-combine,

@@ -263,8 +263,7 @@ main(int argc, char **argv)
           kernel->local_size[2]);
    for (int i = 0; i < kernel->num_bufs; i++) {
       printf("buf[%d]: size=%u\n", i, kernel->buf_sizes[i]);
-      kernel->bufs[i] = fd_bo_new(dev, kernel->buf_sizes[i] * 4,
-                                  DRM_FREEDRENO_GEM_TYPE_KMEM, "buf[%d]", i);
+      kernel->bufs[i] = fd_bo_new(dev, kernel->buf_sizes[i] * 4, 0, "buf[%d]", i);
    }
 
    if (disasm)

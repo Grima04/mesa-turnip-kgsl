@@ -174,10 +174,10 @@ msm_bo_new_handle(struct fd_device *dev, uint32_t size, uint32_t flags,
    };
    int ret;
 
-   if (flags & DRM_FREEDRENO_GEM_SCANOUT)
+   if (flags & FD_BO_SCANOUT)
       req.flags |= MSM_BO_SCANOUT;
 
-   if (flags & DRM_FREEDRENO_GEM_GPUREADONLY)
+   if (flags & FD_BO_GPUREADONLY)
       req.flags |= MSM_BO_GPU_READONLY;
 
    ret = drmCommandWriteRead(dev->fd, DRM_MSM_GEM_NEW, &req, sizeof(req));

@@ -29,6 +29,7 @@
 
 #include <stdint.h>
 
+#include "util/bitset.h"
 #include "util/u_debug.h"
 
 #ifdef __cplusplus
@@ -63,17 +64,9 @@ enum fd_param_id {
 };
 
 /* bo flags: */
-#define DRM_FREEDRENO_GEM_TYPE_SMI       0x00000001
-#define DRM_FREEDRENO_GEM_TYPE_KMEM      0x00000002
-#define DRM_FREEDRENO_GEM_TYPE_MEM_MASK  0x0000000f
-#define DRM_FREEDRENO_GEM_CACHE_NONE     0x00000000
-#define DRM_FREEDRENO_GEM_CACHE_WCOMBINE 0x00100000
-#define DRM_FREEDRENO_GEM_CACHE_WTHROUGH 0x00200000
-#define DRM_FREEDRENO_GEM_CACHE_WBACK    0x00400000
-#define DRM_FREEDRENO_GEM_CACHE_WBACKWA  0x00800000
-#define DRM_FREEDRENO_GEM_CACHE_MASK     0x00f00000
-#define DRM_FREEDRENO_GEM_GPUREADONLY    0x01000000
-#define DRM_FREEDRENO_GEM_SCANOUT        0x02000000
+#define FD_BO_GPUREADONLY  BITSET_BIT(1)
+#define FD_BO_SCANOUT      BITSET_BIT(2)
+/* Default caching is WRITECOMBINE, we can add new bo flags later for cached/etc */
 
 /* bo access flags: (keep aligned to MSM_PREP_x) */
 #define DRM_FREEDRENO_PREP_READ   0x01

@@ -335,13 +335,13 @@ update_vsc_pipe(struct fd_batch *batch)
    if (!fd6_ctx->vsc_draw_strm) {
       fd6_ctx->vsc_draw_strm = fd_bo_new(
          ctx->screen->dev, VSC_DRAW_STRM_SIZE(fd6_ctx->vsc_draw_strm_pitch),
-         DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_draw_strm");
+         0, "vsc_draw_strm");
    }
 
    if (!fd6_ctx->vsc_prim_strm) {
       fd6_ctx->vsc_prim_strm = fd_bo_new(
          ctx->screen->dev, VSC_PRIM_STRM_SIZE(fd6_ctx->vsc_prim_strm_pitch),
-         DRM_FREEDRENO_GEM_TYPE_KMEM, "vsc_prim_strm");
+         0, "vsc_prim_strm");
    }
 
    OUT_REG(
@@ -1443,10 +1443,10 @@ setup_tess_buffers(struct fd_batch *batch, struct fd_ringbuffer *ring)
    struct fd_context *ctx = batch->ctx;
 
    batch->tessfactor_bo = fd_bo_new(ctx->screen->dev, batch->tessfactor_size,
-                                    DRM_FREEDRENO_GEM_TYPE_KMEM, "tessfactor");
+                                    0, "tessfactor");
 
    batch->tessparam_bo = fd_bo_new(ctx->screen->dev, batch->tessparam_size,
-                                   DRM_FREEDRENO_GEM_TYPE_KMEM, "tessparam");
+                                   0, "tessparam");
 
    OUT_PKT4(ring, REG_A6XX_PC_TESSFACTOR_ADDR, 2);
    OUT_RELOC(ring, batch->tessfactor_bo, 0, 0, 0);

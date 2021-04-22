@@ -389,8 +389,7 @@ a6xx_emit_grid(struct kernel *kernel, uint32_t grid[3],
    if (a6xx_backend->num_perfcntrs > 0) {
       a6xx_backend->query_mem = fd_bo_new(
          a6xx_backend->dev,
-         a6xx_backend->num_perfcntrs * sizeof(struct fd6_query_sample),
-         DRM_FREEDRENO_GEM_TYPE_KMEM, "query");
+         a6xx_backend->num_perfcntrs * sizeof(struct fd6_query_sample), 0, "query");
 
       /* configure the performance counters to count the requested
        * countables:
@@ -489,7 +488,7 @@ a6xx_init(struct fd_device *dev, uint32_t gpu_id)
    a6xx_backend->dev = dev;
 
    a6xx_backend->control_mem =
-      fd_bo_new(dev, 0x1000, DRM_FREEDRENO_GEM_TYPE_KMEM, "control");
+      fd_bo_new(dev, 0x1000, 0, "control");
 
    return &a6xx_backend->base;
 }

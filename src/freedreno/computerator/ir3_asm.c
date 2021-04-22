@@ -49,9 +49,7 @@ ir3_asm_assemble(struct ir3_compiler *c, FILE *in)
 
    unsigned sz = v->info.size;
 
-   v->bo = fd_bo_new(c->dev, sz,
-                     DRM_FREEDRENO_GEM_CACHE_WCOMBINE | DRM_FREEDRENO_GEM_TYPE_KMEM,
-                     "%s", ir3_shader_stage(v));
+   v->bo = fd_bo_new(c->dev, sz, 0, "%s", ir3_shader_stage(v));
 
    memcpy(fd_bo_map(v->bo), kernel->bin, sz);
 

@@ -107,7 +107,7 @@ fd6_emit_shader(struct fd_context *ctx, struct fd_ringbuffer *ring,
       uint32_t total_size =
          ALIGN(per_fiber_size * fibers_per_sp, 1 << 12) * num_sp_cores;
       ctx->pvtmem[so->pvtmem_per_wave].bo = fd_bo_new(
-         ctx->screen->dev, total_size, DRM_FREEDRENO_GEM_TYPE_KMEM,
+         ctx->screen->dev, total_size, 0,
          "pvtmem_%s_%d", so->pvtmem_per_wave ? "per_wave" : "per_fiber",
          per_fiber_size);
    } else {

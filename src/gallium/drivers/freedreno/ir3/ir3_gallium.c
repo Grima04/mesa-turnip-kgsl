@@ -105,8 +105,7 @@ upload_shader_variant(struct ir3_shader_variant *v)
    assert(!v->bo);
 
    v->bo =
-      fd_bo_new(compiler->dev, v->info.size,
-                DRM_FREEDRENO_GEM_CACHE_WCOMBINE | DRM_FREEDRENO_GEM_TYPE_KMEM,
+      fd_bo_new(compiler->dev, v->info.size, 0,
                 "%s:%s", ir3_shader_stage(v), info->name);
 
    /* Always include shaders in kernel crash dumps. */

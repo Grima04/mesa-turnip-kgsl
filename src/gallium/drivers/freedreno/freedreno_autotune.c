@@ -251,7 +251,7 @@ fd_autotune_init(struct fd_autotune *at, struct fd_device *dev)
    list_inithead(&at->lru);
 
    at->results_mem = fd_bo_new(dev, sizeof(struct fd_autotune_results),
-                               DRM_FREEDRENO_GEM_TYPE_KMEM, "autotune");
+                               0, "autotune");
    at->results = fd_bo_map(at->results_mem);
 
    list_inithead(&at->pending_results);
