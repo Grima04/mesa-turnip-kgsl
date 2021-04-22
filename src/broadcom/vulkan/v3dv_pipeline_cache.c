@@ -913,7 +913,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
    }
 
    struct v3dv_physical_device *pdevice = &device->instance->physicalDevice;
-   VkResult result = VK_SUCCESS;
+   VkResult result = VK_INCOMPLETE;
 
    pthread_mutex_lock(&cache->mutex);
 
@@ -930,9 +930,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
    intptr_t nir_count_offset = blob_reserve_uint32(&blob);
    if (nir_count_offset < 0) {
       *pDataSize = 0;
-      blob_finish(&blob);
-      pthread_mutex_unlock(&cache->mutex);
-      return VK_INCOMPLETE;
+      goto done;
    }
 
    if (cache->nir_cache) {
@@ -947,9 +945,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
 
          if (blob.out_of_memory) {
             blob.size = save_size;
-            pthread_mutex_unlock(&cache->mutex);
-            result = VK_INCOMPLETE;
-            break;
+            goto done;
          }
 
          nir_count++;
@@ -961,9 +957,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
    intptr_t count_offset = blob_reserve_uint32(&blob);
    if (count_offset < 0) {
       *pDataSize = 0;
-      blob_finish(&blob);
-      pthread_mutex_unlock(&cache->mutex);
-      return VK_INCOMPLETE;
+      goto done;
    }
 
    if (cache->cache) {
@@ -974,9 +968,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
          if (!v3dv_pipeline_shared_data_write_to_blob(cache_entry, &blob)) {
             /* If it fails reset to the previous size and bail */
             blob.size = save_size;
-            pthread_mutex_unlock(&cache->mutex);
-            result = VK_INCOMPLETE;
-            break;
+            goto done;
          }
 
          count++;
@@ -987,7 +979,7 @@ v3dv_GetPipelineCacheData(VkDevice _device,
 
    *pDataSize = blob.size;
 
-   blob_finish(&blob);
+   result = VK_SUCCESS;
 
    if (debug_cache) {
       assert(count <= cache->stats.count);
@@ -996,6 +988,9 @@ v3dv_GetPipelineCacheData(VkDevice _device,
               "%i entries, %u DataSize\n",
               cache, nir_count, count, (uint32_t) *pDataSize);
    }
+
+ done:
+   blob_finish(&blob);
 
    pthread_mutex_unlock(&cache->mutex);
 
