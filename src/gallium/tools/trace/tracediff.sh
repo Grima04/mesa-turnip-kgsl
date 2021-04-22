@@ -56,6 +56,8 @@ print_help()
   echo "  -h, --help         display this help and exit"
   echo "  -V, --version      output version information and exit"
   echo ""
+  echo "  -m, --meld         use Meld for diffing (default is sdiff)"
+  echo ""
   echo "dump.py options:"
   echo "  -N, --named        generate symbolic names for raw pointer values"
   echo "  -M, --method-only  output only call names without arguments"
@@ -97,6 +99,7 @@ strip_dump()
 trap do_cleanup HUP INT TERM
 DUMP_ARGS=()
 SDIFF_ARGS=()
+USE_MELD=0
 
 while test -n "$1"
 do
@@ -116,6 +119,10 @@ do
       ;;
     -d|--minimal)
       SDIFF_ARGS+=("$1")
+      shift
+      ;;
+    -m|--meld)
+      USE_MELD=1
       shift
       ;;
     *)
@@ -142,16 +149,22 @@ TEMPDIR="$(mktemp -d)"
 TEMP1="${TEMPDIR}/1"
 TEMP2="${TEMPDIR}/2"
 
-mkfifo "$TEMP1" || fatal "Could not create fifo 1"
-mkfifo "$TEMP2" || fatal "Could not create fifo 2"
+if test $USE_MELD -ne 0; then
+  strip_dump "$INFILE1" "$TEMP1" "$@" || fatal "Could not dump '${INFILE1}."
+  strip_dump "$INFILE2" "$TEMP2" "$@" || fatal "Could not dump '${INFILE2}."
+  meld "$TEMP1" "$TEMP2"
+else
+  mkfifo "$TEMP1" || fatal "Could not create fifo 1"
+  mkfifo "$TEMP2" || fatal "Could not create fifo 2"
 
-strip_dump "$INFILE1" "$TEMP1" "$@" &
-strip_dump "$INFILE2" "$TEMP2" "$@" &
+  strip_dump "$INFILE1" "$TEMP1" "$@" &
+  strip_dump "$INFILE2" "$TEMP2" "$@" &
 
-sdiff \
-  --left-column \
-  --width="$(tput cols)" \
-  --speed-large-files \
-  "${SDIFF_ARGS[@]}" \
-  "$TEMP1" "$TEMP2" \
-| less
+  sdiff \
+    --left-column \
+    --width="$(tput cols)" \
+    --speed-large-files \
+    "${SDIFF_ARGS[@]}" \
+    "$TEMP1" "$TEMP2" \
+  | less
+fi
