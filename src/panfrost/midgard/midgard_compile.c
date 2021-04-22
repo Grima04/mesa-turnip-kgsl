@@ -1858,18 +1858,6 @@ emit_intrinsic(compiler_context *ctx, nir_intrinsic_instr *instr)
                 break;
         }
 
-        case nir_intrinsic_load_blend_const_color_rgba: {
-                assert(ctx->inputs->is_blend);
-                reg = nir_dest_index(&instr->dest);
-
-                midgard_instruction ins = v_mov(SSA_FIXED_REGISTER(REGISTER_CONSTANT), reg);
-                ins.has_constants = true;
-                memcpy(ins.constants.f32, ctx->inputs->blend.constants,
-                       sizeof(ctx->inputs->blend.constants));
-                emit_mir_instruction(ctx, ins);
-                break;
-        }
-
         case nir_intrinsic_store_output:
         case nir_intrinsic_store_combined_output_pan:
                 assert(nir_src_is_const(instr->src[1]) && "no indirect outputs");

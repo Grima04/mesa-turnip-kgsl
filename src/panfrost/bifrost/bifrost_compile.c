@@ -1172,26 +1172,6 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                                 nir_dest_num_components(instr->dest), 0);
                 break;
 
-        case nir_intrinsic_load_blend_const_color_r_float:
-                bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->inputs->blend.constants[0]));
-                break;
-
-        case nir_intrinsic_load_blend_const_color_g_float:
-                bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->inputs->blend.constants[1]));
-                break;
-
-        case nir_intrinsic_load_blend_const_color_b_float:
-                bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->inputs->blend.constants[2]));
-                break;
-
-        case nir_intrinsic_load_blend_const_color_a_float:
-                bi_mov_i32_to(b, dst,
-                                bi_imm_f32(b->shader->inputs->blend.constants[3]));
-                break;
-
 	case nir_intrinsic_load_sample_positions_pan:
                 bi_mov_i32_to(b, bi_word(dst, 0),
                                 bi_fau(BIR_FAU_SAMPLE_POS_ARRAY, false));

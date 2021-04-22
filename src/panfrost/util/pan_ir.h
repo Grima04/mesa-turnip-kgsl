@@ -122,7 +122,6 @@ struct panfrost_compile_inputs {
         struct {
                 unsigned rt;
                 unsigned nr_samples;
-                float constants[4];
                 uint64_t bifrost_blend_desc;
         } blend;
         unsigned sysval_ubo;

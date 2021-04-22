@@ -449,6 +449,31 @@ get_equation_str(const struct pan_blend_rt_state *rt_state,
          }
 }
 
+static bool
+pan_inline_blend_constants(nir_builder *b, nir_instr *instr, void *data)
+{
+        if (instr->type != nir_instr_type_intrinsic)
+                return false;
+
+        nir_intrinsic_instr *intr = nir_instr_as_intrinsic(instr);
+        if (intr->intrinsic != nir_intrinsic_load_blend_const_color_rgba)
+                return false;
+
+        float *floats = data;
+        const nir_const_value constants[4] = {
+                { .f32 = floats[0] },
+                { .f32 = floats[1] },
+                { .f32 = floats[2] },
+                { .f32 = floats[3] }
+        };
+
+        b->cursor = nir_after_instr(instr);
+        nir_ssa_def *constant = nir_build_imm(b, 4, 32, constants);
+        nir_ssa_def_rewrite_uses(&intr->dest.ssa, constant);
+        nir_instr_remove(instr);
+        return true;
+}
+
 nir_shader *
 pan_blend_create_shader(const struct panfrost_device *dev,
                         const struct pan_blend_state *state,
@@ -481,8 +506,7 @@ pan_blend_create_shader(const struct panfrost_device *dev,
                 .logicop_func = state->logicop_func,
                 .colormask = rt_state->equation.color_mask,
                 .half = nir_type == nir_type_float16,
-                .format = rt_state->format,
-                .scalar = pan_is_bifrost(dev),
+                .format = rt_state->format
         };
 
         if (!rt_state->equation.blend_enable) {
@@ -551,6 +575,9 @@ pan_blend_create_shader(const struct panfrost_device *dev,
         options.src1 = s_src[1];
 
         NIR_PASS_V(b.shader, nir_lower_blend, options);
+        nir_shader_instructions_pass(b.shader, pan_inline_blend_constants,
+                        nir_metadata_block_index | nir_metadata_dominance,
+                        (void *) state->constants);
 
         return b.shader;
 }
@@ -673,9 +700,6 @@ pan_blend_get_shader_locked(const struct panfrost_device *dev,
                 .blend.nr_samples = key.nr_samples,
                 .rt_formats = { key.format },
         };
-
-        if (key.has_constants)
-                memcpy(inputs.blend.constants, state->constants, sizeof(inputs.blend.constants));
 
         if (pan_is_bifrost(dev)) {
                 inputs.blend.bifrost_blend_desc =
