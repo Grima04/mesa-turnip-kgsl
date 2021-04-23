@@ -59,12 +59,8 @@ struct virtgpu_shmem {
 
 struct virtgpu_bo {
    struct vn_renderer_bo base;
-
-   uint32_t blob_flags;
-   VkDeviceSize size;
-
    uint32_t gem_handle;
-   void *gem_ptr;
+   uint32_t blob_flags;
 };
 
 struct virtgpu_sync {
@@ -1078,10 +1074,12 @@ virtgpu_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    const bool mappable = bo->blob_flags & VIRTGPU_BLOB_FLAG_USE_MAPPABLE;
 
    /* not thread-safe but is fine */
-   if (!bo->gem_ptr && mappable)
-      bo->gem_ptr = virtgpu_ioctl_map(gpu, bo->gem_handle, bo->size);
+   if (!bo->base.mmap_ptr && mappable) {
+      bo->base.mmap_ptr =
+         virtgpu_ioctl_map(gpu, bo->gem_handle, bo->base.mmap_size);
+   }
 
-   return bo->gem_ptr;
+   return bo->base.mmap_ptr;
 }
 
 static int
@@ -1104,8 +1102,8 @@ virtgpu_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
 
-   if (bo->gem_ptr)
-      munmap(bo->gem_ptr, bo->size);
+   if (bo->base.mmap_ptr)
+      munmap(bo->base.mmap_ptr, bo->base.mmap_size);
    virtgpu_ioctl_gem_close(gpu, bo->gem_handle);
 
    free(bo);
@@ -1174,8 +1172,8 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
       .base = {
          .refcount = 1,
          .res_id = info.res_handle,
+         .mmap_size = size,
       },
-      .size = size,
       .gem_handle = gem_handle,
       .blob_flags = blob_flags,
    };
@@ -1218,8 +1216,8 @@ virtgpu_bo_create_from_device_memory(
       .base = {
          .refcount = 1,
          .res_id = res_id,
+         .mmap_size = size,
       },
-      .size = size,
       .gem_handle = gem_handle,
       .blob_flags = blob_flags,
    };

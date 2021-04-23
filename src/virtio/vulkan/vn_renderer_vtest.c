@@ -37,11 +37,8 @@ struct vtest_bo {
    struct vn_renderer_bo base;
 
    uint32_t blob_flags;
-   VkDeviceSize size;
    /* might be closed after mmap */
    int res_fd;
-
-   void *res_ptr;
 };
 
 struct vtest_sync {
@@ -698,20 +695,19 @@ vtest_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    const bool shareable = bo->blob_flags & VCMD_BLOB_FLAG_SHAREABLE;
 
    /* not thread-safe but is fine */
-   if (!bo->res_ptr && mappable) {
+   if (!bo->base.mmap_ptr && mappable) {
       /* We wrongly assume that mmap(dmabuf) and vkMapMemory(VkDeviceMemory)
        * are equivalent when the blob type is VCMD_BLOB_TYPE_HOST3D.  While we
        * check for VCMD_PARAM_HOST_COHERENT_DMABUF_BLOB, we know vtest can
        * lie.
        */
-      void *ptr = mmap(NULL, bo->size, PROT_READ | PROT_WRITE, MAP_SHARED,
-                       bo->res_fd, 0);
+      void *ptr = mmap(NULL, bo->base.mmap_size, PROT_READ | PROT_WRITE,
+                       MAP_SHARED, bo->res_fd, 0);
       if (ptr == MAP_FAILED) {
-         vn_log(vtest->instance,
-                "failed to mmap %d of size %" PRIu64 " rw: %s", bo->res_fd,
-                bo->size, strerror(errno));
+         vn_log(vtest->instance, "failed to mmap %d of size %zu rw: %s",
+                bo->res_fd, bo->base.mmap_size, strerror(errno));
       } else {
-         bo->res_ptr = ptr;
+         bo->base.mmap_ptr = ptr;
          /* we don't need the fd anymore */
          if (!shareable) {
             close(bo->res_fd);
@@ -720,7 +716,7 @@ vtest_bo_map(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
       }
    }
 
-   return bo->res_ptr;
+   return bo->base.mmap_ptr;
 }
 
 static int
@@ -738,8 +734,8 @@ vtest_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    struct vtest *vtest = (struct vtest *)renderer;
    struct vtest_bo *bo = (struct vtest_bo *)_bo;
 
-   if (bo->res_ptr)
-      munmap(bo->res_ptr, bo->size);
+   if (bo->base.mmap_ptr)
+      munmap(bo->base.mmap_ptr, bo->base.mmap_size);
    if (bo->res_fd >= 0)
       close(bo->res_fd);
 
@@ -796,8 +792,8 @@ vtest_bo_create_from_device_memory(
       .base = {
          .refcount = 1,
          .res_id = res_id,
+         .mmap_size = size,
       },
-      .size = size,
       .res_fd = res_fd,
       .blob_flags = blob_flags,
    };
