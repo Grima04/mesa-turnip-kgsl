@@ -283,8 +283,7 @@ radv_image_use_dcc_image_stores(const struct radv_device *device, const struct r
     */
    return device->physical_device->rad_info.chip_class == GFX10 ||
           (device->physical_device->rad_info.chip_class == GFX10_3 &&
-           (device->instance->perftest_flags & RADV_PERFTEST_DCC_STORES) &&
-           !device->physical_device->use_llvm);
+           (device->instance->perftest_flags & RADV_PERFTEST_DCC_STORES));
 }
 
 /*
