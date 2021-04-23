@@ -43,8 +43,6 @@ public:
       this->next = 0;
       this->dpy = dpy;
       this->minorVersion = minor;
-      this->serverGLXvendor = 0;
-      this->serverGLXversion = 0;
       this->glXDrawHash = 0;
 
       this->screens = new glx_screen *[dpy->nscreens];

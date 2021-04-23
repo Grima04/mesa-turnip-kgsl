@@ -505,9 +505,13 @@ struct glx_screen
    const struct glx_screen_vtable *vtable;
 
     /**
-     * GLX extension string reported by the X-server.
+     * \name Storage for the GLX vendor, version, and extension strings
      */
+   /*@{ */
    const char *serverGLXexts;
+   const char *serverGLXvendor;
+   const char *serverGLXversion;
+   /*@} */
 
     /**
      * GLX extension string to be reported to applications.  This is the
@@ -576,17 +580,6 @@ struct glx_display
      */
    /*@{ */
    int minorVersion;
-   /*@} */
-
-    /**
-     * \name Storage for the servers GLX vendor and versions strings.
-     *
-     * These are the same for all screens on this display. These fields will
-     * be filled in on demand.
-     */
-   /*@{ */
-   const char *serverGLXvendor;
-   const char *serverGLXversion;
    /*@} */
 
     /**

@@ -1359,17 +1359,16 @@ glXQueryServerString(Display * dpy, int screen, int name)
    struct glx_display *priv;
    const char **str;
 
-
    if (GetGLXPrivScreenConfig(dpy, screen, &priv, &psc) != Success) {
       return NULL;
    }
 
    switch (name) {
    case GLX_VENDOR:
-      str = &priv->serverGLXvendor;
+      str = &psc->serverGLXvendor;
       break;
    case GLX_VERSION:
-      str = &priv->serverGLXversion;
+      str = &psc->serverGLXversion;
       break;
    case GLX_EXTENSIONS:
       str = &psc->serverGLXexts;

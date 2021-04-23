@@ -280,8 +280,6 @@ glx_display_free(struct glx_display *priv)
    }
 
    FreeScreenConfigs(priv);
-   free((char *) priv->serverGLXvendor);
-   free((char *) priv->serverGLXversion);
 
    __glxHashDestroy(priv->glXDrawHash);
 
@@ -801,6 +799,8 @@ glx_screen_cleanup(struct glx_screen *psc)
       psc->visuals = NULL;   /* NOTE: just for paranoia */
    }
    free((char *) psc->serverGLXexts);
+   free((char *) psc->serverGLXvendor);
+   free((char *) psc->serverGLXversion);
 }
 
 /*
@@ -820,12 +820,6 @@ AllocAndFetchScreenConfigs(Display * dpy, struct glx_display * priv)
    priv->screens = calloc(screens, sizeof *priv->screens);
    if (!priv->screens)
       return GL_FALSE;
-
-   priv->serverGLXversion = __glXQueryServerString(dpy, 0, GLX_VERSION);
-   if (priv->serverGLXversion == NULL) {
-      FreeScreenConfigs(priv);
-      return GL_FALSE;
-   }
 
    for (i = 0; i < screens; i++, psc++) {
       psc = NULL;
@@ -892,8 +886,6 @@ __glXInitialize(Display * dpy)
    dpyPriv->codes = *XInitExtension(dpy, __glXExtensionName);
 
    dpyPriv->dpy = dpy;
-   dpyPriv->serverGLXvendor = 0x0;
-   dpyPriv->serverGLXversion = 0x0;
 
    /* This GLX implementation requires X_GLXQueryExtensionsString
     * and X_GLXQueryServerString, which are new in GLX 1.1.
