@@ -4743,6 +4743,9 @@ radv_CmdExecuteCommands(VkCommandBuffer commandBuffer, uint32_t commandBufferCou
    /* Emit pending flushes on primary prior to executing secondary */
    si_emit_cache_flush(primary);
 
+   /* Make sure CP DMA is idle on primary prior to executing secondary. */
+   si_cp_dma_wait_for_idle(primary);
+
    for (uint32_t i = 0; i < commandBufferCount; i++) {
       RADV_FROM_HANDLE(radv_cmd_buffer, secondary, pCmdBuffers[i]);
 
