@@ -729,7 +729,7 @@ vtest_bo_export_dmabuf(struct vn_renderer *renderer,
    return shareable ? os_dupfd_cloexec(bo->res_fd) : -1;
 }
 
-static void
+static bool
 vtest_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
 {
    struct vtest *vtest = (struct vtest *)renderer;
@@ -743,6 +743,8 @@ vtest_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    mtx_lock(&vtest->sock_mutex);
    vtest_vcmd_resource_unref(vtest, bo->base.res_id);
    mtx_unlock(&vtest->sock_mutex);
+
+   return true;
 }
 
 static uint32_t

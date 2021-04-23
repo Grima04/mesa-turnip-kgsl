@@ -188,7 +188,7 @@ struct vn_renderer_bo_ops {
       VkExternalMemoryHandleTypeFlags external_handles,
       struct vn_renderer_bo **out_bo);
 
-   void (*destroy)(struct vn_renderer *renderer, struct vn_renderer_bo *bo);
+   bool (*destroy)(struct vn_renderer *renderer, struct vn_renderer_bo *bo);
 
    int (*export_dmabuf)(struct vn_renderer *renderer,
                         struct vn_renderer_bo *bo);
@@ -358,7 +358,7 @@ vn_renderer_bo_create_from_dmabuf(
    if (result != VK_SUCCESS)
       return result;
 
-   assert(atomic_load(&bo->refcount) == 1);
+   assert(atomic_load(&bo->refcount) >= 1);
    assert(bo->res_id);
    assert(!bo->mmap_size || bo->mmap_size >= size);
 
@@ -385,8 +385,7 @@ vn_renderer_bo_unref(struct vn_renderer *renderer, struct vn_renderer_bo *bo)
 
    if (old == 1) {
       atomic_thread_fence(memory_order_acquire);
-      renderer->bo_ops.destroy(renderer, bo);
-      return true;
+      return renderer->bo_ops.destroy(renderer, bo);
    }
 
    return false;

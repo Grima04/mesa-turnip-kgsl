@@ -108,6 +108,8 @@ struct virtgpu {
     */
    struct util_sparse_array shmem_array;
    struct util_sparse_array bo_array;
+
+   mtx_t dmabuf_import_mutex;
 };
 
 #ifdef SIMULATE_SYNCOBJ
@@ -1097,15 +1099,32 @@ virtgpu_bo_export_dmabuf(struct vn_renderer *renderer,
              : -1;
 }
 
-static void
+static bool
 virtgpu_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
 {
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct virtgpu_bo *bo = (struct virtgpu_bo *)_bo;
 
+   mtx_lock(&gpu->dmabuf_import_mutex);
+
+   /* Check the refcount again after the import lock is grabbed.  Yes, we use
+    * the double-checked locking anti-pattern.
+    */
+   if (atomic_load_explicit(&bo->base.refcount, memory_order_relaxed) > 0) {
+      mtx_unlock(&gpu->dmabuf_import_mutex);
+      return false;
+   }
+
    if (bo->base.mmap_ptr)
       munmap(bo->base.mmap_ptr, bo->base.mmap_size);
    virtgpu_ioctl_gem_close(gpu, bo->gem_handle);
+
+   /* set gem_handle to 0 to indicate that the bo is invalid */
+   bo->gem_handle = 0;
+
+   mtx_unlock(&gpu->dmabuf_import_mutex);
+
+   return true;
 }
 
 static uint32_t
@@ -1134,6 +1153,8 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct drm_virtgpu_resource_info info;
    uint32_t gem_handle = 0;
+
+   mtx_lock(&gpu->dmabuf_import_mutex);
 
    gem_handle = virtgpu_ioctl_prime_fd_to_handle(gpu, fd);
    if (!gem_handle)
@@ -1164,15 +1185,29 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
    }
 
    struct virtgpu_bo *bo = util_sparse_array_get(&gpu->bo_array, gem_handle);
-   *bo = (struct virtgpu_bo){
-      .base = {
-         .refcount = 1,
-         .res_id = info.res_handle,
-         .mmap_size = size,
-      },
-      .gem_handle = gem_handle,
-      .blob_flags = blob_flags,
-   };
+   if (bo->gem_handle == gem_handle) {
+      if (bo->base.mmap_size < size)
+         goto fail;
+      if (blob_flags & ~bo->blob_flags)
+         goto fail;
+
+      /* we can't use vn_renderer_bo_ref as the refcount may drop to 0
+       * temporarily before virtgpu_bo_destroy grabs the lock
+       */
+      atomic_fetch_add_explicit(&bo->base.refcount, 1, memory_order_relaxed);
+   } else {
+      *bo = (struct virtgpu_bo){
+         .base = {
+            .refcount = 1,
+            .res_id = info.res_handle,
+            .mmap_size = size,
+         },
+         .gem_handle = gem_handle,
+         .blob_flags = blob_flags,
+      };
+   }
+
+   mtx_unlock(&gpu->dmabuf_import_mutex);
 
    *out_bo = &bo->base;
 
@@ -1181,6 +1216,7 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
 fail:
    if (gem_handle)
       virtgpu_ioctl_gem_close(gpu, gem_handle);
+   mtx_unlock(&gpu->dmabuf_import_mutex);
    return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 }
 
@@ -1330,6 +1366,8 @@ virtgpu_destroy(struct vn_renderer *renderer,
 
    if (gpu->fd >= 0)
       close(gpu->fd);
+
+   mtx_destroy(&gpu->dmabuf_import_mutex);
 
    util_sparse_array_finish(&gpu->shmem_array);
    util_sparse_array_finish(&gpu->bo_array);
@@ -1492,6 +1530,8 @@ virtgpu_init(struct virtgpu *gpu)
    util_sparse_array_init(&gpu->shmem_array, sizeof(struct virtgpu_shmem),
                           1024);
    util_sparse_array_init(&gpu->bo_array, sizeof(struct virtgpu_bo), 1024);
+
+   mtx_init(&gpu->dmabuf_import_mutex, mtx_plain);
 
    VkResult result = virtgpu_open(gpu);
    if (result == VK_SUCCESS)
