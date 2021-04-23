@@ -153,8 +153,8 @@ vn_instance_init_ring(struct vn_instance *instance)
    };
 
    uint32_t create_ring_data[64];
-   struct vn_cs_encoder local_enc =
-      VN_CS_ENCODER_INITIALIZER(create_ring_data, sizeof(create_ring_data));
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
+      create_ring_data, sizeof(create_ring_data));
    vn_encode_vkCreateRingMESA(&local_enc, 0, instance->ring.id, &info);
    vn_renderer_submit_simple(instance->renderer, create_ring_data,
                              vn_cs_encoder_get_len(&local_enc));
@@ -240,7 +240,7 @@ vn_instance_submit_roundtrip(struct vn_instance *instance,
                              uint32_t *roundtrip_seqno)
 {
    uint32_t write_ring_extra_data[8];
-   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER(
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
       write_ring_extra_data, sizeof(write_ring_extra_data));
 
    /* submit a vkWriteRingExtraMESA through the renderer */
@@ -315,7 +315,7 @@ vn_instance_submission_indirect_cs(struct vn_instance_submission *submit,
    }
 
    struct vn_cs_encoder local_enc =
-      VN_CS_ENCODER_INITIALIZER(exec_data, exec_size);
+      VN_CS_ENCODER_INITIALIZER_LOCAL(exec_data, exec_size);
    vn_encode_vkExecuteCommandStreamsMESA(&local_enc, 0, desc_count, descs,
                                          NULL, 0, NULL, 0);
 
@@ -465,7 +465,7 @@ vn_instance_ring_submit_locked(struct vn_instance *instance,
                                       submit.cs_size, &seqno);
    if (notify) {
       uint32_t notify_ring_data[8];
-      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER(
+      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
          notify_ring_data, sizeof(notify_ring_data));
       vn_encode_vkNotifyRingMESA(&local_enc, 0, instance->ring.id, seqno, 0);
       vn_renderer_submit_simple(instance->renderer, notify_ring_data,
@@ -535,9 +535,9 @@ vn_instance_get_reply_bo_locked(struct vn_instance *instance,
          return NULL;
 
       uint32_t set_reply_command_stream_data[16];
-      struct vn_cs_encoder local_enc =
-         VN_CS_ENCODER_INITIALIZER(set_reply_command_stream_data,
-                                   sizeof(set_reply_command_stream_data));
+      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
+         set_reply_command_stream_data,
+         sizeof(set_reply_command_stream_data));
       const struct VkCommandStreamDescriptionMESA stream = {
          .resourceId = instance->reply.bo->res_id,
          .size = instance->reply.size,
@@ -551,7 +551,7 @@ vn_instance_get_reply_bo_locked(struct vn_instance *instance,
 
    /* TODO avoid this seek command and go lock-free? */
    uint32_t seek_reply_command_stream_data[8];
-   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER(
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
       seek_reply_command_stream_data, sizeof(seek_reply_command_stream_data));
    const size_t offset = instance->reply.used;
    vn_encode_vkSeekReplyCommandStreamMESA(&local_enc, 0, offset);
@@ -1875,7 +1875,7 @@ fail:
 
    if (instance->ring.bo) {
       uint32_t destroy_ring_data[4];
-      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER(
+      struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
          destroy_ring_data, sizeof(destroy_ring_data));
       vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.id);
       vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
@@ -1922,8 +1922,8 @@ vn_DestroyInstance(VkInstance _instance,
    vn_renderer_bo_unref(instance->reply.bo);
 
    uint32_t destroy_ring_data[4];
-   struct vn_cs_encoder local_enc =
-      VN_CS_ENCODER_INITIALIZER(destroy_ring_data, sizeof(destroy_ring_data));
+   struct vn_cs_encoder local_enc = VN_CS_ENCODER_INITIALIZER_LOCAL(
+      destroy_ring_data, sizeof(destroy_ring_data));
    vn_encode_vkDestroyRingMESA(&local_enc, 0, instance->ring.id);
    vn_renderer_submit_simple(instance->renderer, destroy_ring_data,
                              vn_cs_encoder_get_len(&local_enc));

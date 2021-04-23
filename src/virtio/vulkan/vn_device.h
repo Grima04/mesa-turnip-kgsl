@@ -152,7 +152,7 @@ vn_instance_submit_command_init(struct vn_instance *instance,
                                 size_t cmd_size,
                                 size_t reply_size)
 {
-   submit->command = VN_CS_ENCODER_INITIALIZER(cmd_data, cmd_size);
+   submit->command = VN_CS_ENCODER_INITIALIZER_LOCAL(cmd_data, cmd_size);
    /* fix submit->command.buffers to not point to a local variable */
    submit->buffer = submit->command.buffers[0];
    submit->command.buffers = &submit->buffer;

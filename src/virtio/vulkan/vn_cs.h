@@ -8,7 +8,7 @@
 
 #include "vn_common.h"
 
-#define VN_CS_ENCODER_INITIALIZER(storage, size)                             \
+#define VN_CS_ENCODER_INITIALIZER_LOCAL(storage, size)                       \
    (struct vn_cs_encoder)                                                    \
    {                                                                         \
       .buffers =                                                             \
