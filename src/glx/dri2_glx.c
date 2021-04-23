@@ -716,7 +716,7 @@ unsigned dri2GetSwapEventType(Display* dpy, XID drawable)
       pdraw = dri2GetGlxDrawableFromXDrawableId(dpy, drawable);
       if (!pdraw || !(pdraw->eventMask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK))
          return 0;
-      return glx_dpy->codes->first_event + GLX_BufferSwapComplete;
+      return glx_dpy->codes.first_event + GLX_BufferSwapComplete;
 }
 
 static void show_fps(struct dri2_drawable *draw)

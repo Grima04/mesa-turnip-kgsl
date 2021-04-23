@@ -558,20 +558,15 @@ struct glx_screen
  */
 struct glx_display
 {
-   /* The extension protocol codes */
-   XExtCodes *codes;
    struct glx_display *next;
+
+   /* The extension protocol codes */
+   XExtCodes codes;
 
     /**
      * Back pointer to the display
      */
    Display *dpy;
-
-    /**
-     * The \c majorOpcode is common to all connections to the same server.
-     * It is also copied into the context structure.
-     */
-   int majorOpcode;
 
     /**
      * \name Minor Version

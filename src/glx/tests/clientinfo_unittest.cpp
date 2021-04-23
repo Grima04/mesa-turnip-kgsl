@@ -42,7 +42,6 @@ public:
    {
       this->next = 0;
       this->dpy = dpy;
-      this->majorOpcode = 0;
       this->minorVersion = minor;
       this->serverGLXvendor = 0;
       this->serverGLXversion = 0;
