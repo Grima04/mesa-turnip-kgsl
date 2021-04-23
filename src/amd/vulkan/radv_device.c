@@ -916,38 +916,7 @@ radv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    }
 
    instance->debug_flags = parse_debug_string(getenv("RADV_DEBUG"), radv_debug_options);
-
-   const char *radv_perftest_str = getenv("RADV_PERFTEST");
-   instance->perftest_flags = parse_debug_string(radv_perftest_str, radv_perftest_options);
-
-   if (radv_perftest_str) {
-      /* Output warnings for famous RADV_PERFTEST options that no
-       * longer exist or are deprecated.
-       */
-      if (strstr(radv_perftest_str, "aco")) {
-         fprintf(
-            stderr,
-            "*******************************************************************************\n");
-         fprintf(
-            stderr,
-            "* WARNING: Unknown option RADV_PERFTEST='aco'. ACO is enabled by default now. *\n");
-         fprintf(
-            stderr,
-            "*******************************************************************************\n");
-      }
-      if (strstr(radv_perftest_str, "llvm")) {
-         fprintf(
-            stderr,
-            "*********************************************************************************\n");
-         fprintf(
-            stderr,
-            "* WARNING: Unknown option 'RADV_PERFTEST=llvm'. Did you mean 'RADV_DEBUG=llvm'? *\n");
-         fprintf(
-            stderr,
-            "*********************************************************************************\n");
-         abort();
-      }
-   }
+   instance->perftest_flags = parse_debug_string(getenv("RADV_PERFTEST"), radv_perftest_options);
 
    if (instance->debug_flags & RADV_DEBUG_STARTUP)
       radv_logi("Created an instance");
