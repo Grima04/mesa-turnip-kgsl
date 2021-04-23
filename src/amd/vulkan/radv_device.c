@@ -772,7 +772,6 @@ static const struct debug_control radv_debug_options[] = {
    {"errors", RADV_DEBUG_ERRORS},
    {"startup", RADV_DEBUG_STARTUP},
    {"checkir", RADV_DEBUG_CHECKIR},
-   {"nothreadllvm", RADV_DEBUG_NOTHREADLLVM},
    {"nobinning", RADV_DEBUG_NOBINNING},
    {"nongg", RADV_DEBUG_NO_NGG},
    {"metashaders", RADV_DEBUG_DUMP_META_SHADERS},

@@ -597,8 +597,6 @@ RADV driver environment variables
       disable out-of-order rasterization
    ``notccompatcmask``
       disable TC-compat CMASK for MSAA surfaces
-   ``nothreadllvm``
-      disable LLVM threaded compilation
    ``noumr``
       disable UMR dumps during GPU hang detection (only with RADV_DEBUG=hang)
    ``novrsflatshading``

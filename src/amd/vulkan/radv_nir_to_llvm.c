@@ -3400,15 +3400,12 @@ llvm_compile_shader(struct radv_device *device, unsigned shader_count,
 {
    enum ac_target_machine_options tm_options = 0;
    struct ac_llvm_compiler ac_llvm;
-   bool thread_compiler;
 
    tm_options |= AC_TM_SUPPORTS_SPILL;
    if (args->options->check_ir)
       tm_options |= AC_TM_CHECK_IR;
 
-   thread_compiler = !(device->instance->debug_flags & RADV_DEBUG_NOTHREADLLVM);
-
-   radv_init_llvm_compiler(&ac_llvm, thread_compiler, args->options->family, tm_options,
+   radv_init_llvm_compiler(&ac_llvm, args->options->family, tm_options,
                            args->shader_info->wave_size);
 
    if (args->is_gs_copy_shader) {
@@ -3416,6 +3413,4 @@ llvm_compile_shader(struct radv_device *device, unsigned shader_count,
    } else {
       radv_compile_nir_shader(&ac_llvm, binary, args, shaders, shader_count);
    }
-
-   radv_destroy_llvm_compiler(&ac_llvm, thread_compiler);
 }
