@@ -1361,6 +1361,7 @@ zink_screen_init_semaphore(struct zink_screen *screen)
        */
       if (screen->prev_sem)
          vkDestroySemaphore(screen->dev, screen->prev_sem, NULL);
+      screen->prev_sem = screen->sem;
       screen->sem = sem;
       return true;
    }
