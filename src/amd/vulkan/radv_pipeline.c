@@ -3480,6 +3480,8 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
          gs_variants[MESA_SHADER_GEOMETRY] = pipeline->gs_copy_shader;
 
          radv_pipeline_cache_insert_shaders(device, cache, gs_copy_hash, gs_variants, gs_binaries);
+
+         pipeline->gs_copy_shader = gs_variants[MESA_SHADER_GEOMETRY];
       }
       free(gs_copy_binary);
    }
