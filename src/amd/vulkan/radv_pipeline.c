@@ -1614,8 +1614,6 @@ radv_pipeline_init_dynamic_state(struct radv_pipeline *pipeline,
     *    against does not use a depth/stencil attachment.
     */
    if (needed_states && subpass->depth_stencil_attachment) {
-      assert(pCreateInfo->pDepthStencilState);
-
       if (states & RADV_DYNAMIC_DEPTH_BOUNDS) {
          dynamic->depth_bounds.min = pCreateInfo->pDepthStencilState->minDepthBounds;
          dynamic->depth_bounds.max = pCreateInfo->pDepthStencilState->maxDepthBounds;
