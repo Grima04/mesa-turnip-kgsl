@@ -508,9 +508,17 @@ fd_resource_dump(struct fd_resource *rsc, const char *name)
 static struct fd_resource *
 fd_alloc_staging(struct fd_context *ctx, struct fd_resource *rsc,
                  unsigned level, const struct pipe_box *box)
+   assert_dt
 {
    struct pipe_context *pctx = &ctx->base;
    struct pipe_resource tmpl = rsc->b.b;
+
+   /* We cannot currently do stencil export on earlier gens, and
+    * u_blitter cannot do blits involving stencil otherwise:
+    */
+   if ((ctx->screen->gpu_id < 600) && !ctx->blit &&
+       (util_format_get_mask(tmpl.format) & PIPE_MASK_S))
+      return NULL;
 
    tmpl.width0 = box->width;
    tmpl.height0 = box->height;
