@@ -584,6 +584,19 @@ radv_get_sampler_desc(struct ac_shader_abi *abi, unsigned descriptor_set, unsign
       for (unsigned i = 4; i < 8; ++i)
          components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor2, i);
       descriptor = ac_build_gather_values(&ctx->ac, components, 8);
+   } else if (desc_type == AC_DESC_IMAGE &&
+              ctx->args->options->has_image_load_dcc_bug &&
+              image && !write) {
+      LLVMValueRef components[8];
+
+      for (unsigned i = 0; i < 8; i++)
+         components[i] = ac_llvm_extract_elem(&ctx->ac, descriptor, i);
+
+      /* WRITE_COMPRESS_ENABLE must be 0 for all image loads to workaround a hardware bug. */
+      components[6] = LLVMBuildAnd(ctx->ac.builder, components[6],
+                                   LLVMConstInt(ctx->ac.i32, C_00A018_WRITE_COMPRESS_ENABLE, false), "");
+
+      descriptor = ac_build_gather_values(&ctx->ac, components, 8);
    }
 
    return descriptor;
