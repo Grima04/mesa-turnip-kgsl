@@ -3454,9 +3454,9 @@ radv_create_shaders(struct radv_pipeline *pipeline, struct radv_device *device,
       gfx9_get_gs_info(pipeline_key, pipeline, nir, infos, gs_info);
    }
 
-   if (modules[MESA_SHADER_GEOMETRY]) {
+   if (modules[MESA_SHADER_GEOMETRY] && !pipeline->gs_copy_shader) {
       struct radv_shader_binary *gs_copy_binary = NULL;
-      if (!pipeline->gs_copy_shader && !radv_pipeline_has_ngg(pipeline)) {
+      if (!radv_pipeline_has_ngg(pipeline)) {
          struct radv_shader_info info = {0};
          struct radv_shader_variant_key key = {0};
 
