@@ -102,6 +102,7 @@ struct vn_device {
 
    struct vn_instance *instance;
    struct vn_physical_device *physical_device;
+   struct vn_renderer *renderer;
 
    struct vn_queue *queues;
    uint32_t queue_count;

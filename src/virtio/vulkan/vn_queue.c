@@ -365,11 +365,10 @@ vn_QueueSubmit(VkQueue _queue,
    if (wsi_mem) {
       /* XXX this is always false and kills the performance */
       if (dev->instance->renderer_info.has_implicit_fencing) {
-         vn_renderer_submit(dev->instance->renderer,
-                            &(const struct vn_renderer_submit){
-                               .bos = &wsi_mem->base_bo,
-                               .bo_count = 1,
-                            });
+         vn_renderer_submit(dev->renderer, &(const struct vn_renderer_submit){
+                                              .bos = &wsi_mem->base_bo,
+                                              .bo_count = 1,
+                                           });
       } else {
          if (VN_DEBUG(WSI)) {
             static uint32_t ratelimit;
