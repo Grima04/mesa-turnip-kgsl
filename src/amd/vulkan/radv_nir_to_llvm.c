@@ -1286,10 +1286,13 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
       pos_args[0].out[3] = ctx->ac.f32_1; /* W */
    }
 
+   bool writes_primitive_shading_rate = outinfo->writes_primitive_shading_rate ||
+                                        ctx->args->options->force_vrs_rates;
+
    if (outinfo->writes_pointsize || outinfo->writes_layer || outinfo->writes_layer ||
-       outinfo->writes_viewport_index || outinfo->writes_primitive_shading_rate) {
+       outinfo->writes_viewport_index || writes_primitive_shading_rate) {
       pos_args[1].enabled_channels = ((outinfo->writes_pointsize == true ? 1 : 0) |
-                                      (outinfo->writes_primitive_shading_rate == true ? 2 : 0) |
+                                      (writes_primitive_shading_rate == true ? 2 : 0) |
                                       (outinfo->writes_layer == true ? 4 : 0));
       pos_args[1].valid_mask = 0;
       pos_args[1].done = 0;
@@ -1346,6 +1349,27 @@ radv_llvm_export_vs(struct radv_shader_context *ctx, struct radv_shader_output_v
             ctx->ac.builder,
             LLVMBuildShl(ctx->ac.builder, x_rate, LLVMConstInt(ctx->ac.i32, 2, false), ""),
             LLVMBuildShl(ctx->ac.builder, y_rate, LLVMConstInt(ctx->ac.i32, 4, false), ""), "");
+         pos_args[1].out[1] = ac_to_float(&ctx->ac, v);
+      } else if (ctx->args->options->force_vrs_rates) {
+         /* Bits [2:3] = VRS rate X
+          * Bits [4:5] = VRS rate Y
+          *
+          * The range is [-2, 1]. Values:
+          *   1: 2x coarser shading rate in that direction.
+          *   0: normal shading rate
+          *  -1: 2x finer shading rate (sample shading, not directional)
+          *  -2: 4x finer shading rate (sample shading, not directional)
+          *
+          * Sample shading can't go above 8 samples, so both numbers can't be -2 at the same time.
+          */
+         LLVMValueRef rates = LLVMConstInt(ctx->ac.i32, ctx->args->options->force_vrs_rates, false);
+         LLVMValueRef cond;
+         LLVMValueRef v;
+
+         /* If Pos.W != 1 (typical for non-GUI elements), use 2x2 coarse shading. */
+         cond = LLVMBuildFCmp(ctx->ac.builder, LLVMRealUNE, pos_args[0].out[3], ctx->ac.f32_1, "");
+         v = LLVMBuildSelect(ctx->ac.builder, cond, rates, ctx->ac.i32_0, "");
+
          pos_args[1].out[1] = ac_to_float(&ctx->ac, v);
       }
    }

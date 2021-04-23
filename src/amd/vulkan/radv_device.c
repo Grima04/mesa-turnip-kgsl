@@ -3001,8 +3001,6 @@ radv_CreateDevice(VkPhysicalDevice physicalDevice, const VkDeviceCreateInfo *pCr
 
       if (device->physical_device->rad_info.chip_class < GFX10_3)
          fprintf(stderr, "radv: VRS is only supported on RDNA2+\n");
-      else if (device->physical_device->use_llvm)
-         fprintf(stderr, "radv: Forcing VRS rates is only supported with ACO\n");
       else if (!strcmp(vrs_rates, "2x2"))
          device->force_vrs = RADV_FORCE_VRS_2x2;
       else if (!strcmp(vrs_rates, "2x1"))
