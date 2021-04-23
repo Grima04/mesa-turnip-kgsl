@@ -107,6 +107,7 @@ struct virtgpu {
     * virtio_gpu_resource_id_get)
     */
    struct util_sparse_array shmem_array;
+   struct util_sparse_array bo_array;
 };
 
 #ifdef SIMULATE_SYNCOBJ
@@ -1105,8 +1106,6 @@ virtgpu_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    if (bo->base.mmap_ptr)
       munmap(bo->base.mmap_ptr, bo->base.mmap_size);
    virtgpu_ioctl_gem_close(gpu, bo->gem_handle);
-
-   free(bo);
 }
 
 static uint32_t
@@ -1164,10 +1163,7 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
       size = 0;
    }
 
-   struct virtgpu_bo *bo = calloc(1, sizeof(*bo));
-   if (!bo)
-      goto fail;
-
+   struct virtgpu_bo *bo = util_sparse_array_get(&gpu->bo_array, gem_handle);
    *bo = (struct virtgpu_bo){
       .base = {
          .refcount = 1,
@@ -1206,12 +1202,7 @@ virtgpu_bo_create_from_device_memory(
    if (!gem_handle)
       return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 
-   struct virtgpu_bo *bo = calloc(1, sizeof(*bo));
-   if (!bo) {
-      virtgpu_ioctl_gem_close(gpu, gem_handle);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
-
+   struct virtgpu_bo *bo = util_sparse_array_get(&gpu->bo_array, gem_handle);
    *bo = (struct virtgpu_bo){
       .base = {
          .refcount = 1,
@@ -1341,6 +1332,7 @@ virtgpu_destroy(struct vn_renderer *renderer,
       close(gpu->fd);
 
    util_sparse_array_finish(&gpu->shmem_array);
+   util_sparse_array_finish(&gpu->bo_array);
 
    vk_free(alloc, gpu);
 }
@@ -1499,6 +1491,7 @@ virtgpu_init(struct virtgpu *gpu)
 {
    util_sparse_array_init(&gpu->shmem_array, sizeof(struct virtgpu_shmem),
                           1024);
+   util_sparse_array_init(&gpu->bo_array, sizeof(struct virtgpu_bo), 1024);
 
    VkResult result = virtgpu_open(gpu);
    if (result == VK_SUCCESS)

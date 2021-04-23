@@ -64,6 +64,7 @@ struct vtest {
    } capset;
 
    struct util_sparse_array shmem_array;
+   struct util_sparse_array bo_array;
 };
 
 static int
@@ -742,8 +743,6 @@ vtest_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    mtx_lock(&vtest->sock_mutex);
    vtest_vcmd_resource_unref(vtest, bo->base.res_id);
    mtx_unlock(&vtest->sock_mutex);
-
-   free(bo);
 }
 
 static uint32_t
@@ -780,14 +779,7 @@ vtest_bo_create_from_device_memory(
    assert(res_id > 0 && res_fd >= 0);
    mtx_unlock(&vtest->sock_mutex);
 
-   struct vtest_bo *bo = calloc(1, sizeof(*bo));
-   if (!bo) {
-      mtx_lock(&vtest->sock_mutex);
-      vtest_vcmd_resource_unref(vtest, res_id);
-      mtx_unlock(&vtest->sock_mutex);
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-   }
-
+   struct vtest_bo *bo = util_sparse_array_get(&vtest->bo_array, res_id);
    *bo = (struct vtest_bo){
       .base = {
          .refcount = 1,
@@ -966,6 +958,7 @@ vtest_destroy(struct vn_renderer *renderer,
 
    mtx_destroy(&vtest->sock_mutex);
    util_sparse_array_finish(&vtest->shmem_array);
+   util_sparse_array_finish(&vtest->bo_array);
 
    vk_free(alloc, vtest);
 }
@@ -1023,6 +1016,7 @@ vtest_init(struct vtest *vtest)
 {
    util_sparse_array_init(&vtest->shmem_array, sizeof(struct vtest_shmem),
                           1024);
+   util_sparse_array_init(&vtest->bo_array, sizeof(struct vtest_bo), 1024);
 
    mtx_init(&vtest->sock_mutex, mtx_plain);
    vtest->sock_fd =
