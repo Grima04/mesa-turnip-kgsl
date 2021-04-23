@@ -169,23 +169,21 @@ struct vn_renderer_shmem_ops {
 };
 
 struct vn_renderer_bo_ops {
-   struct vn_renderer_bo *(*create)(struct vn_renderer *renderer);
+   VkResult (*create_from_device_memory)(
+      struct vn_renderer *renderer,
+      VkDeviceSize size,
+      vn_object_id mem_id,
+      VkMemoryPropertyFlags flags,
+      VkExternalMemoryHandleTypeFlags external_handles,
+      struct vn_renderer_bo **out_bo);
 
-   /* import a VkDeviceMemory as the storage */
-   VkResult (*init_gpu)(struct vn_renderer *renderer,
-                        struct vn_renderer_bo *bo,
-                        VkDeviceSize size,
-                        vn_object_id mem_id,
-                        VkMemoryPropertyFlags flags,
-                        VkExternalMemoryHandleTypeFlags external_handles);
-
-   /* import a dmabuf as the storage */
-   VkResult (*init_dmabuf)(struct vn_renderer *renderer,
-                           struct vn_renderer_bo *bo,
-                           VkDeviceSize size,
-                           int fd,
-                           VkMemoryPropertyFlags flags,
-                           VkExternalMemoryHandleTypeFlags external_handles);
+   VkResult (*create_from_dmabuf)(
+      struct vn_renderer *renderer,
+      VkDeviceSize size,
+      int fd,
+      VkMemoryPropertyFlags flags,
+      VkExternalMemoryHandleTypeFlags external_handles,
+      struct vn_renderer_bo **out_bo);
 
    void (*destroy)(struct vn_renderer *renderer, struct vn_renderer_bo *bo);
 
@@ -320,52 +318,46 @@ vn_renderer_shmem_unref(struct vn_renderer *renderer,
 }
 
 static inline VkResult
-vn_renderer_bo_create_gpu(struct vn_renderer *renderer,
-                          VkDeviceSize size,
-                          vn_object_id mem_id,
-                          VkMemoryPropertyFlags flags,
-                          VkExternalMemoryHandleTypeFlags external_handles,
-                          struct vn_renderer_bo **_bo)
+vn_renderer_bo_create_from_device_memory(
+   struct vn_renderer *renderer,
+   VkDeviceSize size,
+   vn_object_id mem_id,
+   VkMemoryPropertyFlags flags,
+   VkExternalMemoryHandleTypeFlags external_handles,
+   struct vn_renderer_bo **out_bo)
 {
-   struct vn_renderer_bo *bo = renderer->bo_ops.create(renderer);
-   if (!bo)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   VkResult result = renderer->bo_ops.init_gpu(renderer, bo, size, mem_id,
-                                               flags, external_handles);
-   if (result != VK_SUCCESS) {
-      renderer->bo_ops.destroy(renderer, bo);
+   struct vn_renderer_bo *bo;
+   VkResult result = renderer->bo_ops.create_from_device_memory(
+      renderer, size, mem_id, flags, external_handles, &bo);
+   if (result != VK_SUCCESS)
       return result;
-   }
 
-   atomic_init(&bo->refcount, 1);
+   assert(atomic_load(&bo->refcount) == 1);
+   assert(bo->res_id);
 
-   *_bo = bo;
+   *out_bo = bo;
    return VK_SUCCESS;
 }
 
 static inline VkResult
-vn_renderer_bo_create_dmabuf(struct vn_renderer *renderer,
-                             VkDeviceSize size,
-                             int fd,
-                             VkMemoryPropertyFlags flags,
-                             VkExternalMemoryHandleTypeFlags external_handles,
-                             struct vn_renderer_bo **_bo)
+vn_renderer_bo_create_from_dmabuf(
+   struct vn_renderer *renderer,
+   VkDeviceSize size,
+   int fd,
+   VkMemoryPropertyFlags flags,
+   VkExternalMemoryHandleTypeFlags external_handles,
+   struct vn_renderer_bo **out_bo)
 {
-   struct vn_renderer_bo *bo = renderer->bo_ops.create(renderer);
-   if (!bo)
-      return VK_ERROR_OUT_OF_HOST_MEMORY;
-
-   VkResult result = renderer->bo_ops.init_dmabuf(renderer, bo, size, fd,
-                                                  flags, external_handles);
-   if (result != VK_SUCCESS) {
-      renderer->bo_ops.destroy(renderer, bo);
+   struct vn_renderer_bo *bo;
+   VkResult result = renderer->bo_ops.create_from_dmabuf(
+      renderer, size, fd, flags, external_handles, &bo);
+   if (result != VK_SUCCESS)
       return result;
-   }
 
-   atomic_init(&bo->refcount, 1);
+   assert(atomic_load(&bo->refcount) == 1);
+   assert(bo->res_id);
 
-   *_bo = bo;
+   *out_bo = bo;
    return VK_SUCCESS;
 }
 

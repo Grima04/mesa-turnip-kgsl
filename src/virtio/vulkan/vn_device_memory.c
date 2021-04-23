@@ -51,9 +51,9 @@ vn_device_memory_simple_alloc(struct vn_device *dev,
    const VkPhysicalDeviceMemoryProperties *mem_props =
       &dev->physical_device->memory_properties.memoryProperties;
    const VkMemoryType *mem_type = &mem_props->memoryTypes[mem_type_index];
-   result =
-      vn_renderer_bo_create_gpu(dev->renderer, mem->size, mem->base.id,
-                                mem_type->propertyFlags, 0, &mem->base_bo);
+   result = vn_renderer_bo_create_from_device_memory(
+      dev->renderer, mem->size, mem->base.id, mem_type->propertyFlags, 0,
+      &mem->base_bo);
    if (result != VK_SUCCESS) {
       vn_async_vkFreeMemory(dev->instance, vn_device_to_handle(dev),
                             mem_handle, NULL);
@@ -216,7 +216,7 @@ vn_AllocateMemory(VkDevice device,
               VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT));
 
       struct vn_renderer_bo *bo;
-      result = vn_renderer_bo_create_dmabuf(
+      result = vn_renderer_bo_create_from_dmabuf(
          dev->renderer, pAllocateInfo->allocationSize, import_info->fd,
          mem_type->propertyFlags, export_info ? export_info->handleTypes : 0,
          &bo);
@@ -267,7 +267,7 @@ vn_AllocateMemory(VkDevice device,
    }
 
    if (need_bo && !mem->base_bo) {
-      result = vn_renderer_bo_create_gpu(
+      result = vn_renderer_bo_create_from_device_memory(
          dev->renderer, mem->size, mem->base.id, mem_type->propertyFlags,
          export_info ? export_info->handleTypes : 0, &mem->base_bo);
       if (result != VK_SUCCESS) {
@@ -437,8 +437,8 @@ vn_GetMemoryFdPropertiesKHR(VkDevice device,
       return vn_error(dev->instance, VK_ERROR_INVALID_EXTERNAL_HANDLE);
 
    struct vn_renderer_bo *bo;
-   VkResult result =
-      vn_renderer_bo_create_dmabuf(dev->renderer, 0, fd, 0, handleType, &bo);
+   VkResult result = vn_renderer_bo_create_from_dmabuf(dev->renderer, 0, fd,
+                                                       0, handleType, &bo);
    if (result != VK_SUCCESS)
       return vn_error(dev->instance, result);
    vn_instance_roundtrip(dev->instance);

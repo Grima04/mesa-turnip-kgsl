@@ -738,16 +738,14 @@ vtest_bo_destroy(struct vn_renderer *renderer, struct vn_renderer_bo *_bo)
    struct vtest *vtest = (struct vtest *)renderer;
    struct vtest_bo *bo = (struct vtest_bo *)_bo;
 
-   if (bo->base.res_id) {
-      if (bo->res_ptr)
-         munmap(bo->res_ptr, bo->size);
-      if (bo->res_fd >= 0)
-         close(bo->res_fd);
+   if (bo->res_ptr)
+      munmap(bo->res_ptr, bo->size);
+   if (bo->res_fd >= 0)
+      close(bo->res_fd);
 
-      mtx_lock(&vtest->sock_mutex);
-      vtest_vcmd_resource_unref(vtest, bo->base.res_id);
-      mtx_unlock(&vtest->sock_mutex);
-   }
+   mtx_lock(&vtest->sock_mutex);
+   vtest_vcmd_resource_unref(vtest, bo->base.res_id);
+   mtx_unlock(&vtest->sock_mutex);
 
    free(bo);
 }
@@ -768,38 +766,45 @@ vtest_bo_blob_flags(VkMemoryPropertyFlags flags,
 }
 
 static VkResult
-vtest_bo_init_gpu(struct vn_renderer *renderer,
-                  struct vn_renderer_bo *_bo,
-                  VkDeviceSize size,
-                  vn_object_id mem_id,
-                  VkMemoryPropertyFlags flags,
-                  VkExternalMemoryHandleTypeFlags external_handles)
+vtest_bo_create_from_device_memory(
+   struct vn_renderer *renderer,
+   VkDeviceSize size,
+   vn_object_id mem_id,
+   VkMemoryPropertyFlags flags,
+   VkExternalMemoryHandleTypeFlags external_handles,
+   struct vn_renderer_bo **out_bo)
 {
    struct vtest *vtest = (struct vtest *)renderer;
-   struct vtest_bo *bo = (struct vtest_bo *)_bo;
-
-   bo->blob_flags = vtest_bo_blob_flags(flags, external_handles);
-   bo->size = size;
+   const uint32_t blob_flags = vtest_bo_blob_flags(flags, external_handles);
 
    mtx_lock(&vtest->sock_mutex);
-   bo->base.res_id = vtest_vcmd_resource_create_blob(
-      vtest, VCMD_BLOB_TYPE_HOST3D, bo->blob_flags, bo->size, mem_id,
-      &bo->res_fd);
+   int res_fd;
+   uint32_t res_id = vtest_vcmd_resource_create_blob(
+      vtest, VCMD_BLOB_TYPE_HOST3D, blob_flags, size, mem_id, &res_fd);
+   assert(res_id > 0 && res_fd >= 0);
    mtx_unlock(&vtest->sock_mutex);
 
-   return VK_SUCCESS;
-}
-
-static struct vn_renderer_bo *
-vtest_bo_create(struct vn_renderer *renderer)
-{
    struct vtest_bo *bo = calloc(1, sizeof(*bo));
-   if (!bo)
-      return NULL;
+   if (!bo) {
+      mtx_lock(&vtest->sock_mutex);
+      vtest_vcmd_resource_unref(vtest, res_id);
+      mtx_unlock(&vtest->sock_mutex);
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
+   }
 
-   bo->res_fd = -1;
+   *bo = (struct vtest_bo){
+      .base = {
+         .refcount = 1,
+         .res_id = res_id,
+      },
+      .size = size,
+      .res_fd = res_fd,
+      .blob_flags = blob_flags,
+   };
 
-   return &bo->base;
+   *out_bo = &bo->base;
+
+   return VK_SUCCESS;
 }
 
 static void
@@ -1053,9 +1058,9 @@ vtest_init(struct vtest *vtest)
    vtest->base.shmem_ops.create = vtest_shmem_create;
    vtest->base.shmem_ops.destroy = vtest_shmem_destroy;
 
-   vtest->base.bo_ops.create = vtest_bo_create;
-   vtest->base.bo_ops.init_gpu = vtest_bo_init_gpu;
-   vtest->base.bo_ops.init_dmabuf = NULL;
+   vtest->base.bo_ops.create_from_device_memory =
+      vtest_bo_create_from_device_memory;
+   vtest->base.bo_ops.create_from_dmabuf = NULL;
    vtest->base.bo_ops.destroy = vtest_bo_destroy;
    vtest->base.bo_ops.export_dmabuf = vtest_bo_export_dmabuf;
    vtest->base.bo_ops.map = vtest_bo_map;
