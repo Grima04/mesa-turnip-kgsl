@@ -755,7 +755,7 @@ int virgl_encoder_draw_vbo(struct virgl_context *ctx,
    virgl_encoder_write_dword(ctx->cbuf, info->index_size ? info->index_bias : 0);
    virgl_encoder_write_dword(ctx->cbuf, info->start_instance);
    virgl_encoder_write_dword(ctx->cbuf, info->primitive_restart);
-   virgl_encoder_write_dword(ctx->cbuf, info->restart_index);
+   virgl_encoder_write_dword(ctx->cbuf, info->primitive_restart ? info->restart_index : 0);
    virgl_encoder_write_dword(ctx->cbuf, info->index_bounds_valid ? info->min_index : 0);
    virgl_encoder_write_dword(ctx->cbuf, info->index_bounds_valid ? info->max_index : ~0);
    if (indirect && indirect->count_from_stream_output)
