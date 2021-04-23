@@ -1093,21 +1093,11 @@ panfrost_batch_submit_jobs(struct panfrost_batch *batch,
         return ret;
 }
 
-static void
-panfrost_batch_submit(struct panfrost_batch *batch,
-                      uint32_t in_sync, uint32_t out_sync)
+static void ATTRIBUTE_NOINLINE
+panfrost_batch_submit_nodep(struct panfrost_device *dev,
+                            struct panfrost_batch *batch,
+                            uint32_t in_sync, uint32_t out_sync)
 {
-        assert(batch);
-        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
-
-        /* Submit the dependencies first. Don't pass along the out_sync since
-         * they are guaranteed to terminate sooner */
-        util_dynarray_foreach(&batch->dependencies,
-                              struct panfrost_batch_fence *, dep) {
-                if ((*dep)->batch)
-                        panfrost_batch_submit((*dep)->batch, 0, 0);
-        }
-
         int ret;
 
         /* Nothing to do! */
@@ -1168,6 +1158,24 @@ panfrost_batch_submit(struct panfrost_batch *batch,
 out:
         panfrost_freeze_batch(batch);
         panfrost_free_batch(batch);
+}
+
+static void ATTRIBUTE_NOINLINE
+panfrost_batch_submit(struct panfrost_batch *batch,
+                      uint32_t in_sync, uint32_t out_sync)
+{
+        assert(batch);
+        struct panfrost_device *dev = pan_device(batch->ctx->base.screen);
+
+        /* Submit the dependencies first. Don't pass along the out_sync since
+         * they are guaranteed to terminate sooner */
+        util_dynarray_foreach(&batch->dependencies,
+                              struct panfrost_batch_fence *, dep) {
+                if ((*dep)->batch)
+                        panfrost_batch_submit((*dep)->batch, 0, 0);
+        }
+
+        panfrost_batch_submit_nodep(dev, batch, in_sync, out_sync);
 }
 
 /* Submit all batches, applying the out_sync to the currently bound batch */
