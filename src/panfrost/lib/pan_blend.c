@@ -26,11 +26,11 @@
 #include "pan_shader.h"
 #include "pan_texture.h"
 #include "panfrost/util/pan_lower_framebuffer.h"
-#include "panfrost/util/nir_lower_blend.h"
 #include "util/format/u_format.h"
 #include "compiler/nir/nir.h"
 #include "compiler/nir/nir_builder.h"
 #include "compiler/nir/nir_conversion_builder.h"
+#include "compiler/nir/nir_lower_blend.h"
 
 /* Fixed function blending */
 
@@ -504,9 +504,8 @@ pan_blend_create_shader(const struct panfrost_device *dev,
         nir_lower_blend_options options = {
                 .logicop_enable = state->logicop_enable,
                 .logicop_func = state->logicop_func,
-                .colormask = rt_state->equation.color_mask,
-                .half = nir_type == nir_type_float16,
-                .format = rt_state->format
+                .rt[0].colormask = rt_state->equation.color_mask,
+                .format[0] = rt_state->format
         };
 
         if (!rt_state->equation.blend_enable) {
@@ -518,19 +517,19 @@ pan_blend_create_shader(const struct panfrost_device *dev,
                         .invert_dst_factor = false,
                 };
 
-                options.rgb = replace;
-                options.alpha = replace;
+                options.rt[0].rgb = replace;
+                options.rt[0].alpha = replace;
         } else {
-                options.rgb.func = rt_state->equation.rgb_func;
-                options.rgb.src_factor = rt_state->equation.rgb_src_factor;
-                options.rgb.invert_src_factor = rt_state->equation.rgb_invert_src_factor;
-                options.rgb.dst_factor = rt_state->equation.rgb_dst_factor;
-                options.rgb.invert_dst_factor = rt_state->equation.rgb_invert_dst_factor;
-                options.alpha.func = rt_state->equation.alpha_func;
-                options.alpha.src_factor = rt_state->equation.alpha_src_factor;
-                options.alpha.invert_src_factor = rt_state->equation.alpha_invert_src_factor;
-                options.alpha.dst_factor = rt_state->equation.alpha_dst_factor;
-                options.alpha.invert_dst_factor = rt_state->equation.alpha_invert_dst_factor;
+                options.rt[0].rgb.func = rt_state->equation.rgb_func;
+                options.rt[0].rgb.src_factor = rt_state->equation.rgb_src_factor;
+                options.rt[0].rgb.invert_src_factor = rt_state->equation.rgb_invert_src_factor;
+                options.rt[0].rgb.dst_factor = rt_state->equation.rgb_dst_factor;
+                options.rt[0].rgb.invert_dst_factor = rt_state->equation.rgb_invert_dst_factor;
+                options.rt[0].alpha.func = rt_state->equation.alpha_func;
+                options.rt[0].alpha.src_factor = rt_state->equation.alpha_src_factor;
+                options.rt[0].alpha.invert_src_factor = rt_state->equation.alpha_invert_src_factor;
+                options.rt[0].alpha.dst_factor = rt_state->equation.alpha_dst_factor;
+                options.rt[0].alpha.invert_dst_factor = rt_state->equation.alpha_invert_dst_factor;
         }
 
         nir_alu_type src_types[] = { src0_type ?: nir_type_float32, src1_type ?: nir_type_float32 };
