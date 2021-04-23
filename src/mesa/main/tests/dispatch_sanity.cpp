@@ -1978,6 +1978,18 @@ const struct function gl_compatibility_functions_possible[] = {
    { "glFogCoordhvNV", 13, -1 },
    { "glSecondaryColor3hNV", 13, -1 },
    { "glSecondaryColor3hvNV", 13, -1 },
+   { "glVertexAttrib1hNV", 13, -1 },
+   { "glVertexAttrib1hvNV", 13, -1 },
+   { "glVertexAttrib2hNV", 13, -1 },
+   { "glVertexAttrib2hvNV", 13, -1 },
+   { "glVertexAttrib3hNV", 13, -1 },
+   { "glVertexAttrib3hvNV", 13, -1 },
+   { "glVertexAttrib4hNV", 13, -1 },
+   { "glVertexAttrib4hvNV", 13, -1 },
+   { "glVertexAttribs1hvNV", 13, -1 },
+   { "glVertexAttribs2hvNV", 13, -1 },
+   { "glVertexAttribs3hvNV", 13, -1 },
+   { "glVertexAttribs4hvNV", 13, -1 },
 
    { NULL, 0, -1 }
 };
