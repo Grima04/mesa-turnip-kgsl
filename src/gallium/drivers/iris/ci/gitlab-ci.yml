@@ -8,7 +8,7 @@
 iris-apl-traces:amd64:
   extends:
     - .iris-traces:amd64
-    - .test-manual
+    - .test-manual-mr
   variables:
     DEVICE_TYPE: asus-C523NA-A20057-coral
     DTB: ""
@@ -22,7 +22,7 @@ iris-apl-traces:amd64:
 iris-glk-traces:amd64:
   extends:
     - .iris-traces:amd64
-    - .test-manual
+    - .test-manual-mr
   variables:
     DEVICE_TYPE: hp-x360-12b-n4000-octopus
     DTB: ""
@@ -36,7 +36,7 @@ iris-glk-traces:amd64:
 iris-amly-traces:amd64:
   extends:
     - .iris-traces:amd64
-    - .test-manual
+    - .test-manual-mr
   variables:
     DEVICE_TYPE: asus-C433TA-AJ0005-rammus
     DTB: ""
