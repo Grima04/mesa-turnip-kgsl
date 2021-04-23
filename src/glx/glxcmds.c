@@ -1737,7 +1737,7 @@ glXSwapIntervalSGI(int interval)
    xGLXVendorPrivateReq *req;
    struct glx_context *gc = __glXGetCurrentContext();
 #ifdef GLX_DIRECT_RENDERING
-   struct glx_screen *psc;
+   struct glx_screen *psc = gc->psc;
 #endif
    Display *dpy;
    CARD32 *interval_ptr;
@@ -1752,8 +1752,6 @@ glXSwapIntervalSGI(int interval)
    }
 
 #ifdef GLX_DIRECT_RENDERING
-   psc = GetGLXScreenConfigs( gc->currentDpy, gc->screen);
-
    if (gc->isDirect && psc && psc->driScreen &&
           psc->driScreen->setSwapInterval) {
       __GLXDRIdrawable *pdraw =
@@ -1805,9 +1803,7 @@ glXSwapIntervalMESA(unsigned int interval)
       return GLX_BAD_VALUE;
 
    if (gc != &dummyContext && gc->isDirect) {
-      struct glx_screen *psc;
-
-      psc = GetGLXScreenConfigs( gc->currentDpy, gc->screen);
+      struct glx_screen *psc = gc->psc;
       if (psc && psc->driScreen && psc->driScreen->setSwapInterval) {
          __GLXDRIdrawable *pdraw =
 	    GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
@@ -1834,9 +1830,7 @@ glXGetSwapIntervalMESA(void)
    struct glx_context *gc = __glXGetCurrentContext();
 
    if (gc != &dummyContext && gc->isDirect) {
-      struct glx_screen *psc;
-
-      psc = GetGLXScreenConfigs( gc->currentDpy, gc->screen);
+      struct glx_screen *psc = gc->psc;
       if (psc && psc->driScreen && psc->driScreen->getSwapInterval) {
          __GLXDRIdrawable *pdraw =
 	    GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
@@ -1889,7 +1883,7 @@ glXGetVideoSyncSGI(unsigned int *count)
    int64_t ust, msc, sbc;
    int ret;
    struct glx_context *gc = __glXGetCurrentContext();
-   struct glx_screen *psc;
+   struct glx_screen *psc = gc->psc;
    __GLXDRIdrawable *pdraw;
 
    if (gc == &dummyContext)
@@ -1901,7 +1895,6 @@ glXGetVideoSyncSGI(unsigned int *count)
    if (!gc->currentDrawable)
       return GLX_BAD_CONTEXT;
 
-   psc = GetGLXScreenConfigs(gc->currentDpy, gc->screen);
    pdraw = GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
 
    /* FIXME: Looking at the GLX_SGI_video_sync spec in the extension registry,
@@ -1923,7 +1916,7 @@ glXWaitVideoSyncSGI(int divisor, int remainder, unsigned int *count)
 {
    struct glx_context *gc = __glXGetCurrentContext();
 #ifdef GLX_DIRECT_RENDERING
-   struct glx_screen *psc;
+   struct glx_screen *psc = gc->psc;
    __GLXDRIdrawable *pdraw;
    int64_t ust, msc, sbc;
    int ret;
@@ -1942,7 +1935,6 @@ glXWaitVideoSyncSGI(int divisor, int remainder, unsigned int *count)
    if (!gc->currentDrawable)
       return GLX_BAD_CONTEXT;
 
-   psc = GetGLXScreenConfigs( gc->currentDpy, gc->screen);
    pdraw = GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
 
    if (psc && psc->driScreen && psc->driScreen->waitForMSC) {
