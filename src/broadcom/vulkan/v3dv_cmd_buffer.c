@@ -611,8 +611,8 @@ v3dv_job_start_frame(struct v3dv_job *job,
     */
    cl_emit(&job->bcl, START_TILE_BINNING, bin);
 
-   job->ez_state = VC5_EZ_UNDECIDED;
-   job->first_ez_state = VC5_EZ_UNDECIDED;
+   job->ez_state = V3D_EZ_UNDECIDED;
+   job->first_ez_state = V3D_EZ_UNDECIDED;
 }
 
 static void
@@ -1492,11 +1492,11 @@ cmd_buffer_render_pass_emit_load(struct v3dv_cmd_buffer *cmd_buffer,
       load.r_b_swap = iview->swap_rb;
       load.memory_format = slice->tiling;
 
-      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
-          slice->tiling == VC5_TILING_UIF_XOR) {
+      if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
+          slice->tiling == V3D_TILING_UIF_XOR) {
          load.height_in_ub_or_stride =
             slice->padded_height_of_output_image_in_uif_blocks;
-      } else if (slice->tiling == VC5_TILING_RASTER) {
+      } else if (slice->tiling == V3D_TILING_RASTER) {
          load.height_in_ub_or_stride = slice->stride;
       }
 
@@ -1726,11 +1726,11 @@ cmd_buffer_render_pass_emit_store(struct v3dv_cmd_buffer *cmd_buffer,
       store.r_b_swap = iview->swap_rb;
       store.memory_format = slice->tiling;
 
-      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
-          slice->tiling == VC5_TILING_UIF_XOR) {
+      if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
+          slice->tiling == V3D_TILING_UIF_XOR) {
          store.height_in_ub_or_stride =
             slice->padded_height_of_output_image_in_uif_blocks;
-      } else if (slice->tiling == VC5_TILING_RASTER) {
+      } else if (slice->tiling == V3D_TILING_RASTER) {
          store.height_in_ub_or_stride = slice->stride;
       }
 
@@ -2087,16 +2087,16 @@ set_rcl_early_z_config(struct v3dv_job *job,
    }
 
    switch (job->first_ez_state) {
-   case VC5_EZ_UNDECIDED:
-   case VC5_EZ_LT_LE:
+   case V3D_EZ_UNDECIDED:
+   case V3D_EZ_LT_LE:
       *early_z_disable = false;
       *early_z_test_and_update_direction = EARLY_Z_DIRECTION_LT_LE;
       break;
-   case VC5_EZ_GT_GE:
+   case V3D_EZ_GT_GE:
       *early_z_disable = false;
       *early_z_test_and_update_direction = EARLY_Z_DIRECTION_GT_GE;
       break;
-   case VC5_EZ_DISABLED:
+   case V3D_EZ_DISABLED:
       *early_z_disable = true;
       break;
    }
@@ -2230,8 +2230,8 @@ cmd_buffer_emit_render_pass_rcl(struct v3dv_cmd_buffer *cmd_buffer)
          &state->attachments[attachment_idx].clear_value.color[0];
 
       uint32_t clear_pad = 0;
-      if (slice->tiling == VC5_TILING_UIF_NO_XOR ||
-          slice->tiling == VC5_TILING_UIF_XOR) {
+      if (slice->tiling == V3D_TILING_UIF_NO_XOR ||
+          slice->tiling == V3D_TILING_UIF_XOR) {
          int uif_block_height = v3d_utile_height(image->cpp) * 2;
 
          uint32_t implicit_padded_height =
@@ -3015,15 +3015,15 @@ job_update_ez_state(struct v3dv_job *job,
                     struct v3dv_pipeline *pipeline,
                     struct v3dv_cmd_buffer *cmd_buffer)
 {
-   /* If first_ez_state is VC5_EZ_DISABLED it means that we have already
+   /* If first_ez_state is V3D_EZ_DISABLED it means that we have already
     * determined that we should disable EZ completely for all draw calls in
     * this job. This will cause us to disable EZ for the entire job in the
     * Tile Rendering Mode RCL packet and when we do that we need to make sure
     * we never emit a draw call in the job with EZ enabled in the CFG_BITS
-    * packet, so ez_state must also be VC5_EZ_DISABLED;
+    * packet, so ez_state must also be V3D_EZ_DISABLED;
     */
-   if (job->first_ez_state == VC5_EZ_DISABLED) {
-      assert(job->ez_state == VC5_EZ_DISABLED);
+   if (job->first_ez_state == V3D_EZ_DISABLED) {
+      assert(job->ez_state == V3D_EZ_DISABLED);
       return;
    }
 
@@ -3044,8 +3044,8 @@ job_update_ez_state(struct v3dv_job *job,
       assert(state->subpass_idx < state->pass->subpass_count);
       struct v3dv_subpass *subpass = &state->pass->subpasses[state->subpass_idx];
       if (subpass->ds_attachment.attachment == VK_ATTACHMENT_UNUSED) {
-         job->first_ez_state = VC5_EZ_DISABLED;
-         job->ez_state = VC5_EZ_DISABLED;
+         job->first_ez_state = V3D_EZ_DISABLED;
+         job->ez_state = V3D_EZ_DISABLED;
          return;
       }
 
@@ -3073,16 +3073,16 @@ job_update_ez_state(struct v3dv_job *job,
             assert(cmd_buffer->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
             perf_debug("Loading depth aspect in a secondary command buffer "
                        "without framebuffer info disables early-z tests.\n");
-            job->first_ez_state = VC5_EZ_DISABLED;
-            job->ez_state = VC5_EZ_DISABLED;
+            job->first_ez_state = V3D_EZ_DISABLED;
+            job->ez_state = V3D_EZ_DISABLED;
             return;
          }
 
          if (((fb->width % 2) != 0 || (fb->height % 2) != 0)) {
             perf_debug("Loading depth aspect for framebuffer with odd width "
                        "or height disables early-Z tests.\n");
-            job->first_ez_state = VC5_EZ_DISABLED;
-            job->ez_state = VC5_EZ_DISABLED;
+            job->first_ez_state = V3D_EZ_DISABLED;
+            job->ez_state = V3D_EZ_DISABLED;
             return;
          }
       }
@@ -3096,39 +3096,39 @@ job_update_ez_state(struct v3dv_job *job,
    struct v3dv_shader_variant *fs_variant =
       pipeline->shared_data->variants[BROADCOM_SHADER_FRAGMENT];
    if (fs_variant->prog_data.fs->writes_z) {
-      job->ez_state = VC5_EZ_DISABLED;
+      job->ez_state = V3D_EZ_DISABLED;
       return;
    }
 
    switch (pipeline->ez_state) {
-   case VC5_EZ_UNDECIDED:
+   case V3D_EZ_UNDECIDED:
       /* If the pipeline didn't pick a direction but didn't disable, then go
        * along with the current EZ state. This allows EZ optimization for Z
        * func == EQUAL or NEVER.
        */
       break;
 
-   case VC5_EZ_LT_LE:
-   case VC5_EZ_GT_GE:
+   case V3D_EZ_LT_LE:
+   case V3D_EZ_GT_GE:
       /* If the pipeline picked a direction, then it needs to match the current
        * direction if we've decided on one.
        */
-      if (job->ez_state == VC5_EZ_UNDECIDED)
+      if (job->ez_state == V3D_EZ_UNDECIDED)
          job->ez_state = pipeline->ez_state;
       else if (job->ez_state != pipeline->ez_state)
-         job->ez_state = VC5_EZ_DISABLED;
+         job->ez_state = V3D_EZ_DISABLED;
       break;
 
-   case VC5_EZ_DISABLED:
+   case V3D_EZ_DISABLED:
       /* If the pipeline disables EZ because of a bad Z func or stencil
        * operation, then we can't do any more EZ in this frame.
        */
-      job->ez_state = VC5_EZ_DISABLED;
+      job->ez_state = V3D_EZ_DISABLED;
       break;
    }
 
-   if (job->first_ez_state == VC5_EZ_UNDECIDED &&
-       job->ez_state != VC5_EZ_DISABLED) {
+   if (job->first_ez_state == V3D_EZ_UNDECIDED &&
+       job->ez_state != V3D_EZ_DISABLED) {
       job->first_ez_state = job->ez_state;
    }
 }
@@ -3720,7 +3720,7 @@ emit_configuration_bits(struct v3dv_cmd_buffer *cmd_buffer)
    v3dv_return_if_oom(cmd_buffer, NULL);
 
    cl_emit_with_prepacked(&job->bcl, CFG_BITS, pipeline->cfg_bits, config) {
-      config.early_z_enable = job->ez_state != VC5_EZ_DISABLED;
+      config.early_z_enable = job->ez_state != V3D_EZ_DISABLED;
       config.early_z_updates_enable = config.early_z_enable &&
                                       pipeline->z_updates_enable;
    }

@@ -457,26 +457,26 @@ struct v3dv_format {
  */
 enum v3d_tiling_mode {
    /* Untiled resources.  Not valid as texture inputs. */
-   VC5_TILING_RASTER,
+   V3D_TILING_RASTER,
 
    /* Single line of u-tiles. */
-   VC5_TILING_LINEARTILE,
+   V3D_TILING_LINEARTILE,
 
    /* Departure from standard 4-UIF block column format. */
-   VC5_TILING_UBLINEAR_1_COLUMN,
+   V3D_TILING_UBLINEAR_1_COLUMN,
 
    /* Departure from standard 4-UIF block column format. */
-   VC5_TILING_UBLINEAR_2_COLUMN,
+   V3D_TILING_UBLINEAR_2_COLUMN,
 
    /* Normal tiling format: grouped in 4x4 UIFblocks, each of which is
     * split 2x2 into utiles.
     */
-   VC5_TILING_UIF_NO_XOR,
+   V3D_TILING_UIF_NO_XOR,
 
    /* Normal tiling format: grouped in 4x4 UIFblocks, each of which is
     * split 2x2 into utiles.
     */
-   VC5_TILING_UIF_XOR,
+   V3D_TILING_UIF_XOR,
 };
 
 struct v3d_resource_slice {
@@ -818,10 +818,10 @@ void v3dv_viewport_compute_xform(const VkViewport *viewport,
                                  float translate[3]);
 
 enum v3dv_ez_state {
-   VC5_EZ_UNDECIDED = 0,
-   VC5_EZ_GT_GE,
-   VC5_EZ_LT_LE,
-   VC5_EZ_DISABLED,
+   V3D_EZ_UNDECIDED = 0,
+   V3D_EZ_GT_GE,
+   V3D_EZ_LT_LE,
+   V3D_EZ_DISABLED,
 };
 
 enum v3dv_job_type {

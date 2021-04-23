@@ -2625,25 +2625,25 @@ pipeline_set_ez_state(struct v3dv_pipeline *pipeline,
                       const VkPipelineDepthStencilStateCreateInfo *ds_info)
 {
    if (!ds_info || !ds_info->depthTestEnable) {
-      pipeline->ez_state = VC5_EZ_DISABLED;
+      pipeline->ez_state = V3D_EZ_DISABLED;
       return;
    }
 
    switch (ds_info->depthCompareOp) {
    case VK_COMPARE_OP_LESS:
    case VK_COMPARE_OP_LESS_OR_EQUAL:
-      pipeline->ez_state = VC5_EZ_LT_LE;
+      pipeline->ez_state = V3D_EZ_LT_LE;
       break;
    case VK_COMPARE_OP_GREATER:
    case VK_COMPARE_OP_GREATER_OR_EQUAL:
-      pipeline->ez_state = VC5_EZ_GT_GE;
+      pipeline->ez_state = V3D_EZ_GT_GE;
       break;
    case VK_COMPARE_OP_NEVER:
    case VK_COMPARE_OP_EQUAL:
-      pipeline->ez_state = VC5_EZ_UNDECIDED;
+      pipeline->ez_state = V3D_EZ_UNDECIDED;
       break;
    default:
-      pipeline->ez_state = VC5_EZ_DISABLED;
+      pipeline->ez_state = V3D_EZ_DISABLED;
       break;
    }
 
@@ -2651,7 +2651,7 @@ pipeline_set_ez_state(struct v3dv_pipeline *pipeline,
    if (ds_info->stencilTestEnable &&
        (!stencil_op_is_no_op(&ds_info->front) ||
         !stencil_op_is_no_op(&ds_info->back))) {
-         pipeline->ez_state = VC5_EZ_DISABLED;
+         pipeline->ez_state = V3D_EZ_DISABLED;
    }
 }
 
