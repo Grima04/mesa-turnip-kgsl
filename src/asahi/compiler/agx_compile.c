@@ -491,6 +491,35 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    }
 }
 
+static enum agx_dim
+agx_tex_dim(enum glsl_sampler_dim dim, bool array)
+{
+   switch (dim) {
+   case GLSL_SAMPLER_DIM_1D:
+   case GLSL_SAMPLER_DIM_BUF:
+      return array ? AGX_DIM_TEX_1D_ARRAY : AGX_DIM_TEX_1D;
+
+   case GLSL_SAMPLER_DIM_2D:
+   case GLSL_SAMPLER_DIM_RECT:
+   case GLSL_SAMPLER_DIM_EXTERNAL:
+      return array ? AGX_DIM_TEX_2D_ARRAY : AGX_DIM_TEX_2D;
+
+   case GLSL_SAMPLER_DIM_MS:
+      assert(!array && "multisampled arrays unsupported");
+      return AGX_DIM_TEX_2D_MS;
+
+   case GLSL_SAMPLER_DIM_3D:
+      assert(!array && "3D arrays unsupported");
+      return AGX_DIM_TEX_3D;
+
+   case GLSL_SAMPLER_DIM_CUBE:
+      return array ? AGX_DIM_TEX_CUBE_ARRAY : AGX_DIM_TEX_CUBE;
+
+   default:
+      unreachable("Invalid sampler dim\n");
+   }
+}
+
 static void
 agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
