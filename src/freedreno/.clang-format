@@ -91,6 +91,8 @@ ForEachMacros:
   - hash_table_foreach
   - set_foreach
   - foreach_line_in_section
+  - perf_time
+  - perf_time_ctx
 
 IncludeBlocks: Preserve
 IncludeCategories:

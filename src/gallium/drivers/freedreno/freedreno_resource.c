@@ -182,9 +182,8 @@ __fd_resource_wait(struct fd_context *ctx, struct fd_resource *rsc, unsigned op,
 
    int ret;
 
-   perf_time_ctx(ctx, 10000, "%s: a busy \"%" PRSC_FMT "\" BO stalled", func,
-                 PRSC_ARGS(&rsc->b.b))
-   {
+   perf_time_ctx (ctx, 10000, "%s: a busy \"%" PRSC_FMT "\" BO stalled", func,
+                  PRSC_ARGS(&rsc->b.b)) {
       ret = fd_bo_cpu_prep(rsc->bo, ctx->pipe, op);
    }
 

@@ -415,10 +415,10 @@ ir3_get_shader(struct ir3_shader_state *hwcso)
       return NULL;
 
    struct ir3_shader *shader = hwcso->shader;
-   perf_time(1000, "waited for %s:%s:%s variants",
-             _mesa_shader_stage_to_abbrev(shader->type), shader->nir->info.name,
-             shader->nir->info.label)
-   {
+   perf_time (1000, "waited for %s:%s:%s variants",
+              _mesa_shader_stage_to_abbrev(shader->type),
+              shader->nir->info.name,
+              shader->nir->info.label) {
       /* wait for initial variants to compile: */
       util_queue_fence_wait(&hwcso->ready);
    }
