@@ -19,6 +19,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+libasahi_lib_files = files(
+  'tiling.c',
+)
+
 libasahi_decode_files = files(
   'decode.c',
 )
@@ -34,6 +38,16 @@ agx_pack = custom_target(
 idep_agx_pack = declare_dependency(
   sources : [agx_pack],
   include_directories : include_directories('.'),
+)
+
+libasahi_lib = static_library(
+  'asahi_lib',
+  [libasahi_lib_files, agx_pack],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  dependencies: [dep_libdrm, idep_nir],
+  build_by_default : false,
 )
 
 libasahi_decode = static_library(
