@@ -291,7 +291,7 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
    unsigned comps = nir_src_num_components(src.src);
    unsigned channel = src.swizzle[0];
 
-   assert(bitsize == 16 || bitsize == 32 || bitsize == 64);
+   assert(bitsize == 1 || bitsize == 16 || bitsize == 32 || bitsize == 64);
    assert(!(src.negate || src.abs));
    assert(channel < comps);
 
@@ -305,6 +305,46 @@ agx_alu_src_index(agx_builder *b, nir_alu_src src)
 }
 
 static agx_instr *
+agx_emit_alu_bool(agx_builder *b, nir_op op,
+      agx_index dst, agx_index s0, agx_index s1, agx_index s2)
+{
+   /* Handle 1-bit bools as zero/nonzero rather than specifically 0/1 or 0/~0.
+    * This will give the optimizer flexibility. */
+   agx_index f = agx_immediate(0);
+   agx_index t = agx_immediate(0x1);
+
+   switch (op) {
+   case nir_op_feq: return agx_fcmpsel_to(b, dst, s0, s1, t, f, AGX_FCOND_EQ);
+   case nir_op_flt: return agx_fcmpsel_to(b, dst, s0, s1, t, f, AGX_FCOND_LT);
+   case nir_op_fge: return agx_fcmpsel_to(b, dst, s0, s1, t, f, AGX_FCOND_GE);
+   case nir_op_fneu: return agx_fcmpsel_to(b, dst, s0, s1, f, t, AGX_FCOND_EQ);
+
+   case nir_op_ieq: return agx_icmpsel_to(b, dst, s0, s1, t, f, AGX_ICOND_UEQ);
+   case nir_op_ine: return agx_icmpsel_to(b, dst, s0, s1, f, t, AGX_ICOND_UEQ);
+   case nir_op_ilt: return agx_icmpsel_to(b, dst, s0, s1, t, f, AGX_ICOND_SLT);
+   case nir_op_ige: return agx_icmpsel_to(b, dst, s0, s1, f, t, AGX_ICOND_SLT);
+   case nir_op_ult: return agx_icmpsel_to(b, dst, s0, s1, t, f, AGX_ICOND_ULT);
+   case nir_op_uge: return agx_icmpsel_to(b, dst, s0, s1, f, t, AGX_ICOND_ULT);
+
+   case nir_op_iand: return agx_and_to(b, dst, s0, s1);
+   case nir_op_ior: return agx_or_to(b, dst, s0, s1);
+   case nir_op_ixor: return agx_xor_to(b, dst, s0, s1);
+   case nir_op_inot: return agx_xor_to(b, dst, s0, t);
+
+   case nir_op_f2b1: return agx_fcmpsel_to(b, dst, s0, f, f, t, AGX_FCOND_EQ);
+   case nir_op_i2b1: return agx_icmpsel_to(b, dst, s0, f, f, t, AGX_ICOND_UEQ);
+   case nir_op_b2b1: return agx_icmpsel_to(b, dst, s0, f, f, t, AGX_ICOND_UEQ);
+
+   case nir_op_bcsel:
+      return agx_icmpsel_to(b, dst, s0, f, s2, s1, AGX_ICOND_UEQ);
+
+   default:
+      fprintf(stderr, "Unhandled ALU op %s\n", nir_op_infos[op].name);
+      unreachable("Unhandled boolean ALU instruction");
+   }
+}
+
+static agx_instr *
 agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
 {
    unsigned srcs = nir_op_infos[instr->op].num_inputs;
@@ -313,13 +353,17 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    unsigned comps = nir_dest_num_components(instr->dest.dest);
 
    assert(comps == 1 || nir_op_is_vec(instr->op));
-   assert(sz == 16 || sz == 32 || sz == 64);
+   assert(sz == 1 || sz == 16 || sz == 32 || sz == 64);
 
    agx_index dst = agx_dest_index(&instr->dest.dest);
    agx_index s0 = srcs > 0 ? agx_alu_src_index(b, instr->src[0]) : agx_null();
    agx_index s1 = srcs > 1 ? agx_alu_src_index(b, instr->src[1]) : agx_null();
    agx_index s2 = srcs > 2 ? agx_alu_src_index(b, instr->src[2]) : agx_null();
    agx_index s3 = srcs > 3 ? agx_alu_src_index(b, instr->src[3]) : agx_null();
+
+   /* 1-bit bools are a bit special, only handle with select ops */
+   if (sz == 1)
+      return agx_emit_alu_bool(b, instr->op, dst, s0, s1, s2);
 
 #define UNOP(nop, aop) \
    case nir_op_ ## nop: return agx_ ## aop ## _to(b, dst, s0);
