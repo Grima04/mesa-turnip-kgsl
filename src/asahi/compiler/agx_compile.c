@@ -523,7 +523,47 @@ agx_tex_dim(enum glsl_sampler_dim dim, bool array)
 static void
 agx_emit_tex(agx_builder *b, nir_tex_instr *instr)
 {
-   unreachable("stub");
+   switch (instr->op) {
+   case nir_texop_tex:
+      break;
+   default:
+      unreachable("Unhandled texture op");
+   }
+
+   agx_index coords = agx_null(),
+             texture = agx_immediate(instr->texture_index),
+             sampler = agx_immediate(instr->sampler_index),
+             lod = agx_immediate(0),
+             offset = agx_null();
+
+   for (unsigned i = 0; i < instr->num_srcs; ++i) {
+      agx_index index = agx_src_index(&instr->src[i].src);
+
+      switch (instr->src[i].src_type) {
+      case nir_tex_src_coord:
+         coords = index;
+         break;
+
+      case nir_tex_src_lod:
+      case nir_tex_src_bias:
+      case nir_tex_src_ms_index:
+      case nir_tex_src_offset:
+      case nir_tex_src_comparator:
+      case nir_tex_src_texture_offset:
+      case nir_tex_src_sampler_offset:
+      default:
+         unreachable("todo");
+      }
+   }
+
+   agx_texture_sample_to(b, agx_dest_index(&instr->dest),
+         coords, lod, texture, sampler, offset,
+         agx_tex_dim(instr->sampler_dim, instr->is_array),
+         AGX_LOD_MODE_AUTO_LOD, /* TODO */
+         0xF, /* TODO: wrmask */
+         0);
+
+   agx_wait(b, 0);
 }
 
 static void
