@@ -19,6 +19,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+libasahi_decode_files = files(
+  'decode.c',
+)
+
 agx_pack = custom_target(
   'agx_pack.h',
   input : ['gen_pack.py', 'cmdbuf.xml'],
@@ -30,4 +34,14 @@ agx_pack = custom_target(
 idep_agx_pack = declare_dependency(
   sources : [agx_pack],
   include_directories : include_directories('.'),
+)
+
+libasahi_decode = static_library(
+  'asahi_decode',
+  [libasahi_decode_files, agx_pack],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_asahi],
+  dependencies : idep_mesautil,
+  c_args : [no_override_init_args],
+  gnu_symbol_visibility : 'hidden',
+  build_by_default : false,
 )

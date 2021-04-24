@@ -19,7 +19,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+inc_asahi = include_directories([
+   '.', 'lib', 'compiler'
+])
+
 subdir('compiler')
+subdir('lib')
 
 files_agx = files(
   'compiler/cmdline.c',
