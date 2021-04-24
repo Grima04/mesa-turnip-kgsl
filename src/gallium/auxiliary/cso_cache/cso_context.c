@@ -74,8 +74,10 @@ struct cso_context {
    boolean has_streamout;
 
    unsigned saved_state;  /**< bitmask of CSO_BIT_x flags */
+   unsigned saved_compute_state;  /**< bitmask of CSO_BIT_COMPUTE_x flags */
 
    struct sampler_info fragment_samplers_saved;
+   struct sampler_info compute_samplers_saved;
    struct sampler_info samplers[PIPE_SHADER_TYPES];
 
    /* Temporary number until cso_single_sampler_done is called.
@@ -100,7 +102,7 @@ struct cso_context {
    void *geometry_shader, *geometry_shader_saved;
    void *tessctrl_shader, *tessctrl_shader_saved;
    void *tesseval_shader, *tesseval_shader_saved;
-   void *compute_shader;
+   void *compute_shader, *compute_shader_saved;
    void *velements, *velements_saved;
    struct pipe_query *render_condition, *render_condition_saved;
    uint render_condition_mode, render_condition_mode_saved;
@@ -923,6 +925,65 @@ void cso_set_compute_shader_handle(struct cso_context *ctx, void *handle)
 }
 
 static void
+cso_save_compute_shader(struct cso_context *ctx)
+{
+   if (!ctx->has_compute_shader) {
+      return;
+   }
+
+   assert(!ctx->compute_shader_saved);
+   ctx->compute_shader_saved = ctx->compute_shader;
+}
+
+static void
+cso_restore_compute_shader(struct cso_context *ctx)
+{
+   if (!ctx->has_compute_shader) {
+      return;
+   }
+
+   if (ctx->compute_shader_saved != ctx->compute_shader) {
+      ctx->pipe->bind_compute_state(ctx->pipe, ctx->compute_shader_saved);
+      ctx->compute_shader = ctx->compute_shader_saved;
+   }
+   ctx->compute_shader_saved = NULL;
+}
+
+
+static void
+cso_save_compute_samplers(struct cso_context *ctx)
+{
+   struct sampler_info *info = &ctx->samplers[PIPE_SHADER_COMPUTE];
+   struct sampler_info *saved = &ctx->compute_samplers_saved;
+
+   memcpy(saved->cso_samplers, info->cso_samplers,
+          sizeof(info->cso_samplers));
+   memcpy(saved->samplers, info->samplers, sizeof(info->samplers));
+}
+
+
+static void
+cso_restore_compute_samplers(struct cso_context *ctx)
+{
+   struct sampler_info *info = &ctx->samplers[PIPE_SHADER_COMPUTE];
+   struct sampler_info *saved = &ctx->compute_samplers_saved;
+
+   memcpy(info->cso_samplers, saved->cso_samplers,
+          sizeof(info->cso_samplers));
+   memcpy(info->samplers, saved->samplers, sizeof(info->samplers));
+
+   for (int i = PIPE_MAX_SAMPLERS - 1; i >= 0; i--) {
+      if (info->samplers[i]) {
+         ctx->max_sampler_seen = i;
+         break;
+      }
+   }
+
+   cso_single_sampler_done(ctx, PIPE_SHADER_COMPUTE);
+}
+
+
+static void
 cso_set_vertex_elements_direct(struct cso_context *ctx,
                                const struct cso_velems_state *velems)
 {
@@ -1393,6 +1454,44 @@ cso_restore_state(struct cso_context *cso)
       cso->pipe->set_active_query_state(cso->pipe, true);
 
    cso->saved_state = 0;
+}
+
+/**
+ * Save all the CSO state items specified by the state_mask bitmask
+ * of CSO_BIT_COMPUTE_x flags.
+ */
+void
+cso_save_compute_state(struct cso_context *cso, unsigned state_mask)
+{
+   assert(cso->saved_compute_state == 0);
+
+   cso->saved_compute_state = state_mask;
+
+   if (state_mask & CSO_BIT_COMPUTE_SHADER)
+      cso_save_compute_shader(cso);
+
+   if (state_mask & CSO_BIT_COMPUTE_SAMPLERS)
+      cso_save_compute_samplers(cso);
+}
+
+
+/**
+ * Restore the state which was saved by cso_save_compute_state().
+ */
+void
+cso_restore_compute_state(struct cso_context *cso)
+{
+   unsigned state_mask = cso->saved_compute_state;
+
+   assert(state_mask);
+
+   if (state_mask & CSO_BIT_COMPUTE_SHADER)
+      cso_restore_compute_shader(cso);
+
+   if (state_mask & CSO_BIT_COMPUTE_SAMPLERS)
+      cso_restore_compute_samplers(cso);
+
+   cso->saved_compute_state = 0;
 }
 
 
