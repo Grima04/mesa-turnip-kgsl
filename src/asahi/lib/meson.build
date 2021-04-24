@@ -18,3 +18,16 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
+
+agx_pack = custom_target(
+  'agx_pack.h',
+  input : ['gen_pack.py', 'cmdbuf.xml'],
+  output : 'agx_pack.h',
+  command : [prog_python, '@INPUT@'],
+  capture : true,
+)
+
+idep_agx_pack = declare_dependency(
+  sources : [agx_pack],
+  include_directories : include_directories('.'),
+)
