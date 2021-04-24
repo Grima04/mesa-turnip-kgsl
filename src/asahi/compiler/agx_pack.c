@@ -173,6 +173,45 @@ agx_pack_alu_src(agx_index src)
 }
 
 static unsigned
+agx_pack_cmpsel_src(agx_index src, enum agx_size dest_size)
+{
+   unsigned value = src.value;
+   ASSERTED enum agx_size size = src.size;
+
+   if (src.type == AGX_INDEX_IMMEDIATE) {
+      /* Flags 0x4 for an 8-bit immediate */
+      assert(value < 0x100);
+
+      return
+         (value & BITFIELD_MASK(6)) |
+         (0x4 << 6) |
+         ((value >> 6) << 10);
+   } else if (src.type == AGX_INDEX_UNIFORM) {
+      assert(size == AGX_SIZE_16 || size == AGX_SIZE_32);
+      assert(size == dest_size);
+      assert(value < 0x200);
+
+      return
+         (value & BITFIELD_MASK(6)) |
+         ((value >> 8) << 6) |
+         (0x3 << 7) |
+         (((value >> 6) & BITFIELD_MASK(2)) << 10);
+   } else {
+      assert(src.type == AGX_INDEX_REGISTER);
+      assert(!(src.cache && src.discard));
+      assert(size == AGX_SIZE_16 || size == AGX_SIZE_32);
+      assert(size == dest_size);
+
+      unsigned hint = src.discard ? 0x3 : src.cache ? 0x2 : 0x1;
+
+      return
+         (value & BITFIELD_MASK(6)) |
+         (hint << 6) |
+         (((value >> 6) & BITFIELD_MASK(2)) << 10);
+   }
+}
+
+static unsigned
 agx_pack_float_mod(agx_index src)
 {
    return (src.abs ? (1 << 0) : 0)
@@ -224,12 +263,18 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
    }
 
    for (unsigned s = 0; s < info.nr_srcs; ++s) {
-      unsigned src = agx_pack_alu_src(I->src[s]);
+      bool is_cmpsel = (s >= 2) &&
+         (I->op == AGX_OPCODE_ICMPSEL || I->op == AGX_OPCODE_FCMPSEL);
+
+      unsigned src = is_cmpsel ?
+         agx_pack_cmpsel_src(I->src[s], I->dest[0].size) :
+         agx_pack_alu_src(I->src[s]);
+
       unsigned src_short = (src & BITFIELD_MASK(10));
       unsigned src_extend = (src >> 10);
 
       /* Size bit always zero and so omitted for 16-bit */
-      if (is_16)
+      if (is_16 && !is_cmpsel)
          assert((src_short & (1 << 9)) == 0);
 
       if (info.is_float) {
@@ -274,6 +319,8 @@ agx_pack_alu(struct util_dynarray *emission, agx_instr *I)
       raw |= (uint64_t) (I->imm) << 16;
    else if (info.immediates & AGX_IMMEDIATE_ROUND)
       raw |= (uint64_t) (I->imm) << 26;
+   else if (info.immediates & (AGX_IMMEDIATE_FCOND | AGX_IMMEDIATE_ICOND))
+      raw |= (uint64_t) (I->fcond) << 61;
 
    /* Determine length bit */
    unsigned length = encoding.length_short;
