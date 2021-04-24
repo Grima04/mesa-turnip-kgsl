@@ -238,12 +238,14 @@ deep_copy_graphics_create_info(void *mem_ctx,
    dst->basePipelineIndex = src->basePipelineIndex;
 
    /* pStages */
+   VkShaderStageFlags stages_present = 0;
    dst->stageCount = src->stageCount;
    stages = ralloc_array(mem_ctx, VkPipelineShaderStageCreateInfo, dst->stageCount);
    for (i = 0 ; i < dst->stageCount; i++) {
       result = deep_copy_shader_stage(mem_ctx, &stages[i], &src->pStages[i]);
       if (result != VK_SUCCESS)
          return result;
+      stages_present |= src->pStages[i].stage;
    }
    dst->pStages = stages;
 
@@ -262,7 +264,9 @@ deep_copy_graphics_create_info(void *mem_ctx,
                     1);
 
    /* pTessellationState */
-   if (src->pTessellationState) {
+   if (src->pTessellationState &&
+      (stages_present & (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)) ==
+                        (VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT | VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT)) {
       LVP_PIPELINE_DUP(dst->pTessellationState,
                        src->pTessellationState,
                        VkPipelineTessellationStateCreateInfo,
