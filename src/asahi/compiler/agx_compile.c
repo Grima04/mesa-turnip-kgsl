@@ -425,6 +425,19 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_ushr: return agx_bfeil_to(b, dst, agx_zero(), s0, s1, 0);
    case nir_op_ishr: return agx_asr_to(b, dst, s0, s1);
 
+   case nir_op_b2f16:
+   case nir_op_b2f32:
+   {
+      /* At this point, boolean is just zero/nonzero, so compare with zero */
+      agx_index one = (sz == 16) ?
+         agx_mov_imm(b, 16, _mesa_float_to_half(1.0)) :
+         agx_mov_imm(b, 32, fui(1.0));
+
+      agx_index zero = agx_zero();
+
+      return agx_fcmpsel_to(b, dst, s0, zero, zero, one, AGX_FCOND_EQ);
+   }
+
    case nir_op_i2i32:
    {
       if (s0.size != AGX_SIZE_16)
