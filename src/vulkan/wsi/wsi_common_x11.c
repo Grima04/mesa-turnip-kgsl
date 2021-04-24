@@ -785,8 +785,10 @@ struct x11_image {
    struct wsi_image                          base;
    xcb_pixmap_t                              pixmap;
    bool                                      busy;
+   bool                                      present_queued;
    struct xshmfence *                        shm_fence;
    uint32_t                                  sync_fence;
+   uint32_t                                  serial;
 };
 
 struct x11_swapchain {
@@ -915,8 +917,15 @@ x11_handle_dri3_present_event(struct x11_swapchain *chain,
 
    case XCB_PRESENT_EVENT_COMPLETE_NOTIFY: {
       xcb_present_complete_notify_event_t *complete = (void *) event;
-      if (complete->kind == XCB_PRESENT_COMPLETE_KIND_PIXMAP)
+      if (complete->kind == XCB_PRESENT_COMPLETE_KIND_PIXMAP) {
+         unsigned i;
+         for (i = 0; i < chain->base.image_count; i++) {
+            struct x11_image *image = &chain->images[i];
+            if (image->present_queued && image->serial == complete->serial)
+               image->present_queued = false;
+         }
          chain->last_present_msc = complete->msc;
+      }
 
       VkResult result = VK_SUCCESS;
 
@@ -1096,12 +1105,14 @@ x11_present_to_x11_dri3(struct x11_swapchain *chain, uint32_t image_index,
    assert(chain->sent_image_count <= chain->base.image_count);
 
    ++chain->send_sbc;
+   image->present_queued = true;
+   image->serial = (uint32_t) chain->send_sbc;
 
    xcb_void_cookie_t cookie =
       xcb_present_pixmap(chain->conn,
                          chain->window,
                          image->pixmap,
-                         (uint32_t) chain->send_sbc,
+                         image->serial,
                          0,                                    /* valid */
                          0,                                    /* update */
                          0,                                    /* x_off */
@@ -1252,7 +1263,7 @@ x11_manage_fifo_queues(void *state)
           * image that can be acquired by the client afterwards. This ensures we
           * can pull on the present-queue on the next loop.
           */
-         while (chain->last_present_msc < target_msc ||
+         while (chain->images[image_index].present_queued ||
                 chain->sent_image_count == chain->base.image_count) {
             xcb_generic_event_t *event =
                xcb_wait_for_special_event(chain->conn, chain->special_event);
