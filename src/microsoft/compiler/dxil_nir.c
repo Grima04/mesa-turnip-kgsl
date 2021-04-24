@@ -1295,3 +1295,63 @@ dxil_nir_lower_double_math(nir_shader *shader)
 
    return progress;
 }
+
+typedef struct {
+   gl_system_value *values;
+   uint32_t count;
+} zero_system_values_state;
+
+static bool
+lower_system_value_to_zero_filter(const nir_instr* instr, const void* cb_state)
+{
+   if (instr->type != nir_instr_type_intrinsic) {
+      return false;
+   }
+
+   nir_intrinsic_instr* intrin = nir_instr_as_intrinsic(instr);
+
+   /* All the intrinsics we care about are loads */
+   if (!nir_intrinsic_infos[intrin->intrinsic].has_dest)
+      return false;
+
+   assert(intrin->dest.is_ssa);
+
+   zero_system_values_state* state = (zero_system_values_state*)cb_state;
+   for (uint32_t i = 0; i < state->count; ++i) {
+      gl_system_value value = state->values[i];
+      nir_intrinsic_op value_op = nir_intrinsic_from_system_value(value);
+
+      if (intrin->intrinsic == value_op) {
+         return true;
+      } else if (intrin->intrinsic == nir_intrinsic_load_deref) {
+         nir_deref_instr* deref = nir_src_as_deref(intrin->src[0]);
+         if (!nir_deref_mode_is(deref, nir_var_system_value))
+            return false;
+
+         nir_variable* var = deref->var;
+         if (var->data.location == value) {
+            return true;
+         }
+      }
+   }
+
+   return false;
+}
+
+static nir_ssa_def*
+lower_system_value_to_zero_instr(nir_builder* b, nir_instr* instr, void* _state)
+{
+   return nir_imm_int(b, 0);
+}
+
+bool
+dxil_nir_lower_system_values_to_zero(nir_shader* shader,
+                                     gl_system_value* system_values,
+                                     uint32_t count)
+{
+   zero_system_values_state state = { system_values, count };
+   return nir_shader_lower_instructions(shader,
+      lower_system_value_to_zero_filter,
+      lower_system_value_to_zero_instr,
+      &state);
+}

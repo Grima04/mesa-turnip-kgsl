@@ -43,10 +43,14 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    glsl_type_singleton_init_or_ref();
 
+   struct nir_shader_compiler_options nir_options = *dxil_get_nir_compiler_options();
+   // We will manually handle base_vertex
+   nir_options.lower_base_vertex = false;
+
    nir_shader *nir = spirv_to_nir(
       words, word_count, (struct nir_spirv_specialization *)specializations,
       num_specializations, (gl_shader_stage)stage, entry_point_name,
-      &spirv_opts, dxil_get_nir_compiler_options());
+      &spirv_opts, &nir_options);
    if (!nir) {
       glsl_type_singleton_decref();
       return false;
@@ -54,6 +58,18 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
 
    nir_validate_shader(nir,
                        "Validate before feeding NIR to the DXIL compiler");
+
+   NIR_PASS_V(nir, nir_lower_system_values);
+
+   // vertex_id and instance_id should have already been transformed to base
+   //  zero before spirv_to_dxil was called. Also, WebGPU does not support
+   //  base/firstVertex/Instance.
+   gl_system_value system_values[] = {
+      SYSTEM_VALUE_FIRST_VERTEX,
+      SYSTEM_VALUE_BASE_VERTEX,
+      SYSTEM_VALUE_BASE_INSTANCE
+   };
+   NIR_PASS_V(nir, dxil_nir_lower_system_values_to_zero, system_values, ARRAY_SIZE(system_values));
 
    NIR_PASS_V(nir, nir_split_per_member_structs);
 
@@ -111,6 +127,8 @@ spirv_to_dxil(const uint32_t *words, size_t word_count,
    NIR_PASS_V(nir, nir_lower_readonly_images_to_tex, true);
    NIR_PASS_V(nir, dxil_nir_split_clip_cull_distance);
    NIR_PASS_V(nir, dxil_nir_lower_loads_stores_to_dxil);
+
+   nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    struct nir_to_dxil_options opts = {.vulkan_environment = true};
 
