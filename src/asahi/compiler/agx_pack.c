@@ -23,6 +23,45 @@
 
 #include "agx_compiler.h"
 
+/* Texturing has its own operands */
+static unsigned
+agx_pack_sample_coords(agx_index index, bool *flag)
+{
+   /* TODO: how to encode 16-bit coords? */
+   assert(index.size == AGX_SIZE_32);
+   assert(index.value < 0x100);
+
+   *flag = index.discard;
+   return index.value;
+}
+
+static unsigned
+agx_pack_texture(agx_index index, unsigned *flag)
+{
+   /* TODO: indirection */
+   assert(index.type == AGX_INDEX_IMMEDIATE);
+   *flag = 0;
+   return index.value;
+}
+
+static unsigned
+agx_pack_sampler(agx_index index, bool *flag)
+{
+   /* TODO: indirection */
+   assert(index.type == AGX_INDEX_IMMEDIATE);
+   *flag = 0;
+   return index.value;
+}
+
+static unsigned
+agx_pack_sample_offset(agx_index index, bool *flag)
+{
+   /* TODO: offsets */
+   assert(index.type == AGX_INDEX_NULL);
+   *flag = 0;
+   return 0;
+}
+
 /* Load/stores have their own operands */
 
 static unsigned
@@ -380,6 +419,76 @@ agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
 
       unsigned size = L ? 8 : 6;
       memcpy(util_dynarray_grow_bytes(emission, 1, size), &raw, size);
+      break;
+   }
+
+   case AGX_OPCODE_TEXTURE_SAMPLE:
+   {
+      assert(I->mask != 0);
+      assert(I->format <= 0x10);
+
+      bool Rt, Ot, Ct, St;
+      unsigned Tt;
+
+      unsigned R = agx_pack_memory_reg(I->dest[0], &Rt);
+      unsigned C = agx_pack_sample_coords(I->src[0], &Ct);
+      unsigned T = agx_pack_texture(I->src[2], &Tt);
+      unsigned S = agx_pack_sampler(I->src[3], &St);
+      unsigned O = agx_pack_sample_offset(I->src[4], &Ot);
+
+      unsigned U = 0; // TODO: what is sampler ureg?
+
+      unsigned D = 0; // TODO: LOD
+      assert(I->src[1].type == AGX_INDEX_IMMEDIATE &&
+             I->src[1].value == 0);
+
+      unsigned q1 = 0; // XXX
+      unsigned q2 = 0; // XXX
+      unsigned q3 = 12; // XXX
+      unsigned q4 = 1; // XXX
+      unsigned q5 = 0; // XXX
+      unsigned q6 = 0; // XXX
+
+      uint32_t extend =
+            ((U & BITFIELD_MASK(5)) << 0) |
+            (q4 << 5) |
+            ((R >> 6) << 8) |
+            ((C >> 6) << 10) |
+            ((D >> 6) << 12) |
+            ((T >> 6) << 14) |
+            ((O & BITFIELD_MASK(6)) << 16) |
+            (q6 << 22) |
+            (Ot << 27) |
+            ((S >> 6) << 28) |
+            ((O >> 6) << 30);
+
+      bool L = (extend != 0);
+      assert(I->scoreboard == 0 && "todo");
+
+      uint64_t raw =
+            0x31 |
+            (Rt ? (1 << 8) : 0) |
+            ((R & BITFIELD_MASK(6)) << 9) |
+            (L ? (1 << 15) : 0) |
+            ((C & BITFIELD_MASK(6)) << 16) |
+            (Ct ? (1 << 22) : 0) |
+            (q1 << 23) |
+            ((D & BITFIELD_MASK(6)) << 24) |
+            (q2 << 30) |
+            (((uint64_t) (T & BITFIELD_MASK(6))) << 32) |
+            (((uint64_t) Tt) << 38) |
+            (((uint64_t) I->dim) << 40) |
+            (((uint64_t) q3) << 43) |
+            (((uint64_t) I->mask) << 48) |
+            (((uint64_t) I->lod_mode) << 48) |
+            (((uint64_t) (S & BITFIELD_MASK(6))) << 32) |
+            (((uint64_t) St) << 62) |
+            (((uint64_t) q5) << 63);
+
+      memcpy(util_dynarray_grow_bytes(emission, 1, 8), &raw, 8);
+      if (L)
+         memcpy(util_dynarray_grow_bytes(emission, 1, 4), &extend, 4);
+
       break;
    }
 
