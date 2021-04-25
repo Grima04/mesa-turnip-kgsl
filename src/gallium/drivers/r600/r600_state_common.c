@@ -2229,8 +2229,11 @@ static void r600_draw_vbo(struct pipe_context *ctx, const struct pipe_draw_info 
 	}
 
 	/* Set the index offset and primitive restart. */
-	if (rctx->vgt_state.vgt_multi_prim_ib_reset_en != info->primitive_restart ||
-	    rctx->vgt_state.vgt_multi_prim_ib_reset_indx != info->restart_index ||
+        bool restart_index_changed = info->primitive_restart &&
+            rctx->vgt_state.vgt_multi_prim_ib_reset_indx != info->restart_index;
+
+	if (rctx->vgt_state.vgt_multi_prim_ib_reset_en != info->primitive_restart  ||
+            restart_index_changed ||
 	    rctx->vgt_state.vgt_indx_offset != index_bias ||
 	    (rctx->vgt_state.last_draw_was_indirect && !indirect)) {
 		rctx->vgt_state.vgt_multi_prim_ib_reset_en = info->primitive_restart;
