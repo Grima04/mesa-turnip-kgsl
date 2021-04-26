@@ -105,6 +105,8 @@ dri_fill_st_options(struct dri_screen *screen)
       driQueryOptionb(optionCache, "force_gl_names_reuse");
    options->transcode_etc =
       driQueryOptionb(optionCache, "transcode_etc");
+   options->transcode_astc =
+      driQueryOptionb(optionCache, "transcode_astc");
 
    char *vendor_str = driQueryOptionstr(optionCache, "force_gl_vendor");
    /* not an empty string */

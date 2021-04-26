@@ -110,10 +110,24 @@ st_mesa_format_to_pipe_format(const struct st_context *st,
    }
 
    if (st_astc_format_fallback(st, mesaFormat)) {
-      if (_mesa_is_format_srgb(mesaFormat))
-         return PIPE_FORMAT_R8G8B8A8_SRGB;
-      else
-         return PIPE_FORMAT_R8G8B8A8_UNORM;
+      const struct util_format_description *desc =
+         util_format_description(mesaFormat);
+
+      if (_mesa_is_format_srgb(mesaFormat)) {
+         if (!st->transcode_astc)
+            return PIPE_FORMAT_R8G8B8A8_SRGB;
+         else if (desc->block.width * desc->block.height < 32)
+            return PIPE_FORMAT_DXT5_SRGBA;
+         else
+            return PIPE_FORMAT_DXT1_SRGBA;
+      } else {
+         if (!st->transcode_astc)
+            return PIPE_FORMAT_R8G8B8A8_UNORM;
+         else if (desc->block.width * desc->block.height < 32)
+            return PIPE_FORMAT_DXT5_RGBA;
+         else
+            return PIPE_FORMAT_DXT1_RGBA;
+      }
    }
 
    return mesaFormat;
