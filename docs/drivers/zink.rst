@@ -123,8 +123,8 @@ OpenGL 4.1
 For OpenGL 4.1 support, the following additional ``VkPhysicalDeviceLimits``
 are required:
 
-* `maxImageDimension2D` ≥ 16384
-* `maxViewports` ≥ 16
+* ``maxImageDimension2D`` ≥ 16384
+* ``maxViewports`` ≥ 16
 
 OpenGL 4.2
 ^^^^^^^^^^
