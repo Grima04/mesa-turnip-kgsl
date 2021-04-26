@@ -2,8 +2,7 @@
 
   \section about About
 
-  Gallium3D is <a href="http://www.tungstengraphics.com/">Tungsten Graphics</a>'
-  new architecture for building 3D graphics drivers. Initially
+  Gallium3D is an architecture for building 3D graphics drivers. Initially
   supporting Mesa and Linux graphics drivers, Gallium3D is designed to allow
   portability to all major operating systems and graphics interfaces.
 
@@ -48,9 +47,8 @@
 
   \section external External documentation
 
-  - <a href="http://www.tungstengraphics.com/gallium3D.htm">Gallium3D's Architectural Overview</a>
-  - <a href="http://www.tungstengraphics.com/wiki/index.php/Gallium3D">Technical Overview</a>
-  - <a href="http://www.tungstengraphics.com/wiki/files/gallium3d-xds2007.pdf">Gallium3D talk from XDS 2007</a>
+  - <a href="https://docs.mesa3d.org/gallium/">Gallium Documentation</a>
+  - <a href="https://web.archive.org/web/20090219205232/http://www.tungstengraphics.com:80/wiki/files/tgsi.pdf">Gallium3D talk from XDS 2007</a>
 
 */
 
