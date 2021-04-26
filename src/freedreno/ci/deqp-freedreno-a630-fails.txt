@@ -14,10 +14,7 @@ dEQP-VK.api.device_init.create_instance_device_intentional_alloc_fail,Fail
 dEQP-VK.api.driver_properties.conformance_version,Fail
 dEQP-VK.api.driver_properties.driver_id_match,Fail
 dEQP-VK.api.info.format_properties.g8b8g8r8_422_unorm,Fail
-dEQP-VK.api.info.get_physical_device_properties2.features,Fail
 dEQP-VK.api.info.get_physical_device_properties2.memory_properties,Fail
-dEQP-VK.api.info.vulkan1p2.property_extensions_consistency,Fail
-dEQP-VK.api.info.vulkan1p2_limits_validation.khr_multiview,Fail
 dEQP-VK.compute.basic.max_local_size_x,Crash
 dEQP-VK.compute.basic.max_local_size_y,Crash
 dEQP-VK.draw.shader_viewport_index.fragment_shader_10,Fail
@@ -128,7 +125,6 @@ dEQP-VK.image.subresource_layout.3d.all_levels.r16g16_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r16g16b16a16_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r8_snorm,Fail
 dEQP-VK.image.subresource_layout.3d.all_levels.r8g8b8a8_snorm,Fail
-dEQP-VK.info.device_mandatory_features,Fail
 dEQP-VK.pipeline.framebuffer_attachment.diff_attachments_2d_19x27_32x32_ms,Fail
 dEQP-VK.pipeline.push_descriptor.compute.binding0_numcalls2_combined_image_sampler,Crash
 dEQP-VK.pipeline.push_descriptor.compute.binding0_numcalls2_sampled_image,Crash
