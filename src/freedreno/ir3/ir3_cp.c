@@ -563,8 +563,8 @@ instr_cp(struct ir3_cp_ctx *ctx, struct ir3_instruction *instr)
 			instr->flags = cond->flags;
 			instr->cat2  = cond->cat2;
 			ir3_instr_set_address(instr, cond->address);
-			instr->regs[1] = cond->regs[1];
-			instr->regs[2] = cond->regs[2];
+			instr->regs[1] = ir3_reg_clone(ctx->shader, cond->regs[1]);
+			instr->regs[2] = ir3_reg_clone(ctx->shader, cond->regs[2]);
 			instr->barrier_class |= cond->barrier_class;
 			instr->barrier_conflict |= cond->barrier_conflict;
 			unuse(cond);
