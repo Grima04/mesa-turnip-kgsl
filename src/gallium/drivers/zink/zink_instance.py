@@ -47,6 +47,7 @@ EXTENSIONS = [
                    "GetPhysicalDeviceFormatProperties2", "GetPhysicalDeviceImageFormatProperties2"]),
     Extension("VK_MVK_moltenvk",
         nonstandard=True),
+    Extension("VK_KHR_surface"),
 ]
 
 # constructor: Layer(name, conditions=[])
