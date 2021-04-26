@@ -106,6 +106,9 @@ bo_new(struct fd_device *dev, uint32_t size, uint32_t flags,
    bo = bo_from_handle(dev, size, handle);
    simple_mtx_unlock(&table_lock);
 
+   bo->max_fences = 1;
+   bo->fences = &bo->_inline_fence;
+
    VG_BO_ALLOC(bo);
 
    return bo;
@@ -332,7 +335,8 @@ bo_del(struct fd_bo *bo)
    simple_mtx_assert_locked(&table_lock);
 
    cleanup_fences(bo, false);
-   free(bo->fences);
+   if (bo->fences != &bo->_inline_fence)
+      free(bo->fences);
 
    if (bo->map)
       os_munmap(bo->map, bo->size);
@@ -484,6 +488,17 @@ fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence)
    }
 
    cleanup_fences(bo, true);
+
+   /* The first time we grow past a single fence, we need some special
+    * handling, as we've been using the embedded _inline_fence to avoid
+    * a separate allocation:
+    */
+   if (unlikely((bo->nr_fences == 1) &&
+                (bo->fences == &bo->_inline_fence))) {
+      bo->nr_fences = bo->max_fences = 0;
+      bo->fences = NULL;
+      APPEND(bo, fences, bo->_inline_fence);
+   }
 
    APPEND(bo, fences, (struct fd_bo_fence){
       .pipe = fd_pipe_ref_locked(pipe),

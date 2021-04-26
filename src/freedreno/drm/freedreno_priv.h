@@ -253,6 +253,12 @@ struct fd_bo {
    time_t free_time;      /* time when added to bucket-list */
 
    DECLARE_ARRAY(struct fd_bo_fence, fences);
+
+   /* In the common case, there is no more than one fence attached.
+    * This provides storage for the fences table until it grows to
+    * be larger than a single element.
+    */
+   struct fd_bo_fence _inline_fence;
 };
 
 void fd_bo_add_fence(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t fence);
