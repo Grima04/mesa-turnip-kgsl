@@ -300,8 +300,8 @@ The release notes summarize what's new or changed in each Mesa release.
 -  :doc:`6.4.1 release notes <relnotes/6.4.1>`
 -  :doc:`6.4 release notes <relnotes/6.4>`
 
-Versions of Mesa prior to 6.4 are summarized in the :doc:`versions
-file <versions>` and the following release notes.
+Versions of Mesa prior to 6.4 are summarized in the following
+release notes, or in the `old docs`_.
 
 -  `6.3.2 release notes <relnotes/6.3.2>`__
 -  `6.3.1 release notes <relnotes/6.3.1>`__
@@ -629,4 +629,5 @@ file <versions>` and the following release notes.
    relnotes/6.4.2
    relnotes/6.4.1
    relnotes/6.4
-   Older Versions <versions>
+
+.. _old docs: https://gitlab.freedesktop.org/mesa/mesa/-/blob/mesa-21.0.0/docs/versions.rst
