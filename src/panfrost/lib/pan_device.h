@@ -250,7 +250,7 @@ panfrost_query_sample_position(
 static inline struct panfrost_bo *
 pan_lookup_bo(struct panfrost_device *dev, uint32_t gem_handle)
 {
-        return util_sparse_array_get(&dev->bo_map, gem_handle);
+        return (struct panfrost_bo *)util_sparse_array_get(&dev->bo_map, gem_handle);
 }
 
 static inline bool
