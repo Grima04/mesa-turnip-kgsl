@@ -368,7 +368,7 @@ Our documentation is written as `reStructuredText`_ files in the
 
 The preferred language of the documentation is US English. This
 doesn't mean that everyone is expected to pay close attention to
-the different English variants, but it does mean someome might
+the different English variants, but it does mean someone might
 suggest a spelling-change, either during review or as a follow-up
 merge-request.
 
