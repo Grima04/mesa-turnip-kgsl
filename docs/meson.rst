@@ -109,7 +109,7 @@ running "meson build/" but this feature is being discussed upstream. For
 now, we have a ``bin/meson-options.py`` script that prints the options
 for you. If that script doesn't work for some reason, you can always
 look in the
-`meson_options.txt <https://gitlab.freedesktop.org/mesa/mesa/-/blob/master/meson_options.txt>`__
+`meson_options.txt <https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/meson_options.txt>`__
 file at the root of the project.
 
 With additional arguments ``meson configure`` can be used to change
