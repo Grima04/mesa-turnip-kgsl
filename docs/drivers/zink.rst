@@ -38,6 +38,7 @@ Here's a list of those requirements:
 
   * `VK_KHR_maintenance1`_
   * `VK_EXT_custom_border_color`
+  * `VK_EXT_provoking_vertex`_
 
 In addition to this, `VK_KHR_external_memory`_ is required to support the
 DRI code-path.
@@ -267,3 +268,4 @@ questions, don't hesitate to visit `#zink on FreeNode
 .. _VK_KHR_draw_indirect_count: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_draw_indirect_count.html
 .. _VK_KHR_sampler_mirror_clamp_to_edge: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_KHR_sampler_mirror_clamp_to_edge.html
 .. _VK_EXT_custom_border_color: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_custom_border_color.html
+.. _VK_EXT_provoking_vertex: https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VK_EXT_provoking_vertex.html
