@@ -33,6 +33,14 @@
 #error This code requires sizeof(uint32_t) == sizeof(int).
 #endif
 
+/* An "Atrribs/Attribs" typo was fixed in glxproto.h in Nov 2014.
+ * This is in case we don't have the updated header.
+ */
+#if !defined(X_GLXCreateContextAttribsARB) && \
+     defined(X_GLXCreateContextAtrribsARB)
+#define X_GLXCreateContextAttribsARB X_GLXCreateContextAtrribsARB
+#endif
+
 _X_HIDDEN GLXContext
 glXCreateContextAttribsARB(Display *dpy, GLXFBConfig config,
 			   GLXContext share_context, Bool direct,
