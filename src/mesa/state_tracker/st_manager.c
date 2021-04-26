@@ -282,6 +282,10 @@ st_framebuffer_update_attachments(struct st_framebuffer *stfb)
    gl_buffer_index idx;
 
    stfb->num_statts = 0;
+
+   for (enum st_attachment_type i = 0; i < ST_ATTACHMENT_COUNT; i++)
+      stfb->statts[i] = ST_ATTACHMENT_INVALID;
+
    for (idx = 0; idx < BUFFER_COUNT; idx++) {
       struct st_renderbuffer *strb;
       enum st_attachment_type statt;
