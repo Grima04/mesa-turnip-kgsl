@@ -135,7 +135,8 @@ supported:
 
 * ``VkPhysicalDeviceLimits``:
 
-  * ``shaderStorageImageReadWithoutFormat``
+  * ``shaderStorageImageExtendedFormats``
+  * ``shaderStorageImageWriteWithoutFormat``
 
 * For Vulkan 1.2 and above:
   
