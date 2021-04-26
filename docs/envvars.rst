@@ -776,5 +776,136 @@ radeonsi driver environment variables
    ``dfsm``
       Enable DFSM.
 
+r600 driver environment variables
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``R600_DEBUG``
+   a comma-separated list of named flags, which do various things:
+
+   ``nocpdma``
+      Disable CP DMA
+   ``nosb``
+      Disable sb backend for graphics shaders
+   ``sbcl``
+      Enable sb backend for compute shaders
+   ``sbdry``
+      Don't use optimized bytecode (just print the dumps)
+   ``sbstat``
+      Print optimization statistics for shaders
+   ``sbdump``
+      Print IR dumps after some optimization passes
+   ``sbnofallback``
+      Abort on errors instead of fallback
+   ``sbdisasm``
+      Use sb disassembler for shader dumps
+   ``sbsafemath``
+      Disable unsafe math optimizations
+   ``nirsb``
+      Enable NIR with SB optimizer
+   ``tex``
+      Print texture info
+   ``nir``
+      Enable experimental NIR shaders
+   ``compute``
+      Print compute info
+   ``vm``
+      Print virtual addresses when creating resources
+   ``info``
+      Print driver information
+   ``fs``
+      Print fetch shaders
+   ``vs``
+      Print vertex shaders
+   ``gs``
+      Print geometry shaders
+   ``ps``
+      Print pixel shaders
+   ``cs``
+      Print compute shaders
+   ``tcs``
+      Print tessellation control shaders
+   ``tes``
+      Print tessellation evaluation shaders
+   ``noir``
+      Don't print the LLVM IR
+   ``notgsi``
+      Don't print the TGSI
+   ``noasm``
+      Don't print disassembled shaders
+   ``preoptir``
+      Print the LLVM IR before initial optimizations
+   ``checkir``
+      Enable additional sanity checks on shader IR
+   ``nooptvariant``
+      Disable compiling optimized shader variants.
+   ``testdma``
+      Invoke SDMA tests and exit.
+   ``testvmfaultcp``
+      Invoke a CP VM fault test and exit.
+   ``testvmfaultsdma``
+      Invoke a SDMA VM fault test and exit.
+   ``testvmfaultshader``
+      Invoke a shader VM fault test and exit.
+   ``nodma``
+      Disable asynchronous DMA
+   ``nohyperz``
+      Disable Hyper-Z
+   ``noinvalrange``
+      Disable handling of INVALIDATE_RANGE map flags
+   ``no2d``
+      Disable 2D tiling
+   ``notiling``
+      Disable tiling
+   ``switch_on_eop``
+      Program WD/IA to switch on end-of-packet.
+   ``forcedma``
+      Use asynchronous DMA for all operations when possible.
+   ``precompile``
+      Compile one shader variant at shader creation.
+   ``nowc``
+      Disable GTT write combining
+   ``check_vm``
+      Check VM faults and dump debug info.
+   ``unsafemath``
+      Enable unsafe math shader optimizations
+
+``R600_DEBUG_COMPUTE``
+   if set to ``true``, various compute-related debug information will
+   be printed to stderr. Defaults to ``false``.
+``R600_DUMP_SHADERS``
+   if set to ``true``, NIR shaders will be printed to stderr. Defaults
+   to ``false``.
+``R600_HYPERZ``
+   If set to ``false``, disables HyperZ optimizations. Defaults to ``true``.
+``R600_NIR_DEBUG``
+   a comma-separated list of named flags, which do various things:
+
+   ``instr``
+      Log all consumed nir instructions
+   ``ir``
+      Log created R600 IR
+   ``cc``
+      Log R600 IR to assembly code creation
+   ``noerr``
+      Don't log shader conversion errors
+   ``si``
+      Log shader info (non-zero values)
+   ``reg``
+      Log register allocation and lookup
+   ``io``
+      Log shader in and output
+   ``ass``
+      Log IR to assembly conversion
+   ``flow``
+      Log control flow instructions
+   ``merge``
+      Log register merge operations
+   ``nomerge``
+      Skip register merge step
+   ``tex``
+      Log texture ops
+   ``trans``
+      Log generic translation messages
+
 Other Gallium drivers have their own environment variables. These may
 change frequently so the source code should be consulted for details.
