@@ -105,7 +105,7 @@ radv_translate_buffer_dataformat(const struct util_format_description *desc, int
       }
       break;
    case 64:
-      if (desc->nr_channels == 1)
+      if (type != UTIL_FORMAT_TYPE_FLOAT && desc->nr_channels == 1)
          return V_008F0C_BUF_DATA_FORMAT_32_32;
    }
 
@@ -363,7 +363,7 @@ radv_translate_tex_dataformat(VkFormat format, const struct util_format_descript
       }
       break;
    case 64:
-      if (desc->nr_channels == 1)
+      if (desc->channel[0].type != UTIL_FORMAT_TYPE_FLOAT && desc->nr_channels == 1)
          return V_008F14_IMG_DATA_FORMAT_32_32;
       break;
    }
@@ -475,7 +475,7 @@ radv_is_sampler_format_supported(VkFormat format, bool *linear_sampling)
    const struct util_format_description *desc = vk_format_description(format);
    uint32_t num_format;
    if (!desc || format == VK_FORMAT_UNDEFINED || format == VK_FORMAT_R64_UINT ||
-       format == VK_FORMAT_R64_SINT || format == VK_FORMAT_R64_SFLOAT)
+       format == VK_FORMAT_R64_SINT)
       return false;
    num_format =
       radv_translate_tex_numformat(format, desc, vk_format_get_first_non_void_channel(format));
