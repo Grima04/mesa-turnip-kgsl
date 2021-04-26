@@ -36,7 +36,7 @@ extern "C" {
 
 #ifndef VK_DEFINE_NON_DISPATCHABLE_HANDLE
     #if (VK_USE_64_BIT_PTR_DEFINES==1)
-        #if __cplusplus >= 201103L
+        #if __cplusplus >= 201103L || (defined(_MSVC_LANG) && (_MSVC_LANG >= 201103L))
             #define VK_NULL_HANDLE nullptr
         #else
             #define VK_NULL_HANDLE ((void*)0)
@@ -72,7 +72,7 @@ extern "C" {
 #define VK_API_VERSION_1_0 VK_MAKE_API_VERSION(0, 1, 0, 0)// Patch version should always be set to 0
 
 // Version of this file
-#define VK_HEADER_VERSION 175
+#define VK_HEADER_VERSION 177
 
 // Complete version of this file
 #define VK_HEADER_VERSION_COMPLETE VK_MAKE_API_VERSION(0, 1, 2, VK_HEADER_VERSION)
@@ -725,6 +725,9 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_FRAMEBUFFER_MIXED_SAMPLES_COMBINATION_NV = 1000250002,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT = 1000251000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_YCBCR_IMAGE_ARRAYS_FEATURES_EXT = 1000252000,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_FEATURES_EXT = 1000254000,
+    VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_PROVOKING_VERTEX_STATE_CREATE_INFO_EXT = 1000254001,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROVOKING_VERTEX_PROPERTIES_EXT = 1000254002,
     VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_INFO_EXT = 1000255000,
     VK_STRUCTURE_TYPE_SURFACE_CAPABILITIES_FULL_SCREEN_EXCLUSIVE_EXT = 1000255002,
     VK_STRUCTURE_TYPE_SURFACE_FULL_SCREEN_EXCLUSIVE_WIN32_INFO_EXT = 1000255001,
@@ -814,6 +817,7 @@ typedef enum VkStructureType {
     VK_STRUCTURE_TYPE_MEMORY_GET_ZIRCON_HANDLE_INFO_FUCHSIA = 1000364002,
     VK_STRUCTURE_TYPE_IMPORT_SEMAPHORE_ZIRCON_HANDLE_INFO_FUCHSIA = 1000365000,
     VK_STRUCTURE_TYPE_SEMAPHORE_GET_ZIRCON_HANDLE_INFO_FUCHSIA = 1000365001,
+    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTENDED_DYNAMIC_STATE_2_FEATURES_EXT = 1000377000,
     VK_STRUCTURE_TYPE_SCREEN_SURFACE_CREATE_INFO_QNX = 1000378000,
     VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_COLOR_WRITE_ENABLE_FEATURES_EXT = 1000381000,
     VK_STRUCTURE_TYPE_PIPELINE_COLOR_WRITE_CREATE_INFO_EXT = 1000381001,
@@ -1543,6 +1547,11 @@ typedef enum VkDynamicState {
     VK_DYNAMIC_STATE_STENCIL_TEST_ENABLE_EXT = 1000267010,
     VK_DYNAMIC_STATE_STENCIL_OP_EXT = 1000267011,
     VK_DYNAMIC_STATE_VERTEX_INPUT_EXT = 1000352000,
+    VK_DYNAMIC_STATE_PATCH_CONTROL_POINTS_EXT = 1000377000,
+    VK_DYNAMIC_STATE_RASTERIZER_DISCARD_ENABLE_EXT = 1000377001,
+    VK_DYNAMIC_STATE_DEPTH_BIAS_ENABLE_EXT = 1000377002,
+    VK_DYNAMIC_STATE_LOGIC_OP_EXT = 1000377003,
+    VK_DYNAMIC_STATE_PRIMITIVE_RESTART_ENABLE_EXT = 1000377004,
     VK_DYNAMIC_STATE_COLOR_WRITE_ENABLE_EXT = 1000381000,
     VK_DYNAMIC_STATE_MAX_ENUM = 0x7FFFFFFF
 } VkDynamicState;
@@ -7847,7 +7856,7 @@ static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_CLEAR_BIT_KHR = 0x8
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT_KHR = 0x1000000000ULL;
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT_KHR = 0x2000000000ULL;
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_PRE_RASTERIZATION_SHADERS_BIT_KHR = 0x4000000000ULL;
-#ifdef VK_ENABLE_BETA_EXTENSIONS 
+#ifdef VK_ENABLE_BETA_EXTENSIONS
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_VIDEO_DECODE_BIT_KHR = 0x04000000ULL;
 #endif
 #ifdef VK_ENABLE_BETA_EXTENSIONS
@@ -7865,7 +7874,6 @@ static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_ACCELERATION_STRUCT
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_FRAGMENT_DENSITY_PROCESS_BIT_EXT = 0x00800000ULL;
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_TASK_SHADER_BIT_NV = 0x00080000ULL;
 static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_2_MESH_SHADER_BIT_NV = 0x00100000ULL;
-static const VkPipelineStageFlagBits2KHR VK_PIPELINE_STAGE_FLAG_BITS_2KHR_MAX_ENUM_KHR = 0x7FFFFFFFFFFFFFFFULL;
 
 typedef VkFlags64 VkAccessFlags2KHR;
 
@@ -7918,7 +7926,6 @@ static const VkAccessFlagBits2KHR VK_ACCESS_2_ACCELERATION_STRUCTURE_READ_BIT_NV
 static const VkAccessFlagBits2KHR VK_ACCESS_2_ACCELERATION_STRUCTURE_WRITE_BIT_NV = 0x00400000;
 static const VkAccessFlagBits2KHR VK_ACCESS_2_FRAGMENT_DENSITY_MAP_READ_BIT_EXT = 0x01000000ULL;
 static const VkAccessFlagBits2KHR VK_ACCESS_2_COLOR_ATTACHMENT_READ_NONCOHERENT_BIT_EXT = 0x00080000ULL;
-static const VkAccessFlagBits2KHR VK_ACCESS_FLAG_BITS_2KHR_MAX_ENUM_KHR = 0x7FFFFFFFFFFFFFFFULL;
 
 
 typedef enum VkSubmitFlagBitsKHR {
@@ -8254,7 +8261,7 @@ VKAPI_ATTR void VKAPI_CALL vkCmdResolveImage2KHR(
 
 #define VK_EXT_debug_report 1
 VK_DEFINE_NON_DISPATCHABLE_HANDLE(VkDebugReportCallbackEXT)
-#define VK_EXT_DEBUG_REPORT_SPEC_VERSION  9
+#define VK_EXT_DEBUG_REPORT_SPEC_VERSION  10
 #define VK_EXT_DEBUG_REPORT_EXTENSION_NAME "VK_EXT_debug_report"
 
 typedef enum VkDebugReportObjectTypeEXT {
@@ -10378,7 +10385,7 @@ typedef struct VkPipelineCompilerControlCreateInfoAMD {
 
 
 #define VK_EXT_calibrated_timestamps 1
-#define VK_EXT_CALIBRATED_TIMESTAMPS_SPEC_VERSION 1
+#define VK_EXT_CALIBRATED_TIMESTAMPS_SPEC_VERSION 2
 #define VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME "VK_EXT_calibrated_timestamps"
 
 typedef enum VkTimeDomainEXT {
@@ -11241,6 +11248,37 @@ typedef struct VkPhysicalDeviceYcbcrImageArraysFeaturesEXT {
 
 
 
+#define VK_EXT_provoking_vertex 1
+#define VK_EXT_PROVOKING_VERTEX_SPEC_VERSION 1
+#define VK_EXT_PROVOKING_VERTEX_EXTENSION_NAME "VK_EXT_provoking_vertex"
+
+typedef enum VkProvokingVertexModeEXT {
+    VK_PROVOKING_VERTEX_MODE_FIRST_VERTEX_EXT = 0,
+    VK_PROVOKING_VERTEX_MODE_LAST_VERTEX_EXT = 1,
+    VK_PROVOKING_VERTEX_MODE_MAX_ENUM_EXT = 0x7FFFFFFF
+} VkProvokingVertexModeEXT;
+typedef struct VkPhysicalDeviceProvokingVertexFeaturesEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           provokingVertexLast;
+    VkBool32           transformFeedbackPreservesProvokingVertex;
+} VkPhysicalDeviceProvokingVertexFeaturesEXT;
+
+typedef struct VkPhysicalDeviceProvokingVertexPropertiesEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           provokingVertexModePerPipeline;
+    VkBool32           transformFeedbackPreservesTriangleFanProvokingVertex;
+} VkPhysicalDeviceProvokingVertexPropertiesEXT;
+
+typedef struct VkPipelineRasterizationProvokingVertexStateCreateInfoEXT {
+    VkStructureType             sType;
+    const void*                 pNext;
+    VkProvokingVertexModeEXT    provokingVertexMode;
+} VkPipelineRasterizationProvokingVertexStateCreateInfoEXT;
+
+
+
 #define VK_EXT_headless_surface 1
 #define VK_EXT_HEADLESS_SURFACE_SPEC_VERSION 1
 #define VK_EXT_HEADLESS_SURFACE_EXTENSION_NAME "VK_EXT_headless_surface"
@@ -11892,8 +11930,8 @@ typedef struct VkDeviceDiagnosticsConfigCreateInfoNV {
 
 
 #define VK_QCOM_render_pass_store_ops 1
-#define VK_QCOM_render_pass_store_ops_SPEC_VERSION 2
-#define VK_QCOM_render_pass_store_ops_EXTENSION_NAME "VK_QCOM_render_pass_store_ops"
+#define VK_QCOM_RENDER_PASS_STORE_OPS_SPEC_VERSION 2
+#define VK_QCOM_RENDER_PASS_STORE_OPS_EXTENSION_NAME "VK_QCOM_render_pass_store_ops"
 
 
 #define VK_NV_fragment_shading_rate_enums 1
@@ -11985,7 +12023,7 @@ typedef struct VkPhysicalDeviceFragmentDensityMap2PropertiesEXT {
 
 
 #define VK_QCOM_rotated_copy_commands 1
-#define VK_QCOM_ROTATED_COPY_COMMANDS_SPEC_VERSION 0
+#define VK_QCOM_ROTATED_COPY_COMMANDS_SPEC_VERSION 1
 #define VK_QCOM_ROTATED_COPY_COMMANDS_EXTENSION_NAME "VK_QCOM_rotated_copy_commands"
 typedef struct VkCopyCommandTransformInfoQCOM {
     VkStructureType                  sType;
@@ -12095,6 +12133,46 @@ VKAPI_ATTR void VKAPI_CALL vkCmdSetVertexInputEXT(
     const VkVertexInputBindingDescription2EXT*  pVertexBindingDescriptions,
     uint32_t                                    vertexAttributeDescriptionCount,
     const VkVertexInputAttributeDescription2EXT* pVertexAttributeDescriptions);
+#endif
+
+
+#define VK_EXT_extended_dynamic_state2 1
+#define VK_EXT_EXTENDED_DYNAMIC_STATE_2_SPEC_VERSION 1
+#define VK_EXT_EXTENDED_DYNAMIC_STATE_2_EXTENSION_NAME "VK_EXT_extended_dynamic_state2"
+typedef struct VkPhysicalDeviceExtendedDynamicState2FeaturesEXT {
+    VkStructureType    sType;
+    void*              pNext;
+    VkBool32           extendedDynamicState2;
+    VkBool32           extendedDynamicState2LogicOp;
+    VkBool32           extendedDynamicState2PatchControlPoints;
+} VkPhysicalDeviceExtendedDynamicState2FeaturesEXT;
+
+typedef void (VKAPI_PTR *PFN_vkCmdSetPatchControlPointsEXT)(VkCommandBuffer commandBuffer, uint32_t patchControlPoints);
+typedef void (VKAPI_PTR *PFN_vkCmdSetRasterizerDiscardEnableEXT)(VkCommandBuffer commandBuffer, VkBool32 rasterizerDiscardEnable);
+typedef void (VKAPI_PTR *PFN_vkCmdSetDepthBiasEnableEXT)(VkCommandBuffer commandBuffer, VkBool32 depthBiasEnable);
+typedef void (VKAPI_PTR *PFN_vkCmdSetLogicOpEXT)(VkCommandBuffer commandBuffer, VkLogicOp logicOp);
+typedef void (VKAPI_PTR *PFN_vkCmdSetPrimitiveRestartEnableEXT)(VkCommandBuffer commandBuffer, VkBool32 primitiveRestartEnable);
+
+#ifndef VK_NO_PROTOTYPES
+VKAPI_ATTR void VKAPI_CALL vkCmdSetPatchControlPointsEXT(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    patchControlPoints);
+
+VKAPI_ATTR void VKAPI_CALL vkCmdSetRasterizerDiscardEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    rasterizerDiscardEnable);
+
+VKAPI_ATTR void VKAPI_CALL vkCmdSetDepthBiasEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    depthBiasEnable);
+
+VKAPI_ATTR void VKAPI_CALL vkCmdSetLogicOpEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkLogicOp                                   logicOp);
+
+VKAPI_ATTR void VKAPI_CALL vkCmdSetPrimitiveRestartEnableEXT(
+    VkCommandBuffer                             commandBuffer,
+    VkBool32                                    primitiveRestartEnable);
 #endif
 
 
