@@ -182,10 +182,10 @@ To setup the branchpoint:
 
 .. code-block:: console
 
-   git checkout master # make sure we're in master first
+   git checkout main # make sure we're in main first
    git tag -s X.Y-branchpoint -m "Mesa X.Y branchpoint"
    git checkout -b X.Y
-   git checkout master
+   git checkout main
    $EDITOR VERSION # bump the version number
    git commit -as
    truncate docs/relnotes/new_features.txt
@@ -209,7 +209,7 @@ These are the instructions for making a new Mesa release.
 Get latest source files
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-Ensure the latest code is available - both in your local master and the
+Ensure the latest code is available - both in your local main and the
 relevant branch.
 
 Perform basic testing
@@ -294,7 +294,7 @@ Add the sha256sums to the release notes
 Edit ``docs/relnotes/X.Y.Z.rst`` to add the ``sha256sum`` as available in the
 ``mesa-X.Y.Z.announce`` template. Commit this change.
 
-Back on mesa master, add the new release notes into the tree
+Back on mesa main, add the new release notes into the tree
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Something like the following steps will do the trick:
@@ -317,7 +317,7 @@ push:
 
 .. code-block:: console
 
-      git push origin master X.Y
+      git push origin main X.Y
 
 Announce the release
 --------------------
