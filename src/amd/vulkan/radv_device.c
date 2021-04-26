@@ -2405,25 +2405,27 @@ radv_get_memory_budget_properties(VkPhysicalDevice physicalDevice,
    unsigned mask = device->heaps;
    unsigned heap = 0;
    while (mask) {
-      uint64_t internal_usage = 0, total_usage = 0;
+      uint64_t internal_usage = 0, system_usage = 0;
       unsigned type = 1u << u_bit_scan(&mask);
 
       switch (type) {
       case RADV_HEAP_VRAM:
          internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM);
-         total_usage = device->ws->query_value(device->ws, RADEON_VRAM_USAGE);
+         system_usage = device->ws->query_value(device->ws, RADEON_VRAM_USAGE);
          break;
       case RADV_HEAP_VRAM_VIS:
          internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM_VIS);
          if (!(device->heaps & RADV_HEAP_VRAM))
             internal_usage += device->ws->query_value(device->ws, RADEON_ALLOCATED_VRAM);
-         total_usage = device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE);
+         system_usage = device->ws->query_value(device->ws, RADEON_VRAM_VIS_USAGE);
          break;
       case RADV_HEAP_GTT:
          internal_usage = device->ws->query_value(device->ws, RADEON_ALLOCATED_GTT);
-         total_usage = device->ws->query_value(device->ws, RADEON_GTT_USAGE);
+         system_usage = device->ws->query_value(device->ws, RADEON_GTT_USAGE);
          break;
       }
+
+      uint64_t total_usage = MAX2(internal_usage, system_usage);
 
       uint64_t free_space = device->memory_properties.memoryHeaps[heap].size -
                             MIN2(device->memory_properties.memoryHeaps[heap].size, total_usage);
