@@ -193,6 +193,9 @@ allocate_user_sgprs(struct radv_shader_args *args, gl_shader_stage stage, bool h
       break;
    case MESA_SHADER_GEOMETRY:
       if (has_previous_stage) {
+         if (args->options->key.vs_common_out.as_ngg)
+            user_sgpr_count++; /* NGG GS state */
+
          if (previous_stage == MESA_SHADER_VERTEX) {
             user_sgpr_count += count_vs_user_sgprs(args);
          }
