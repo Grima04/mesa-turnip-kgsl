@@ -1397,16 +1397,33 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
                   COND(dual_src_blend, A6XX_SP_FS_OUTPUT_CNTL0_DUAL_COLOR_IN_ENABLE));
    tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
+   uint32_t fs_render_components = 0;
+
    tu_cs_emit_pkt4(cs, REG_A6XX_SP_FS_OUTPUT_REG(0), 8);
    for (uint32_t i = 0; i < ARRAY_SIZE(fragdata_regid); i++) {
       // TODO we could have a mix of half and full precision outputs,
       // we really need to figure out half-precision from IR3_REG_HALF
       tu_cs_emit(cs, A6XX_SP_FS_OUTPUT_REG_REGID(fragdata_regid[i]) |
                         (false ? A6XX_SP_FS_OUTPUT_REG_HALF_PRECISION : 0));
+
+      if (VALIDREG(fragdata_regid[i])) {
+         fs_render_components |= 0xf << (i * 4);
+      }
    }
 
+   /* dual source blending has an extra fs output in the 2nd slot */
+   if (dual_src_blend) {
+      fs_render_components |= 0xf << 4;
+   }
+
+   /* There is no point in having component enabled which is not written
+    * by the shader. Per VK spec it is an UB, however a few apps depend on
+    * attachment not being changed if FS doesn't have corresponding output.
+    */
+   fs_render_components &= render_components;
+
    tu_cs_emit_regs(cs,
-                   A6XX_SP_FS_RENDER_COMPONENTS(.dword = render_components));
+                   A6XX_SP_FS_RENDER_COMPONENTS(.dword = fs_render_components));
 
    tu_cs_emit_pkt4(cs, REG_A6XX_RB_FS_OUTPUT_CNTL0, 2);
    tu_cs_emit(cs, COND(fs->writes_pos, A6XX_RB_FS_OUTPUT_CNTL0_FRAG_WRITES_Z) |
@@ -1416,7 +1433,7 @@ tu6_emit_fs_outputs(struct tu_cs *cs,
    tu_cs_emit(cs, A6XX_RB_FS_OUTPUT_CNTL1_MRT(mrt_count));
 
    tu_cs_emit_regs(cs,
-                   A6XX_RB_RENDER_COMPONENTS(.dword = render_components));
+                   A6XX_RB_RENDER_COMPONENTS(.dword = fs_render_components));
 
    if (pipeline) {
       pipeline->lrz.fs_has_kill = fs->has_kill;
