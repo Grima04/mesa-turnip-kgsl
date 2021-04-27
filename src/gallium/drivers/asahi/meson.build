@@ -20,4 +20,5 @@
 
 files_asahi = files(
   'agx_uniforms.c',
+  'magic.c',
 )
