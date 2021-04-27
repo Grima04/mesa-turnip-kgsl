@@ -88,6 +88,59 @@ static const VkAllocationCallbacks default_alloc = {
    .pfnFree = default_free_func,
 };
 
+#define V3DV_API_VERSION VK_MAKE_VERSION(1, 0, VK_HEADER_VERSION)
+
+VkResult
+v3dv_EnumerateInstanceVersion(uint32_t *pApiVersion)
+{
+    *pApiVersion = V3DV_API_VERSION;
+    return VK_SUCCESS;
+}
+
+#define V3DV_HAS_SURFACE (VK_USE_PLATFORM_WIN32_KHR ||   \
+                          VK_USE_PLATFORM_WAYLAND_KHR || \
+                          VK_USE_PLATFORM_XCB_KHR ||     \
+                          VK_USE_PLATFORM_XLIB_KHR ||    \
+                          VK_USE_PLATFORM_DISPLAY_KHR)
+
+static const struct vk_instance_extension_table instance_extensions = {
+#ifdef VK_USE_PLATFORM_DISPLAY_KHR
+   .KHR_display                         = true,
+#endif
+   .KHR_external_memory_capabilities    = true,
+   .KHR_get_physical_device_properties2 = true,
+#ifdef V3DV_HAS_SURFACE
+   .KHR_get_surface_capabilities2       = true,
+   .KHR_surface                         = true,
+#endif
+#ifdef VK_USE_PLATFORM_WAYLAND_KHR
+   .KHR_wayland_surface                 = true,
+#endif
+#ifdef VK_USE_PLATFORM_XCB_KHR
+   .KHR_xcb_surface                     = true,
+#endif
+#ifdef VK_USE_PLATFORM_XLIB_KHR
+   .KHR_xlib_surface                    = true,
+#endif
+   .EXT_debug_report                    = true,
+};
+
+static void
+get_device_extensions(const struct v3dv_physical_device *device,
+                      struct vk_device_extension_table *ext)
+{
+   *ext = (struct vk_device_extension_table) {
+      .KHR_external_memory                 = true,
+      .KHR_external_memory_fd              = true,
+      .KHR_maintenance1                    = true,
+#ifdef V3DV_HAS_SURFACE
+      .KHR_swapchain                       = true,
+#endif
+      .EXT_external_memory_dma_buf         = true,
+      .EXT_private_data                    = true,
+   };
+}
+
 VkResult
 v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
                                           uint32_t *pPropertyCount,
@@ -98,7 +151,7 @@ v3dv_EnumerateInstanceExtensionProperties(const char *pLayerName,
       return vk_error(NULL, VK_ERROR_LAYER_NOT_PRESENT);
 
    return vk_enumerate_instance_extension_properties(
-      &v3dv_instance_extensions_supported, pPropertyCount, pProperties);
+      &instance_extensions, pPropertyCount, pProperties);
 }
 
 VkResult
@@ -124,7 +177,7 @@ v3dv_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
       &dispatch_table, &v3dv_instance_entrypoints, true);
 
    result = vk_instance_init(&instance->vk,
-                             &v3dv_instance_extensions_supported,
+                             &instance_extensions,
                              &dispatch_table,
                              pCreateInfo, pAllocator);
 
@@ -722,8 +775,7 @@ physical_device_init(struct v3dv_physical_device *device,
       goto fail;
    }
 
-   v3dv_physical_device_get_supported_extensions(device,
-                                                 &device->vk.supported_extensions);
+   get_device_extensions(device, &device->vk.supported_extensions);
 
    pthread_mutex_init(&device->mutex, NULL);
 
@@ -1151,7 +1203,7 @@ v3dv_GetPhysicalDeviceProperties(VkPhysicalDevice physicalDevice,
    };
 
    *pProperties = (VkPhysicalDeviceProperties) {
-      .apiVersion = v3dv_physical_device_api_version(pdevice),
+      .apiVersion = V3DV_API_VERSION,
       .driverVersion = vk_get_driver_version(),
       .vendorID = v3dv_physical_device_vendor_id(pdevice),
       .deviceID = v3dv_physical_device_device_id(pdevice),

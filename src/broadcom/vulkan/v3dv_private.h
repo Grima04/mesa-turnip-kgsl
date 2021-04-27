@@ -69,7 +69,6 @@
 #include "u_atomic.h"
 
 #include "v3dv_entrypoints.h"
-#include "v3dv_extensions.h"
 #include "v3dv_bo.h"
 
 #include "drm-uapi/v3d_drm.h"
@@ -1878,7 +1877,6 @@ v3dv_get_internal_depth_type(VkFormat format)
    }
 }
 
-uint32_t v3dv_physical_device_api_version(struct v3dv_physical_device *dev);
 uint32_t v3dv_physical_device_vendor_id(struct v3dv_physical_device *dev);
 uint32_t v3dv_physical_device_device_id(struct v3dv_physical_device *dev);
 
