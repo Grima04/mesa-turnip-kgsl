@@ -31,13 +31,14 @@ vn_info_extension_compare(const void *a, const void *b)
 static inline uint32_t
 vn_info_extension_spec_version(const char *name)
 {
-    static uint32_t ext_count = 53;
-    static const char *ext_names[53] = {
+    static uint32_t ext_count = 54;
+    static const char *ext_names[54] = {
         "VK_EXT_command_serialization",
         "VK_EXT_descriptor_indexing",
         "VK_EXT_external_memory_dma_buf",
         "VK_EXT_host_query_reset",
         "VK_EXT_image_drm_format_modifier",
+        "VK_EXT_queue_family_foreign",
         "VK_EXT_sampler_filter_minmax",
         "VK_EXT_scalar_block_layout",
         "VK_EXT_separate_stencil_usage",
@@ -87,9 +88,10 @@ vn_info_extension_spec_version(const char *name)
         "VK_KHR_vulkan_memory_model",
         "VK_MESA_venus_protocol",
     };
-    static const uint32_t ext_versions[53] = {
+    static const uint32_t ext_versions[54] = {
         0,
         2,
+        1,
         1,
         1,
         1,
