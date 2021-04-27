@@ -50,6 +50,7 @@ struct ir3_legalize_ctx {
 	struct ir3_shader_variant *so;
 	gl_shader_stage type;
 	int max_bary;
+	bool early_input_release;
 };
 
 struct ir3_legalize_state {
@@ -122,8 +123,10 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 
 	unsigned inputs_remaining = input_count;
 
-	/* Inputs can only be in the first block */
-	assert(input_count == 0 ||
+	/* Either inputs are in the first block or we expect inputs to be released
+	 * with the end of the program.
+	 */
+	assert(input_count == 0 || !ctx->early_input_release ||
 		   block == list_first_entry(&block->shader->block_list, struct ir3_block, node));
 
 	/* remove all the instructions from the list, we'll be adding
@@ -292,7 +295,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 			}
 		}
 
-		if (is_input(n)) {
+		if (ctx->early_input_release && is_input(n)) {
 			last_input_needs_ss |= (n->opc == OPC_LDLV);
 
 			assert(inputs_remaining > 0);
@@ -330,7 +333,7 @@ legalize_block(struct ir3_legalize_ctx *ctx, struct ir3_block *block)
 		last_n = n;
 	}
 
-	assert(inputs_remaining == 0);
+	assert(inputs_remaining == 0 || !ctx->early_input_release);
 
 	if (has_tex_prefetch && input_count == 0) {
 		/* texture prefetch, but *no* inputs.. we need to insert a
@@ -784,6 +787,25 @@ ir3_legalize(struct ir3 *ir, struct ir3_shader_variant *so, int *max_bary)
 	}
 
 	ir3_remove_nops(ir);
+
+	/* We may have failed to pull all input loads into the first block.
+	 * In such case at the moment we aren't able to find a better place
+	 * to for (ei) than the end of the program.
+	 * a5xx and a6xx do automatically release varying storage at the end.
+	 */
+	ctx->early_input_release = true;
+	struct ir3_block *first_block =
+		list_first_entry(&ir->block_list, struct ir3_block, node);
+	foreach_block (block, &ir->block_list) {
+		foreach_instr (instr, &block->instr_list) {
+			if (is_input(instr) && block != first_block) {
+				ctx->early_input_release = false;
+				break;
+			}
+		}
+	}
+
+	assert(ctx->early_input_release || ctx->compiler->gpu_id > 500);
 
 	/* process each block: */
 	do {
