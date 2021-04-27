@@ -267,9 +267,6 @@ spec@ext_framebuffer_object@fbo-alphatest-nocolor-ff,Fail
 spec@ext_framebuffer_object@fbo-blending-format-quirks,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_xyuv,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor,Fail
 spec@ext_packed_depth_stencil@texwrap formats bordercolor-swizzled,Fail
 spec@ext_packed_float@query-rgba-signed-components,Fail
@@ -315,6 +312,7 @@ spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2d,Crash
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2d_projvec4,Crash
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 2dshadow,Crash
 spec@glsl-1.20@execution@tex-miplevel-selection gl2:textureproj 3d,Crash
+spec@glsl-1.30@execution@range_analysis_fsat_of_nan,Fail
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 1d,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darray,Crash
 spec@glsl-1.30@execution@tex-miplevel-selection texture() 1darrayshadow,Crash

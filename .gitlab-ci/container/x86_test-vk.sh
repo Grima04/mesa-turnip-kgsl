@@ -10,6 +10,7 @@ STABLE_EPHEMERAL=" \
       ccache \
       cmake \
       g++ \
+      glslang-tools \
       libgbm-dev \
       libgles2-mesa-dev \
       liblz4-dev \

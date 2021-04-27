@@ -2,13 +2,9 @@
 
 set -ex
 
-if [ -n "$INCLUDE_OPENCL_TESTS" ]; then
-    PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON"
-fi
-
 git clone https://gitlab.freedesktop.org/mesa/piglit.git --single-branch --no-checkout /piglit
 pushd /piglit
-git checkout 6a4be9e9946df310d9402f995f371c7deb8c27ba
+git checkout b3a9fa345d87331ff0a5819436ce7603e34ee9bb
 patch -p1 <$OLDPWD/.gitlab-ci/piglit/disable-vs_in.diff
 cmake -S . -B . -G Ninja -DCMAKE_BUILD_TYPE=Release $PIGLIT_OPTS $EXTRA_CMAKE_ARGS
 ninja $PIGLIT_BUILD_TARGETS

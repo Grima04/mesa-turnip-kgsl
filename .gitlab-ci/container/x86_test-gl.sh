@@ -70,7 +70,7 @@ apt-get install -y --no-remove \
 
 ############### Build piglit
 
-INCLUDE_OPENCL_TESTS=1 . .gitlab-ci/container/build-piglit.sh
+PIGLIT_OPTS="-DPIGLIT_BUILD_CL_TESTS=ON -DPIGLIT_BUILD_VK_TESTS=OFF" . .gitlab-ci/container/build-piglit.sh
 
 ############### Build dEQP GL
 

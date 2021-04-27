@@ -1867,6 +1867,8 @@ spec/ext_external_objects/vk-image-display: skip
 spec/ext_external_objects/vk-image-display-overwrite: skip
 spec/ext_external_objects/vk-image-overwrite: skip
 spec/ext_external_objects/vk-pix-buf-update-errors: skip
+spec/ext_external_objects/vk-semaphores: skip
+spec/ext_external_objects/vk-semaphores-2: skip
 spec/ext_external_objects/vk-vert-buf-reuse: skip
 spec/ext_external_objects/vk-vert-buf-update-errors: skip
 spec/ext_external_objects_fd/memory-object-api-errors: skip
@@ -2493,6 +2495,7 @@ spec/ext_image_dma_buf_import/ext_image_dma_buf_import-invalid_hints: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-missing_attributes: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-ownership_transfer: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-refcount: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-reimport-bug: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_argb8888: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_ayuv: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_nv12: skip
@@ -2502,6 +2505,12 @@ spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_p016: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_uyvy: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_xrgb8888: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_xyuv: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y210: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y212: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y216: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y410: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y412: skip
+spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_y416: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuv420: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yuyv: skip
 spec/ext_image_dma_buf_import/ext_image_dma_buf_import-sample_yvu420: skip
@@ -2684,6 +2693,7 @@ spec/glsl-1.10/execution/fs-dfdx-accuracy: warn
 spec/glsl-1.10/execution/fs-dfdy-accuracy: warn
 spec/glsl-1.10/preprocessor/extension-defined-test: skip
 spec/glsl-1.10/preprocessor/extension-if-1: skip
+spec/glsl-1.30/execution/range_analysis_fsat_of_nan: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1d: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darray: fail
 spec/glsl-1.30/execution/tex-miplevel-selection texturegrad 1darrayshadow: fail

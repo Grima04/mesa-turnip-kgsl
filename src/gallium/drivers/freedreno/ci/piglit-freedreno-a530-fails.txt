@@ -227,7 +227,6 @@ spec@ext_framebuffer_object@fbo-stencil-gl_stencil_index8-copypixels,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-clear-and-render,Fail
 spec@ext_framebuffer_object@getteximage-formats init-by-rendering,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-export,Fail
-spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_ayuv,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p010,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p012,Fail
 spec@ext_image_dma_buf_import@ext_image_dma_buf_import-sample_p016,Fail
@@ -247,16 +246,11 @@ spec@ext_render_snorm@render,Fail
 spec@ext_texture_integer@fbo-integer,Fail
 spec@ext_texture_snorm@fbo-blending-formats,Fail
 spec@ext_transform_feedback2@draw-auto,Fail
-spec@ext_transform_feedback@change-size base-shrink,Fail
-spec@ext_transform_feedback@change-size offset-shrink,Fail
-spec@ext_transform_feedback@change-size range-shrink,Fail
 spec@ext_transform_feedback@discard-copypixels,Fail
 spec@ext_transform_feedback@generatemipmap prims_generated,Fail
 spec@ext_transform_feedback@immediate-reuse,Fail
 spec@ext_transform_feedback@immediate-reuse-index-buffer,Fail
 spec@ext_transform_feedback@immediate-reuse-uniform-buffer,Fail
-spec@ext_transform_feedback@overflow-edge-cases,Fail
-spec@ext_transform_feedback@query-primitives_written-bufferrange-discard,Fail
 spec@ext_transform_feedback@tessellation line_loop flat_first,Fail
 spec@ext_transform_feedback@tessellation line_loop flat_last,Fail
 spec@ext_transform_feedback@tessellation line_loop monochrome,Fail
@@ -343,8 +337,8 @@ spec@oes_egl_image_external_essl3@oes_egl_image_external_essl3,Crash
 wgl@wgl-multi-context-single-window,Fail
 wgl@wgl-multi-window-single-context,Fail
 wgl@wgl-sanity,Fail
-spec@glsl-1.10@execution@interpolation@interpolation-none-other-flat-vertex,Fail
 spec@glsl-1.30@execution@clipping@fs-clip-distance-interpolated,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec2,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec3,Crash
 spec@glsl-1.30@execution@fs-large-local-array-vec4,Crash
+spec@glsl-1.30@execution@range_analysis_fsat_of_nan,Fail

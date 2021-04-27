@@ -73,6 +73,7 @@ apt-get install -y --no-remove \
                    cmake \
                    debootstrap \
                    git \
+                   glslang-tools \
                    libegl1-mesa-dev \
                    libgbm-dev \
                    libgles2-mesa-dev \
