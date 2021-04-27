@@ -150,14 +150,15 @@ endif
 
 broadcom_icd = custom_target(
   'broadcom_icd',
-  input : 'v3dv_icd.py',
+  input : [vk_icd_gen, vk_api_xml],
   output : 'broadcom_icd.@0@.json'.format(host_machine.cpu()),
   command : [
-    prog_python, '@INPUT@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir')),
+    prog_python, '@INPUT0@',
+    '--api-version', '1.0', '--xml', '@INPUT1@',
+    '--lib-path', join_paths(get_option('prefix'), get_option('libdir'),
+    		  	     'libvulkan_broadcom.so'),
     '--out', '@OUTPUT@',
   ],
-  depend_files : files('v3dv_extensions.py'),
   build_by_default : true,
   install_dir : with_vulkan_icd_dir,
   install : true,
