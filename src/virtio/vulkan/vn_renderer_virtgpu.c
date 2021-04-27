@@ -1118,17 +1118,25 @@ virtgpu_bo_init_dmabuf(struct vn_renderer_bo *_bo,
    if (virtgpu_ioctl_resource_info(gpu, gem_handle, &info))
       goto fail;
 
-   /* must be VIRTGPU_BLOB_MEM_HOST3D or classic */
-   if (info.blob_mem && info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D)
-      goto fail;
+   if (info.blob_mem) {
+      /* must be VIRTGPU_BLOB_MEM_HOST3D */
+      if (info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D)
+         goto fail;
 
-   if (size && info.size < size)
-      goto fail;
+      if (size && info.size < size)
+         goto fail;
 
-   /* set blob_flags to 0 for classic resources to fail virtgpu_bo_map */
-   bo->blob_flags =
-      info.blob_mem ? virtgpu_bo_blob_flags(flags, external_handles) : 0;
-   bo->size = size ? size : info.size;
+      bo->blob_flags = virtgpu_bo_blob_flags(flags, external_handles);
+      bo->size = size ? size : info.size;
+   } else {
+      /* must be classic resource here
+       * set blob_flags to 0 to fail virtgpu_bo_map
+       * set size to 0 since mapping is not allowed
+       */
+      bo->blob_flags = 0;
+      bo->size = 0;
+   }
+
    bo->gem_handle = gem_handle;
    bo->base.res_id = info.res_handle;
 
