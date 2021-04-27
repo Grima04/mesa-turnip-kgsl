@@ -873,10 +873,10 @@ util_format_z32_float_s8x24_uint_unpack_s_8uint(uint8_t *restrict dst_row, unsig
    unsigned x, y;
    for(y = 0; y < height; ++y) {
       uint8_t *dst = dst_row;
-      const uint8_t *src = src_row + 4;
+      const uint32_t *src = (uint32_t *)(src_row + 4);
       for(x = 0; x < width; ++x) {
          *dst = *src;
-         src += 8;
+         src += 2;
          dst += 1;
       }
       src_row += src_stride/sizeof(*src_row);
