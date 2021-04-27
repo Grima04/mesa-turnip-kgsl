@@ -480,7 +480,7 @@ struct lvp_pipeline {
 
 struct lvp_event {
    struct vk_object_base base;
-   uint64_t event_storage;
+   volatile uint64_t event_storage;
 };
 
 struct lvp_fence {
