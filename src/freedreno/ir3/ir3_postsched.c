@@ -380,7 +380,11 @@ add_reg_dep(struct ir3_postsched_deps_state *state,
 		unsigned num, bool write)
 {
 	if (state->merged) {
-		if (reg->flags & IR3_REG_HALF) {
+		/* Make sure that special registers like a0.x that are written as
+		 * half-registers don't alias random full registers by pretending that
+		 * they're full registers:
+		 */
+		if ((reg->flags & IR3_REG_HALF) && num < regid(48, 0)) {
 			/* single conflict in half-reg space: */
 			add_single_reg_dep(state, node, num, write);
 		} else {
