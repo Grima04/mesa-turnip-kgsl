@@ -1951,7 +1951,7 @@ _mesa_create_program_resource_hash(struct gl_shader_program *shProg)
 {
    /* Rebuild resource hash. */
    if (shProg->data->ProgramResourceHash)
-      _mesa_hash_table_u64_destroy(shProg->data->ProgramResourceHash, NULL);
+      _mesa_hash_table_u64_destroy(shProg->data->ProgramResourceHash);
 
    shProg->data->ProgramResourceHash = _mesa_hash_table_u64_create(shProg);
 

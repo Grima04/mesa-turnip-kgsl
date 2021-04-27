@@ -2770,7 +2770,7 @@ emit_block(struct ir3_context *ctx, nir_block *nblock)
 		ctx->addr0_ht[i] = NULL;
 	}
 
-	_mesa_hash_table_u64_destroy(ctx->addr1_ht, NULL);
+	_mesa_hash_table_u64_destroy(ctx->addr1_ht);
 	ctx->addr1_ht = NULL;
 
 	nir_foreach_instr (instr, nblock) {

@@ -636,7 +636,7 @@ static void radeon_winsys_destroy(struct radeon_winsys *rws)
 
    _mesa_hash_table_destroy(ws->bo_names, NULL);
    _mesa_hash_table_destroy(ws->bo_handles, NULL);
-   _mesa_hash_table_u64_destroy(ws->bo_vas, NULL);
+   _mesa_hash_table_u64_destroy(ws->bo_vas);
    mtx_destroy(&ws->bo_handles_mutex);
    mtx_destroy(&ws->vm32.mutex);
    mtx_destroy(&ws->vm64.mutex);

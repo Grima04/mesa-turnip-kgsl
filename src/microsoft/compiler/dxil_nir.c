@@ -1462,6 +1462,6 @@ dxil_nir_create_bare_samplers(nir_shader *nir)
    bool progress = nir_shader_instructions_pass(nir, redirect_sampler_derefs,
       nir_metadata_block_index | nir_metadata_dominance | nir_metadata_loop_analysis, sampler_to_bare);
 
-   _mesa_hash_table_u64_destroy(sampler_to_bare, NULL);
+   _mesa_hash_table_u64_destroy(sampler_to_bare);
    return progress;
 }

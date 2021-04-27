@@ -285,7 +285,7 @@ brw_batch_reset(struct brw_context *brw)
    batch->state_base_address_emitted = false;
 
    if (batch->state_batch_sizes)
-      _mesa_hash_table_u64_clear(batch->state_batch_sizes, NULL);
+      _mesa_hash_table_u64_clear(batch->state_batch_sizes);
 
    /* Always add workaround_bo which contains a driver identifier to be
     * recorded in error states.
@@ -357,7 +357,7 @@ brw_batch_free(struct brw_batch *batch)
    brw_bo_unreference(batch->batch.bo);
    brw_bo_unreference(batch->state.bo);
    if (batch->state_batch_sizes) {
-      _mesa_hash_table_u64_destroy(batch->state_batch_sizes, NULL);
+      _mesa_hash_table_u64_destroy(batch->state_batch_sizes);
       intel_batch_decode_ctx_finish(&batch->decoder);
    }
 }

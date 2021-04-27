@@ -358,7 +358,7 @@ _mesa_clear_shader_program_data(struct gl_context *ctx,
    }
 
    if (shProg->data && shProg->data->ProgramResourceHash) {
-      _mesa_hash_table_u64_destroy(shProg->data->ProgramResourceHash, NULL);
+      _mesa_hash_table_u64_destroy(shProg->data->ProgramResourceHash);
       shProg->data->ProgramResourceHash = NULL;
    }
 

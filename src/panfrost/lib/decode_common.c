@@ -214,7 +214,7 @@ pandecode_next_frame(void)
 void
 pandecode_close(void)
 {
-        _mesa_hash_table_u64_destroy(mmap_table, NULL);
+        _mesa_hash_table_u64_destroy(mmap_table);
         util_dynarray_fini(&ro_mappings);
         pandecode_dump_file_close();
 }

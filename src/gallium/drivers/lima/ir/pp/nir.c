@@ -972,12 +972,12 @@ bool ppir_compile_nir(struct lima_fs_compiled_shader *prog, struct nir_shader *n
 
    ppir_print_shader_db(nir, comp, debug);
 
-   _mesa_hash_table_u64_destroy(comp->blocks, NULL);
+   _mesa_hash_table_u64_destroy(comp->blocks);
    ralloc_free(comp);
    return true;
 
 err_out0:
-   _mesa_hash_table_u64_destroy(comp->blocks, NULL);
+   _mesa_hash_table_u64_destroy(comp->blocks);
    ralloc_free(comp);
    return false;
 }
