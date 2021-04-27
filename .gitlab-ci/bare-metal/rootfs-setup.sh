@@ -14,6 +14,7 @@ set +x
 touch $rootfs_dst/set-job-env-vars.sh
 chmod +x $rootfs_dst/set-job-env-vars.sh
 for var in \
+    ASAN_OPTIONS \
     BARE_METAL_TEST_SCRIPT \
     BM_KERNEL_MODULES \
     BM_START_XORG \
