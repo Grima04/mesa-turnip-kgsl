@@ -606,12 +606,13 @@ RegisterDemand init_live_in_vars(spill_ctx& ctx, Block* block, unsigned block_id
    for (aco_ptr<Instruction>& phi : block->instructions) {
       if (!is_phi(phi))
          break;
+      if (!phi->definitions[0].isTemp())
+         continue;
+
       std::vector<unsigned>& preds = phi->opcode == aco_opcode::p_phi ? block->logical_preds : block->linear_preds;
       bool spill = true;
 
       for (unsigned i = 0; i < phi->operands.size(); i++) {
-         if (!phi->definitions[0].isTemp())
-            continue;
          /* non-temp operands can increase the register pressure */
          if (!phi->operands[i].isTemp()) {
             partial_spills.insert(phi->definitions[0].getTemp());
