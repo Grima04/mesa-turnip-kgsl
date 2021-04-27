@@ -138,7 +138,7 @@ v3d-rpi4-khr-gles2:armhf:
   variables:
     DEQP_VER: gles2-khr
 
-v3d-rpi3-egl:armhf:
+v3d-rpi4-egl:armhf:
   extends:
     - .v3d-rpi4-test:armhf
     - .test-manual
