@@ -336,11 +336,6 @@ radv_use_tc_compat_cmask_for_image(struct radv_device *device, struct radv_image
    if (device->instance->debug_flags & RADV_DEBUG_NO_TC_COMPAT_CMASK)
       return false;
 
-   /* TODO: Enable TC-compat CMASK on GFX8-9. */
-   if (device->physical_device->rad_info.chip_class < GFX10 &&
-       !(device->instance->perftest_flags & RADV_PERFTEST_TC_COMPAT_CMASK))
-      return false;
-
    if (image->usage & VK_IMAGE_USAGE_STORAGE_BIT)
       return false;
 

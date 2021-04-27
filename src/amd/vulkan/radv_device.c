@@ -798,7 +798,7 @@ radv_get_debug_option_name(int id)
 
 static const struct debug_control radv_perftest_options[] = {
    {"localbos", RADV_PERFTEST_LOCAL_BOS},   {"dccmsaa", RADV_PERFTEST_DCC_MSAA},
-   {"bolist", RADV_PERFTEST_BO_LIST},       {"tccompatcmask", RADV_PERFTEST_TC_COMPAT_CMASK},
+   {"bolist", RADV_PERFTEST_BO_LIST},
    {"cswave32", RADV_PERFTEST_CS_WAVE_32},  {"pswave32", RADV_PERFTEST_PS_WAVE_32},
    {"gewave32", RADV_PERFTEST_GE_WAVE_32},  {"dfsm", RADV_PERFTEST_DFSM},
    {"nosam", RADV_PERFTEST_NO_SAM},         {"sam", RADV_PERFTEST_SAM},
