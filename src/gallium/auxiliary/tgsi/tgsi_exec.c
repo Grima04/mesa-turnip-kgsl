@@ -263,20 +263,20 @@ static void
 micro_dmax(union tgsi_double_channel *dst,
            const union tgsi_double_channel *src)
 {
-   dst->d[0] = src[0].d[0] > src[1].d[0] || isnan(src[1].d[0]) ? src[0].d[0] : src[1].d[0];
-   dst->d[1] = src[0].d[1] > src[1].d[1] || isnan(src[1].d[1]) ? src[0].d[1] : src[1].d[1];
-   dst->d[2] = src[0].d[2] > src[1].d[2] || isnan(src[1].d[2]) ? src[0].d[2] : src[1].d[2];
-   dst->d[3] = src[0].d[3] > src[1].d[3] || isnan(src[1].d[3]) ? src[0].d[3] : src[1].d[3];
+   dst->d[0] = fmax(src[0].d[0], src[1].d[0]);
+   dst->d[1] = fmax(src[0].d[1], src[1].d[1]);
+   dst->d[2] = fmax(src[0].d[2], src[1].d[2]);
+   dst->d[3] = fmax(src[0].d[3], src[1].d[3]);
 }
 
 static void
 micro_dmin(union tgsi_double_channel *dst,
            const union tgsi_double_channel *src)
 {
-   dst->d[0] = src[0].d[0] < src[1].d[0] || isnan(src[1].d[0]) ? src[0].d[0] : src[1].d[0];
-   dst->d[1] = src[0].d[1] < src[1].d[1] || isnan(src[1].d[1]) ? src[0].d[1] : src[1].d[1];
-   dst->d[2] = src[0].d[2] < src[1].d[2] || isnan(src[1].d[2]) ? src[0].d[2] : src[1].d[2];
-   dst->d[3] = src[0].d[3] < src[1].d[3] || isnan(src[1].d[3]) ? src[0].d[3] : src[1].d[3];
+   dst->d[0] = fmin(src[0].d[0], src[1].d[0]);
+   dst->d[1] = fmin(src[0].d[1], src[1].d[1]);
+   dst->d[2] = fmin(src[0].d[2], src[1].d[2]);
+   dst->d[3] = fmin(src[0].d[3], src[1].d[3]);
 }
 
 static void
@@ -1357,10 +1357,10 @@ micro_max(union tgsi_exec_channel *dst,
           const union tgsi_exec_channel *src0,
           const union tgsi_exec_channel *src1)
 {
-   dst->f[0] = src0->f[0] > src1->f[0] || isnan(src1->f[0]) ? src0->f[0] : src1->f[0];
-   dst->f[1] = src0->f[1] > src1->f[1] || isnan(src1->f[1]) ? src0->f[1] : src1->f[1];
-   dst->f[2] = src0->f[2] > src1->f[2] || isnan(src1->f[2]) ? src0->f[2] : src1->f[2];
-   dst->f[3] = src0->f[3] > src1->f[3] || isnan(src1->f[3]) ? src0->f[3] : src1->f[3];
+   dst->f[0] = fmaxf(src0->f[0], src1->f[0]);
+   dst->f[1] = fmaxf(src0->f[1], src1->f[1]);
+   dst->f[2] = fmaxf(src0->f[2], src1->f[2]);
+   dst->f[3] = fmaxf(src0->f[3], src1->f[3]);
 }
 
 static void
@@ -1368,10 +1368,10 @@ micro_min(union tgsi_exec_channel *dst,
           const union tgsi_exec_channel *src0,
           const union tgsi_exec_channel *src1)
 {
-   dst->f[0] = src0->f[0] < src1->f[0] || isnan(src1->f[0]) ? src0->f[0] : src1->f[0];
-   dst->f[1] = src0->f[1] < src1->f[1] || isnan(src1->f[1]) ? src0->f[1] : src1->f[1];
-   dst->f[2] = src0->f[2] < src1->f[2] || isnan(src1->f[2]) ? src0->f[2] : src1->f[2];
-   dst->f[3] = src0->f[3] < src1->f[3] || isnan(src1->f[3]) ? src0->f[3] : src1->f[3];
+   dst->f[0] = fminf(src0->f[0], src1->f[0]);
+   dst->f[1] = fminf(src0->f[1], src1->f[1]);
+   dst->f[2] = fminf(src0->f[2], src1->f[2]);
+   dst->f[3] = fminf(src0->f[3], src1->f[3]);
 }
 
 static void
@@ -1937,14 +1937,8 @@ store_dest(struct tgsi_exec_machine *mach,
    }
    else {
       for (i = 0; i < TGSI_QUAD_SIZE; i++)
-         if (execmask & (1 << i)) {
-            if (chan->f[i] < 0.0f || isnan(chan->f[i]))
-               dst->f[i] = 0.0f;
-            else if (chan->f[i] > 1.0f)
-               dst->f[i] = 1.0f;
-            else
-               dst->i[i] = chan->i[i];
-         }
+         if (execmask & (1 << i))
+            dst->f[i] = fminf(fmaxf(chan->f[i], 0.0f), 1.0f);
    }
 }
 
