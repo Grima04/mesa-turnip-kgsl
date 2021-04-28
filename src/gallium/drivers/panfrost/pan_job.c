@@ -96,9 +96,6 @@ panfrost_batch_fence_reference(struct panfrost_batch_fence *fence)
         pipe_reference(NULL, &fence->reference);
 }
 
-static void
-panfrost_batch_add_fbo_bos(struct panfrost_batch *batch);
-
 static struct panfrost_batch *
 panfrost_create_batch(struct panfrost_context *ctx,
                       const struct pipe_framebuffer_state *key)
@@ -131,7 +128,7 @@ panfrost_create_batch(struct panfrost_context *ctx,
         return batch;
 }
 
-static void
+void
 panfrost_freeze_batch(struct panfrost_batch *batch)
 {
         struct panfrost_context *ctx = batch->ctx;
@@ -271,6 +268,29 @@ panfrost_get_batch(struct panfrost_context *ctx,
         /* Save the created job */
         _mesa_hash_table_insert(ctx->batches, &batch->key, batch);
 
+        return batch;
+}
+
+struct panfrost_batch *
+panfrost_get_fresh_batch(struct panfrost_context *ctx,
+                         const struct pipe_framebuffer_state *key)
+{
+        struct panfrost_batch *batch = panfrost_get_batch(ctx, key);
+
+        /* The batch has no draw/clear queued, let's return it directly.
+         * Note that it's perfectly fine to re-use a batch with an
+         * existing clear, we'll just update it with the new clear request.
+         */
+        if (!batch->scoreboard.first_job) {
+                ctx->batch = batch;
+                return batch;
+        }
+
+        /* Otherwise, we need to freeze the existing one and instantiate a new
+         * one.
+         */
+        panfrost_freeze_batch(batch);
+        batch = panfrost_get_batch(ctx, key);
         return batch;
 }
 
@@ -583,7 +603,8 @@ panfrost_batch_add_surface(struct panfrost_batch *batch, struct pipe_surface *su
         }
 
 }
-static void
+
+void
 panfrost_batch_add_fbo_bos(struct panfrost_batch *batch)
 {
         for (unsigned i = 0; i < batch->key.nr_cbufs; ++i)

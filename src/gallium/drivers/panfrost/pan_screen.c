@@ -68,6 +68,7 @@ static const struct debug_named_value panfrost_debug_options[] = {
         {"noafbc",    PAN_DBG_NO_AFBC,  "Disable AFBC support"},
         {"nocrc",     PAN_DBG_NO_CRC,   "Disable transaction elimination"},
         {"msaa16",    PAN_DBG_MSAA16,   "Enable MSAA 8x and 16x support"},
+        {"panblit",   PAN_DBG_PANBLIT,  "Use pan_blitter instead of u_blitter"},
         DEBUG_NAMED_VALUE_END
 };
 

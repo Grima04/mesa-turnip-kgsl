@@ -141,10 +141,17 @@ void
 panfrost_batch_fence_reference(struct panfrost_batch_fence *batch);
 
 struct panfrost_batch *
+panfrost_get_fresh_batch(struct panfrost_context *ctx,
+                         const struct pipe_framebuffer_state *key);
+
+struct panfrost_batch *
 panfrost_get_batch_for_fbo(struct panfrost_context *ctx);
 
 struct panfrost_batch *
 panfrost_get_fresh_batch_for_fbo(struct panfrost_context *ctx);
+
+void
+panfrost_freeze_batch(struct panfrost_batch *batch);
 
 void
 panfrost_batch_init(struct panfrost_context *ctx);
@@ -152,6 +159,9 @@ panfrost_batch_init(struct panfrost_context *ctx);
 void
 panfrost_batch_add_bo(struct panfrost_batch *batch, struct panfrost_bo *bo,
                       uint32_t flags);
+
+void
+panfrost_batch_add_fbo_bos(struct panfrost_batch *batch);
 
 struct panfrost_bo *
 panfrost_batch_create_bo(struct panfrost_batch *batch, size_t size,
