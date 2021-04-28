@@ -524,7 +524,7 @@ lp_build_add(struct lp_build_context *bld,
 
    /* clamp to ceiling of 1.0 */
    if(bld->type.norm && (bld->type.floating || bld->type.fixed))
-      res = lp_build_min_simple(bld, res, bld->one, GALLIVM_NAN_BEHAVIOR_UNDEFINED);
+      res = lp_build_min_simple(bld, res, bld->one, GALLIVM_NAN_RETURN_OTHER_SECOND_NONNAN);
 
    if (type.norm && !type.floating && !type.fixed) {
       if (!type.sign) {
@@ -859,7 +859,7 @@ lp_build_sub(struct lp_build_context *bld,
          res = LLVMBuildSub(builder, a, b, "");
 
    if(bld->type.norm && (bld->type.floating || bld->type.fixed))
-      res = lp_build_max_simple(bld, res, bld->zero, GALLIVM_NAN_BEHAVIOR_UNDEFINED);
+      res = lp_build_max_simple(bld, res, bld->zero, GALLIVM_NAN_RETURN_OTHER_SECOND_NONNAN);
 
    return res;
 }
