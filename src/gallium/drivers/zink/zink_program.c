@@ -229,7 +229,6 @@ shader_key_fs_gen(struct zink_context *ctx, struct zink_shader *zs,
    key->size = sizeof(struct zink_fs_key);
 
    fs_key->shader_id = zs->shader_id;
-   //fs_key->flat_shade = ctx->rast_state->base.flatshade;
 
    /* if gl_SampleMask[] is written to, we have to ensure that we get a shader with the same sample count:
     * in GL, rast_samples==1 means ignore gl_SampleMask[]

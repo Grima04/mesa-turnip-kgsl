@@ -37,7 +37,6 @@ struct zink_fs_key {
    unsigned shader_id;
    uint8_t coord_replace_bits;
    bool coord_replace_yinvert;
-   //bool flat_shade;
    bool samples;
    bool force_dual_color_blend;
 };
