@@ -879,10 +879,9 @@ pan_preload_emit_textures(struct pan_pool *pool,
                 draw->textures = pan_blitter_emit_midgard_textures(pool, tex_count, views);
 }
 
-static void
-pan_preload_emit_viewport(struct pan_pool *pool,
-                          const struct pan_fb_info *fb,
-                          struct MALI_DRAW *draw)
+static mali_ptr
+pan_blitter_emit_viewport(struct pan_pool *pool,
+                          const struct pan_fb_info *fb)
 {
         struct panfrost_ptr vp = panfrost_pool_alloc_desc(pool, VIEWPORT);
 
@@ -901,7 +900,7 @@ pan_preload_emit_viewport(struct pan_pool *pool,
                 }
         }
 
-        draw->viewport = vp.gpu;
+        return vp.gpu;
 }
 
 static void
@@ -919,7 +918,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
 
                 cfg.position = coordinates;
                 pan_preload_emit_varying(pool, coordinates, &cfg);
-                pan_preload_emit_viewport(pool, fb, &cfg);
+                cfg.viewport = pan_blitter_emit_viewport(pool, fb);
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
 
                 if (pan_is_bifrost(pool->dev)) {
