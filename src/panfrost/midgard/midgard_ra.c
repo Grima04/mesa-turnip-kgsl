@@ -394,7 +394,7 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         /* The number of vec4 work registers available depends on the number of
          * register-mapped uniforms and the shader stage. By ABI we limit blend
          * shaders to 8 registers, should be lower XXX */
-        unsigned rmu = ctx->info->push.count / 4;
+        int rmu = ctx->info->push.count / 4;
         int work_count = ctx->inputs->is_blend ? 8 : 16 - MAX2(rmu - 8, 0);
 
        /* No register allocation to do with no SSA */
