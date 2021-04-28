@@ -787,43 +787,40 @@ pan_blitter_emit_midgard_sampler(struct pan_pool *pool,
         return sampler.gpu;
 }
 
-static void
-pan_preload_emit_bifrost_textures(struct pan_pool *pool,
+static mali_ptr
+pan_blitter_emit_bifrost_textures(struct pan_pool *pool,
                                   unsigned tex_count,
-                                  const struct pan_image_view **views,
-                                  struct MALI_DRAW *draw)
+                                  const struct pan_image_view **views)
 {
         struct panfrost_ptr textures =
                 panfrost_pool_alloc_desc_array(pool, tex_count, BIFROST_TEXTURE);
 
         for (unsigned i = 0; i < tex_count; i++) {
                 void *texture = textures.cpu + (MALI_BIFROST_TEXTURE_LENGTH * i);
+                size_t payload_size =
+                        panfrost_estimate_texture_payload_size(pool->dev, views[i]);
                 struct panfrost_ptr surfaces =
-                        panfrost_pool_alloc_desc_array(pool,
-                                                       views[i]->image->layout.nr_samples,
-                                                       SURFACE_WITH_STRIDE);
+                        panfrost_pool_alloc_aligned(pool, payload_size,
+                                                    MALI_SURFACE_WITH_STRIDE_ALIGN);
 
                 panfrost_new_texture(pool->dev, views[i], texture, &surfaces);
         }
 
-        draw->textures = textures.gpu;
+        return textures.gpu;
 }
 
-static void
-pan_preload_emit_midgard_textures(struct pan_pool *pool,
+static mali_ptr
+pan_blitter_emit_midgard_textures(struct pan_pool *pool,
                                   unsigned tex_count,
-                                  const struct pan_image_view **views,
-                                  struct MALI_DRAW *draw)
+                                  const struct pan_image_view **views)
 {
         mali_ptr textures[8] = { 0 };
 
         for (unsigned i = 0; i < tex_count; i++) {
-                unsigned nr_samples = views[i]->image->layout.nr_samples;
+                size_t sz = MALI_MIDGARD_TEXTURE_LENGTH +
+                            panfrost_estimate_texture_payload_size(pool->dev, views[i]);
                 struct panfrost_ptr texture =
-                        panfrost_pool_alloc_desc_aggregate(pool,
-                                                           PAN_DESC(MIDGARD_TEXTURE),
-                                                           PAN_DESC_ARRAY(nr_samples,
-                                                                          SURFACE_WITH_STRIDE));
+                        panfrost_pool_alloc_aligned(pool, sz, MALI_MIDGARD_TEXTURE_ALIGN);
                 struct panfrost_ptr surfaces = {
                         .cpu = texture.cpu + MALI_MIDGARD_TEXTURE_LENGTH,
                         .gpu = texture.gpu + MALI_MIDGARD_TEXTURE_LENGTH,
@@ -833,9 +830,9 @@ pan_preload_emit_midgard_textures(struct pan_pool *pool,
                 textures[i] = texture.gpu;
         }
 
-        draw->textures = panfrost_pool_upload_aligned(pool, textures,
-                                                      tex_count * sizeof(mali_ptr),
-                                                      sizeof(mali_ptr));
+        return panfrost_pool_upload_aligned(pool, textures,
+                                            tex_count * sizeof(mali_ptr),
+                                            sizeof(mali_ptr));
 }
 
 static void
@@ -877,9 +874,9 @@ pan_preload_emit_textures(struct pan_pool *pool,
         }
 
         if (pan_is_bifrost(pool->dev))
-                pan_preload_emit_bifrost_textures(pool, tex_count, views, draw);
+                draw->textures = pan_blitter_emit_bifrost_textures(pool, tex_count, views);
         else
-                pan_preload_emit_midgard_textures(pool, tex_count, views, draw);
+                draw->textures = pan_blitter_emit_midgard_textures(pool, tex_count, views);
 }
 
 static void
