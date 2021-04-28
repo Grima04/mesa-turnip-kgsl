@@ -720,7 +720,7 @@ pan_preload_needed(const struct pan_fb_info *fb, bool zs)
 }
 
 static void
-pan_preload_emit_varying(struct pan_pool *pool,
+pan_blitter_emit_varying(struct pan_pool *pool,
                          mali_ptr coordinates,
                          struct MALI_DRAW *draw)
 {
@@ -917,7 +917,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                 cfg.state = rsd;
 
                 cfg.position = coordinates;
-                pan_preload_emit_varying(pool, coordinates, &cfg);
+                pan_blitter_emit_varying(pool, coordinates, &cfg);
                 cfg.viewport = pan_blitter_emit_viewport(pool, fb);
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
 
