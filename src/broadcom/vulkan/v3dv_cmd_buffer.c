@@ -5272,11 +5272,36 @@ v3dv_cmd_buffer_rewrite_indirect_csd_job(
  * lane occupancy. We can pack up to 16 workgroups into a supergroup.
  */
 static uint32_t
-choose_workgroups_per_supergroup(uint32_t num_wgs, uint32_t wg_size)
+choose_workgroups_per_supergroup(struct v3d_device_info *devinfo,
+                                 struct v3dv_shader_variant *cs,
+                                 uint32_t num_wgs,
+                                 uint32_t wg_size)
 {
+   /* Compute maximum number of batches in a supergroup for this workgroup size.
+    * Each batch is 16 elements, and we can have up to 16 work groups in a
+    * supergroup:
+    *
+    * max_batches_per_sg = (wg_size * max_wgs_per_sg) / elements_per_batch
+    * since max_wgs_per_sg = 16 and elements_per_batch = 16, we get:
+    * max_batches_per_sg = wg_size
+    */
+   uint32_t max_batches_per_sg = wg_size;
+
+   /* QPU threads will stall at TSY barriers until the entire supergroup
+    * reaches the barrier. Limit the supergroup size to half the QPU threads
+    * available, so we can have at least 2 supergroups executing in parallel
+    * and we don't stall all our QPU threads when a supergroup hits a barrier.
+    */
+   if (cs->prog_data.cs->base.has_control_barrier) {
+      uint32_t max_qpu_threads =
+         devinfo->qpu_count * cs->prog_data.cs->base.threads;
+      max_batches_per_sg = MIN2(max_batches_per_sg, max_qpu_threads / 2);
+   }
+   uint32_t max_wgs_per_sg = max_batches_per_sg * 16 / wg_size;
+
    uint32_t best_wgs_per_sg = 1;
    uint32_t best_unused_lanes = 16;
-   for (uint32_t wgs_per_sg = 1; wgs_per_sg <= 16; wgs_per_sg++) {
+   for (uint32_t wgs_per_sg = 1; wgs_per_sg <= max_wgs_per_sg; wgs_per_sg++) {
       /* Don't try to pack more workgroups per supergroup than the total amount
        * of workgroups dispatched.
        */
@@ -5341,7 +5366,9 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
                             cpd->local_size[1] *
                             cpd->local_size[2];
 
-   uint32_t wgs_per_sg = choose_workgroups_per_supergroup(num_wgs, wg_size);
+   uint32_t wgs_per_sg =
+      choose_workgroups_per_supergroup(&cmd_buffer->device->devinfo,
+                                       cs_variant, num_wgs, wg_size);
    uint32_t batches_per_sg = DIV_ROUND_UP(wgs_per_sg * wg_size, 16);
    uint32_t whole_sgs = num_wgs / wgs_per_sg;
    uint32_t rem_wgs = num_wgs - whole_sgs * wgs_per_sg;
