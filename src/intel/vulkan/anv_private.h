@@ -3430,7 +3430,6 @@ struct anv_compute_pipeline {
    struct anv_pipeline                          base;
 
    struct anv_shader_bin *                      cs;
-   uint32_t                                     cs_right_mask;
    uint32_t                                     batch_data[9];
    uint32_t                                     interface_descriptor_data[8];
 };
@@ -3514,15 +3513,6 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
                         const struct vk_shader_module *module,
                         const char *entrypoint,
                         const VkSpecializationInfo *spec_info);
-
-struct anv_cs_parameters {
-   uint32_t group_size;
-   uint32_t simd_size;
-   uint32_t threads;
-};
-
-struct anv_cs_parameters
-anv_cs_parameters(const struct anv_compute_pipeline *pipeline);
 
 struct anv_format_plane {
    enum isl_format isl_format:16;

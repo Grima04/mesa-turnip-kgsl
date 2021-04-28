@@ -2513,9 +2513,6 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
-   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
-   pipeline->cs_right_mask = brw_cs_right_mask(cs_params.group_size, cs_params.simd_size);
-
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
    const UNUSED struct anv_shader_bin *cs_bin = pipeline->cs;
@@ -2535,22 +2532,20 @@ static void
 emit_compute_state(struct anv_compute_pipeline *pipeline,
                    const struct anv_device *device)
 {
+   const struct intel_device_info *devinfo = &device->info;
    const struct brw_cs_prog_data *cs_prog_data = get_cs_prog_data(pipeline);
 
    anv_pipeline_setup_l3_config(&pipeline->base, cs_prog_data->base.total_shared > 0);
 
-   const struct anv_cs_parameters cs_params = anv_cs_parameters(pipeline);
-
-   pipeline->cs_right_mask = brw_cs_right_mask(cs_params.group_size, cs_params.simd_size);
-
+   const struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(devinfo, cs_prog_data, NULL);
    const uint32_t vfe_curbe_allocation =
-      ALIGN(cs_prog_data->push.per_thread.regs * cs_params.threads +
+      ALIGN(cs_prog_data->push.per_thread.regs * dispatch.threads +
             cs_prog_data->push.cross_thread.regs, 2);
 
    const uint32_t subslices = MAX2(device->physical->subslice_total, 1);
 
    const struct anv_shader_bin *cs_bin = pipeline->cs;
-   const struct intel_device_info *devinfo = &device->info;
 
    anv_batch_emit(&pipeline->base.batch, GENX(MEDIA_VFE_STATE), vfe) {
 #if GFX_VER > 7
@@ -2598,7 +2593,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
    struct GENX(INTERFACE_DESCRIPTOR_DATA) desc = {
       .KernelStartPointer     =
          cs_bin->kernel.offset +
-         brw_cs_prog_data_prog_offset(cs_prog_data, cs_params.simd_size),
+         brw_cs_prog_data_prog_offset(cs_prog_data, dispatch.simd_size),
 
       /* Wa_1606682166 */
       .SamplerCount           = GFX_VER == 11 ? 0 : get_sampler_count(cs_bin),
@@ -2631,7 +2626,7 @@ emit_compute_state(struct anv_compute_pipeline *pipeline,
       .ThreadPreemptionDisable = true,
 #endif
 
-      .NumberofThreadsinGPGPUThreadGroup = cs_params.threads,
+      .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
    };
    GENX(INTERFACE_DESCRIPTOR_DATA_pack)(NULL,
                                         pipeline->interface_descriptor_data,
