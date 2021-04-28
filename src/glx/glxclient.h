@@ -77,8 +77,6 @@ extern void glx_message(int level, const char *f, ...) PRINTFLIKE(2, 3);
 #define GLX_MAJOR_VERSION 1       /* current version numbers */
 #define GLX_MINOR_VERSION 4
 
-#define __GLX_MAX_TEXTURE_UNITS 32
-
 struct glx_display;
 struct glx_context;
 
@@ -732,12 +730,6 @@ extern void __glEmptyImage(struct glx_context *, GLint, GLint, GLint, GLint, GLe
 extern void __glXInitVertexArrayState(struct glx_context *);
 extern void __glXFreeVertexArrayState(struct glx_context *);
 
-/*
-** Inform the Server of the major and minor numbers and of the client
-** libraries extension string.
-*/
-extern void __glXClientInfo(Display * dpy, int opcode);
-
 _X_HIDDEN void
 __glX_send_client_info(struct glx_display *glx_dpy);
 
@@ -761,9 +753,6 @@ extern void __glXInitializeVisualConfigFromTags(struct glx_config * config,
 
 extern char *__glXQueryServerString(Display *dpy, CARD32 screen, CARD32 name);
 extern char *__glXGetString(Display *dpy, CARD32 screen, CARD32 name);
-
-extern const char __glXGLClientVersion[];
-extern const char __glXGLClientExtensions[];
 
 extern GLboolean __glXGetMscRateOML(Display * dpy, GLXDrawable drawable,
                                     int32_t * numerator,
