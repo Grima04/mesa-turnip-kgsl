@@ -173,13 +173,7 @@ panfrost_block_dim(uint64_t modifier, bool width, unsigned plane);
 
 unsigned
 panfrost_estimate_texture_payload_size(const struct panfrost_device *dev,
-                                       unsigned first_level,
-                                       unsigned last_level,
-                                       unsigned first_layer,
-                                       unsigned last_layer,
-                                       unsigned nr_samples,
-                                       enum mali_texture_dimension dim,
-                                       uint64_t modifier);
+                                       const struct pan_image_view *iview);
 
 void
 panfrost_new_texture(const struct panfrost_device *dev,

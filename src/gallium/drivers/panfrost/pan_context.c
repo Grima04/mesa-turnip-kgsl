@@ -1235,26 +1235,6 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 assert(!first_layer && !last_layer);
         }
 
-        unsigned size =
-                (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
-                panfrost_estimate_texture_payload_size(device,
-                                                       first_level, last_level,
-                                                       first_layer, last_layer,
-                                                       texture->nr_samples,
-                                                       type,
-                                                       prsrc->image.layout.modifier);
-
-        so->bo = panfrost_bo_create(device, size, 0);
-
-        struct panfrost_ptr payload = so->bo->ptr;
-        void *tex = pan_is_bifrost(device) ?
-                    &so->bifrost_descriptor : so->bo->ptr.cpu;
-
-        if (!pan_is_bifrost(device)) {
-                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
-                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
-        }
-
         struct pan_image_view iview = {
                 .format = format,
                 .dim = type,
@@ -1273,6 +1253,21 @@ panfrost_create_sampler_view_bo(struct panfrost_sampler_view *so,
                 .buf.offset = buf_offset,
                 .buf.size = buf_size,
         };
+
+        unsigned size =
+                (pan_is_bifrost(device) ? 0 : MALI_MIDGARD_TEXTURE_LENGTH) +
+                panfrost_estimate_texture_payload_size(device, &iview);
+
+        so->bo = panfrost_bo_create(device, size, 0);
+
+        struct panfrost_ptr payload = so->bo->ptr;
+        void *tex = pan_is_bifrost(device) ?
+                    &so->bifrost_descriptor : so->bo->ptr.cpu;
+
+        if (!pan_is_bifrost(device)) {
+                payload.cpu += MALI_MIDGARD_TEXTURE_LENGTH;
+                payload.gpu += MALI_MIDGARD_TEXTURE_LENGTH;
+        }
 
         panfrost_new_texture(device, &iview, tex, &payload);
 }
