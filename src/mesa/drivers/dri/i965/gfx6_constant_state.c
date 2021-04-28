@@ -308,9 +308,11 @@ brw_upload_cs_push_constants(struct brw_context *brw,
    /* XXX: Should this happen somewhere before to get our state flag set? */
    _mesa_load_state_parameters(ctx, prog->Parameters);
 
-   const struct brw_cs_parameters cs_params = brw_cs_get_parameters(brw);
+   const struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(&brw->screen->devinfo, cs_prog_data,
+                               brw->compute.group_size);
    const unsigned push_const_size =
-      brw_cs_push_const_total_size(cs_prog_data, cs_params.threads);
+      brw_cs_push_const_total_size(cs_prog_data, dispatch.threads);
 
    if (push_const_size == 0) {
       stage_state->push_const_size = 0;
@@ -337,7 +339,7 @@ brw_upload_cs_push_constants(struct brw_context *brw,
    }
 
    if (cs_prog_data->push.per_thread.size > 0) {
-      for (unsigned t = 0; t < cs_params.threads; t++) {
+      for (unsigned t = 0; t < dispatch.threads; t++) {
          unsigned dst =
             8 * (cs_prog_data->push.per_thread.regs * t +
                  cs_prog_data->push.cross_thread.regs);
