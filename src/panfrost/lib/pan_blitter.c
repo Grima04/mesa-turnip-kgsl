@@ -752,7 +752,6 @@ pan_preload_emit_varying(struct pan_pool *pool,
 
         draw->varyings = varying.gpu;
         draw->varying_buffers = varying_buffer.gpu;
-        draw->position = coordinates;
 }
 
 static mali_ptr
@@ -921,6 +920,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                 cfg.thread_storage = tsd;
                 cfg.state = rsd;
 
+                cfg.position = coordinates;
                 pan_preload_emit_varying(pool, coordinates, &cfg);
                 pan_preload_emit_viewport(pool, fb, &cfg);
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
