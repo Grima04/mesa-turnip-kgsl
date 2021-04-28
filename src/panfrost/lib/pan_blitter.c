@@ -721,7 +721,7 @@ pan_preload_needed(const struct pan_fb_info *fb, bool zs)
 
 static void
 pan_preload_emit_varying(struct pan_pool *pool,
-                         mali_ptr coordinates, unsigned vertex_count,
+                         mali_ptr coordinates,
                          struct MALI_DRAW *draw)
 {
         /* Bifrost needs an empty desc to mark end of prefetching */
@@ -736,7 +736,7 @@ pan_preload_emit_varying(struct pan_pool *pool,
         pan_pack(varying_buffer.cpu, ATTRIBUTE_BUFFER, cfg) {
                 cfg.pointer = coordinates;
                 cfg.stride = 4 * sizeof(float);
-                cfg.size = cfg.stride * vertex_count;
+                cfg.size = cfg.stride * 4;
         }
 
         if (padding_buffer) {
@@ -919,7 +919,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                 cfg.thread_storage = tsd;
                 cfg.state = rsd;
 
-                pan_preload_emit_varying(pool, coordinates, 4, &cfg);
+                pan_preload_emit_varying(pool, coordinates, &cfg);
                 pan_preload_emit_viewport(pool, fb, &cfg);
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
 
