@@ -237,17 +237,6 @@ driConfigEqual(const __DRIcoreExtension *core,
          }
          break;
 
-      case __DRI_ATTRIB_FRAMEBUFFER_SRGB_CAPABLE:
-         if (!scalarEqual(config, attrib, value)) {
-            static int warned;
-            if (!warned) {
-               DebugMessageF("Disabling server's sRGB support\n");
-               warned = 1;
-            }
-            config->sRGBCapable = 0;
-         }
-         break;
-
       default:
          if (!scalarEqual(config, attrib, value))
             return GL_FALSE;
