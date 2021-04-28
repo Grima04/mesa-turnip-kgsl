@@ -755,9 +755,9 @@ pan_preload_emit_varying(struct pan_pool *pool,
         draw->position = coordinates;
 }
 
-static void
-pan_preload_emit_bifrost_sampler(struct pan_pool *pool,
-                                 struct MALI_DRAW *draw)
+static mali_ptr
+pan_blitter_emit_bifrost_sampler(struct pan_pool *pool,
+                                 bool nearest_filter)
 {
         struct panfrost_ptr sampler =
                  panfrost_pool_alloc_desc(pool, BIFROST_SAMPLER);
@@ -765,25 +765,27 @@ pan_preload_emit_bifrost_sampler(struct pan_pool *pool,
         pan_pack(sampler.cpu, BIFROST_SAMPLER, cfg) {
                 cfg.seamless_cube_map = false;
                 cfg.normalized_coordinates = false;
-                cfg.point_sample_minify = true;
-                cfg.point_sample_magnify = true;
+                cfg.point_sample_minify = nearest_filter;
+                cfg.point_sample_magnify = nearest_filter;
         }
 
-        draw->samplers = sampler.gpu;
+        return sampler.gpu;
 }
 
-static void
-pan_preload_emit_midgard_sampler(struct pan_pool *pool,
-                                 struct MALI_DRAW *draw)
+static mali_ptr
+pan_blitter_emit_midgard_sampler(struct pan_pool *pool,
+                                 bool nearest_filter)
 {
         struct panfrost_ptr sampler =
                  panfrost_pool_alloc_desc(pool, MIDGARD_SAMPLER);
 
         pan_pack(sampler.cpu, MIDGARD_SAMPLER, cfg) {
                 cfg.normalized_coordinates = false;
+                cfg.magnify_nearest = nearest_filter;
+                cfg.minify_nearest = nearest_filter;
         }
 
-        draw->samplers = sampler.gpu;
+        return sampler.gpu;
 }
 
 static void
@@ -924,14 +926,14 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
 
                 if (pan_is_bifrost(pool->dev)) {
-                        pan_preload_emit_bifrost_sampler(pool, &cfg);
+                        cfg.samplers = pan_blitter_emit_bifrost_sampler(pool, true);
 
                         /* Tiles updated by blit shaders are still considered
                          * clean (separate for colour and Z/S), allowing us to
                          * suppress unnecessary writeback */
                         cfg.clean_fragment_write = !always_write;
                 } else {
-                        pan_preload_emit_midgard_sampler(pool, &cfg);
+                        cfg.samplers = pan_blitter_emit_midgard_sampler(pool, true);
                         cfg.texture_descriptor_is_64b = true;
                 }
         }
