@@ -9810,7 +9810,7 @@ brw_compile_cs(const struct brw_compiler *compiler,
    return ret;
 }
 
-unsigned
+static unsigned
 brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
                                 const struct brw_cs_prog_data *cs_prog_data,
                                 unsigned group_size)

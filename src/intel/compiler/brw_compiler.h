@@ -1752,30 +1752,12 @@ unsigned
 brw_cs_push_const_total_size(const struct brw_cs_prog_data *cs_prog_data,
                              unsigned threads);
 
-unsigned
-brw_cs_simd_size_for_group_size(const struct intel_device_info *devinfo,
-                                const struct brw_cs_prog_data *cs_prog_data,
-                                unsigned group_size);
-
 void
 brw_write_shader_relocs(const struct intel_device_info *devinfo,
                         void *program,
                         const struct brw_stage_prog_data *prog_data,
                         struct brw_shader_reloc_value *values,
                         unsigned num_values);
-
-/**
- * Calculate the RightExecutionMask field used in GPGPU_WALKER.
- */
-static inline unsigned
-brw_cs_right_mask(unsigned group_size, unsigned simd_size)
-{
-   const uint32_t remainder = group_size & (simd_size - 1);
-   if (remainder > 0)
-      return ~0u >> (32 - remainder);
-   else
-      return ~0u >> (32 - simd_size);
-}
 
 struct brw_cs_dispatch_info {
    uint32_t group_size;
