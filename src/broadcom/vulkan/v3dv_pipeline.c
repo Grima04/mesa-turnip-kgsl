@@ -233,6 +233,8 @@ const nir_shader_compiler_options v3dv_nir_options = {
    .vertex_id_zero_based = false, /* FIXME: to set this to true, the intrinsic
                                    * needs to be supported */
    .lower_interpolate_at = true,
+   .divergence_analysis_options =
+      nir_divergence_multiple_workgroup_per_compute_subgroup
 };
 
 const nir_shader_compiler_options *

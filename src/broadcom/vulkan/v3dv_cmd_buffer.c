@@ -5268,6 +5268,37 @@ v3dv_cmd_buffer_rewrite_indirect_csd_job(
    }
 }
 
+/* Choose a number of workgroups per supergroup that maximizes
+ * lane occupancy. We can pack up to 16 workgroups into a supergroup.
+ */
+static uint32_t
+choose_workgroups_per_supergroup(uint32_t num_wgs, uint32_t wg_size)
+{
+   uint32_t best_wgs_per_sg = 1;
+   uint32_t best_unused_lanes = 16;
+   for (uint32_t wgs_per_sg = 1; wgs_per_sg <= 16; wgs_per_sg++) {
+      /* Don't try to pack more workgroups per supergroup than the total amount
+       * of workgroups dispatched.
+       */
+      if (wgs_per_sg > num_wgs)
+         return best_wgs_per_sg;
+
+      /* Compute wasted lines for this configuration and keep track of the
+       * config with less waste.
+       */
+      uint32_t unused_lanes = (16 - ((wgs_per_sg * wg_size) % 16)) & 0x0f;
+      if (unused_lanes == 0)
+         return wgs_per_sg;
+
+      if (unused_lanes < best_unused_lanes) {
+         best_wgs_per_sg = wgs_per_sg;
+         best_unused_lanes = unused_lanes;
+      }
+   }
+
+   return best_wgs_per_sg;
+}
+
 static struct v3dv_job *
 cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
                           uint32_t group_count_x,
@@ -5305,20 +5336,25 @@ cmd_buffer_create_csd_job(struct v3dv_cmd_buffer *cmd_buffer,
    const struct v3d_compute_prog_data *cpd =
       cs_variant->prog_data.cs;
 
-   const uint32_t wgs_per_sg = 1; /* FIXME */
+   const uint32_t num_wgs = group_count_x * group_count_y * group_count_z;
    const uint32_t wg_size = cpd->local_size[0] *
                             cpd->local_size[1] *
                             cpd->local_size[2];
-   submit->cfg[3] |= wgs_per_sg << V3D_CSD_CFG3_WGS_PER_SG_SHIFT;
-   submit->cfg[3] |= ((DIV_ROUND_UP(wgs_per_sg * wg_size, 16) - 1) <<
-                       V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT);
+
+   uint32_t wgs_per_sg = choose_workgroups_per_supergroup(num_wgs, wg_size);
+   uint32_t batches_per_sg = DIV_ROUND_UP(wgs_per_sg * wg_size, 16);
+   uint32_t whole_sgs = num_wgs / wgs_per_sg;
+   uint32_t rem_wgs = num_wgs - whole_sgs * wgs_per_sg;
+   uint32_t num_batches = batches_per_sg * whole_sgs +
+                          DIV_ROUND_UP(rem_wgs * wg_size, 16);
+
+   submit->cfg[3] |= (wgs_per_sg & 0xf) << V3D_CSD_CFG3_WGS_PER_SG_SHIFT;
+   submit->cfg[3] |= (batches_per_sg - 1) << V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT;
    submit->cfg[3] |= (wg_size & 0xff) << V3D_CSD_CFG3_WG_SIZE_SHIFT;
    if (wg_size_out)
       *wg_size_out = wg_size;
 
-   uint32_t batches_per_wg = DIV_ROUND_UP(wg_size, 16);
-   submit->cfg[4] = batches_per_wg *
-                    (group_count_x * group_count_y * group_count_z) - 1;
+   submit->cfg[4] = num_batches - 1;
    assert(submit->cfg[4] != ~0);
 
    assert(pipeline->shared_data->assembly_bo);
