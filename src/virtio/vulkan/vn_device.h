@@ -112,6 +112,8 @@ struct vn_device {
    uint32_t queue_count;
 
    struct vn_device_memory_pool memory_pools[VK_MAX_MEMORY_TYPES];
+
+   struct vn_android_wsi *android_wsi;
 };
 VK_DEFINE_HANDLE_CASTS(vn_device,
                        base.base.base,

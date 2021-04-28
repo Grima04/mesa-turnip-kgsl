@@ -9,7 +9,6 @@
  */
 
 #include "vn_android.h"
-#include "vn_common.h"
 
 #include <drm/drm_fourcc.h>
 #include <hardware/hwvulkan.h>
@@ -189,12 +188,36 @@ vn_image_from_anb(struct vn_device *dev,
    VkImageCreateInfo local_image_info = *image_info;
    local_image_info.pNext = &drm_mod_info;
    local_image_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
+
+   /* Force VK_SHARING_MODE_CONCURRENT if necessary.
+    * For physical devices supporting multiple queue families, if a swapchain is
+    * created with exclusive mode, we must transfer the image ownership into the
+    * queue family of the present queue. However, there's no way to get that
+    * queue at the 1st acquire of the image. Thus, when multiple queue families
+    * are supported in a physical device, we include all queue families in the
+    * image create info along with VK_SHARING_MODE_CONCURRENT, which forces us
+    * to transfer the ownership into VK_QUEUE_FAMILY_IGNORED. Then if there's
+    * only one queue family, we can safely use queue family index 0.
+    */
+   if (dev->physical_device->queue_family_count > 1) {
+      local_image_info.sharingMode = VK_SHARING_MODE_CONCURRENT;
+      local_image_info.queueFamilyIndexCount =
+         dev->physical_device->queue_family_count;
+      local_image_info.pQueueFamilyIndices =
+         dev->android_wsi->queue_family_indices;
+   }
+
    /* encoder will strip the Android specific pNext structs */
    result = vn_image_create(dev, &local_image_info, alloc, &img);
    if (result != VK_SUCCESS)
       goto fail;
 
    image = vn_image_to_handle(img);
+
+   result = vn_image_android_wsi_init(dev, img, alloc);
+   if (result != VK_SUCCESS)
+      goto fail;
+
    VkMemoryRequirements mem_req;
    vn_GetImageMemoryRequirements(device, image, &mem_req);
    if (!mem_req.memoryTypeBits) {
@@ -272,9 +295,19 @@ fail:
    return vn_error(dev->instance, result);
 }
 
+static bool
+vn_is_queue_compatible_with_wsi(struct vn_queue *queue)
+{
+   static const int32_t compatible_flags =
+      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
+   return compatible_flags & queue->device->physical_device
+                                ->queue_family_properties[queue->family]
+                                .queueFamilyProperties.queueFlags;
+}
+
 VkResult
 vn_AcquireImageANDROID(VkDevice device,
-                       UNUSED VkImage image,
+                       VkImage image,
                        int nativeFenceFd,
                        VkSemaphore semaphore,
                        VkFence fence)
@@ -285,6 +318,8 @@ vn_AcquireImageANDROID(VkDevice device,
    struct vn_device *dev = vn_device_from_handle(device);
    struct vn_semaphore *sem = vn_semaphore_from_handle(semaphore);
    struct vn_fence *fen = vn_fence_from_handle(fence);
+   struct vn_image *img = vn_image_from_handle(image);
+   struct vn_queue *queue = img->acquire_queue;
 
    if (nativeFenceFd >= 0) {
       int ret = sync_wait(nativeFenceFd, INT32_MAX);
@@ -300,7 +335,41 @@ vn_AcquireImageANDROID(VkDevice device,
    if (fen)
       vn_fence_signal_wsi(dev, fen);
 
-   return VK_SUCCESS;
+   if (!queue) {
+      /* pick a compatible queue for the 1st acquire of this image */
+      for (uint32_t i = 0; i < dev->queue_count; i++) {
+         if (vn_is_queue_compatible_with_wsi(&dev->queues[i])) {
+            queue = &dev->queues[i];
+            break;
+         }
+      }
+   }
+   if (!queue)
+      return vn_error(dev->instance, VK_ERROR_UNKNOWN);
+
+   const VkSubmitInfo submit_info = {
+      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .pNext = NULL,
+      .waitSemaphoreCount = 0,
+      .pWaitSemaphores = NULL,
+      .pWaitDstStageMask = NULL,
+      .commandBufferCount = 1,
+      .pCommandBuffers =
+         &img->ownership_cmds[queue->family].cmds[VN_IMAGE_OWNERSHIP_ACQUIRE],
+      .signalSemaphoreCount = 0,
+      .pSignalSemaphores = NULL,
+   };
+
+   VkResult result = vn_QueueSubmit(vn_queue_to_handle(queue), 1,
+                                    &submit_info, queue->wait_fence);
+   if (result != VK_SUCCESS)
+      return vn_error(dev->instance, result);
+
+   result =
+      vn_WaitForFences(device, 1, &queue->wait_fence, VK_TRUE, UINT64_MAX);
+   vn_ResetFences(device, 1, &queue->wait_fence);
+
+   return vn_result(dev->instance, result);
 }
 
 VkResult
@@ -316,13 +385,14 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
     */
    VkResult result = VK_SUCCESS;
    struct vn_queue *que = vn_queue_from_handle(queue);
+   struct vn_image *img = vn_image_from_handle(image);
    const VkAllocationCallbacks *alloc = &que->device->base.base.alloc;
    VkDevice device = vn_device_to_handle(que->device);
    VkPipelineStageFlags local_stage_masks[8];
    VkPipelineStageFlags *stage_masks = local_stage_masks;
 
-   if (waitSemaphoreCount == 0)
-      goto out;
+   if (!vn_is_queue_compatible_with_wsi(que))
+      return vn_error(que->device->instance, VK_ERROR_UNKNOWN);
 
    if (waitSemaphoreCount > ARRAY_SIZE(local_stage_masks)) {
       stage_masks =
@@ -343,12 +413,15 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
       .waitSemaphoreCount = waitSemaphoreCount,
       .pWaitSemaphores = pWaitSemaphores,
       .pWaitDstStageMask = stage_masks,
-      .commandBufferCount = 0,
-      .pCommandBuffers = NULL,
+      .commandBufferCount = 1,
+      .pCommandBuffers =
+         &img->ownership_cmds[que->family].cmds[VN_IMAGE_OWNERSHIP_RELEASE],
       .signalSemaphoreCount = 0,
       .pSignalSemaphores = NULL,
    };
    result = vn_QueueSubmit(queue, 1, &submit_info, que->wait_fence);
+   if (stage_masks != local_stage_masks)
+      vk_free(alloc, stage_masks);
    if (result != VK_SUCCESS)
       goto out;
 
@@ -356,7 +429,99 @@ vn_QueueSignalReleaseImageANDROID(VkQueue queue,
       vn_WaitForFences(device, 1, &que->wait_fence, VK_TRUE, UINT64_MAX);
    vn_ResetFences(device, 1, &que->wait_fence);
 
+   img->acquire_queue = que;
+
 out:
    *pNativeFenceFd = -1;
    return result;
+}
+
+VkResult
+vn_android_wsi_init(struct vn_device *dev, const VkAllocationCallbacks *alloc)
+{
+   VkResult result = VK_SUCCESS;
+
+   struct vn_android_wsi *android_wsi =
+      vk_zalloc(alloc, sizeof(struct vn_android_wsi), VN_DEFAULT_ALIGN,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!android_wsi)
+      return vn_error(dev->instance, VK_ERROR_OUT_OF_HOST_MEMORY);
+
+   const uint32_t count = dev->physical_device->queue_family_count;
+   if (count > 1) {
+      android_wsi->queue_family_indices =
+         vk_alloc(alloc, sizeof(uint32_t) * count, VN_DEFAULT_ALIGN,
+                  VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+      if (!android_wsi->queue_family_indices) {
+         result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         goto fail;
+      }
+
+      for (uint32_t i = 0; i < count; i++)
+         android_wsi->queue_family_indices[i] = i;
+   }
+
+   android_wsi->cmd_pools =
+      vk_zalloc(alloc, sizeof(VkCommandPool) * count, VN_DEFAULT_ALIGN,
+                VK_SYSTEM_ALLOCATION_SCOPE_OBJECT);
+   if (!android_wsi->cmd_pools) {
+      result = VK_ERROR_OUT_OF_HOST_MEMORY;
+      goto fail;
+   }
+
+   VkDevice device = vn_device_to_handle(dev);
+   for (uint32_t i = 0; i < count; i++) {
+      const VkCommandPoolCreateInfo cmd_pool_info = {
+         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+         .pNext = NULL,
+         .flags = 0,
+         .queueFamilyIndex = i,
+      };
+      result = vn_CreateCommandPool(device, &cmd_pool_info, alloc,
+                                    &android_wsi->cmd_pools[i]);
+      if (result != VK_SUCCESS)
+         goto fail;
+   }
+
+   mtx_init(&android_wsi->cmd_pools_lock, mtx_plain);
+
+   dev->android_wsi = android_wsi;
+
+   return VK_SUCCESS;
+
+fail:
+   if (android_wsi->cmd_pools) {
+      for (uint32_t i = 0; i < count; i++) {
+         if (android_wsi->cmd_pools[i] != VK_NULL_HANDLE)
+            vn_DestroyCommandPool(device, android_wsi->cmd_pools[i], alloc);
+      }
+      vk_free(alloc, android_wsi->cmd_pools);
+   }
+
+   if (android_wsi->queue_family_indices)
+      vk_free(alloc, android_wsi->queue_family_indices);
+
+   vk_free(alloc, android_wsi);
+
+   return vn_error(dev->instance, result);
+}
+
+void
+vn_android_wsi_fini(struct vn_device *dev, const VkAllocationCallbacks *alloc)
+{
+   if (!dev->android_wsi)
+      return;
+
+   mtx_destroy(&dev->android_wsi->cmd_pools_lock);
+
+   VkDevice device = vn_device_to_handle(dev);
+   for (uint32_t i = 0; i < dev->physical_device->queue_family_count; i++) {
+      vn_DestroyCommandPool(device, dev->android_wsi->cmd_pools[i], alloc);
+   }
+   vk_free(alloc, dev->android_wsi->cmd_pools);
+
+   if (dev->android_wsi->queue_family_indices)
+      vk_free(alloc, dev->android_wsi->queue_family_indices);
+
+   vk_free(alloc, dev->android_wsi);
 }
