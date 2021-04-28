@@ -451,7 +451,7 @@ pan_blitter_get_blit_shader(struct panfrost_device *dev,
 
         unsigned sig_offset = 0;
         char sig[256];
-        bool first = false;
+        bool first = true;
         for (unsigned i = 0; i < ARRAY_SIZE(key->surfaces); i++) {
                 const char *type_str;
                 if (key->surfaces[i].type == nir_type_invalid)
