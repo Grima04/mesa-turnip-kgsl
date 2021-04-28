@@ -6853,10 +6853,8 @@ iris_upload_compute_walker(struct iris_context *ice,
       ice->shaders.prog[MESA_SHADER_COMPUTE];
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
-   const uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
-   const unsigned simd_size =
-      brw_cs_simd_size_for_group_size(devinfo, cs_prog_data, group_size);
-   const unsigned threads = DIV_ROUND_UP(group_size, simd_size);
+   const struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(devinfo, cs_prog_data, grid->block);
 
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       iris_emit_cmd(batch, GENX(CFE_STATE), cfe) {
@@ -6871,22 +6869,20 @@ iris_upload_compute_walker(struct iris_context *ice,
    if (grid->indirect)
       iris_load_indirect_location(ice, batch, grid);
 
-   const uint32_t last_mask = brw_cs_right_mask(group_size, simd_size);
-
    iris_emit_cmd(batch, GENX(COMPUTE_WALKER), cw) {
       cw.IndirectParameterEnable        = grid->indirect;
-      cw.SIMDSize                       = simd_size / 16;
+      cw.SIMDSize                       = dispatch.simd_size / 16;
       cw.LocalXMaximum                  = grid->block[0] - 1;
       cw.LocalYMaximum                  = grid->block[1] - 1;
       cw.LocalZMaximum                  = grid->block[2] - 1;
       cw.ThreadGroupIDXDimension        = grid->grid[0];
       cw.ThreadGroupIDYDimension        = grid->grid[1];
       cw.ThreadGroupIDZDimension        = grid->grid[2];
-      cw.ExecutionMask                  = last_mask;
+      cw.ExecutionMask                  = dispatch.right_mask;
 
       cw.InterfaceDescriptor = (struct GENX(INTERFACE_DESCRIPTOR_DATA)) {
          .KernelStartPointer = KSP(shader),
-         .NumberofThreadsinGPGPUThreadGroup = threads,
+         .NumberofThreadsinGPGPUThreadGroup = dispatch.threads,
          .SharedLocalMemorySize =
             encode_slm_size(GFX_VER, prog_data->total_shared),
          .BarrierEnable = cs_prog_data->uses_barrier,
@@ -6894,7 +6890,7 @@ iris_upload_compute_walker(struct iris_context *ice,
          .BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE],
       };
 
-      assert(brw_cs_push_const_total_size(cs_prog_data, threads) == 0);
+      assert(brw_cs_push_const_total_size(cs_prog_data, dispatch.threads) == 0);
    }
 
 }
@@ -6917,11 +6913,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
       ice->shaders.prog[MESA_SHADER_COMPUTE];
    struct brw_stage_prog_data *prog_data = shader->prog_data;
    struct brw_cs_prog_data *cs_prog_data = (void *) prog_data;
-   const uint32_t group_size = grid->block[0] * grid->block[1] * grid->block[2];
-   const unsigned simd_size =
-      brw_cs_simd_size_for_group_size(devinfo, cs_prog_data, group_size);
-   const unsigned threads = DIV_ROUND_UP(group_size, simd_size);
-
+   const struct brw_cs_dispatch_info dispatch =
+      brw_cs_get_dispatch_info(devinfo, cs_prog_data, grid->block);
 
    if (stage_dirty & IRIS_STAGE_DIRTY_CS) {
       /* The MEDIA_VFE_STATE documentation for Gfx8+ says:
@@ -6959,7 +6952,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
          vfe.URBEntryAllocationSize = 2;
 
          vfe.CURBEAllocationSize =
-            ALIGN(cs_prog_data->push.per_thread.regs * threads +
+            ALIGN(cs_prog_data->push.per_thread.regs * dispatch.threads +
                   cs_prog_data->push.cross_thread.regs, 2);
       }
    }
@@ -6972,7 +6965,7 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
              cs_prog_data->push.per_thread.dwords == 1 &&
              cs_prog_data->base.param[0] == BRW_PARAM_BUILTIN_SUBGROUP_ID);
       const unsigned push_const_size =
-         brw_cs_push_const_total_size(cs_prog_data, threads);
+         brw_cs_push_const_total_size(cs_prog_data, dispatch.threads);
       uint32_t *curbe_data_map =
          stream_state(batch, ice->state.dynamic_uploader,
                       &ice->state.last_res.cs_thread_ids,
@@ -6980,7 +6973,8 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
                       &curbe_data_offset);
       assert(curbe_data_map);
       memset(curbe_data_map, 0x5a, ALIGN(push_const_size, 64));
-      iris_fill_cs_push_const_buffer(cs_prog_data, threads, curbe_data_map);
+      iris_fill_cs_push_const_buffer(cs_prog_data, dispatch.threads,
+                                     curbe_data_map);
 
       iris_emit_cmd(batch, GENX(MEDIA_CURBE_LOAD), curbe) {
          curbe.CURBETotalDataLength = ALIGN(push_const_size, 64);
@@ -7007,10 +7001,11 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
          idd.SharedLocalMemorySize =
             encode_slm_size(GFX_VER, ish->kernel_shared_size);
          idd.KernelStartPointer =
-            KSP(shader) + brw_cs_prog_data_prog_offset(cs_prog_data, simd_size);
+            KSP(shader) + brw_cs_prog_data_prog_offset(cs_prog_data,
+                                                       dispatch.simd_size);
          idd.SamplerStatePointer = shs->sampler_table.offset;
          idd.BindingTablePointer = binder->bt_offset[MESA_SHADER_COMPUTE];
-         idd.NumberofThreadsinGPGPUThreadGroup = threads;
+         idd.NumberofThreadsinGPGPUThreadGroup = dispatch.threads;
       }
 
       for (int i = 0; i < GENX(INTERFACE_DESCRIPTOR_DATA_length); i++)
@@ -7028,20 +7023,18 @@ iris_upload_gpgpu_walker(struct iris_context *ice,
    if (grid->indirect)
       iris_load_indirect_location(ice, batch, grid);
 
-   const uint32_t right_mask = brw_cs_right_mask(group_size, simd_size);
-
    iris_measure_snapshot(ice, batch, INTEL_SNAPSHOT_COMPUTE, NULL, NULL, NULL);
 
    iris_emit_cmd(batch, GENX(GPGPU_WALKER), ggw) {
       ggw.IndirectParameterEnable    = grid->indirect != NULL;
-      ggw.SIMDSize                   = simd_size / 16;
+      ggw.SIMDSize                   = dispatch.simd_size / 16;
       ggw.ThreadDepthCounterMaximum  = 0;
       ggw.ThreadHeightCounterMaximum = 0;
-      ggw.ThreadWidthCounterMaximum  = threads - 1;
+      ggw.ThreadWidthCounterMaximum  = dispatch.threads - 1;
       ggw.ThreadGroupIDXDimension    = grid->grid[0];
       ggw.ThreadGroupIDYDimension    = grid->grid[1];
       ggw.ThreadGroupIDZDimension    = grid->grid[2];
-      ggw.RightExecutionMask         = right_mask;
+      ggw.RightExecutionMask         = dispatch.right_mask;
       ggw.BottomExecutionMask        = 0xffffffff;
    }
 
