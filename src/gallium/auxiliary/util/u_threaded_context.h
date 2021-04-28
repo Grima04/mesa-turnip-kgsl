@@ -158,25 +158,13 @@
  * How it works (queue architecture)
  * ---------------------------------
  *
- * There is a multithreaded queue consisting of batches, each batch consisting
- * of call slots. Each call slot consists of an 8-byte header (call ID +
- * call size + constant 32-bit marker for integrity checking) and an 8-byte
- * body for per-call data. That is 16 bytes per call slot.
- *
- * Simple calls such as bind_xx_state(CSO) occupy only one call slot. Bigger
- * calls occupy multiple call slots depending on the size needed by call
- * parameters. That means that calls can have a variable size in the batch.
- * For example, set_vertex_buffers(count = any, buffers = NULL) occupies only
- * 1 call slot, but set_vertex_buffers(count = 5) occupies 6 call slots.
- * Even though the first call slot can use only 8 bytes for data, additional
- * call slots used by the same call can use all 16 bytes for data.
- * For example, a call using 2 call slots has 24 bytes of space for data.
+ * There is a multithreaded queue consisting of batches, each batch containing
+ * 8-byte slots. Calls can occupy 1 or more slots.
  *
  * Once a batch is full and there is no space for the next call, it's flushed,
  * meaning that it's added to the queue for execution in the other thread.
  * The batches are ordered in a ring and reused once they are idle again.
  * The batching is necessary for low queue/mutex overhead.
- *
  */
 
 #ifndef U_THREADED_CONTEXT_H
@@ -193,6 +181,9 @@
 
 struct threaded_context;
 struct tc_unflushed_batch_token;
+
+/* 0 = disabled, 1 = assertions, 2 = printfs */
+#define TC_DEBUG 0
 
 /* These are map flags sent to drivers. */
 /* Never infer whether it's safe to use unsychronized mappings: */
@@ -223,7 +214,7 @@ struct tc_unflushed_batch_token;
  * The idea is to have batches as small as possible but large enough so that
  * the queuing and mutex overhead is negligible.
  */
-#define TC_CALLS_PER_BATCH    768
+#define TC_SLOTS_PER_BATCH    1536
 
 /* Threshold for when to use the queue or sync. */
 #define TC_MAX_STRING_MARKER_BYTES  512
@@ -309,24 +300,12 @@ struct threaded_query {
    bool flushed;
 };
 
-/* This is the second half of tc_call containing call data.
- * Most calls will typecast this to the type they need, typically larger
- * than 8 bytes.
- */
-union tc_payload {
-   struct pipe_query *query;
-   struct pipe_resource *resource;
-   struct pipe_transfer *transfer;
-   struct pipe_fence_handle *fence;
-   uint64_t handle;
-   bool boolean;
-};
-
-struct tc_call {
-   unsigned sentinel;
-   ushort num_call_slots;
+struct tc_call_base {
+#if !defined(NDEBUG) && TC_DEBUG >= 1
+   uint32_t sentinel;
+#endif
+   ushort num_slots;
    ushort call_id;
-   union tc_payload payload;
 };
 
 /**
@@ -341,11 +320,13 @@ struct tc_unflushed_batch_token {
 
 struct tc_batch {
    struct threaded_context *tc;
+#if !defined(NDEBUG) && TC_DEBUG >= 1
    unsigned sentinel;
-   unsigned num_total_call_slots;
-   struct tc_unflushed_batch_token *token;
+#endif
+   unsigned num_total_slots;
    struct util_queue_fence fence;
-   struct tc_call call[TC_CALLS_PER_BATCH];
+   struct tc_unflushed_batch_token *token;
+   uint64_t slots[TC_SLOTS_PER_BATCH];
 };
 
 struct threaded_context {
