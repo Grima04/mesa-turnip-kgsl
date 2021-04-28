@@ -63,9 +63,9 @@ blit_type_to_reg_fmt(nir_alu_type in)
 }
 
 struct pan_blit_surface {
-        gl_frag_result loc;
-        nir_alu_type type;
-        bool ms;
+        gl_frag_result loc : 4;
+        nir_alu_type type : 8;
+        bool ms : 1;
 };
 
 struct pan_blit_shader_key {
