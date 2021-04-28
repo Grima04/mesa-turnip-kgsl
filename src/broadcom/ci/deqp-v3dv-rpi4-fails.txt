@@ -138,11 +138,4 @@ dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.nand,Fail
 dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.nor,Fail
 dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.or_inverted,Fail
 dEQP-VK.pipeline.logic_op.r8g8b8a8_uint.or_reverse,Fail
-dEQP-VK.spirv_assembly.instruction.compute.vector_shuffle.vector_shuffle,Fail
 dEQP-VK.synchronization.basic.binary_semaphore.chain,Fail
-dEQP-VK.ycbcr.query.levels.geometry.r8g8b8a8_unorm,Crash
-dEQP-VK.ycbcr.query.levels.tess_control.r8g8b8a8_unorm,Crash
-dEQP-VK.ycbcr.query.levels.tess_eval.r8g8b8a8_unorm,Crash
-dEQP-VK.ycbcr.query.size_lod.geometry.r8g8b8a8_unorm,Crash
-dEQP-VK.ycbcr.query.size_lod.tess_control.r8g8b8a8_unorm,Crash
-dEQP-VK.ycbcr.query.size_lod.tess_eval.r8g8b8a8_unorm,Crash
