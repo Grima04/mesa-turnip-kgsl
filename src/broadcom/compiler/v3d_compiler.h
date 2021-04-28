@@ -833,6 +833,8 @@ struct v3d_prog_data {
         bool single_seg;
 
         bool tmu_dirty_rcl;
+
+        bool has_control_barrier;
 };
 
 struct v3d_vs_prog_data {
