@@ -154,6 +154,8 @@ struct zink_screen {
       bool inline_uniforms;
    } driconf;
 
+   PFN_vkGetImageDrmFormatModifierPropertiesEXT vk_GetImageDrmFormatModifierPropertiesEXT;
+
    VkFormatProperties format_props[PIPE_FORMAT_COUNT];
    struct {
       uint32_t image_view;

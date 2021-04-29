@@ -106,6 +106,7 @@ EXTENSIONS = [
         properties=True,
         features=True,
         conditions=["$feats.nullDescriptor"]),
+    Extension("VK_EXT_image_drm_format_modifier"),
     Extension("VK_EXT_vertex_attribute_divisor",
         alias="vdiv", 
         properties=True,

@@ -1194,6 +1194,9 @@ load_device_extensions(struct zink_screen *screen)
       GET_PROC_ADDR(CmdBindVertexBuffers2EXT);
    }
 
+   if (screen->info.have_EXT_image_drm_format_modifier)
+      GET_PROC_ADDR(GetImageDrmFormatModifierPropertiesEXT);
+
    if (screen->info.have_KHR_timeline_semaphore)
       GET_PROC_ADDR_KHR(WaitSemaphores);
 
