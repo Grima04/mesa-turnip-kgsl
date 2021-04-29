@@ -97,7 +97,6 @@ struct util_cpu_caps_t {
    unsigned has_avx512vbmi:1;
 
    unsigned num_L3_caches;
-   unsigned cores_per_L3;
    unsigned num_cpu_mask_bits;
 
    uint16_t cpu_to_L3[UTIL_MAX_CPUS];

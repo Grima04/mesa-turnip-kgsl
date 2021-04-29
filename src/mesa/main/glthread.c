@@ -216,7 +216,7 @@ _mesa_glthread_flush_batch(struct gl_context *ctx)
    /* Pin threads regularly to the same Zen CCX that the main thread is
     * running on. The main thread can move between CCXs.
     */
-   if (util_get_cpu_caps()->nr_cpus != util_get_cpu_caps()->cores_per_L3 &&
+   if (util_get_cpu_caps()->num_L3_caches > 1 &&
        /* driver support */
        ctx->Driver.PinDriverToL3Cache &&
        ++glthread->pin_thread_counter % 128 == 0) {
