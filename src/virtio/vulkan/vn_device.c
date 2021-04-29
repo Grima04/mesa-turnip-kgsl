@@ -95,22 +95,22 @@ vn_instance_init_version(struct vn_instance *instance)
    if (renderer_version < VN_MIN_RENDERER_VERSION) {
       if (VN_DEBUG(INIT)) {
          vn_log(instance, "unsupported renderer instance version %d.%d",
-                VK_VERSION_MAJOR(instance->renderer_version),
-                VK_VERSION_MINOR(instance->renderer_version));
+                VK_VERSION_MAJOR(instance->renderer_api_version),
+                VK_VERSION_MINOR(instance->renderer_api_version));
       }
       return VK_ERROR_INITIALIZATION_FAILED;
    }
 
-   instance->renderer_version =
+   instance->renderer_api_version =
       instance->base.base.app_info.api_version > VN_MIN_RENDERER_VERSION
          ? instance->base.base.app_info.api_version
          : VN_MIN_RENDERER_VERSION;
 
    if (VN_DEBUG(INIT)) {
       vn_log(instance, "vk instance version %d.%d.%d",
-             VK_VERSION_MAJOR(instance->renderer_version),
-             VK_VERSION_MINOR(instance->renderer_version),
-             VK_VERSION_PATCH(instance->renderer_version));
+             VK_VERSION_MAJOR(instance->renderer_api_version),
+             VK_VERSION_MINOR(instance->renderer_api_version),
+             VK_VERSION_PATCH(instance->renderer_api_version));
    }
 
    return VK_SUCCESS;
@@ -1618,8 +1618,8 @@ vn_physical_device_init_version(struct vn_physical_device *physical_dev)
    }
 
    physical_dev->renderer_version = props.apiVersion;
-   if (physical_dev->renderer_version > instance->renderer_version)
-      physical_dev->renderer_version = instance->renderer_version;
+   if (physical_dev->renderer_version > instance->renderer_api_version)
+      physical_dev->renderer_version = instance->renderer_api_version;
 
    return VK_SUCCESS;
 }
@@ -1859,16 +1859,16 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    local_create_info.enabledExtensionCount = 0;
    pCreateInfo = &local_create_info;
 
-   /* request at least instance->renderer_version */
+   /* request at least instance->renderer_api_version */
    VkApplicationInfo local_app_info = {
       .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-      .apiVersion = instance->renderer_version,
+      .apiVersion = instance->renderer_api_version,
    };
    if (instance->base.base.app_info.api_version <
-       instance->renderer_version) {
+       instance->renderer_api_version) {
       if (pCreateInfo->pApplicationInfo) {
          local_app_info = *pCreateInfo->pApplicationInfo;
-         local_app_info.apiVersion = instance->renderer_version;
+         local_app_info.apiVersion = instance->renderer_api_version;
       }
       local_create_info.pApplicationInfo = &local_app_info;
    }

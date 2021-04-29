@@ -27,7 +27,8 @@ struct vn_instance {
 
    struct vn_renderer *renderer;
    struct vn_renderer_info renderer_info;
-   uint32_t renderer_version;
+
+   uint32_t renderer_api_version;
 
    /* to synchronize renderer/ring */
    mtx_t roundtrip_mutex;
