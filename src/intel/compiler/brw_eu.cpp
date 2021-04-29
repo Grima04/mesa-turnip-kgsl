@@ -566,6 +566,7 @@ brw_disassemble(const struct intel_device_info *devinfo,
 
          brw_uncompact_instruction(devinfo, &uncompacted, compacted);
          insn = &uncompacted;
+      } else {
          if (dump_hex) {
             unsigned char * insn_ptr = ((unsigned char *)&insn[0]);
             for (int i = 0 ; i < 16; i = i + 4) {
