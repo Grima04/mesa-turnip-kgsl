@@ -723,40 +723,40 @@ util_cpu_detect_once(void)
    get_cpu_topology();
 
    if (debug_get_option_dump_cpu()) {
-      debug_printf("util_cpu_caps.nr_cpus = %u\n", util_cpu_caps.nr_cpus);
+      printf("util_cpu_caps.nr_cpus = %u\n", util_cpu_caps.nr_cpus);
 
-      debug_printf("util_cpu_caps.x86_cpu_type = %u\n", util_cpu_caps.x86_cpu_type);
-      debug_printf("util_cpu_caps.cacheline = %u\n", util_cpu_caps.cacheline);
+      printf("util_cpu_caps.x86_cpu_type = %u\n", util_cpu_caps.x86_cpu_type);
+      printf("util_cpu_caps.cacheline = %u\n", util_cpu_caps.cacheline);
 
-      debug_printf("util_cpu_caps.has_tsc = %u\n", util_cpu_caps.has_tsc);
-      debug_printf("util_cpu_caps.has_mmx = %u\n", util_cpu_caps.has_mmx);
-      debug_printf("util_cpu_caps.has_mmx2 = %u\n", util_cpu_caps.has_mmx2);
-      debug_printf("util_cpu_caps.has_sse = %u\n", util_cpu_caps.has_sse);
-      debug_printf("util_cpu_caps.has_sse2 = %u\n", util_cpu_caps.has_sse2);
-      debug_printf("util_cpu_caps.has_sse3 = %u\n", util_cpu_caps.has_sse3);
-      debug_printf("util_cpu_caps.has_ssse3 = %u\n", util_cpu_caps.has_ssse3);
-      debug_printf("util_cpu_caps.has_sse4_1 = %u\n", util_cpu_caps.has_sse4_1);
-      debug_printf("util_cpu_caps.has_sse4_2 = %u\n", util_cpu_caps.has_sse4_2);
-      debug_printf("util_cpu_caps.has_avx = %u\n", util_cpu_caps.has_avx);
-      debug_printf("util_cpu_caps.has_avx2 = %u\n", util_cpu_caps.has_avx2);
-      debug_printf("util_cpu_caps.has_f16c = %u\n", util_cpu_caps.has_f16c);
-      debug_printf("util_cpu_caps.has_popcnt = %u\n", util_cpu_caps.has_popcnt);
-      debug_printf("util_cpu_caps.has_3dnow = %u\n", util_cpu_caps.has_3dnow);
-      debug_printf("util_cpu_caps.has_3dnow_ext = %u\n", util_cpu_caps.has_3dnow_ext);
-      debug_printf("util_cpu_caps.has_xop = %u\n", util_cpu_caps.has_xop);
-      debug_printf("util_cpu_caps.has_altivec = %u\n", util_cpu_caps.has_altivec);
-      debug_printf("util_cpu_caps.has_vsx = %u\n", util_cpu_caps.has_vsx);
-      debug_printf("util_cpu_caps.has_neon = %u\n", util_cpu_caps.has_neon);
-      debug_printf("util_cpu_caps.has_daz = %u\n", util_cpu_caps.has_daz);
-      debug_printf("util_cpu_caps.has_avx512f = %u\n", util_cpu_caps.has_avx512f);
-      debug_printf("util_cpu_caps.has_avx512dq = %u\n", util_cpu_caps.has_avx512dq);
-      debug_printf("util_cpu_caps.has_avx512ifma = %u\n", util_cpu_caps.has_avx512ifma);
-      debug_printf("util_cpu_caps.has_avx512pf = %u\n", util_cpu_caps.has_avx512pf);
-      debug_printf("util_cpu_caps.has_avx512er = %u\n", util_cpu_caps.has_avx512er);
-      debug_printf("util_cpu_caps.has_avx512cd = %u\n", util_cpu_caps.has_avx512cd);
-      debug_printf("util_cpu_caps.has_avx512bw = %u\n", util_cpu_caps.has_avx512bw);
-      debug_printf("util_cpu_caps.has_avx512vl = %u\n", util_cpu_caps.has_avx512vl);
-      debug_printf("util_cpu_caps.has_avx512vbmi = %u\n", util_cpu_caps.has_avx512vbmi);
+      printf("util_cpu_caps.has_tsc = %u\n", util_cpu_caps.has_tsc);
+      printf("util_cpu_caps.has_mmx = %u\n", util_cpu_caps.has_mmx);
+      printf("util_cpu_caps.has_mmx2 = %u\n", util_cpu_caps.has_mmx2);
+      printf("util_cpu_caps.has_sse = %u\n", util_cpu_caps.has_sse);
+      printf("util_cpu_caps.has_sse2 = %u\n", util_cpu_caps.has_sse2);
+      printf("util_cpu_caps.has_sse3 = %u\n", util_cpu_caps.has_sse3);
+      printf("util_cpu_caps.has_ssse3 = %u\n", util_cpu_caps.has_ssse3);
+      printf("util_cpu_caps.has_sse4_1 = %u\n", util_cpu_caps.has_sse4_1);
+      printf("util_cpu_caps.has_sse4_2 = %u\n", util_cpu_caps.has_sse4_2);
+      printf("util_cpu_caps.has_avx = %u\n", util_cpu_caps.has_avx);
+      printf("util_cpu_caps.has_avx2 = %u\n", util_cpu_caps.has_avx2);
+      printf("util_cpu_caps.has_f16c = %u\n", util_cpu_caps.has_f16c);
+      printf("util_cpu_caps.has_popcnt = %u\n", util_cpu_caps.has_popcnt);
+      printf("util_cpu_caps.has_3dnow = %u\n", util_cpu_caps.has_3dnow);
+      printf("util_cpu_caps.has_3dnow_ext = %u\n", util_cpu_caps.has_3dnow_ext);
+      printf("util_cpu_caps.has_xop = %u\n", util_cpu_caps.has_xop);
+      printf("util_cpu_caps.has_altivec = %u\n", util_cpu_caps.has_altivec);
+      printf("util_cpu_caps.has_vsx = %u\n", util_cpu_caps.has_vsx);
+      printf("util_cpu_caps.has_neon = %u\n", util_cpu_caps.has_neon);
+      printf("util_cpu_caps.has_daz = %u\n", util_cpu_caps.has_daz);
+      printf("util_cpu_caps.has_avx512f = %u\n", util_cpu_caps.has_avx512f);
+      printf("util_cpu_caps.has_avx512dq = %u\n", util_cpu_caps.has_avx512dq);
+      printf("util_cpu_caps.has_avx512ifma = %u\n", util_cpu_caps.has_avx512ifma);
+      printf("util_cpu_caps.has_avx512pf = %u\n", util_cpu_caps.has_avx512pf);
+      printf("util_cpu_caps.has_avx512er = %u\n", util_cpu_caps.has_avx512er);
+      printf("util_cpu_caps.has_avx512cd = %u\n", util_cpu_caps.has_avx512cd);
+      printf("util_cpu_caps.has_avx512bw = %u\n", util_cpu_caps.has_avx512bw);
+      printf("util_cpu_caps.has_avx512vl = %u\n", util_cpu_caps.has_avx512vl);
+      printf("util_cpu_caps.has_avx512vbmi = %u\n", util_cpu_caps.has_avx512vbmi);
    }
 }
 
