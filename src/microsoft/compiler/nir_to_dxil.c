@@ -4240,25 +4240,6 @@ emit_scratch(struct ntd_context *ctx)
    return true;
 }
 
-static bool
-emit_ssbos(struct ntd_context *ctx)
-{
-   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
-      unsigned count = 1;
-      if (glsl_type_is_array(var->type))
-         count = glsl_get_length(var->type);
-
-      bool success = (var->data.access & ACCESS_NON_WRITEABLE) ?
-         emit_srv(ctx, var, count) :
-         emit_uav(ctx, var->data.binding, var->data.descriptor_set, count, DXIL_COMP_TYPE_INVALID, DXIL_RESOURCE_KIND_RAW_BUFFER, var->name);
-
-      if (!success)
-         return false;
-   }
-
-   return true;
-}
-
 /* The validator complains if we don't have ops that reference a global variable. */
 static bool
 shader_has_shared_ops(struct nir_shader *s)
@@ -4326,6 +4307,16 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
             return false;
       }
    }
+   /* Handle read-only SSBOs as SRVs */
+   nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
+      if ((var->data.access & ACCESS_NON_WRITEABLE) != 0) {
+         unsigned count = 1;
+         if (glsl_type_is_array(var->type))
+            count = glsl_get_length(var->type);
+         if (!emit_srv(ctx, var, count))
+            return false;
+      }
+   }
 
    if (ctx->shader->info.shared_size && shader_has_shared_ops(ctx->shader)) {
       const struct dxil_type *type;
@@ -4365,8 +4356,18 @@ emit_module(struct ntd_context *ctx, const struct nir_to_dxil_options *opts)
       if (!emit_global_consts(ctx))
          return false;
    } else {
-      if (!emit_ssbos(ctx))
-         return false;
+      /* Handle read/write SSBOs as UAVs */
+      nir_foreach_variable_with_modes(var, ctx->shader, nir_var_mem_ssbo) {
+         if ((var->data.access & ACCESS_NON_WRITEABLE) == 0) {
+            unsigned count = 1;
+            if (glsl_type_is_array(var->type))
+               count = glsl_get_length(var->type);
+            if (!emit_uav(ctx, var->data.binding, var->data.descriptor_set,
+                        count, DXIL_COMP_TYPE_INVALID,
+                        DXIL_RESOURCE_KIND_RAW_BUFFER, var->name))
+               return false;
+         }
+      }
    }
 
    nir_foreach_variable_with_modes(var, ctx->shader, nir_var_uniform) {
