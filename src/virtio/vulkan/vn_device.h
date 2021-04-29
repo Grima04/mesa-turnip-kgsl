@@ -74,7 +74,14 @@ struct vn_physical_device {
 
    struct vn_instance *instance;
 
+   /* Between the driver and the app, properties.properties.apiVersion is what
+    * we advertise and is capped by VN_MAX_API_VERSION and others.
+    *
+    * Between the driver and the renderer, renderer_version is the device
+    * version we can use internally.
+    */
    uint32_t renderer_version;
+
    struct vk_device_extension_table renderer_extensions;
 
    uint32_t *extension_spec_versions;
