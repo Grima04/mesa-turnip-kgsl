@@ -453,21 +453,24 @@ fd_bo_map(struct fd_bo *bo)
 int
 fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
 {
-   if (op & FD_BO_PREP_NOSYNC) {
+   if (op & (FD_BO_PREP_NOSYNC | FD_BO_PREP_FLUSH)) {
       simple_mtx_lock(&table_lock);
       enum fd_bo_state state = fd_bo_state(bo);
       simple_mtx_unlock(&table_lock);
 
-      switch (state) {
-      case FD_BO_STATE_IDLE:
+      if (state == FD_BO_STATE_IDLE)
          return 0;
-      case FD_BO_STATE_BUSY:
-         if (op & FD_BO_PREP_FLUSH)
-            bo_flush(bo);
+
+      if (op & FD_BO_PREP_FLUSH)
+         bo_flush(bo);
+
+      /* If we have *only* been asked to flush, then we aren't really
+       * interested about whether shared buffers are busy, so avoid
+       * the kernel ioctl.
+       */
+      if ((state == FD_BO_STATE_BUSY) ||
+          (op == FD_BO_PREP_FLUSH))
          return -EBUSY;
-      case FD_BO_STATE_UNKNOWN:
-         break;
-      }
    }
 
    /* In case the bo is referenced by a deferred submit, flush up to the
@@ -475,7 +478,10 @@ fd_bo_cpu_prep(struct fd_bo *bo, struct fd_pipe *pipe, uint32_t op)
     */
    bo_flush(bo);
 
-   return bo->funcs->cpu_prep(bo, pipe, op);
+   /* FD_BO_PREP_FLUSH is purely a frontend flag, and is not seen/handled
+    * by backend or kernel:
+    */
+   return bo->funcs->cpu_prep(bo, pipe, op & ~FD_BO_PREP_FLUSH);
 }
 
 void
