@@ -81,37 +81,43 @@ static const driOptionDescription vn_dri_options[] = {
 };
 
 static VkResult
-vn_instance_init_version(struct vn_instance *instance)
+vn_instance_init_renderer_versions(struct vn_instance *instance)
 {
-   uint32_t renderer_version = 0;
+   uint32_t instance_version = 0;
    VkResult result =
-      vn_call_vkEnumerateInstanceVersion(instance, &renderer_version);
+      vn_call_vkEnumerateInstanceVersion(instance, &instance_version);
    if (result != VK_SUCCESS) {
       if (VN_DEBUG(INIT))
          vn_log(instance, "failed to enumerate renderer instance version");
       return result;
    }
 
-   if (renderer_version < VN_MIN_RENDERER_VERSION) {
+   if (instance_version < VN_MIN_RENDERER_VERSION) {
       if (VN_DEBUG(INIT)) {
          vn_log(instance, "unsupported renderer instance version %d.%d",
-                VK_VERSION_MAJOR(instance->renderer_api_version),
-                VK_VERSION_MINOR(instance->renderer_api_version));
+                VK_VERSION_MAJOR(instance_version),
+                VK_VERSION_MINOR(instance_version));
       }
       return VK_ERROR_INITIALIZATION_FAILED;
    }
 
-   instance->renderer_api_version =
-      instance->base.base.app_info.api_version > VN_MIN_RENDERER_VERSION
-         ? instance->base.base.app_info.api_version
-         : VN_MIN_RENDERER_VERSION;
-
    if (VN_DEBUG(INIT)) {
-      vn_log(instance, "vk instance version %d.%d.%d",
-             VK_VERSION_MAJOR(instance->renderer_api_version),
-             VK_VERSION_MINOR(instance->renderer_api_version),
-             VK_VERSION_PATCH(instance->renderer_api_version));
+      vn_log(instance, "renderer instance version %d.%d.%d",
+             VK_VERSION_MAJOR(instance_version),
+             VK_VERSION_MINOR(instance_version),
+             VK_VERSION_PATCH(instance_version));
    }
+
+   /* request at least VN_MIN_RENDERER_VERSION internally */
+   instance->renderer_api_version =
+      MAX2(instance->base.base.app_info.api_version, VN_MIN_RENDERER_VERSION);
+
+   /* instance version for internal use is capped */
+   instance_version = MIN3(instance_version, instance->renderer_api_version,
+                           instance->renderer_info.vk_xml_version);
+   assert(instance_version >= VN_MIN_RENDERER_VERSION);
+
+   instance->renderer_version = instance_version;
 
    return VK_SUCCESS;
 }
@@ -1849,26 +1855,26 @@ vn_CreateInstance(const VkInstanceCreateInfo *pCreateInfo,
    if (result != VK_SUCCESS)
       goto fail;
 
-   result = vn_instance_init_version(instance);
+   result = vn_instance_init_renderer_versions(instance);
    if (result != VK_SUCCESS)
       goto fail;
 
-   VkInstanceCreateInfo local_create_info;
-   local_create_info = *pCreateInfo;
+   VkInstanceCreateInfo local_create_info = *pCreateInfo;
    local_create_info.ppEnabledExtensionNames = NULL;
    local_create_info.enabledExtensionCount = 0;
    pCreateInfo = &local_create_info;
 
-   /* request at least instance->renderer_api_version */
-   VkApplicationInfo local_app_info = {
-      .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-      .apiVersion = instance->renderer_api_version,
-   };
+   VkApplicationInfo local_app_info;
    if (instance->base.base.app_info.api_version <
        instance->renderer_api_version) {
       if (pCreateInfo->pApplicationInfo) {
          local_app_info = *pCreateInfo->pApplicationInfo;
          local_app_info.apiVersion = instance->renderer_api_version;
+      } else {
+         local_app_info = (const VkApplicationInfo){
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .apiVersion = instance->renderer_api_version,
+         };
       }
       local_create_info.pApplicationInfo = &local_app_info;
    }
