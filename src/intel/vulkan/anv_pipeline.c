@@ -1784,7 +1784,7 @@ anv_pipeline_compile_cs(struct anv_compute_pipeline *pipeline,
 
       anv_pipeline_lower_nir(&pipeline->base, mem_ctx, &stage, layout);
 
-      if (!stage.nir->info.cs.shared_memory_explicit_layout) {
+      if (!stage.nir->info.shared_memory_explicit_layout) {
          NIR_PASS_V(stage.nir, nir_lower_vars_to_explicit_types,
                     nir_var_mem_shared, shared_type_info);
       }
