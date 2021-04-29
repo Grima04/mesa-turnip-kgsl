@@ -679,7 +679,7 @@ enum isl_aux_usage {
  * Enum for keeping track of the state an auxiliary compressed surface.
  *
  * For any given auxiliary surface compression format (HiZ, CCS, or MCS), any
- * given slice (lod + array layer) can be in one of the six states described
+ * given slice (lod + array layer) can be in one of the seven states described
  * by this enum.  Draw and resolve operations may cause the slice to change
  * from one state to another.  The six valid states are:
  *
