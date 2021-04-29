@@ -158,7 +158,7 @@ static GLXContext dispatch_CreateContextAttribsARB(Display *dpy,
                                                    const int *attrib_list)
 {
     PFNGLXCREATECONTEXTATTRIBSARBPROC pCreateContextAttribsARB;
-    __GLXvendorInfo *dd;
+    __GLXvendorInfo *dd = NULL;
     GLXContext ret;
 
     if (config) {
