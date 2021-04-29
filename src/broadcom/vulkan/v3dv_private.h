@@ -56,6 +56,7 @@
 
 #include "common/v3d_device_info.h"
 #include "common/v3d_limits.h"
+#include "common/v3d_util.h"
 
 #include "compiler/shader_enums.h"
 #include "compiler/spirv/nir_spirv.h"
