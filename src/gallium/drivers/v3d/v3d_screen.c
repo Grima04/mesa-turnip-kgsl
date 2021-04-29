@@ -691,7 +691,7 @@ v3d_screen_is_dmabuf_modifier_supported(struct pipe_screen *pscreen,
         for (i = 0; i < ARRAY_SIZE(v3d_available_modifiers) - 1; i++) {
                 if (v3d_available_modifiers[i] == modifier) {
                         if (external_only)
-                                *external_only = false;
+                                *external_only = util_format_is_yuv(format);
 
                         return true;
                 }
