@@ -660,10 +660,8 @@ v3d_screen_query_dmabuf_modifiers(struct pipe_screen *pscreen,
         for (i = 0; i < *count; i++) {
                 modifiers[i] = v3d_available_modifiers[i];
                 if (external_only)
-                        external_only[i] =
-                                v3d_available_modifiers[i] ==
-                                DRM_FORMAT_MOD_BROADCOM_SAND128;
-       }
+                        external_only[i] = util_format_is_yuv(format);
+        }
 }
 
 static bool
