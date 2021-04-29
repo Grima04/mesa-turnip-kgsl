@@ -641,9 +641,18 @@ flush_resource(struct fd_context *ctx, struct fd_resource *rsc,
 }
 
 static void
-fd_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc) in_dt
+fd_flush_resource(struct pipe_context *pctx, struct pipe_resource *prsc)
+   in_dt
 {
-   flush_resource(fd_context(pctx), fd_resource(prsc), PIPE_MAP_READ);
+   struct fd_context *ctx = fd_context(pctx);
+   struct fd_resource *rsc = fd_resource(prsc);
+
+   flush_resource(ctx, rsc, PIPE_MAP_READ);
+
+   /* If we had to flush a batch, make sure it makes it's way all the
+    * way to the kernel:
+    */
+   fd_resource_wait(ctx, rsc, FD_BO_PREP_FLUSH);
 }
 
 static void
