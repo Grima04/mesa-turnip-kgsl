@@ -35,6 +35,7 @@
 #include "v3d_cl.h"
 #include "broadcom/compiler/v3d_compiler.h"
 #include "broadcom/common/v3d_macros.h"
+#include "broadcom/common/v3d_util.h"
 #include "broadcom/cle/v3dx_pack.h"
 
 static void
@@ -1551,25 +1552,38 @@ v3d_launch_grid(struct pipe_context *pctx, const struct pipe_grid_info *info)
                 v3d->compute_num_workgroups[2] = info->grid[2];
         }
 
+        uint32_t num_wgs = 1;
         for (int i = 0; i < 3; i++) {
+                num_wgs *= v3d->compute_num_workgroups[i];
                 submit.cfg[i] |= (v3d->compute_num_workgroups[i] <<
                                   V3D_CSD_CFG012_WG_COUNT_SHIFT);
         }
 
-        perf_debug("CSD only using single WG per SG currently, "
-                   "should increase that when possible.");
-        int wgs_per_sg = 1;
-        int wg_size = info->block[0] * info->block[1] * info->block[2];
-        submit.cfg[3] |= wgs_per_sg << V3D_CSD_CFG3_WGS_PER_SG_SHIFT;
-        submit.cfg[3] |= ((DIV_ROUND_UP(wgs_per_sg * wg_size, 16) - 1) <<
-                          V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT);
+        uint32_t wg_size = info->block[0] * info->block[1] * info->block[2];
+
+        struct v3d_compute_prog_data *compute =
+                v3d->prog.compute->prog_data.compute;
+        uint32_t wgs_per_sg =
+                v3d_csd_choose_workgroups_per_supergroup(
+                        &v3d->screen->devinfo,
+                        compute->base.has_control_barrier,
+                        compute->base.threads,
+                        num_wgs, wg_size);
+
+        uint32_t batches_per_sg = DIV_ROUND_UP(wgs_per_sg * wg_size, 16);
+        uint32_t whole_sgs = num_wgs / wgs_per_sg;
+        uint32_t rem_wgs = num_wgs - whole_sgs * wgs_per_sg;
+        uint32_t num_batches = batches_per_sg * whole_sgs +
+                               DIV_ROUND_UP(rem_wgs * wg_size, 16);
+
+        submit.cfg[3] |= (wgs_per_sg & 0xf) << V3D_CSD_CFG3_WGS_PER_SG_SHIFT;
+        submit.cfg[3] |=
+                (batches_per_sg - 1) << V3D_CSD_CFG3_BATCHES_PER_SG_M1_SHIFT;
         submit.cfg[3] |= (wg_size & 0xff) << V3D_CSD_CFG3_WG_SIZE_SHIFT;
 
-        int batches_per_wg = DIV_ROUND_UP(wg_size, 16);
+
         /* Number of batches the dispatch will invoke (minus 1). */
-        submit.cfg[4] = batches_per_wg * (v3d->compute_num_workgroups[0] *
-                                          v3d->compute_num_workgroups[1] *
-                                          v3d->compute_num_workgroups[2]) - 1;
+        submit.cfg[4] = num_batches - 1;
 
         /* Make sure we didn't accidentally underflow. */
         assert(submit.cfg[4] != ~0);

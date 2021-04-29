@@ -3765,6 +3765,8 @@ const nir_shader_compiler_options v3d_nir_options = {
         .lower_to_scalar = true,
         .has_fsub = true,
         .has_isub = true,
+        .divergence_analysis_options =
+                nir_divergence_multiple_workgroup_per_compute_subgroup,
 };
 
 /**
