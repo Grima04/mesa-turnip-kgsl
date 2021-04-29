@@ -106,6 +106,46 @@ tc_clear_driver_thread(struct threaded_context *tc)
 #define call_size_with_slots(type, num_slots) size_to_slots( \
    sizeof(struct type) + sizeof(((struct type*)NULL)->slot[0]) * (num_slots))
 
+/* Assign src to dst while dst is uninitialized. */
+static inline void
+tc_set_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
+{
+   *dst = src;
+   pipe_reference(NULL, &src->reference); /* only increment refcount */
+}
+
+/* Unreference dst but don't touch the dst pointer. */
+static inline void
+tc_drop_resource_reference(struct pipe_resource *dst)
+{
+   if (pipe_reference(&dst->reference, NULL)) /* only decrement refcount */
+      pipe_resource_destroy(dst);
+}
+
+/* Unreference dst but don't touch the dst pointer. */
+static inline void
+tc_drop_surface_reference(struct pipe_surface *dst)
+{
+   if (pipe_reference(&dst->reference, NULL)) /* only decrement refcount */
+      dst->context->surface_destroy(dst->context, dst);
+}
+
+/* Unreference dst but don't touch the dst pointer. */
+static inline void
+tc_drop_sampler_view_reference(struct pipe_sampler_view *dst)
+{
+   if (pipe_reference(&dst->reference, NULL)) /* only decrement refcount */
+      dst->context->sampler_view_destroy(dst->context, dst);
+}
+
+/* Unreference dst but don't touch the dst pointer. */
+static inline void
+tc_drop_so_target_reference(struct pipe_stream_output_target *dst)
+{
+   if (pipe_reference(&dst->reference, NULL)) /* only decrement refcount */
+      dst->context->stream_output_target_destroy(dst->context, dst);
+}
+
 /* We don't want to read or write min_index and max_index, because
  * it shouldn't be needed by drivers at this point.
  */
@@ -202,7 +242,7 @@ tc_batch_execute(void *job, UNUSED int thread_index)
             multi[1].index_bias = next->index_bias;
 
             if (next->info.index_size)
-               pipe_resource_reference(&next->info.index.resource, NULL);
+               tc_drop_resource_reference(next->info.index.resource);
 
             /* Find how many other draws can be merged. */
             next++;
@@ -216,13 +256,13 @@ tc_batch_execute(void *job, UNUSED int thread_index)
                index_bias_varies |= first->index_bias != next->index_bias;
 
                if (next->info.index_size)
-                  pipe_resource_reference(&next->info.index.resource, NULL);
+                  tc_drop_resource_reference(next->info.index.resource);
             }
 
             first->info.index_bias_varies = index_bias_varies;
             pipe->draw_vbo(pipe, &first->info, 0, NULL, multi, num_draws);
             if (first->info.index_size)
-               pipe_resource_reference(&first->info.index.resource, NULL);
+               tc_drop_resource_reference(first->info.index.resource);
             iter = (uint64_t*)next;
             continue;
          }
@@ -379,13 +419,6 @@ threaded_context_flush(struct pipe_context *_pipe,
       else
          tc_sync(token->tc);
    }
-}
-
-static void
-tc_set_resource_reference(struct pipe_resource **dst, struct pipe_resource *src)
-{
-   *dst = NULL;
-   pipe_resource_reference(dst, src);
 }
 
 void
@@ -609,7 +642,7 @@ tc_call_get_query_result_resource(struct pipe_context *pipe, void *call)
 
    pipe->get_query_result_resource(pipe, p->query, p->wait, p->result_type,
                                    p->index, p->resource, p->offset);
-   pipe_resource_reference(&p->resource, NULL);
+   tc_drop_resource_reference(p->resource);
 }
 
 static void
@@ -756,8 +789,8 @@ tc_call_set_framebuffer_state(struct pipe_context *pipe, void *call)
 
    unsigned nr_cbufs = p->nr_cbufs;
    for (unsigned i = 0; i < nr_cbufs; i++)
-      pipe_surface_reference(&p->cbufs[i], NULL);
-   pipe_surface_reference(&p->zsbuf, NULL);
+      tc_drop_surface_reference(p->cbufs[i]);
+   tc_drop_surface_reference(p->zsbuf);
 }
 
 static void
@@ -1035,7 +1068,7 @@ tc_call_set_sampler_views(struct pipe_context *pipe, void *call)
    pipe->set_sampler_views(pipe, p->shader, p->start, p->count,
                            p->unbind_num_trailing_slots, p->slot);
    for (unsigned i = 0; i < count; i++)
-      pipe_sampler_view_reference(&p->slot[i], NULL);
+      tc_drop_sampler_view_reference(p->slot[i]);
 }
 
 static void
@@ -1093,7 +1126,7 @@ tc_call_set_shader_images(struct pipe_context *pipe, void *call)
                            p->unbind_num_trailing_slots, p->slot);
 
    for (unsigned i = 0; i < count; i++)
-      pipe_resource_reference(&p->slot[i].resource, NULL);
+      tc_drop_resource_reference(p->slot[i].resource);
 }
 
 static void
@@ -1162,7 +1195,7 @@ tc_call_set_shader_buffers(struct pipe_context *pipe, void *call)
                             p->writable_bitmask);
 
    for (unsigned i = 0; i < count; i++)
-      pipe_resource_reference(&p->slot[i].buffer, NULL);
+      tc_drop_resource_reference(p->slot[i].buffer);
 }
 
 static void
@@ -1290,7 +1323,7 @@ tc_call_set_stream_output_targets(struct pipe_context *pipe, void *call)
 
    pipe->set_stream_output_targets(pipe, count, p->targets, p->offsets);
    for (unsigned i = 0; i < count; i++)
-      pipe_so_target_reference(&p->targets[i], NULL);
+      tc_drop_so_target_reference(p->targets[i]);
 }
 
 static void
@@ -1519,8 +1552,8 @@ tc_call_replace_buffer_storage(struct pipe_context *pipe, void *call)
       (struct tc_replace_buffer_storage *)call;
 
    p->func(pipe, p->dst, p->src);
-   pipe_resource_reference(&p->dst, NULL);
-   pipe_resource_reference(&p->src, NULL);
+   tc_drop_resource_reference(p->dst);
+   tc_drop_resource_reference(p->src);
 }
 
 static bool
@@ -1846,7 +1879,7 @@ tc_call_transfer_unmap(struct pipe_context *pipe, void *call)
       /* Nothing to do except keeping track of staging uploads */
       assert(tres->pending_staging_uploads > 0);
       p_atomic_dec(&tres->pending_staging_uploads);
-      pipe_resource_reference(&p->resource, NULL);
+      tc_drop_resource_reference(p->resource);
       return;
    }
    pipe->transfer_unmap(pipe, p->transfer);
@@ -1890,8 +1923,8 @@ tc_transfer_unmap(struct pipe_context *_pipe, struct pipe_transfer *transfer)
       if (ttrans->staging) {
          was_staging_transfer = true;
 
-         pipe_resource_reference(&ttrans->staging, NULL);
-         pipe_resource_reference(&ttrans->b.resource, NULL);
+         tc_drop_resource_reference(ttrans->staging);
+         tc_drop_resource_reference(ttrans->b.resource);
          slab_free(&tc->pool_transfers, ttrans);
       }
    }
@@ -1930,7 +1963,7 @@ tc_call_buffer_subdata(struct pipe_context *pipe, void *call)
 
    pipe->buffer_subdata(pipe, p->resource, p->usage, p->offset, p->size,
                         p->slot);
-   pipe_resource_reference(&p->resource, NULL);
+   tc_drop_resource_reference(p->resource);
 }
 
 static void
@@ -2001,7 +2034,7 @@ tc_call_texture_subdata(struct pipe_context *pipe, void *call)
 
    pipe->texture_subdata(pipe, p->resource, p->level, p->usage, &p->box,
                          p->slot, p->stride, p->layer_stride);
-   pipe_resource_reference(&p->resource, NULL);
+   tc_drop_resource_reference(p->resource);
 }
 
 static void
@@ -2419,7 +2452,7 @@ tc_call_draw_single(struct pipe_context *pipe, void *call)
 
    pipe->draw_vbo(pipe, &info->info, 0, NULL, &draw, 1);
    if (info->info.index_size)
-      pipe_resource_reference(&info->info.index.resource, NULL);
+      tc_drop_resource_reference(info->info.index.resource);
 }
 
 struct tc_draw_indirect {
@@ -2439,11 +2472,11 @@ tc_call_draw_indirect(struct pipe_context *pipe, void *call)
 
    pipe->draw_vbo(pipe, &info->info, 0, &info->indirect, &info->draw, 1);
    if (info->info.index_size)
-      pipe_resource_reference(&info->info.index.resource, NULL);
+      tc_drop_resource_reference(info->info.index.resource);
 
-   pipe_resource_reference(&info->indirect.buffer, NULL);
-   pipe_resource_reference(&info->indirect.indirect_draw_count, NULL);
-   pipe_so_target_reference(&info->indirect.count_from_stream_output, NULL);
+   tc_drop_resource_reference(info->indirect.buffer);
+   tc_drop_resource_reference(info->indirect.indirect_draw_count);
+   tc_drop_so_target_reference(info->indirect.count_from_stream_output);
 }
 
 struct tc_draw_multi {
@@ -2464,7 +2497,7 @@ tc_call_draw_multi(struct pipe_context *pipe, void *call)
 
    pipe->draw_vbo(pipe, &info->info, 0, NULL, info->slot, info->num_draws);
    if (info->info.index_size)
-      pipe_resource_reference(&info->info.index.resource, NULL);
+      tc_drop_resource_reference(info->info.index.resource);
 }
 
 #define DRAW_INFO_SIZE_WITHOUT_INDEXBUF_AND_MIN_MAX_INDEX \
@@ -2677,7 +2710,7 @@ tc_call_launch_grid(struct pipe_context *pipe, void *call)
    struct pipe_grid_info *p = &((struct tc_launch_grid_call *)call)->info;
 
    pipe->launch_grid(pipe, p);
-   pipe_resource_reference(&p->indirect, NULL);
+   tc_drop_resource_reference(p->indirect);
 }
 
 static void
@@ -2700,8 +2733,8 @@ tc_call_resource_copy_region(struct pipe_context *pipe, void *call)
 
    pipe->resource_copy_region(pipe, p->dst, p->dst_level, p->dstx, p->dsty,
                               p->dstz, p->src, p->src_level, &p->src_box);
-   pipe_resource_reference(&p->dst, NULL);
-   pipe_resource_reference(&p->src, NULL);
+   tc_drop_resource_reference(p->dst);
+   tc_drop_resource_reference(p->src);
 }
 
 static void
@@ -2742,8 +2775,8 @@ tc_call_blit(struct pipe_context *pipe, void *call)
    struct pipe_blit_info *blit = &((struct tc_blit_call*)call)->info;
 
    pipe->blit(pipe, blit);
-   pipe_resource_reference(&blit->dst.resource, NULL);
-   pipe_resource_reference(&blit->src.resource, NULL);
+   tc_drop_resource_reference(blit->dst.resource);
+   tc_drop_resource_reference(blit->src.resource);
 }
 
 static void
@@ -2777,7 +2810,7 @@ tc_call_generate_mipmap(struct pipe_context *pipe, void *call)
                                                     p->first_layer,
                                                     p->last_layer);
    assert(result);
-   pipe_resource_reference(&p->res, NULL);
+   tc_drop_resource_reference(p->res);
 }
 
 static bool
@@ -2827,7 +2860,7 @@ tc_call_flush_resource(struct pipe_context *pipe, void *call)
    struct pipe_resource *resource = ((struct tc_resource_call*)call)->resource;
 
    pipe->flush_resource(pipe, resource);
-   pipe_resource_reference(&resource, NULL);
+   tc_drop_resource_reference(resource);
 }
 
 static void
@@ -2846,7 +2879,7 @@ tc_call_invalidate_resource(struct pipe_context *pipe, void *call)
    struct pipe_resource *resource = ((struct tc_resource_call*)call)->resource;
 
    pipe->invalidate_resource(pipe, resource);
-   pipe_resource_reference(&resource, NULL);
+   tc_drop_resource_reference(resource);
 }
 
 static void
@@ -2947,7 +2980,7 @@ tc_call_clear_buffer(struct pipe_context *pipe, void *call)
 
    pipe->clear_buffer(pipe, p->res, p->offset, p->size, p->clear_value,
                       p->clear_value_size);
-   pipe_resource_reference(&p->res, NULL);
+   tc_drop_resource_reference(p->res);
 }
 
 static void
@@ -2983,7 +3016,7 @@ tc_call_clear_texture(struct pipe_context *pipe, void *call)
    struct tc_clear_texture *p = (struct tc_clear_texture *)call;
 
    pipe->clear_texture(pipe, p->res, p->level, &p->box, p->data);
-   pipe_resource_reference(&p->res, NULL);
+   tc_drop_resource_reference(p->res);
 }
 
 static void
@@ -3015,7 +3048,7 @@ tc_call_resource_commit(struct pipe_context *pipe, void *call)
    struct tc_resource_commit *p = (struct tc_resource_commit *)call;
 
    pipe->resource_commit(pipe, p->res, p->level, &p->box, p->commit);
-   pipe_resource_reference(&p->res, NULL);
+   tc_drop_resource_reference(p->res);
 }
 
 static bool
