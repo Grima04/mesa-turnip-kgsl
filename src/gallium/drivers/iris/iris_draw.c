@@ -199,7 +199,7 @@ iris_indirect_draw_vbo(struct iris_context *ice,
    for (int i = 0; i < indirect.draw_count; i++) {
       iris_batch_maybe_flush(batch, 1500);
 
-      iris_update_draw_parameters(ice, &info, drawid_offset, &indirect, draw);
+      iris_update_draw_parameters(ice, &info, drawid_offset + i, &indirect, draw);
 
       batch->screen->vtbl.upload_render_state(ice, batch, &info, drawid_offset + i, &indirect, draw);
 
