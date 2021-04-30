@@ -105,17 +105,14 @@ struct pan_blit_rsd_data {
 
 static void
 pan_blitter_prepare_midgard_rsd(const struct panfrost_device *dev,
-                                unsigned rt_count,
                                 const struct pan_image_view **rts,
-                                mali_ptr *blend_shaders,
-                                const struct pan_image_view *z,
-                                const struct pan_image_view *s,
+                                mali_ptr *blend_shaders, bool zs,
                                 struct MALI_RENDERER_STATE *rsd)
 {
         mali_ptr blend_shader = blend_shaders ? blend_shaders[0] : 0;
 
         rsd->properties.midgard.work_register_count = 4;
-        rsd->properties.midgard.force_early_z = !z && !s;
+        rsd->properties.midgard.force_early_z = !zs;
         rsd->stencil_mask_misc.alpha_test_compare_function = MALI_FUNC_ALWAYS;
         if (!(dev->quirks & MIDGARD_SFBD)) {
                 rsd->sfbd_blend_shader = blend_shader;
@@ -146,15 +143,10 @@ pan_blitter_prepare_midgard_rsd(const struct panfrost_device *dev,
 
 static void
 pan_blitter_prepare_bifrost_rsd(const struct panfrost_device *dev,
-                                unsigned rt_count,
-                                const struct pan_image_view **rts,
-                                mali_ptr *blend_shaders,
-                                const struct pan_image_view *z,
-                                const struct pan_image_view *s,
-                                bool ms,
+                                bool zs, bool ms,
                                 struct MALI_RENDERER_STATE *rsd)
 {
-        if (z || s) {
+        if (zs) {
                 rsd->properties.bifrost.zs_update_operation =
                         MALI_PIXEL_KILL_FORCE_LATE;
                 rsd->properties.bifrost.pixel_kill_operation =
@@ -171,7 +163,7 @@ pan_blitter_prepare_bifrost_rsd(const struct panfrost_device *dev,
          * but obviously not true for Z/S shaders. However, blit shaders
          * otherwise lack side effects, so other fragments may kill them. */
 
-        rsd->properties.bifrost.allow_forward_pixel_to_kill = !(z || s);
+        rsd->properties.bifrost.allow_forward_pixel_to_kill = !zs;
         rsd->properties.bifrost.allow_forward_pixel_to_be_killed = true;
 
         rsd->preload.fragment.coverage = true;
@@ -279,6 +271,7 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                      void *out)
 {
         unsigned tex_count = 0;
+        bool zs = (z || s);
         bool ms = false;
 
         for (unsigned i = 0; i < rt_count; i++) {
@@ -331,12 +324,10 @@ pan_blitter_emit_rsd(const struct panfrost_device *dev,
                 cfg.stencil_back = cfg.stencil_front;
 
                 if (pan_is_bifrost(dev)) {
-                        pan_blitter_prepare_bifrost_rsd(dev, rt_count, rts,
-                                                        blend_shaders, z, s,
-                                                        ms, &cfg);
+                        pan_blitter_prepare_bifrost_rsd(dev, zs, ms, &cfg);
                 } else {
-                        pan_blitter_prepare_midgard_rsd(dev, rt_count, rts,
-                                                        blend_shaders, z, s,
+                        pan_blitter_prepare_midgard_rsd(dev, rts,
+                                                        blend_shaders, zs,
                                                         &cfg);
                 }
         }
