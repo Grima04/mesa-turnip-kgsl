@@ -1271,3 +1271,10 @@ PUBLIC const __DRIextension **__driDriverGetExtensions_i915(void)
 
    return i915_driver_extensions;
 }
+
+PUBLIC const __DRIextension **__driDriverGetExtensions_i830(void)
+{
+   globalDriverAPI = &i915_driver_api;
+
+   return i915_driver_extensions;
+}
