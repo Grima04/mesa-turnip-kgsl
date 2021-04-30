@@ -10,3 +10,8 @@ spec@arb_pixel_buffer_object@texsubimage pbo
 spec@arb_vertex_type_2_10_10_10_rev@attribs
 spec@ext_packed_depth_stencil@fbo-depthstencil-gl_depth24_stencil8-drawpixels-24_8
 spec@arb_texture_cube_map_array@texsubimage cube_map_array
+
+# Flakes since around when the go-fast branch landed
+spec@arb_copy_buffer@copy_buffer_coherency,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texture(bias) 3d,Fail
+spec@glsl-1.30@execution@tex-miplevel-selection texturegrad 2d,Fail
