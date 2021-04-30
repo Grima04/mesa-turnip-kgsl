@@ -10,7 +10,9 @@
 
 #include "vn_android.h"
 
+#include <dlfcn.h>
 #include <drm/drm_fourcc.h>
+#include <hardware/gralloc.h>
 #include <hardware/hwvulkan.h>
 #include <vndk/hardware_buffer.h>
 #include <vulkan/vk_icd.h>
@@ -47,9 +49,12 @@ PUBLIC struct hwvulkan_module_t HAL_MODULE_INFO_SYM = {
    },
 };
 
+static const gralloc_module_t *gralloc = NULL;
+
 static int
 vn_hal_close(UNUSED struct hw_device_t *dev)
 {
+   dlclose(gralloc->common.dso);
    return 0;
 }
 
@@ -70,10 +75,31 @@ vn_hal_open(const struct hw_module_t *mod,
             const char *id,
             struct hw_device_t **dev)
 {
+   static const char CROS_GRALLOC_MODULE_NAME[] = "CrOS Gralloc";
+
    assert(mod == &HAL_MODULE_INFO_SYM.common);
    assert(strcmp(id, HWVULKAN_DEVICE_0) == 0);
 
+   /* get gralloc module for gralloc buffer info query */
+   int ret = hw_get_module(GRALLOC_HARDWARE_MODULE_ID,
+                           (const hw_module_t **)&gralloc);
+   if (ret) {
+      if (VN_DEBUG(WSI))
+         vn_log(NULL, "failed to open gralloc module(ret=%d)", ret);
+      return ret;
+   }
+
+   if (VN_DEBUG(WSI))
+      vn_log(NULL, "opened gralloc module name: %s", gralloc->common.name);
+
+   if (strcmp(gralloc->common.name, CROS_GRALLOC_MODULE_NAME) != 0 ||
+       !gralloc->perform) {
+      dlclose(gralloc->common.dso);
+      return -1;
+   }
+
    *dev = &vn_hal_dev.common;
+
    return 0;
 }
 
@@ -108,6 +134,82 @@ vn_GetSwapchainGrallocUsage2ANDROID(
    return VK_SUCCESS;
 }
 
+struct cros_gralloc0_buffer_info {
+   uint32_t drm_fourcc; /* ignored */
+   int num_fds;         /* ignored */
+   int fds[4];          /* ignored */
+   uint64_t modifier;
+   uint32_t offset[4];
+   uint32_t stride[4];
+};
+
+static bool
+vn_get_gralloc_buffer_info(buffer_handle_t handle,
+                           uint32_t out_strides[4],
+                           uint32_t out_offsets[4],
+                           uint64_t *out_format_modifier)
+{
+   static const int32_t CROS_GRALLOC_DRM_GET_BUFFER_INFO = 4;
+   struct cros_gralloc0_buffer_info info;
+   if (gralloc->perform(gralloc, CROS_GRALLOC_DRM_GET_BUFFER_INFO, handle,
+                        &info) != 0)
+      return false;
+
+   for (uint32_t i = 0; i < 4; i++) {
+      out_strides[i] = info.stride[i];
+      out_offsets[i] = info.offset[i];
+   }
+   *out_format_modifier = info.modifier;
+
+   return true;
+}
+
+static uint32_t
+vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
+                                       VkFormat format,
+                                       uint64_t modifier,
+                                       const VkAllocationCallbacks *alloc)
+{
+   VkDrmFormatModifierPropertiesListEXT mod_prop_list = {
+      .sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT,
+      .pNext = NULL,
+      .drmFormatModifierCount = 0,
+      .pDrmFormatModifierProperties = NULL,
+   };
+   VkFormatProperties2 format_prop = {
+      .sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2,
+      .pNext = &mod_prop_list,
+   };
+   vn_GetPhysicalDeviceFormatProperties2(physical_device, format,
+                                         &format_prop);
+
+   if (!mod_prop_list.drmFormatModifierCount)
+      return 0;
+
+   VkDrmFormatModifierPropertiesEXT *mod_props =
+      vk_zalloc(alloc,
+                sizeof(VkDrmFormatModifierPropertiesEXT) *
+                   mod_prop_list.drmFormatModifierCount,
+                VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
+   if (!mod_props)
+      return 0;
+
+   mod_prop_list.pDrmFormatModifierProperties = mod_props;
+   vn_GetPhysicalDeviceFormatProperties2(physical_device, format,
+                                         &format_prop);
+
+   uint32_t num_planes = 0;
+   for (uint32_t i = 0; i < mod_prop_list.drmFormatModifierCount; i++) {
+      if (mod_props[i].drmFormatModifier == modifier) {
+         num_planes = mod_props[i].drmFormatModifierPlaneCount;
+         break;
+      }
+   }
+
+   vk_free(alloc, mod_props);
+   return num_planes;
+}
+
 VkResult
 vn_image_from_anb(struct vn_device *dev,
                   const VkImageCreateInfo *image_info,
@@ -122,21 +224,22 @@ vn_image_from_anb(struct vn_device *dev,
     * We also need to pass the correct stride to vn_CreateImage, which will be
     * done via VkImageDrmFormatModifierExplicitCreateInfoEXT and will require
     * VK_EXT_image_drm_format_modifier support in the host driver. The struct
-    * also needs a modifier, which can only be encoded in anb_info->handle.
-    *
-    * Given above, until gralloc gets fixed to set stride correctly and to
-    * encode modifier in the native handle, we will have to make assumptions.
-    * (e.g. In CrOS, there's a VIRTGPU_RESOURCE_INFO_TYPE_EXTENDED kernel hack
-    * for that)
+    * needs host storage info which can be queried from cros gralloc.
     */
    VkResult result = VK_SUCCESS;
    VkDevice device = vn_device_to_handle(dev);
+   VkPhysicalDevice physical_device =
+      vn_physical_device_to_handle(dev->physical_device);
    VkDeviceMemory memory = VK_NULL_HANDLE;
    VkImage image = VK_NULL_HANDLE;
    struct vn_image *img = NULL;
    uint32_t mem_type_bits = 0;
    int dma_buf_fd = -1;
    int dup_fd = -1;
+   uint32_t strides[4] = { 0, 0, 0, 0 };
+   uint32_t offsets[4] = { 0, 0, 0, 0 };
+   uint64_t format_modifier = 0;
+   uint32_t num_planes = 0;
 
    if (anb_info->handle->numFds != 1) {
       if (VN_DEBUG(WSI))
@@ -152,28 +255,28 @@ vn_image_from_anb(struct vn_device *dev,
       goto fail;
    }
 
-   /* XXX fix this!!!!! */
-   uint32_t offset = 0;
-   uint32_t bpp = 0;
-   switch (image_info->format) {
-   case VK_FORMAT_R8G8B8A8_UNORM:
-   case VK_FORMAT_R8G8B8A8_SRGB:
-      bpp = 4;
-      break;
-   case VK_FORMAT_R5G6B5_UNORM_PACK16:
-      bpp = 2;
-      break;
-   default:
+   if (!vn_get_gralloc_buffer_info(anb_info->handle, strides, offsets,
+                                   &format_modifier) ||
+       format_modifier == DRM_FORMAT_MOD_INVALID) {
       result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
       goto fail;
-   };
-   uint32_t stride = align(image_info->extent.width * bpp, 512);
-   uint64_t modifier = I915_FORMAT_MOD_X_TILED;
+   }
+
+   num_planes = vn_num_planes_from_format_and_modifier(
+      physical_device, image_info->format, format_modifier, alloc);
+
+   /* TODO support multi-planar format */
+   if (num_planes != 1) {
+      if (VN_DEBUG(WSI))
+         vn_log(dev->instance, "num_planes is %d, expected 1", num_planes);
+      result = VK_ERROR_INVALID_EXTERNAL_HANDLE;
+      goto fail;
+   }
 
    const VkSubresourceLayout layout = {
-      .offset = offset,
+      .offset = offsets[0],
       .size = 0,
-      .rowPitch = stride,
+      .rowPitch = strides[0],
       .arrayPitch = 0,
       .depthPitch = 0,
    };
@@ -181,12 +284,17 @@ vn_image_from_anb(struct vn_device *dev,
       .sType =
          VK_STRUCTURE_TYPE_IMAGE_DRM_FORMAT_MODIFIER_EXPLICIT_CREATE_INFO_EXT,
       .pNext = image_info->pNext,
-      .drmFormatModifier = modifier,
+      .drmFormatModifier = format_modifier,
       .drmFormatModifierPlaneCount = 1,
       .pPlaneLayouts = &layout,
    };
+   const VkExternalMemoryImageCreateInfo external_img_info = {
+      .sType = VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO,
+      .pNext = &drm_mod_info,
+      .handleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT,
+   };
    VkImageCreateInfo local_image_info = *image_info;
-   local_image_info.pNext = &drm_mod_info;
+   local_image_info.pNext = &external_img_info;
    local_image_info.tiling = VK_IMAGE_TILING_DRM_FORMAT_MODIFIER_EXT;
 
    /* Force VK_SHARING_MODE_CONCURRENT if necessary.
