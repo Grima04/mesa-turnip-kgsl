@@ -3095,42 +3095,70 @@ vn_device_fix_create_info(const struct vn_device *dev,
                           const VkAllocationCallbacks *alloc,
                           VkDeviceCreateInfo *local_info)
 {
-   /* extra_exts and block_exts must not overlap */
    const struct vn_physical_device *physical_dev = dev->physical_device;
-   const char *extra_exts[8];
-   const char *block_exts[8];
+   const struct vk_device_extension_table *app_exts =
+      &dev->base.base.enabled_extensions;
+   /* extra_exts and block_exts must not overlap */
+   const char *extra_exts[16];
+   const char *block_exts[16];
    uint32_t extra_count = 0;
    uint32_t block_count = 0;
 
-#if defined(VN_USE_WSI_PLATFORM) || defined(ANDROID)
-   if (dev->physical_device->base.base.supported_extensions
-          .EXT_image_drm_format_modifier)
-      extra_exts[extra_count++] =
-         VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
-#endif
+   /* fix for WSI */
+   const bool has_wsi =
+      app_exts->KHR_swapchain || app_exts->ANDROID_native_buffer;
+   if (has_wsi) {
+      if (!app_exts->EXT_image_drm_format_modifier) {
+         extra_exts[extra_count++] =
+            VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME;
 
-   if (dev->base.base.enabled_extensions.ANDROID_native_buffer) {
-      block_exts[block_count++] = VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME;
+         if (physical_dev->renderer_version < VK_API_VERSION_1_2 &&
+             !app_exts->KHR_image_format_list) {
+            extra_exts[extra_count++] =
+               VK_KHR_IMAGE_FORMAT_LIST_EXTENSION_NAME;
+         }
+      }
 
-      if (!dev->base.base.enabled_extensions.EXT_queue_family_foreign &&
-          dev->physical_device->renderer_extensions.EXT_queue_family_foreign)
+      if (!app_exts->EXT_queue_family_foreign) {
          extra_exts[extra_count++] =
             VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME;
+      }
+
+      if (app_exts->KHR_swapchain) {
+         /* see vn_physical_device_get_native_extensions */
+         block_exts[block_count++] = VK_KHR_SWAPCHAIN_EXTENSION_NAME;
+         block_exts[block_count++] =
+            VK_KHR_SWAPCHAIN_MUTABLE_FORMAT_EXTENSION_NAME;
+         block_exts[block_count++] =
+            VK_KHR_INCREMENTAL_PRESENT_EXTENSION_NAME;
+      } else {
+         block_exts[block_count++] = VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME;
+      }
    }
 
-   if (dev->base.base.enabled_extensions.KHR_external_memory_fd ||
-       dev->base.base.enabled_extensions.EXT_external_memory_dma_buf) {
+   if (app_exts->KHR_external_memory_fd ||
+       app_exts->EXT_external_memory_dma_buf || has_wsi) {
       switch (physical_dev->external_memory.renderer_handle_type) {
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT:
-         extra_exts[extra_count++] = VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME;
+         if (!app_exts->EXT_external_memory_dma_buf) {
+            extra_exts[extra_count++] =
+               VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME;
+         }
          FALLTHROUGH;
       case VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT:
-         extra_exts[extra_count++] = VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
+         if (!app_exts->KHR_external_memory_fd) {
+            extra_exts[extra_count++] =
+               VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME;
+         }
          break;
       default:
+         /* TODO other handle types */
          break;
       }
    }
+
+   assert(extra_count <= ARRAY_SIZE(extra_exts));
+   assert(block_count <= ARRAY_SIZE(block_exts));
 
    if (!extra_count && (!block_count || !dev_info->enabledExtensionCount))
       return dev_info;
