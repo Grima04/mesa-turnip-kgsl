@@ -38,6 +38,8 @@
 #include "radv_radeon_winsys.h"
 #include "sid.h"
 
+#define GFX6_MAX_CS_SIZE 0xffff8 /* in dwords */
+
 enum { VIRTUAL_BUFFER_HASH_TABLE_SIZE = 1024 };
 
 struct radv_amdgpu_cs {
@@ -251,7 +253,7 @@ radv_amdgpu_cs_grow(struct radeon_cmdbuf *_cs, size_t min_size)
    }
 
    if (!cs->ws->use_ib_bos) {
-      const uint64_t limit_dws = 0xffff8;
+      const uint64_t limit_dws = GFX6_MAX_CS_SIZE;
       uint64_t ib_dws = MAX2(cs->base.cdw + min_size, MIN2(cs->base.max_dw * 2, limit_dws));
 
       /* The total ib size cannot exceed limit_dws dwords. */
@@ -941,7 +943,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
                size += preamble_cs->cdw;
             size += rcs->cdw;
 
-            assert(size < 0xffff8);
+            assert(size < GFX6_MAX_CS_SIZE);
 
             while (!size || (size & 7)) {
                size++;
@@ -980,7 +982,7 @@ radv_amdgpu_winsys_cs_submit_sysmem(struct radeon_winsys_ctx *_ctx, int queue_id
             size += preamble_cs->cdw;
 
          while (i + cnt < cs_count &&
-                0xffff8 - size >= radv_amdgpu_cs(cs_array[i + cnt])->base.cdw) {
+                GFX6_MAX_CS_SIZE - size >= radv_amdgpu_cs(cs_array[i + cnt])->base.cdw) {
             size += radv_amdgpu_cs(cs_array[i + cnt])->base.cdw;
             ++cnt;
          }
