@@ -2909,7 +2909,20 @@ to upconvert to 32b float internally?
 		-->
 		<bitfield name="UNK20" pos="20" type="boolean"/>
 	</reg32>
-	<reg32 offset="0xa871" name="SP_GS_PRIM_SIZE" low="0" high="7" type="uint"/> <!-- size of output of previous stage -->
+	<reg32 offset="0xa871" name="SP_GS_PRIM_SIZE" low="0" high="7" type="uint">
+		<doc>
+			Normally the size of the output of the last stage in
+			dwords. It should be programmed as follows:
+
+			size less than 63    - size
+			size of 63 (?) or 64 - 63
+			size greater than 64 - 64
+
+			What to program when the size is 61-63 is a guess, but
+			both the blob and ir3 align the size to 4 dword's so it
+			doesn't matter in practice.
+		</doc>
+	</reg32>
 	<reg32 offset="0xa872" name="SP_GS_BRANCH_COND" type="hex"/>
 
 	<!-- TODO: exact same layout as 0xa802-0xa81a -->
