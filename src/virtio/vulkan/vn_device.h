@@ -82,8 +82,13 @@ struct vn_physical_device {
     */
    uint32_t renderer_version;
 
+   /* Between the driver and the app, base.base.supported_extensions is what
+    * we advertise.
+    *
+    * Between the driver and the renderer, renderer_extensions is what we can
+    * use internally (after enabling).
+    */
    struct vk_device_extension_table renderer_extensions;
-
    uint32_t *extension_spec_versions;
 
    VkPhysicalDeviceFeatures2 features;

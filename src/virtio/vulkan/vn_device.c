@@ -1502,8 +1502,54 @@ vn_physical_device_get_supported_extensions(
    };
 }
 
+static void
+vn_physical_device_init_supported_extensions(
+   struct vn_physical_device *physical_dev)
+{
+   struct vk_device_extension_table supported;
+   struct vk_device_extension_table recognized;
+   vn_physical_device_get_supported_extensions(physical_dev, &supported,
+                                               &recognized);
+
+   for (uint32_t i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
+      const VkExtensionProperties *props = &vk_device_extensions[i];
+
+#ifdef ANDROID
+      if (!vk_android_allowed_device_extensions.extensions[i])
+         continue;
+#endif
+
+      /* does not depend on renderer (e.g., WSI) */
+      if (supported.extensions[i]) {
+         physical_dev->base.base.supported_extensions.extensions[i] = true;
+         physical_dev->extension_spec_versions[i] = props->specVersion;
+#ifdef ANDROID
+         /* override VK_ANDROID_native_buffer spec version */
+         if (!strcmp(props->extensionName,
+                     VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME))
+            physical_dev->extension_spec_versions[i] =
+               VN_ANDROID_NATIVE_BUFFER_SPEC_VERSION;
+#endif
+         continue;
+      }
+
+      /* no driver support */
+      if (!recognized.extensions[i])
+         continue;
+
+      /* check renderer support */
+      if (!physical_dev->renderer_extensions.extensions[i])
+         continue;
+
+      physical_dev->base.base.supported_extensions.extensions[i] = true;
+      physical_dev->extension_spec_versions[i] =
+         MIN2(physical_dev->extension_spec_versions[i], props->specVersion);
+   }
+}
+
 static VkResult
-vn_physical_device_init_extensions(struct vn_physical_device *physical_dev)
+vn_physical_device_init_renderer_extensions(
+   struct vn_physical_device *physical_dev)
 {
    struct vn_instance *instance = physical_dev->instance;
    const VkAllocationCallbacks *alloc = &instance->base.base.alloc;
@@ -1532,11 +1578,6 @@ vn_physical_device_init_extensions(struct vn_physical_device *physical_dev)
       }
    }
 
-   struct vk_device_extension_table supported;
-   struct vk_device_extension_table recognized;
-   vn_physical_device_get_supported_extensions(physical_dev, &supported,
-                                               &recognized);
-
    physical_dev->extension_spec_versions =
       vk_zalloc(alloc,
                 sizeof(*physical_dev->extension_spec_versions) *
@@ -1549,52 +1590,22 @@ vn_physical_device_init_extensions(struct vn_physical_device *physical_dev)
 
    for (uint32_t i = 0; i < VK_DEVICE_EXTENSION_COUNT; i++) {
       const VkExtensionProperties *props = &vk_device_extensions[i];
-      const VkExtensionProperties *renderer_props = NULL;
-
       for (uint32_t j = 0; j < count; j++) {
-         if (!strcmp(props->extensionName, exts[j].extensionName)) {
-            physical_dev->renderer_extensions.extensions[i] = true;
-            renderer_props = &exts[j];
-            break;
-         }
+         if (strcmp(props->extensionName, exts[j].extensionName))
+            continue;
+
+         /* check encoder support */
+         const uint32_t spec_version =
+            vn_info_extension_spec_version(props->extensionName);
+         if (!spec_version)
+            continue;
+
+         physical_dev->renderer_extensions.extensions[i] = true;
+         physical_dev->extension_spec_versions[i] =
+            MIN2(exts[j].specVersion, spec_version);
+
+         break;
       }
-
-#ifdef ANDROID
-      if (!vk_android_allowed_device_extensions.extensions[i])
-         continue;
-#endif
-
-      /* does not depend on renderer (e.g., WSI) */
-      if (supported.extensions[i]) {
-         physical_dev->base.base.supported_extensions.extensions[i] = true;
-         physical_dev->extension_spec_versions[i] = props->specVersion;
-#ifdef ANDROID
-         /* override VK_ANDROID_native_buffer spec version */
-         if (!strcmp(props->extensionName,
-                     VK_ANDROID_NATIVE_BUFFER_EXTENSION_NAME))
-            physical_dev->extension_spec_versions[i] =
-               VN_ANDROID_NATIVE_BUFFER_SPEC_VERSION;
-#endif
-         continue;
-      }
-
-      /* no driver support */
-      if (!recognized.extensions[i])
-         continue;
-
-      /* check renderer support */
-      if (!renderer_props)
-         continue;
-
-      /* check encoder support */
-      const uint32_t spec_version =
-         vn_info_extension_spec_version(props->extensionName);
-      if (!spec_version)
-         continue;
-
-      physical_dev->base.base.supported_extensions.extensions[i] = true;
-      physical_dev->extension_spec_versions[i] =
-         MIN2(renderer_props->specVersion, spec_version);
    }
 
    vk_free(alloc, exts);
@@ -1642,9 +1653,11 @@ vn_physical_device_init(struct vn_physical_device *physical_dev)
    if (result != VK_SUCCESS)
       return result;
 
-   result = vn_physical_device_init_extensions(physical_dev);
+   result = vn_physical_device_init_renderer_extensions(physical_dev);
    if (result != VK_SUCCESS)
       return result;
+
+   vn_physical_device_init_supported_extensions(physical_dev);
 
    /* TODO query all caps with minimal round trips */
    vn_physical_device_init_features(physical_dev);
