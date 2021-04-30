@@ -1380,11 +1380,6 @@ vn_physical_device_init_external_memory(
       physical_dev->external_memory.supported_handle_types =
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_OPAQUE_FD_BIT |
          VK_EXTERNAL_MEMORY_HANDLE_TYPE_DMA_BUF_BIT_EXT;
-
-      physical_dev->base.base.supported_extensions.KHR_external_memory_fd =
-         true;
-      physical_dev->base.base.supported_extensions
-         .EXT_external_memory_dma_buf = true;
    }
 }
 
@@ -1451,6 +1446,13 @@ vn_physical_device_get_native_extensions(
       .ANDROID_native_buffer = true,
 #endif
    };
+
+   /* see vn_physical_device_init_external_memory */
+   if (physical_dev->renderer_extensions.EXT_external_memory_dma_buf &&
+       physical_dev->instance->renderer_info.has_dmabuf_import) {
+      exts->KHR_external_memory_fd = true;
+      exts->EXT_external_memory_dma_buf = true;
+   }
 }
 
 static void
@@ -2925,8 +2927,7 @@ vn_EnumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice,
       if (physical_dev->base.base.supported_extensions.extensions[i]) {
          vk_outarray_append(&out, prop) {
             *prop = vk_device_extensions[i];
-            if (physical_dev->extension_spec_versions[i])
-               prop->specVersion = physical_dev->extension_spec_versions[i];
+            prop->specVersion = physical_dev->extension_spec_versions[i];
          }
       }
    }
