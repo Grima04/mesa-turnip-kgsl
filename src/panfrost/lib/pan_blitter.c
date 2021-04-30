@@ -869,23 +869,16 @@ pan_preload_emit_textures(struct pan_pool *pool,
 
 static mali_ptr
 pan_blitter_emit_viewport(struct pan_pool *pool,
-                          const struct pan_fb_info *fb)
+                          uint16_t minx, uint16_t miny,
+                          uint16_t maxx, uint16_t maxy)
 {
         struct panfrost_ptr vp = panfrost_pool_alloc_desc(pool, VIEWPORT);
 
         pan_pack(vp.cpu, VIEWPORT, cfg) {
-                if (pool->dev->quirks & MIDGARD_SFBD) {
-                        cfg.scissor_maximum_x = fb->width - 1;
-                        cfg.scissor_maximum_y = fb->height - 1;
-                } else {
-                        /* Align on 32x32 tiles */
-                        cfg.scissor_minimum_x = fb->extent.minx & ~31;
-                        cfg.scissor_minimum_y = fb->extent.miny & ~31;
-                        cfg.scissor_maximum_x = MIN2(ALIGN_POT(fb->extent.maxx + 1, 32),
-                                                     fb->width) - 1;
-                        cfg.scissor_maximum_y = MIN2(ALIGN_POT(fb->extent.maxy + 1, 32),
-                                                     fb->height) - 1;
-                }
+                cfg.scissor_minimum_x = minx;
+                cfg.scissor_minimum_y = miny;
+                cfg.scissor_maximum_x = maxx;
+                cfg.scissor_maximum_y = maxy;
         }
 
         return vp.gpu;
@@ -906,7 +899,21 @@ pan_preload_emit_dcd(struct pan_pool *pool,
 
                 cfg.position = coordinates;
                 pan_blitter_emit_varying(pool, coordinates, &cfg);
-                cfg.viewport = pan_blitter_emit_viewport(pool, fb);
+                uint16_t minx = 0, miny = 0, maxx, maxy;
+                if (pool->dev->quirks & MIDGARD_SFBD) {
+                        maxx = fb->width - 1;
+                        maxy = fb->height - 1;
+                } else {
+                        /* Align on 32x32 tiles */
+                        minx = fb->extent.minx & ~31;
+                        miny = fb->extent.miny & ~31;
+                        maxx = MIN2(ALIGN_POT(fb->extent.maxx + 1, 32), fb->width) - 1;
+                        maxy = MIN2(ALIGN_POT(fb->extent.maxy + 1, 32), fb->height) - 1;
+                }
+
+                cfg.viewport =
+                        pan_blitter_emit_viewport(pool, minx, miny, maxx, maxy);
+
                 pan_preload_emit_textures(pool, fb, zs, &cfg);
 
                 if (pan_is_bifrost(pool->dev)) {
