@@ -1258,6 +1258,11 @@ triop("umad24", tuint32, _2src_commutative,
 binop("umul24", tint32, _2src_commutative + associative,
       "(((uint32_t)src0 << 8) >> 8) * (((uint32_t)src1 << 8) >> 8)")
 
+# relaxed versions of the above, which assume input is in the 24bit range (no clamping)
+binop("imul24_relaxed", tint32, _2src_commutative + associative, "src0 * src1")
+triop("umad24_relaxed", tuint32, _2src_commutative, "src0 * src1 + src2")
+binop("umul24_relaxed", tuint32, _2src_commutative + associative, "src0 * src1")
+
 unop_convert("fisnormal", tbool1, tfloat, "isnormal(src0)")
 unop_convert("fisfinite", tbool1, tfloat, "isfinite(src0)")
 
