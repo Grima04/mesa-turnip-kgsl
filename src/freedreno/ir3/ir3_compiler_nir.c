@@ -1310,17 +1310,24 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 	struct ir3_block *b = ctx->block;
 	struct ir3_instruction *barrier;
 
+	/* TODO: find out why there is a major difference of .l usage
+	 * between a5xx and a6xx,
+	 */
+
 	switch (intr->intrinsic) {
 	case nir_intrinsic_control_barrier:
 		barrier = ir3_BAR(b);
 		barrier->cat7.g = true;
-		barrier->cat7.l = true;
+		if (ctx->compiler->gpu_id < 600)
+			barrier->cat7.l = true;
 		barrier->flags = IR3_INSTR_SS | IR3_INSTR_SY;
 		barrier->barrier_class = IR3_BARRIER_EVERYTHING;
 		break;
 	case nir_intrinsic_memory_barrier_buffer:
 		barrier = ir3_FENCE(b);
 		barrier->cat7.g = true;
+		if (ctx->compiler->gpu_id > 600)
+			barrier->cat7.l = true;
 		barrier->cat7.r = true;
 		barrier->cat7.w = true;
 		barrier->barrier_class = IR3_BARRIER_BUFFER_W;
@@ -1328,9 +1335,9 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 				IR3_BARRIER_BUFFER_W;
 		break;
 	case nir_intrinsic_memory_barrier_image:
-		// TODO double check if this should have .g set
 		barrier = ir3_FENCE(b);
 		barrier->cat7.g = true;
+		barrier->cat7.l = true;
 		barrier->cat7.r = true;
 		barrier->cat7.w = true;
 		barrier->barrier_class = IR3_BARRIER_IMAGE_W;
@@ -1339,8 +1346,8 @@ emit_intrinsic_barrier(struct ir3_context *ctx, nir_intrinsic_instr *intr)
 		break;
 	case nir_intrinsic_memory_barrier_shared:
 		barrier = ir3_FENCE(b);
-		barrier->cat7.g = true;
-		barrier->cat7.l = true;
+		if (ctx->compiler->gpu_id < 600)
+			barrier->cat7.l = true;
 		barrier->cat7.r = true;
 		barrier->cat7.w = true;
 		barrier->barrier_class = IR3_BARRIER_SHARED_W;
