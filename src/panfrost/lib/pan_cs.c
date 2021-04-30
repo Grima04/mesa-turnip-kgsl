@@ -932,11 +932,10 @@ pan_emit_fragment_job(const struct panfrost_device *dev,
         pan_section_pack(out, FRAGMENT_JOB, PAYLOAD, payload) {
                 payload.bound_min_x = fb->extent.minx >> MALI_TILE_SHIFT;
                 payload.bound_min_y = fb->extent.miny >> MALI_TILE_SHIFT;
-
-                /* Batch max values are inclusive, we need to subtract 1. */
                 payload.bound_max_x = fb->extent.maxx >> MALI_TILE_SHIFT;
                 payload.bound_max_y = fb->extent.maxy >> MALI_TILE_SHIFT;
                 payload.framebuffer = fbd;
+
                 if (fb->tile_map.base) {
                         payload.has_tile_enable_map = true;
                         payload.tile_enable_map = fb->tile_map.base;
