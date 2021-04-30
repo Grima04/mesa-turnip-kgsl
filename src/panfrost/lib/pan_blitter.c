@@ -882,10 +882,10 @@ pan_preload_emit_viewport(struct pan_pool *pool,
                         /* Align on 32x32 tiles */
                         cfg.scissor_minimum_x = fb->extent.minx & ~31;
                         cfg.scissor_minimum_y = fb->extent.miny & ~31;
-                        cfg.scissor_maximum_x = MIN2(ALIGN_POT(fb->extent.maxx, 32) - 1,
-                                                     fb->width - 1);
-                        cfg.scissor_maximum_y = MIN2(ALIGN_POT(fb->extent.maxy, 32) - 1,
-                                                     fb->height - 1);
+                        cfg.scissor_maximum_x = MIN2(ALIGN_POT(fb->extent.maxx + 1, 32),
+                                                     fb->width) - 1;
+                        cfg.scissor_maximum_y = MIN2(ALIGN_POT(fb->extent.maxy + 1, 32),
+                                                     fb->height) - 1;
                 }
         }
 

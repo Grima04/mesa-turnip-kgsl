@@ -103,6 +103,7 @@ struct pan_fb_bifrost_info {
 struct pan_fb_info {
         unsigned width, height;
         struct {
+                /* Max values are inclusive */
                 unsigned minx, miny, maxx, maxy;
         } extent;
         unsigned nr_samples;
