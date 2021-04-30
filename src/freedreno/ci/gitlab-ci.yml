@@ -194,6 +194,7 @@ a630_egl:
   variables:
     DEQP_VER: egl
     BM_START_XORG: 1
+    BARE_METAL_TEST_SCRIPT: "/install/bare-metal/arm64_a630_egl.sh"
 
 a630_gles_others:
   extends:
