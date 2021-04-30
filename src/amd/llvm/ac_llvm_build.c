@@ -1060,6 +1060,7 @@ static LLVMValueRef ac_build_load_custom(struct ac_llvm_context *ctx, LLVMValueR
    result = LLVMBuildLoad(ctx->builder, pointer, "");
    if (invariant)
       LLVMSetMetadata(result, ctx->invariant_load_md_kind, ctx->empty_md);
+   LLVMSetAlignment(result, 4);
    return result;
 }
 
@@ -4692,7 +4693,7 @@ LLVMValueRef ac_build_main(const struct ac_shader_args *args, struct ac_llvm_con
       if (LLVMGetTypeKind(LLVMTypeOf(P)) == LLVMPointerTypeKind) {
          ac_add_function_attr(ctx->context, main_function, i + 1, AC_FUNC_ATTR_NOALIAS);
          ac_add_attr_dereferenceable(P, UINT64_MAX);
-         ac_add_attr_alignment(P, 32);
+         ac_add_attr_alignment(P, 4);
       }
    }
 

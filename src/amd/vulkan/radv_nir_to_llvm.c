@@ -122,6 +122,7 @@ load_descriptor_sets(struct radv_shader_context *ctx)
 
          ctx->descriptor_sets[i] =
             ac_build_load_to_sgpr(&ctx->ac, desc_sets, LLVMConstInt(ctx->ac.i32, i, false));
+         LLVMSetAlignment(ctx->descriptor_sets[i], 4);
       }
    } else {
       while (mask) {
@@ -445,6 +446,7 @@ radv_load_ssbo(struct ac_shader_abi *abi, LLVMValueRef buffer_ptr, bool write, b
 
    result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");
    LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
+   LLVMSetAlignment(result, 4);
 
    return result;
 }
@@ -494,6 +496,7 @@ radv_load_ubo(struct ac_shader_abi *abi, unsigned desc_set, unsigned binding, bo
 
    result = LLVMBuildLoad(ctx->ac.builder, buffer_ptr, "");
    LLVMSetMetadata(result, ctx->ac.invariant_load_md_kind, ctx->ac.empty_md);
+   LLVMSetAlignment(result, 4);
 
    return result;
 }
