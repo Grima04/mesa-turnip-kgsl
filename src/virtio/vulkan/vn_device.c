@@ -1436,23 +1436,34 @@ vn_physical_device_get_native_extensions(
    const struct vn_physical_device *physical_dev,
    struct vk_device_extension_table *exts)
 {
-   *exts = (struct vk_device_extension_table){
-#ifdef VN_USE_WSI_PLATFORM
-      .KHR_incremental_present = true,
-      .KHR_swapchain = true,
-      .KHR_swapchain_mutable_format = true,
-#endif
-#ifdef ANDROID
-      .ANDROID_native_buffer = true,
-#endif
-   };
+   const struct vn_instance *instance = physical_dev->instance;
+   const struct vn_renderer_info *renderer_info = &instance->renderer_info;
+   const struct vk_device_extension_table *renderer_exts =
+      &physical_dev->renderer_extensions;
+
+   memset(exts, 0, sizeof(*exts));
 
    /* see vn_physical_device_init_external_memory */
-   if (physical_dev->renderer_extensions.EXT_external_memory_dma_buf &&
-       physical_dev->instance->renderer_info.has_dmabuf_import) {
+   if (renderer_exts->EXT_external_memory_dma_buf &&
+       renderer_info->has_dmabuf_import) {
       exts->KHR_external_memory_fd = true;
       exts->EXT_external_memory_dma_buf = true;
    }
+
+   /* TODO join Android to do proper checks */
+#ifdef VN_USE_WSI_PLATFORM
+   exts->KHR_incremental_present = true;
+   exts->KHR_swapchain = true;
+   exts->KHR_swapchain_mutable_format = true;
+#endif
+
+#ifdef ANDROID
+   if (renderer_exts->EXT_image_drm_format_modifier &&
+       renderer_exts->EXT_queue_family_foreign &&
+       exts->EXT_external_memory_dma_buf) {
+      exts->ANDROID_native_buffer = true;
+   }
+#endif
 }
 
 static void

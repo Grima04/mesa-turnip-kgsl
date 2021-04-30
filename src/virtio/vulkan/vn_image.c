@@ -103,11 +103,7 @@ vn_image_android_wsi_init(struct vn_device *dev,
       img->sharing_mode == VK_SHARING_MODE_EXCLUSIVE
          ? 0
          : VK_QUEUE_FAMILY_IGNORED;
-   const uint32_t external_index =
-      (dev->base.base.enabled_extensions.EXT_queue_family_foreign ||
-       dev->physical_device->renderer_extensions.EXT_queue_family_foreign)
-         ? VK_QUEUE_FAMILY_FOREIGN_EXT
-         : VK_QUEUE_FAMILY_EXTERNAL;
+   const uint32_t external_index = VK_QUEUE_FAMILY_FOREIGN_EXT;
    const uint32_t count = dev->physical_device->queue_family_count;
 
    struct vn_image_ownership_cmds *local_cmds =
