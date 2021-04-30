@@ -224,10 +224,7 @@ pan_blitter_emit_bifrost_blend(const struct panfrost_device *dev,
                         return;
                 }
 
-                nir_alu_type type =
-                        (util_format_is_pure_uint(iview->format)) ? nir_type_uint32 :
-                        (util_format_is_pure_sint(iview->format)) ? nir_type_int32 :
-                        nir_type_float32;
+                nir_alu_type type = blit_shader->key.surfaces[rt].type;
 
                 cfg.round_to_fb_precision = true;
                 cfg.srgb = util_format_is_srgb(iview->format);
