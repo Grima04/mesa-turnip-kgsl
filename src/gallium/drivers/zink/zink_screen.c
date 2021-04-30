@@ -703,7 +703,9 @@ zink_get_shader_param(struct pipe_screen *pscreen,
 
    case PIPE_SHADER_CAP_FP16:
    case PIPE_SHADER_CAP_FP16_DERIVATIVES:
-      return screen->info.feats12.shaderFloat16;
+      return screen->info.feats12.shaderFloat16 ||
+             (screen->info.have_KHR_shader_float16_int8 &&
+              screen->info.shader_float16_int8_feats.shaderFloat16);
 
    case PIPE_SHADER_CAP_INT16:
       return screen->info.feats.features.shaderInt16;

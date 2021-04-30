@@ -156,6 +156,9 @@ EXTENSIONS = [
         features=True,
         conditions=["$feats.scalarBlockLayout"]),
     Extension("VK_KHR_swapchain"),
+    Extension("VK_KHR_shader_float16_int8",
+              alias="shader_float16_int8",
+              features=True),
 ]
 
 # constructor: Versions(device_version(major, minor, patch), struct_version(major, minor))
