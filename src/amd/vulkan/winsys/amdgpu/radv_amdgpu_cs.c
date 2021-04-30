@@ -567,6 +567,59 @@ radv_amdgpu_cs_execute_secondary(struct radeon_cmdbuf *_parent, struct radeon_cm
       radeon_emit(&parent->base, child->ib.ib_mc_address >> 32);
       radeon_emit(&parent->base, child->ib.size);
    } else {
+      /* When the secondary command buffer is huge we have to copy the list of CS buffers to the
+       * parent to submit multiple IBs.
+       */
+      if (child->num_old_cs_buffers > 0) {
+         unsigned num_cs_buffers;
+         uint32_t *new_buf;
+
+         /* Compute the total number of CS buffers needed. */
+         num_cs_buffers = parent->num_old_cs_buffers + child->num_old_cs_buffers + 1;
+
+         struct radeon_cmdbuf *old_cs_buffers =
+            realloc(parent->old_cs_buffers, num_cs_buffers * sizeof(*parent->old_cs_buffers));
+         if (!old_cs_buffers) {
+            parent->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+            parent->base.cdw = 0;
+            return;
+         }
+         parent->old_cs_buffers = old_cs_buffers;
+
+         /* Copy the parent CS to its list of CS buffers, so submission ordering is maintained. */
+         new_buf = malloc(parent->base.max_dw * 4);
+         if (!new_buf) {
+            parent->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+            parent->base.cdw = 0;
+            return;
+         }
+         memcpy(new_buf, parent->base.buf, parent->base.max_dw * 4);
+
+         parent->old_cs_buffers[parent->num_old_cs_buffers].cdw = parent->base.cdw;
+         parent->old_cs_buffers[parent->num_old_cs_buffers].max_dw = parent->base.max_dw;
+         parent->old_cs_buffers[parent->num_old_cs_buffers].buf = new_buf;
+         parent->num_old_cs_buffers++;
+
+         /* Then, copy all child CS buffers to the parent list. */
+         for (unsigned i = 0; i < child->num_old_cs_buffers; i++) {
+            new_buf = malloc(child->old_cs_buffers[i].max_dw * 4);
+            if (!new_buf) {
+               parent->status = VK_ERROR_OUT_OF_HOST_MEMORY;
+               parent->base.cdw = 0;
+               return;
+            }
+            memcpy(new_buf, child->old_cs_buffers[i].buf, child->old_cs_buffers[i].max_dw * 4);
+
+            parent->old_cs_buffers[parent->num_old_cs_buffers].cdw = child->old_cs_buffers[i].cdw;
+            parent->old_cs_buffers[parent->num_old_cs_buffers].max_dw = child->old_cs_buffers[i].max_dw;
+            parent->old_cs_buffers[parent->num_old_cs_buffers].buf = new_buf;
+            parent->num_old_cs_buffers++;
+         }
+
+         /* Reset the parent CS before copying the child CS into it. */
+         parent->base.cdw = 0;
+      }
+
       if (parent->base.cdw + child->base.cdw > parent->base.max_dw)
          radv_amdgpu_cs_grow(&parent->base, child->base.cdw);
 
