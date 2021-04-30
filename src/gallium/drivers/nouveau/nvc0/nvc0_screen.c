@@ -623,13 +623,10 @@ nvc0_screen_get_compute_param(struct pipe_screen *pscreen,
       switch (obj_class) {
       case GM200_COMPUTE_CLASS:
          RET((uint64_t []) { 96 << 10 });
-         break;
       case GM107_COMPUTE_CLASS:
          RET((uint64_t []) { 64 << 10 });
-         break;
       default:
          RET((uint64_t []) { 48 << 10 });
-         break;
       }
    case PIPE_COMPUTE_CAP_MAX_PRIVATE_SIZE: /* l[] */
       RET((uint64_t []) { 512 << 10 });
