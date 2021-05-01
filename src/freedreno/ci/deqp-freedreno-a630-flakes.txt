@@ -104,3 +104,6 @@ dEQP-GLES31.functional.layout_binding.ssbo.fragment_binding_array
 dEQP-VK.subgroups.quad.framebuffer.subgroupquadswapvertical_ivec2_tess_eval
 dEQP-VK.api.copy_and_blit.core.blit_image.all_formats.color.r8g8b8a8_snorm.r32_sfloat.general_optimal_nearest
 dEQP-GLES31.functional.tessellation.invariance.primitive_set.quads_equal_spacing_cw
+
+# Still debugging flakes in this from fd/go-fast
+dEQP-GLES3.functional.fence_sync.client_wait_sync_finish
