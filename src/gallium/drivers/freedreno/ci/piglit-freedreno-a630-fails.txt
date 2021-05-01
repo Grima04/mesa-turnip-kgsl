@@ -99,8 +99,6 @@ spec@arb_direct_state_access@gettextureimage-formats init-by-rendering,Fail
 spec@arb_direct_state_access@transformfeedback-bufferbase,Fail
 spec@arb_direct_state_access@transformfeedback-bufferrange,Fail
 spec@arb_es2_compatibility@texwrap formats bordercolor-swizzled,Fail
-spec@arb_fragment_program@fp-fragment-position,Crash
-spec@arb_fragment_program@sparse-samplers,Crash
 spec@arb_framebuffer_srgb@blit renderbuffer linear msaa disabled clear,Fail
 spec@arb_framebuffer_srgb@blit renderbuffer linear msaa disabled render,Fail
 spec@arb_framebuffer_srgb@blit renderbuffer linear msaa enabled clear,Fail
