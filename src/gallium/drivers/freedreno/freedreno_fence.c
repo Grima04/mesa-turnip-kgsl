@@ -59,14 +59,6 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
          }
       }
 
-      /* If after the pre-created unflushed fence is flushed, we end up
-       * re-populated to a previous last_fence, then *that* is the one
-       * whose submit_fence.ready we want to wait on:
-       */
-      if (fence->last_fence) {
-         return fence_flush(pctx, fence->last_fence, timeout);
-      }
-
       util_queue_fence_wait(&fence->submit_fence.ready);
 
       /* We've already waited for batch to be flushed and fence->batch
@@ -89,13 +81,14 @@ fence_flush(struct pipe_context *pctx, struct pipe_fence_handle *fence,
 void
 fd_fence_repopulate(struct pipe_fence_handle *fence, struct pipe_fence_handle *last_fence)
 {
+   if (last_fence->last_fence)
+      fd_fence_repopulate(fence, last_fence->last_fence);
+
    /* The fence we are re-populating must not be an fd-fence (but last_fince
     * might have been)
     */
    assert(!fence->submit_fence.use_fence_fd);
    assert(!last_fence->batch);
-
-   fence->submit_fence.fence = last_fence->submit_fence.fence;
 
    fd_fence_ref(&fence->last_fence, last_fence);
 
@@ -140,8 +133,15 @@ bool
 fd_fence_finish(struct pipe_screen *pscreen, struct pipe_context *pctx,
                 struct pipe_fence_handle *fence, uint64_t timeout)
 {
+   /* Note: for TC deferred fence, pctx->flush() may not have been called
+    * yet, so always do fence_flush() *first* before delegating to
+    * fence->last_fence
+    */
    if (!fence_flush(pctx, fence, timeout))
       return false;
+
+   if (fence->last_fence)
+      return fd_fence_finish(pscreen, pctx, fence->last_fence, timeout);
 
    if (fence->last_fence)
       fence = fence->last_fence;
@@ -220,6 +220,11 @@ fd_fence_server_sync(struct pipe_context *pctx, struct pipe_fence_handle *fence)
     */
    fence_flush(pctx, fence, 0);
 
+   if (fence->last_fence) {
+      fd_fence_server_sync(pctx, fence->last_fence);
+      return;
+   }
+
    /* if not an external fence, then nothing more to do without preemption: */
    if (!fence->submit_fence.use_fence_fd)
       return;
@@ -243,6 +248,9 @@ fd_fence_server_signal(struct pipe_context *pctx,
 int
 fd_fence_get_fd(struct pipe_screen *pscreen, struct pipe_fence_handle *fence)
 {
+   /* We don't expect deferred flush to be combined with fence-fd: */
+   assert(!fence->last_fence);
+
    assert(fence->submit_fence.use_fence_fd);
 
    /* NOTE: in the deferred fence case, the pctx we want is the threaded-ctx
