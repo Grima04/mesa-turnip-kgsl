@@ -44,6 +44,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
+#include "glxclient.h"
 #include "apple_glx.h"
 #include "glxconfig.h"
 #include "apple_cgl.h"

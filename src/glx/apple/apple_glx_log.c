@@ -35,6 +35,7 @@
 #include <stdlib.h>
 #include <inttypes.h>
 #include <pthread.h>
+#include "glxclient.h"
 #include "apple_glx_log.h"
 #include "util/debug.h"
 
