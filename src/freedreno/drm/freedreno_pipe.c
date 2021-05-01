@@ -64,6 +64,11 @@ fd_pipe_new2(struct fd_device *dev, enum fd_pipe_id id, uint32_t prio)
                                  0, "pipe-control");
    pipe->control = fd_bo_map(pipe->control_mem);
 
+   /* We could be getting a bo from the bo-cache, make sure the fence value
+    * is not garbage:
+    */
+   pipe->control->fence = 0;
+
    /* We don't want the control_mem bo to hold a reference to the ourself,
     * so disable userspace fencing.  This also means that we won't be able
     * to determine if the buffer is idle which is needed by bo-cache.  But
