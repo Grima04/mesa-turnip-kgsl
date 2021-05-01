@@ -294,7 +294,7 @@ pan_sample_pattern(unsigned samples)
         }
 }
 
-static int
+int
 pan_select_crc_rt(const struct panfrost_device *dev, const struct pan_fb_info *fb)
 {
         if (dev->arch < 7) {
