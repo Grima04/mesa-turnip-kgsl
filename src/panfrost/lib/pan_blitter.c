@@ -911,7 +911,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                      struct pan_fb_info *fb, bool zs,
                      mali_ptr coordinates,
                      mali_ptr tsd, mali_ptr rsd,
-                     void *out)
+                     void *out, bool always_write)
 {
         pan_pack(out, DRAW, cfg) {
                 cfg.four_components_per_vertex = true;
@@ -929,7 +929,7 @@ pan_preload_emit_dcd(struct pan_pool *pool,
                         /* Tiles updated by blit shaders are still considered
                          * clean (separate for colour and Z/S), allowing us to
                          * suppress unnecessary writeback */
-                        cfg.clean_fragment_write = true;
+                        cfg.clean_fragment_write = !always_write;
                 } else {
                         pan_preload_emit_midgard_sampler(pool, &cfg);
                         cfg.texture_descriptor_is_64b = true;
@@ -966,7 +966,8 @@ pan_preload_emit_midgard_tiler_job(struct pan_pool *desc_pool,
                 panfrost_pool_alloc_desc(desc_pool, MIDGARD_TILER_JOB);
 
         pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, rsd,
-                             pan_section_ptr(job.cpu, MIDGARD_TILER_JOB, DRAW));
+                             pan_section_ptr(job.cpu, MIDGARD_TILER_JOB, DRAW),
+                             false);
 
         pan_section_pack(job.cpu, MIDGARD_TILER_JOB, PRIMITIVE, cfg) {
                 cfg.draw_mode = MALI_DRAW_MODE_TRIANGLE_STRIP;
@@ -994,13 +995,32 @@ pan_preload_emit_bifrost_pre_frame_dcd(struct pan_pool *desc_pool,
                                        mali_ptr coords, mali_ptr rsd,
                                        mali_ptr tsd)
 {
+        struct panfrost_device *dev = desc_pool->dev;
+
         unsigned dcd_idx = zs ? 0 : 1;
         pan_preload_fb_bifrost_alloc_pre_post_dcds(desc_pool, fb);
         assert(fb->bifrost.pre_post.dcds.cpu);
         void *dcd = fb->bifrost.pre_post.dcds.cpu +
                     (dcd_idx * (MALI_DRAW_LENGTH + MALI_DRAW_PADDING_LENGTH));
 
-        pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, rsd, dcd);
+        int crc_rt = pan_select_crc_rt(dev, fb);
+
+        bool always_write = false;
+
+        /* If CRC data is currently invalid and this batch will make it valid,
+         * write even clean tiles to make sure CRC data is updated. */
+        if (crc_rt >= 0) {
+                unsigned level = fb->rts[crc_rt].view->first_level;
+                bool valid = fb->rts[crc_rt].state->slices[level].crc_valid;
+                bool full = !fb->extent.minx && !fb->extent.miny &&
+                        fb->extent.maxx == (fb->width - 1) &&
+                        fb->extent.maxy == (fb->height - 1);
+
+                if (full && !valid)
+                        always_write = true;
+        }
+
+        pan_preload_emit_dcd(desc_pool, fb, zs, coords, tsd, rsd, dcd, always_write);
         if (zs) {
                 enum pipe_format fmt = fb->zs.view.zs->image->layout.format;
                 bool always = false;
@@ -1029,6 +1049,7 @@ pan_preload_emit_bifrost_pre_frame_dcd(struct pan_pool *desc_pool,
                         MALI_PRE_POST_FRAME_SHADER_MODE_INTERSECT;
         } else {
                 fb->bifrost.pre_post.modes[dcd_idx] =
+                        always_write ? MALI_PRE_POST_FRAME_SHADER_MODE_ALWAYS :
                         MALI_PRE_POST_FRAME_SHADER_MODE_INTERSECT;
         }
 }
