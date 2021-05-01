@@ -44,6 +44,8 @@ BuildUtil::init(Program *prog)
    bb = NULL;
    pos = NULL;
 
+   tail = false;
+
    memset(imms, 0, sizeof(imms));
    immCount = 0;
 }
