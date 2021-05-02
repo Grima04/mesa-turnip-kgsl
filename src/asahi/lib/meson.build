@@ -23,6 +23,7 @@ dep_iokit = dependency('IOKit', required : false)
 
 libasahi_lib_files = files(
   'agx_device.c',
+  'pool.c',
   'tiling.c',
 )
 
