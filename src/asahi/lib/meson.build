@@ -19,7 +19,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+dep_iokit = dependency('IOKit', required : false)
+
 libasahi_lib_files = files(
+  'agx_device.c',
   'tiling.c',
 )
 
@@ -46,7 +49,7 @@ libasahi_lib = static_library(
   include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
-  dependencies: [dep_libdrm, idep_nir],
+  dependencies: [dep_libdrm, idep_nir, dep_iokit],
   build_by_default : false,
 )
 
