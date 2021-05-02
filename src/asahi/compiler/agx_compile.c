@@ -425,6 +425,10 @@ agx_emit_alu(agx_builder *b, nir_alu_instr *instr)
    case nir_op_ushr: return agx_bfeil_to(b, dst, agx_zero(), s0, s1, 0);
    case nir_op_ishr: return agx_asr_to(b, dst, s0, s1);
 
+   case nir_op_b2i32:
+   case nir_op_b2i16:
+      return agx_icmpsel_to(b, dst, s0, agx_zero(), agx_zero(), agx_immediate(1), AGX_ICOND_UEQ);
+
    case nir_op_b2f16:
    case nir_op_b2f32:
    {
