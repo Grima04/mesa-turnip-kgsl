@@ -1448,6 +1448,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
    int size;
    struct drm_amdgpu_cs_chunk *chunks;
    struct drm_amdgpu_cs_chunk_data *chunk_data;
+   bool use_bo_list_create = ctx->ws->info.drm_minor < 27;
    struct drm_amdgpu_bo_list_in bo_list_in;
    void *wait_syncobj = NULL, *signal_syncobj = NULL;
    uint32_t *in_syncobjs = NULL;
@@ -1455,7 +1456,7 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
    uint32_t bo_list = 0;
    VkResult result = VK_SUCCESS;
 
-   size = request->number_of_ibs + 2 /* user fence */ + 4;
+   size = request->number_of_ibs + 2 /* user fence */ + (!use_bo_list_create ? 1 : 0) + 3;
 
    chunks = malloc(sizeof(chunks[0]) * size);
    if (!chunks)
@@ -1536,17 +1537,35 @@ radv_amdgpu_cs_submit(struct radv_amdgpu_ctx *ctx, struct radv_amdgpu_cs_request
       num_chunks++;
    }
 
-   /* Standard path passing the buffer list via the CS ioctl. */
-   bo_list_in.operation = ~0;
-   bo_list_in.list_handle = ~0;
-   bo_list_in.bo_number = request->num_handles;
-   bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
-   bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)request->handles;
+   if (use_bo_list_create) {
+      /* Legacy path creating the buffer list handle and passing it
+       * to the CS ioctl.
+       */
+      r = amdgpu_bo_list_create_raw(ctx->ws->dev, request->num_handles,
+                                    request->handles, &bo_list);
+      if (r) {
+         if (r == -ENOMEM) {
+            fprintf(stderr, "amdgpu: Not enough memory for buffer list creation.\n");
+            result = VK_ERROR_OUT_OF_HOST_MEMORY;
+         } else {
+            fprintf(stderr, "amdgpu: buffer list creation failed (%d).\n", r);
+            result = VK_ERROR_UNKNOWN;
+         }
+         goto error_out;
+      }
+   } else {
+      /* Standard path passing the buffer list via the CS ioctl. */
+      bo_list_in.operation = ~0;
+      bo_list_in.list_handle = ~0;
+      bo_list_in.bo_number = request->num_handles;
+      bo_list_in.bo_info_size = sizeof(struct drm_amdgpu_bo_list_entry);
+      bo_list_in.bo_info_ptr = (uint64_t)(uintptr_t)request->handles;
 
-   chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
-   chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
-   chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
-   num_chunks++;
+      chunks[num_chunks].chunk_id = AMDGPU_CHUNK_ID_BO_HANDLES;
+      chunks[num_chunks].length_dw = sizeof(struct drm_amdgpu_bo_list_in) / 4;
+      chunks[num_chunks].chunk_data = (uintptr_t)&bo_list_in;
+      num_chunks++;
+   }
 
    r = amdgpu_cs_submit_raw2(ctx->ws->dev, ctx->ctx, bo_list, num_chunks, chunks, &request->seq_no);
 
