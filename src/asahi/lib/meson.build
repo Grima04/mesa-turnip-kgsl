@@ -23,6 +23,7 @@ dep_iokit = dependency('IOKit', required : false)
 
 libasahi_lib_files = files(
   'agx_device.c',
+  'agx_formats.c',
   'pool.c',
   'tiling.c',
 )
@@ -47,7 +48,7 @@ idep_agx_pack = declare_dependency(
 libasahi_lib = static_library(
   'asahi_lib',
   [libasahi_lib_files, agx_pack],
-  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux],
+  include_directories : [inc_include, inc_src, inc_mapi, inc_mesa, inc_gallium, inc_gallium_aux, inc_asahi],
   c_args : [no_override_init_args],
   gnu_symbol_visibility : 'hidden',
   dependencies: [dep_libdrm, idep_nir, dep_iokit],
