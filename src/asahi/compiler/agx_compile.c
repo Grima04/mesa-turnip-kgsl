@@ -133,6 +133,36 @@ agx_optimize_nir(nir_shader *nir)
    NIR_PASS_V(nir, nir_opt_move, move_all);
 }
 
+/* ABI: position first, then user, then psiz */
+static void
+agx_remap_varyings(nir_shader *nir)
+{
+   unsigned base = 0;
+
+   nir_variable *pos = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_POS);
+   if (pos) {
+      pos->data.driver_location = base;
+      base += 4;
+   }
+
+   nir_foreach_shader_out_variable(var, nir) {
+      unsigned loc = var->data.location;
+
+      if(loc == VARYING_SLOT_POS || loc == VARYING_SLOT_PSIZ) {
+         continue;
+      }
+
+      var->data.driver_location = base;
+      base += 4;
+   }
+
+   nir_variable *psiz = nir_find_variable_with_location(nir, nir_var_shader_out, VARYING_SLOT_PSIZ);
+   if (psiz) {
+      psiz->data.driver_location = base;
+      base += 1;
+   }
+}
+
 void
 agx_compile_shader_nir(nir_shader *nir,
       struct agx_shader_key *key,
@@ -154,6 +184,9 @@ agx_compile_shader_nir(nir_shader *nir,
    NIR_PASS_V(nir, nir_lower_vars_to_scratch, nir_var_function_temp, 16,
          glsl_get_natural_size_align_bytes);
    NIR_PASS_V(nir, nir_lower_indirect_derefs, nir_var_function_temp, ~0);
+
+   if (ctx->stage == MESA_SHADER_VERTEX)
+      agx_remap_varyings(nir);
 
    NIR_PASS_V(nir, nir_split_var_copies);
    NIR_PASS_V(nir, nir_lower_global_vars_to_local);
