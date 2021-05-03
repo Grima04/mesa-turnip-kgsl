@@ -423,7 +423,8 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
         case PIPE_SHADER_CAP_SUPPORTED_IRS:
                 return 1 << PIPE_SHADER_IR_NIR;
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-                return 32;
+                /* Disable GLSL loop unrolling, we'll use NIR's */
+                return 0;
         case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
         case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
                 return 0;
@@ -668,6 +669,12 @@ static const nir_shader_compiler_options v3d_nir_options = {
         .has_isub = true,
         .divergence_analysis_options =
                 nir_divergence_multiple_workgroup_per_compute_subgroup,
+        /* This will enable loop unrolling in the state tracker so we won't
+         * be able to selectively disable it in backend if it leads to
+         * lower thread counts or TMU spills. Choose a conservative maximum to
+         * limit register pressure impact.
+         */
+        .max_unroll_iterations = 16,
 };
 
 static const void *
