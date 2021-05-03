@@ -1153,12 +1153,14 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
    struct virtgpu *gpu = (struct virtgpu *)renderer;
    struct drm_virtgpu_resource_info info;
    uint32_t gem_handle = 0;
+   struct virtgpu_bo *bo = NULL;
 
    mtx_lock(&gpu->dmabuf_import_mutex);
 
    gem_handle = virtgpu_ioctl_prime_fd_to_handle(gpu, fd);
    if (!gem_handle)
       goto fail;
+   bo = util_sparse_array_get(&gpu->bo_array, gem_handle);
 
    if (virtgpu_ioctl_resource_info(gpu, gem_handle, &info))
       goto fail;
@@ -1184,7 +1186,9 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
       mmap_size = 0;
    }
 
-   struct virtgpu_bo *bo = util_sparse_array_get(&gpu->bo_array, gem_handle);
+   /* we check bo->gem_handle instead of bo->refcount because bo->refcount
+    * might only be memset to 0 and is not considered initialized in theory
+    */
    if (bo->gem_handle == gem_handle) {
       if (bo->base.mmap_size < mmap_size)
          goto fail;
@@ -1214,7 +1218,7 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
    return VK_SUCCESS;
 
 fail:
-   if (gem_handle)
+   if (gem_handle && bo->gem_handle != gem_handle)
       virtgpu_ioctl_gem_close(gpu, gem_handle);
    mtx_unlock(&gpu->dmabuf_import_mutex);
    return VK_ERROR_INVALID_EXTERNAL_HANDLE;
