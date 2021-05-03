@@ -1942,6 +1942,12 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                                 BI_CMPF_NE);
                 break;
 
+        case nir_op_b2i8:
+        case nir_op_b2i16:
+        case nir_op_b2i32:
+                bi_lshift_and_to(b, sz, dst, s0, bi_imm_uintN(1, sz), bi_imm_u8(0));
+                break;
+
         case nir_op_fround_even:
         case nir_op_fceil:
         case nir_op_ffloor:
