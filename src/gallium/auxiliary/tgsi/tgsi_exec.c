@@ -80,9 +80,9 @@ union tgsi_double_channel {
    unsigned u[TGSI_QUAD_SIZE][2];
    uint64_t u64[TGSI_QUAD_SIZE];
    int64_t i64[TGSI_QUAD_SIZE];
-};
+} ALIGN16;
 
-struct tgsi_double_vector {
+struct ALIGN16 tgsi_double_vector {
    union tgsi_double_channel xy;
    union tgsi_double_channel zw;
 };
