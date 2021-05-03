@@ -526,6 +526,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                  void *debug_output_data,
                  int program_id, int variant_id,
                  uint32_t min_threads_for_reg_alloc,
+                 bool disable_loop_unrolling,
                  bool disable_constant_ubo_load_sorting,
                  bool disable_tmu_pipelining,
                  bool fallback_scheduler)
@@ -545,6 +546,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->fallback_scheduler = fallback_scheduler;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
+        c->disable_loop_unrolling = disable_loop_unrolling;
 
         s = nir_shader_clone(c, s);
         c->s = s;
@@ -867,7 +869,7 @@ v3d_nir_lower_vs_early(struct v3d_compile *c)
         NIR_PASS_V(c->s, nir_remove_unused_io_vars,
                    nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
         NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
-        v3d_optimize_nir(c->s);
+        v3d_optimize_nir(c, c->s);
         NIR_PASS_V(c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
         /* This must go before nir_lower_io */
@@ -901,7 +903,7 @@ v3d_nir_lower_gs_early(struct v3d_compile *c)
         NIR_PASS_V(c->s, nir_remove_unused_io_vars,
                    nir_var_shader_out, used_outputs, NULL); /* demotes to globals */
         NIR_PASS_V(c->s, nir_lower_global_vars_to_local);
-        v3d_optimize_nir(c->s);
+        v3d_optimize_nir(c, c->s);
         NIR_PASS_V(c->s, nir_remove_dead_variables, nir_var_shader_in, NULL);
 
         /* This must go before nir_lower_io */
@@ -1417,7 +1419,7 @@ v3d_attempt_compile(struct v3d_compile *c)
 
         NIR_PASS_V(c->s, nir_lower_wrmasks, should_split_wrmask, c->s);
 
-        v3d_optimize_nir(c->s);
+        v3d_optimize_nir(c, c->s);
 
         /* Do late algebraic optimization to turn add(a, neg(b)) back into
          * subs, then the mandatory cleanup after algebraic.  Note that it may
@@ -1537,6 +1539,7 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 uint32_t min_threads_for_reg_alloc;
         } static const strategies[] = {
                 { "default",                  4 },
+                { "disable loop unrolling",   4 },
                 { "disable UBO load sorting", 1 },
                 { "disable TMU pipelining",   1 },
                 { "fallback scheduler",       1 }
@@ -1547,9 +1550,10 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
                                      strategies[i].min_threads_for_reg_alloc,
-                                     i > 0, /* Disable UBO load sorting */
-                                     i > 1, /* Disable TMU pipelining */
-                                     i > 2  /* Fallback_scheduler */);
+                                     i > 0, /* Disable loop unrolling */
+                                     i > 1, /* Disable UBO load sorting */
+                                     i > 2, /* Disable TMU pipelining */
+                                     i > 3  /* Fallback_scheduler */);
 
                 v3d_attempt_compile(c);
 

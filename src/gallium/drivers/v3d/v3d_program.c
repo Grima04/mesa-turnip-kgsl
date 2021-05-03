@@ -318,7 +318,7 @@ v3d_uncompiled_shader_create(struct pipe_context *pctx,
 
         NIR_PASS_V(s, nir_lower_load_const_to_scalar);
 
-        v3d_optimize_nir(s);
+        v3d_optimize_nir(NULL, s);
 
         NIR_PASS_V(s, nir_remove_dead_variables, nir_var_function_temp, NULL);
 

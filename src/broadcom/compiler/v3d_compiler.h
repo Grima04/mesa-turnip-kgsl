@@ -660,6 +660,9 @@ struct v3d_compile {
          */
         bool disable_ldunif_opt;
 
+        /* Disables loop unrolling to reduce register pressure. */
+        bool disable_loop_unrolling;
+
         /* Minimum number of threads we are willing to use to register allocate
          * a shader with the current compilation strategy. This only prevents
          * us from lowering the thread count to register allocate successfully,
@@ -939,7 +942,7 @@ vir_has_uniform(struct qinst *inst)
 
 const struct v3d_compiler *v3d_compiler_init(const struct v3d_device_info *devinfo);
 void v3d_compiler_free(const struct v3d_compiler *compiler);
-void v3d_optimize_nir(struct nir_shader *s);
+void v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s);
 
 uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       struct v3d_key *key,

@@ -1774,7 +1774,7 @@ mem_vectorize_callback(unsigned align_mul, unsigned align_offset,
 }
 
 void
-v3d_optimize_nir(struct nir_shader *s)
+v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
 {
         bool progress;
         unsigned lower_flrp =
@@ -1826,7 +1826,8 @@ v3d_optimize_nir(struct nir_shader *s)
                 NIR_PASS(progress, s, nir_opt_undef);
                 NIR_PASS(progress, s, nir_lower_undef_to_zero);
 
-                if (s->options->max_unroll_iterations > 0) {
+                if (c && !c->disable_loop_unrolling &&
+                    s->options->max_unroll_iterations > 0) {
                         NIR_PASS(progress, s, nir_opt_loop_unroll,
                                  nir_var_shader_in |
                                  nir_var_shader_out |
