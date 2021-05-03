@@ -1825,6 +1825,13 @@ v3d_optimize_nir(struct nir_shader *s)
 
                 NIR_PASS(progress, s, nir_opt_undef);
                 NIR_PASS(progress, s, nir_lower_undef_to_zero);
+
+                if (s->options->max_unroll_iterations > 0) {
+                        NIR_PASS(progress, s, nir_opt_loop_unroll,
+                                 nir_var_shader_in |
+                                 nir_var_shader_out |
+                                 nir_var_function_temp);
+                }
         } while (progress);
 
         nir_move_options sink_opts =
