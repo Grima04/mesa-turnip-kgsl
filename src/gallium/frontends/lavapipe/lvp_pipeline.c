@@ -394,12 +394,6 @@ shared_var_info(const struct glsl_type *type, unsigned *size, unsigned *align)
       *align = comp_size;
 }
 
-#define OPT(pass, ...) do {                                       \
-         bool this_progress = false;                              \
-         NIR_PASS(this_progress, nir, pass, ##__VA_ARGS__);       \
-         progress |= this_progress;                               \
-      } while(0)
-
 static void
 lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
                          struct vk_shader_module *module,
@@ -524,7 +518,7 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    NIR_PASS_V(nir, nir_lower_compute_system_values, NULL);
 
    NIR_PASS_V(nir, nir_lower_clip_cull_distance_arrays);
-   nir_remove_dead_variables(nir, nir_var_uniform, NULL);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_uniform, NULL);
 
    lvp_lower_pipeline_layout(pipeline->device, pipeline->layout, nir);
 
@@ -560,28 +554,27 @@ lvp_shader_compile_to_ir(struct lvp_pipeline *pipeline,
    do {
       progress = false;
 
-      OPT(nir_lower_flrp, 32|64, true);
-      OPT(nir_split_array_vars, nir_var_function_temp);
-      OPT(nir_shrink_vec_array_vars, nir_var_function_temp);
-      OPT(nir_opt_deref);
-      OPT(nir_lower_vars_to_ssa);
+      NIR_PASS(progress, nir, nir_lower_flrp, 32|64, true);
+      NIR_PASS(progress, nir, nir_split_array_vars, nir_var_function_temp);
+      NIR_PASS(progress, nir, nir_shrink_vec_array_vars, nir_var_function_temp);
+      NIR_PASS(progress, nir, nir_opt_deref);
+      NIR_PASS(progress, nir, nir_lower_vars_to_ssa);
 
-      progress |= nir_copy_prop(nir);
-      progress |= nir_opt_dce(nir);
-      progress |= nir_opt_dead_cf(nir);
-      progress |= nir_opt_cse(nir);
-      progress |= nir_opt_algebraic(nir);
-      progress |= nir_opt_constant_folding(nir);
-      progress |= nir_opt_undef(nir);
+      NIR_PASS(progress, nir, nir_copy_prop);
+      NIR_PASS(progress, nir, nir_opt_dce);
+      NIR_PASS(progress, nir, nir_opt_dead_cf);
+      NIR_PASS(progress, nir, nir_opt_cse);
+      NIR_PASS(progress, nir, nir_opt_algebraic);
+      NIR_PASS(progress, nir, nir_opt_constant_folding);
+      NIR_PASS(progress, nir, nir_opt_undef);
 
-      progress |= nir_opt_deref(nir);
-      progress |= nir_lower_alu_to_scalar(nir, NULL, NULL);
+      NIR_PASS(progress, nir, nir_opt_deref);
+      NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
    } while (progress);
 
-   nir_lower_var_copies(nir);
-   nir_remove_dead_variables(nir, nir_var_function_temp, NULL);
+   NIR_PASS_V(nir, nir_lower_var_copies);
+   NIR_PASS_V(nir, nir_remove_dead_variables, nir_var_function_temp, NULL);
 
-   nir_validate_shader(nir, NULL);
    nir_shader_gather_info(nir, nir_shader_get_entrypoint(nir));
 
    if (nir->info.stage != MESA_SHADER_VERTEX)
