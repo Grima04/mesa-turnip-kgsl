@@ -30,6 +30,13 @@
  */
 #define VN_MIN_RENDERER_VERSION VK_API_VERSION_1_1
 
+/* max advertised version at both instance and device levels */
+#ifdef ANDROID
+#define VN_MAX_API_VERSION VK_MAKE_VERSION(1, 1, VK_HEADER_VERSION)
+#else
+#define VN_MAX_API_VERSION VK_MAKE_VERSION(1, 2, VK_HEADER_VERSION)
+#endif
+
 /*
  * Instance extensions add instance-level or physical-device-level
  * functionalities.  It seems renderer support is either unnecessary or
@@ -1239,15 +1246,14 @@ vn_physical_device_init_properties(struct vn_physical_device *physical_dev)
    if (version_override) {
       props->apiVersion = version_override;
    } else {
-      if (props->apiVersion > VK_HEADER_VERSION_COMPLETE)
-         props->apiVersion = VK_HEADER_VERSION_COMPLETE;
-      if (props->apiVersion > vn_info_vk_xml_version())
-         props->apiVersion = vn_info_vk_xml_version();
-#ifdef ANDROID
-      if (props->apiVersion >= VK_API_VERSION_1_2)
-         props->apiVersion =
-            VK_MAKE_VERSION(1, 1, VK_VERSION_PATCH(props->apiVersion));
-#endif
+      /* cap the advertised api version */
+      uint32_t version = MIN3(props->apiVersion, VN_MAX_API_VERSION,
+                              instance->renderer_info.vk_xml_version);
+      if (VK_VERSION_PATCH(version) > VK_VERSION_PATCH(props->apiVersion)) {
+         version = version - VK_VERSION_PATCH(version) +
+                   VK_VERSION_PATCH(props->apiVersion);
+      }
+      props->apiVersion = version;
    }
 
    props->driverVersion = vk_get_driver_version();
@@ -1770,7 +1776,7 @@ out:
 VkResult
 vn_EnumerateInstanceVersion(uint32_t *pApiVersion)
 {
-   *pApiVersion = VK_HEADER_VERSION_COMPLETE;
+   *pApiVersion = VN_MAX_API_VERSION;
    return VK_SUCCESS;
 }
 
