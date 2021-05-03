@@ -8203,6 +8203,8 @@
       <opt>aor</opt>
       <opt>axor</opt>
     </mod>
+    <!-- not actually encoded, but used for IR -->
+    <immediate name="sr_count" size="4" pseudo="true"/>
   </ins>
 
   <ins name="+PATOM_C1.i32" pseudo="true" staging="w=sr_count" message="atomic">
@@ -8215,6 +8217,8 @@
       <opt>asmax1</opt>
       <opt>aor1</opt>
     </mod>
+    <!-- not actually encoded, but used for IR -->
+    <immediate name="sr_count" size="4" pseudo="true"/>
   </ins>
 
   <!-- *CUBEFACE1/+CUBEFACE2 pair, two destinations, scheduler lowered -->
