@@ -323,6 +323,10 @@ bi_make_vec_to(bi_builder *b, bi_index final_dst,
                 }
         } else if (bitsize == 16) {
                 bi_make_vec16_to(b, dst, src, channel, count);
+        } else if (bitsize == 8 && count == 1) {
+                bi_swz_v4i8_to(b, dst, bi_byte(
+                                        bi_word(src[0], channel[0] >> 2),
+                                        channel[0] & 3));
         } else {
                 unreachable("8-bit mkvec not yet supported");
         }
