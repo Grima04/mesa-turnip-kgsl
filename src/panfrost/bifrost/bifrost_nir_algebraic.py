@@ -30,13 +30,7 @@ a = 'a'
 b = 'b'
 c = 'c'
 
-algebraic_late = [
-    # ineg must be lowered late, but only for integers; floats will try to
-    # have modifiers attached... hence why this has to be here rather than
-    # a more standard lower_negate approach
-
-    (('ineg', a), ('isub', 0, a)),
-]
+algebraic_late = []
 
 for isz in ('8', '16', '32'):
         for osz in ('16', '32', '64'):

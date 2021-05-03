@@ -1969,6 +1969,10 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 bi_hadd_to(b, nir_type_int, sz, dst, s0, s1, BI_ROUND_RTP);
                 break;
 
+        case nir_op_ineg:
+                bi_isub_to(b, nir_type_int, sz, dst, bi_zero(), s0, false);
+                break;
+
         case nir_op_isub:
                 bi_isub_to(b, nir_type_int, sz, dst, s0, s1, false);
                 break;
