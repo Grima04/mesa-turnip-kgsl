@@ -1068,10 +1068,12 @@ brw_fb_read_desc(const struct intel_device_info *devinfo,
                  bool per_sample)
 {
    assert(devinfo->ver >= 9);
+   assert(exec_size == 8 || exec_size == 16);
+
    return brw_fb_desc(devinfo, binding_table_index,
                       GFX9_DATAPORT_RC_RENDER_TARGET_READ, msg_control) |
           SET_BITS(per_sample, 13, 13) |
-          SET_BITS(exec_size == 16, 8, 8) /* Render Target Message Subtype */;
+          SET_BITS(exec_size == 8, 8, 8) /* Render Target Message Subtype */;
 }
 
 static inline uint32_t

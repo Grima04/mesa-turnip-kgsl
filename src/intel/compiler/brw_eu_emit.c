@@ -2490,7 +2490,7 @@ gfx9_fb_READ(struct brw_codegen *p,
       p, insn,
       brw_message_desc(devinfo, msg_length, response_length, true) |
       brw_fb_read_desc(devinfo, binding_table_index, 0 /* msg_control */,
-                       brw_get_default_exec_size(p), per_sample));
+                       1 << brw_get_default_exec_size(p), per_sample));
    brw_inst_set_rt_slot_group(devinfo, insn, brw_get_default_group(p) / 16);
 
    return insn;
