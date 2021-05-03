@@ -514,15 +514,6 @@ panfrost_is_format_supported( struct pipe_screen *screen,
         if (format == PIPE_FORMAT_Z16_UNORM && dev->quirks & MIDGARD_SFBD)
                 return false;
 
-        /* Don't confuse poorly written apps (workaround dEQP bug) that expect
-         * more alpha than they ask for */
-
-        bool scanout = bind & (PIPE_BIND_SCANOUT | PIPE_BIND_SHARED | PIPE_BIND_DISPLAY_TARGET);
-        bool renderable = bind & PIPE_BIND_RENDER_TARGET;
-
-        if (scanout && renderable && !util_format_is_rgba8_variant(format_desc))
-                return false;
-
         /* Check we support the format with the given bind */
 
         unsigned relevant_bind = bind &
