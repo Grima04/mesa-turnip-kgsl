@@ -75,6 +75,7 @@ fd_acc_query_pause(struct fd_acc_query *aq) assert_dt
    if (!aq->batch)
       return;
 
+   fd_batch_needs_flush(aq->batch);
    p->pause(aq, aq->batch);
    aq->batch = NULL;
 }
@@ -85,6 +86,7 @@ fd_acc_query_resume(struct fd_acc_query *aq, struct fd_batch *batch) assert_dt
    const struct fd_acc_sample_provider *p = aq->provider;
 
    aq->batch = batch;
+   fd_batch_needs_flush(aq->batch);
    p->resume(aq, aq->batch);
 
    fd_screen_lock(batch->ctx->screen);
