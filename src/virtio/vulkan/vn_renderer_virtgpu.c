@@ -1164,29 +1164,29 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
       goto fail;
 
    uint32_t blob_flags;
+   size_t mmap_size;
    if (info.blob_mem) {
       /* must be VIRTGPU_BLOB_MEM_HOST3D */
       if (info.blob_mem != VIRTGPU_BLOB_MEM_HOST3D)
          goto fail;
 
-      if (!size)
-         size = info.size;
-      else if (info.size < size)
+      if (info.size < size)
          goto fail;
 
       blob_flags = virtgpu_bo_blob_flags(flags, external_handles);
+      mmap_size = size;
    } else {
       /* must be classic resource here
        * set blob_flags to 0 to fail virtgpu_bo_map
-       * set size to 0 since mapping is not allowed
+       * set mmap_size to 0 since mapping is not allowed
        */
       blob_flags = 0;
-      size = 0;
+      mmap_size = 0;
    }
 
    struct virtgpu_bo *bo = util_sparse_array_get(&gpu->bo_array, gem_handle);
    if (bo->gem_handle == gem_handle) {
-      if (bo->base.mmap_size < size)
+      if (bo->base.mmap_size < mmap_size)
          goto fail;
       if (blob_flags & ~bo->blob_flags)
          goto fail;
@@ -1200,7 +1200,7 @@ virtgpu_bo_create_from_dmabuf(struct vn_renderer *renderer,
          .base = {
             .refcount = 1,
             .res_id = info.res_handle,
-            .mmap_size = size,
+            .mmap_size = mmap_size,
          },
          .gem_handle = gem_handle,
          .blob_flags = blob_flags,
