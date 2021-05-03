@@ -238,6 +238,15 @@ bi_imm_u16(uint16_t imm)
 }
 
 static inline bi_index
+bi_imm_uintN(uint32_t imm, unsigned sz)
+{
+        assert(sz == 8 || sz == 16 || sz == 32);
+        return (sz == 8) ? bi_imm_u8(imm) :
+                (sz == 16) ? bi_imm_u16(imm) :
+                bi_imm_u32(imm);
+}
+
+static inline bi_index
 bi_imm_f16(float imm)
 {
         return bi_imm_u16(_mesa_float_to_half(imm));
