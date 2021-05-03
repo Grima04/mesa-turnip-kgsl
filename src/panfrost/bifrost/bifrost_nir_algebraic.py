@@ -38,9 +38,6 @@ SPECIAL = ['fexp2', 'flog2', 'fsin', 'fcos']
 for op in SPECIAL:
         algebraic_late += [((op + '@16', a), ('f2f16', (op, ('f2f32', a))))]
 
-algebraic_late += [(('f2b32', a), ('fneu32', a, 0.0)),
-             (('i2b32', a), ('ine32', a, 0))]
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', '--import-path', required=True)
