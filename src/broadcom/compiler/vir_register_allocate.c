@@ -506,15 +506,15 @@ get_spill_batch_size(struct v3d_compile *c)
    return 20;
 }
 
-/* Don't emit spills using the TMU until we've dropped thread count first. Also,
- * don't spill if we have enabled any other optimization that can lead to
- * higher register pressure, such as TMU pipelining, we rather recompile without
- * the optimization in that case.
+/* Don't emit spills using the TMU until we've dropped thread count first. We,
+ * may also disable spilling when certain optimizations that are known to
+ * increase register pressure are active so we favor recompiling with
+ * optimizations disabled instead of spilling.
  */
 static inline bool
 tmu_spilling_allowed(struct v3d_compile *c, int thread_index)
 {
-        return thread_index == 0 && c->disable_tmu_pipelining;
+        return thread_index == 0 && c->tmu_spilling_allowed;
 }
 
 #define CLASS_BIT_PHYS			(1 << 0)

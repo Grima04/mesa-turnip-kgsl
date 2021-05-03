@@ -282,6 +282,8 @@ ntq_add_pending_tmu_flush(struct v3d_compile *c,
 
         if (c->disable_tmu_pipelining)
                 ntq_flush_tmu(c);
+        else if (c->tmu.flush_count > 1)
+                c->pipelined_any_tmu = true;
 }
 
 enum emit_mode {
@@ -1828,10 +1830,13 @@ v3d_optimize_nir(struct v3d_compile *c, struct nir_shader *s)
 
                 if (c && !c->disable_loop_unrolling &&
                     s->options->max_unroll_iterations > 0) {
-                        NIR_PASS(progress, s, nir_opt_loop_unroll,
-                                 nir_var_shader_in |
-                                 nir_var_shader_out |
-                                 nir_var_function_temp);
+                       bool local_progress = false;
+                       NIR_PASS(local_progress, s, nir_opt_loop_unroll,
+                                nir_var_shader_in |
+                                nir_var_shader_out |
+                                nir_var_function_temp);
+                       c->unrolled_any_loops |= local_progress;
+                       progress |= local_progress;
                 }
         } while (progress);
 

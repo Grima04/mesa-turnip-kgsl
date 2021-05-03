@@ -646,12 +646,14 @@ struct v3d_compile {
          * TMU spills.
          */
         bool disable_tmu_pipelining;
+        bool pipelined_any_tmu;
 
         /* Disable sorting of UBO loads with constant offset. This may
          * increase the chances of being able to compile shaders with high
          * register pressure.
          */
         bool disable_constant_ubo_load_sorting;
+        bool sorted_any_ubo_loads;
 
         /* Emits ldunif for each new uniform, even if the uniform was already
          * emitted in the same block. Useful to compile shaders with high
@@ -662,6 +664,7 @@ struct v3d_compile {
 
         /* Disables loop unrolling to reduce register pressure. */
         bool disable_loop_unrolling;
+        bool unrolled_any_loops;
 
         /* Minimum number of threads we are willing to use to register allocate
          * a shader with the current compilation strategy. This only prevents
@@ -670,6 +673,13 @@ struct v3d_compile {
          * compilation strategy before dropping thread count.
          */
         uint32_t min_threads_for_reg_alloc;
+
+        /* Whether TMU spills are allowed. If this is disabled it may cause
+         * register allocation to fail. We set this to favor other compilation
+         * strategies that can reduce register pressure and hopefully reduce or
+         * eliminate TMU spills in the shader.
+         */
+        bool tmu_spilling_allowed;
 
         /* The UBO index and block used with the last unifa load, as well as the
          * current unifa offset *after* emitting that load. This is used to skip

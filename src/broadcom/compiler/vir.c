@@ -526,6 +526,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                  void *debug_output_data,
                  int program_id, int variant_id,
                  uint32_t min_threads_for_reg_alloc,
+                 bool tmu_spilling_allowed,
                  bool disable_loop_unrolling,
                  bool disable_constant_ubo_load_sorting,
                  bool disable_tmu_pipelining,
@@ -543,6 +544,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
         c->min_threads_for_reg_alloc = min_threads_for_reg_alloc;
+        c->tmu_spilling_allowed = tmu_spilling_allowed;
         c->fallback_scheduler = fallback_scheduler;
         c->disable_tmu_pipelining = disable_tmu_pipelining;
         c->disable_constant_ubo_load_sorting = disable_constant_ubo_load_sorting;
@@ -1333,11 +1335,10 @@ v3d_nir_sort_constant_ubo_loads_block(struct v3d_compile *c,
 static bool
 v3d_nir_sort_constant_ubo_loads(nir_shader *s, struct v3d_compile *c)
 {
-        bool progress = false;
         nir_foreach_function(function, s) {
                 if (function->impl) {
                         nir_foreach_block(block, function->impl) {
-                                progress |=
+                                c->sorted_any_ubo_loads |=
                                         v3d_nir_sort_constant_ubo_loads_block(c, block);
                         }
                         nir_metadata_preserve(function->impl,
@@ -1345,7 +1346,7 @@ v3d_nir_sort_constant_ubo_loads(nir_shader *s, struct v3d_compile *c)
                                               nir_metadata_dominance);
                 }
         }
-        return progress;
+        return c->sorted_any_ubo_loads;
 }
 
 static void
@@ -1508,6 +1509,82 @@ int v3d_shaderdb_dump(struct v3d_compile *c,
                         c->nop_count);
 }
 
+/* This is a list of incremental changes to the compilation strategy
+ * that will be used to try to compile the shader successfully. The
+ * default strategy is to enable all optimizations which will have
+ * the highest register pressure but is expected to produce most
+ * optimal code. Following strategies incrementally disable specific
+ * optimizations that are known to contribute to register pressure
+ * in order to be able to compile the shader successfully while meeting
+ * thread count requirements.
+ *
+ * V3D 4.1+ has a min thread count of 2, but we can use 1 here to also
+ * cover previous hardware as well (meaning that we are not limiting
+ * register allocation to any particular thread count). This is fine
+ * because v3d_nir_to_vir will cap this to the actual minimum.
+ */
+struct v3d_compiler_strategy {
+        const char *name;
+        uint32_t min_threads_for_reg_alloc;
+        bool disable_loop_unrolling;
+        bool disable_ubo_load_sorting;
+        bool disable_tmu_pipelining;
+        bool tmu_spilling_allowed;
+} static const strategies[] = {
+  /*0*/ { "default",                        4, false, false, false, false },
+  /*1*/ { "disable loop unrolling",         4, true,  false, false, false },
+  /*2*/ { "disable UBO load sorting",       4, true,  true,  false, false },
+  /*3*/ { "disable TMU pipelining",         4, true,  true,  true,  false },
+  /*4*/ { "lower thread count",             1, false, false, false, false },
+  /*5*/ { "disable loop unrolling (ltc)",   1, true,  false, false, false },
+  /*6*/ { "disable UBO load sorting (ltc)", 1, true,  true,  false, false },
+  /*7*/ { "disable TMU pipelining (ltc)",   1, true,  true,  true,  true  },
+  /*8*/ { "fallback scheduler",             1, true,  true,  true,  true  }
+};
+
+/**
+ * If a particular optimization didn't make any progress during a compile
+ * attempt disabling it alone won't allow us to compile the shader successfuly,
+ * since we'll end up with the same code. Detect these scenarios so we can
+ * avoid wasting time with useless compiles. We should also consider if the
+ * strategy changes other aspects of the compilation process though, like
+ * spilling, and not skip it in that case.
+ */
+static bool
+skip_compile_strategy(struct v3d_compile *c, uint32_t idx)
+{
+   /* We decide if we can skip a strategy based on the optimizations that
+    * were active in the previous strategy, so we should only be calling this
+    * for strategies after the first.
+    */
+   assert(idx > 0);
+
+   /* Don't skip a strategy that changes spilling behavior */
+   if (strategies[idx].tmu_spilling_allowed !=
+       strategies[idx - 1].tmu_spilling_allowed) {
+           return false;
+   }
+
+   switch (idx) {
+   /* Loop unrolling: skip if we didn't unroll any loops */
+   case 1:
+   case 5:
+           return !c->unrolled_any_loops;
+   /* UBO load sorting: skip if we didn't sort any loads */
+   case 2:
+   case 6:
+           return !c->sorted_any_ubo_loads;
+   /* TMU pipelining: skip if we didn't pipeline any TMU ops */
+   case 3:
+   case 7:
+           return !c->pipelined_any_tmu;
+   /* Lower thread count: skip if we already tried less that 4 threads */
+   case 4:
+          return c->threads < 4;
+   default:
+           return false;
+   };
+}
 uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       struct v3d_key *key,
                       struct v3d_prog_data **out_prog_data,
@@ -1518,42 +1595,40 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                       int program_id, int variant_id,
                       uint32_t *final_assembly_size)
 {
-        struct v3d_compile *c;
-
-        /* This is a list of incremental changes to the compilation strategy
-         * that will be used to try to compile the shader successfully. The
-         * default strategy is to enable all optimizations which will have
-         * the highest register pressure but is expected to produce most
-         * optimal code. Following strategies incrementally disable specific
-         * optimizations that are known to contribute to register pressure
-         * in order to be able to compile the shader successfully while meeting
-         * thread count requirements.
-         *
-         * V3D 4.1+ has a min thread count of 2, but we can use 1 here to also
-         * cover previous hardware as well (meaning that we are not limiting
-         * register allocation to any particular thread count). This is fine
-         * because v3d_nir_to_vir will cap this to the actual minimum.
-         */
-        struct v3d_compiler_strategy {
-                const char *name;
-                uint32_t min_threads_for_reg_alloc;
-        } static const strategies[] = {
-                { "default",                  4 },
-                { "disable loop unrolling",   4 },
-                { "disable UBO load sorting", 1 },
-                { "disable TMU pipelining",   1 },
-                { "fallback scheduler",       1 }
-        };
-
+        struct v3d_compile *c = NULL;
         for (int i = 0; i < ARRAY_SIZE(strategies); i++) {
+                /* Fallback strategy */
+                if (i > 0) {
+                        assert(c);
+                        if (skip_compile_strategy(c, i))
+                                continue;
+
+                        char *debug_msg;
+                        int ret = asprintf(&debug_msg,
+                                           "Falling back to strategy '%s' for %s",
+                                           strategies[i].name,
+                                           vir_get_stage_name(c));
+
+                        if (ret >= 0) {
+                                if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))
+                                        fprintf(stderr, "%s\n", debug_msg);
+
+                                c->debug_output(debug_msg, c->debug_output_data);
+                                free(debug_msg);
+                        }
+
+                        vir_compile_destroy(c);
+                }
+
                 c = vir_compile_init(compiler, key, s,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
                                      strategies[i].min_threads_for_reg_alloc,
-                                     i > 0, /* Disable loop unrolling */
-                                     i > 1, /* Disable UBO load sorting */
-                                     i > 2, /* Disable TMU pipelining */
-                                     i > 3  /* Fallback_scheduler */);
+                                     strategies[i].tmu_spilling_allowed,
+                                     strategies[i].disable_loop_unrolling,
+                                     strategies[i].disable_ubo_load_sorting,
+                                     strategies[i].disable_tmu_pipelining,
+                                     i == ARRAY_SIZE(strategies) - 1);
 
                 v3d_attempt_compile(c);
 
@@ -1562,23 +1637,6 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                     V3D_COMPILATION_FAILED_REGISTER_ALLOCATION) {
                         break;
                 }
-
-                /* Fallback strategy */
-                char *debug_msg;
-                int ret = asprintf(&debug_msg,
-                                   "Falling back to strategy '%s' for %s",
-                                   strategies[i + 1].name,
-                                   vir_get_stage_name(c));
-
-                if (ret >= 0) {
-                        if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF))
-                                fprintf(stderr, "%s\n", debug_msg);
-
-                        c->debug_output(debug_msg, c->debug_output_data);
-                        free(debug_msg);
-                }
-
-                vir_compile_destroy(c);
         }
 
         if (unlikely(V3D_DEBUG & V3D_DEBUG_PERF) &&
