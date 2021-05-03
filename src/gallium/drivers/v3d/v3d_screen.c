@@ -628,6 +628,48 @@ v3d_screen_is_format_supported(struct pipe_screen *pscreen,
         return true;
 }
 
+static const nir_shader_compiler_options v3d_nir_options = {
+        .lower_add_sat = true,
+        .lower_all_io_to_temps = true,
+        .lower_extract_byte = true,
+        .lower_extract_word = true,
+        .lower_bitfield_insert_to_shifts = true,
+        .lower_bitfield_extract_to_shifts = true,
+        .lower_bitfield_reverse = true,
+        .lower_bit_count = true,
+        .lower_cs_local_id_from_index = true,
+        .lower_ffract = true,
+        .lower_fmod = true,
+        .lower_pack_unorm_2x16 = true,
+        .lower_pack_snorm_2x16 = true,
+        .lower_pack_unorm_4x8 = true,
+        .lower_pack_snorm_4x8 = true,
+        .lower_unpack_unorm_4x8 = true,
+        .lower_unpack_snorm_4x8 = true,
+        .lower_pack_half_2x16 = true,
+        .lower_unpack_half_2x16 = true,
+        .lower_fdiv = true,
+        .lower_find_lsb = true,
+        .lower_ffma16 = true,
+        .lower_ffma32 = true,
+        .lower_ffma64 = true,
+        .lower_flrp32 = true,
+        .lower_fpow = true,
+        .lower_fsat = true,
+        .lower_fsqrt = true,
+        .lower_ifind_msb = true,
+        .lower_isign = true,
+        .lower_ldexp = true,
+        .lower_mul_high = true,
+        .lower_wpos_pntc = true,
+        .lower_rotate = true,
+        .lower_to_scalar = true,
+        .has_fsub = true,
+        .has_isub = true,
+        .divergence_analysis_options =
+                nir_divergence_multiple_workgroup_per_compute_subgroup,
+};
+
 static const void *
 v3d_screen_get_compiler_options(struct pipe_screen *pscreen,
                                 enum pipe_shader_ir ir, unsigned shader)

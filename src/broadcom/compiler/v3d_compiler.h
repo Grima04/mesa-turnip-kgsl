@@ -937,8 +937,6 @@ vir_has_uniform(struct qinst *inst)
         return inst->uniform != ~0;
 }
 
-extern const nir_shader_compiler_options v3d_nir_options;
-
 const struct v3d_compiler *v3d_compiler_init(const struct v3d_device_info *devinfo);
 void v3d_compiler_free(const struct v3d_compiler *compiler);
 void v3d_optimize_nir(struct nir_shader *s);
