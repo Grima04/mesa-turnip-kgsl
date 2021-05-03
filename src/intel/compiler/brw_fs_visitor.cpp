@@ -613,11 +613,18 @@ fs_visitor::emit_single_fb_write(const fs_builder &bld,
    const fs_reg dst_depth = fetch_payload_reg(bld, payload.dest_depth_reg);
    fs_reg src_depth, src_stencil;
 
-   if (source_depth_to_render_target) {
-      if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH))
-         src_depth = frag_depth;
-      else
-         src_depth = this->pixel_z;
+   if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_DEPTH)) {
+      src_depth = frag_depth;
+   } else if (source_depth_to_render_target) {
+      /* If we got here, we're in one of those strange Gen4-5 cases where
+       * we're forced to pass the source depth, unmodified, to the FB write.
+       * In this case, we don't want to use pixel_z because we may not have
+       * set up interpolation.  It's also perfectly safe because it only
+       * happens on old hardware (no coarse interpolation) and this is
+       * explicitly the pass-through case.
+       */
+      assert(devinfo->ver <= 5);
+      src_depth = fetch_payload_reg(bld, payload.source_depth_reg);
    }
 
    if (nir->info.outputs_written & BITFIELD64_BIT(FRAG_RESULT_STENCIL))
