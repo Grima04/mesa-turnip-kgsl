@@ -145,7 +145,7 @@ XEXT_GENERATE_ERROR_STRING(__glXErrorString, __glXExtensionName,
 static Bool
 __glXWireToEvent(Display *dpy, XEvent *event, xEvent *wire)
 {
-   struct glx_display *glx_dpy = __glXInitialize(dpy);
+     struct glx_display *glx_dpy = __glXInitialize(dpy);
 
    if (glx_dpy == NULL)
       return False;
@@ -173,7 +173,7 @@ __glXWireToEvent(Display *dpy, XEvent *event, xEvent *wire)
    {
       GLXBufferSwapComplete *aevent = (GLXBufferSwapComplete *)event;
       xGLXBufferSwapComplete2 *awire = (xGLXBufferSwapComplete2 *)wire;
-      struct glx_drawable *glxDraw = GetGLXDrawable(glx_dpy, awire->drawable);
+      struct glx_drawable *glxDraw = GetGLXDrawable(dpy, awire->drawable);
 
       if (!glxDraw)
 	 return False;

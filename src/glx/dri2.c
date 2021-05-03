@@ -84,7 +84,6 @@ static XEXT_GENERATE_FIND_DISPLAY (DRI2FindDisplay,
                                    &dri2ExtensionHooks,
                                    0, NULL)
 
-
 static Bool
 DRI2WireToEvent(Display *dpy, XEvent *event, xEvent *wire)
 {
@@ -101,8 +100,7 @@ DRI2WireToEvent(Display *dpy, XEvent *event, xEvent *wire)
       xDRI2BufferSwapComplete2 *awire = (xDRI2BufferSwapComplete2 *)wire;
       __GLXDRIdrawable *pdraw;
 
-      pdraw = dri2GetGlxDrawableFromXDrawableId(__glXInitialize(dpy),
-                                                awire->drawable);
+      pdraw = dri2GetGlxDrawableFromXDrawableId(dpy, awire->drawable);
       if (pdraw == NULL)
          return False;
 
@@ -132,7 +130,7 @@ DRI2WireToEvent(Display *dpy, XEvent *event, xEvent *wire)
       aevent->ust = ((CARD64)awire->ust_hi << 32) | awire->ust_lo;
       aevent->msc = ((CARD64)awire->msc_hi << 32) | awire->msc_lo;
 
-      glxDraw = GetGLXDrawable(pdraw->psc->display, pdraw->drawable);
+      glxDraw = GetGLXDrawable(dpy, pdraw->drawable);
       if (glxDraw != NULL) {
          if (awire->sbc < glxDraw->lastEventSbc)
             glxDraw->eventSbcWrap += 0x100000000;

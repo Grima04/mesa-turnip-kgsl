@@ -620,7 +620,7 @@ glx_screen_cleanup(struct glx_screen *psc);
 
 #if defined(GLX_DIRECT_RENDERING) && !defined(GLX_USE_APPLEGL)
 extern __GLXDRIdrawable *
-dri2GetGlxDrawableFromXDrawableId(struct glx_display *priv, XID id);
+dri2GetGlxDrawableFromXDrawableId(Display *dpy, XID id);
 #endif
 
 extern GLubyte *__glXFlushRenderBuffer(struct glx_context *, GLubyte *);
@@ -771,7 +771,7 @@ extern void
 GarbageCollectDRIDrawables(struct glx_screen *psc);
 
 extern __GLXDRIdrawable *
-GetGLXDRIDrawable(struct glx_display *priv, GLXDrawable drawable);
+GetGLXDRIDrawable(Display *dpy, GLXDrawable drawable);
 #endif
 
 extern struct glx_screen *GetGLXScreenConfigs(Display * dpy, int scrn);
@@ -796,10 +796,10 @@ extern Bool validate_renderType_against_config(const struct glx_config *config,
                                                int renderType);
 
 
-extern struct glx_drawable *GetGLXDrawable(struct glx_display *priv, GLXDrawable drawable);
-extern int InitGLXDrawable(struct glx_display *priv, struct glx_drawable *glxDraw,
+extern struct glx_drawable *GetGLXDrawable(Display *dpy, GLXDrawable drawable);
+extern int InitGLXDrawable(Display *dpy, struct glx_drawable *glxDraw,
 			   XID xDrawable, GLXDrawable drawable);
-extern void DestroyGLXDrawable(struct glx_display *priv, GLXDrawable drawable);
+extern void DestroyGLXDrawable(Display *dpy, GLXDrawable drawable);
 
 extern struct glx_context dummyContext;
 
@@ -818,9 +818,8 @@ indirect_create_context_attribs(struct glx_screen *base,
                                 unsigned *error);
 
 
-extern int
-__glXGetDrawableAttribute(struct glx_display *priv, GLXDrawable drawable,
-                          int attribute, unsigned int *value);
+extern int __glXGetDrawableAttribute(Display * dpy, GLXDrawable drawable,
+                                     int attribute, unsigned int *value);
 
 #ifdef __cplusplus
 }

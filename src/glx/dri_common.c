@@ -317,8 +317,7 @@ driInferDrawableConfig(struct glx_screen *psc, GLXDrawable draw)
     * this usually works except for bare Windows that haven't been made
     * current yet.
     */
-   if (__glXGetDrawableAttribute(psc->display, draw, GLX_FBCONFIG_ID,
-                                 &fbconfig)) {
+   if (__glXGetDrawableAttribute(psc->dpy, draw, GLX_FBCONFIG_ID, &fbconfig)) {
       return glx_config_find_fbconfig(psc->configs, fbconfig);
    }
 

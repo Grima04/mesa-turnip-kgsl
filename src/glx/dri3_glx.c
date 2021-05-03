@@ -458,7 +458,7 @@ static void
 dri3_wait_x(struct glx_context *gc)
 {
    struct dri3_drawable *priv = (struct dri3_drawable *)
-      GetGLXDRIDrawable(gc->psc->display, gc->currentDrawable);
+      GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
 
    if (priv)
       loader_dri3_wait_x(&priv->loader_drawable);
@@ -468,7 +468,7 @@ static void
 dri3_wait_gl(struct glx_context *gc)
 {
    struct dri3_drawable *priv = (struct dri3_drawable *)
-      GetGLXDRIDrawable(gc->psc->display, gc->currentDrawable);
+      GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
 
    if (priv)
       loader_dri3_wait_gl(&priv->loader_drawable);

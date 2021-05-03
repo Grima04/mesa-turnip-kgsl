@@ -605,7 +605,7 @@ static void
 dri2_wait_x(struct glx_context *gc)
 {
    struct dri2_drawable *priv = (struct dri2_drawable *)
-      GetGLXDRIDrawable(gc->psc->display, gc->currentDrawable);
+      GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
 
    if (priv == NULL || !priv->have_fake_front)
       return;
@@ -617,7 +617,7 @@ static void
 dri2_wait_gl(struct glx_context *gc)
 {
    struct dri2_drawable *priv = (struct dri2_drawable *)
-      GetGLXDRIDrawable(gc->psc->display, gc->currentDrawable);
+      GetGLXDRIDrawable(gc->currentDpy, gc->currentDrawable);
 
    if (priv == NULL || !priv->have_fake_front)
       return;
@@ -713,7 +713,7 @@ unsigned dri2GetSwapEventType(Display* dpy, XID drawable)
 {
       struct glx_display *glx_dpy = __glXInitialize(dpy);
       __GLXDRIdrawable *pdraw;
-      pdraw = dri2GetGlxDrawableFromXDrawableId(glx_dpy, drawable);
+      pdraw = dri2GetGlxDrawableFromXDrawableId(dpy, drawable);
       if (!pdraw || !(pdraw->eventMask & GLX_BUFFER_SWAP_COMPLETE_INTEL_MASK))
          return 0;
       return glx_dpy->codes.first_event + GLX_BufferSwapComplete;
@@ -966,7 +966,7 @@ _X_HIDDEN void
 dri2InvalidateBuffers(Display *dpy, XID drawable)
 {
    __GLXDRIdrawable *pdraw =
-      dri2GetGlxDrawableFromXDrawableId(__glXInitialize(dpy), drawable);
+      dri2GetGlxDrawableFromXDrawableId(dpy, drawable);
    struct dri2_screen *psc;
    struct dri2_drawable *pdp = (struct dri2_drawable *) pdraw;
 
@@ -1365,8 +1365,9 @@ dri2DestroyDisplay(__GLXDRIdisplay * dpy)
 }
 
 _X_HIDDEN __GLXDRIdrawable *
-dri2GetGlxDrawableFromXDrawableId(struct glx_display *d, XID id)
+dri2GetGlxDrawableFromXDrawableId(Display *dpy, XID id)
 {
+   struct glx_display *d = __glXInitialize(dpy);
    struct dri2_display *pdp = (struct dri2_display *) d->dri2Display;
    __GLXDRIdrawable *pdraw;
 
