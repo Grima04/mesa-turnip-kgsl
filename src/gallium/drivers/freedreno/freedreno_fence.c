@@ -279,7 +279,7 @@ fd_fence_set_batch(struct pipe_fence_handle *fence, struct fd_batch *batch)
    if (batch) {
       assert(!fence->batch);
       fence->batch = batch;
-      batch->needs_flush = true;
+      fd_batch_needs_flush(batch);
    } else {
       fence->batch = NULL;
 

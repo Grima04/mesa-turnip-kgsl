@@ -80,8 +80,6 @@ static void
 fd_blitter_pipe_begin(struct fd_context *ctx, bool render_cond,
                       bool discard) assert_dt
 {
-   fd_fence_ref(&ctx->last_fence, NULL);
-
    util_blitter_save_vertex_buffer_slot(ctx->blitter, ctx->vtx.vertexbuf.vb);
    util_blitter_save_vertex_elements(ctx->blitter, ctx->vtx.vtx);
    util_blitter_save_vertex_shader(ctx->blitter, ctx->prog.vs);
@@ -241,10 +239,11 @@ fd_blitter_clear(struct pipe_context *pctx, unsigned buffers,
       .max_index = 1,
       .instance_count = MAX2(1, pfb->layers),
    };
-	struct pipe_draw_start_count_bias draw = {
+   struct pipe_draw_start_count_bias draw = {
       .count = 2,
    };
-	pctx->draw_vbo(pctx, &info, 0, NULL, &draw, 1);
+
+   pctx->draw_vbo(pctx, &info, 0, NULL, &draw, 1);
 
    /* We expect that this should not have triggered a change in pfb: */
    assert(util_framebuffer_state_equal(pfb, &ctx->framebuffer));
