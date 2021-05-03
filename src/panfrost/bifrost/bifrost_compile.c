@@ -1934,6 +1934,14 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         bi_mov_i32_to(b, dst, s0);
                 break;
 
+        case nir_op_b2f16:
+        case nir_op_b2f32:
+                bi_csel_to(b, nir_type_int, sz, dst, s0, bi_zero(),
+                                (sz == 16) ? bi_imm_f16(1.0) : bi_imm_f32(1.0),
+                                (sz == 16) ? bi_imm_f16(0.0) : bi_imm_f32(0.0),
+                                BI_CMPF_NE);
+                break;
+
         case nir_op_fround_even:
         case nir_op_fceil:
         case nir_op_ffloor:

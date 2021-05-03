@@ -32,10 +32,6 @@ c = 'c'
 
 algebraic_late = []
 
-for isz in ('8', '16', '32'):
-        for osz in ('16', '32', '64'):
-                algebraic_late += [(('b2f' + osz, 'a@' + isz), ('b' + isz + 'csel', a, 1.0, 0.0))]
-
 # Bifrost doesn't have fp16 for a lot of special ops
 SPECIAL = ['fexp2', 'flog2', 'fsin', 'fcos']
 
