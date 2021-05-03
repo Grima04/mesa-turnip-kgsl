@@ -2865,6 +2865,27 @@ should_split_wrmask(const nir_instr *instr, UNUSED const void *data)
         }
 }
 
+/* Bifrost wants transcendentals as FP32 */
+
+static unsigned
+bi_lower_bit_size(const nir_instr *instr, UNUSED void *data)
+{
+        if (instr->type != nir_instr_type_alu)
+                return 0;
+
+        nir_alu_instr *alu = nir_instr_as_alu(instr);
+
+        switch (alu->op) {
+        case nir_op_fexp2:
+        case nir_op_flog2:
+        case nir_op_fsin:
+        case nir_op_fcos:
+                return (nir_dest_bit_size(alu->dest.dest) == 32) ? 0 : 32;
+        default:
+                return 0;
+        }
+}
+
 static void
 bi_optimize_nir(nir_shader *nir, bool is_blend)
 {
@@ -2955,7 +2976,6 @@ bi_optimize_nir(nir_shader *nir, bool is_blend)
                 NIR_PASS(progress, nir, nir_opt_cse);
         }
 
-        NIR_PASS(progress, nir, bifrost_nir_lower_algebraic_late);
         NIR_PASS(progress, nir, nir_lower_alu_to_scalar, NULL, NULL);
 
         /* Backend scheduler is purely local, so do some global optimizations
@@ -3115,6 +3135,7 @@ bifrost_compile_shader_nir(nir_shader *nir,
         NIR_PASS_V(nir, nir_lower_ssbo);
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
         NIR_PASS_V(nir, pan_lower_sample_pos);
+        NIR_PASS_V(nir, nir_lower_bit_size, bi_lower_bit_size, NULL);
 
         if (nir->info.stage == MESA_SHADER_FRAGMENT) {
                 NIR_PASS_V(nir, nir_shader_instructions_pass,
