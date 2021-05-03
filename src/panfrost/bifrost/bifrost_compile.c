@@ -1779,6 +1779,18 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                 }
                 break;
 
+        case nir_op_imin:
+        case nir_op_umin:
+                bi_csel_to(b, nir_op_infos[instr->op].input_types[0], sz, dst,
+                                s0, s1, s0, s1, BI_CMPF_LT);
+                break;
+
+        case nir_op_imax:
+        case nir_op_umax:
+                bi_csel_to(b, nir_op_infos[instr->op].input_types[0], sz, dst,
+                                s0, s1, s0, s1, BI_CMPF_GT);
+                break;
+
         case nir_op_ult32:
         case nir_op_uge32:
                 if (sz == 32) {
