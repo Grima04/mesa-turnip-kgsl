@@ -1529,8 +1529,8 @@ static void
 bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 {
         bi_index dst = bi_dest_index(&instr->dest.dest);
-        unsigned sz = nir_dest_bit_size(instr->dest.dest);
         unsigned srcs = nir_op_infos[instr->op].num_inputs;
+        unsigned sz = nir_dest_bit_size(instr->dest.dest);
         unsigned comps = nir_dest_num_components(instr->dest.dest);
         unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
 
@@ -1628,6 +1628,21 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
 
                 bi_mkvec_v2i16_to(b, dst,
                                 bi_half(s0, false), bi_half(s1, false));
+                return;
+        }
+
+        case nir_op_i2i8:
+        case nir_op_u2u8:
+        {
+                /* Acts like an 8-bit swizzle */
+                bi_index idx = bi_src_index(&instr->src[0].src);
+                unsigned factor = src_sz / 8;
+                unsigned chan[4] = { 0 };
+
+                for (unsigned i = 0; i < comps; ++i)
+                        chan[i] = instr->src[0].swizzle[i] * factor;
+
+                bi_make_vec_to(b, dst, &idx, chan, comps, 8);
                 return;
         }
 
@@ -1907,15 +1922,6 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
                         bi_v2u8_to_v2u16_to(b, dst, s0);
                 else
                         bi_mov_i32_to(b, dst, s0);
-                break;
-
-        case nir_op_i2i8:
-        case nir_op_u2u8:
-                /* No vectorization in this part of the loop, so downcasts are
-                 * a noop. When vectorization support lands, some case
-                 * handlingg will be needed, but for the scalar case this is
-                 * optimal as it can be copypropped away */
-                bi_mov_i32_to(b, dst, s0);
                 break;
 
         case nir_op_fround_even:
