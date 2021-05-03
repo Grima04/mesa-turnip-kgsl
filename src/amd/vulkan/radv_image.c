@@ -920,6 +920,10 @@ gfx10_make_texture_descriptor(struct radv_device *device, struct radv_image *ima
                   S_00A018_ALPHA_IS_ON_MSB(vi_alpha_is_on_msb(device, vk_format));
    }
 
+   if (radv_image_get_iterate256(device, image)) {
+      state[6] |= S_00A018_ITERATE_256(1);
+   }
+
    /* Initialize the sampler view for FMASK. */
    if (fmask_state) {
       if (radv_image_has_fmask(image)) {

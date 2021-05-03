@@ -6615,6 +6615,14 @@ radv_calc_decompress_on_z_planes(struct radv_device *device, struct radv_image_v
       if (iview->vk_format == VK_FORMAT_D16_UNORM && iview->image->info.samples > 1)
          max_zplanes = 2;
 
+      /* Workaround for a DB hang when ITERATE_256 is set to 1. Only affects 4X MSAA D/S images. */
+      if (device->physical_device->rad_info.has_two_planes_iterate256_bug &&
+          radv_image_get_iterate256(device, iview->image) &&
+          !radv_image_tile_stencil_disabled(device, iview->image) &&
+          iview->image->info.samples == 4) {
+         max_zplanes = 1;
+      }
+
       max_zplanes = max_zplanes + 1;
    } else {
       if (iview->vk_format == VK_FORMAT_D16_UNORM) {
@@ -6718,8 +6726,12 @@ radv_initialise_ds_surface(struct radv_device *device, struct radv_ds_buffer_inf
             ds->db_z_info |= S_028038_DECOMPRESS_ON_N_ZPLANES(max_zplanes);
 
             if (device->physical_device->rad_info.chip_class >= GFX10) {
+               bool iterate256 = radv_image_get_iterate256(device, iview->image);
+
                ds->db_z_info |= S_028040_ITERATE_FLUSH(1);
                ds->db_stencil_info |= S_028044_ITERATE_FLUSH(1);
+               ds->db_z_info |= S_028040_ITERATE_256(iterate256);
+               ds->db_stencil_info |= S_028044_ITERATE_256(iterate256);
             } else {
                ds->db_z_info |= S_028038_ITERATE_FLUSH(1);
                ds->db_stencil_info |= S_02803C_ITERATE_FLUSH(1);
