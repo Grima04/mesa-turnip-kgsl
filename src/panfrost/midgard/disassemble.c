@@ -1349,7 +1349,7 @@ update_stats(signed *stat, unsigned address)
 }
 
 static void
-print_load_store_instr(FILE *fp, uint64_t data)
+print_load_store_instr(FILE *fp, uint64_t data, bool verbose)
 {
         midgard_load_store_word *word = (midgard_load_store_word *) &data;
 
@@ -1433,15 +1433,22 @@ print_load_store_instr(FILE *fp, uint64_t data)
         /* mem addr expression */
         if (OP_HAS_ADDRESS(word->op)) {
                 fprintf(fp, ", ");
+                bool first = true;
 
-                print_ldst_read_reg(fp, word->arg_reg);
-                fprintf(fp, ".u%d.%c",
-                        word->bitsize_toggle ? 64 : 32, components[word->arg_comp]);
+                /* Skip printing zero */
+                if (word->arg_reg != 7 || verbose) {
+                        print_ldst_read_reg(fp, word->arg_reg);
+                        fprintf(fp, ".u%d.%c",
+                                word->bitsize_toggle ? 64 : 32, components[word->arg_comp]);
+                        first = false;
+                }
 
                 if ((word->op < midgard_op_atomic_cmpxchg ||
                      word->op > midgard_op_atomic_cmpxchg64_be) &&
                      word->index_reg != 0x7) {
-                        fprintf(fp, " + ");
+                        if (!first)
+                                fprintf(fp, " + ");
+
                         print_ldst_read_reg(fp, word->index_reg);
                         fprintf(fp, "%s.%c",
                                 index_format_names[word->index_format],
@@ -1540,16 +1547,16 @@ print_load_store_instr(FILE *fp, uint64_t data)
 }
 
 static void
-print_load_store_word(FILE *fp, uint32_t *word)
+print_load_store_word(FILE *fp, uint32_t *word, bool verbose)
 {
         midgard_load_store *load_store = (midgard_load_store *) word;
 
         if (load_store->word1 != 3) {
-                print_load_store_instr(fp, load_store->word1);
+                print_load_store_instr(fp, load_store->word1, verbose);
         }
 
         if (load_store->word2 != 3) {
-                print_load_store_instr(fp, load_store->word2);
+                print_load_store_instr(fp, load_store->word2, verbose);
         }
 }
 
@@ -1963,7 +1970,7 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, bool 
                 }
 
                 case TAG_LOAD_STORE_4:
-                        print_load_store_word(fp, &words[i]);
+                        print_load_store_word(fp, &words[i], verbose);
                         break;
 
                 case TAG_ALU_4 ... TAG_ALU_16_WRITEOUT:
