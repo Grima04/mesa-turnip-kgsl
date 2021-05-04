@@ -1886,6 +1886,7 @@ VKAPI_ATTR VkResult VKAPI_CALL lvp_CreateEvent(
 
    vk_object_base_init(&device->vk, &event->base, VK_OBJECT_TYPE_EVENT);
    *pEvent = lvp_event_to_handle(event);
+   event->event_storage = 0;
 
    return VK_SUCCESS;
 }
