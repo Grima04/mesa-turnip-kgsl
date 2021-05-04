@@ -101,13 +101,11 @@ panfrost-g52-gles2:arm64:
     ENV_VARS: "DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=G52"
 
 panfrost-g52-gles3:arm64:
+  parallel: 2
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
   variables:
-    # We don't have enough VIM3s to run the full GLES3 testsuite yet
-    CI_NODE_INDEX: 1
-    CI_NODE_TOTAL: 2
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=deqp DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=G52"
 
