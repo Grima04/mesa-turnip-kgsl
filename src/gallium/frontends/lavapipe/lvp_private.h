@@ -303,6 +303,8 @@ struct lvp_render_pass {
    uint32_t                                     subpass_count;
    struct lvp_subpass_attachment *              subpass_attachments;
    struct lvp_render_pass_attachment *          attachments;
+   bool has_color_attachment;
+   bool has_zs_attachment;
    struct lvp_subpass                           subpasses[0];
 };
 
