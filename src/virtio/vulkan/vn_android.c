@@ -164,11 +164,12 @@ vn_get_gralloc_buffer_info(buffer_handle_t handle,
    return true;
 }
 
-static uint32_t
+static VkResult
 vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
                                        VkFormat format,
                                        uint64_t modifier,
-                                       const VkAllocationCallbacks *alloc)
+                                       const VkAllocationCallbacks *alloc,
+                                       uint32_t *out_num_planes)
 {
    VkDrmFormatModifierPropertiesListEXT mod_prop_list = {
       .sType = VK_STRUCTURE_TYPE_DRM_FORMAT_MODIFIER_PROPERTIES_LIST_EXT,
@@ -184,7 +185,7 @@ vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
                                          &format_prop);
 
    if (!mod_prop_list.drmFormatModifierCount)
-      return 0;
+      return VK_ERROR_INVALID_EXTERNAL_HANDLE;
 
    VkDrmFormatModifierPropertiesEXT *mod_props =
       vk_zalloc(alloc,
@@ -192,22 +193,21 @@ vn_num_planes_from_format_and_modifier(VkPhysicalDevice physical_device,
                    mod_prop_list.drmFormatModifierCount,
                 VN_DEFAULT_ALIGN, VK_SYSTEM_ALLOCATION_SCOPE_COMMAND);
    if (!mod_props)
-      return 0;
+      return VK_ERROR_OUT_OF_HOST_MEMORY;
 
    mod_prop_list.pDrmFormatModifierProperties = mod_props;
    vn_GetPhysicalDeviceFormatProperties2(physical_device, format,
                                          &format_prop);
 
-   uint32_t num_planes = 0;
    for (uint32_t i = 0; i < mod_prop_list.drmFormatModifierCount; i++) {
       if (mod_props[i].drmFormatModifier == modifier) {
-         num_planes = mod_props[i].drmFormatModifierPlaneCount;
+         *out_num_planes = mod_props[i].drmFormatModifierPlaneCount;
          break;
       }
    }
 
    vk_free(alloc, mod_props);
-   return num_planes;
+   return VK_SUCCESS;
 }
 
 VkResult
@@ -262,8 +262,11 @@ vn_image_from_anb(struct vn_device *dev,
       goto fail;
    }
 
-   num_planes = vn_num_planes_from_format_and_modifier(
-      physical_device, image_info->format, format_modifier, alloc);
+   result = vn_num_planes_from_format_and_modifier(
+      physical_device, image_info->format, format_modifier, alloc,
+      &num_planes);
+   if (result != VK_SUCCESS)
+      goto fail;
 
    /* TODO support multi-planar format */
    if (num_planes != 1) {
