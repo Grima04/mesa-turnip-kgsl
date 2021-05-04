@@ -130,6 +130,7 @@ files_libnir = files(
   'nir_lower_array_deref_of_vec.c',
   'nir_lower_atomics_to_ssbo.c',
   'nir_lower_bitmap.c',
+  'nir_lower_blend.c',
   'nir_lower_bool_to_bitsize.c',
   'nir_lower_bool_to_float.c',
   'nir_lower_bool_to_int32.c',
