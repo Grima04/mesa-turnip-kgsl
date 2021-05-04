@@ -83,6 +83,8 @@ struct surface_format_info {
  * VB    - Input Vertex Buffer
  * SO    - Steamed Output Vertex Buffers (transform feedback)
  * color - Color Processing
+ * TW    - Typed Write
+ * TR    - Typed Read
  * ccs_e - Lossless Compression Support (gfx9+ only)
  * sf    - Surface Format
  *
