@@ -1426,7 +1426,7 @@ print_load_store_instr(FILE *fp, uint64_t data)
                 print_ldst_read_reg(fp, word->index_reg);
                 fprintf(fp, ".%c", components[word->index_comp]);
                 if (word->index_shift)
-                        fprintf(fp, " << %u",  word->index_shift);
+                        fprintf(fp, " lsl %u",  word->index_shift);
                 midgard_print_sint(fp, UNPACK_LDST_UBO_OFS(word->signed_offset));
         }
 
@@ -1441,14 +1441,13 @@ print_load_store_instr(FILE *fp, uint64_t data)
                 if ((word->op < midgard_op_atomic_cmpxchg ||
                      word->op > midgard_op_atomic_cmpxchg64_be) &&
                      word->index_reg != 0x7) {
-                        fprintf(fp, " + (");
+                        fprintf(fp, " + ");
                         print_ldst_read_reg(fp, word->index_reg);
                         fprintf(fp, "%s.%c",
                                 index_format_names[word->index_format],
                                 components[word->index_comp]);
                         if (word->index_shift)
-                                fprintf(fp, " << %u",  word->index_shift);
-                        fprintf(fp, ")");
+                                fprintf(fp, " lsl %u",  word->index_shift);
                 }
 
                 midgard_print_sint(fp, word->signed_offset);
@@ -1485,7 +1484,7 @@ print_load_store_instr(FILE *fp, uint64_t data)
                 print_ldst_read_reg(fp, word->index_reg);
                 fprintf(fp, ".%c", components[word->index_comp]);
                 if (word->index_shift)
-                        fprintf(fp, " << %u",  word->index_shift);
+                        fprintf(fp, " lsl %u",  word->index_shift);
                 midgard_print_sint(fp, UNPACK_LDST_ATTRIB_OFS(word->signed_offset));
         }
 
