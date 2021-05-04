@@ -3151,6 +3151,12 @@ bifrost_compile_shader_nir(nir_shader *nir,
         NIR_PASS_V(nir, nir_lower_vars_to_ssa);
         NIR_PASS_V(nir, nir_lower_io, nir_var_shader_in | nir_var_shader_out,
                         glsl_type_size, 0);
+
+        if (ctx->stage == MESA_SHADER_FRAGMENT) {
+                NIR_PASS_V(nir, nir_lower_mediump_io, nir_var_shader_out,
+                                ~0, false);
+        }
+
         NIR_PASS_V(nir, nir_lower_ssbo);
         NIR_PASS_V(nir, pan_nir_lower_zs_store);
         NIR_PASS_V(nir, pan_lower_sample_pos);
