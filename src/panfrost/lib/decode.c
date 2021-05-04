@@ -581,7 +581,7 @@ pandecode_shader_disassemble(mali_ptr shader_ptr, int shader_no, int type,
                 stats.helper_invocations = false;
         } else {
                 stats = disassemble_midgard(pandecode_dump_stream,
-                                code, sz, gpu_id);
+                                code, sz, gpu_id, true);
         }
 
         unsigned nr_threads =

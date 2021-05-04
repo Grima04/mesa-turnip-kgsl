@@ -812,7 +812,7 @@ print_tex_mask(FILE *fp, unsigned mask, bool upper)
 
 static void
 print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_word,
-                   const midgard_constants *consts, unsigned tabs)
+                   const midgard_constants *consts, unsigned tabs, bool verbose)
 {
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_vector_alu *alu_field = (midgard_vector_alu *) words;
@@ -821,9 +821,8 @@ print_vector_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         unsigned shrink_mode = alu_field->shrink_mode;
         bool is_int = midgard_is_integer_op(op);
 
-        /* For now, prefix instruction names with their unit, until we
-         * understand how this works on a deeper level */
-        fprintf(fp, "%s.", name);
+        if (verbose)
+                fprintf(fp, "%s.", name);
 
         print_alu_opcode(fp, alu_field->op);
 
@@ -928,7 +927,7 @@ decode_scalar_imm(unsigned src2_reg, unsigned imm)
 
 static void
 print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_word,
-                   const midgard_constants *consts, unsigned tabs)
+                   const midgard_constants *consts, unsigned tabs, bool verbose)
 {
         midgard_reg_info *reg_info = (midgard_reg_info *)&reg_word;
         midgard_scalar_alu *alu_field = (midgard_scalar_alu *) words;
@@ -938,7 +937,9 @@ print_scalar_field(FILE *fp, const char *name, uint16_t *words, uint16_t reg_wor
         if (alu_field->unknown)
                 fprintf(fp, "scalar ALU unknown bit set\n");
 
-        fprintf(fp, "%s.", name);
+        if (verbose)
+                fprintf(fp, "%s.", name);
+
         print_alu_opcode(fp, alu_field->op);
 
         /* Print lane width, in this case the lane width is always 32-bit, but
@@ -1163,7 +1164,7 @@ num_alu_fields_enabled(uint32_t control_word)
 
 static bool
 print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
-               unsigned tabs, unsigned next)
+               unsigned tabs, unsigned next, bool verbose)
 {
         uint32_t control_word = words[0];
         uint16_t *beginning_ptr = (uint16_t *)(words + 1);
@@ -1204,7 +1205,7 @@ print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
                 fprintf(fp, "unknown bit 16 enabled\n");
 
         if ((control_word >> 17) & 1) {
-                print_vector_field(fp, "vmul", word_ptr, *beginning_ptr, consts, tabs);
+                print_vector_field(fp, "vmul", word_ptr, *beginning_ptr, consts, tabs, verbose);
                 beginning_ptr += 1;
                 word_ptr += 3;
         }
@@ -1213,7 +1214,7 @@ print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
                 fprintf(fp, "unknown bit 18 enabled\n");
 
         if ((control_word >> 19) & 1) {
-                print_scalar_field(fp, "sadd", word_ptr, *beginning_ptr, consts, tabs);
+                print_scalar_field(fp, "sadd", word_ptr, *beginning_ptr, consts, tabs, verbose);
                 beginning_ptr += 1;
                 word_ptr += 2;
         }
@@ -1222,7 +1223,7 @@ print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
                 fprintf(fp, "unknown bit 20 enabled\n");
 
         if ((control_word >> 21) & 1) {
-                print_vector_field(fp, "vadd", word_ptr, *beginning_ptr, consts, tabs);
+                print_vector_field(fp, "vadd", word_ptr, *beginning_ptr, consts, tabs, verbose);
                 beginning_ptr += 1;
                 word_ptr += 3;
         }
@@ -1231,7 +1232,7 @@ print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
                 fprintf(fp, "unknown bit 22 enabled\n");
 
         if ((control_word >> 23) & 1) {
-                print_scalar_field(fp, "smul", word_ptr, *beginning_ptr, consts, tabs);
+                print_scalar_field(fp, "smul", word_ptr, *beginning_ptr, consts, tabs, verbose);
                 beginning_ptr += 1;
                 word_ptr += 2;
         }
@@ -1240,7 +1241,7 @@ print_alu_word(FILE *fp, uint32_t *words, unsigned num_quad_words,
                 fprintf(fp, "unknown bit 24 enabled\n");
 
         if ((control_word >> 25) & 1) {
-                print_vector_field(fp, "lut", word_ptr, *beginning_ptr, consts, tabs);
+                print_vector_field(fp, "lut", word_ptr, *beginning_ptr, consts, tabs, verbose);
                 word_ptr += 3;
         }
 
@@ -1853,7 +1854,7 @@ print_texture_word(FILE *fp, uint32_t *word, unsigned tabs, unsigned in_reg_base
 }
 
 struct midgard_disasm_stats
-disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id)
+disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id, bool verbose)
 {
         uint32_t *words = (uint32_t *) code;
         unsigned num_words = size / 4;
@@ -1940,7 +1941,7 @@ disassemble_midgard(FILE *fp, uint8_t *code, size_t size, unsigned gpu_id)
                         break;
 
                 case TAG_ALU_4 ... TAG_ALU_16_WRITEOUT:
-                        branch_forward = print_alu_word(fp, &words[i], num_quad_words, tabs, i + 4*num_quad_words);
+                        branch_forward = print_alu_word(fp, &words[i], num_quad_words, tabs, i + 4*num_quad_words, verbose);
 
                         /* TODO: infer/verify me */
                         if (tag >= TAG_ALU_4_WRITEOUT)

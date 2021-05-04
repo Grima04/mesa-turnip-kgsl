@@ -59,6 +59,7 @@ static const struct debug_named_value midgard_debug_options[] = {
         {"shaders",   MIDGARD_DBG_SHADERS,	"Dump shaders in NIR and MIR"},
         {"shaderdb",  MIDGARD_DBG_SHADERDB,     "Prints shader-db statistics"},
         {"inorder",   MIDGARD_DBG_INORDER,      "Disables out-of-order scheduling"},
+        {"verbose",   MIDGARD_DBG_VERBOSE,      "Dump shaders verbosely"},
         DEBUG_NAMED_VALUE_END
 };
 
@@ -3208,7 +3209,8 @@ midgard_compile_shader_nir(nir_shader *nir,
 
         if ((midgard_debug & MIDGARD_DBG_SHADERS) && !nir->info.internal) {
                 disassemble_midgard(stdout, binary->data,
-                                    binary->size, inputs->gpu_id);
+                                    binary->size, inputs->gpu_id,
+                                    midgard_debug & MIDGARD_DBG_VERBOSE);
                 fflush(stdout);
         }
 
