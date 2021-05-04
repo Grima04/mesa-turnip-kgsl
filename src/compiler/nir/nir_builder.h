@@ -933,6 +933,27 @@ nir_udiv_imm(nir_builder *build, nir_ssa_def *x, uint64_t y)
 }
 
 static inline nir_ssa_def *
+nir_fclamp(nir_builder *b,
+           nir_ssa_def *x, nir_ssa_def *min_val, nir_ssa_def *max_val)
+{
+   return nir_fmin(b, nir_fmax(b, x, min_val), max_val);
+}
+
+static inline nir_ssa_def *
+nir_iclamp(nir_builder *b,
+           nir_ssa_def *x, nir_ssa_def *min_val, nir_ssa_def *max_val)
+{
+   return nir_imin(b, nir_imax(b, x, min_val), max_val);
+}
+
+static inline nir_ssa_def *
+nir_uclamp(nir_builder *b,
+           nir_ssa_def *x, nir_ssa_def *min_val, nir_ssa_def *max_val)
+{
+   return nir_umin(b, nir_umax(b, x, min_val), max_val);
+}
+
+static inline nir_ssa_def *
 nir_pack_bits(nir_builder *b, nir_ssa_def *src, unsigned dest_bit_size)
 {
    assert(src->num_components * src->bit_size == dest_bit_size);
