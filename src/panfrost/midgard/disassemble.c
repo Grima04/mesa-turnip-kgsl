@@ -202,7 +202,7 @@ print_alu_reg(FILE *fp, unsigned reg, bool is_write)
         else if (reg == REGISTER_LDST_BASE || reg == REGISTER_LDST_BASE + 1)
                 fprintf(fp, "AL%u", reg - REGISTER_LDST_BASE);
         else if (is_uniform)
-                fprintf(fp, "RMU%u", uniform_reg);
+                fprintf(fp, "U%u", uniform_reg);
         else if (reg == 31 && !is_write)
                 fprintf(fp, "PC_SP");
         else
