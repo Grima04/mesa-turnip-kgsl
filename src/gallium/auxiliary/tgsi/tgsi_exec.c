@@ -1809,8 +1809,7 @@ store_dest_dstret(struct tgsi_exec_machine *mach,
       break;
 
    default:
-      assert( 0 );
-      return NULL;
+      unreachable("Bad destination file");
    }
 
    return dst;
