@@ -1649,7 +1649,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
    decode->db_surf_tile_config = 0;
 
    decode->dt_pitch = luma->surface.u.gfx9.surf_pitch * luma->surface.blk_w;
-   decode->dt_uv_pitch = decode->dt_pitch / 2;
+   decode->dt_uv_pitch = chroma->surface.u.gfx9.surf_pitch * chroma->surface.blk_w;
 
    if (luma->surface.meta_offset) {
       RVID_ERR("DCC surfaces not supported.\n");
@@ -1675,7 +1675,7 @@ static struct pb_buffer *rvcn_dec_message_decode(struct radeon_decoder *dec,
       decode->dt_chroma_bottom_offset = decode->dt_chroma_top_offset;
    }
    if (dec->stream_type == RDECODE_CODEC_AV1)
-      decode->db_pitch_uv = decode->db_pitch /  2;
+      decode->db_pitch_uv = chroma->surface.u.gfx9.surf_pitch * chroma->surface.blk_w;
 
    if (encrypted) {
       assert(sscreen->info.has_tmz_support);
