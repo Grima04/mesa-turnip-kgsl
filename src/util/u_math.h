@@ -737,8 +737,8 @@ ALIGN_NPOT(uintptr_t value, int32_t alignment)
  *
  * \sa ALIGN()
  */
-static inline uintptr_t
-ROUND_DOWN_TO(uintptr_t value, int32_t alignment)
+static inline uint64_t
+ROUND_DOWN_TO(uint64_t value, int32_t alignment)
 {
    assert(util_is_power_of_two_nonzero(alignment));
    return ((value) & ~(alignment - 1));
