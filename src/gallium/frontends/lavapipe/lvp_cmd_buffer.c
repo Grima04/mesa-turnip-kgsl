@@ -1681,7 +1681,10 @@ VKAPI_ATTR void VKAPI_CALL lvp_CmdBindTransformFeedbackBuffersEXT(
    for (unsigned i = 0; i < bindingCount; i++) {
       cmd->u.bind_transform_feedback_buffers.buffers[i] = lvp_buffer_from_handle(pBuffers[i]);
       cmd->u.bind_transform_feedback_buffers.offsets[i] = pOffsets[i];
-      cmd->u.bind_transform_feedback_buffers.sizes[i] = pSizes[i];
+      if (pSizes && pSizes[i] != VK_WHOLE_SIZE)
+         cmd->u.bind_transform_feedback_buffers.sizes[i] = pSizes[i];
+      else
+         cmd->u.bind_transform_feedback_buffers.sizes[i] = cmd->u.bind_transform_feedback_buffers.buffers[i]->size - pOffsets[i];
    }
    cmd_buf_queue(cmd_buffer, cmd);
 }
