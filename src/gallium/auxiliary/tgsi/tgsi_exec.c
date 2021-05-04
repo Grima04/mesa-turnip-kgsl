@@ -1734,7 +1734,6 @@ store_dest_dstret(struct tgsi_exec_machine *mach,
 {
    static union tgsi_exec_channel null;
    union tgsi_exec_channel *dst;
-   union tgsi_exec_channel index2D;
    int offset = 0;  /* indirection offset */
    int index;
 
@@ -1773,77 +1772,6 @@ store_dest_dstret(struct tgsi_exec_machine *mach,
 
       /* save indirection offset */
       offset = indir_index.i[0];
-   }
-
-   /* There is an extra source register that is a second
-    * subscript to a register file. Effectively it means that
-    * the register file is actually a 2D array of registers.
-    *
-    *    file[3][1],
-    *    where:
-    *       [3] = Dimension.Index
-    */
-   if (reg->Register.Dimension) {
-      index2D.i[0] =
-      index2D.i[1] =
-      index2D.i[2] =
-      index2D.i[3] = reg->Dimension.Index;
-
-      /* Again, the second subscript index can be addressed indirectly
-       * identically to the first one.
-       * Nothing stops us from indirectly addressing the indirect register,
-       * but there is no need for that, so we won't exercise it.
-       *
-       *    file[ind[4].y+3][1],
-       *    where:
-       *       ind = DimIndirect.File
-       *       [4] = DimIndirect.Index
-       *       .y = DimIndirect.SwizzleX
-       */
-      if (reg->Dimension.Indirect) {
-         union tgsi_exec_channel index2;
-         union tgsi_exec_channel indir_index;
-         const uint execmask = mach->ExecMask;
-         unsigned swizzle;
-         uint i;
-
-         index2.i[0] =
-         index2.i[1] =
-         index2.i[2] =
-         index2.i[3] = reg->DimIndirect.Index;
-
-         swizzle = reg->DimIndirect.Swizzle;
-         fetch_src_file_channel(mach,
-                                reg->DimIndirect.File,
-                                swizzle,
-                                &index2,
-                                &ZeroVec,
-                                &indir_index);
-
-         index2D.i[0] += indir_index.i[0];
-         index2D.i[1] += indir_index.i[1];
-         index2D.i[2] += indir_index.i[2];
-         index2D.i[3] += indir_index.i[3];
-
-         /* for disabled execution channels, zero-out the index to
-          * avoid using a potential garbage value.
-          */
-         for (i = 0; i < TGSI_QUAD_SIZE; i++) {
-            if ((execmask & (1 << i)) == 0) {
-               index2D.i[i] = 0;
-            }
-         }
-      }
-
-      /* If by any chance there was a need for a 3D array of register
-       * files, we would have to check whether Dimension is followed
-       * by a dimension register and continue the saga.
-       */
-   } else {
-      index2D.i[0] =
-      index2D.i[1] =
-      index2D.i[2] =
-      index2D.i[3] = 0;
    }
 
    switch (reg->Register.File) {
