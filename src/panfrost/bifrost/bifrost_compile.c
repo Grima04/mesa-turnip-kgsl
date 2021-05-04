@@ -32,7 +32,6 @@
 
 #include "disassemble.h"
 #include "bifrost_compile.h"
-#include "bifrost_nir.h"
 #include "compiler.h"
 #include "bi_quirks.h"
 #include "bi_builder.h"
