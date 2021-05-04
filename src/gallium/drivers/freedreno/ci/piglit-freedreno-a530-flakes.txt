@@ -15,3 +15,7 @@ spec@arb_texture_cube_map_array@texsubimage cube_map_array
 spec@arb_copy_buffer@copy_buffer_coherency
 .*tex-miplevel-selection.*
 .*glsl-1.30@execution@texelfetch.*
+
+# Flakes since introduction of piglit testing, possibly increased in frequency
+# around Apr 16 or more likely Apr 23
+spec@arb_texture_gather@texturegather.*
