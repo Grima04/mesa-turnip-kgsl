@@ -2911,22 +2911,26 @@ anv_DestroyImageView(VkDevice _device, VkImageView _iview,
       return;
 
    for (uint32_t plane = 0; plane < iview->n_planes; plane++) {
-      if (iview->planes[plane].optimal_sampler_surface_state.state.alloc_size > 0) {
+      /* Check offset instead of alloc_size because this they might be
+       * device->null_surface_state which always has offset == 0.  We don't
+       * own that one so we don't want to accidentally free it.
+       */
+      if (iview->planes[plane].optimal_sampler_surface_state.state.offset) {
          anv_state_pool_free(&device->surface_state_pool,
                              iview->planes[plane].optimal_sampler_surface_state.state);
       }
 
-      if (iview->planes[plane].general_sampler_surface_state.state.alloc_size > 0) {
+      if (iview->planes[plane].general_sampler_surface_state.state.offset) {
          anv_state_pool_free(&device->surface_state_pool,
                              iview->planes[plane].general_sampler_surface_state.state);
       }
 
-      if (iview->planes[plane].storage_surface_state.state.alloc_size > 0) {
+      if (iview->planes[plane].storage_surface_state.state.offset) {
          anv_state_pool_free(&device->surface_state_pool,
                              iview->planes[plane].storage_surface_state.state);
       }
 
-      if (iview->planes[plane].writeonly_storage_surface_state.state.alloc_size > 0) {
+      if (iview->planes[plane].writeonly_storage_surface_state.state.offset) {
          anv_state_pool_free(&device->surface_state_pool,
                              iview->planes[plane].writeonly_storage_surface_state.state);
       }
