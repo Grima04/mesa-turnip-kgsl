@@ -33,11 +33,11 @@
  * avoid duplications in the binary */
 
 struct mir_op_props alu_opcode_props[256] = {
-        [midgard_alu_op_fadd]            = {"FADD.rte", UNITS_ADD | OP_COMMUTES},
+        [midgard_alu_op_fadd]            = {"FADD", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_fadd_rtz]        = {"FADD.rtz", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_fadd_rtn]        = {"FADD.rtn", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_fadd_rtp]        = {"FADD.rtp", UNITS_ADD | OP_COMMUTES},
-        [midgard_alu_op_fmul]            = {"FMUL.rte", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
+        [midgard_alu_op_fmul]            = {"FMUL", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
         [midgard_alu_op_fmul_rtz]        = {"FMUL.rtz", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
         [midgard_alu_op_fmul_rtn]        = {"FMUL.rtn", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
         [midgard_alu_op_fmul_rtp]        = {"FMUL.rtp", UNITS_MUL | UNIT_VLUT | OP_COMMUTES},
@@ -58,7 +58,7 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_iravg]           = {"AVG.round", UNITS_ADD | OP_COMMUTES},
         [midgard_alu_op_uravg]           = {"AVG.round", UNITS_ADD | OP_COMMUTES},
 
-        [midgard_alu_op_fmov]            = {"FMOV.rte", UNITS_ALL | QUIRK_FLIPPED_R24},
+        [midgard_alu_op_fmov]            = {"FMOV", UNITS_ALL | QUIRK_FLIPPED_R24},
         [midgard_alu_op_fmov_rtz]        = {"FMOV.rtz", UNITS_ALL | QUIRK_FLIPPED_R24},
         [midgard_alu_op_fmov_rtn]        = {"FMOV.rtn", UNITS_ALL | QUIRK_FLIPPED_R24},
         [midgard_alu_op_fmov_rtp]        = {"FMOV.rtp", UNITS_ALL | QUIRK_FLIPPED_R24},
@@ -70,7 +70,7 @@ struct mir_op_props alu_opcode_props[256] = {
 
         /* Multiplies the X/Y components of the first arg and adds the second
          * arg. Like other LUTs, it must be scalarized. */
-        [midgard_alu_op_ffma]            = {"FMA.rte", UNIT_VLUT},
+        [midgard_alu_op_ffma]            = {"FMA", UNIT_VLUT},
         [midgard_alu_op_ffma_rtz]        = {"FMA.rtz", UNIT_VLUT},
         [midgard_alu_op_ffma_rtn]        = {"FMA.rtn", UNIT_VLUT},
         [midgard_alu_op_ffma_rtp]        = {"FMA.rtp", UNIT_VLUT},
@@ -126,19 +126,19 @@ struct mir_op_props alu_opcode_props[256] = {
         [midgard_alu_op_fexp2]           = {"FEXP2", UNIT_VLUT},
         [midgard_alu_op_flog2]           = {"FLOG2", UNIT_VLUT},
 
-        [midgard_alu_op_f2i_rte]         = {"F2I.rte", UNITS_ADD | OP_TYPE_CONVERT | MIDGARD_ROUNDS},
+        [midgard_alu_op_f2i_rte]         = {"F2I", UNITS_ADD | OP_TYPE_CONVERT | MIDGARD_ROUNDS},
         [midgard_alu_op_f2i_rtz]         = {"F2I.rtz", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_f2i_rtn]         = {"F2I.rtn", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_f2i_rtp]         = {"F2I.rtp", UNITS_ADD | OP_TYPE_CONVERT},
-        [midgard_alu_op_f2u_rte]         = {"F2U.rte", UNITS_ADD | OP_TYPE_CONVERT | MIDGARD_ROUNDS},
+        [midgard_alu_op_f2u_rte]         = {"F2U", UNITS_ADD | OP_TYPE_CONVERT | MIDGARD_ROUNDS},
         [midgard_alu_op_f2u_rtz]         = {"F2U.rtz", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_f2u_rtn]         = {"F2U.rtn", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_f2u_rtp]         = {"F2U.rtp", UNITS_ADD | OP_TYPE_CONVERT},
-        [midgard_alu_op_i2f_rte]         = {"I2F.rte", UNITS_ADD | OP_TYPE_CONVERT},
+        [midgard_alu_op_i2f_rte]         = {"I2F", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_i2f_rtz]         = {"I2F.rtz", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_i2f_rtn]         = {"I2F.rtn", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_i2f_rtp]         = {"I2F.rtp", UNITS_ADD | OP_TYPE_CONVERT},
-        [midgard_alu_op_u2f_rte]         = {"U2F.rte", UNITS_ADD | OP_TYPE_CONVERT},
+        [midgard_alu_op_u2f_rte]         = {"U2F", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_u2f_rtz]         = {"U2F.rtz", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_u2f_rtn]         = {"U2F.rtn", UNITS_ADD | OP_TYPE_CONVERT},
         [midgard_alu_op_u2f_rtp]         = {"U2F.rtp", UNITS_ADD | OP_TYPE_CONVERT},
