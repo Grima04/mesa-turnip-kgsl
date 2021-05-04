@@ -77,7 +77,10 @@ bi_lower_swizzle_16(bi_context *ctx, bi_instr *ins, unsigned src)
         /* If the instruction is scalar we can ignore the other component */
         if (ins->dest[0].swizzle == BI_SWIZZLE_H00 &&
                         ins->src[src].swizzle == BI_SWIZZLE_H00)
+        {
+                ins->src[src].swizzle = BI_SWIZZLE_H01;
                 return;
+        }
 
         /* Lower it away */
         bi_builder b = bi_init_builder(ctx, bi_before_instr(ins));
