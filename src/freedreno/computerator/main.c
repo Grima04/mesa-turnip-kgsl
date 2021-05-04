@@ -284,7 +284,12 @@ main(int argc, char **argv)
 
    backend->emit_grid(kernel, grid, submit);
 
-   fd_submit_flush(submit, -1, NULL);
+   struct fd_submit_fence fence = {};
+   util_queue_fence_init(&fence.ready);
+
+   fd_submit_flush(submit, -1, &fence);
+
+   util_queue_fence_wait(&fence.ready);
 
    for (int i = 0; i < kernel->num_bufs; i++) {
       fd_bo_cpu_prep(kernel->bufs[i], pipe, FD_BO_PREP_READ);
