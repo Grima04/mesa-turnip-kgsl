@@ -1362,9 +1362,30 @@ print_load_store_instr(FILE *fp, uint64_t data)
 
         /* Print opcode modifiers */
 
-        if (OP_USES_ATTRIB(word->op)) /* which attrib table? */
-                fprintf(fp, ".%s", (word->index_format >> 1) ? "secondary" : "primary");
-        else if (word->op == midgard_op_ld_cubemap_coords || OP_IS_PROJECTION(word->op))
+        if (OP_USES_ATTRIB(word->op)) {
+                /* Print non-default attribute tables */
+                bool default_secondary =
+                        (word->op == midgard_op_st_vary_32) ||
+                        (word->op == midgard_op_st_vary_16) ||
+                        (word->op == midgard_op_st_vary_32u) ||
+                        (word->op == midgard_op_st_vary_32i) ||
+                        (word->op == midgard_op_ld_vary_32) ||
+                        (word->op == midgard_op_ld_vary_16) ||
+                        (word->op == midgard_op_ld_vary_32u) ||
+                        (word->op == midgard_op_ld_vary_32i);
+
+                bool default_primary =
+                        (word->op == midgard_op_ld_attr_32) ||
+                        (word->op == midgard_op_ld_attr_16) ||
+                        (word->op == midgard_op_ld_attr_32u) ||
+                        (word->op == midgard_op_ld_attr_32i);
+
+                bool has_default = (default_secondary || default_primary);
+                bool is_secondary = (word->index_format >> 1);
+
+                if (has_default && (is_secondary != default_secondary))
+                        fprintf(fp, ".%s", is_secondary ? "secondary" : "primary");
+        } else if (word->op == midgard_op_ld_cubemap_coords || OP_IS_PROJECTION(word->op))
                 fprintf(fp, ".%s", word->bitsize_toggle ? "f32" : "f16");
 
         fprintf(fp, " ");
