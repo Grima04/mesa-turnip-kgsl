@@ -1432,7 +1432,8 @@ print_load_store_instr(FILE *fp, uint64_t data)
 
         /* mem addr expression */
         if (OP_HAS_ADDRESS(word->op)) {
-                fprintf(fp, ", [ ");
+                fprintf(fp, ", ");
+
                 print_ldst_read_reg(fp, word->arg_reg);
                 fprintf(fp, ".u%d.%c",
                         word->bitsize_toggle ? 64 : 32, components[word->arg_comp]);
@@ -1451,8 +1452,6 @@ print_load_store_instr(FILE *fp, uint64_t data)
                 }
 
                 midgard_print_sint(fp, word->signed_offset);
-
-                fprintf(fp, " ]");
         }
 
         /* src reg for reg2reg ldst opcodes */
