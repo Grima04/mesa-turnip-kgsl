@@ -636,7 +636,7 @@ anv_get_image_format_features(const struct intel_device_info *devinfo,
    /* Load/store is determined based on base format.  This prevents RGB
     * formats from showing up as load/store capable.
     */
-   if (isl_is_storage_image_format(base_isl_format))
+   if (isl_format_supports_typed_writes(devinfo, base_isl_format))
       flags |= VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT;
 
    if (base_isl_format == ISL_FORMAT_R32_SINT ||
