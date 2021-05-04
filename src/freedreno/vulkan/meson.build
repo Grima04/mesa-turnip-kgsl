@@ -168,14 +168,15 @@ endif
 
 freedreno_icd = custom_target(
   'freedreno_icd',
-  input : 'tu_icd.py',
+  input : [vk_icd_gen, vk_api_xml],
   output : 'freedreno_icd.@0@.json'.format(host_machine.cpu()),
   command : [
-    prog_python, '@INPUT@',
-    '--lib-path', join_paths(get_option('prefix'), get_option('libdir')),
+    prog_python, '@INPUT0@',
+    '--api-version', '1.1', '--xml', '@INPUT1@',
+    '--lib-path', join_paths(get_option('prefix'), get_option('libdir'),
+                             'libvulkan_freedreno.so'),
     '--out', '@OUTPUT@',
   ],
-  depend_files : files('tu_extensions.py'),
   build_by_default : true,
   install_dir : with_vulkan_icd_dir,
   install : true,
