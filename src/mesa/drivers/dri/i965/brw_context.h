@@ -336,18 +336,6 @@ struct brw_program {
    bool compiled_once;
 };
 
-
-struct brw_ff_gs_prog_data {
-   GLuint urb_read_length;
-   GLuint total_grf;
-
-   /**
-    * Gfx6 transform feedback: Amount by which the streaming vertex buffer
-    * indices should be incremented each time the GS is invoked.
-    */
-   unsigned svbi_postincrement_value;
-};
-
 /** Number of texture sampler units */
 #define BRW_MAX_TEX_UNIT 32
 
