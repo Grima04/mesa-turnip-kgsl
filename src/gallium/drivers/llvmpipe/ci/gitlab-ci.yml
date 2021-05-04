@@ -96,6 +96,28 @@ llvmpipe-gles2:
   extends:
     - .llvmpipe-deqp-test
 
+llvmpipe-gles3:
+  variables:
+    DEQP_VER: gles3
+  extends:
+    - .llvmpipe-deqp-test
+
+llvmpipe-gles31:
+  variables:
+    DEQP_VER: gles31
+    # Stress test NIR clone/serialization with significant shaders enabled.
+    # Costs about 30% extra runtime.
+    NIR_TEST_CLONE: "true"
+    NIR_TEST_SERIALIZE: "true"
+  extends:
+    - .llvmpipe-deqp-test
+
+llvmpipe-gl:
+  variables:
+    DEQP_VER: gl45
+  extends:
+    - .llvmpipe-deqp-test
+
 llvmpipe-khr-gles2:
   variables:
     DEQP_VER: gles2-khr
