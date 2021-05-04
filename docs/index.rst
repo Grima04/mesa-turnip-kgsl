@@ -106,7 +106,6 @@ and other operating systems.
    submittingpatches
    releasing
    release-calendar
-   sourcedocs
    dispatch
    gallium/index
    android
