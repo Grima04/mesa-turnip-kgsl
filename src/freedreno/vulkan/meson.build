@@ -29,16 +29,6 @@ tu_entrypoints = custom_target(
   depend_files : vk_entrypoints_gen_depend_files,
 )
 
-tu_extensions_c = custom_target(
-  'tu_extensions.c',
-  input : ['tu_extensions.py', vk_api_xml],
-  output : ['tu_extensions.c', 'tu_extensions.h'],
-  command : [
-    prog_python, '@INPUT0@', '--xml', '@INPUT1@', '--out-c', '@OUTPUT0@',
-    '--out-h', '@OUTPUT1@'
-  ],
-  depend_files : vk_extensions_gen,
-)
 
 libtu_files = files(
   'tu_clear_blit.c',
@@ -117,7 +107,7 @@ endif
 
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
-  [libtu_files, tu_entrypoints, tu_extensions_c, freedreno_xml_header_files],
+  [libtu_files, tu_entrypoints, freedreno_xml_header_files],
   include_directories : [
     inc_include,
     inc_src,

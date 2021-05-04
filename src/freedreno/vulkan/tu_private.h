@@ -74,7 +74,6 @@
 #include "perfcntrs/freedreno_perfcntr.h"
 
 #include "tu_descriptor_set.h"
-#include "tu_extensions.h"
 #include "tu_util.h"
 
 /* Pre-declarations needed for WSI entrypoints */
