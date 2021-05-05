@@ -510,6 +510,11 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
       state->min_samples_dirty = true;
    } else {
       state->rs_state.multisample = false;
+      state->sample_mask_dirty = state->sample_mask != 0xffffffff;
+      state->sample_mask = 0xffffffff;
+      state->min_samples_dirty = state->min_samples;
+      state->min_samples = 0;
+      state->blend_dirty |= state->blend_state.alpha_to_coverage || state->blend_state.alpha_to_one;
       state->blend_state.alpha_to_coverage = false;
       state->blend_state.alpha_to_one = false;
       state->rs_dirty = true;
