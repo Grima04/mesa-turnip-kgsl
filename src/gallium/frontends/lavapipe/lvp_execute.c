@@ -571,9 +571,9 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
             state->stencil_ref_dirty = true;
          }
       }
-
-      state->dsa_dirty = true;
-   }
+   } else
+      memset(&state->dsa_state, 0, sizeof(state->dsa_state));
+   state->dsa_dirty = true;
 
    if (pipeline->graphics_create_info.pColorBlendState) {
       const VkPipelineColorBlendStateCreateInfo *cb = pipeline->graphics_create_info.pColorBlendState;
