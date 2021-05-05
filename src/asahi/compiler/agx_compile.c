@@ -63,7 +63,7 @@ agx_emit_load_const(agx_builder *b, nir_load_const_instr *instr)
 }
 
 /* AGX appears to lack support for vertex attributes. Lower to global loads. */
-static void
+static agx_instr *
 agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
 {
    nir_src *offset_src = nir_get_io_offset_src(instr);
@@ -109,9 +109,11 @@ agx_emit_load_attr(agx_builder *b, nir_intrinsic_instr *instr)
          channels[i] = agx_null();
       agx_p_combine_to(b, real_dest, channels[0], channels[1], channels[2], channels[3]);
    }
+
+   return NULL;
 }
 
-static void
+static agx_instr *
 agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
 {
    unsigned components = instr->num_components;
@@ -135,11 +137,11 @@ agx_emit_load_vary(agx_builder *b, nir_intrinsic_instr *instr)
    unsigned imm_index = (4 * nir_intrinsic_base(instr)) + nir_src_as_uint(*offset);
    imm_index += 1;
 
-   agx_ld_vary_to(b, agx_dest_index(&instr->dest),
+   return agx_ld_vary_to(b, agx_dest_index(&instr->dest),
          agx_immediate(imm_index), components);
 }
 
-static void
+static agx_instr *
 agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
 {
    nir_src *offset = nir_get_io_offset_src(instr);
@@ -151,12 +153,12 @@ agx_emit_store_vary(agx_builder *b, nir_intrinsic_instr *instr)
    /* nir_lower_io_to_scalar */
    assert(nir_intrinsic_write_mask(instr) == 0x1);
 
-   agx_st_vary(b,
+   return agx_st_vary(b,
                agx_immediate(imm_index),
                agx_src_index(&instr->src[0]));
 }
 
-static void
+static agx_instr *
 agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 {
    const nir_variable *var =
@@ -175,7 +177,7 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
    agx_writeout(b, 0x000C);
 
    /* Emit the blend op itself */
-   agx_blend(b, agx_src_index(&instr->src[0]),
+   return agx_blend(b, agx_src_index(&instr->src[0]),
              b->shader->key->fs.tib_formats[rt]);
 }
 
@@ -190,7 +192,7 @@ agx_format_for_bits(unsigned bits)
    }
 }
 
-static void
+static agx_instr *
 agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
 {
    bool kernel_input = (instr->intrinsic == nir_intrinsic_load_kernel_input);
@@ -231,10 +233,10 @@ agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
                       agx_format_for_bits(nir_dest_bit_size(instr->dest)),
                       BITFIELD_MASK(instr->num_components), 0);
 
-   agx_wait(b, 0);
+   return agx_wait(b, 0);
 }
 
-static void
+static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
   agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest ?
@@ -248,38 +250,34 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
   case nir_intrinsic_load_barycentric_at_sample:
   case nir_intrinsic_load_barycentric_at_offset:
      /* handled later via load_vary */
-     break;
+     return NULL;
   case nir_intrinsic_load_interpolated_input:
   case nir_intrinsic_load_input:
      if (stage == MESA_SHADER_FRAGMENT)
-        agx_emit_load_vary(b, instr);
+        return agx_emit_load_vary(b, instr);
      else if (stage == MESA_SHADER_VERTEX)
-        agx_emit_load_attr(b, instr);
+        return agx_emit_load_attr(b, instr);
      else
         unreachable("Unsupported shader stage");
-     break;
 
   case nir_intrinsic_store_output:
      if (stage == MESA_SHADER_FRAGMENT)
-        agx_emit_fragment_out(b, instr);
+        return agx_emit_fragment_out(b, instr);
      else if (stage == MESA_SHADER_VERTEX)
-        agx_emit_store_vary(b, instr);
+        return agx_emit_store_vary(b, instr);
      else
         unreachable("Unsupported shader stage");
-     break;
 
   case nir_intrinsic_load_ubo:
   case nir_intrinsic_load_kernel_input:
-     agx_emit_load_ubo(b, instr);
-     break;
+     return agx_emit_load_ubo(b, instr);
 
   case nir_intrinsic_load_vertex_id:
-     agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32))); /* TODO: RA */
-     break;
+     return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32))); /* TODO: RA */
 
   default:
        fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
-       assert(0);
+       unreachable("Unhandled intrinsic");
   }
 }
 
