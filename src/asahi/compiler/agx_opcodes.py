@@ -172,8 +172,10 @@ op("device_load",
 op("wait", (0x38, 0xFF, 2, _), dests = 0,
       can_eliminate = False, imms = [SCOREBOARD])
 
+op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
+      can_eliminate = False, imms = [FORMAT])
+
 op("bitop", (0x7E, 0x7F, 6, _), srcs = 2, imms = [TRUTH_TABLE])
-op("blend", (0x09, 0x7F, 8, _), dests = 0, srcs = 1, imms = [FORMAT], can_eliminate = False)
 op("convert", (0x3E | L, 0x7F | L | (0x3 << 38), 6, _), srcs = 2, imms = [ROUND]) 
 op("ld_vary", (0x21, 0x3F, 8, _), srcs = 1, imms = [CHANNELS])
 op("st_vary", None, dests = 0, srcs = 2, can_eliminate = False)

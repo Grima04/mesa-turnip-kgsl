@@ -176,8 +176,7 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
    agx_writeout(b, 0xC200);
    agx_writeout(b, 0x000C);
 
-   /* Emit the blend op itself */
-   return agx_blend(b, agx_src_index(&instr->src[0]),
+   return agx_st_tile(b, agx_src_index(&instr->src[0]),
              b->shader->key->fs.tib_formats[rt]);
 }
 

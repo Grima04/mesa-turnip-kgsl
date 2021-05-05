@@ -169,7 +169,7 @@ agx_optimizer_forward(agx_context *ctx)
          agx_optimizer_fmov(defs, I, info.nr_srcs);
 
       /* Inline immediates if we can. TODO: systematic */
-      if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_BLEND && I->op != AGX_OPCODE_P_EXTRACT && I->op != AGX_OPCODE_P_COMBINE)
+      if (I->op != AGX_OPCODE_ST_VARY && I->op != AGX_OPCODE_ST_TILE && I->op != AGX_OPCODE_P_EXTRACT && I->op != AGX_OPCODE_P_COMBINE)
          agx_optimizer_inline_imm(defs, I, info.nr_srcs, info.is_float);
    }
 

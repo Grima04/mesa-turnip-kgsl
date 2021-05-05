@@ -356,7 +356,7 @@ static void
 agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
 {
    switch (I->op) {
-   case AGX_OPCODE_BLEND:
+   case AGX_OPCODE_ST_TILE:
    {
       unsigned D = agx_pack_alu_dst(I->src[0]);
       unsigned rt = 0; /* TODO */
