@@ -237,6 +237,15 @@ agx_emit_load_ubo(agx_builder *b, nir_intrinsic_instr *instr)
 }
 
 static agx_instr *
+agx_blend_const(agx_builder *b, agx_index dst, unsigned comp)
+{
+     agx_index val = agx_indexed_sysval(b->shader,
+           AGX_PUSH_BLEND_CONST, AGX_SIZE_32, comp * 2, 4 * 2);
+
+     return agx_mov_to(b, dst, val);
+}
+
+static agx_instr *
 agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 {
   agx_index dst = nir_intrinsic_infos[instr->intrinsic].has_dest ?
@@ -274,6 +283,11 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
 
   case nir_intrinsic_load_vertex_id:
      return agx_mov_to(b, dst, agx_abs(agx_register(10, AGX_SIZE_32))); /* TODO: RA */
+
+  case nir_intrinsic_load_blend_const_color_r_float: return agx_blend_const(b, dst, 0);
+  case nir_intrinsic_load_blend_const_color_g_float: return agx_blend_const(b, dst, 1);
+  case nir_intrinsic_load_blend_const_color_b_float: return agx_blend_const(b, dst, 2);
+  case nir_intrinsic_load_blend_const_color_a_float: return agx_blend_const(b, dst, 3);
 
   default:
        fprintf(stderr, "Unhandled intrinsic %s\n", nir_intrinsic_infos[instr->intrinsic].name);
