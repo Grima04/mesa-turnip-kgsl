@@ -2670,8 +2670,9 @@ emit_if(bi_context *ctx, nir_if *nif)
 
         /* Speculatively emit the branch, but we can't fill it in until later */
         bi_builder _b = bi_init_builder(ctx, bi_after_block(ctx->current_block));
-        bi_instr *then_branch = bi_branchz_i32(&_b,
-                        bi_src_index(&nif->condition), bi_zero(), BI_CMPF_EQ);
+        bi_instr *then_branch = bi_branchz_i16(&_b,
+                        bi_half(bi_src_index(&nif->condition), false),
+                        bi_zero(), BI_CMPF_EQ);
 
         /* Emit the two subblocks. */
         bi_block *then_block = emit_cf_list(ctx, &nif->then_list);
