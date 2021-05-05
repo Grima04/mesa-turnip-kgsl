@@ -107,6 +107,11 @@ struct agx_blend {
    };
 };
 
+struct asahi_shader_key {
+   struct agx_shader_key base;
+   struct agx_blend blend;
+};
+
 #define AGX_DIRTY_VERTEX (1 << 0)
 
 struct agx_context {

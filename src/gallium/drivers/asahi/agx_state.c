@@ -606,7 +606,7 @@ agx_create_shader_state(struct pipe_context *ctx,
 
 static bool
 agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
-                  enum pipe_shader_type stage, struct agx_shader_key *key)
+                  enum pipe_shader_type stage, struct asahi_shader_key *key)
 {
    struct agx_uncompiled_shader *so = ctx->stage[stage].shader;
    assert(so != NULL);
@@ -626,7 +626,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    util_dynarray_init(&binary, NULL);
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
-   agx_compile_shader_nir(nir, key, &binary, &compiled->info);
+   agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
    /* TODO: emit this properly */
    nir_variable_mode varying_mode = (nir->info.stage == MESA_SHADER_FRAGMENT) ?
@@ -705,8 +705,11 @@ agx_update_vs(struct agx_context *ctx)
       key.vbuf_strides[i] = ctx->vertex_buffers[i].stride / 4; // TODO: alignment
    }
 
-   return agx_update_shader(ctx, &ctx->vs, PIPE_SHADER_VERTEX,
-                            (struct agx_shader_key *) &key);
+   struct asahi_shader_key akey = {
+      .base.vs = key
+   };
+
+   return agx_update_shader(ctx, &ctx->vs, PIPE_SHADER_VERTEX, &akey);
 }
 
 static bool
@@ -717,7 +720,7 @@ agx_update_fs(struct agx_context *ctx)
    };
 
    return agx_update_shader(ctx, &ctx->fs, PIPE_SHADER_FRAGMENT,
-                            (struct agx_shader_key *) &key);
+                            (struct asahi_shader_key *) &key);
 }
 
 static void
