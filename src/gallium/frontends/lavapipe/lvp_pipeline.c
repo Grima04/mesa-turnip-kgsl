@@ -248,6 +248,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
    VkResult result;
    VkPipelineShaderStageCreateInfo *stages;
    VkPipelineVertexInputStateCreateInfo *vertex_input;
+   LVP_FROM_HANDLE(lvp_render_pass, pass, src->renderPass);
 
    dst->sType = src->sType;
    dst->pNext = NULL;
@@ -331,7 +332,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
       dst->pMultisampleState = NULL;
 
    /* pDepthStencilState */
-   if (src->pDepthStencilState) {
+   if (src->pDepthStencilState && !rasterization_disabled && pass->has_zs_attachment) {
       LVP_PIPELINE_DUP(dst->pDepthStencilState,
                        src->pDepthStencilState,
                        VkPipelineDepthStencilStateCreateInfo,
