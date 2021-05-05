@@ -525,6 +525,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
                                       void *debug_output_data),
                  void *debug_output_data,
                  int program_id, int variant_id,
+                 uint32_t max_threads,
                  uint32_t min_threads_for_reg_alloc,
                  bool tmu_spilling_allowed,
                  bool disable_loop_unrolling,
@@ -539,7 +540,7 @@ vir_compile_init(const struct v3d_compiler *compiler,
         c->key = key;
         c->program_id = program_id;
         c->variant_id = variant_id;
-        c->threads = 4;
+        c->threads = max_threads;
         c->debug_output = debug_output;
         c->debug_output_data = debug_output_data;
         c->compilation_result = V3D_COMPILATION_SUCCEEDED;
@@ -1525,21 +1526,22 @@ int v3d_shaderdb_dump(struct v3d_compile *c,
  */
 struct v3d_compiler_strategy {
         const char *name;
-        uint32_t min_threads_for_reg_alloc;
+        uint32_t max_threads;
+        uint32_t min_threads;
         bool disable_loop_unrolling;
         bool disable_ubo_load_sorting;
         bool disable_tmu_pipelining;
         bool tmu_spilling_allowed;
 } static const strategies[] = {
-  /*0*/ { "default",                        4, false, false, false, false },
-  /*1*/ { "disable loop unrolling",         4, true,  false, false, false },
-  /*2*/ { "disable UBO load sorting",       4, true,  true,  false, false },
-  /*3*/ { "disable TMU pipelining",         4, true,  true,  true,  false },
-  /*4*/ { "lower thread count",             1, false, false, false, false },
-  /*5*/ { "disable loop unrolling (ltc)",   1, true,  false, false, false },
-  /*6*/ { "disable UBO load sorting (ltc)", 1, true,  true,  false, false },
-  /*7*/ { "disable TMU pipelining (ltc)",   1, true,  true,  true,  true  },
-  /*8*/ { "fallback scheduler",             1, true,  true,  true,  true  }
+  /*0*/ { "default",                        4, 4, false, false, false, false },
+  /*1*/ { "disable loop unrolling",         4, 4, true,  false, false, false },
+  /*2*/ { "disable UBO load sorting",       4, 4, true,  true,  false, false },
+  /*3*/ { "disable TMU pipelining",         4, 4, true,  true,  true,  false },
+  /*4*/ { "lower thread count",             2, 1, false, false, false, false },
+  /*5*/ { "disable loop unrolling (ltc)",   2, 1, true,  false, false, false },
+  /*6*/ { "disable UBO load sorting (ltc)", 2, 1, true,  true,  false, false },
+  /*7*/ { "disable TMU pipelining (ltc)",   2, 1, true,  true,  true,  true  },
+  /*8*/ { "fallback scheduler",             2, 1, true,  true,  true,  true  }
 };
 
 /**
@@ -1623,7 +1625,8 @@ uint64_t *v3d_compile(const struct v3d_compiler *compiler,
                 c = vir_compile_init(compiler, key, s,
                                      debug_output, debug_output_data,
                                      program_id, variant_id,
-                                     strategies[i].min_threads_for_reg_alloc,
+                                     strategies[i].max_threads,
+                                     strategies[i].min_threads,
                                      strategies[i].tmu_spilling_allowed,
                                      strategies[i].disable_loop_unrolling,
                                      strategies[i].disable_ubo_load_sorting,
