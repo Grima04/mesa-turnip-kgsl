@@ -84,6 +84,12 @@ agx_push_location_direct(struct agx_context *ctx, struct agx_push push,
       return ptr.gpu;
    }
 
+   case AGX_PUSH_BLEND_CONST:
+   {
+      return agx_pool_upload_aligned(&batch->pool, &ctx->blend_color,
+            sizeof(ctx->blend_color), 8);
+   }
+
    default:
       unreachable("todo: push more");
    }

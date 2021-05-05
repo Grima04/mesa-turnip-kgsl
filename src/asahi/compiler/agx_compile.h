@@ -43,6 +43,9 @@ enum agx_push_type {
    /* Push the content of a UBO */
    AGX_PUSH_UBO_DATA = 7,
 
+   /* RGBA blend constant (FP32) */
+   AGX_PUSH_BLEND_CONST = 8,
+
    /* Keep last */
    AGX_PUSH_NUM_TYPES
 };
