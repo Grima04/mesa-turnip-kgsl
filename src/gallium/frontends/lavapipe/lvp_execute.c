@@ -43,6 +43,8 @@
 
 #include "vk_util.h"
 
+#define DOUBLE_EQ(a, b) (fabs((a) - (b)) < DBL_EPSILON)
+
 struct rendering_state {
    struct pipe_context *pctx;
 
@@ -1654,9 +1656,10 @@ static void handle_set_blend_constants(struct lvp_cmd_buffer_entry *cmd,
 static void handle_set_depth_bounds(struct lvp_cmd_buffer_entry *cmd,
                                     struct rendering_state *state)
 {
+   state->dsa_dirty |= !DOUBLE_EQ(state->dsa_state.depth_bounds_min, cmd->u.set_depth_bounds.min_depth);
+   state->dsa_dirty |= !DOUBLE_EQ(state->dsa_state.depth_bounds_max, cmd->u.set_depth_bounds.max_depth);
    state->dsa_state.depth_bounds_min = cmd->u.set_depth_bounds.min_depth;
    state->dsa_state.depth_bounds_max = cmd->u.set_depth_bounds.max_depth;
-   state->dsa_dirty = true;
 }
 
 static void handle_set_stencil_compare_mask(struct lvp_cmd_buffer_entry *cmd,
@@ -2868,37 +2871,38 @@ static void handle_set_primitive_topology(struct lvp_cmd_buffer_entry *cmd,
 static void handle_set_depth_test_enable(struct lvp_cmd_buffer_entry *cmd,
                                          struct rendering_state *state)
 {
+   state->dsa_dirty |= state->dsa_state.depth_enabled != cmd->u.set_depth_test_enable.depth_test_enable;
    state->dsa_state.depth_enabled = cmd->u.set_depth_test_enable.depth_test_enable;
-   state->dsa_dirty = true;
 }
 
 static void handle_set_depth_write_enable(struct lvp_cmd_buffer_entry *cmd,
                                           struct rendering_state *state)
 {
+   state->dsa_dirty |= state->dsa_state.depth_writemask != cmd->u.set_depth_write_enable.depth_write_enable;
    state->dsa_state.depth_writemask = cmd->u.set_depth_write_enable.depth_write_enable;
-   state->dsa_dirty = true;
 }
 
 static void handle_set_depth_compare_op(struct lvp_cmd_buffer_entry *cmd,
                                         struct rendering_state *state)
 {
+   state->dsa_dirty |= state->dsa_state.depth_func != cmd->u.set_depth_compare_op.depth_op;
    state->dsa_state.depth_func = cmd->u.set_depth_compare_op.depth_op;
-   state->dsa_dirty = true;
 }
 
 static void handle_set_depth_bounds_test_enable(struct lvp_cmd_buffer_entry *cmd,
                                                 struct rendering_state *state)
 {
+   state->dsa_dirty |= state->dsa_state.depth_bounds_test != cmd->u.set_depth_bounds_test_enable.depth_bounds_test_enable;
    state->dsa_state.depth_bounds_test = cmd->u.set_depth_bounds_test_enable.depth_bounds_test_enable;
-   state->dsa_dirty = true;
 }
 
 static void handle_set_stencil_test_enable(struct lvp_cmd_buffer_entry *cmd,
                                            struct rendering_state *state)
 {
+   state->dsa_dirty |= state->dsa_state.stencil[0].enabled != cmd->u.set_stencil_test_enable.stencil_test_enable ||
+                       state->dsa_state.stencil[1].enabled != cmd->u.set_stencil_test_enable.stencil_test_enable;
    state->dsa_state.stencil[0].enabled = cmd->u.set_stencil_test_enable.stencil_test_enable;
    state->dsa_state.stencil[1].enabled = cmd->u.set_stencil_test_enable.stencil_test_enable;
-   state->dsa_dirty = true;
 }
 
 static void handle_set_stencil_op(struct lvp_cmd_buffer_entry *cmd,
