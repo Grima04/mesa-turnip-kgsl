@@ -43,9 +43,13 @@
 #include "asahi/lib/agx_formats.h"
 
 static void
-agx_set_blend_color(struct pipe_context *ctx,
+agx_set_blend_color(struct pipe_context *pctx,
                     const struct pipe_blend_color *state)
 {
+   struct agx_context *ctx = agx_context(pctx);
+
+   if (state)
+      memcpy(&ctx->blend_color, state, sizeof(*state));
 }
 
 static void *
