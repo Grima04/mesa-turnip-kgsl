@@ -55,7 +55,7 @@ extern "C" {
 static inline void
 pipe_reference_init(struct pipe_reference *dst, unsigned count)
 {
-   p_atomic_set(&dst->count, count);
+   dst->count = count;
 }
 
 static inline boolean
