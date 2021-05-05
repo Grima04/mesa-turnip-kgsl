@@ -905,8 +905,7 @@
     <field name="Command Type" start="29" end="31" type="uint" default="0"/>
     <field name="Physical Start Address Extension" start="32" end="35" type="address"/>
     <field name="Address" start="66" end="95" type="address"/>
-    <field name="Data DWord 0" start="96" end="127" type="uint"/>
-    <field name="Data DWord 1" start="128" end="159" type="uint"/>
+    <field name="Immediate Data" start="96" end="159" type="uint"/>
   </instruction>
 
   <instruction name="MI_STORE_REGISTER_MEM" bias="2" length="3">
