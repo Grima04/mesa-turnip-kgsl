@@ -32,6 +32,7 @@
 #include "asahi/lib/agx_device.h"
 #include "asahi/lib/pool.h"
 #include "asahi/compiler/agx_compile.h"
+#include "compiler/nir/nir_lower_blend.h"
 #include "util/hash_table.h"
 #include "util/bitset.h"
 
@@ -97,6 +98,15 @@ struct agx_zsa {
    bool disable_z_write;
 };
 
+struct agx_blend {
+   bool logicop_enable;
+
+   union {
+      nir_lower_blend_rt rt[8];
+      unsigned logicop_func;
+   };
+};
+
 #define AGX_DIRTY_VERTEX (1 << 0)
 
 struct agx_context {
@@ -113,6 +123,7 @@ struct agx_context {
    struct agx_attribute *attributes;
    struct agx_rasterizer *rast;
    struct agx_zsa zs;
+   struct agx_blend *blend;
 
    uint8_t viewport[AGX_VIEWPORT_LENGTH];
    uint8_t render_target[8][AGX_RENDER_TARGET_LENGTH];

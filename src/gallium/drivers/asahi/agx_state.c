@@ -34,6 +34,7 @@
 #include "gallium/auxiliary/util/u_draw.h"
 #include "gallium/auxiliary/util/u_helpers.h"
 #include "gallium/auxiliary/util/u_viewport.h"
+#include "gallium/auxiliary/util/u_blend.h"
 #include "gallium/auxiliary/tgsi/tgsi_from_mesa.h"
 #include "compiler/nir/nir.h"
 #include "asahi/compiler/agx_compile.h"
@@ -51,7 +52,61 @@ static void *
 agx_create_blend_state(struct pipe_context *ctx,
                        const struct pipe_blend_state *state)
 {
-   return MALLOC(1);
+   struct agx_blend *so = CALLOC_STRUCT(agx_blend);
+
+   assert(!state->alpha_to_coverage);
+   assert(!state->alpha_to_coverage_dither);
+   assert(!state->alpha_to_one);
+   assert(!state->advanced_blend_func);
+
+   if (state->logicop_enable) {
+      so->logicop_enable = true;
+      so->logicop_func = state->logicop_func;
+      return so;
+   }
+
+   for (unsigned i = 0; i < PIPE_MAX_COLOR_BUFS; ++i) {
+      unsigned rti = state->independent_blend_enable ? i : 0;
+      struct pipe_rt_blend_state rt = state->rt[rti];
+
+      if (!rt.blend_enable) {
+         static const nir_lower_blend_channel replace = {
+            .func = BLEND_FUNC_ADD,
+            .src_factor = BLEND_FACTOR_ZERO,
+            .invert_src_factor = true,
+            .dst_factor = BLEND_FACTOR_ZERO,
+            .invert_dst_factor = false,
+         };
+
+         so->rt[i].rgb = replace;
+         so->rt[i].alpha = replace;
+      } else {
+         so->rt[i].rgb.func = util_blend_func_to_shader(rt.rgb_func);
+         so->rt[i].rgb.src_factor = util_blend_factor_to_shader(rt.rgb_src_factor);
+         so->rt[i].rgb.invert_src_factor = util_blend_factor_is_inverted(rt.rgb_src_factor);
+         so->rt[i].rgb.dst_factor = util_blend_factor_to_shader(rt.rgb_dst_factor);
+         so->rt[i].rgb.invert_dst_factor = util_blend_factor_is_inverted(rt.rgb_dst_factor);
+
+         so->rt[i].alpha.func = util_blend_func_to_shader(rt.alpha_func);
+         so->rt[i].alpha.src_factor = util_blend_factor_to_shader(rt.alpha_src_factor);
+         so->rt[i].alpha.invert_src_factor = util_blend_factor_is_inverted(rt.alpha_src_factor);
+         so->rt[i].alpha.dst_factor = util_blend_factor_to_shader(rt.alpha_dst_factor);
+         so->rt[i].alpha.invert_dst_factor = util_blend_factor_is_inverted(rt.alpha_dst_factor);
+
+	 so->blend_enable = true;
+      }
+
+      so->rt[i].colormask = rt.colormask;
+   }
+
+   return so;
+}
+
+static void
+agx_bind_blend_state(struct pipe_context *pctx, void *cso)
+{
+   struct agx_context *ctx = agx_context(pctx);
+   ctx->blend = cso;
 }
 
 static void *
@@ -1150,7 +1205,7 @@ agx_init_state_functions(struct pipe_context *ctx)
    ctx->create_surface = agx_create_surface;
    ctx->create_vertex_elements_state = agx_create_vertex_elements;
    ctx->create_vs_state = agx_create_shader_state;
-   ctx->bind_blend_state = agx_bind_state;
+   ctx->bind_blend_state = agx_bind_blend_state;
    ctx->bind_depth_stencil_alpha_state = agx_bind_zsa_state;
    ctx->bind_sampler_states = agx_bind_sampler_states;
    ctx->bind_fs_state = agx_bind_shader_state;
