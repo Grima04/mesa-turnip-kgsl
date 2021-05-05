@@ -562,11 +562,11 @@ pan_blend_create_shader(const struct panfrost_device *dev,
 
         /* Saturate integer conversions */
         for (int i = 0; i < ARRAY_SIZE(s_src); ++i) {
-                bool is_float = nir_alu_type_get_base_type(nir_type);
+                nir_alu_type T = nir_alu_type_get_base_type(nir_type);
                 s_src[i] = nir_convert_with_rounding(&b, s_src[i],
                                 src_types[i], nir_type,
                                 nir_rounding_mode_undef,
-                                !is_float);
+                                T != nir_type_float);
         }
 
         /* Build a trivial blend shader */
