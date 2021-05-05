@@ -168,9 +168,8 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
 
    unsigned loc = var->data.location;
    assert(var->data.index == 0 && "todo: dual-source blending");
-   assert((loc == FRAG_RESULT_COLOR || loc == FRAG_RESULT_DATA0) && "todo: MRT");
-   unsigned rt = (loc == FRAG_RESULT_COLOR) ? 0 :
-                 (loc - FRAG_RESULT_DATA0);
+   assert(loc == FRAG_RESULT_DATA0 && "todo: MRT");
+   unsigned rt = (loc - FRAG_RESULT_DATA0);
 
    /* TODO: Reverse-engineer interactions with MRT */
    agx_writeout(b, 0xC200);
