@@ -644,6 +644,9 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
       NIR_PASS_V(nir, nir_lower_blend, opts);
    }
 
+   if (stage == PIPE_SHADER_FRAGMENT)
+      NIR_PASS_V(nir, nir_lower_fragcolor, key->nr_cbufs);
+
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
    /* TODO: emit this properly */
