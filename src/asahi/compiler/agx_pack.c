@@ -356,18 +356,22 @@ static void
 agx_pack_instr(struct util_dynarray *emission, agx_instr *I)
 {
    switch (I->op) {
+   case AGX_OPCODE_LD_TILE:
    case AGX_OPCODE_ST_TILE:
    {
-      unsigned D = agx_pack_alu_dst(I->src[0]);
+      bool load = (I->op == AGX_OPCODE_LD_TILE);
+      unsigned D = agx_pack_alu_dst(load ? I->dest[0] : I->src[0]);
       unsigned rt = 0; /* TODO */
       unsigned mask = I->mask ?: 0xF;
       assert(mask < 0x10);
 
       uint64_t raw =
          0x09 |
+         (load ? (1 << 6) : 0) |
          ((uint64_t) (D & BITFIELD_MASK(8)) << 7) |
          ((uint64_t) (I->format) << 24) |
          ((uint64_t) (rt) << 32) |
+         (load ? (1ull << 35) : 0) |
          ((uint64_t) (mask) << 36) |
          ((uint64_t) 0x0380FC << 40) |
          (((uint64_t) (D >> 8)) << 60);

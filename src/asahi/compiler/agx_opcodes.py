@@ -172,6 +172,10 @@ op("device_load",
 op("wait", (0x38, 0xFF, 2, _), dests = 0,
       can_eliminate = False, imms = [SCOREBOARD])
 
+# Essentially same encoding
+op("ld_tile", (0x49, 0x7F, 8, _), dests = 1, srcs = 0,
+      can_eliminate = False, imms = [FORMAT])
+
 op("st_tile", (0x09, 0x7F, 8, _), dests = 0, srcs = 1,
       can_eliminate = False, imms = [FORMAT])
 

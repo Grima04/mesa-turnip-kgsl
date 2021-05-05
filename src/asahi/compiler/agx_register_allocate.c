@@ -90,7 +90,7 @@ agx_ra(agx_context *ctx)
             unsigned size = ins->dest[d].size == AGX_SIZE_32 ? 2 : 1;
             if (size == 2 && usage & 1) usage++;
             unsigned v = usage;
-            unsigned comps = (ins->op == AGX_OPCODE_LD_VARY || ins->op == AGX_OPCODE_DEVICE_LOAD || ins->op == AGX_OPCODE_TEXTURE_SAMPLE) ? 4 : 1; // todo systematic
+            unsigned comps = (ins->op == AGX_OPCODE_LD_VARY || ins->op == AGX_OPCODE_DEVICE_LOAD || ins->op == AGX_OPCODE_TEXTURE_SAMPLE || ins->op == AGX_OPCODE_LD_TILE) ? 4 : 1; // todo systematic
             usage += comps * size;
             alloc[ins->dest[d].value] = v;
             ins->dest[d] = agx_replace_index(ins->dest[d], agx_register(v, ins->dest[d].size));
