@@ -184,6 +184,28 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
              b->shader->key->fs.tib_formats[rt]);
 }
 
+static agx_instr *
+agx_emit_load_tile(agx_builder *b, nir_intrinsic_instr *instr)
+{
+   const nir_variable *var =
+      nir_find_variable_with_driver_location(b->shader->nir,
+            nir_var_shader_out, nir_intrinsic_base(instr));
+   assert(var);
+
+   unsigned loc = var->data.location;
+   assert(var->data.index == 0 && "todo: dual-source blending");
+   assert(loc == FRAG_RESULT_DATA0 && "todo: MRT");
+   unsigned rt = (loc - FRAG_RESULT_DATA0);
+
+   /* TODO: Reverse-engineer interactions with MRT */
+   agx_writeout(b, 0xC200);
+   agx_writeout(b, 0x0008);
+   b->shader->did_writeout = true;
+
+   return agx_ld_tile_to(b, agx_dest_index(&instr->dest),
+         b->shader->key->fs.tib_formats[rt]);
+}
+
 static enum agx_format
 agx_format_for_bits(unsigned bits)
 {
@@ -279,6 +301,10 @@ agx_emit_intrinsic(agx_builder *b, nir_intrinsic_instr *instr)
         return agx_emit_store_vary(b, instr);
      else
         unreachable("Unsupported shader stage");
+
+  case nir_intrinsic_load_output:
+     assert(stage == MESA_SHADER_FRAGMENT);
+     return agx_emit_load_tile(b, instr);
 
   case nir_intrinsic_load_ubo:
   case nir_intrinsic_load_kernel_input:
