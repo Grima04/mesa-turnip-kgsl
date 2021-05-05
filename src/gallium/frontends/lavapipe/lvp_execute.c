@@ -617,6 +617,9 @@ static void handle_graphics_pipeline(struct lvp_cmd_buffer_entry *cmd,
          memcpy(state->blend_color.color, cb->blendConstants, 4 * sizeof(float));
          state->blend_color_dirty = true;
       }
+   } else {
+      memset(&state->blend_state, 0, sizeof(state->blend_state));
+      state->blend_dirty = true;
    }
 
    {
