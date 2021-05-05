@@ -97,16 +97,6 @@ fd5_draw_vbo(struct fd_context *ctx, const struct pipe_draw_info *info,
       .sprite_coord_mode = ctx->rasterizer->sprite_coord_mode,
    };
 
-   /* Technically a5xx should not require this, but it avoids a crash in
-    * piglit 'spec@!opengl 1.1@ppgtt_memory_alignment' due to a draw with
-    * no VBO bound but a VS that expects an input.  The draw is a single
-    * vertex with PIPE_PRIM_TRIANGLES so the u_trim_pipe_prim() causes it
-    * to be skipped.
-    */
-   if (info->mode != PIPE_PRIM_MAX && !indirect && !info->primitive_restart &&
-       !u_trim_pipe_prim(info->mode, (unsigned *)&draw->count))
-      return false;
-
    ir3_fixup_shader_state(&ctx->base, &emit.key.key);
 
    unsigned dirty = ctx->dirty;
