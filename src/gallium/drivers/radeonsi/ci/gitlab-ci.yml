@@ -17,14 +17,14 @@
     - .lava-test:amd64
     - .radeonsi-stoney-test:amd64
 
-radeonsi-stoney-gles2:amd64:
+.radeonsi-stoney-gles2:amd64:
   extends:
     - .radeonsi-stoney-deqp:amd64
   variables:
     DEQP_VERSION: gles2
 
 # Run two jobs in parallel each running 1/4th of the test suite
-radeonsi-stoney-gles3:amd64:
+.radeonsi-stoney-gles3:amd64:
   extends:
     - .radeonsi-stoney-deqp:amd64
   parallel: 2
@@ -33,7 +33,7 @@ radeonsi-stoney-gles3:amd64:
     ENV_VARS: "DEQP_PARALLEL=4 DEQP_EXPECTED_RENDERER=STONEY DEQP_FRACTION=2"
 
 # Run two jobs in parallel each running 1/4th of the test suite
-radeonsi-stoney-gles31:amd64:
+.radeonsi-stoney-gles31:amd64:
   extends:
     - .radeonsi-stoney-deqp:amd64
   parallel: 2
@@ -41,7 +41,7 @@ radeonsi-stoney-gles31:amd64:
     DEQP_VERSION: gles31
     ENV_VARS: "DEQP_PARALLEL=4 DEQP_EXPECTED_RENDERER=STONEY DEQP_FRACTION=2"
 
-radeonsi-stoney-traces:amd64:
+.radeonsi-stoney-traces:amd64:
   extends:
     - .lava-piglit-traces:amd64
     - .radeonsi-stoney-test:amd64
@@ -50,7 +50,7 @@ radeonsi-stoney-traces:amd64:
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-radeonsi-stoney-piglit-gl:amd64:
+.radeonsi-stoney-piglit-gl:amd64:
   extends:
     - .lava-piglit:amd64
     - .radeonsi-stoney-test:amd64
