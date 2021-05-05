@@ -149,32 +149,53 @@ deep_copy_vertex_input_state(void *mem_ctx,
    return VK_SUCCESS;
 }
 
+static bool
+dynamic_state_contains(const VkPipelineDynamicStateCreateInfo *src, VkDynamicState state)
+{
+   if (!src)
+      return false;
+
+   for (unsigned i = 0; i < src->dynamicStateCount; i++)
+      if (src->pDynamicStates[i] == state)
+         return true;
+   return false;
+}
+
 static VkResult
 deep_copy_viewport_state(void *mem_ctx,
+                         const VkPipelineDynamicStateCreateInfo *dyn_state,
                          VkPipelineViewportStateCreateInfo *dst,
                          const VkPipelineViewportStateCreateInfo *src)
 {
-   dst->sType = src->sType;
+   dst->sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
    dst->pNext = NULL;
-   dst->flags = src->flags;
+   dst->pViewports = NULL;
+   dst->pScissors = NULL;
 
-   if (src->pViewports) {
+   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT) &&
+       !dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT)) {
       LVP_PIPELINE_DUP(dst->pViewports,
                        src->pViewports,
                        VkViewport,
                        src->viewportCount);
-   } else
-      dst->pViewports = NULL;
-   dst->viewportCount = src->viewportCount;
+   }
+   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_VIEWPORT_WITH_COUNT_EXT))
+      dst->viewportCount = src->viewportCount;
+   else
+      dst->viewportCount = 0;
 
-   if (src->pScissors) {
-      LVP_PIPELINE_DUP(dst->pScissors,
-                       src->pScissors,
-                       VkRect2D,
-                       src->scissorCount);
-   } else
-      dst->pScissors = NULL;
-   dst->scissorCount = src->scissorCount;
+   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR) &&
+       !dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT)) {
+      if (src->pScissors)
+         LVP_PIPELINE_DUP(dst->pScissors,
+                          src->pScissors,
+                          VkRect2D,
+                          src->scissorCount);
+   }
+   if (!dynamic_state_contains(dyn_state, VK_DYNAMIC_STATE_SCISSOR_WITH_COUNT_EXT))
+      dst->scissorCount = src->scissorCount;
+   else
+      dst->scissorCount = 0;
 
    return VK_SUCCESS;
 }
@@ -274,12 +295,14 @@ deep_copy_graphics_create_info(void *mem_ctx,
    }
 
    /* pViewportState */
-   if (src->pViewportState) {
+   bool rasterization_disabled = src->pRasterizationState->rasterizerDiscardEnable;
+   if (src->pViewportState && !rasterization_disabled) {
       VkPipelineViewportStateCreateInfo *viewport_state;
       viewport_state = ralloc(mem_ctx, VkPipelineViewportStateCreateInfo);
       if (!viewport_state)
          return VK_ERROR_OUT_OF_HOST_MEMORY;
-      deep_copy_viewport_state(mem_ctx, viewport_state, src->pViewportState);
+      deep_copy_viewport_state(mem_ctx, src->pDynamicState,
+			       viewport_state, src->pViewportState);
       dst->pViewportState = viewport_state;
    } else
       dst->pViewportState = NULL;
@@ -291,7 +314,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
                     1);
 
    /* pMultisampleState */
-   if (src->pMultisampleState) {
+   if (src->pMultisampleState && !rasterization_disabled) {
       VkPipelineMultisampleStateCreateInfo*   ms_state;
       ms_state = ralloc_size(mem_ctx, sizeof(VkPipelineMultisampleStateCreateInfo) + sizeof(VkSampleMask));
       if (!ms_state)
