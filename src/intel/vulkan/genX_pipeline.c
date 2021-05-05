@@ -903,14 +903,14 @@ static const uint32_t vk_to_intel_blend_op[] = {
 };
 
 const uint32_t genX(vk_to_intel_compare_op)[] = {
-   [VK_COMPARE_OP_NEVER]                        = PREFILTEROPNEVER,
-   [VK_COMPARE_OP_LESS]                         = PREFILTEROPLESS,
-   [VK_COMPARE_OP_EQUAL]                        = PREFILTEROPEQUAL,
-   [VK_COMPARE_OP_LESS_OR_EQUAL]                = PREFILTEROPLEQUAL,
-   [VK_COMPARE_OP_GREATER]                      = PREFILTEROPGREATER,
-   [VK_COMPARE_OP_NOT_EQUAL]                    = PREFILTEROPNOTEQUAL,
-   [VK_COMPARE_OP_GREATER_OR_EQUAL]             = PREFILTEROPGEQUAL,
-   [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROPALWAYS,
+   [VK_COMPARE_OP_NEVER]                        = PREFILTEROP_NEVER,
+   [VK_COMPARE_OP_LESS]                         = PREFILTEROP_LESS,
+   [VK_COMPARE_OP_EQUAL]                        = PREFILTEROP_EQUAL,
+   [VK_COMPARE_OP_LESS_OR_EQUAL]                = PREFILTEROP_LEQUAL,
+   [VK_COMPARE_OP_GREATER]                      = PREFILTEROP_GREATER,
+   [VK_COMPARE_OP_NOT_EQUAL]                    = PREFILTEROP_NOTEQUAL,
+   [VK_COMPARE_OP_GREATER_OR_EQUAL]             = PREFILTEROP_GEQUAL,
+   [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROP_ALWAYS,
 };
 
 const uint32_t genX(vk_to_intel_stencil_op)[] = {

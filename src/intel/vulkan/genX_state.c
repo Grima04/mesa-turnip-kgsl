@@ -661,14 +661,14 @@ static const uint32_t vk_to_intel_tex_address[] = {
  * and swapping of the arguments involved.
  */
 static const uint32_t vk_to_intel_shadow_compare_op[] = {
-   [VK_COMPARE_OP_NEVER]                        = PREFILTEROPALWAYS,
-   [VK_COMPARE_OP_LESS]                         = PREFILTEROPLEQUAL,
-   [VK_COMPARE_OP_EQUAL]                        = PREFILTEROPNOTEQUAL,
-   [VK_COMPARE_OP_LESS_OR_EQUAL]                = PREFILTEROPLESS,
-   [VK_COMPARE_OP_GREATER]                      = PREFILTEROPGEQUAL,
-   [VK_COMPARE_OP_NOT_EQUAL]                    = PREFILTEROPEQUAL,
-   [VK_COMPARE_OP_GREATER_OR_EQUAL]             = PREFILTEROPGREATER,
-   [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROPNEVER,
+   [VK_COMPARE_OP_NEVER]                        = PREFILTEROP_ALWAYS,
+   [VK_COMPARE_OP_LESS]                         = PREFILTEROP_LEQUAL,
+   [VK_COMPARE_OP_EQUAL]                        = PREFILTEROP_NOTEQUAL,
+   [VK_COMPARE_OP_LESS_OR_EQUAL]                = PREFILTEROP_LESS,
+   [VK_COMPARE_OP_GREATER]                      = PREFILTEROP_GEQUAL,
+   [VK_COMPARE_OP_NOT_EQUAL]                    = PREFILTEROP_EQUAL,
+   [VK_COMPARE_OP_GREATER_OR_EQUAL]             = PREFILTEROP_GREATER,
+   [VK_COMPARE_OP_ALWAYS]                       = PREFILTEROP_NEVER,
 };
 
 #if GFX_VER >= 9
