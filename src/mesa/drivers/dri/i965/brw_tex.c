@@ -353,6 +353,10 @@ intel_texture_for_memory_object(struct gl_context *ctx,
    struct gl_texture_image *image = tex_obj->Image[0][0];
    struct isl_surf surf;
 
+   /* Only color formats are supported. */
+   if (!_mesa_is_format_color_format(image->TexFormat))
+      return GL_FALSE;
+
    isl_tiling_flags_t tiling_flags = ISL_TILING_ANY_MASK;
    if (tex_obj->TextureTiling == GL_LINEAR_TILING_EXT)
       tiling_flags = ISL_TILING_LINEAR_BIT;
