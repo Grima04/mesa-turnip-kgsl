@@ -341,7 +341,7 @@ deep_copy_graphics_create_info(void *mem_ctx,
       dst->pDepthStencilState = NULL;
 
    /* pColorBlendState */
-   if (src->pColorBlendState) {
+   if (src->pColorBlendState && !rasterization_disabled && pass->has_color_attachment) {
       VkPipelineColorBlendStateCreateInfo*    cb_state;
 
       cb_state = ralloc(mem_ctx, VkPipelineColorBlendStateCreateInfo);
