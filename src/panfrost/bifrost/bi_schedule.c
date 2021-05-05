@@ -1378,7 +1378,9 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
                 bool not_last = (some_instruction > 0) &&
                         bi_must_not_last(st.instructions[some_instruction - 1]);
 
-                if (!(tuple->fma || tuple->add || (tuple_state.last && not_last)))
+                bool insert_empty = tuple_state.last && not_last;
+
+                if (!(tuple->fma || tuple->add || insert_empty))
                         break;
 
                 clause->tuple_count++;
@@ -1389,7 +1391,7 @@ bi_schedule_clause(bi_context *ctx, bi_block *block, struct bi_worklist st)
 
 #ifndef NDEBUG
                 /* Don't schedule more than 1 tuple if debugging */
-                if (bifrost_debug & BIFROST_DBG_NOSCHED)
+                if ((bifrost_debug & BIFROST_DBG_NOSCHED) && !insert_empty)
                         break;
 #endif
 
