@@ -522,11 +522,6 @@ agx_surface_destroy(struct pipe_context *ctx,
 }
 
 static void
-agx_bind_state(struct pipe_context *ctx, void *state)
-{
-}
-
-static void
 agx_delete_state(struct pipe_context *ctx, void *state)
 {
    FREE(state);
