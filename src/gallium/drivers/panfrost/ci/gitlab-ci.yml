@@ -1,4 +1,4 @@
-.panfrost-t720-gles2:arm64:
+panfrost-t720-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .panfrost-rules
@@ -10,7 +10,7 @@
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t760-gles2:armhf:
+panfrost-t760-gles2:armhf:
   extends:
     - .lava-test:armhf
     - .panfrost-rules
@@ -24,7 +24,7 @@
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t760-traces:armhf:
+panfrost-t760-traces:armhf:
   extends:
     - .lava-piglit-traces:armhf
     - .panfrost-rules
@@ -52,14 +52,14 @@
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-t860-gles2:arm64:
+panfrost-t860-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
   variables:
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-gles3:arm64:
+panfrost-t860-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -68,7 +68,7 @@
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=gles3 DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-gles31:arm64:
+panfrost-t860-gles31:arm64:
   extends:
     - .lava-test:arm64
     - .lava-rk3399-gru-kevin
@@ -76,7 +76,7 @@
     DEQP_VERSION: gles31
     ENV_VARS: "PAN_MESA_DEBUG=deqp MESA_GLES_VERSION_OVERRIDE=3.1 MESA_GLSL_VERSION_OVERRIDE=310 DEQP_PARALLEL=1 DEQP_EXPECTED_RENDERER=T860"
 
-.panfrost-t860-traces:arm64:
+panfrost-t860-traces:arm64:
   extends:
     - .lava-piglit-traces:arm64
     - .lava-rk3399-gru-kevin
@@ -93,14 +93,14 @@
   tags:
     - mesa-ci-aarch64-lava-collabora
 
-.panfrost-g52-gles2:arm64:
+panfrost-g52-gles2:arm64:
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
   variables:
     ENV_VARS: "DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=G52"
 
-.panfrost-g52-gles3:arm64:
+panfrost-g52-gles3:arm64:
   parallel: 2
   extends:
     - .lava-test:arm64
@@ -109,7 +109,7 @@
     DEQP_VERSION: gles3
     ENV_VARS: "PAN_MESA_DEBUG=deqp DEQP_PARALLEL=6 DEQP_EXPECTED_RENDERER=G52"
 
-.panfrost-g52-gles31:arm64:
+panfrost-g52-gles31:arm64:
   extends:
     - .lava-test:arm64
     - .lava-meson-g12b-a311d-khadas-vim3
