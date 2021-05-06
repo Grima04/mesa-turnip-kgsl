@@ -372,10 +372,96 @@ v3d_spill_reg(struct v3d_compile *c, int spill_temp)
         c->disable_ldunif_opt = had_disable_ldunif_opt;
 }
 
+struct node_to_temp_map {
+        uint32_t temp;
+        uint32_t priority;
+};
+
 struct v3d_ra_select_callback_data {
         uint32_t next_acc;
         uint32_t next_phys;
+        struct node_to_temp_map *map;
 };
+
+/* Choosing accumulators improves chances of merging QPU instructions
+ * due to these merges requiring that at most 2 rf registers are used
+ * by the add and mul instructions.
+ */
+static bool
+v3d_ra_favor_accum(struct v3d_ra_select_callback_data *v3d_ra,
+                   BITSET_WORD *regs,
+                   int priority)
+{
+        /* Favor accumulators if we have less that this number of physical
+         * registers. Accumulators have more restrictions (like being
+         * invalidated through thrsw), so running out of physical registers
+         * even if we have accumulators available can lead to register
+         * allocation failures.
+         */
+        static const int available_rf_threshold = 5;
+        int available_rf = 0 ;
+        for (int i = 0; i < PHYS_COUNT; i++) {
+                if (BITSET_TEST(regs, PHYS_INDEX + i))
+                        available_rf++;
+                if (available_rf >= available_rf_threshold)
+                        break;
+        }
+        if (available_rf < available_rf_threshold)
+                return true;
+
+        /* Favor accumulators for short-lived temps (our priority represents
+         * liveness), to prevent long-lived temps from grabbing accumulators
+         * and preventing follow-up instructions from using them, potentially
+         * leading to large portions of the shader being unable to use
+         * accumulators and therefore merge instructions successfully.
+         */
+        static const int priority_threshold = 20;
+        if (priority <= priority_threshold)
+                return true;
+
+        return false;
+}
+
+static bool
+v3d_ra_select_accum(struct v3d_ra_select_callback_data *v3d_ra,
+                    BITSET_WORD *regs,
+                    unsigned int *out)
+{
+        /* Round-robin through our accumulators to give post-RA instruction
+         * selection more options.
+         */
+        for (int i = 0; i < ACC_COUNT; i++) {
+                int acc_off = (v3d_ra->next_acc + i) % ACC_COUNT;
+                int acc = ACC_INDEX + acc_off;
+
+                if (BITSET_TEST(regs, acc)) {
+                        v3d_ra->next_acc = acc_off + 1;
+                        *out = acc;
+                        return true;
+                }
+        }
+
+        return false;
+}
+
+static bool
+v3d_ra_select_rf(struct v3d_ra_select_callback_data *v3d_ra,
+                 BITSET_WORD *regs,
+                 unsigned int *out)
+{
+        for (int i = 0; i < PHYS_COUNT; i++) {
+                int phys_off = (v3d_ra->next_phys + i) % PHYS_COUNT;
+                int phys = PHYS_INDEX + phys_off;
+
+                if (BITSET_TEST(regs, phys)) {
+                        v3d_ra->next_phys = phys_off + 1;
+                        *out = phys;
+                        return true;
+                }
+        }
+
+        return false;
+}
 
 static unsigned int
 v3d_ra_select_callback(unsigned int n, BITSET_WORD *regs, void *data)
@@ -390,29 +476,20 @@ v3d_ra_select_callback(unsigned int n, BITSET_WORD *regs, void *data)
         if (BITSET_TEST(regs, r5))
                 return r5;
 
-        /* Choose an accumulator if possible (I think it's lower power than
-         * phys regs), but round-robin through them to give post-RA
-         * instruction selection more options.
+        unsigned int reg;
+        if (v3d_ra_favor_accum(v3d_ra, regs, v3d_ra->map[n].priority) &&
+            v3d_ra_select_accum(v3d_ra, regs, &reg)) {
+                return reg;
+        }
+
+        if (v3d_ra_select_rf(v3d_ra, regs, &reg))
+                return reg;
+
+        /* If we ran out of physical registers try to assign an accumulator
+         * if we didn't favor that option earlier.
          */
-        for (int i = 0; i < ACC_COUNT; i++) {
-                int acc_off = (v3d_ra->next_acc + i) % ACC_COUNT;
-                int acc = ACC_INDEX + acc_off;
-
-                if (BITSET_TEST(regs, acc)) {
-                        v3d_ra->next_acc = acc_off + 1;
-                        return acc;
-                }
-        }
-
-        for (int i = 0; i < PHYS_COUNT; i++) {
-                int phys_off = (v3d_ra->next_phys + i) % PHYS_COUNT;
-                int phys = PHYS_INDEX + phys_off;
-
-                if (BITSET_TEST(regs, phys)) {
-                        v3d_ra->next_phys = phys_off + 1;
-                        return phys;
-                }
-        }
+        if (v3d_ra_select_accum(v3d_ra, regs, &reg))
+                return reg;
 
         unreachable("RA must pass us at least one possible reg.");
 }
@@ -471,11 +548,6 @@ vir_init_reg_sets(struct v3d_compiler *compiler)
 
         return true;
 }
-
-struct node_to_temp_map {
-        uint32_t temp;
-        uint32_t priority;
-};
 
 static int
 node_to_temp_priority(const void *in_a, const void *in_b)
@@ -542,6 +614,7 @@ v3d_register_allocate(struct v3d_compile *c, bool *spilled)
                  * RF0-2.
                  */
                 .next_phys = 3,
+                .map = map,
         };
 
         *spilled = false;
