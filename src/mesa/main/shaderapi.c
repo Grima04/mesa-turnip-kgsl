@@ -2066,7 +2066,7 @@ shader_source(struct gl_context *ctx, GLuint shaderObj, GLsizei count,
     * This array holds offsets of where the appropriate string ends, thus the
     * last element will be set to the total length of the source code.
     */
-   offsets = malloc(count * sizeof(GLint));
+   offsets = calloc(count, sizeof(GLint));
    if (offsets == NULL) {
       _mesa_error(ctx, GL_OUT_OF_MEMORY, "glShaderSourceARB");
       return;
