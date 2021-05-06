@@ -1541,9 +1541,14 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         unsigned comps = nir_dest_num_components(instr->dest.dest);
         unsigned src_sz = srcs > 0 ? nir_src_bit_size(instr->src[0].src) : 0;
         unsigned src1_sz = srcs > 1 ? nir_src_bit_size(instr->src[1].src) : 0;
+        bool is_bool = (sz == 1);
+
+        /* TODO: Anything else? */
+        if (sz == 1)
+                sz = 16;
 
         /* Indicate scalarness */
-        if ((sz == 1 || sz == 16) && comps == 1)
+        if (sz == 16 && comps == 1)
                 dst.swizzle = BI_SWIZZLE_H00;
 
         if (!instr->dest.dest.is_ssa) {
@@ -1667,7 +1672,7 @@ bi_emit_alu(bi_builder *b, nir_alu_instr *instr)
         bi_index s1 = srcs > 1 ? bi_alu_src_index(instr->src[1], comps) : bi_null();
         bi_index s2 = srcs > 2 ? bi_alu_src_index(instr->src[2], comps) : bi_null();
 
-        if (sz == 1) {
+        if (is_bool) {
                 bi_emit_alu_bool(b, src_sz, instr->op, dst, s0, s1, s2);
                 return;
         }
