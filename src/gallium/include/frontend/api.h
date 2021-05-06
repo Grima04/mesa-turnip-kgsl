@@ -207,11 +207,6 @@ struct st_visual
    enum pipe_format depth_stencil_format;
    enum pipe_format accum_format;
    unsigned samples;
-
-   /**
-    * Desired render buffer.
-    */
-   enum st_attachment_type render_buffer;
 };
 
 

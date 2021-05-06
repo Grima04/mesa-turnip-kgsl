@@ -216,7 +216,6 @@ stw_pixelformat_add(struct stw_device *stw_dev,
       PIPE_FORMAT_R16G16B16A16_SNORM : PIPE_FORMAT_NONE;
 
    pfi->stvis.samples = samples;
-   pfi->stvis.render_buffer = ST_ATTACHMENT_INVALID;
 
    /* WGL_ARB_render_texture */
    if (color->bits.alpha)

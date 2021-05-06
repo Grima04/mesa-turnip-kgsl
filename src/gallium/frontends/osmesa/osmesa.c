@@ -338,7 +338,6 @@ osmesa_init_st_visual(struct st_visual *vis,
    vis->depth_stencil_format = ds_format;
    vis->accum_format = accum_format;
    vis->samples = 1;
-   vis->render_buffer = ST_ATTACHMENT_FRONT_LEFT;
 }
 
 

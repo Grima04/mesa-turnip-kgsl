@@ -894,7 +894,6 @@ XMesaVisual XMesaCreateVisual( Display *display,
       PIPE_FORMAT_R16G16B16A16_SNORM : PIPE_FORMAT_NONE;
 
    v->stvis.samples = num_samples;
-   v->stvis.render_buffer = ST_ATTACHMENT_INVALID;
 
    return v;
 }
