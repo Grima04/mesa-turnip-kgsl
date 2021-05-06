@@ -1197,7 +1197,7 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
 	case nir_intrinsic_load_front_face:
                 /* r58 == 0 means primitive is front facing */
                 bi_icmp_i32_to(b, dst, bi_register(58), bi_zero(), BI_CMPF_EQ,
-                                BI_RESULT_TYPE_I1);
+                                BI_RESULT_TYPE_M1);
                 break;
 
         case nir_intrinsic_load_point_coord:
@@ -1478,34 +1478,35 @@ static bi_instr *
 bi_emit_alu_bool(bi_builder *b, unsigned sz, nir_op op,
       bi_index dst, bi_index s0, bi_index s1, bi_index s2)
 {
-        /* Handle 1-bit bools as zero/nonzero rather than specifically 0/1 or 0/~0.
-         * This will give the optimizer flexibility. */
+        /* Handle 1-bit bools as 0/~0 by default and let the optimizer deal
+         * with the bit patterns later. 0/~0 has the nice property of being
+         * independent of replicated vectorization. */
         if (sz == 1) sz = 16;
         bi_index f = bi_zero();
-        bi_index t = bi_imm_uintN(0x1, sz);
+        bi_index t = bi_imm_u16(0xFFFF);
 
         switch (op) {
         case nir_op_feq:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_EQ, BI_RESULT_TYPE_I1);
+                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_EQ, BI_RESULT_TYPE_M1);
         case nir_op_flt:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_I1);
+                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_M1);
         case nir_op_fge:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_I1);
+                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_M1);
         case nir_op_fneu:
-                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_NE, BI_RESULT_TYPE_I1);
+                return bi_fcmp_to(b, sz, dst, s0, s1, BI_CMPF_NE, BI_RESULT_TYPE_M1);
 
         case nir_op_ieq:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_EQ, BI_RESULT_TYPE_I1);
+                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_EQ, BI_RESULT_TYPE_M1);
         case nir_op_ine:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_NE, BI_RESULT_TYPE_I1);
+                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_NE, BI_RESULT_TYPE_M1);
         case nir_op_ilt:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_I1);
+                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_M1);
         case nir_op_ige:
-                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_I1);
+                return bi_icmp_to(b, nir_type_int, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_M1);
         case nir_op_ult:
-                return bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_I1);
+                return bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, BI_CMPF_LT, BI_RESULT_TYPE_M1);
         case nir_op_uge:
-                return bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_I1);
+                return bi_icmp_to(b, nir_type_uint, sz, dst, s0, s1, BI_CMPF_GE, BI_RESULT_TYPE_M1);
 
         case nir_op_iand:
                 return bi_lshift_and_to(b, sz, dst, s0, s1, bi_imm_u8(0));
@@ -1514,7 +1515,7 @@ bi_emit_alu_bool(bi_builder *b, unsigned sz, nir_op op,
         case nir_op_ixor:
                 return bi_lshift_xor_to(b, sz, dst, s0, s1, bi_imm_u8(0));
         case nir_op_inot:
-                return bi_lshift_xor_to(b, sz, dst, s0, t, bi_imm_u8(0));
+                return bi_lshift_or_to(b, sz, dst, bi_zero(), bi_not(s0), bi_imm_u8(0));
 
         case nir_op_f2b1:
                 return bi_csel_to(b, nir_type_int, sz, dst, s0, f, f, t, BI_CMPF_EQ);
