@@ -1212,6 +1212,10 @@ bi_emit_intrinsic(bi_builder *b, nir_intrinsic_instr *instr)
                 bi_mov_i32_to(b, dst, bi_register(62));
                 break;
 
+        case nir_intrinsic_load_subgroup_invocation:
+                bi_mov_i32_to(b, dst, bi_fau(BIR_FAU_LANE_ID, false));
+                break;
+
         case nir_intrinsic_load_local_invocation_id:
                 for (unsigned i = 0; i < 3; ++i)
                         bi_u16_to_u32_to(b, bi_word(dst, i),
