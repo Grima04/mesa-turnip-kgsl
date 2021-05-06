@@ -65,7 +65,13 @@ zink_clear_texture(struct pipe_context *ctx,
                    unsigned level,
                    const struct pipe_box *box,
                    const void *data);
-
+void
+zink_clear_buffer(struct pipe_context *pctx,
+                  struct pipe_resource *pres,
+                  unsigned offset,
+                  unsigned size,
+                  const void *clear_value,
+                  int clear_value_size);
 bool
 zink_fb_clear_needs_explicit(struct zink_framebuffer_clear *fb_clear);
 

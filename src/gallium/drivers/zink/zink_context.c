@@ -2574,6 +2574,7 @@ zink_context_create(struct pipe_screen *pscreen, void *priv, unsigned flags)
 
    ctx->base.clear = zink_clear;
    ctx->base.clear_texture = zink_clear_texture;
+   ctx->base.clear_buffer = zink_clear_buffer;
 
    ctx->base.draw_vbo = zink_draw_vbo;
    ctx->base.launch_grid = zink_launch_grid;

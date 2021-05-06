@@ -409,6 +409,47 @@ zink_clear_texture(struct pipe_context *pctx,
    pipe_surface_reference(&surf, NULL);
 }
 
+void
+zink_clear_buffer(struct pipe_context *pctx,
+                  struct pipe_resource *pres,
+                  unsigned offset,
+                  unsigned size,
+                  const void *clear_value,
+                  int clear_value_size)
+{
+   struct zink_context *ctx = zink_context(pctx);
+   struct zink_resource *res = zink_resource(pres);
+
+   if (offset % 4 == 0 && size % 4 == 0 && clear_value_size == sizeof(uint32_t)) {
+      /*
+         - dstOffset is the byte offset into the buffer at which to start filling,
+           and must be a multiple of 4.
+
+         - size is the number of bytes to fill, and must be either a multiple of 4,
+           or VK_WHOLE_SIZE to fill the range from offset to the end of the buffer
+       */
+      struct zink_batch *batch = zink_batch_no_rp(ctx);
+      zink_batch_reference_resource_rw(batch, res, true);
+      util_range_add(&res->base.b, &res->valid_buffer_range, offset, offset + size);
+      vkCmdFillBuffer(batch->state->cmdbuf, res->obj->buffer, offset, size, *(uint32_t*)clear_value);
+      return;
+   }
+   struct pipe_transfer *xfer;
+   uint8_t *map = pipe_buffer_map_range(pctx, pres, offset, size,
+                                        PIPE_MAP_WRITE | PIPE_MAP_ONCE | PIPE_MAP_DISCARD_RANGE, &xfer);
+   if (!map)
+      return;
+   unsigned rem = size % clear_value_size;
+   uint8_t *ptr = map;
+   for (unsigned i = 0; i < (size - rem) / clear_value_size; i++) {
+      memcpy(ptr, clear_value, clear_value_size);
+      ptr += clear_value_size;
+   }
+   if (rem)
+      memcpy(map + size - rem, clear_value, rem);
+   pipe_buffer_unmap(pctx, xfer);
+}
+
 bool
 zink_fb_clear_needs_explicit(struct zink_framebuffer_clear *fb_clear)
 {
