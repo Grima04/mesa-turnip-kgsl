@@ -356,11 +356,27 @@ mir_compute_interference(
                         unsigned dest = ins->dest;
 
                         if (dest < ctx->temp_count) {
-                                for (unsigned i = 0; i < ctx->temp_count; ++i)
+                                for (unsigned i = 0; i < ctx->temp_count; ++i) {
                                         if (live[i]) {
                                                 unsigned mask = mir_bytemask(ins);
                                                 lcra_add_node_interference(l, dest, mask, i, live[i]);
                                         }
+                                }
+                        }
+
+                        /* Add blend shader interference: blend shaders might
+                         * clobber r0-r3. */
+                        if (ins->compact_branch && ins->writeout) {
+                                for (unsigned i = 0; i < ctx->temp_count; ++i) {
+                                        if (!live[i])
+                                                continue;
+
+                                        for (unsigned j = 0; j < 4; j++) {
+                                                lcra_add_node_interference(l, ctx->temp_count + j,
+                                                                0xFFFF,
+                                                                i, live[i]);
+                                        }
+                                }
                         }
 
                         /* Update live_in */
@@ -402,11 +418,11 @@ allocate_registers(compiler_context *ctx, bool *spilled)
         if (!ctx->temp_count)
                 return NULL;
 
-        /* Initialize LCRA. Allocate an extra node at the end for a precoloured
-         * r1 for interference */
+        /* Initialize LCRA. Allocate extra node at the end for r1-r3 for
+         * interference */
 
-        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count + 1, 5);
-        unsigned node_r1 = ctx->temp_count;
+        struct lcra_state *l = lcra_alloc_equations(ctx->temp_count + 4, 5);
+        unsigned node_r1 = ctx->temp_count + 1;
 
         /* Starts of classes, in bytes */
         l->class_start[REG_CLASS_WORK]  = 16 * 0;
@@ -597,7 +613,8 @@ allocate_registers(compiler_context *ctx, bool *spilled)
          * the following segment. We model this as interference.
          */
 
-        l->solutions[node_r1] = (16 * 1);
+        for (unsigned i = 0; i < 4; ++i)
+                l->solutions[ctx->temp_count + i] = (16 * i);
 
         mir_foreach_block(ctx, _blk) {
                 midgard_block *blk = (midgard_block *) _blk;
