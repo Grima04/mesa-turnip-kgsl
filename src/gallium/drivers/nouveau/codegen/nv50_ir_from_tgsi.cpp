@@ -1445,7 +1445,7 @@ bool Source::scanDeclaration(const struct tgsi_full_declaration *decl)
       if (info->type == PIPE_SHADER_COMPUTE && info->target < NVISA_GF100_CHIPSET) {
          for (i = first; i <= last; i++) {
             bufferIds.insert(std::make_pair(i, gmemSlot));
-            info_out->prop.cp.gmem[gmemSlot++] = {.valid = 1, .slot = i};
+            info_out->prop.cp.gmem[gmemSlot++] = {.valid = 1, .image = 0, .slot = i};
             assert(gmemSlot < 16);
          }
       }
