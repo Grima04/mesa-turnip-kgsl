@@ -2264,7 +2264,11 @@ lower_vars_to_explicit(nir_shader *shader,
       if (explicit_type != var->type)
          var->type = explicit_type;
 
-      assert(util_is_power_of_two_nonzero(align));
+      UNUSED bool is_empty_struct =
+         glsl_type_is_struct_or_ifc(explicit_type) &&
+         glsl_get_length(explicit_type) == 0;
+
+      assert(util_is_power_of_two_nonzero(align) || is_empty_struct);
       var->data.driver_location = ALIGN_POT(offset, align);
       offset = var->data.driver_location + size;
       progress = true;
