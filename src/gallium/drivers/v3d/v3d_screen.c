@@ -423,8 +423,15 @@ v3d_screen_get_shader_param(struct pipe_screen *pscreen, unsigned shader,
         case PIPE_SHADER_CAP_SUPPORTED_IRS:
                 return 1 << PIPE_SHADER_IR_NIR;
         case PIPE_SHADER_CAP_MAX_UNROLL_ITERATIONS_HINT:
-                /* Disable GLSL loop unrolling, we'll use NIR's */
-                return 0;
+                /* FIXME: if we disable GLSL loop unrolling in favor of NIR's
+                 * we fail to register allocate some tests, like:
+                 * - KHR-GLES31.core.geometry_shader.limits.max_input_components
+                 * - bin/max-samplers border -auto -fbo
+                 *
+                 * So keep it enabled until we figure out what's going on with
+                 * that.
+                 */
+                return 32;
         case PIPE_SHADER_CAP_LOWER_IF_THRESHOLD:
         case PIPE_SHADER_CAP_TGSI_SKIP_MERGE_REGISTERS:
                 return 0;
