@@ -2527,7 +2527,8 @@ bit 7 for RECTLIST (clear) when z32s8 (used for clear of depth32?  not set
 	<reg32 offset="0xe5c3" name="SP_FS_OBJ_START_LO"/>
 	<reg32 offset="0xe5c4" name="SP_FS_OBJ_START_HI"/>
 	<reg32 offset="0xe5c9" name="SP_BLEND_CNTL">
-		<bitfield name="ENABLED" pos="0" type="boolean"/>
+		<!-- per-mrt enable bit -->
+		<bitfield name="ENABLE_BLEND" low="0" high="7"/>
 		<bitfield name="UNK8" pos="8" type="boolean"/>
 		<bitfield name="ALPHA_TO_COVERAGE" pos="10" type="boolean"/>
 	</reg32>
