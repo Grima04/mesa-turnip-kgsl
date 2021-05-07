@@ -242,7 +242,7 @@ pan_extend(nir_builder *b, nir_ssa_def *v, unsigned N)
                 q[j] = nir_channel(b, v, j);
 
         for (unsigned j = v->num_components; j < N; ++j)
-                q[j] = nir_imm_int(b, 0);
+                q[j] = nir_imm_intN_t(b, 0, v->bit_size);
 
         return nir_vec(b, q, N);
 }
