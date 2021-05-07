@@ -1717,7 +1717,7 @@ struct radv_pipeline {
          bool uses_drawid;
          bool uses_baseinstance;
          bool can_use_guardband;
-         uint32_t needed_dynamic_state;
+         uint64_t needed_dynamic_state;
          bool disable_out_of_order_rast_for_occlusion;
          unsigned tess_patch_control_points;
          unsigned pa_su_sc_mode_cntl;
