@@ -1998,7 +1998,7 @@ tu6_emit_blend_control(struct tu_cs *cs,
                              : ((1 << msaa_info->rasterizationSamples) - 1);
 
    tu_cs_emit_regs(cs,
-                   A6XX_SP_BLEND_CNTL(.enabled = blend_enable_mask,
+                   A6XX_SP_BLEND_CNTL(.enable_blend = blend_enable_mask,
                                       .dual_color_in_enable = dual_src_blend,
                                       .alpha_to_coverage = msaa_info->alphaToCoverageEnable,
                                       .unk8 = true));

@@ -2987,7 +2987,8 @@ to upconvert to 32b float internally?
 	<reg32 offset="0xa988" name="SP_FS_PVT_MEM_SIZE" type="a6xx_sp_xs_pvt_mem_size"/>
 
 	<reg32 offset="0xa989" name="SP_BLEND_CNTL">
-		<bitfield name="ENABLED" pos="0" type="boolean"/>
+		<!-- per-mrt enable bit -->
+		<bitfield name="ENABLE_BLEND" low="0" high="7"/>
 		<bitfield name="UNK8" pos="8" type="boolean"/>
 		<bitfield name="DUAL_COLOR_IN_ENABLE" pos="9" type="boolean"/>
 		<bitfield name="ALPHA_TO_COVERAGE" pos="10" type="boolean"/>
