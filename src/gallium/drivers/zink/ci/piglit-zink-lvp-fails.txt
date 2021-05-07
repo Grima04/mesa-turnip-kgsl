@@ -64,7 +64,6 @@ spec@!opengl 3.2@gl-3.2-adj-prims pv-first,Fail
 spec@!opengl es 2.0@glsl-fs-pointcoord,Fail
 spec@!opengl es 3.0@gles-3.0-transform-feedback-uniform-buffer-object,Fail
 spec@arb_depth_texture@depth-tex-modes,Fail
-spec@arb_fragment_program@fp-abs-01,Crash
 spec@arb_framebuffer_object@fbo-blit-scaled-linear,Fail
 spec@arb_framebuffer_object@fbo-gl_pointcoord,Fail
 spec@arb_get_program_binary@restore-sso-program,Fail
