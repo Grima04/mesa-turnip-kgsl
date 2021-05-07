@@ -55,4 +55,15 @@ bifrost_get_quirks(unsigned product_id)
         }
 }
 
+/* How many lanes per architectural warp (subgroup)? Used to lower divergent
+ * indirects. */
+
+static inline unsigned
+bifrost_lanes_per_warp(unsigned product_id)
+{
+        unsigned major = product_id >> 12;
+        assert(major == 6 || major == 7);
+        return (major == 7) ? 8 : 4;
+}
+
 #endif
