@@ -3197,6 +3197,13 @@ VkResult lvp_execute_cmds(struct lvp_device *device,
          state.pctx->set_constant_buffer(state.pctx, s, idx + 1, false, NULL);
    }
 
+   state.pctx->set_stream_output_targets(state.pctx, 0, NULL, NULL);
+   for (unsigned i = 0; i < PIPE_MAX_SO_BUFFERS; i++) {
+      if (state.so_targets[i]) {
+         state.pctx->stream_output_target_destroy(state.pctx, state.so_targets[i]);
+      }
+   }
+
    free(state.pending_clear_aspects);
    free(state.cleared_views);
    return VK_SUCCESS;
