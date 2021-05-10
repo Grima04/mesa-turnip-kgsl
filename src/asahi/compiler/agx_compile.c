@@ -172,9 +172,14 @@ agx_emit_fragment_out(agx_builder *b, nir_intrinsic_instr *instr)
    unsigned rt = (loc - FRAG_RESULT_DATA0);
 
    /* TODO: Reverse-engineer interactions with MRT */
-   agx_writeout(b, 0xC200);
-   agx_writeout(b, 0x000C);
+   if (b->shader->did_writeout) {
+	   agx_writeout(b, 0x0004);
+   } else {
+	   agx_writeout(b, 0xC200);
+	   agx_writeout(b, 0x000C);
+   }
 
+   b->shader->did_writeout = true;
    return agx_st_tile(b, agx_src_index(&instr->src[0]),
              b->shader->key->fs.tib_formats[rt]);
 }

@@ -318,6 +318,9 @@ typedef struct {
    /* For creating temporaries */
    unsigned alloc;
 
+   /* I don't really understand how writeout ops work yet */
+   bool did_writeout;
+
    /* Stats for shader-db */
    unsigned loop_count;
    unsigned spills;
