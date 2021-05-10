@@ -76,11 +76,11 @@ if with_platform_wayland
   tu_wsi = true
 endif
 
-if system_has_kms_drm and not with_platform_android
-  tu_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
-  libtu_files += files('tu_wsi_display.c')
-  tu_wsi = true
-endif
+#if system_has_kms_drm and not with_platform_android
+#  tu_flags += '-DVK_USE_PLATFORM_DISPLAY_KHR'
+#  libtu_files += files('tu_wsi_display.c')
+#  tu_wsi = true
+#endif
 
 if tu_wsi
   libtu_files += 'tu_wsi.c'
@@ -98,12 +98,13 @@ if with_xlib_lease
   tu_flags += '-DVK_USE_PLATFORM_XLIB_XRANDR_EXT'
 endif
 
-if with_freedreno_kgsl
-  libtu_files += files('tu_kgsl.c')
-else
-  libtu_files += files('tu_drm.c')
-  tu_deps += dep_libdrm
-endif
+#if with_freedreno_kgsl
+#  libtu_files += files('tu_kgsl.c')
+#else
+#  libtu_files += files('tu_drm.c')
+#  tu_deps += dep_libdrm
+#endif
+libtu_files += files('tu_kgsl.c')
 
 libvulkan_freedreno = shared_library(
   'vulkan_freedreno',
