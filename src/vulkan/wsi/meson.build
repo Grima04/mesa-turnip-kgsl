@@ -42,9 +42,9 @@ if with_platform_windows
   files_vulkan_wsi += files('wsi_common_win32.c')
 endif
 
-if system_has_kms_drm and not with_platform_android
-  files_vulkan_wsi += files('wsi_common_display.c')
-endif
+#if system_has_kms_drm and not with_platform_android
+#  files_vulkan_wsi += files('wsi_common_display.c')
+#endif
 
 libvulkan_wsi = static_library(
   'vulkan_wsi',
