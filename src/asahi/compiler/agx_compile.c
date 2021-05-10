@@ -201,6 +201,7 @@ agx_emit_load_tile(agx_builder *b, nir_intrinsic_instr *instr)
    agx_writeout(b, 0xC200);
    agx_writeout(b, 0x0008);
    b->shader->did_writeout = true;
+   b->shader->out->reads_tib = true;
 
    return agx_ld_tile_to(b, agx_dest_index(&instr->dest),
          b->shader->key->fs.tib_formats[rt]);
