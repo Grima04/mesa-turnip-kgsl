@@ -585,6 +585,16 @@ agx_bind_vertex_elements_state(struct pipe_context *pctx, void *cso)
    ctx->dirty |= AGX_DIRTY_VERTEX;
 }
 
+static uint32_t asahi_shader_key_hash(const void *key)
+{
+   return _mesa_hash_data(key, sizeof(struct asahi_shader_key));
+}
+
+static bool asahi_shader_key_equal(const void *a, const void *b)
+{
+   return memcmp(a, b, sizeof(struct asahi_shader_key)) == 0;
+}
+
 static void *
 agx_create_shader_state(struct pipe_context *ctx,
                         const struct pipe_shader_state *cso)
@@ -598,8 +608,7 @@ agx_create_shader_state(struct pipe_context *ctx,
    assert(cso->type == PIPE_SHADER_IR_NIR);
    so->nir = cso->ir.nir;
 
-   so->variants = _mesa_hash_table_create(NULL,
-                                          _mesa_hash_pointer, _mesa_key_pointer_equal);
+   so->variants = _mesa_hash_table_create(NULL, asahi_shader_key_hash, asahi_shader_key_equal);
    return so;
 }
 
@@ -610,7 +619,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    struct agx_uncompiled_shader *so = ctx->stage[stage].shader;
    assert(so != NULL);
 
-   struct hash_entry *he = _mesa_hash_table_search(so->variants, &key);
+   struct hash_entry *he = _mesa_hash_table_search(so->variants, key);
 
    if (he) {
       if ((*out) == he->data)
@@ -706,7 +715,7 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    ralloc_free(nir);
    util_dynarray_fini(&binary);
 
-   he = _mesa_hash_table_insert(so->variants, &key, compiled);
+   he = _mesa_hash_table_insert(so->variants, key, compiled);
    *out = he->data;
    return true;
 }
