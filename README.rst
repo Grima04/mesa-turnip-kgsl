@@ -18,7 +18,7 @@ Meson (`docs/meson.rst <https://mesa3d.org/meson.html>`_):
 
 .. code-block:: sh
 
-  $ meson build -D platforms=x11 -D gallium-drivers= -D vulkan-drivers=freedreno -D dri3=enabled -D libunwind=disabled -D osmesa=true -D microsoft-clc=disabled  -D valgrind=disabled --prefix /usr -D freedreno-kgsl=true
+  $ meson build -D platforms=x11 -D gallium-drivers=swrast -D vulkan-drivers=freedreno -D dri3=enabled -D libunwind=disabled -D osmesa=true -D microsoft-clc=disabled  -D valgrind=disabled --prefix /usr -D freedreno-kgsl=true
 
 
 Support
