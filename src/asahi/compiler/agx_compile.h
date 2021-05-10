@@ -80,6 +80,9 @@ struct agx_push {
 struct agx_shader_info {
    unsigned push_ranges;
    struct agx_push push[AGX_MAX_PUSH_RANGES];
+
+   /* Does the shader read the tilebuffer? */
+   bool reads_tib;
 };
 
 #define AGX_MAX_RTS (8)

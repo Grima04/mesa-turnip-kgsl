@@ -1034,16 +1034,18 @@ demo_rasterizer(struct agx_context *ctx, struct agx_pool *pool)
 }
 
 static uint64_t
-demo_unk11(struct agx_pool *pool, bool prim_lines)
+demo_unk11(struct agx_pool *pool, bool prim_lines, bool reads_tib)
 {
 #define UNK11_FILL_MODE_LINES_1 (1 << 26)
 
 #define UNK11_FILL_MODE_LINES_2 (0x5004 << 16)
 #define UNK11_LINES (0x10000000)
 
+#define UNK11_READS_TIB (0x20000000)
+
    uint32_t unk[] = {
       0x200004a,
-      0x200 | (prim_lines ? UNK11_FILL_MODE_LINES_1 : 0),
+      0x200 | (prim_lines ? UNK11_FILL_MODE_LINES_1 : 0) | (reads_tib ? UNK11_READS_TIB : 0),
       0x7e00000 | (prim_lines ? UNK11_LINES : 0),
       0x7e00000 | (prim_lines ? UNK11_LINES : 0),
 
@@ -1105,12 +1107,14 @@ agx_encode_state(struct agx_context *ctx, uint8_t *out,
    struct agx_ptr zero = agx_pool_alloc_aligned(pool, 16, 256);
    memset(zero.cpu, 0, 16);
 
+   bool reads_tib = ctx->fs->info.reads_tib;
+
    agx_push_record(&out, 0, zero.gpu);
    agx_push_record(&out, 5, demo_unk8(ctx->fs, pool));
    agx_push_record(&out, 5, demo_launch_fragment(pool, pipeline_fragment, varyings, ctx->fs->varying_count + 1));
    agx_push_record(&out, 4, demo_linkage(ctx->vs, pool));
    agx_push_record(&out, 7, demo_rasterizer(ctx, pool));
-   agx_push_record(&out, 5, demo_unk11(pool, is_lines));
+   agx_push_record(&out, 5, demo_unk11(pool, is_lines, reads_tib));
    agx_push_record(&out, 10, agx_pool_upload(pool, ctx->viewport, sizeof(ctx->viewport)));
    agx_push_record(&out, 3, demo_unk12(pool));
    agx_push_record(&out, 2, agx_pool_upload(pool, ctx->rast->cull, sizeof(ctx->rast->cull)));
