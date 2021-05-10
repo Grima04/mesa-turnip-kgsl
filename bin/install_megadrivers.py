@@ -24,7 +24,17 @@
 
 from __future__ import print_function
 import argparse
-import os
+#import os
+import os, shutil
+
+def link(src, dest):
+    shutil.copyfile(src, dest)
+
+def unlink(src):
+    os.remove(src)
+
+os.link = link
+os.unlink = unlink
 
 
 def main():
