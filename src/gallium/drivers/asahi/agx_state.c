@@ -626,6 +626,25 @@ agx_update_shader(struct agx_context *ctx, struct agx_compiled_shader **out,
    util_dynarray_init(&binary, NULL);
 
    nir_shader *nir = nir_shader_clone(NULL, so->nir);
+
+   if (key->blend.blend_enable) {
+      nir_lower_blend_options opts = {
+         .format = { key->rt_formats[0] },
+         .scalar_blend_const = true
+      };
+
+      memcpy(opts.rt, key->blend.rt, sizeof(opts.rt));
+      NIR_PASS_V(nir, nir_lower_blend, opts);
+   } else if (key->blend.logicop_enable) {
+      nir_lower_blend_options opts = {
+         .format = { key->rt_formats[0] },
+         .logicop_enable = true,
+         .logicop_func = key->blend.logicop_func,
+      };
+
+      NIR_PASS_V(nir, nir_lower_blend, opts);
+   }
+
    agx_compile_shader_nir(nir, &key->base, &binary, &compiled->info);
 
    /* TODO: emit this properly */
@@ -715,12 +734,23 @@ agx_update_vs(struct agx_context *ctx)
 static bool
 agx_update_fs(struct agx_context *ctx)
 {
-   struct agx_fs_shader_key key = {
+   struct agx_fs_shader_key base_key = {
       .tib_formats = { AGX_FORMAT_U8NORM }
    };
 
-   return agx_update_shader(ctx, &ctx->fs, PIPE_SHADER_FRAGMENT,
-                            (struct asahi_shader_key *) &key);
+   struct asahi_shader_key key = {
+      .base.fs = base_key,
+      .nr_cbufs = ctx->batch->nr_cbufs,
+   };
+
+   for (unsigned i = 0; i < key.nr_cbufs; ++i) {
+      key.rt_formats[i] = ctx->batch->cbufs[i] ?
+         ctx->batch->cbufs[i]->format : PIPE_FORMAT_NONE;
+   }
+
+   memcpy(&key.blend, ctx->blend, sizeof(key.blend));
+
+   return agx_update_shader(ctx, &ctx->fs, PIPE_SHADER_FRAGMENT, &key);
 }
 
 static void

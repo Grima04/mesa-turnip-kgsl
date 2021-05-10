@@ -99,7 +99,7 @@ struct agx_zsa {
 };
 
 struct agx_blend {
-   bool logicop_enable;
+   bool logicop_enable, blend_enable;
 
    union {
       nir_lower_blend_rt rt[8];
@@ -110,6 +110,8 @@ struct agx_blend {
 struct asahi_shader_key {
    struct agx_shader_key base;
    struct agx_blend blend;
+   unsigned nr_cbufs;
+   enum pipe_format rt_formats[PIPE_MAX_COLOR_BUFS];
 };
 
 #define AGX_DIRTY_VERTEX (1 << 0)
