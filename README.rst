@@ -9,7 +9,7 @@ This repository lives at https://gitlab.freedesktop.org/mesa/mesa.
 Other repositories are likely forks, and code found there is not supported.
 
 
-Build & install
+Build & install (Turnip + Zink)
 ---------------
 
 You can find more information in our documentation (`docs/install.rst
@@ -18,8 +18,7 @@ Meson (`docs/meson.rst <https://mesa3d.org/meson.html>`_):
 
 .. code-block:: sh
 
-  $ meson build -D platforms=x11 -D gallium-drivers=swrast -D vulkan-drivers=freedreno -D dri3=enabled -D libunwind=disabled -D osmesa=true -D microsoft-clc=disabled  -D valgrind=disabled --prefix /usr -D freedreno-kgsl=true
-
+  $ meson build -D platforms=x11,wayland -D gallium-drivers=swrast,virgl,zink -D vulkan-drivers=freedreno -D dri3=enabled  -D egl=enabled  -D gles2=enabled -D glvnd=true -D glx=dri  -D libunwind=disabled -D osmesa=true  -D shared-glapi=enabled -D microsoft-clc=disabled  -D valgrind=disabled --prefix /usr -D gles1=disabled -D freedreno-kgsl=true
 
 Support
 -------
