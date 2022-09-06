@@ -9,6 +9,26 @@ This repository lives at https://gitlab.freedesktop.org/mesa/mesa.
 Other repositories are likely forks, and code found there is not supported.
 
 
+Preparation (Termux Proot Debian/Ubuntu Users only)
+-----------
+
+Before you start to work on this thing, please edit the apt sources list to make this work to avoid having No Vulkan Found issue
+
+.. code-block:: sh
+
+ $ nano /etc/sources.list
+
+Then copy the main contrib repository link. DONT COPY THE SECURITY ONE!!!
+
+Then Replace deb to deb-src and save, then run
+
+.. code-block:: sh
+
+ $ apt-get build-dep mesa
+
+Then after that, proceed to the next instruction.
+
+
 Build & install (Turnip + Zink)
 ---------------
 
